@@ -8,13 +8,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Ask for notification permission, then register with APNs.
+        // Only set the delegate here. The permission prompt is requested AFTER
+        // the WebView login (see PushRegistrar.onCredsAvailable) so two alerts
+        // don't compete at launch — otherwise the login prompt can't present and
+        // the WebView is left blank.
         UNUserNotificationCenter.current().delegate = self
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            if granted {
-                DispatchQueue.main.async { UIApplication.shared.registerForRemoteNotifications() }
-            }
-        }
         return true
     }
 
@@ -157,13 +155,26 @@ public class BasicAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 // request carries the cached credentials.
 enum PushRegistrar {
     static var deviceTokenHex: String?
+    static var permissionRequested = false
 
     static func onToken(_ hex: String) {
         deviceTokenHex = hex
         sync()
     }
+    // Called once the user has logged into the WebView — now it's safe to show
+    // the notification permission prompt (no competing login alert).
     static func onCredsAvailable() {
+        requestPermissionIfNeeded()
         sync()
+    }
+    static func requestPermissionIfNeeded() {
+        if permissionRequested { return }
+        permissionRequested = true
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            if granted {
+                DispatchQueue.main.async { UIApplication.shared.registerForRemoteNotifications() }
+            }
+        }
     }
 
     static func sync() {
