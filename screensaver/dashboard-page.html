@@ -1,0 +1,425 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#111111">
+<title>Daily Dashboard</title>
+<style>
+/* ── Fonts ──────────────────────────────────────────────────────────────
+   Univers Condensed is served same-origin from /bfonts (already public,
+   server.js:376). Libre Baskerville is not on /bfonts, so it is embedded as a
+   base64 data-URI at serve time (placeholder __BASKERVILLE_B64__) to keep the
+   page fully self-contained / CSP-safe — no external CDN, no cross-origin
+   fetch. This matters because the snapshot helper renders this page in an
+   offscreen WKWebView and must paint a complete frame before takeSnapshot. */
+@font-face{font-family:'Univers Condensed';src:url('/bfonts/univers-condensed.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Univers Condensed';src:url('/bfonts/univers-bold-condensed.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Univers';src:url('/bfonts/univers-regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Univers';src:url('/bfonts/univers-bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Libre Baskerville';src:url(data:font/otf;base64,__BASKERVILLE_B64__) format('opentype');font-weight:700;font-style:normal;font-display:block}
+
+/* ── Tokens (verbatim from wsop-console-repo/app/src/styles/tokens.css) ── */
+:root{
+  --ink:#111111; --surface:#1a1a1a; --surface-2:#242424; --line:#333333;
+  --bone:#e8e8e8; --muted:#808080;
+  --good:#5a9e7a; --warn:#b8962e; --bad:#c96b6b;
+  /* series colors — match series.ts buildSeries() defs exactly */
+  --c-cash:#5a9e7a; --c-sleep:#6f9bd1; --c-weight:#c97f7f;
+  --font-head:'Libre Baskerville',Georgia,serif;
+  --font-body:'Univers Condensed','Univers',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{
+  background:var(--ink); color:var(--bone);
+  font-family:var(--font-body); font-size:16px; line-height:1.4;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  overflow:hidden;               /* fixed frame — the helper sets the viewport */
+}
+
+/* The whole poster is a fixed-aspect stage that scales to the viewport.
+   Base design is 1600×1000 (16:10, MacBook-ish); transform:scale keeps it
+   crisp at any snapshot resolution the helper requests. */
+#stage{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+}
+#poster{
+  width:1600px; height:1000px;
+  padding:56px 60px 48px;
+  display:flex; flex-direction:column;
+  background:
+    radial-gradient(140% 120% at 50% -10%, #161616 0%, var(--ink) 60%);
+  transform-origin:center center;
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────── */
+.masthead{display:flex; align-items:flex-end; justify-content:space-between; padding-bottom:22px; border-bottom:1px solid var(--line)}
+.mast-left .kicker{font-size:13px; letter-spacing:.32em; text-transform:uppercase; color:var(--muted)}
+.mast-left h1{font-family:var(--font-head); font-weight:700; font-size:46px; letter-spacing:-.02em; line-height:1; margin-top:6px}
+.mast-right{text-align:right; font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); line-height:1.7}
+.mast-right .stale{color:var(--warn)}
+.mast-right b{color:var(--bone); font-weight:700}
+
+/* ── Metric grid: 7 tiles, primary tile spans 2 cols ──────────────────── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-auto-rows:1fr;
+  gap:18px;
+  margin:26px 0 24px;
+}
+.tile{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:22px 24px;
+  display:flex; flex-direction:column; justify-content:space-between;
+  min-height:0;
+}
+.tile.span2{grid-column:span 2}
+.tile .label{
+  font-family:var(--font-head); font-weight:700;
+  font-size:14px; letter-spacing:.02em; color:var(--muted);
+}
+.tile .num{
+  font-weight:700; font-size:64px; line-height:.95;
+  letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin-top:14px;
+}
+.tile.span2 .num{font-size:78px}
+.tile .sub{font-size:15px; color:var(--muted); margin-top:10px; min-height:1.4em}
+.tile .sub b{color:var(--bone); font-weight:700}
+.pos{color:var(--good)} .neg{color:var(--bad)} .warnc{color:var(--warn)}
+.dim{color:var(--muted)}
+
+/* ── Chart panel ──────────────────────────────────────────────────────── */
+.chart-card{
+  flex:1; min-height:0;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:20px 24px 18px;
+  display:flex; flex-direction:column;
+}
+.chart-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px}
+.chart-head .t{font-family:var(--font-head); font-weight:700; font-size:16px; letter-spacing:.01em}
+.legend{display:flex; gap:22px; align-items:center}
+.legend .item{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); letter-spacing:.02em}
+.legend .swatch{width:20px; height:3px; border-radius:2px; display:inline-block}
+.legend .val{color:var(--bone); font-weight:700; font-variant-numeric:tabular-nums}
+.chart-wrap{flex:1; min-height:0; position:relative; margin-top:4px}
+#chart{position:absolute; inset:0; width:100%; height:100%; display:block}
+.axis{display:flex; justify-content:space-between; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-top:8px}
+.chart-note{font-size:12.5px; color:var(--muted); margin-top:8px; letter-spacing:.01em}
+.chart-note b{color:var(--bone); font-weight:700}
+</style></head>
+<body>
+<div id="stage"><div id="poster">
+  <div class="masthead">
+    <div class="mast-left">
+      <div class="kicker">Ethan Bennett · Daily Console</div>
+      <h1 id="dateline">—</h1>
+    </div>
+    <div class="mast-right">
+      <div id="wsopline">WSOP 2027 · <b>—</b> DAYS OUT</div>
+      <div id="asof">AS OF —</div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="t">90-day overlay</div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="axis"><span id="axisFrom">—</span><span id="axisTo">—</span></div>
+    <div class="chart-note">Each line scaled to its own range — compare the <b>shapes</b>, not the values. Does the roll track sleep?</div>
+  </div>
+</div></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── Config ────────────────────────────────────────────────────────────
+  // The token is the last path segment (/d/:token). The server may also inline
+  // a bootstrap payload (__BOOTSTRAP__) so the very first paint has data even
+  // before the fetch resolves — the helper waits for data-ready either way.
+  var TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+  var API = '/api/dashboard/' + TOKEN;
+  var REFRESH_MS = 60000;
+
+  var BOOTSTRAP = __BOOTSTRAP__; // {summary,series} | null  (server-substituted)
+
+  // ── Number / date formatting (ported from engine/format.ts) ───────────
+  function money(n, sign){
+    n = n || 0;
+    var s = (sign && n > 0) ? '+' : '';
+    var neg = n < 0;
+    var abs = Math.abs(Math.round(n));
+    return (neg ? '-' : s) + '$' + abs.toLocaleString('en-US');
+  }
+  function moneyK(n){
+    n = n || 0;
+    var k = n / 1000, sign = n < 0 ? '-' : '', abs = Math.abs(k);
+    var s = abs >= 100 ? abs.toFixed(0) : abs.toFixed(1).replace(/\.0$/, '');
+    return sign + '$' + s + 'k';
+  }
+  function fmtDateShort(iso){
+    if(!iso) return '—';
+    var d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  }
+  function fmtHours(h){ h = h || 0; return (h % 1 === 0 ? h : h.toFixed(1)) + 'h'; }
+  function signClass(n){ return n > 0 ? 'pos' : n < 0 ? 'neg' : 'dim'; }
+
+  // ── normalize() — verbatim from engine/series.ts ──────────────────────
+  function normalize(points){
+    if(!points || points.length === 0) return [];
+    var vals = points.map(function(p){ return p.value; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    var span = max - min;
+    return points.map(function(p){
+      return { date:p.date, t: span === 0 ? 0.5 : (p.value - min) / span };
+    });
+  }
+
+  // ── Tile renderer ─────────────────────────────────────────────────────
+  function tile(cls, label, numHtml, subHtml){
+    return '<div class="tile ' + cls + '">'
+      + '<div class="label">' + label + '</div>'
+      + '<div class="num">' + numHtml + '</div>'
+      + '<div class="sub">' + (subHtml || '') + '</div>'
+      + '</div>';
+  }
+
+  function renderSummary(s){
+    if(!s) return;
+    document.getElementById('dateline').textContent =
+      new Date(s.generatedAt).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+    document.getElementById('wsopline').innerHTML = 'WSOP 2027 · <b>' + s.wsop2027Days + '</b> DAYS OUT';
+    var asof = new Date(s.generatedAt).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    document.getElementById('asof').innerHTML =
+      (s.stale ? '<span class="stale">STALE · </span>' : '') + 'AS OF ' + asof.toUpperCase();
+
+    var tiles = '';
+
+    // 1 — Current roll (primary, spans 2)
+    tiles += tile('span2', 'Current roll',
+      moneyK(s.roll),
+      'WSOP fund <b>' + moneyK(s.wsopFund) + '</b>' + (s.stale ? ' · <span class="warnc">starting roll unsynced</span>' : ''));
+
+    // 2 — Today P&L
+    tiles += tile('', "Today's P&amp;L",
+      '<span class="' + signClass(s.today.pnl) + '">' + money(s.today.pnl, true) + '</span>',
+      s.today.sessions + (s.today.sessions === 1 ? ' session' : ' sessions'));
+
+    // 3 — This-week P&L
+    tiles += tile('', 'This week',
+      '<span class="' + signClass(s.week.pnl) + '">' + money(s.week.pnl, true) + '</span>',
+      s.week.sessions + (s.week.sessions === 1 ? ' session · ' : ' sessions · ') + fmtHours(s.week.hours));
+
+    // 4 — Sleep score
+    var sleepNum = s.sleepScore == null ? '<span class="dim">—</span>' : String(s.sleepScore);
+    tiles += tile('', 'Sleep score',
+      sleepNum,
+      s.sleepScore == null ? 'no reading' : 'Oura · ' + fmtDateShort(s.sleepDate));
+
+    // 5 — Weight vs 150 goal
+    var weightNum, weightSub;
+    if(s.weight == null){
+      weightNum = '<span class="dim">—</span>'; weightSub = 'no reading';
+    } else {
+      weightNum = s.weight + '<span class="dim" style="font-size:.42em"> lb</span>';
+      var d = s.weightVsGoal;
+      var goalTxt = d === 0 ? '<b>at goal</b>'
+        : '<b>' + (d > 0 ? '+' + d : d) + ' lb</b> to 150 goal';
+      var trend = (s.lbsPerWeek != null && s.lbsPerWeek !== 0)
+        ? ' · ' + (s.lbsPerWeek < 0 ? '▼' : '▲') + ' ' + Math.abs(s.lbsPerWeek).toFixed(1) + '/wk'
+        : '';
+      weightSub = goalTxt + trend;
+    }
+    tiles += tile('', 'Weight', weightNum, weightSub);
+
+    // 6 — Routine streak
+    tiles += tile('', 'Routine streak',
+      s.routineStreak + '<span class="dim" style="font-size:.34em"> d</span>',
+      'consecutive wake anchors');
+
+    document.getElementById('grid').innerHTML = tiles;
+  }
+
+  // ── Chart (vanilla Canvas — no lib; overlays 3 normalized series) ──────
+  // Mirrors DashboardScreen.tsx MultiLineChart: each series normalized to its
+  // own [0,1], painted over a shared date domain, no y-axis (shapes overlay).
+  var CHART_SERIES = ['cash','sleepScore','weight']; // fixed overlay set for the poster
+  var LABELS = { cash:'Cash P&L', sleepScore:'Sleep score', weight:'Weight' };
+
+  function drawChart(seriesData){
+    var canvas = document.getElementById('chart');
+    var wrap = canvas.parentElement;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = wrap.clientWidth, H = wrap.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    var series = (seriesData && seriesData.series || []).filter(function(s){
+      return CHART_SERIES.indexOf(s.key) !== -1 && s.points && s.points.length > 0;
+    });
+
+    // Shared date domain across shown series (dateDomain in series.ts).
+    var times = [];
+    series.forEach(function(s){ s.points.forEach(function(p){ times.push(new Date(p.date + 'T00:00:00').getTime()); }); });
+    var padL = 4, padR = 4, padT = 10, padB = 6;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    // Baseline grid — 4 faint horizontal rules.
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+    for(var g = 0; g <= 4; g++){
+      var gy = padT + (plotH * g / 4) + 0.5;
+      ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(W - padR, gy); ctx.stroke();
+    }
+
+    if(times.length === 0){ return { from:null, to:null, latest:{} }; }
+    var tMin = Math.min.apply(null, times), tMax = Math.max.apply(null, times);
+    var tSpan = (tMax - tMin) || 1;
+
+    var xOf = function(iso){ return padL + ((new Date(iso + 'T00:00:00').getTime() - tMin) / tSpan) * plotW; };
+    var yOf = function(t){ return padT + (1 - t) * plotH; };
+
+    var latest = {};
+    series.forEach(function(s){
+      var norm = normalize(s.points);
+      latest[s.key] = s.latest;
+      if(norm.length === 0) return;
+      ctx.strokeStyle = s.color; ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      if(norm.length === 1){
+        ctx.fillStyle = s.color;
+        ctx.beginPath(); ctx.arc(xOf(norm[0].date), yOf(norm[0].t), 3.5, 0, Math.PI * 2); ctx.fill();
+        return;
+      }
+      ctx.beginPath();
+      norm.forEach(function(p, i){
+        var x = xOf(p.date), y = yOf(p.t);
+        if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      // End-cap dot on the most recent point.
+      var lastP = norm[norm.length - 1];
+      ctx.fillStyle = s.color;
+      ctx.beginPath(); ctx.arc(xOf(lastP.date), yOf(lastP.t), 3.5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    return {
+      from: new Date(tMin).toISOString().slice(0, 10),
+      to: new Date(tMax).toISOString().slice(0, 10),
+      latest: latest
+    };
+  }
+
+  function fmtLatest(key, v){
+    if(v == null) return '—';
+    if(key === 'cash') return money(v, true);
+    return String(Math.round(v * 10) / 10);
+  }
+
+  function renderChart(seriesData){
+    var meta = drawChart(seriesData);
+    document.getElementById('axisFrom').textContent = fmtDateShort(meta.from);
+    document.getElementById('axisTo').textContent = fmtDateShort(meta.to);
+    var colors = { cash:'#5a9e7a', sleepScore:'#6f9bd1', weight:'#c97f7f' };
+    var byKey = {};
+    (seriesData && seriesData.series || []).forEach(function(s){ byKey[s.key] = s; });
+    var legend = CHART_SERIES.map(function(k){
+      var s = byKey[k]; var latest = s ? s.latest : null;
+      return '<span class="item">'
+        + '<span class="swatch" style="background:' + colors[k] + '"></span>'
+        + LABELS[k] + ' <span class="val">' + fmtLatest(k, latest) + '</span></span>';
+    }).join('');
+    document.getElementById('legend').innerHTML = legend;
+  }
+
+  // ── Scale the fixed 1600×1000 poster to fill the viewport ─────────────
+  function fitStage(){
+    var poster = document.getElementById('poster');
+    var sw = window.innerWidth / 1600, sh = window.innerHeight / 1000;
+    var scale = Math.min(sw, sh);
+    poster.style.transform = 'scale(' + scale + ')';
+  }
+
+  // ── Render + ready signal ─────────────────────────────────────────────
+  var lastGood = null; // {summary,series} — keep last good frame for stale fallback
+  var painted = false;
+
+  function paint(data){
+    if(!data) return;
+    if(data.summary) renderSummary(data.summary);
+    if(data.series)  renderChart(data.series);
+    lastGood = data;
+    painted = true;
+    signalReady();
+  }
+
+  var readySignalled = false;
+  function signalReady(){
+    if(readySignalled) return;
+    // Wait for fonts so the snapshot has correct glyph metrics, then flag ready.
+    // NOTE: the snapshot helper renders this page in an OFFSCREEN WKWebView,
+    // where visibilityState==='hidden' and requestAnimationFrame NEVER FIRES.
+    // So the commit tick MUST use setTimeout (timers keep running when hidden),
+    // never rAF — otherwise the ready signal hangs forever and the helper times
+    // out. Verified empirically in a hidden preview tab (rAF did not fire).
+    var done = function(){
+      readySignalled = true;
+      document.documentElement.setAttribute('data-ready', '1');
+      // A globally-resolvable promise + a plain flag the helper can poll for.
+      window.__dashboardReady = true;
+      if(window.__resolveReady) window.__resolveReady();
+    };
+    var commit = function(){ setTimeout(done, 32); }; // let layout/paint settle
+    if(document.fonts && document.fonts.ready){
+      document.fonts.ready.then(commit);
+    } else {
+      commit();
+    }
+  }
+  window.__readyPromise = new Promise(function(res){ window.__resolveReady = res; });
+
+  // ── Data fetch ────────────────────────────────────────────────────────
+  function load(){
+    Promise.all([
+      fetch(API + '/summary', { cache:'no-store' }).then(function(r){ if(!r.ok) throw 0; return r.json(); }),
+      fetch(API + '/series',  { cache:'no-store' }).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    ]).then(function(res){
+      paint({ summary:res[0], series:res[1] });
+    }).catch(function(){
+      // Network/endpoint failure: keep last good frame (flag stale), or, if we
+      // never painted, at least render whatever bootstrap we have.
+      if(lastGood){
+        if(lastGood.summary) lastGood.summary.stale = true;
+        paint(lastGood);
+      } else if(BOOTSTRAP){
+        paint(BOOTSTRAP);
+      } else {
+        // Absolute fallback so the helper still gets a frame to snapshot.
+        document.getElementById('dateline').textContent = 'Dashboard unavailable';
+        signalReady();
+      }
+    });
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────
+  fitStage();
+  window.addEventListener('resize', function(){ fitStage(); if(lastGood && lastGood.series) renderChart(lastGood.series); });
+  if(BOOTSTRAP) paint(BOOTSTRAP); // instant first frame if server inlined data
+  load();
+  setInterval(load, REFRESH_MS);
+})();
+</script>
+</body></html>

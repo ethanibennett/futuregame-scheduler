@@ -370,6 +370,60 @@ app.get('/b/:token', (req, res) => {
   res.send(BACKER_PAGE_HTML);
 });
 
+// ── Dashboard public surface (macOS screensaver) ──
+// Token-gated, read-only daily-dashboard data. Gated purely by the unguessable
+// DASHBOARD_TOKEN env secret in the URL (404 on mismatch, matching the backer
+// routes' posture), read straight off the synced console_records. Registered
+// here — BEFORE the /console Basic-Auth gate — so the headless screensaver
+// helper (which can't supply ham creds) can reach it.
+app.get('/api/dashboard/:token/summary', (req, res) => {
+  const token = String(req.params.token || '');
+  if (!dashboardTokenOk(token)) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json(computeDashboardSummary());
+  } catch (err) {
+    console.error('Dashboard summary error:', err);
+    res.status(500).json({ error: 'summary failed' });
+  }
+});
+
+app.get('/api/dashboard/:token/series', (req, res) => {
+  const token = String(req.params.token || '');
+  if (!dashboardTokenOk(token)) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json(buildDashboardSeries());
+  } catch (err) {
+    console.error('Dashboard series error:', err);
+    res.status(500).json({ error: 'series failed' });
+  }
+});
+
+// The self-contained dashboard page, rendered headlessly by the snapshot helper.
+// Baskerville is inlined once at boot (DASHBOARD_PAGE_HTML); the per-request
+// bootstrap inlines {summary,series} so the very first offscreen paint already
+// has data (the helper never snapshots an empty frame). Falls back to
+// client-fetch (null) if aggregation throws, and 503 if the template asset is
+// missing at boot.
+app.get('/d/:token', (req, res) => {
+  const token = String(req.params.token || '');
+  if (!dashboardTokenOk(token)) return res.status(404).send('Not found');
+  if (!DASHBOARD_PAGE_HTML) return res.status(503).send('Dashboard page unavailable');
+  res.set('Cache-Control', 'no-store');
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  let bootstrap = 'null';
+  try {
+    bootstrap = JSON.stringify({ summary: computeDashboardSummary(), series: buildDashboardSeries() });
+  } catch (err) {
+    console.error('Dashboard bootstrap error:', err);
+  }
+  // Anchor to the real assignment, not the bare token — it also appears in a
+  // comment; replacing that would leave `var BOOTSTRAP = __BOOTSTRAP__;` literal
+  // (a ReferenceError that breaks the whole page script → blank snapshot).
+  res.send(DASHBOARD_PAGE_HTML.replace('= __BOOTSTRAP__;', () => '= ' + bootstrap + ';'));
+});
+
 const consoleDist = path.join(__dirname, 'wsop-console', 'app', 'dist');
 // Public copies of the Univers fonts for the backer page — the /console copies
 // sit behind Basic Auth, so a backer's browser can't load them.
@@ -9544,6 +9598,294 @@ function backerRecordByToken(token) {
   s.free();
   return found;
 }
+
+// ── Dashboard public surface (screensaver) helpers ──────────────────────────
+// Read-only, token-gated daily-dashboard data. Clones the backer-feed pattern:
+// gated purely by an unguessable env token in the URL, read straight off the
+// synced console_records. All math is ported VERBATIM from the console TS
+// engines (bankroll.ts / format.ts / analytics.ts / series.ts) so the numbers
+// match the app exactly. NO writes → no saveDatabase().
+
+// Fixed goals / anchors (per the screensaver brief).
+const DASH_WEIGHT_GOAL = 150; // lb — fixed target (NOT health.ts's earliest-30)
+const DASH_WSOP_START = '2027-05-03'; // WSOP 2027 Main-adjacent anchor date
+const DASH_SERIES_DAYS = 90;
+
+// Constant-time token check against process.env.DASHBOARD_TOKEN. Shape-gate
+// first (so a malformed token can't reach the compare), then length-guard
+// timingSafeEqual (it throws on unequal-length buffers). Returns false — the
+// caller 404s — on any mismatch, matching the backer routes' unguessable posture.
+function dashboardTokenOk(token) {
+  const expected = process.env.DASHBOARD_TOKEN || '';
+  if (!expected || !BACKER_TOKEN_RE.test(token)) return false;
+  const a = Buffer.from(token);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+// All non-deleted rows for a console_records store, parsed. Mirrors the
+// backerRecordByToken read loop. Returns { rows, maxUpdatedAt } so the summary
+// can expose a change-token for etags.
+function dashboardRecords(store) {
+  const rows = [];
+  let maxUpdatedAt = 0;
+  const s = db.prepare(
+    'SELECT data, updated_at FROM console_records WHERE store = ? AND deleted = 0'
+  );
+  s.bind([store]);
+  while (s.step()) {
+    const r = s.getAsObject();
+    if (typeof r.updated_at === 'number' && r.updated_at > maxUpdatedAt) {
+      maxUpdatedAt = r.updated_at;
+    }
+    try {
+      rows.push(JSON.parse(r.data));
+    } catch (_) { /* skip malformed */ }
+  }
+  s.free();
+  return { rows, maxUpdatedAt };
+}
+
+// ── Date helpers (ported from format.ts; LOCAL-date based) ──
+function dashLocalDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+// Monday-anchored week start (format.ts weekStart).
+function dashWeekStart(now) {
+  const x = new Date(now);
+  x.setHours(0, 0, 0, 0);
+  const dow = (x.getDay() + 6) % 7; // 0 = Monday
+  x.setDate(x.getDate() - dow);
+  return x;
+}
+// Whole calendar days from `now` until `iso` (format.ts daysUntil).
+function dashDaysUntil(iso, now) {
+  const a = new Date(dashLocalDate(now) + 'T00:00:00').getTime();
+  const b = new Date(iso + 'T00:00:00').getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+// ── The 7-metric summary (bankroll.ts computeBankroll + today/week/sleep/
+//    weight/countdown/streak, ported verbatim). `now` injected for testability.
+function computeDashboardSummary(now = new Date()) {
+  const sessions = dashboardRecords('sessions');
+  const adjustments = dashboardRecords('adjustments');
+  const health = dashboardRecords('health');
+  const routine = dashboardRecords('routine');
+  const settings = dashboardRecords('settings');
+
+  const maxUpdatedAt = Math.max(
+    sessions.maxUpdatedAt, adjustments.maxUpdatedAt, health.maxUpdatedAt,
+    routine.maxUpdatedAt, settings.maxUpdatedAt
+  );
+
+  // Settings singleton (store='settings', id='app'). If startingRoll is absent
+  // the roll is wrong → surface a `stale` flag rather than a confident wrong.
+  const appSettings = settings.rows.find((r) => r && r.id === 'app') || null;
+  const startingRoll = Number(appSettings && appSettings.startingRoll) || 0;
+  const stale = !appSettings || appSettings.startingRoll == null;
+
+  const S = sessions.rows;
+  const A = adjustments.rows;
+
+  // ── ROLL (bankroll.ts computeBankroll) ──
+  const isWsop = (s) => !!s.isWsopFund;
+  const num = (x) => Number(x) || 0;
+
+  const sessionPnl = S.filter((s) => !isWsop(s)).reduce((a, s) => a + num(s.result), 0);
+  const transferTotal = A.filter((a) => a.type === 'wsop-fund-transfer')
+    .reduce((a, x) => a + num(x.amount), 0);
+  const backerSettle = A.filter((a) => a.type === 'backer-settlement')
+    .reduce((a, x) => a + num(x.amount), 0);
+  // Roll adjustments EXCLUDE both transfer AND settlement.
+  const rollAdj = A.filter((a) => a.type !== 'wsop-fund-transfer' && a.type !== 'backer-settlement')
+    .reduce((a, x) => a + num(x.amount), 0);
+  const wsopSessionPnl = S.filter(isWsop).reduce((a, s) => a + num(s.result), 0);
+
+  const roll = startingRoll + sessionPnl + rollAdj - transferTotal;
+  const wsopFund = transferTotal + wsopSessionPnl + backerSettle;
+
+  // ── TODAY / WEEK P&L (LOCAL dates; !isWsopFund) ──
+  const today = dashLocalDate(now);
+  const todaySessions = S.filter((s) => s.date === today && !isWsop(s));
+  const todayPnl = todaySessions.reduce((a, s) => a + num(s.result), 0);
+
+  const wkStart = dashWeekStart(now);
+  const wkEnd = new Date(wkStart);
+  wkEnd.setDate(wkEnd.getDate() + 7);
+  const inWeek = (iso) => {
+    const d = new Date(iso + 'T00:00:00'); // parse as LOCAL midnight, matches weekStart
+    return d >= wkStart && d < wkEnd;
+  };
+  const weekSessions = S.filter((s) => inWeek(s.date) && !isWsop(s));
+  const weekPnl = weekSessions.reduce((a, s) => a + num(s.result), 0);
+  // Cash hours this week (analytics.cashHoursThisWeek: !isMTT this week).
+  const weekHours = S.filter((s) => inWeek(s.date) && !s.isMTT)
+    .reduce((a, s) => a + num(s.hours), 0);
+
+  // ── SLEEP: latest health record (by max date) with a sleepScore ──
+  let sleepScore = null, sleepDate = null;
+  for (const h of health.rows) {
+    if (h.sleepScore == null) continue;
+    if (sleepDate == null || h.date > sleepDate) {
+      sleepScore = Number(h.sleepScore);
+      sleepDate = h.date;
+    }
+  }
+
+  // ── WEIGHT: latest health.weight (by max date); goal fixed at 150 ──
+  let weight = null, weightDate = null;
+  for (const h of health.rows) {
+    if (h.weight == null) continue;
+    if (weightDate == null || h.date > weightDate) {
+      weight = Number(h.weight);
+      weightDate = h.date;
+    }
+  }
+  const weightVsGoal = weight == null ? null : weight - DASH_WEIGHT_GOAL;
+  // lbs/week trend: first vs last weighed record over the elapsed weeks.
+  let lbsPerWeek = null;
+  const weighed = health.rows
+    .filter((h) => h.weight != null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (weighed.length >= 2) {
+    const first = weighed[0], lastW = weighed[weighed.length - 1];
+    const days = (new Date(lastW.date + 'T00:00:00') - new Date(first.date + 'T00:00:00')) / 86400000;
+    if (days > 0) lbsPerWeek = (Number(lastW.weight) - Number(first.weight)) / (days / 7);
+  }
+
+  // ── WSOP-2027 countdown (format.ts daysUntil) ──
+  const wsop2027Days = dashDaysUntil(DASH_WSOP_START, now);
+
+  // ── ROUTINE STREAK (analytics.ts streak / wakeAnchorStreak) ──
+  // Walk back day-by-day in LOCAL date space (DST-safe), allowSkipToday=true.
+  const byDate = new Map(routine.rows.map((l) => [l.date, l]));
+  let routineStreak = 0;
+  {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    let allowSkipToday = true;
+    for (;;) {
+      const key = dashLocalDate(d);
+      const log = byDate.get(key);
+      if (log && log.wakeAnchor) {
+        routineStreak += 1;
+        allowSkipToday = false;
+      } else if (allowSkipToday) {
+        allowSkipToday = false;
+      } else {
+        break;
+      }
+      d.setDate(d.getDate() - 1);
+      if (routineStreak > 400) break;
+    }
+  }
+
+  return {
+    generatedAt: now.toISOString(),
+    updatedAt: maxUpdatedAt,
+    stale,
+    roll,
+    wsopFund,
+    today: { pnl: todayPnl, sessions: todaySessions.length },
+    week: { pnl: weekPnl, sessions: weekSessions.length, hours: weekHours },
+    sleepScore, sleepDate,
+    weight, weightGoal: DASH_WEIGHT_GOAL, weightVsGoal, lbsPerWeek,
+    wsop2027Days, routineStreak,
+  };
+}
+
+// ── 90d overlay series (series.ts buildSeries + normalize), the 3 the page
+//    plots: cash P&L (cumulative), sleep score, weight. Each normalized to its
+//    own [0,1] range so different units overlay. `now` injected for testability.
+function buildDashboardSeries(now = new Date()) {
+  const sessions = dashboardRecords('sessions').rows;
+  const health = dashboardRecords('health').rows;
+
+  const cutoff = new Date(now);
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - DASH_SERIES_DAYS);
+  const cutoffISO = dashLocalDate(cutoff);
+  const num = (x) => Number(x) || 0;
+  const byDate = (a, b) => a.date.localeCompare(b.date);
+
+  // Cash P&L running total (series.ts runningTotal over !isMTT && !isWsopFund).
+  // Cumulate over the FULL history, then window the emitted points to 90d so the
+  // running total starts from the true prior total (not $0 at the window edge).
+  const cash = sessions
+    .filter((s) => !s.isMTT && !s.isWsopFund)
+    .sort(byDate);
+  let cum = 0;
+  const cashPts = [];
+  for (const s of cash) {
+    cum += num(s.result);
+    if (s.date >= cutoffISO) cashPts.push({ date: s.date, value: cum });
+  }
+
+  // Point series (series.ts metricSeries): skip nulls, sort, window to 90d.
+  const metric = (pick) =>
+    health
+      .filter((h) => h.date >= cutoffISO && pick(h) != null && !Number.isNaN(Number(pick(h))))
+      .sort(byDate)
+      .map((h) => ({ date: h.date, value: Number(pick(h)) }));
+  const sleepPts = metric((h) => h.sleepScore);
+  const weightPts = metric((h) => h.weight);
+
+  // series.ts normalize: map each series to [0,1] by its own min/max.
+  const normalize = (points) => {
+    if (!points.length) return [];
+    const vals = points.map((p) => p.value);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const span = max - min;
+    return points.map((p) => ({
+      date: p.date,
+      value: p.value,                                  // raw (for labels)
+      t: span === 0 ? 0.5 : (p.value - min) / span,    // normalized [0,1]
+    }));
+  };
+
+  const mk = (key, label, color, unit, cumulative, points) => ({
+    key, label, color, unit, cumulative,
+    points: normalize(points),
+    latest: points.length ? points[points.length - 1].value : null,
+  });
+
+  // Colors match the engine defs (series.ts): cash #5a9e7a, sleep #6f9bd1,
+  // weight #c97f7f.
+  const series = [
+    mk('cash', 'Cash P&L', '#5a9e7a', '$', true, cashPts),
+    mk('sleepScore', 'Sleep score', '#6f9bd1', '', false, sleepPts),
+    mk('weight', 'Weight', '#c97f7f', 'lb', false, weightPts),
+  ].filter((s) => s.points.length > 0);
+
+  return { range: DASH_SERIES_DAYS + 'd', generatedAt: now.toISOString(), series };
+}
+
+// The dashboard page template (self-contained), with Baskerville inlined ONCE at
+// boot. __BOOTSTRAP__ is substituted per-request in the /d/:token handler. Read
+// fail-soft: a missing asset yields null → /d/:token returns 503, never crashes
+// the whole server at boot.
+const DASHBOARD_PAGE_HTML = (() => {
+  try {
+    const fs = require('fs');
+    const dir = path.join(__dirname, 'screensaver');
+    const tpl = fs.readFileSync(path.join(dir, 'dashboard-page.html'), 'utf8');
+    const b64 = fs.readFileSync(path.join(dir, 'baskerville.b64'), 'utf8').trim();
+    // Anchor to the real @font-face src, not the bare token — the token also
+    // appears in an HTML comment above it (replacing that would leave the real
+    // src literal and break the font, and bloat the comment with 68KB of b64).
+    return tpl.replace('base64,__BASKERVILLE_B64__)', () => 'base64,' + b64 + ')');
+  } catch (err) {
+    console.error('[dashboard] page template load failed:', err && err.message);
+    return null;
+  }
+})();
+
 const SRV_FMT_LABEL = {
   PLO: 'PLO', PLO8: 'PLO8', NLH: 'NLH', mixed: 'Mixed', stud8: 'Stud8',
   razz: 'Razz', '2-7': '2-7', BigO: 'Big O', other: 'Other', all: 'all games',
