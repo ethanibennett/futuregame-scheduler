@@ -475,6 +475,22 @@ app.get('/api/dashboard/:token/series', (req, res) => {
   }
 });
 
+// Seam #2 (departures board): the standalone console fetches the dashboard user's
+// upcoming schedule here (it has no user_schedules/tournaments tables of its own).
+// Same DASHBOARD_TOKEN gate + posture as the other dashboard routes; the response
+// is the already-mapped events array from computeDashboardEvents.
+app.get('/api/schedule/:token/upcoming', (req, res) => {
+  const token = String(req.params.token || '');
+  if (!dashboardTokenOk(token)) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json(computeDashboardEvents(new Date()));
+  } catch (err) {
+    console.error('Dashboard upcoming error:', err);
+    res.status(500).json({ error: 'upcoming failed' });
+  }
+});
+
 // The self-contained dashboard page, rendered headlessly by the snapshot helper.
 // Baskerville is inlined once at boot (DASHBOARD_PAGE_HTML); the per-request
 // bootstrap inlines {summary,series} so the very first offscreen paint already
