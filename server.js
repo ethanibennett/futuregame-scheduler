@@ -3232,6 +3232,78 @@ async function initDatabase() {
     }
   }
 
+  // ── MTT feed sync (mtt-series-watcher) ──
+  // The MTT series watcher (sibling repo mtt-series-watcher) emits pre-normalized snake_case seed
+  // files + a manifest into ./mtt-feed/. Unlike seedFiles (idempotent per-venue) this runs EVERY
+  // startup and UPSERTS by (venue, event_number), so re-emitted schedules update existing rows and
+  // add new events. Rows are already normalized (event_name/reentry/game_variant), so the JSON-seed
+  // path's lack of normalizeEventName()/normalizeReentry() is fine. Runs after dataMigrations so the
+  // added columns (prize_pool/house_fee/rake_*) already exist. No-ops when ./mtt-feed is absent.
+  try {
+    const manifestPath = path.join(__dirname, 'mtt-feed', 'manifest.json');
+    if (require('fs').existsSync(manifestPath)) {
+      const manifest = JSON.parse(require('fs').readFileSync(manifestPath, 'utf8'));
+      let upserts = 0, inserts = 0, pruned = 0;
+      // Prune feed-managed rows (source_pdf='mtt-feed') for series no longer in the manifest — i.e.
+      // series that ended or dropped out of the watcher's forward window. Keeps snbwsop in sync with
+      // the feed (add/update/remove) without touching non-feed tournaments.
+      const manifestVenues = new Set(manifest.map(e => e.venue));
+      const distinctFeed = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = 'mtt-feed'");
+      if (distinctFeed.length) {
+        for (const row of distinctFeed[0].values) {
+          const v = row[0];
+          if (!manifestVenues.has(v)) {
+            db.run("DELETE FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?", [v]);
+            pruned += db.getRowsModified();
+          }
+        }
+      }
+      for (const entry of manifest) {
+        const filePath = path.join(__dirname, 'mtt-feed', entry.file);
+        if (!require('fs').existsSync(filePath)) continue;
+        const rows = JSON.parse(require('fs').readFileSync(filePath, 'utf8'));
+        for (const t of rows) {
+          db.run(
+            `UPDATE tournaments SET
+               event_name = ?, date = ?, time = ?, buyin = ?, starting_chips = ?,
+               level_duration = ?, reentry = ?, late_reg = ?, late_reg_end = ?, game_variant = ?,
+               notes = ?, category = ?, is_satellite = ?, is_restart = ?, prize_pool = ?,
+               house_fee = ?, opt_add_on = ?, rake_pct = ?, rake_dollars = ?, is_deepstack = ?,
+               source_pdf = ?
+             WHERE venue = ? AND event_number = ?`,
+            [t.event_name, t.date, t.time, t.buyin, t.starting_chips,
+             t.level_duration, t.reentry, t.late_reg, t.late_reg_end, t.game_variant,
+             t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
+             t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
+             t.source_pdf || 'mtt-feed',
+             t.venue, t.event_number]
+          );
+          if (db.getRowsModified() > 0) { upserts++; continue; }
+          db.run(
+            `INSERT INTO tournaments (event_number, event_name, date, time, buyin,
+             starting_chips, level_duration, reentry, late_reg, late_reg_end,
+             game_variant, venue, notes, category, is_satellite, target_event,
+             is_restart, parent_event, prize_pool, house_fee, opt_add_on,
+             rake_pct, rake_dollars, source_pdf, is_deepstack)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
+             t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
+             t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
+             t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
+             t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0]
+          );
+          inserts++;
+        }
+      }
+      if (upserts + inserts + pruned > 0) {
+        await saveDatabase();
+        console.log(`MTT feed sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
+      }
+    }
+  } catch (e) {
+    console.log('MTT feed sync skipped:', e.message);
+  }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS tracking_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
