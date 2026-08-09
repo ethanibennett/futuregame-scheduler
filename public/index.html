@@ -7295,6 +7295,10 @@
           drawTitle();
         }
         const drawY = (footY > ph - 20) ? 30 : footY;
+        // Get buy-in column right edge from autoTable
+        const cols = doc.lastAutoTable.columns;
+        const buyinCol = cols[4];
+        const buyinRight = buyinCol.x + buyinCol.width - 1;
         doc.setDrawColor(80, 80, 80);
         doc.setLineWidth(0.3);
         doc.line(mg, drawY, pw - mg, drawY);
@@ -7304,7 +7308,7 @@
         doc.text('TOTAL MAXIMUM BUY-INS', mg, drawY + 5);
         doc.setFontSize(10);
         doc.setTextColor(232, 232, 232);
-        doc.text('$' + totalMax.toLocaleString(), pw - mg, drawY + 5, { align: 'right' });
+        doc.text('$' + totalMax.toLocaleString(), buyinRight, drawY + 5, { align: 'right' });
       }
 
       doc.save('my-schedule.pdf');

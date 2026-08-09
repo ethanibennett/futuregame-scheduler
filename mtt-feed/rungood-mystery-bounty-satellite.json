@@ -1,0 +1,29 @@
+[
+  {
+    "event_number": "PA-289492-20260812",
+    "event_name": "NLH Main Event Satellite",
+    "date": "August 12, 2026",
+    "time": "9:30 PM",
+    "buyin": 150,
+    "starting_chips": 10000,
+    "level_duration": "20",
+    "reentry": null,
+    "late_reg": null,
+    "late_reg_end": null,
+    "game_variant": "NLH",
+    "venue": "RunGood Mystery Bounty Satellite",
+    "notes": null,
+    "category": null,
+    "is_satellite": 1,
+    "target_event": null,
+    "is_restart": 0,
+    "parent_event": null,
+    "prize_pool": 3000,
+    "house_fee": 30,
+    "opt_add_on": null,
+    "rake_pct": 20,
+    "rake_dollars": 30,
+    "source_pdf": "mtt-feed",
+    "is_deepstack": 0
+  }
+]

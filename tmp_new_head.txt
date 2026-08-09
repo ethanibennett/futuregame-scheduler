@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#111111">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.json">
+  <title>shonabish | summer 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root {
+      --bg:        #111111;
+      --surface:   #1a1a1a;
+      --surface2:  #242424;
+      --border:    #333333;
+      --accent:    #a0a0a0;
+      --accent2:   #888888;
+      --text:      #e8e8e8;
+      --text-muted:#808080;
+      --bg-contrast: #111111;
+      --venue-hs-bg:   #141414;
+      --venue-wynn-bg: #141414;
+      --venue-aria-bg: #141414;
+      --venue-gn-bg:   #141414;
+      --hover-overlay: rgba(255,255,255,0.04);
+      --radius:    12px;
+      --radius-sm: 8px;
+      --tab-h:     56px;
+      --header-h:  60px;
+      /* Venue brand colors — muted for dark mode */
+      --venue-wynn:          #8a3030;
+      --venue-aria:          #5a3a9a;
+      --venue-golden-nugget: #7a6520;
+      --venue-resorts-world: #2a7a72;
+      --venue-south-point:   #5e4430;
+      --venue-orleans:       #944828;
+      --venue-mgm-grand:     #2a6a3e;
+      --venue-mgm-nh:        #8a7020;
+    }
+
+    [data-theme="light"] {
+      --bg:        #f5f5f5;
+      --surface:   #ffffff;
+      --surface2:  #ebebeb;
+      --border:    #d0d0d0;
+      --accent:    #555555;
+      --accent2:   #777777;
+      --text:      #1a1a1a;
+      --text-muted:#888888;
+      --bg-contrast: #ffffff;
+      --venue-hs-bg:   #eeeeee;
+      --venue-wynn-bg: #eeeeee;
+      --venue-aria-bg: #eeeeee;
+      --venue-gn-bg:   #eeeeee;
+      --hover-overlay: rgba(0,0,0,0.04);
+      /* Venue brand colors — full saturation for light mode */
+      --venue-wynn:          #b91c1c;
+      --venue-aria:          #6d28d9;
+      --venue-golden-nugget: #92700a;
+      --venue-resorts-world: #0d9488;
+      --venue-south-point:   #6b4226;
+      --venue-orleans:       #c2410c;
+      --venue-mgm-grand:     #15803d;
+      --venue-mgm-nh:        #b8860b;
+    }
+
+    /* High contrast — dark */
+    [data-contrast="high"] {
+      --bg:        #000000;
+      --surface:   #0a0a0a;
+      --surface2:  #1a1a1a;
+      --border:    #555555;
+      --text:      #ffffff;
+      --text-muted:#b0b0b0;
+      --hover-overlay: rgba(255,255,255,0.07);
+    }
+
+    /* High contrast — light */
+    [data-theme="light"][data-contrast="high"] {
+      --bg:        #ffffff;
+      --surface:   #ffffff;
+      --surface2:  #e0e0e0;
+      --border:    #555555;
+      --text:      #000000;
+      --text-muted:#444444;
+      --hover-overlay: rgba(0,0,0,0.08);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;

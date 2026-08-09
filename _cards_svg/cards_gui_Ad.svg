@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 252">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #003048;
+      }
+
+      .cls-2 {
+        fill: #005374;
+      }
+
+      .cls-3 {
+        fill: #fff;
+        font-family: Univers-Condensed-Bold, 'Univers Condensed';
+        font-size: 78px;
+        font-weight: 700;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1">
+    <rect class="cls-2" width="180" height="252" rx="18" ry="18"/>
+  </g>
+  <g id="_x3C_Layer_x3E_">
+    <text class="cls-3" transform="translate(14.42 72)"><tspan x="0" y="0">A</tspan></text>
+  </g>
+  <g id="Isolation_Mode">
+    <path class="cls-1" d="M78.92,180.1l53.95-72.1,54.05,72.1-54.05,71.9-53.95-71.9Z"/>
+  </g>
+</svg>

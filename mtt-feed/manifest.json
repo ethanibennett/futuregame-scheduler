@@ -1,0 +1,478 @@
+[
+  {
+    "file": "seminole-hard-rock-poker-open-26.json",
+    "venue": "Seminole Hard Rock Poker Open '26",
+    "label": "Seminole Hard Rock Poker Open '26",
+    "eventCount": 112,
+    "venueSlug": "seminole-hard-rock-poker-open-26"
+  },
+  {
+    "file": "2026-the-og-summer-heater.json",
+    "venue": "2026 The OG Summer Heater",
+    "label": "2026 The OG Summer Heater",
+    "eventCount": 11,
+    "venueSlug": "2026-the-og-summer-heater"
+  },
+  {
+    "file": "2026-legends-of-poker.json",
+    "venue": "2026 Legends of Poker",
+    "label": "2026 Legends of Poker",
+    "eventCount": 125,
+    "venueSlug": "2026-legends-of-poker"
+  },
+  {
+    "file": "mspt-26-colorado-poker-state-championship.json",
+    "venue": "MSPT '26 Colorado Poker State Championship",
+    "label": "MSPT '26 Colorado Poker State Championship",
+    "eventCount": 10,
+    "venueSlug": "mspt-26-colorado-poker-state-championship"
+  },
+  {
+    "file": "roughrider-poker-tour-minnesota-return-series.json",
+    "venue": "Roughrider Poker Tour-Minnesota Return Series",
+    "label": "Roughrider Poker Tour-Minnesota Return Series",
+    "eventCount": 7,
+    "venueSlug": "roughrider-poker-tour-minnesota-return-series"
+  },
+  {
+    "file": "rungood-events-san-diego-poker-classic.json",
+    "venue": "RunGood Events: San Diego Poker Classic",
+    "label": "RunGood Events: San Diego Poker Classic",
+    "eventCount": 31,
+    "venueSlug": "rungood-events-san-diego-poker-classic"
+  },
+  {
+    "file": "deepstack-championship-2026.json",
+    "venue": "DeepStack Championship 2026",
+    "label": "DeepStack Championship 2026",
+    "eventCount": 9,
+    "venueSlug": "deepstack-championship-2026"
+  },
+  {
+    "file": "2026-rungood-passport-season-finale.json",
+    "venue": "2026 RUNGOOD PASSPORT SEASON FINALE",
+    "label": "2026 RUNGOOD PASSPORT SEASON FINALE",
+    "eventCount": 14,
+    "venueSlug": "2026-rungood-passport-season-finale"
+  },
+  {
+    "file": "2026-mega-monster-15-million-guaranteed.json",
+    "venue": "2026 MEGA Monster $1.5 MIllion Guaranteed",
+    "label": "2026 MEGA Monster $1.5 MIllion Guaranteed",
+    "eventCount": 33,
+    "venueSlug": "2026-mega-monster-15-million-guaranteed"
+  },
+  {
+    "file": "2026-borgata-poker-open-summer.json",
+    "venue": "2026 Borgata Poker Open-Summer",
+    "label": "2026 Borgata Poker Open-Summer",
+    "eventCount": 6,
+    "venueSlug": "2026-borgata-poker-open-summer"
+  },
+  {
+    "file": "summer-heat.json",
+    "venue": "Summer Heat",
+    "label": "Summer Heat",
+    "eventCount": 6,
+    "venueSlug": "summer-heat"
+  },
+  {
+    "file": "summer-classic-26.json",
+    "venue": "Summer Classic '26",
+    "label": "Summer Classic '26",
+    "eventCount": 8,
+    "venueSlug": "summer-classic-26"
+  },
+  {
+    "file": "wsop-international-circuit-estonia.json",
+    "venue": "WSOP International Circuit Estonia",
+    "label": "WSOP International Circuit Estonia",
+    "eventCount": 11,
+    "venueSlug": "wsop-international-circuit-estonia"
+  },
+  {
+    "file": "big-stax-xxxix.json",
+    "venue": "Big Stax XXXIX",
+    "label": "Big Stax XXXIX",
+    "eventCount": 21,
+    "venueSlug": "big-stax-xxxix"
+  },
+  {
+    "file": "2026-lips-fl-state-ladies-championship-series.json",
+    "venue": "2026 LIPS FL State Ladies Championship Series",
+    "label": "2026 LIPS FL State Ladies Championship Series",
+    "eventCount": 4,
+    "venueSlug": "2026-lips-fl-state-ladies-championship-series"
+  },
+  {
+    "file": "2026-27-wsop-international-circuit-slovakia.json",
+    "venue": "2026-27 WSOP International Circuit Slovakia",
+    "label": "2026-27 WSOP International Circuit Slovakia",
+    "eventCount": 28,
+    "venueSlug": "2026-27-wsop-international-circuit-slovakia"
+  },
+  {
+    "file": "summer-championship-tournament.json",
+    "venue": "Summer Championship Tournament",
+    "label": "Summer Championship Tournament",
+    "eventCount": 3,
+    "venueSlug": "summer-championship-tournament"
+  },
+  {
+    "file": "csop-2026.json",
+    "venue": "CSOP 2026",
+    "label": "CSOP 2026",
+    "eventCount": 30,
+    "venueSlug": "csop-2026"
+  },
+  {
+    "file": "s-rie-estivale.json",
+    "venue": "Série Estivale",
+    "label": "Série Estivale",
+    "eventCount": 5,
+    "venueSlug": "s-rie-estivale"
+  },
+  {
+    "file": "rungood-main-event-satellite.json",
+    "venue": "RunGood Main Event Satellite",
+    "label": "RunGood Main Event Satellite",
+    "eventCount": 7,
+    "venueSlug": "rungood-main-event-satellite"
+  },
+  {
+    "file": "2026-wild-west-outlaw-series.json",
+    "venue": "2026 Wild West Outlaw Series",
+    "label": "2026 Wild West Outlaw Series",
+    "eventCount": 35,
+    "venueSlug": "2026-wild-west-outlaw-series"
+  },
+  {
+    "file": "2026-rungood-golden-expedition.json",
+    "venue": "2026 RunGood Golden Expedition",
+    "label": "2026 RunGood Golden Expedition",
+    "eventCount": 54,
+    "venueSlug": "2026-rungood-golden-expedition"
+  },
+  {
+    "file": "deepstack-showdown-august-2026.json",
+    "venue": "DeepStack Showdown (August) 2026",
+    "label": "DeepStack Showdown (August) 2026",
+    "eventCount": 64,
+    "venueSlug": "deepstack-showdown-august-2026"
+  },
+  {
+    "file": "mspt-26-chicago-summer.json",
+    "venue": "MSPT '26 Chicago-Summer",
+    "label": "MSPT '26 Chicago-Summer",
+    "eventCount": 24,
+    "venueSlug": "mspt-26-chicago-summer"
+  },
+  {
+    "file": "rungood-events-the-gateway-poker-classic.json",
+    "venue": "RunGood Events: The Gateway Poker Classic",
+    "label": "RunGood Events: The Gateway Poker Classic",
+    "eventCount": 16,
+    "venueSlug": "rungood-events-the-gateway-poker-classic"
+  },
+  {
+    "file": "2026-summer-main-event.json",
+    "venue": "2026 Summer Main Event",
+    "label": "2026 Summer Main Event",
+    "eventCount": 4,
+    "venueSlug": "2026-summer-main-event"
+  },
+  {
+    "file": "potomac-summer-poker-open-26.json",
+    "venue": "Potomac Summer Poker Open '26",
+    "label": "Potomac Summer Poker Open '26",
+    "eventCount": 42,
+    "venueSlug": "potomac-summer-poker-open-26"
+  },
+  {
+    "file": "2026-summer-poker-open.json",
+    "venue": "2026 Summer Poker Open",
+    "label": "2026 Summer Poker Open",
+    "eventCount": 57,
+    "venueSlug": "2026-summer-poker-open"
+  },
+  {
+    "file": "2026-great-lakes-poker-classic-summer.json",
+    "venue": "2026 Great Lakes Poker Classic - Summer",
+    "label": "2026 Great Lakes Poker Classic - Summer",
+    "eventCount": 48,
+    "venueSlug": "2026-great-lakes-poker-classic-summer"
+  },
+  {
+    "file": "2026-27-wsopc-cherokee-summer.json",
+    "venue": "2026-27 WSOPC Cherokee-Summer",
+    "label": "2026-27 WSOPC Cherokee-Summer",
+    "eventCount": 82,
+    "venueSlug": "2026-27-wsopc-cherokee-summer"
+  },
+  {
+    "file": "august-classic.json",
+    "venue": "AUGUST CLASSIC",
+    "label": "AUGUST CLASSIC",
+    "eventCount": 3,
+    "venueSlug": "august-classic"
+  },
+  {
+    "file": "august-26-monster-multi-flight.json",
+    "venue": "August '26 Monster Multi Flight",
+    "label": "August '26 Monster Multi Flight",
+    "eventCount": 4,
+    "venueSlug": "august-26-monster-multi-flight"
+  },
+  {
+    "file": "monster-stack-series-august-2026.json",
+    "venue": "Monster Stack Series August 2026",
+    "label": "Monster Stack Series August 2026",
+    "eventCount": 4,
+    "venueSlug": "monster-stack-series-august-2026"
+  },
+  {
+    "file": "2026-empire-state-holdem-championships.json",
+    "venue": "2026 Empire State Hold'em Championships",
+    "label": "2026 Empire State Hold'em Championships",
+    "eventCount": 6,
+    "venueSlug": "2026-empire-state-holdem-championships"
+  },
+  {
+    "file": "august-30k-gtd.json",
+    "venue": "August 30K GTD",
+    "label": "August 30K GTD",
+    "eventCount": 4,
+    "venueSlug": "august-30k-gtd"
+  },
+  {
+    "file": "100k-road-to-riches-aug-26.json",
+    "venue": "$100K Road to Riches - Aug. '26",
+    "label": "$100K Road to Riches - Aug. '26",
+    "eventCount": 6,
+    "venueSlug": "100k-road-to-riches-aug-26"
+  },
+  {
+    "file": "deep-nlh-aug-26.json",
+    "venue": "Deep NLH - Aug. '26",
+    "label": "Deep NLH - Aug. '26",
+    "eventCount": 7,
+    "venueSlug": "deep-nlh-aug-26"
+  },
+  {
+    "file": "2026-summer-poker-round-up.json",
+    "venue": "2026 Summer Poker Round Up",
+    "label": "2026 Summer Poker Round Up",
+    "eventCount": 5,
+    "venueSlug": "2026-summer-poker-round-up"
+  },
+  {
+    "file": "rungood-mystery-bounty-satellite.json",
+    "venue": "RunGood Mystery Bounty Satellite",
+    "label": "RunGood Mystery Bounty Satellite",
+    "eventCount": 1,
+    "venueSlug": "rungood-mystery-bounty-satellite"
+  },
+  {
+    "file": "2026-27-wsopc-atlantic-city.json",
+    "venue": "2026-27 WSOPC Atlantic City",
+    "label": "2026-27 WSOPC Atlantic City",
+    "eventCount": 46,
+    "venueSlug": "2026-27-wsopc-atlantic-city"
+  },
+  {
+    "file": "2026-arizona-state-poker-championship.json",
+    "venue": "2026 Arizona State Poker Championship",
+    "label": "2026 Arizona State Poker Championship",
+    "eventCount": 7,
+    "venueSlug": "2026-arizona-state-poker-championship"
+  },
+  {
+    "file": "mspt-26-spade-poker-championship.json",
+    "venue": "MSPT '26 Spade Poker Championship",
+    "label": "MSPT '26 Spade Poker Championship",
+    "eventCount": 8,
+    "venueSlug": "mspt-26-spade-poker-championship"
+  },
+  {
+    "file": "summer-showdown-26.json",
+    "venue": "Summer Showdown '26",
+    "label": "Summer Showdown '26",
+    "eventCount": 2,
+    "venueSlug": "summer-showdown-26"
+  },
+  {
+    "file": "2026-summer-showdown.json",
+    "venue": "2026 Summer Showdown",
+    "label": "2026 Summer Showdown",
+    "eventCount": 15,
+    "venueSlug": "2026-summer-showdown"
+  },
+  {
+    "file": "wynn-signature-series-august-2026.json",
+    "venue": "Wynn Signature Series August 2026",
+    "label": "Wynn Signature Series August 2026",
+    "eventCount": 61,
+    "venueSlug": "wynn-signature-series-august-2026"
+  },
+  {
+    "file": "trailblazer-satellite-leaderboard.json",
+    "venue": "Trailblazer Satellite Leaderboard",
+    "label": "Trailblazer Satellite Leaderboard",
+    "eventCount": 7,
+    "venueSlug": "trailblazer-satellite-leaderboard"
+  },
+  {
+    "file": "rgps-golden-expedition-louisville-s-indiana.json",
+    "venue": "RGPS: Golden Expedition-Louisville/S. Indiana",
+    "label": "RGPS: Golden Expedition-Louisville/S. Indiana",
+    "eventCount": 21,
+    "venueSlug": "rgps-golden-expedition-louisville-s-indiana"
+  },
+  {
+    "file": "mspt-26-cleveland-summer.json",
+    "venue": "MSPT '26 Cleveland-Summer",
+    "label": "MSPT '26 Cleveland-Summer",
+    "eventCount": 15,
+    "venueSlug": "mspt-26-cleveland-summer"
+  },
+  {
+    "file": "battle-for-the-chalice-aug-26.json",
+    "venue": "Battle For The Chalice - Aug. '26",
+    "label": "Battle For The Chalice - Aug. '26",
+    "eventCount": 5,
+    "venueSlug": "battle-for-the-chalice-aug-26"
+  },
+  {
+    "file": "250-000-multi-room-mayhem-iv-part-1.json",
+    "venue": "$250,000 Multi-Room Mayhem IV Part 1",
+    "label": "$250,000 Multi-Room Mayhem IV Part 1",
+    "eventCount": 5,
+    "venueSlug": "250-000-multi-room-mayhem-iv-part-1"
+  },
+  {
+    "file": "the-wild-west-poker-tour-2026.json",
+    "venue": "The Wild West Poker Tour 2026",
+    "label": "The Wild West Poker Tour 2026",
+    "eventCount": 10,
+    "venueSlug": "the-wild-west-poker-tour-2026"
+  },
+  {
+    "file": "2026-louisiana-state-poker-championship.json",
+    "venue": "2026 Louisiana State Poker Championship",
+    "label": "2026 Louisiana State Poker Championship",
+    "eventCount": 27,
+    "venueSlug": "2026-louisiana-state-poker-championship"
+  },
+  {
+    "file": "2026-27-wsopc-tunica-summer.json",
+    "venue": "2026-27 WSOPC Tunica-Summer",
+    "label": "2026-27 WSOPC Tunica-Summer",
+    "eventCount": 6,
+    "venueSlug": "2026-27-wsopc-tunica-summer"
+  },
+  {
+    "file": "the-mini-grind-series-aug-26.json",
+    "venue": "The Mini Grind Series - Aug. '26",
+    "label": "The Mini Grind Series - Aug. '26",
+    "eventCount": 4,
+    "venueSlug": "the-mini-grind-series-aug-26"
+  },
+  {
+    "file": "mspc-warm-up.json",
+    "venue": "MSPC Warm-Up",
+    "label": "MSPC Warm-Up",
+    "eventCount": 2,
+    "venueSlug": "mspc-warm-up"
+  },
+  {
+    "file": "mspt-26-indiana-poker-state-championship.json",
+    "venue": "MSPT '26 Indiana Poker State Championship",
+    "label": "MSPT '26 Indiana Poker State Championship",
+    "eventCount": 20,
+    "venueSlug": "mspt-26-indiana-poker-state-championship"
+  },
+  {
+    "file": "trailblazer-tour-season-iii.json",
+    "venue": "Trailblazer Tour Season III",
+    "label": "Trailblazer Tour Season III",
+    "eventCount": 64,
+    "venueSlug": "trailblazer-tour-season-iii"
+  },
+  {
+    "file": "200k-multi-flight-aug-26.json",
+    "venue": "$200K Multi-Flight - Aug. '26",
+    "label": "$200K Multi-Flight - Aug. '26",
+    "eventCount": 6,
+    "venueSlug": "200k-multi-flight-aug-26"
+  },
+  {
+    "file": "trailblazer-tour-season-iii.json",
+    "venue": "Trailblazer Tour Season III",
+    "label": "Trailblazer Tour Season III",
+    "eventCount": 18,
+    "venueSlug": "trailblazer-tour-season-iii"
+  },
+  {
+    "file": "wsop-super-circuit-canada.json",
+    "venue": "WSOP Super Circuit Canada",
+    "label": "WSOP Super Circuit Canada",
+    "eventCount": 72,
+    "venueSlug": "wsop-super-circuit-canada"
+  },
+  {
+    "file": "2026-maryland-state-poker-championship.json",
+    "venue": "2026 Maryland State Poker Championship",
+    "label": "2026 Maryland State Poker Championship",
+    "eventCount": 44,
+    "venueSlug": "2026-maryland-state-poker-championship"
+  },
+  {
+    "file": "250-000-multi-room-mayhem-iv-part-2.json",
+    "venue": "$250,000 Multi-Room Mayhem IV Part 2",
+    "label": "$250,000 Multi-Room Mayhem IV Part 2",
+    "eventCount": 6,
+    "venueSlug": "250-000-multi-room-mayhem-iv-part-2"
+  },
+  {
+    "file": "the-pure-grind-series-alpha-stack-madness-aug-26.json",
+    "venue": "The Pure Grind Series: Alpha Stack Madness - Aug. '26",
+    "label": "The Pure Grind Series: Alpha Stack Madness - Aug. '26",
+    "eventCount": 5,
+    "venueSlug": "the-pure-grind-series-alpha-stack-madness-aug-26"
+  },
+  {
+    "file": "queens-cards-weekend.json",
+    "venue": "Queens & Cards Weekend",
+    "label": "Queens & Cards Weekend",
+    "eventCount": 3,
+    "venueSlug": "queens-cards-weekend"
+  },
+  {
+    "file": "deepstack-extravaganza-iii-2026.json",
+    "venue": "DeepStack Extravaganza III 2026",
+    "label": "DeepStack Extravaganza III 2026",
+    "eventCount": 18,
+    "venueSlug": "deepstack-extravaganza-iii-2026"
+  },
+  {
+    "file": "the-pure-grind-series-super-seat-re-up-sept-26.json",
+    "venue": "The Pure Grind Series: Super Seat Re-Up - Sept. '26",
+    "label": "The Pure Grind Series: Super Seat Re-Up - Sept. '26",
+    "eventCount": 5,
+    "venueSlug": "the-pure-grind-series-super-seat-re-up-sept-26"
+  },
+  {
+    "file": "2026-rungood-and-the-golden-expedition-series.json",
+    "venue": "2026 RUNGOOD AND THE GOLDEN EXPEDITION SERIES",
+    "label": "2026 RUNGOOD AND THE GOLDEN EXPEDITION SERIES",
+    "eventCount": 25,
+    "venueSlug": "2026-rungood-and-the-golden-expedition-series"
+  },
+  {
+    "file": "the-mini-grind-series-sept-26.json",
+    "venue": "The Mini Grind Series - Sept. '26",
+    "label": "The Mini Grind Series - Sept. '26",
+    "eventCount": 4,
+    "venueSlug": "the-mini-grind-series-sept-26"
+  }
+]

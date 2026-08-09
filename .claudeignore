@@ -1,0 +1,8 @@
+*.pdf
+pdf-images/
+*.png
+*.svg
+*.json
+_table_data.json
+tmp_*.txt
+ipf_text.txt

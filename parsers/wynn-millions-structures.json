@@ -1,0 +1,8701 @@
+[
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 500,
+    "guarantee": 50000,
+    "prize_pool_portion": 423,
+    "tournament_fee": 55,
+    "staff_service_charge": 22,
+    "rake_total": 77,
+    "rake_pct": 15.4,
+    "dates": [
+      "Monday, February 16, 2026 at 12 p.m.",
+      "Sunday, March 8, 2026 at 1 p.m.",
+      "Sunday, March 15, 2026 at 12 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 21,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 22,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 23,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 24,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 25,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 26,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 27,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 28,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      }
+    ]
+  },
+  {
+    "event_name": "NLH Turbo",
+    "entry_fee": 300,
+    "guarantee": 20000,
+    "prize_pool_portion": 250,
+    "tournament_fee": 34,
+    "staff_service_charge": 16,
+    "rake_total": 50,
+    "rake_pct": 16.7,
+    "dates": [
+      "Monday, February 16, 2026 at 6 p.m."
+    ],
+    "starting_stack": 25000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": {
+      "cost": 100,
+      "chips": 25000
+    },
+    "game_type": "NLH Turbo",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 11,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 12,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 13,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 14,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 15,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 16,
+        "sb": 8000,
+        "bb": 16000,
+        "ante": 16000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 18,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 19,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 20,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 21,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 22,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 23,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 24,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 25,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 26,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      },
+      {
+        "level": 27,
+        "sb": 125000,
+        "bb": 250000,
+        "ante": 250000
+      },
+      {
+        "level": 28,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 300000
+      }
+    ]
+  },
+  {
+    "event_name": "Seniors NLH 50+",
+    "entry_fee": 500,
+    "guarantee": 50000,
+    "prize_pool_portion": 423,
+    "tournament_fee": 55,
+    "staff_service_charge": 22,
+    "rake_total": 77,
+    "rake_pct": 15.4,
+    "dates": [
+      "Tuesday, February 17, 2026 at 12 p.m.",
+      "Monday, March 9, 2026 at 12 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 21,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 22,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 23,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 24,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 25,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 26,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 27,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 28,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      }
+    ]
+  },
+  {
+    "event_name": "Mixed Triple Draw (2-7, A-5, Badugi)",
+    "entry_fee": 400,
+    "guarantee": 20000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Tuesday, February 17, 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "Mixed Triple Draw",
+    "level_format": "limit",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 200,
+        "bb": 300,
+        "ante": 0,
+        "limits": "300-600"
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 400,
+        "ante": 0,
+        "limits": "400-800"
+      },
+      {
+        "level": 3,
+        "sb": 300,
+        "bb": 500,
+        "ante": 0,
+        "limits": "500-1,000"
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 0,
+        "limits": "600-1,200"
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 0,
+        "limits": "800-1,600"
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 0,
+        "limits": "1,000-2,000"
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 0,
+        "limits": "1,200-2,400"
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1500,
+        "ante": 0,
+        "limits": "1,500-3,000"
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 0,
+        "limits": "2,000-4,000"
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 0,
+        "limits": "2,500-5,000"
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 0,
+        "limits": "3,000-6,000"
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 0,
+        "limits": "4,000-8,000"
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 0,
+        "limits": "5,000-10,000"
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 0,
+        "limits": "6,000-12,000"
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 0,
+        "limits": "8,000-16,000"
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 0,
+        "limits": "10,000-20,000"
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 0,
+        "limits": "12,000-24,000"
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 0,
+        "limits": "15,000-30,000"
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 0,
+        "limits": "20,000-40,000"
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 0,
+        "limits": "25,000-50,000"
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 0,
+        "limits": "30,000-60,000"
+      },
+      {
+        "level": 22,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 0,
+        "limits": "40,000-80,000"
+      },
+      {
+        "level": 23,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 0,
+        "limits": "50,000-100,000"
+      },
+      {
+        "level": 24,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 0,
+        "limits": "60,000-120,000"
+      },
+      {
+        "level": 25,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 0,
+        "limits": "80,000-160,000"
+      },
+      {
+        "level": 26,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 0,
+        "limits": "100,000-200,000"
+      },
+      {
+        "level": 27,
+        "sb": 60000,
+        "bb": 120000,
+        "ante": 0,
+        "limits": "120,000-240,000"
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 0,
+        "limits": "150,000-300,000"
+      },
+      {
+        "level": 29,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 0,
+        "limits": "200,000-400,000"
+      },
+      {
+        "level": 30,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 0,
+        "limits": "300,000-600,000"
+      }
+    ]
+  },
+  {
+    "event_name": "NLH Turbo",
+    "entry_fee": 200,
+    "guarantee": 10000,
+    "prize_pool_portion": 162,
+    "tournament_fee": 26,
+    "staff_service_charge": 12,
+    "rake_total": 38,
+    "rake_pct": 19.0,
+    "dates": [
+      "Tuesday, February 17 , 2026 at 6 p.m.",
+      "Wednesday, February 18, 2026 at 6 p.m.",
+      "Thursday, February 19, 2026 at 6 p.m.",
+      "Tuesday, March 3, 2026 at 6 p.m.",
+      "Saturday, March 7, 2026 at 6 p.m.",
+      "Sunday, March 8, 2026 at 6 p.m.",
+      "Monday, March 9, 2026 at 6 p.m.",
+      "Wednesday, March 11, 2026 at 6 p.m.",
+      "Saturday, March 14, 2026 at 6 p.m.",
+      "Sunday, March 15, 2026 at 6 p.m.",
+      "Monday, March 16, 2026 at 6 p.m.",
+      "Tuesday, March 17, 2026 at 6 p.m.",
+      "Wednesday, March 18, 2026 at 6 p.m.",
+      "Thursday, March 19, 2026 at 6 p.m.",
+      "Sunday, March 22, 2026 at 6 p.m."
+    ],
+    "starting_stack": 25000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": {
+      "cost": 100,
+      "chips": 25000
+    },
+    "game_type": "NLH Turbo",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 11,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 12,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 13,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 14,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 15,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 16,
+        "sb": 8000,
+        "bb": 16000,
+        "ante": 16000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 18,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 19,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 20,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 21,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 22,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 23,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 24,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 25,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 26,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      },
+      {
+        "level": 27,
+        "sb": 125000,
+        "bb": 250000,
+        "ante": 250000
+      },
+      {
+        "level": 28,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 300000
+      }
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 600,
+    "guarantee": 200000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Day 1A: Wednesday, February 18, 2026 at 12 p.m.",
+      "Day 1B: Thursday, February 19, 2026 at 12 p.m.",
+      "Day 2: Friday, February 20, 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "TORSE",
+    "entry_fee": 400,
+    "guarantee": 20000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Wednesday , February 18 , 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "TORSE",
+    "level_format": "horse",
+    "levels": [
+      {
+        "level": 1,
+        "limit_games": {
+          "sb": 200,
+          "bb": 300,
+          "limits": "300-600"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 300,
+          "limits": "300-600"
+        }
+      },
+      {
+        "level": 2,
+        "limit_games": {
+          "sb": 200,
+          "bb": 400,
+          "limits": "400-800"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 400,
+          "limits": "400-800"
+        }
+      },
+      {
+        "level": 3,
+        "limit_games": {
+          "sb": 300,
+          "bb": 500,
+          "limits": "500-1,000"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 500,
+          "limits": "500-1,000"
+        }
+      },
+      {
+        "level": 4,
+        "limit_games": {
+          "sb": 300,
+          "bb": 600,
+          "limits": "600-1,200"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 600,
+          "limits": "600-1,200"
+        }
+      },
+      {
+        "level": 5,
+        "limit_games": {
+          "sb": 400,
+          "bb": 800,
+          "limits": "800-1,600"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 200,
+          "bb": 800,
+          "limits": "800-1,600"
+        }
+      },
+      {
+        "level": 6,
+        "limit_games": {
+          "sb": 500,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 300,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        }
+      },
+      {
+        "level": 7,
+        "limit_games": {
+          "sb": 600,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 300,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        }
+      },
+      {
+        "level": 8,
+        "limit_games": {
+          "sb": 800,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 500,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        }
+      },
+      {
+        "level": 9,
+        "limit_games": {
+          "sb": 1000,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 500,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        }
+      },
+      {
+        "level": 10,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 1000,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        }
+      },
+      {
+        "level": 11,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        }
+      },
+      {
+        "level": 12,
+        "limit_games": {
+          "sb": 2000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        }
+      },
+      {
+        "level": 13,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        }
+      },
+      {
+        "level": 14,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        }
+      },
+      {
+        "level": 15,
+        "limit_games": {
+          "sb": 4000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 2000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        }
+      },
+      {
+        "level": 16,
+        "limit_games": {
+          "sb": 5000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 3000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        }
+      },
+      {
+        "level": 17,
+        "limit_games": {
+          "sb": 6000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 3000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        }
+      },
+      {
+        "level": 18,
+        "limit_games": {
+          "sb": 8000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 5000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        }
+      },
+      {
+        "level": 19,
+        "limit_games": {
+          "sb": 10000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 5000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        }
+      },
+      {
+        "level": 20,
+        "limit_games": {
+          "sb": 15000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 10000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        }
+      }
+    ]
+  },
+  {
+    "event_name": "HORSE",
+    "entry_fee": 400,
+    "guarantee": 20000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Thursday , February 19, 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 8,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "HORSE",
+    "level_format": "horse",
+    "levels": [
+      {
+        "level": 1,
+        "limit_games": {
+          "sb": 200,
+          "bb": 300,
+          "limits": "300-600"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 300,
+          "limits": "300-600"
+        }
+      },
+      {
+        "level": 2,
+        "limit_games": {
+          "sb": 200,
+          "bb": 400,
+          "limits": "400-800"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 400,
+          "limits": "400-800"
+        }
+      },
+      {
+        "level": 3,
+        "limit_games": {
+          "sb": 300,
+          "bb": 500,
+          "limits": "500-1,000"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 500,
+          "limits": "500-1,000"
+        }
+      },
+      {
+        "level": 4,
+        "limit_games": {
+          "sb": 300,
+          "bb": 600,
+          "limits": "600-1,200"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 600,
+          "limits": "600-1,200"
+        }
+      },
+      {
+        "level": 5,
+        "limit_games": {
+          "sb": 400,
+          "bb": 800,
+          "limits": "800-1,600"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 200,
+          "bb": 800,
+          "limits": "800-1,600"
+        }
+      },
+      {
+        "level": 6,
+        "limit_games": {
+          "sb": 500,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 300,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        }
+      },
+      {
+        "level": 7,
+        "limit_games": {
+          "sb": 600,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 300,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        }
+      },
+      {
+        "level": 8,
+        "limit_games": {
+          "sb": 800,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 500,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        }
+      },
+      {
+        "level": 9,
+        "limit_games": {
+          "sb": 1000,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 500,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        }
+      },
+      {
+        "level": 10,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 1000,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        }
+      },
+      {
+        "level": 11,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        }
+      },
+      {
+        "level": 12,
+        "limit_games": {
+          "sb": 2000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        }
+      },
+      {
+        "level": 13,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        }
+      },
+      {
+        "level": 14,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        }
+      },
+      {
+        "level": 15,
+        "limit_games": {
+          "sb": 4000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 2000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        }
+      },
+      {
+        "level": 16,
+        "limit_games": {
+          "sb": 5000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 3000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        }
+      },
+      {
+        "level": 17,
+        "limit_games": {
+          "sb": 6000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 3000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        }
+      },
+      {
+        "level": 18,
+        "limit_games": {
+          "sb": 8000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 5000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        }
+      },
+      {
+        "level": 19,
+        "limit_games": {
+          "sb": 10000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 5000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        }
+      },
+      {
+        "level": 20,
+        "limit_games": {
+          "sb": 15000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 10000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        }
+      }
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 600,
+    "guarantee": 500000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Day 1A: Friday, February 20, 2026 at 12 p.m.",
+      "Day 1B: Friday , February 20, 2026 at 5 p.m.",
+      "Day 1C: Saturday , February 21, 2026 at 12 p.m.",
+      "Saturday , February 21, 2026 at 5 p.m.",
+      "Sunday , February 22, 2026 at 12 p.m.",
+      "Sunday , February 22, 2026 at 5 p.m.",
+      "Day 2: Monday , February 23, 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 22,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 23,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 24,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 25,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 26,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 27,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 30 minutes",
+      "Day 1F: 20 minutes",
+      "Day 1F: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "Limit Omaha 8",
+    "entry_fee": 400,
+    "guarantee": 20000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Friday , February 20, 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 8,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "Limit O8",
+    "level_format": "limit",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 200,
+        "bb": 300,
+        "ante": 0,
+        "limits": "300-600"
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 400,
+        "ante": 0,
+        "limits": "400-800"
+      },
+      {
+        "level": 3,
+        "sb": 300,
+        "bb": 500,
+        "ante": 0,
+        "limits": "500-1,000"
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 0,
+        "limits": "600-1,200"
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 0,
+        "limits": "800-1,600"
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 0,
+        "limits": "1,000-2,000"
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 0,
+        "limits": "1,200-2,400"
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1500,
+        "ante": 0,
+        "limits": "1,500-3,000"
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 0,
+        "limits": "2,000-4,000"
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 0,
+        "limits": "2,500-5,000"
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 0,
+        "limits": "3,000-6,000"
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 0,
+        "limits": "4,000-8,000"
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 0,
+        "limits": "5,000-10,000"
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 0,
+        "limits": "6,000-12,000"
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 0,
+        "limits": "8,000-16,000"
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 0,
+        "limits": "10,000-20,000"
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 0,
+        "limits": "12,000-24,000"
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 0,
+        "limits": "15,000-30,000"
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 0,
+        "limits": "20,000-40,000"
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 0,
+        "limits": "25,000-50,000"
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 0,
+        "limits": "30,000-60,000"
+      },
+      {
+        "level": 22,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 0,
+        "limits": "40,000-80,000"
+      },
+      {
+        "level": 23,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 0,
+        "limits": "50,000-100,000"
+      },
+      {
+        "level": 24,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 0,
+        "limits": "60,000-120,000"
+      },
+      {
+        "level": 25,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 0,
+        "limits": "80,000-160,000"
+      },
+      {
+        "level": 26,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 0,
+        "limits": "100,000-200,000"
+      },
+      {
+        "level": 27,
+        "sb": 60000,
+        "bb": 120000,
+        "ante": 0,
+        "limits": "120,000-240,000"
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 0,
+        "limits": "150,000-300,000"
+      },
+      {
+        "level": 29,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 0,
+        "limits": "200,000-400,000"
+      },
+      {
+        "level": 30,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 0,
+        "limits": "300,000-600,000"
+      }
+    ]
+  },
+  {
+    "event_name": "NLH 8-Max",
+    "entry_fee": 10500,
+    "guarantee": null,
+    "prize_pool_portion": 10000,
+    "tournament_fee": 420,
+    "staff_service_charge": 80,
+    "rake_total": 500,
+    "rake_pct": 4.8,
+    "dates": [
+      "Sunday, February 22, 2026 at 1 p.m."
+    ],
+    "starting_stack": 100000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 8,
+    "final_table_seats": 9,
+    "re_entry_until_level": 7,
+    "add_on": null,
+    "game_type": "NLH 8-Max",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 2,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 3,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 4,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 5,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 6,
+        "sb": 2500,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 7,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 8,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 9,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 10,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 11,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 12,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 13,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 14,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 15,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 16,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 17,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 18,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 19,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 20,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 21,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      },
+      {
+        "level": 22,
+        "sb": 125000,
+        "bb": 250000,
+        "ante": 250000
+      },
+      {
+        "level": 23,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 300000
+      },
+      {
+        "level": 24,
+        "sb": 200000,
+        "bb": 400000,
+        "ante": 400000
+      }
+    ],
+    "level_duration_details": [
+      "Levels 1 -6: 30 minutes",
+      "Levels 1 -6: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "NLH 6-Max",
+    "entry_fee": 2200,
+    "guarantee": 500000,
+    "prize_pool_portion": 1985,
+    "tournament_fee": 155,
+    "staff_service_charge": 60,
+    "rake_total": 215,
+    "rake_pct": 9.8,
+    "dates": [
+      "Day 1A: Monday , February 23, 2026 at 12 p.m.",
+      "Day 1B: Tuesday , February 24, 2026 at 12 p.m.",
+      "Day 2: Wednesday , February 25, 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH 6-Max",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "NLH Progressive Bounty (PKO)",
+    "entry_fee": 10500,
+    "guarantee": null,
+    "prize_pool_portion": 6000,
+    "bounty_pool": 4000,
+    "tournament_fee": 420,
+    "staff_service_charge": 80,
+    "rake_total": 500,
+    "rake_pct": 4.8,
+    "dates": [
+      "Monday , February 23, 2026 at 1 p.m."
+    ],
+    "starting_stack": 100000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 8,
+    "final_table_seats": 9,
+    "re_entry_until_level": 7,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 2,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 3,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 4,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 5,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 6,
+        "sb": 2500,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 7,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 8,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 9,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 10,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 11,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 12,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 13,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 14,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 15,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 16,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 17,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 18,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 19,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 20,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 21,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      },
+      {
+        "level": 22,
+        "sb": 125000,
+        "bb": 250000,
+        "ante": 250000
+      },
+      {
+        "level": 23,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 300000
+      },
+      {
+        "level": 24,
+        "sb": 200000,
+        "bb": 400000,
+        "ante": 400000
+      }
+    ],
+    "level_duration_details": [
+      "Levels 1 -6: 30 minutes",
+      "Levels 1 -6: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 400,
+    "guarantee": 150000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Day 1A: Tuesday , February 24, 2026 at 11 a.m.",
+      "Day 1B: Wednesday , February 25, 2026 at 11 a.m.",
+      "Thursday , February 26, 2026 at 11 a.m.",
+      "Day 2: Friday , February 27, 2026 at 11 a.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "Seniors NLH 50+ (2 Day)",
+    "entry_fee": 1100,
+    "guarantee": 100000,
+    "prize_pool_portion": 965,
+    "tournament_fee": 90,
+    "staff_service_charge": 45,
+    "rake_total": 135,
+    "rake_pct": 12.3,
+    "dates": [
+      "Day 1: Wednesday, February 25, 2026 at 11 a.m.",
+      "Day 2: Thursday, February 26, 2026 at 11 a.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "PLO $500 Bounty",
+    "entry_fee": 1600,
+    "guarantee": 100000,
+    "prize_pool_portion": 940,
+    "bounty_pool": 500,
+    "tournament_fee": 115,
+    "staff_service_charge": 45,
+    "rake_total": 160,
+    "rake_pct": 10.0,
+    "dates": [
+      "Wednesday , February 25, 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 8,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "PLO",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 11,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 12,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 13,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 14,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 15,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 16,
+        "sb": 8000,
+        "bb": 16000,
+        "ante": 16000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 18,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 19,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 20,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 21,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 22,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 23,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 24,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 25,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 26,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      },
+      {
+        "level": 27,
+        "sb": 125000,
+        "bb": 250000,
+        "ante": 250000
+      }
+    ]
+  },
+  {
+    "event_name": "Wynn Millions Championship",
+    "entry_fee": 3500,
+    "guarantee": 2000000,
+    "prize_pool_portion": 3175,
+    "tournament_fee": 215,
+    "staff_service_charge": 110,
+    "rake_total": 325,
+    "rake_pct": 9.3,
+    "dates": [
+      "Day 1A: Thursday, February 26, 2026 at 12 p.m.",
+      "Day 1B: Friday, February 27, 2026 at 12 p.m.",
+      "Day 1C: Saturday, February 28, 2026 at 12 p.m.",
+      "Day 2 : Sunday, March 1, 2026 at 12 p.m.",
+      "Day 3: Monday, March 2, 2026 at 12 p.m.",
+      "Day 4: Tuesday, March 3, 2026 at 12 p.m.",
+      "Wednesday, March 4, 2026 at 12 p.m."
+    ],
+    "starting_stack": 50000,
+    "level_duration_minutes": 60,
+    "break_schedule": "15-minute break every 2 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 7,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 8000,
+        "bb": 16000,
+        "ante": 16000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 29,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      }
+    ],
+    "special_rows": [
+      "Dinner Break 6:30 -7:30 p.m."
+    ],
+    "level_duration_details": [
+      "Day 2: 60 minutes",
+      "Day 4: 60 minutes",
+      "Final Table: 30 minutes"
+    ]
+  },
+  {
+    "event_name": "NLH 6-Max $500 Bounty",
+    "entry_fee": 1600,
+    "guarantee": 100000,
+    "prize_pool_portion": 940,
+    "bounty_pool": 500,
+    "tournament_fee": 115,
+    "staff_service_charge": 45,
+    "rake_total": 160,
+    "rake_pct": 10.0,
+    "dates": [
+      "Sunday, March 1, 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH 6-Max",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 23,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 24,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 25,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 26,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 27,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      },
+      {
+        "level": 28,
+        "sb": 125000,
+        "bb": 250000,
+        "ante": 250000
+      }
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 1100,
+    "guarantee": 400000,
+    "prize_pool_portion": 965,
+    "tournament_fee": 90,
+    "staff_service_charge": 45,
+    "rake_total": 135,
+    "rake_pct": 12.3,
+    "dates": [
+      "Day 1A: Monday , March 2 , 2026 at 12 p.m.",
+      "Day 1B: Tuesday , March 3 , 2026 at 12 p.m.",
+      "Wednesday, March 4 , 2026 at 12 p.m.",
+      "Day 2: Thursday, March 5 , 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "Limit 2-7 Triple Draw",
+    "entry_fee": 600,
+    "guarantee": 30000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Monday , March 2 , 2026 at 1 p.m."
+    ],
+    "starting_stack": null,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "Limit 2-7 Triple Draw",
+    "level_format": "limit",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 200,
+        "bb": 300,
+        "ante": 0,
+        "limits": "300-600"
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 400,
+        "ante": 0,
+        "limits": "400-800"
+      },
+      {
+        "level": 3,
+        "sb": 300,
+        "bb": 500,
+        "ante": 0,
+        "limits": "500-1,000"
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 0,
+        "limits": "600-1,200"
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 0,
+        "limits": "800-1,600"
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 0,
+        "limits": "1,000-2,000"
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 0,
+        "limits": "1,200-2,400"
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1500,
+        "ante": 0,
+        "limits": "1,500-3,000"
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 0,
+        "limits": "2,000-4,000"
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 0,
+        "limits": "2,500-5,000"
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 0,
+        "limits": "3,000-6,000"
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 0,
+        "limits": "4,000-8,000"
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 0,
+        "limits": "5,000-10,000"
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 0,
+        "limits": "6,000-12,000"
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 0,
+        "limits": "8,000-16,000"
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 0,
+        "limits": "10,000-20,000"
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 0,
+        "limits": "12,000-24,000"
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 0,
+        "limits": "15,000-30,000"
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 0,
+        "limits": "20,000-40,000"
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 0,
+        "limits": "25,000-50,000"
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 0,
+        "limits": "30,000-60,000"
+      },
+      {
+        "level": 22,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 0,
+        "limits": "40,000-80,000"
+      },
+      {
+        "level": 23,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 0,
+        "limits": "50,000-100,000"
+      },
+      {
+        "level": 24,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 0,
+        "limits": "60,000-120,000"
+      },
+      {
+        "level": 25,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 0,
+        "limits": "80,000-160,000"
+      },
+      {
+        "level": 26,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 0,
+        "limits": "100,000-200,000"
+      },
+      {
+        "level": 27,
+        "sb": 60000,
+        "bb": 120000,
+        "ante": 0,
+        "limits": "120,000-240,000"
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 0,
+        "limits": "150,000-300,000"
+      },
+      {
+        "level": 29,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 0,
+        "limits": "200,000-400,000"
+      },
+      {
+        "level": 30,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 0,
+        "limits": "300,000-600,000"
+      }
+    ]
+  },
+  {
+    "event_name": "2-7 Mixed Limits (NL Single Draw, PL Double Draw, Limit Triple Draw)",
+    "entry_fee": 600,
+    "guarantee": 30000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Tuesday, March 3 , 2026 at 1 p.m."
+    ],
+    "starting_stack": null,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "2-7 Mixed Limits",
+    "level_format": "mixed_draw",
+    "levels": [
+      {
+        "level": 1,
+        "games": {
+          "NL Single Draw": {
+            "sb": 100,
+            "bb": 200,
+            "ante": 300
+          },
+          "PL Double Draw": {
+            "sb": 100,
+            "bb": 100,
+            "ante": 100
+          },
+          "Limit Triple Draw": {
+            "sb": 200,
+            "bb": 300,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 2,
+        "games": {
+          "NL Single Draw": {
+            "sb": 200,
+            "bb": 300,
+            "ante": 500
+          },
+          "PL Double Draw": {
+            "sb": 100,
+            "bb": 200,
+            "ante": 200
+          },
+          "Limit Triple Draw": {
+            "sb": 200,
+            "bb": 400,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 3,
+        "games": {
+          "NL Single Draw": {
+            "sb": 200,
+            "bb": 300,
+            "ante": 500
+          },
+          "PL Double Draw": {
+            "sb": 200,
+            "bb": 300,
+            "ante": 300
+          },
+          "Limit Triple Draw": {
+            "sb": 300,
+            "bb": 500,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 4,
+        "games": {
+          "NL Single Draw": {
+            "sb": 200,
+            "bb": 400,
+            "ante": 600
+          },
+          "PL Double Draw": {
+            "sb": 200,
+            "bb": 300,
+            "ante": 300
+          },
+          "Limit Triple Draw": {
+            "sb": 300,
+            "bb": 600,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 5,
+        "games": {
+          "NL Single Draw": {
+            "sb": 300,
+            "bb": 500,
+            "ante": 800
+          },
+          "PL Double Draw": {
+            "sb": 200,
+            "bb": 400,
+            "ante": 400
+          },
+          "Limit Triple Draw": {
+            "sb": 400,
+            "bb": 800,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 6,
+        "games": {
+          "NL Single Draw": {
+            "sb": 300,
+            "bb": 600,
+            "ante": 900
+          },
+          "PL Double Draw": {
+            "sb": 300,
+            "bb": 500,
+            "ante": 500
+          },
+          "Limit Triple Draw": {
+            "sb": 500,
+            "bb": 1000,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 7,
+        "games": {
+          "NL Single Draw": {
+            "sb": 400,
+            "bb": 800,
+            "ante": 1200
+          },
+          "PL Double Draw": {
+            "sb": 300,
+            "bb": 600,
+            "ante": 600
+          },
+          "Limit Triple Draw": {
+            "sb": 600,
+            "bb": 1200,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 8,
+        "games": {
+          "NL Single Draw": {
+            "sb": 500,
+            "bb": 1000,
+            "ante": 1500
+          },
+          "PL Double Draw": {
+            "sb": 400,
+            "bb": 800,
+            "ante": 800
+          },
+          "Limit Triple Draw": {
+            "sb": 800,
+            "bb": 1500,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 9,
+        "games": {
+          "NL Single Draw": {
+            "sb": 1000,
+            "bb": 1000,
+            "ante": 2000
+          },
+          "PL Double Draw": {
+            "sb": 500,
+            "bb": 1000,
+            "ante": 1000
+          },
+          "Limit Triple Draw": {
+            "sb": 1000,
+            "bb": 2000,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 10,
+        "games": {
+          "NL Single Draw": {
+            "sb": 1000,
+            "bb": 1500,
+            "ante": 2500
+          },
+          "PL Double Draw": {
+            "sb": 1000,
+            "bb": 1000,
+            "ante": 1000
+          },
+          "Limit Triple Draw": {
+            "sb": 1500,
+            "bb": 2500,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 11,
+        "games": {
+          "NL Single Draw": {
+            "sb": 1000,
+            "bb": 2000,
+            "ante": 3000
+          },
+          "PL Double Draw": {
+            "sb": 1000,
+            "bb": 1500,
+            "ante": 1500
+          },
+          "Limit Triple Draw": {
+            "sb": 1500,
+            "bb": 3000,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 12,
+        "games": {
+          "NL Single Draw": {
+            "sb": 1500,
+            "bb": 2500,
+            "ante": 4000
+          },
+          "PL Double Draw": {
+            "sb": 1000,
+            "bb": 2000,
+            "ante": 2000
+          },
+          "Limit Triple Draw": {
+            "sb": 2000,
+            "bb": 4000,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 13,
+        "games": {
+          "NL Single Draw": {
+            "sb": 1500,
+            "bb": 3000,
+            "ante": 4500
+          },
+          "PL Double Draw": {
+            "sb": 1500,
+            "bb": 2500,
+            "ante": 2500
+          },
+          "Limit Triple Draw": {
+            "sb": 3000,
+            "bb": 5000,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 14,
+        "games": {
+          "NL Single Draw": {
+            "sb": 2000,
+            "bb": 4000,
+            "ante": 6000
+          },
+          "PL Double Draw": {
+            "sb": 1500,
+            "bb": 3000,
+            "ante": 3000
+          },
+          "Limit Triple Draw": {
+            "sb": 3000,
+            "bb": 6000,
+            "ante": 0
+          }
+        }
+      },
+      {
+        "level": 15,
+        "games": {
+          "NL Single Draw": {
+            "sb": 3000,
+            "bb": 5000,
+            "ante": 8000
+          },
+          "PL Double Draw": {
+            "sb": 2000,
+            "bb": 4000,
+            "ante": 4000
+          },
+          "Limit Triple Draw": {
+            "sb": 4000,
+            "bb": 8000,
+            "ante": 0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "event_name": "Mixed Triple Draw (2-7, A-5, Badugi)",
+    "entry_fee": 600,
+    "guarantee": 30000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Wednesday , March 4 , 2026 at 1 p.m."
+    ],
+    "starting_stack": null,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "Mixed Triple Draw",
+    "level_format": "limit",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 200,
+        "bb": 300,
+        "ante": 0,
+        "limits": "300-600"
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 400,
+        "ante": 0,
+        "limits": "400-800"
+      },
+      {
+        "level": 3,
+        "sb": 300,
+        "bb": 500,
+        "ante": 0,
+        "limits": "500-1,000"
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 600,
+        "ante": 0,
+        "limits": "600-1,200"
+      },
+      {
+        "level": 5,
+        "sb": 400,
+        "bb": 800,
+        "ante": 0,
+        "limits": "800-1,600"
+      },
+      {
+        "level": 6,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 0,
+        "limits": "1,000-2,000"
+      },
+      {
+        "level": 7,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 0,
+        "limits": "1,200-2,400"
+      },
+      {
+        "level": 8,
+        "sb": 800,
+        "bb": 1500,
+        "ante": 0,
+        "limits": "1,500-3,000"
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 0,
+        "limits": "2,000-4,000"
+      },
+      {
+        "level": 10,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 0,
+        "limits": "2,500-5,000"
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 0,
+        "limits": "3,000-6,000"
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 0,
+        "limits": "4,000-8,000"
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 0,
+        "limits": "5,000-10,000"
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 0,
+        "limits": "6,000-12,000"
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 0,
+        "limits": "8,000-16,000"
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 0,
+        "limits": "10,000-20,000"
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 0,
+        "limits": "12,000-24,000"
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 0,
+        "limits": "15,000-30,000"
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 0,
+        "limits": "20,000-40,000"
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 0,
+        "limits": "25,000-50,000"
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 0,
+        "limits": "30,000-60,000"
+      },
+      {
+        "level": 22,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 0,
+        "limits": "40,000-80,000"
+      },
+      {
+        "level": 23,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 0,
+        "limits": "50,000-100,000"
+      },
+      {
+        "level": 24,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 0,
+        "limits": "60,000-120,000"
+      },
+      {
+        "level": 25,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 0,
+        "limits": "80,000-160,000"
+      },
+      {
+        "level": 26,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 0,
+        "limits": "100,000-200,000"
+      },
+      {
+        "level": 27,
+        "sb": 60000,
+        "bb": 120000,
+        "ante": 0,
+        "limits": "120,000-240,000"
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 0,
+        "limits": "150,000-300,000"
+      },
+      {
+        "level": 29,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 0,
+        "limits": "200,000-400,000"
+      },
+      {
+        "level": 30,
+        "sb": 150000,
+        "bb": 300000,
+        "ante": 0,
+        "limits": "300,000-600,000"
+      }
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 1600,
+    "guarantee": 1000000,
+    "prize_pool_portion": 1430,
+    "tournament_fee": 120,
+    "staff_service_charge": 50,
+    "rake_total": 170,
+    "rake_pct": 10.6,
+    "dates": [
+      "Day 1A: Thursday , March 5 , 2026 at 12 p.m.",
+      "Day 1B: Friday , March 6 , 2026 at 12 p.m.",
+      "Saturday , March 7 , 2026 at 12 p.m.",
+      "Day 2: Sunday , March 8 , 2026 at 12 p.m.",
+      "Monday , March 9 , 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 60 minutes",
+      "Day 2: 60 minutes",
+      "Final Table: 30 minutes"
+    ]
+  },
+  {
+    "event_name": "Big O",
+    "entry_fee": 600,
+    "guarantee": 30000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Thursday , March 5, 2026 at 1 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 8,
+    "final_table_seats": 8,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "Big O",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 21,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 22,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 23,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 24,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 25,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 26,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 27,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 28,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      }
+    ]
+  },
+  {
+    "event_name": "HORSE (2 Day)",
+    "entry_fee": 1100,
+    "guarantee": 50000,
+    "prize_pool_portion": null,
+    "tournament_fee": 90,
+    "staff_service_charge": 45,
+    "rake_total": 135,
+    "rake_pct": 12.3,
+    "dates": [
+      "Day 1: Friday , March 6, 2026 at 1 p.m.",
+      "Day 2: Saturday , March 7, 2026 at 1 p.m."
+    ],
+    "starting_stack": null,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 8,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "HORSE",
+    "level_format": "horse",
+    "levels": [
+      {
+        "level": 1,
+        "limit_games": {
+          "sb": 200,
+          "bb": 300,
+          "limits": "300-600"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 300,
+          "limits": "300-600"
+        }
+      },
+      {
+        "level": 2,
+        "limit_games": {
+          "sb": 200,
+          "bb": 400,
+          "limits": "400-800"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 400,
+          "limits": "400-800"
+        }
+      },
+      {
+        "level": 3,
+        "limit_games": {
+          "sb": 300,
+          "bb": 500,
+          "limits": "500-1,000"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 500,
+          "limits": "500-1,000"
+        }
+      },
+      {
+        "level": 4,
+        "limit_games": {
+          "sb": 300,
+          "bb": 600,
+          "limits": "600-1,200"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 600,
+          "limits": "600-1,200"
+        }
+      },
+      {
+        "level": 5,
+        "limit_games": {
+          "sb": 400,
+          "bb": 800,
+          "limits": "800-1,600"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 200,
+          "bb": 800,
+          "limits": "800-1,600"
+        }
+      },
+      {
+        "level": 6,
+        "limit_games": {
+          "sb": 500,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 300,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        }
+      },
+      {
+        "level": 7,
+        "limit_games": {
+          "sb": 600,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 300,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        }
+      },
+      {
+        "level": 8,
+        "limit_games": {
+          "sb": 800,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 500,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        }
+      },
+      {
+        "level": 9,
+        "limit_games": {
+          "sb": 1000,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 500,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        }
+      },
+      {
+        "level": 10,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 1000,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        }
+      },
+      {
+        "level": 11,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 1000,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        }
+      },
+      {
+        "level": 12,
+        "limit_games": {
+          "sb": 2000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        }
+      },
+      {
+        "level": 13,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        }
+      },
+      {
+        "level": 14,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        }
+      },
+      {
+        "level": 15,
+        "limit_games": {
+          "sb": 4000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 2000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        }
+      },
+      {
+        "level": 16,
+        "limit_games": {
+          "sb": 5000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 3000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        }
+      },
+      {
+        "level": 17,
+        "limit_games": {
+          "sb": 6000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 3000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        }
+      },
+      {
+        "level": 18,
+        "limit_games": {
+          "sb": 8000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 5000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        }
+      },
+      {
+        "level": 19,
+        "limit_games": {
+          "sb": 10000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 5000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        }
+      },
+      {
+        "level": 20,
+        "limit_games": {
+          "sb": 15000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 10000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        }
+      }
+    ]
+  },
+  {
+    "event_name": "TORSE",
+    "entry_fee": 600,
+    "guarantee": 30000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Saturday , March 7 , 2026 at 1 p.m."
+    ],
+    "starting_stack": null,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 6,
+    "final_table_seats": 7,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "TORSE",
+    "level_format": "horse",
+    "levels": [
+      {
+        "level": 1,
+        "limit_games": {
+          "sb": 200,
+          "bb": 300,
+          "limits": "300-600"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 300,
+          "limits": "300-600"
+        }
+      },
+      {
+        "level": 2,
+        "limit_games": {
+          "sb": 200,
+          "bb": 400,
+          "limits": "400-800"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 100,
+          "bb": 400,
+          "limits": "400-800"
+        }
+      },
+      {
+        "level": 3,
+        "limit_games": {
+          "sb": 300,
+          "bb": 500,
+          "limits": "500-1,000"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 500,
+          "limits": "500-1,000"
+        }
+      },
+      {
+        "level": 4,
+        "limit_games": {
+          "sb": 300,
+          "bb": 600,
+          "limits": "600-1,200"
+        },
+        "stud_games": {
+          "ante": 100,
+          "bring_in": 200,
+          "bb": 600,
+          "limits": "600-1,200"
+        }
+      },
+      {
+        "level": 5,
+        "limit_games": {
+          "sb": 400,
+          "bb": 800,
+          "limits": "800-1,600"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 200,
+          "bb": 800,
+          "limits": "800-1,600"
+        }
+      },
+      {
+        "level": 6,
+        "limit_games": {
+          "sb": 500,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        },
+        "stud_games": {
+          "ante": 200,
+          "bring_in": 300,
+          "bb": 1000,
+          "limits": "1,000-2,000"
+        }
+      },
+      {
+        "level": 7,
+        "limit_games": {
+          "sb": 600,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 300,
+          "bb": 1200,
+          "limits": "1,200-2,400"
+        }
+      },
+      {
+        "level": 8,
+        "limit_games": {
+          "sb": 800,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        },
+        "stud_games": {
+          "ante": 300,
+          "bring_in": 500,
+          "bb": 1500,
+          "limits": "1,500-3,000"
+        }
+      },
+      {
+        "level": 9,
+        "limit_games": {
+          "sb": 1000,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 500,
+          "bb": 2000,
+          "limits": "2,000-4,000"
+        }
+      },
+      {
+        "level": 10,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        },
+        "stud_games": {
+          "ante": 500,
+          "bring_in": 1000,
+          "bb": 2500,
+          "limits": "2,500-5,000"
+        }
+      },
+      {
+        "level": 11,
+        "limit_games": {
+          "sb": 1500,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 3000,
+          "limits": "3,000-6,000"
+        }
+      },
+      {
+        "level": 12,
+        "limit_games": {
+          "sb": 2000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 1000,
+          "bb": 4000,
+          "limits": "4,000-8,000"
+        }
+      },
+      {
+        "level": 13,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 5000,
+          "limits": "5,000-10,000"
+        }
+      },
+      {
+        "level": 14,
+        "limit_games": {
+          "sb": 3000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        },
+        "stud_games": {
+          "ante": 1000,
+          "bring_in": 2000,
+          "bb": 6000,
+          "limits": "6,000-12,000"
+        }
+      },
+      {
+        "level": 15,
+        "limit_games": {
+          "sb": 4000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 2000,
+          "bb": 8000,
+          "limits": "8,000-16,000"
+        }
+      },
+      {
+        "level": 16,
+        "limit_games": {
+          "sb": 5000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        },
+        "stud_games": {
+          "ante": 2000,
+          "bring_in": 3000,
+          "bb": 10000,
+          "limits": "10,000-20,000"
+        }
+      },
+      {
+        "level": 17,
+        "limit_games": {
+          "sb": 6000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 3000,
+          "bb": 12000,
+          "limits": "12,000-24,000"
+        }
+      },
+      {
+        "level": 18,
+        "limit_games": {
+          "sb": 8000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        },
+        "stud_games": {
+          "ante": 3000,
+          "bring_in": 5000,
+          "bb": 15000,
+          "limits": "15,000-30,000"
+        }
+      },
+      {
+        "level": 19,
+        "limit_games": {
+          "sb": 10000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 5000,
+          "bb": 20000,
+          "limits": "20,000-40,000"
+        }
+      },
+      {
+        "level": 20,
+        "limit_games": {
+          "sb": 15000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        },
+        "stud_games": {
+          "ante": 5000,
+          "bring_in": 10000,
+          "bb": 25000,
+          "limits": "25,000-50,000"
+        }
+      }
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 400,
+    "guarantee": 100000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Day 1A: Tuesday , March 10 , 2026 at 12 p.m.",
+      "Day 1B: Wednesday , March 11 , 2026 at 12 p.m.",
+      "Day 2: Thursday , March 12 , 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 1100,
+    "guarantee": 500000,
+    "prize_pool_portion": 965,
+    "tournament_fee": 90,
+    "staff_service_charge": 45,
+    "rake_total": 135,
+    "rake_pct": 12.3,
+    "dates": [
+      "Day 1A: Thursday, March 12, 2026 at 12 p.m.",
+      "Day 1B: Friday, March 13, 2026 at 12 p.m.",
+      "Day 1C: Saturday, March 14, 2026 at 12 p.m.",
+      "Day 2: Sunday, March 15, 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 400,
+    "guarantee": 100000,
+    "prize_pool_portion": 333,
+    "tournament_fee": 45,
+    "staff_service_charge": 22,
+    "rake_total": 67,
+    "rake_pct": 16.8,
+    "dates": [
+      "Day 1A: Monday, March 16, 2026 at 12 p.m.",
+      "Day 1B: Tuesday , March 17, 2026 at 12 p.m.",
+      "Day 2: Wednesday, March 18, 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 600,
+    "guarantee": 200000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Day 1A: Wednesday , March 18, 2026 at 12 p.m.",
+      "Day 1B: Thursday , March 19, 2026 at 12 p.m.",
+      "Day 2: Friday, March 20, 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 40,
+    "break_schedule": "15-minute break every 3 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 800,
+        "bb": 1600,
+        "ante": 1600
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 2500,
+        "ante": 2500
+      },
+      {
+        "level": 12,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 13,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 15,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 16,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 17,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 18,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 20,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 22,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 23,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 24,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 25,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 26,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 27,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 40 minutes",
+      "Day 1: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 600,
+    "guarantee": 300000,
+    "prize_pool_portion": 510,
+    "tournament_fee": 65,
+    "staff_service_charge": 25,
+    "rake_total": 90,
+    "rake_pct": 15.0,
+    "dates": [
+      "Day 1A: Friday , March 20 , 2026 at 12 p.m.",
+      "Day 1B: Friday , March 20 , 2026 at 5 p.m.",
+      "Saturday , March 21 , 2026 at 12 p.m.",
+      "Saturday , March 21 , 2026 at 5 p.m.",
+      "Day 2: Sunday , March 22 , 2026 at 12 p.m."
+    ],
+    "starting_stack": 40000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 10,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 25000,
+        "ante": 25000
+      },
+      {
+        "level": 21,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 22,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 23,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 24,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 25,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 26,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 27,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 28,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      }
+    ],
+    "level_duration_details": [
+      "Day 1: 30 minutes",
+      "Day 1D: 20 minutes",
+      "Day 1D: 40 minutes"
+    ]
+  },
+  {
+    "event_name": "No Limit Hold'em",
+    "entry_fee": 400,
+    "guarantee": 30000,
+    "prize_pool_portion": 337,
+    "tournament_fee": 45,
+    "staff_service_charge": 18,
+    "rake_total": 63,
+    "rake_pct": 15.8,
+    "dates": [
+      "Sunday, March 22, 2026 at 12 p.m."
+    ],
+    "starting_stack": 30000,
+    "level_duration_minutes": 30,
+    "break_schedule": "15-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 2,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 4,
+        "sb": 300,
+        "bb": 500,
+        "ante": 500
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 5000,
+        "ante": 5000
+      },
+      {
+        "level": 14,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 15,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 16,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 17,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 19,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 20,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 21,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 22,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 23,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      },
+      {
+        "level": 24,
+        "sb": 40000,
+        "bb": 80000,
+        "ante": 80000
+      },
+      {
+        "level": 25,
+        "sb": 50000,
+        "bb": 100000,
+        "ante": 100000
+      },
+      {
+        "level": 26,
+        "sb": 75000,
+        "bb": 125000,
+        "ante": 125000
+      },
+      {
+        "level": 27,
+        "sb": 75000,
+        "bb": 150000,
+        "ante": 150000
+      },
+      {
+        "level": 28,
+        "sb": 100000,
+        "bb": 200000,
+        "ante": 200000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $2,200 NLH 6-Max",
+    "entry_fee": 300,
+    "guarantee": null,
+    "prize_pool_portion": 250,
+    "tournament_fee": 34,
+    "staff_service_charge": 16,
+    "rake_total": 50,
+    "rake_pct": 16.7,
+    "dates": [
+      "Monday , February 23 , 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH 6-Max",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $3,500 Wynn Millions Championship Day 1A/B",
+    "entry_fee": 400,
+    "guarantee": null,
+    "prize_pool_portion": 337,
+    "tournament_fee": 45,
+    "staff_service_charge": 18,
+    "rake_total": 63,
+    "rake_pct": 15.8,
+    "dates": [
+      "Tuesday February 24, 2026 at 6 p.m.",
+      "Wednesday , February 25, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH Satellite",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $3,500 Wynn Millions Championship Day 1B/C",
+    "entry_fee": 400,
+    "guarantee": null,
+    "prize_pool_portion": 337,
+    "tournament_fee": 45,
+    "staff_service_charge": 18,
+    "rake_total": 63,
+    "rake_pct": 15.8,
+    "dates": [
+      "Thursday, February 26, 2026 at 6 p.m.",
+      "Friday, February 27, 2026 at 11 a.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH Satellite",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $3,500 Wynn Millions Championship Day 1C",
+    "entry_fee": 400,
+    "guarantee": null,
+    "prize_pool_portion": 337,
+    "tournament_fee": 45,
+    "staff_service_charge": 18,
+    "rake_total": 63,
+    "rake_pct": 15.8,
+    "dates": [
+      "Friday, February 27, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH Satellite",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $3,500 Wynn Millions Championship Day 1C",
+    "entry_fee": 400,
+    "guarantee": null,
+    "prize_pool_portion": 337,
+    "tournament_fee": 45,
+    "staff_service_charge": 18,
+    "rake_total": 63,
+    "rake_pct": 15.8,
+    "dates": [
+      "Saturday, February 28, 2026 at 10 a.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 15,
+    "break_schedule": "10-minute break every 8 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH Satellite",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $1,600 NLH",
+    "entry_fee": 300,
+    "guarantee": null,
+    "prize_pool_portion": 250,
+    "tournament_fee": 34,
+    "staff_service_charge": 16,
+    "rake_total": 50,
+    "rake_pct": 16.7,
+    "dates": [
+      "Saturday, February 28, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $1,100 NLH",
+    "entry_fee": 200,
+    "guarantee": null,
+    "prize_pool_portion": 165,
+    "tournament_fee": 20,
+    "staff_service_charge": 15,
+    "rake_total": 35,
+    "rake_pct": 17.5,
+    "dates": [
+      "Sunday March 1, 2026 at 6 p.m.",
+      "Monday March 2, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $1,600 NLH Day 1A/B",
+    "entry_fee": 300,
+    "guarantee": null,
+    "prize_pool_portion": 250,
+    "tournament_fee": 34,
+    "staff_service_charge": 16,
+    "rake_total": 50,
+    "rake_pct": 16.7,
+    "dates": [
+      "Wednesday, March 4, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $1,600 NLH Day 1B/C",
+    "entry_fee": 300,
+    "guarantee": null,
+    "prize_pool_portion": 250,
+    "tournament_fee": 34,
+    "staff_service_charge": 16,
+    "rake_total": 50,
+    "rake_pct": 16.7,
+    "dates": [
+      "Thursday, March 5, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $1,600 NLH Day 1C",
+    "entry_fee": 300,
+    "guarantee": null,
+    "prize_pool_portion": 250,
+    "tournament_fee": 34,
+    "staff_service_charge": 16,
+    "rake_total": 50,
+    "rake_pct": 16.7,
+    "dates": [
+      "Friday, March 6, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  },
+  {
+    "event_name": "Milestone Satellite to $1,100 NLH",
+    "entry_fee": 200,
+    "guarantee": null,
+    "prize_pool_portion": 165,
+    "tournament_fee": 20,
+    "staff_service_charge": 15,
+    "rake_total": 35,
+    "rake_pct": 17.5,
+    "dates": [
+      "Thursday March 12, 2026 at 6 p.m.",
+      "Friday March 13, 2026 at 6 p.m."
+    ],
+    "starting_stack": 20000,
+    "level_duration_minutes": 20,
+    "break_schedule": "10-minute break every 4 levels",
+    "players_per_table": 9,
+    "final_table_seats": 9,
+    "re_entry_until_level": 9,
+    "add_on": null,
+    "game_type": "NLH",
+    "level_format": "standard",
+    "levels": [
+      {
+        "level": 1,
+        "sb": 100,
+        "bb": 100,
+        "ante": 100
+      },
+      {
+        "level": 2,
+        "sb": 100,
+        "bb": 200,
+        "ante": 200
+      },
+      {
+        "level": 3,
+        "sb": 200,
+        "bb": 300,
+        "ante": 300
+      },
+      {
+        "level": 4,
+        "sb": 200,
+        "bb": 400,
+        "ante": 400
+      },
+      {
+        "level": 5,
+        "sb": 300,
+        "bb": 600,
+        "ante": 600
+      },
+      {
+        "level": 6,
+        "sb": 400,
+        "bb": 800,
+        "ante": 800
+      },
+      {
+        "level": 7,
+        "sb": 500,
+        "bb": 1000,
+        "ante": 1000
+      },
+      {
+        "level": 8,
+        "sb": 600,
+        "bb": 1200,
+        "ante": 1200
+      },
+      {
+        "level": 9,
+        "sb": 1000,
+        "bb": 1500,
+        "ante": 1500
+      },
+      {
+        "level": 10,
+        "sb": 1000,
+        "bb": 2000,
+        "ante": 2000
+      },
+      {
+        "level": 11,
+        "sb": 1500,
+        "bb": 3000,
+        "ante": 3000
+      },
+      {
+        "level": 12,
+        "sb": 2000,
+        "bb": 4000,
+        "ante": 4000
+      },
+      {
+        "level": 13,
+        "sb": 3000,
+        "bb": 6000,
+        "ante": 6000
+      },
+      {
+        "level": 14,
+        "sb": 4000,
+        "bb": 8000,
+        "ante": 8000
+      },
+      {
+        "level": 15,
+        "sb": 5000,
+        "bb": 10000,
+        "ante": 10000
+      },
+      {
+        "level": 16,
+        "sb": 6000,
+        "bb": 12000,
+        "ante": 12000
+      },
+      {
+        "level": 17,
+        "sb": 10000,
+        "bb": 15000,
+        "ante": 15000
+      },
+      {
+        "level": 18,
+        "sb": 10000,
+        "bb": 20000,
+        "ante": 20000
+      },
+      {
+        "level": 19,
+        "sb": 15000,
+        "bb": 30000,
+        "ante": 30000
+      },
+      {
+        "level": 20,
+        "sb": 20000,
+        "bb": 40000,
+        "ante": 40000
+      },
+      {
+        "level": 21,
+        "sb": 25000,
+        "bb": 50000,
+        "ante": 50000
+      },
+      {
+        "level": 22,
+        "sb": 30000,
+        "bb": 60000,
+        "ante": 60000
+      }
+    ]
+  }
+]

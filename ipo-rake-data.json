@@ -1,0 +1,1542 @@
+[
+  {
+    "id": 721,
+    "event_number": "IPO-1",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 Guaranteed - Day 1/A",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 722,
+    "event_number": "IPO-2",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 50K - 5 Seats GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 723,
+    "event_number": "IPO-3",
+    "buyin": 200,
+    "rake_pct": 15,
+    "rake_dollars": 30,
+    "house_fee": 30,
+    "event_name": "Irish Open Deaf Main Event Championship - Day 1A",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 724,
+    "event_number": "IPO-4",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Big O Championship",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 725,
+    "event_number": "IPO-5",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Super Seniors Championship (60 Years Young)",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 726,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/A",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 727,
+    "event_number": "IPO-7",
+    "buyin": 650,
+    "rake_pct": 6,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to €3,000 Quarto PLO High Roller - Milestone 100K - 5 Seats GTD",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 728,
+    "event_number": "IPO-8",
+    "buyin": 120,
+    "rake_pct": 17,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "PLO Deaf Championship",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 729,
+    "event_number": "IPO-9",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 100K - 10 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 730,
+    "event_number": "IPO-10",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 100K - 5 Seats GTD",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 731,
+    "event_number": "IPO-1",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 Guaranteed - Day 1/B",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 732,
+    "event_number": "IPO-3",
+    "buyin": 200,
+    "rake_pct": 15,
+    "rake_dollars": 30,
+    "house_fee": 30,
+    "event_name": "Irish Open Deaf Main Event Championship - Day 1/B",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 733,
+    "event_number": "IPO-11",
+    "buyin": 650,
+    "rake_pct": 6,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to €3,000 Quarto PLO High Roller - Milestone 100K - 5 Seats GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 734,
+    "event_number": "IPO-12",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Sviten Special Championship",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 735,
+    "event_number": "IPO-13",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 50K - 5 Seats GTD",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 736,
+    "event_number": "IPO-14",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "APAT Championship - Day 1",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 737,
+    "event_number": "IPO-15",
+    "buyin": 3000,
+    "rake_pct": 8,
+    "rake_dollars": 250,
+    "house_fee": 250,
+    "event_name": "Quarto PLO High Roller 8-Max - Day 1",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 738,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/B",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 739,
+    "event_number": "IPO-16",
+    "buyin": 120,
+    "rake_pct": 17,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "NLH Deaf Championship",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 740,
+    "event_number": "IPO-17",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 100K - 10 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 741,
+    "event_number": "IPO-18",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Invitational Tournament",
+    "time": "9:00 PM"
+  },
+  {
+    "id": 742,
+    "event_number": "IPO-19",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 50K - 5 Seats GTD",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 743,
+    "event_number": "IPO-1",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 Guaranteed - Day 1/C",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 744,
+    "event_number": "IPO-3",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open Deaf Main Event Championship - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 745,
+    "event_number": "IPO-14",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "APAT Championship - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 746,
+    "event_number": "IPO-15",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Quarto PLO High Roller 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 747,
+    "event_number": "IPO-20",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 100K - 10 Seats GTD",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 748,
+    "event_number": "IPO-21",
+    "buyin": 150,
+    "rake_pct": 13,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Deaf NLH Mystery Bounty",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 749,
+    "event_number": "IPO-22",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Mixed 8-Game Championship - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 750,
+    "event_number": "IPO-23",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "PLO 7-Max",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 751,
+    "event_number": "IPO-24",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Luxon Mystery Bounty - Milestone 50K - 5 Seats GTD",
+    "time": "5:00 PM"
+  },
+  {
+    "id": 752,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/C",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 753,
+    "event_number": "IPO-1",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 GTD - Day 1/D",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 754,
+    "event_number": "IPO-25",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 100K - 5 Seats GTD",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 755,
+    "event_number": "IPO-1",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 GTD - Day 2",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 756,
+    "event_number": "IPO-22",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Mixed 8-Game Championship - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 757,
+    "event_number": "IPO-26",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Irish Open Main Event - €2,500,000 Guaranteed - Day 1/A",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 758,
+    "event_number": "IPO-27",
+    "buyin": 650,
+    "rake_pct": 6,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to €3,000 Quarto NLH High Roller - Milestone 100K - 5 Seats GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 759,
+    "event_number": "IPO-28",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "HORSE Championship - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 760,
+    "event_number": "IPO-29",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 50K - 5 Seats GTD",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 761,
+    "event_number": "IPO-30",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Deaf NLH High Roller",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 762,
+    "event_number": "IPO-31",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Kings and Queens - Queens Flight",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 763,
+    "event_number": "IPO-32",
+    "buyin": 3000,
+    "rake_pct": 8,
+    "rake_dollars": 250,
+    "house_fee": 250,
+    "event_name": "Quarto NLH High Roller 8-Max - Day 1",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 764,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/D",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 765,
+    "event_number": "IPO-31",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Kings and Queens - Kings Flight",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 766,
+    "event_number": "IPO-33",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 100K - 10 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 767,
+    "event_number": "IPO-34",
+    "buyin": 115,
+    "rake_pct": 13,
+    "rake_dollars": 15,
+    "house_fee": 15,
+    "event_name": "Flip and Go Day 1",
+    "time": "9:00 PM"
+  },
+  {
+    "id": 768,
+    "event_number": "IPO-1",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 Guaranteed - Day 3",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 769,
+    "event_number": "IPO-28",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "HORSE Championship - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 770,
+    "event_number": "IPO-35",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Deuce-to-Seven Triple Draw Championship",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 771,
+    "event_number": "IPO-31",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Kings and Queens - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 772,
+    "event_number": "IPO-34",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Flip and Go - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 773,
+    "event_number": "IPO-32",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Quarto NLH High Roller 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 774,
+    "event_number": "IPO-36",
+    "buyin": 550,
+    "rake_pct": 7,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to PLO High Roller - Milestone 200K - 5 Seats GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 775,
+    "event_number": "IPO-37",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "NLH 6-Max Championship - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 776,
+    "event_number": "IPO-38",
+    "buyin": 5000,
+    "rake_pct": 5,
+    "rake_dollars": 250,
+    "house_fee": 250,
+    "event_name": "PLO High Roller 8-Max - Day 1",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 777,
+    "event_number": "IPO-39",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 50K - 5 Seats GTD",
+    "time": "5:00 PM"
+  },
+  {
+    "id": 778,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/E",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 779,
+    "event_number": "IPO-40",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "NLH 8-Max - Day 1",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 780,
+    "event_number": "IPO-41",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 100K - 10 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 781,
+    "event_number": "IPO-37",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "NLH 6-Max Championship - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 782,
+    "event_number": "IPO-42",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "Mixed 8-Game Championship High Roller - Day 1",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 783,
+    "event_number": "IPO-43",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "NLH Heads-Up Championship Event - (Capped at 128) Round 1",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 784,
+    "event_number": "IPO-1",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Luxon Mystery Bounty - €1,000,000 Guaranteed - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 785,
+    "event_number": "IPO-38",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "PLO High Roller 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 786,
+    "event_number": "IPO-40",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "NLH 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 787,
+    "event_number": "IPO-44",
+    "buyin": 550,
+    "rake_pct": 7,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to NLH High Roller - Milestone 200K - 1 Seat GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 788,
+    "event_number": "IPO-45",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "The Hendon Mob Championship \"THMC\" - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 789,
+    "event_number": "IPO-43",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open NLH Heads-Up Championship Event - Round 2",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 790,
+    "event_number": "IPO-46",
+    "buyin": 5000,
+    "rake_pct": 5,
+    "rake_dollars": 250,
+    "house_fee": 250,
+    "event_name": "NLH High Roller 8-Max - Day 1",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 791,
+    "event_number": "IPO-47",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 50K - 5 Seats GTD",
+    "time": "5:00 PM"
+  },
+  {
+    "id": 792,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/F",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 793,
+    "event_number": "IPO-43",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open NLH Heads-Up Championship Event - Round 3",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 794,
+    "event_number": "IPO-48",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Flutter Invitational Tournament",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 795,
+    "event_number": "IPO-49",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "PLO 8-Max - Day 1",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 796,
+    "event_number": "IPO-50",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 100K - 10 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 797,
+    "event_number": "IPO-43",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open NLH Heads-Up Championship Event - Round 4",
+    "time": "9:00 PM"
+  },
+  {
+    "id": 798,
+    "event_number": "IPO-51",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 50K - 5 Seats GTD",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 799,
+    "event_number": "IPO-26",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Irish Open Main Event - €2,500,000 Guaranteed - Day 1/B",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 800,
+    "event_number": "IPO-42",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Mixed 8-Game Championship High Roller - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 801,
+    "event_number": "IPO-43",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open NLH Heads-Up Championship Event - Quarter Final",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 802,
+    "event_number": "IPO-45",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "The Hendon Mob Championship \"THMC\"- Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 803,
+    "event_number": "IPO-49",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "PLO 8-Max - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 804,
+    "event_number": "IPO-52",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "OFC Pineapple Championship",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 805,
+    "event_number": "IPO-46",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "NLH High Roller 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 806,
+    "event_number": "IPO-53",
+    "buyin": 1050,
+    "rake_pct": 4,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to NLH Super High Roller - Milestone 200K - 1 Seat GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 807,
+    "event_number": "IPO-54",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "America's Cup - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 808,
+    "event_number": "IPO-43",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open NLH Heads-Up Championship Event - Semi Final",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 809,
+    "event_number": "IPO-55",
+    "buyin": 10000,
+    "rake_pct": 3,
+    "rake_dollars": 250,
+    "house_fee": 250,
+    "event_name": "NLH Super High Roller 8-Max - Day 1",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 810,
+    "event_number": "IPO-56",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open - Milestone 100K - 5 Seats GTD",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 811,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/G",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 812,
+    "event_number": "IPO-43",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open NLH Heads-Up Championship Event - Final",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 813,
+    "event_number": "IPO-57",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "PLO 6-Max Championship - Day 1",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 814,
+    "event_number": "IPO-58",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open - Milestone 100K - 20 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 815,
+    "event_number": "IPO-59",
+    "buyin": 115,
+    "rake_pct": 13,
+    "rake_dollars": 15,
+    "house_fee": 15,
+    "event_name": "Flip and Go Day 1",
+    "time": "9:00 PM"
+  },
+  {
+    "id": 816,
+    "event_number": "IPO-60",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open - Milestone 50K - 5 Seats GTD",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 817,
+    "event_number": "IPO-26",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Irish Open Main Event - €2,500,000 Guaranteed - Day 1/C",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 818,
+    "event_number": "IPO-54",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "America's Cup - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 819,
+    "event_number": "IPO-59",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Flip and Go - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 820,
+    "event_number": "IPO-55",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "NLH Super High Roller 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 821,
+    "event_number": "IPO-57",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "PLO 6-Max Championship - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 822,
+    "event_number": "IPO-61",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Ladies Championship - Day 1",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 823,
+    "event_number": "IPO-62",
+    "buyin": 550,
+    "rake_pct": 9,
+    "rake_dollars": 50,
+    "house_fee": 50,
+    "event_name": "NLH Spraggy Mystery Bounty",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 824,
+    "event_number": "IPO-63",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "Seniors High Roller Championship (50 Years Young) - Day 1",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 825,
+    "event_number": "IPO-64",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 100K - 10 Seats GTD",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 826,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/H",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 827,
+    "event_number": "IPO-65",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 100K - 20 Seats GTD",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 828,
+    "event_number": "IPO-66",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Satellite to Irish Open Main Event - Milestone 50K - 5 Seats GTD",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 829,
+    "event_number": "IPO-26",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Irish Open Main Event - €2,500,000 GTD - Day 1/D",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 830,
+    "event_number": "IPO-61",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Ladies Championship - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 831,
+    "event_number": "IPO-63",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Seniors High Roller Championship (50 Years Young) - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 832,
+    "event_number": "IPO-67",
+    "buyin": 550,
+    "rake_pct": 9,
+    "rake_dollars": 50,
+    "house_fee": 50,
+    "event_name": "Shoot-out Championship (Capped 300) - Round 1",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 833,
+    "event_number": "IPO-68",
+    "buyin": 140,
+    "rake_pct": 14,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Turbo Satellite to Irish Open - Milestone 100K - 10 Seats GTD",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 834,
+    "event_number": "IPO-67",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Shoot-out Championship (Capped 300) - Round 2",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 835,
+    "event_number": "IPO-69",
+    "buyin": 550,
+    "rake_pct": 9,
+    "rake_dollars": 50,
+    "house_fee": 50,
+    "event_name": "PLO 5 Card",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 836,
+    "event_number": "IPO-70",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Turbo Satellite to Irish Open - Milestone 50K - 10 Seats GTD",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 837,
+    "event_number": "IPO-71",
+    "buyin": 255,
+    "rake_pct": 8,
+    "rake_dollars": 20,
+    "house_fee": 20,
+    "event_name": "Hyper Turbo Satellite to Irish Open - Milestone 50K - 10 Seats GTD",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 838,
+    "event_number": "IPO-67",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Shoot-out Championship (Capped 300) - Final Round",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 839,
+    "event_number": "IPO-26",
+    "buyin": 1150,
+    "rake_pct": 13,
+    "rake_dollars": 150,
+    "house_fee": 150,
+    "event_name": "Irish Open Main Event - €2,500,000 Guaranteed - Day 1/E Turbo",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 840,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/J",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 841,
+    "event_number": "IPO-26",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open Main Event - €2,500,000 Guaranteed - Day 2",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 842,
+    "event_number": "IPO-72",
+    "buyin": 650,
+    "rake_pct": 6,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Satellite to €3,000 High Roller - Milestone 100K - 5 Seats GTD",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 843,
+    "event_number": "IPO-73",
+    "buyin": 550,
+    "rake_pct": 9,
+    "rake_dollars": 50,
+    "house_fee": 50,
+    "event_name": "JP Poker Masters - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 844,
+    "event_number": "IPO-74",
+    "buyin": 3000,
+    "rake_pct": 8,
+    "rake_dollars": 250,
+    "house_fee": 250,
+    "event_name": "High Roller 8-Max - Day 1",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 845,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/K",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 846,
+    "event_number": "IPO-75",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Old Dogs and Young Pups - Old Dogs Flight",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 847,
+    "event_number": "IPO-75",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Old Dogs and Young Pups - Young Pubs Flight",
+    "time": "7:00 PM"
+  },
+  {
+    "id": 848,
+    "event_number": "IPO-76",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "PLO Mystery Bounty 8-Max - Day 1",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 849,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/L",
+    "time": "11:00 AM"
+  },
+  {
+    "id": 850,
+    "event_number": "IPO-26",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open Main Event - €2,500,000 GTD - Day 3",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 851,
+    "event_number": "IPO-73",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "JP Poker Masters - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 852,
+    "event_number": "IPO-74",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "High Roller 8-Max - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 853,
+    "event_number": "IPO-77",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "NLH Mystery Bounty - Day 1",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 854,
+    "event_number": "IPO-75",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Old Dogs and Young Pups - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 855,
+    "event_number": "IPO-76",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "PLO Mystery Bounty 8-Max - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 856,
+    "event_number": "IPO-78",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "Ladies High Roller Championship - Day 1",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 857,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/M",
+    "time": "3:00 PM"
+  },
+  {
+    "id": 858,
+    "event_number": "IPO-79",
+    "buyin": 550,
+    "rake_pct": 9,
+    "rake_dollars": 50,
+    "house_fee": 50,
+    "event_name": "PLO 4/5/6",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 859,
+    "event_number": "IPO-80",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Seniors Championship - Day 1",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 860,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/N Turbo",
+    "time": "8:00 PM"
+  },
+  {
+    "id": 861,
+    "event_number": "IPO-81",
+    "buyin": 115,
+    "rake_pct": 13,
+    "rake_dollars": 15,
+    "house_fee": 15,
+    "event_name": "Flip and Go Day 1",
+    "time": "9:00 PM"
+  },
+  {
+    "id": 862,
+    "event_number": "IPO-6",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 863,
+    "event_number": "IPO-77",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "NLH Mystery Bounty - Final day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 864,
+    "event_number": "IPO-81",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Flip and Go - Final Day",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 865,
+    "event_number": "IPO-82",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Triathlon Championship",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 866,
+    "event_number": "IPO-78",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Ladies High Roller Championship - Final Day",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 867,
+    "event_number": "IPO-83",
+    "buyin": 550,
+    "rake_pct": 9,
+    "rake_dollars": 50,
+    "house_fee": 50,
+    "event_name": "PLO 6-Max",
+    "time": "12:00 PM"
+  },
+  {
+    "id": 868,
+    "event_number": "IPO-26",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Irish Open Main Event - €2,500,000 Guaranteed - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 869,
+    "event_number": "IPO-80",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Seniors Championship - Final Day",
+    "time": "1:00 PM"
+  },
+  {
+    "id": 870,
+    "event_number": "IPO-84",
+    "buyin": 1150,
+    "rake_pct": 9,
+    "rake_dollars": 100,
+    "house_fee": 100,
+    "event_name": "NLH Turbo 8-Max",
+    "time": "2:00 PM"
+  },
+  {
+    "id": 871,
+    "event_number": "IPO-85",
+    "buyin": 350,
+    "rake_pct": 11,
+    "rake_dollars": 40,
+    "house_fee": 40,
+    "event_name": "Liam Flood Memorial 6-Max Turbo",
+    "time": "4:00 PM"
+  },
+  {
+    "id": 872,
+    "event_number": "IPO-86",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "NLH Turbo",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 1101,
+    "event_number": "IPO-6",
+    "buyin": 250,
+    "rake_pct": 14,
+    "rake_dollars": 35,
+    "house_fee": 35,
+    "event_name": "Mini Irish Open - €1,000,000 Guaranteed - Day 1/I",
+    "time": "6:00 PM"
+  },
+  {
+    "id": 1102,
+    "event_number": "IPO-101",
+    "buyin": 0,
+    "rake_pct": 0,
+    "rake_dollars": 0,
+    "house_fee": 0,
+    "event_name": "Select Invitational Tournament",
+    "time": "11:00 AM"
+  }
+]
