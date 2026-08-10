@@ -124,3 +124,6 @@ solver/neural/*.log
 
 # Python venv for the neural solver (PyTorch)
 solver/neural/.venv/
+
+# solver/ is fetched at build time from futuregame-solver (SOLVER_REPO_TOKEN) or cloned locally
+solver/
