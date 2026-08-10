@@ -43,7 +43,7 @@ on 3001 — test on a scratch port with a `DB_PATH` copy.
   materializes tracked `solver/` files THROUGH the junction and clobbers
   `D:\projects\futuregame-solver`'s working tree on switch-back. Use `git worktree` for
   old branches. Recovery: `git -C D:\projects\futuregame-solver checkout -- .`, then
-  `New-Item -ItemType Junction -Path D:\_snbwsop\solver -Target D:\projects\futuregame-solver\solver`.
+  `New-Item -ItemType Junction -Path D:\projects\scheduler\solver -Target D:\projects\futuregame-solver\solver`.
 - `poker-tournaments.db` is untracked runtime state owned by the pm2 app. Never commit it.
 - Console/dashboard code was stripped (PR #44, 2026-08-10) — don't re-add console routes
   here; that's the wsop-console repo's job.
@@ -51,7 +51,7 @@ on 3001 — test on a scratch port with a `DB_PATH` copy.
 ## The suite (each repo's CLAUDE.md is its handoff — open a session in that directory)
 | Project | Windows home | Repo |
 |---|---|---|
-| scheduler (this) | `D:\_snbwsop` | wsop-2026-scheduler |
+| scheduler (this) | `D:\projects\scheduler` | wsop-2026-scheduler |
 | solver | `D:\projects\futuregame-solver` (grind runs in the WSL twin) | futuregame-solver |
 | cash watcher | `D:\projects\cash-game-watcher` | cash-game-watcher |
 | mtt watcher | `D:\projects\mtt-series-watcher` | mtt-series-watcher |

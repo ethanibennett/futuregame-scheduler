@@ -127,3 +127,6 @@ solver/neural/.venv/
 
 # solver/ is fetched at build time from futuregame-solver (SOLVER_REPO_TOKEN) or cloned locally
 solver/
+
+# local pm2 config (holds local JWT_SECRET)
+ecosystem.config.cjs
