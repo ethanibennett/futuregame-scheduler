@@ -9327,6 +9327,43 @@ function backerRecordByToken(token) {
   return found;
 }
 
+// ── Backer-roster seam (dashboard → scheduler) ──
+// The backer roster (names/stakes) is authored in the standalone dashboard now;
+// our console_records 'backers' store froze at the 2026-08-09 cutover. Pull the
+// current roster over HTTP (DASHBOARD_TOKEN-gated, sync-protocol shape) and
+// LWW-merge it, so /b/:token pages + the weekly digest see new/renamed backers.
+// Runs at boot + hourly (:35); self-disables without DASHBOARD_TOKEN.
+const DASHBOARD_BASE_URL = process.env.DASHBOARD_BASE_URL || 'https://dashboard.futurega.me';
+async function syncBackerRoster() {
+  const token = process.env.DASHBOARD_TOKEN;
+  if (!token) return;
+  try {
+    const res = await fetch(`${DASHBOARD_BASE_URL}/api/roster/${token}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    const records = Array.isArray(body && body.records) ? body.records : [];
+    let changed = 0;
+    for (const r of records) {
+      if (!r || r.store !== 'backers' || typeof r.id !== 'string' || typeof r.updatedAt !== 'number') continue;
+      db.run(
+        `INSERT INTO console_records (store, id, data, updated_at, deleted)
+         VALUES ('backers', ?, ?, ?, 0)
+         ON CONFLICT(store, id) DO UPDATE SET
+           data = excluded.data, updated_at = excluded.updated_at, deleted = excluded.deleted
+         WHERE excluded.updated_at >= console_records.updated_at`,
+        [r.id, typeof r.data === 'string' ? r.data : null, r.updatedAt]
+      );
+      changed += db.getRowsModified();
+    }
+    if (changed) {
+      await saveDatabase();
+      console.log(`[roster] backer roster synced from dashboard: ${changed} row(s) updated`);
+    }
+  } catch (err) {
+    console.error('[roster] backer roster sync failed:', err.message);
+  }
+}
+
 // ── Dashboard seam-#2 helpers ────────────────────────────────────────────────
 // The dashboard itself lives at dashboard.futurega.me; the only surface left
 // here is the token-gated upcoming-schedule feed (seam #2).
@@ -11443,6 +11480,14 @@ initDatabase().then(() => {
       cron.schedule('0 18 * * 0', () => { sendBackerWeeklyDigests(); }, { timezone: CONSOLE_TZ });
     } catch (err) {
       console.error('Backer digest cron setup error:', err.message);
+    }
+    // Backer-roster seam: pull the current roster from the dashboard at boot +
+    // hourly (:35, offset from the mtt-emit :15), self-disables w/o token.
+    try {
+      syncBackerRoster();
+      cron.schedule('35 * * * *', () => { syncBackerRoster(); }, { timezone: CONSOLE_TZ });
+    } catch (err) {
+      console.error('[roster] cron setup error:', err.message);
     }
   });
 
