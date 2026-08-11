@@ -221,7 +221,10 @@ export async function generateSchedulePDF(events, title, opts = {}) {
         prevDate = d;
       }
       const venue = getVenueInfo(ev.venue);
-      venueColors.push(hexRGB(PDF_VENUE_COLORS[venue.abbr] || '#808080'));
+      // The PDF map only tunes a handful of venues per theme; everything else (all the
+      // feed series, and most legacy venues) falls back to its own brand color rather
+      // than the old catch-all gray.
+      venueColors.push(hexRGB(PDF_VENUE_COLORS[venue.abbr] || venue.color || '#808080'));
       const planned = ev.planned_entries || 1;
       const entriesStr = planned + (planned === 1 ? ' Entry' : ' Entries');
       rows.push([
