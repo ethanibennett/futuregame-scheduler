@@ -22,9 +22,12 @@ sessions opened here own scheduler work.
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting
-nightly at 05:00 (hygiene; the MTT feed now re-ingests hourly in-process). `pm2 logs futuregame-scheduler`. Reboot
-persistence via Task Scheduler `futuregame-pm2-resurrect`. Don't start a second server
-on 3001 — test on a scratch port with a `DB_PATH` copy.
+nightly at 05:00 (hygiene only now — the MTT feed re-ingests hourly in-process).
+`pm2 logs futuregame-scheduler`. Reboot persistence via Task Scheduler
+`futuregame-pm2-resurrect`. Don't start a second server on 3001 — test on a scratch
+port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
+(`JWT_SECRET`, `SYNC_TOKEN`); after editing it, `pm2 restart ecosystem.config.cjs
+--update-env && pm2 save`.
 
 ## Data flows
 - **MTT feed (in)**: `mtt-series-watcher` emits seed JSONs to `./mtt-feed/` hourly (:15);
@@ -50,6 +53,9 @@ on 3001 — test on a scratch port with a `DB_PATH` copy.
   old branches. Recovery: `git -C D:\projects\futuregame-solver checkout -- .`, then
   `New-Item -ItemType Junction -Path D:\projects\scheduler\solver -Target D:\projects\futuregame-solver\solver`.
 - `poker-tournaments.db` is untracked runtime state owned by the pm2 app. Never commit it.
+- The MTT-feed mirror only **upserts**. When a series drops out of the watcher window the
+  local ingest prunes its rows, but prod keeps them — deletions don't propagate. Clear
+  stale prod series by hand until the seam grows a tombstone/prune protocol.
 - Console/dashboard code was stripped (PR #44, 2026-08-10) — don't re-add console routes
   here; that's the wsop-console repo's job.
 
