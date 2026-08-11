@@ -22,13 +22,18 @@ sessions opened here own scheduler work.
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting
-nightly at 05:00 to re-ingest the MTT feed. `pm2 logs futuregame-scheduler`. Reboot
+nightly at 05:00 (hygiene; the MTT feed now re-ingests hourly in-process). `pm2 logs futuregame-scheduler`. Reboot
 persistence via Task Scheduler `futuregame-pm2-resurrect`. Don't start a second server
 on 3001 — test on a scratch port with a `DB_PATH` copy.
 
 ## Data flows
 - **MTT feed (in)**: `mtt-series-watcher` emits seed JSONs to `./mtt-feed/` hourly (:15);
-  `initDatabase()` UPSERTs by (venue, event_number) at boot — hence the nightly restart.
+  `ingestMttFeed()` UPSERTs by (venue, event_number) at boot + hourly (:20), assigning
+  feed rows a deterministic `stable_id` (`MTT-<venue>-<event_number>`). After each ingest,
+  `pushMttFeedToProd()` mirrors the feed rows to futurega.me via
+  `POST /api/tournaments/feed-sync/:token` — gated by a shared `SYNC_TOKEN` env (set on
+  Render + in the local pm2 config; both sides self-disable without it). The nightly 05:00
+  restart is no longer the ingest trigger, just hygiene.
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).
