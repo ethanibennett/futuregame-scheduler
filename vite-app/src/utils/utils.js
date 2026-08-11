@@ -211,12 +211,15 @@ export const VENUE_MAP = {
   'RunGood Events: NorCal Poker Championships':   { abbr: 'RGPS NORCAL',  color: '#166534', longName: 'RGPS NorCal Championships' },
   'RunGood Main Event Satellite':                 { abbr: 'RGPS ME SAT',  color: '#357f4a', longName: 'RunGood Main Event Satellite' },
   'RunGood Mystery Bounty Satellite':             { abbr: 'RGPS MB SAT',  color: '#5b9e6b', longName: 'RunGood Mystery Bounty Satellite' },
+  'RunGood Events: The Gateway Poker Classic':    { abbr: 'RGPS GATEWAY', color: '#1e7a45', longName: 'RGPS Gateway Poker Classic' },
+  'RunGood Events: San Diego Poker Classic':      { abbr: 'RGPS SAN DIEGO', color: '#3d9160', longName: 'RGPS San Diego Poker Classic' },
 
   // MSPT / MSPC (indigo family)
   "MSPT '26 Cleveland-Summer":              { abbr: 'MSPT CLEVELAND', color: '#3f51b5', longName: 'MSPT Cleveland' },
   "MSPT '26 Indiana Poker State Championship": { abbr: 'MSPT INDIANA', color: '#303f9f', longName: 'MSPT Indiana State Championship' },
   "MSPT '26 Spade Poker Championship":      { abbr: 'MSPT SPADE',     color: '#5c6bc0', longName: 'MSPT Spade Championship' },
   'MSPT Canadian Poker Championship':       { abbr: 'MSPT CANADA',    color: '#283593', longName: 'MSPT Canadian Championship' },
+  "MSPT '26 Chicago-Summer":                { abbr: 'MSPT CHICAGO',   color: '#3a49a8', longName: 'MSPT Chicago' },
   'MSPC Warm-Up':                           { abbr: 'MSPC WARM-UP',   color: '#4a5bb8', longName: 'MSPC Warm-Up' },
 
   // WPT (violet family)
@@ -299,17 +302,38 @@ const DERIVE_STOPWORDS = new Set([
   'poker', 'the', 'of', 'at', 'and', 'a', 'an', 'gtd', 'guaranteed', 'series',
   'presents', 'event', 'events', 'tour', 'part',
 ]);
-// Mid-to-dark hues only — the venue strip prints white text over these.
-const DERIVE_PALETTE = [
-  '#1f4e8c', '#0e7490', '#166534', '#7e22ce', '#b45309', '#b91c1c', '#0f766e',
-  '#4338ca', '#9a3412', '#86198f', '#3f6212', '#155e75', '#831843', '#5a1515',
-  '#065f46', '#7c2d12', '#1e3a8a', '#a21caf', '#0369a1', '#4d7c0f', '#701a75',
-  '#9d174d', '#2d7a3e', '#583c87',
-];
 function hashVenueName(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
   return Math.abs(h);
+}
+
+// Derived colors are generated rather than drawn from a fixed list. A fixed list
+// was the original approach and it was wrong: its entries were reused from the
+// curated colors above, so a derived series reliably collided with a curated one
+// (RUNGOOD SAN landed on DS SHOWDOWN's purple, MSPT on DEEP NLH's olive).
+// Hue comes from the name so a series keeps its color across reloads; saturation
+// and lightness are fixed at values whose worst case over all 360 hues is 3.96:1
+// against the strip's white text.
+const DERIVE_SAT = 0.62;
+const DERIVE_LIGHT = 0.32;
+function hslToHex(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+    : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+}
+// Colors already spoken for by a curated entry, so derivation can step around them.
+const CURATED_COLORS = new Set(Object.keys(VENUE_MAP).map(k => VENUE_MAP[k].color.toLowerCase()));
+function deriveColor(name) {
+  const base = hashVenueName(name) % 360;
+  for (let i = 0; i < 52; i++) {          // 52 * 7deg walks the whole wheel
+    const hex = hslToHex((base + i * 7) % 360, DERIVE_SAT, DERIVE_LIGHT);
+    if (!CURATED_COLORS.has(hex)) return hex;
+  }
+  return hslToHex(base, DERIVE_SAT, DERIVE_LIGHT);
 }
 export function deriveVenueInfo(v) {
   const raw = String(v || '');
@@ -331,7 +355,7 @@ export function deriveVenueInfo(v) {
     if (abbr.split(' ').length >= 2) break;
   }
   abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 14) || '?';
-  return { abbr, color: DERIVE_PALETTE[hashVenueName(raw) % DERIVE_PALETTE.length], longName: raw };
+  return { abbr, color: deriveColor(raw), longName: raw };
 }
 
 // Derived entries are cached by abbr so getVenueBrandColor() can resolve their
