@@ -9280,6 +9280,53 @@ function feedStableId(t) {
   return `MTT-${v}-${t.event_number}`;
 }
 
+// Tables holding user work that references a tournament. A feed row touched by any of
+// them is never pruned: a series dropping out of the watcher's window usually means it
+// ENDED, and those are exactly the events someone has results or a saved entry for.
+// Deleting them would destroy real history to tidy up a schedule.
+const FEED_REF_TABLES = [
+  'user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
+  'backer_event_overrides', 'backer_event_status', 'swap_suggestions',
+];
+function feedRefGuardSql() {
+  const present = FEED_REF_TABLES.filter(name => {
+    const s = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?");
+    s.bind([name]);
+    const found = s.step();
+    s.free();
+    return found;
+  });
+  return present
+    .map(t => ` AND NOT EXISTS (SELECT 1 FROM ${t} r WHERE r.tournament_id = tournaments.id)`)
+    .join('');
+}
+
+// Delete feed-managed rows whose series is no longer in `keepVenues`. Shared by the local
+// ingest and the production feed-sync endpoint so both databases prune by the same rule.
+// Returns {pruned, skipped} — skipped counts rows kept only because of the guard above.
+function pruneFeedVenues(keepVenues, label) {
+  const keep = new Set(keepVenues);
+  const distinct = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = 'mtt-feed'");
+  if (!distinct.length) return { pruned: 0, skipped: 0 };
+  const guard = feedRefGuardSql();
+  let pruned = 0, skipped = 0;
+  for (const [venue] of distinct[0].values) {
+    if (keep.has(venue)) continue;
+    const before = db.exec(
+      "SELECT COUNT(*) FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?",
+      [venue]
+    )[0].values[0][0];
+    db.run(`DELETE FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?${guard}`, [venue]);
+    const gone = db.getRowsModified();
+    pruned += gone;
+    skipped += before - gone;
+  }
+  if (skipped > 0) {
+    console.log(`[${label}] kept ${skipped} row(s) from dropped series — referenced by saved schedules or results`);
+  }
+  return { pruned, skipped };
+}
+
 async function ingestMttFeed() {
   const fs = require('fs');
   try {
@@ -9290,17 +9337,8 @@ async function ingestMttFeed() {
     // Prune feed-managed rows (source_pdf='mtt-feed') for series no longer in the manifest — i.e.
     // series that ended or dropped out of the watcher's forward window. Keeps the schedule in sync
     // with the feed (add/update/remove) without touching non-feed tournaments.
-    const manifestVenues = new Set(manifest.map(e => e.venue));
-    const distinctFeed = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = 'mtt-feed'");
-    if (distinctFeed.length) {
-      for (const row of distinctFeed[0].values) {
-        const v = row[0];
-        if (!manifestVenues.has(v)) {
-          db.run("DELETE FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?", [v]);
-          pruned += db.getRowsModified();
-        }
-      }
-    }
+    const manifestVenues = manifest.map(e => e.venue);
+    pruned = pruneFeedVenues(manifestVenues, 'MTT feed').pruned;
     for (const entry of manifest) {
       const filePath = path.join(__dirname, 'mtt-feed', entry.file);
       if (!fs.existsSync(filePath)) continue;
@@ -9363,14 +9401,19 @@ async function pushMttFeedToProd() {
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
     if (!rows.length) return;
+    // feedVenues is the authoritative list of series we still carry. The receiver prunes
+    // feed rows outside it, so a series ending here also ends there — without it, prod
+    // accumulated series the watcher had long dropped.
+    const feedVenues = [...new Set(rows.map(r => r.venue))];
     const res = await fetch(`${FEED_SYNC_BASE_URL}/api/tournaments/feed-sync/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tournaments: rows })
+      body: JSON.stringify({ tournaments: rows, feedVenues })
     });
     if (!res.ok) { console.log('[MTT feed] prod push failed:', res.status); return; }
     const result = await res.json();
-    console.log(`[MTT feed] → prod: ${result.inserted} new, ${result.updated} updated, ${result.skipped} skipped`);
+    const prunedNote = result.pruned ? `, ${result.pruned} pruned` : '';
+    console.log(`[MTT feed] → prod: ${result.inserted} new, ${result.updated} updated, ${result.skipped} skipped${prunedNote}`);
   } catch (err) {
     console.error('[MTT feed] prod push error:', err.message);
   }
@@ -11246,14 +11289,29 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
   if (!expected || req.params.token !== expected) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { tournaments } = req.body;
+  const { tournaments, feedVenues } = req.body;
   if (!tournaments || !Array.isArray(tournaments)) {
     return res.status(400).json({ error: 'Expected { tournaments: [...] }' });
   }
 
   try {
     const result = await upsertTournamentsByStableId(tournaments, 'mtt-feed');
-    res.json({ ...result, total: tournaments.length });
+    // Reconcile deletions. Guarded three ways so a truncated or malformed push can't
+    // empty the production schedule: the venue list must be present and non-empty, the
+    // upsert must have actually landed rows, and pruneFeedVenues() skips anything a user
+    // has saved or logged results against. The second guard counts upserted rows rather
+    // than payload length — a payload of malformed rows is all skipped, and that must not
+    // be read as "the feed is now empty, delete everything else".
+    let pruned = 0;
+    if (Array.isArray(feedVenues) && feedVenues.length && (result.inserted + result.updated) > 0) {
+      pruned = pruneFeedVenues(feedVenues, 'FeedSync').pruned;
+      if (pruned > 0) {
+        await saveDatabase();
+        console.log(`[FeedSync] pruned ${pruned} row(s) from series no longer in the feed`);
+        broadcastToAll('schedule-refetch', { source: 'mtt-feed-prune', pruned });
+      }
+    }
+    res.json({ ...result, pruned, total: tournaments.length });
   } catch (err) {
     console.error('[FeedSync] Error:', err.message);
     res.status(500).json({ error: err.message });

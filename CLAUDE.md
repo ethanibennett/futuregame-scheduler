@@ -35,8 +35,14 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   feed rows a deterministic `stable_id` (`MTT-<venue>-<event_number>`). After each ingest,
   `pushMttFeedToProd()` mirrors the feed rows to futurega.me via
   `POST /api/tournaments/feed-sync/:token` — gated by a shared `SYNC_TOKEN` env (set on
-  Render + in the local pm2 config; both sides self-disable without it). The nightly 05:00
-  restart is no longer the ingest trigger, just hygiene.
+  Render + in the local pm2 config; both sides self-disable without it). The push also
+  carries `feedVenues` so prod prunes series that left the window (see Hazards). The
+  nightly 05:00 restart is no longer the ingest trigger, just hygiene.
+- **Venue strips**: the feed's `venue` is a SERIES title, but the UI shows the poker ROOM.
+  `VENUE_MAP` in `vite-app/src/utils/utils.js` maps series → property; property names come
+  from the watcher's `series_directory` table (PokerAtlas `venue_name`), never guessed.
+  Unmapped series fall back to `deriveVenueInfo()` (abbr from the title + a generated
+  color), so a new series is readable before anyone curates it.
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).
@@ -53,9 +59,13 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   old branches. Recovery: `git -C D:\projects\futuregame-solver checkout -- .`, then
   `New-Item -ItemType Junction -Path D:\projects\scheduler\solver -Target D:\projects\futuregame-solver\solver`.
 - `poker-tournaments.db` is untracked runtime state owned by the pm2 app. Never commit it.
-- The MTT-feed mirror only **upserts**. When a series drops out of the watcher window the
-  local ingest prunes its rows, but prod keeps them — deletions don't propagate. Clear
-  stale prod series by hand until the seam grows a tombstone/prune protocol.
+- The MTT-feed mirror reconciles deletions: the push carries `feedVenues` (the series we
+  still hold) and the receiver prunes feed rows outside it. Pruning **never** touches a row
+  referenced by `user_schedules`, `tracking_entries`, `live_updates`, `schedule_conditions`,
+  `backer_event_*` or `swap_suggestions` — a series leaving the window usually means it
+  ENDED, and those are exactly the events someone has results for. Prune is skipped
+  entirely unless the push actually upserted rows, so a malformed payload can't empty
+  production.
 - Console/dashboard code was stripped (PR #44, 2026-08-10) — don't re-add console routes
   here; that's the wsop-console repo's job.
 
