@@ -16,7 +16,9 @@ const VENUE_CANVAS_COLORS = {
 
 function getVenueCanvasColor(venueName) {
   const info = getVenueInfo(venueName);
-  return VENUE_CANVAS_COLORS[info.abbr] || '#808080';
+  // Same fallback story as the PDF table: the canvas map only covers a handful of
+  // venues, so everything else uses its own brand color rather than a flat gray.
+  return VENUE_CANVAS_COLORS[info.abbr] || info.color || '#808080';
 }
 
 function drawWatermark(ctx, w, h, pos) {
@@ -221,7 +223,10 @@ export async function generateSchedulePDF(events, title, opts = {}) {
         prevDate = d;
       }
       const venue = getVenueInfo(ev.venue);
-      venueColors.push(hexRGB(PDF_VENUE_COLORS[venue.abbr] || '#808080'));
+      // The PDF map only tunes a handful of venues per theme; everything else (all the
+      // feed series, and most legacy venues) falls back to its own brand color rather
+      // than the old catch-all gray.
+      venueColors.push(hexRGB(PDF_VENUE_COLORS[venue.abbr] || venue.color || '#808080'));
       const planned = ev.planned_entries || 1;
       const entriesStr = planned + (planned === 1 ? ' Entry' : ' Entries');
       rows.push([
@@ -490,8 +495,8 @@ function drawSchedulePage(ctx, w, h, pageEvents, pageNum, totalPages, title, opt
   };
   function getCanvasVenueColor(venueName) {
     const info = getVenueInfo(venueName);
-    if (isLight) return CANVAS_VENUE_LIGHT[info.abbr] || '#646464';
-    return VENUE_CANVAS_COLORS[info.abbr] || '#808080';
+    if (isLight) return CANVAS_VENUE_LIGHT[info.abbr] || info.color || '#646464';
+    return VENUE_CANVAS_COLORS[info.abbr] || info.color || '#808080';
   }
 
   ctx.fillStyle = cBG;

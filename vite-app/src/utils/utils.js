@@ -147,8 +147,8 @@ export const VENUE_MAP = {
   'Paris Las Vegas':             { abbr: 'PRS',   color: '#909090', longName: 'Paris Las Vegas' },
   'Wynn Las Vegas':              { abbr: 'WYNN',  color: '#cc0000', longName: 'Wynn Summer Classic' },
   'Wynn':                        { abbr: 'WYNN',  color: '#cc0000', longName: 'Wynn Summer Classic' },
-  'Aria':                        { abbr: 'ARIA',  color: '#999999', longName: 'Aria Resort & Casino' },
-  'Aria Resort & Casino':        { abbr: 'ARIA',  color: '#999999', longName: 'Aria Resort & Casino' },
+  'Aria':                        { abbr: 'ARIA',  color: '#5a3a9a', longName: 'Aria Resort & Casino' },
+  'Aria Resort & Casino':        { abbr: 'ARIA',  color: '#5a3a9a', longName: 'Aria Resort & Casino' },
   'Resorts World':               { abbr: 'RESORTS WORLD', color: '#7a7a7a', longName: 'Resorts World Las Vegas' },
   'Venetian':                    { abbr: 'VENETIAN',   color: '#3b0a0a', longName: 'Venetian Poker Series' },
   'Venetian DeepStack Extravaganza': { abbr: 'VENETIAN', color: '#3b0a0a', longName: 'Venetian DeepStack Extravaganza' },
@@ -158,18 +158,18 @@ export const VENUE_MAP = {
   'MGM Grand':                   { abbr: 'MGM GRAND', color: '#15803d', longName: 'MGM Grand' },
   'MGM National Harbor':         { abbr: 'MGM NH',    color: '#b8860b', longName: 'MGM National Harbor' },
   'Irish Poker Open':            { abbr: 'IPO',       color: '#1a6b3c', longName: 'Irish Poker Open' },
-  'Personal':                    { abbr: 'PERSONAL',  color: '#4a9eff', longName: 'Personal' },
+  'Personal':                    { abbr: 'PERSONAL',  color: '#2f7fe0', longName: 'Personal' },
   'Turning Stone Casino':        { abbr: 'TURNING STONE', color: '#8b0000', longName: 'WSOPC Turning Stone' },
   'Texas Card House':            { abbr: 'TCH', color: '#a0522d', longName: 'WSOPC Austin' },
-  'Caesars Palace':              { abbr: 'CAESARS', color: '#b8962e', longName: 'Caesars Palace' },
+  'Caesars Palace':              { abbr: 'CAESARS', color: '#9c7d20', longName: 'Caesars Palace' },
   'Seminole Hard Rock':          { abbr: 'HARD ROCK', color: '#1a9e9e', longName: 'Seminole Hard Rock' },
   'WSOP Europe':                 { abbr: 'WSOPE', color: '#1a3c6e', longName: 'WSOP Europe' },
   'WSOP Online':                 { abbr: 'WSOP.COM', color: '#0e7490', longName: 'WSOP Online' },
   'WSOP.com':                    { abbr: 'WSOP.COM', color: '#0e7490', longName: 'WSOP Online' },
   'Borgata':                     { abbr: 'BORGATA', color: '#6b21a8', longName: 'Borgata Spring Poker Open' },
   'Foxwoods':                    { abbr: 'FOXWOODS', color: '#4a2d7a', longName: 'Foxwoods Poker Classic' },
-  'Thunder Valley':              { abbr: 'THUNDER VALLEY', color: '#d4a017', longName: 'Thunder Valley Poker Series' },
-  'Bellagio':                    { abbr: 'BELLAGIO', color: '#c9a867', longName: 'Bellagio' },
+  'Thunder Valley':              { abbr: 'THUNDER VALLEY', color: '#a87c0a', longName: 'Thunder Valley Poker Series' },
+  'Bellagio':                    { abbr: 'BELLAGIO', color: '#a8863f', longName: 'Bellagio' },
   'Lodge Poker Club':            { abbr: 'LODGE', color: '#2d5a27', longName: 'Lodge Championship Series' },
   'bestbet Jacksonville':        { abbr: 'BESTBET', color: '#1a73e8', longName: 'bestbet Jacksonville' },
   "Bally's Lake Tahoe":          { abbr: 'BALLY\'S', color: '#b91c1c', longName: 'WSOPC Lake Tahoe' },
@@ -177,10 +177,172 @@ export const VENUE_MAP = {
   'WSOPC Cherokee':              { abbr: 'CHEROKEE', color: '#e91e90', longName: 'WSOPC Cherokee' },
   'Choctaw Casino':              { abbr: 'CHOCTAW', color: '#dc2626', longName: 'WSOPC Choctaw' },
   'Horseshoe Tunica':            { abbr: 'TUNICA', color: '#0d6efd', longName: 'WSOPC Tunica' },
-  'WSOPC Horseshoe Las Vegas':   { abbr: 'WSOPC-LV', color: '#d4a017', longName: 'WSOPC Horseshoe LV' },
+  'WSOPC Horseshoe Las Vegas':   { abbr: 'WSOPC-LV', color: '#bf7d08', longName: 'WSOPC Horseshoe LV' },
+
+  // ── MTT-feed series (mtt-series-watcher) ────────────────
+  // The watcher names a "venue" after the SERIES, not the property, so these are
+  // series entries. Colors are brand-anchored: same-brand series share a hue family
+  // but each gets its own shade, so a series is identifiable while the brand stays
+  // readable. All are dark enough for the strip's white text in both themes.
+  // longName MUST start with "WSOPC" for circuit stops — isBraceletEvent/isRingEvent
+  // key off it to decide whether to show the ring icon.
+
+  // WSOP Circuit — domestic stops (gold/bronze family)
+  '2026-27 WSOPC Atlantic City':   { abbr: 'WSOPC AC',       color: '#b8860b', longName: 'WSOPC Atlantic City' },
+  '2026-27 WSOPC Cherokee-Summer': { abbr: 'WSOPC CHEROKEE', color: '#a06a10', longName: 'WSOPC Cherokee' },
+  '2026-27 WSOPC Tulsa-Summer':    { abbr: 'WSOPC TULSA',    color: '#8a6508', longName: 'WSOPC Tulsa' },
+  '2026-27 WSOPC Tunica-Summer':   { abbr: 'WSOPC TUNICA',   color: '#c2800a', longName: 'WSOPC Tunica' },
+  '2026-27 WSOPC Upstate NY-Fall': { abbr: 'WSOPC NY',       color: '#6f4e05', longName: 'WSOPC Upstate NY' },
+  // "Virgnia" is misspelled upstream in the feed — key must match the feed verbatim.
+  '2026-27 WSOPC Virgnia':         { abbr: 'WSOPC VIRGINIA', color: '#9c7a1a', longName: 'WSOPC Virginia' },
+
+  // WSOP International Circuit + Super Circuit (blue family)
+  '2026-27 WSOP International Circuit Liechtenstein': { abbr: 'LIECHTENSTEIN',  color: '#3b5f9e', longName: 'WSOPC Liechtenstein' },
+  '2026-27 WSOP International Circuit Malta':         { abbr: 'WSOPC MALTA',    color: '#2b6cb0', longName: 'WSOPC Malta' },
+  '2026-27 WSOP International Circuit Mexico':        { abbr: 'WSOPC MEXICO',   color: '#1a5490', longName: 'WSOPC Mexico' },
+  '2026-27 WSOP International Circuit Slovakia':      { abbr: 'WSOPC SLOVAKIA', color: '#17456f', longName: 'WSOPC Slovakia' },
+  'WSOP Super Circuit Canada':                        { abbr: 'WSOPC CANADA',   color: '#2f7fbf', longName: 'WSOPC Canada' },
+
+  // RunGood / RGPS (green family)
+  '2026 RGPS Golden Expedition':                  { abbr: 'RGPS GOLDEN',  color: '#2d7a3e', longName: 'RGPS Golden Expedition' },
+  '2026 RUNGOOD AND THE GOLDEN EXPEDITION SERIES':{ abbr: 'RUNGOOD GOLD', color: '#1f6b34', longName: 'RunGood Golden Expedition Series' },
+  '2026 RunGood Golden Expedition':               { abbr: 'RUNGOOD EXPD', color: '#3f8f57', longName: 'RunGood Golden Expedition' },
+  'RGPS: Golden Expedition-Louisville/S. Indiana':{ abbr: 'LOUISVILLE',   color: '#4a9e5c', longName: 'RGPS Louisville' },
+  'RunGood Events: NorCal Poker Championships':   { abbr: 'RGPS NORCAL',  color: '#166534', longName: 'RGPS NorCal Championships' },
+  'RunGood Main Event Satellite':                 { abbr: 'RGPS ME SAT',  color: '#357f4a', longName: 'RunGood Main Event Satellite' },
+  'RunGood Mystery Bounty Satellite':             { abbr: 'RGPS MB SAT',  color: '#5b9e6b', longName: 'RunGood Mystery Bounty Satellite' },
+
+  // MSPT / MSPC (indigo family)
+  "MSPT '26 Cleveland-Summer":              { abbr: 'MSPT CLEVELAND', color: '#3f51b5', longName: 'MSPT Cleveland' },
+  "MSPT '26 Indiana Poker State Championship": { abbr: 'MSPT INDIANA', color: '#303f9f', longName: 'MSPT Indiana State Championship' },
+  "MSPT '26 Spade Poker Championship":      { abbr: 'MSPT SPADE',     color: '#5c6bc0', longName: 'MSPT Spade Championship' },
+  'MSPT Canadian Poker Championship':       { abbr: 'MSPT CANADA',    color: '#283593', longName: 'MSPT Canadian Championship' },
+  'MSPC Warm-Up':                           { abbr: 'MSPC WARM-UP',   color: '#4a5bb8', longName: 'MSPC Warm-Up' },
+
+  // WPT (violet family)
+  '2026 WPT bestbet Scramble': { abbr: 'WPT BESTBET', color: '#6d28d9', longName: 'WPT bestbet Scramble' },
+  'WPT Australia-Sydney':      { abbr: 'WPT SYDNEY',  color: '#7c3aed', longName: 'WPT Australia — Sydney' },
+
+  // Wynn (red family)
+  '2026 Wynn Fall Classic':           { abbr: 'WYNN FALL',      color: '#a30000', longName: 'Wynn Fall Classic' },
+  'Wynn Signature Series August 2026':{ abbr: 'WYNN SIGNATURE', color: '#cc0000', longName: 'Wynn Signature Series' },
+
+  // Hard Rock (teal family)
+  "Seminole Hard Rock Poker Open '26": { abbr: 'SHRPO',   color: '#0a6a6a', longName: 'Seminole Hard Rock Poker Open' },
+  'Hard Rock Fall Classic':            { abbr: 'HR FALL', color: '#127f7f', longName: 'Hard Rock Fall Classic' },
+
+  // Texas Card House Austin (sienna family)
+  "Anniversary Weekend At TCH Austin '26": { abbr: 'TCH ANNIV', color: '#a0522d', longName: 'TCH Austin Anniversary Weekend' },
+  "Deaf Poker Tour At TCH Austin '26":     { abbr: 'TCH DEAF',  color: '#8b4513', longName: 'Deaf Poker Tour — TCH Austin' },
+
+  // Grind Series (purple family)
+  "The Mini Grind Series - Aug. '26":  { abbr: 'MINI GRIND AUG', color: '#7e22ce', longName: 'The Mini Grind Series — August' },
+  "The Mini Grind Series - Sept. '26": { abbr: 'MINI GRIND SEP', color: '#9333ea', longName: 'The Mini Grind Series — September' },
+  "The Pure Grind Series: Alpha Stack Madness - Aug. '26":  { abbr: 'PURE GRIND A', color: '#7b2fb5', longName: 'Pure Grind — Alpha Stack Madness' },
+  "The Pure Grind Series: Super Seat Re-Up - Sept. '26":    { abbr: 'PURE GRIND S', color: '#581c87', longName: 'Pure Grind — Super Seat Re-Up' },
+
+  // Trailblazer (amber family)
+  'Trailblazer Tour Season III':       { abbr: 'TRAILBLAZER', color: '#b45309', longName: 'Trailblazer Tour Season III' },
+  'Trailblazer Satellite Leaderboard': { abbr: 'TB SAT',      color: '#c2660a', longName: 'Trailblazer Satellite Leaderboard' },
+
+  // Wild West (brown family)
+  '2026 Wild West Outlaw Series': { abbr: 'WILD WEST', color: '#78350f', longName: 'Wild West Outlaw Series' },
+  'The Wild West Poker Tour 2026':{ abbr: 'WW TOUR',   color: '#92400e', longName: 'Wild West Poker Tour' },
+
+  // Summer Showdown (teal-green family)
+  '2026 Summer Showdown':  { abbr: 'SHOWDOWN',    color: '#0f766e', longName: 'Summer Showdown' },
+  "Summer Showdown '26":   { abbr: 'SHOWDOWN 26', color: '#115e59', longName: "Summer Showdown '26" },
+
+  // Multi-Room Mayhem (crimson family)
+  '$250,000 Multi-Room Mayhem IV Part 1': { abbr: 'MAYHEM IV P1', color: '#be123c', longName: 'Multi-Room Mayhem IV — Part 1' },
+  '$250,000 Multi-Room Mayhem IV Part 2': { abbr: 'MAYHEM IV P2', color: '#9f1239', longName: 'Multi-Room Mayhem IV — Part 2' },
+
+  // Standalone series
+  'The Borgata Big, Big Series':          { abbr: 'BORGATA BIG',    color: '#6b21a8', longName: 'Borgata Big, Big Series' },
+  "$100K Road to Riches - Aug. '26":      { abbr: 'ROAD TO RICHES', color: '#c2410c', longName: '$100K Road to Riches' },
+  "$200K Multi-Flight - Aug. '26":        { abbr: 'MULTI-FLIGHT',   color: '#c8500f', longName: '$200K Multi-Flight' },
+  '2026 Arizona State Poker Championship':{ abbr: 'ARIZONA STATE',  color: '#b91c1c', longName: 'Arizona State Championship' },
+  '2026 Deadwood Shootout':               { abbr: 'DEADWOOD',       color: '#7c2d12', longName: 'Deadwood Shootout' },
+  '2026 Great Lakes Poker Classic - Summer': { abbr: 'GREAT LAKES', color: '#0e7490', longName: 'Great Lakes Poker Classic' },
+  '2026 Legends of Poker':                { abbr: 'LEGENDS',        color: '#4338ca', longName: 'Legends of Poker' },
+  '2026 Louisiana State Poker Championship': { abbr: 'LOUISIANA',   color: '#7e1a5f', longName: 'Louisiana State Championship' },
+  '2026 MEGA Monster $1.5 MIllion Guaranteed': { abbr: 'MEGA MONSTER', color: '#166534', longName: 'MEGA Monster' },
+  '2026 Maryland State Poker Championship':  { abbr: 'MARYLAND',    color: '#a21caf', longName: 'Maryland State Championship' },
+  '2026 Summer Poker Open':               { abbr: 'SUMMER OPEN',    color: '#1d4ed8', longName: 'Summer Poker Open' },
+  '2026 Summer Poker Round Up':           { abbr: 'ROUND UP',       color: '#0e7f96', longName: 'Summer Poker Round Up' },
+  'AUGUST CLASSIC':                       { abbr: 'AUGUST CLASSIC', color: '#854d0e', longName: 'August Classic' },
+  "August '26 Deep Stack Special":        { abbr: 'DEEP STACK',     color: '#3f6212', longName: 'August Deep Stack Special' },
+  "Battle For The Chalice - Aug. '26":    { abbr: 'CHALICE',        color: '#86198f', longName: 'Battle For The Chalice' },
+  'Big Stax XXXIX':                       { abbr: 'BIG STAX',       color: '#1e3a8a', longName: 'Big Stax XXXIX' },
+  'CSOP 2026':                            { abbr: 'CSOP',           color: '#065f46', longName: 'CSOP 2026' },
+  "Columbus Quarterly Series - Sept. '26":{ abbr: 'COLUMBUS',       color: '#9a3412', longName: 'Columbus Quarterly Series' },
+  'Dania $100K Multi Flight August 2026': { abbr: 'DANIA',          color: '#0369a1', longName: 'Dania $100K Multi-Flight' },
+  "Deep NLH - Aug. '26":                  { abbr: 'DEEP NLH',       color: '#4d7c0f', longName: 'Deep NLH' },
+  'DeepStack Extravaganza III 2026':      { abbr: 'DEEPSTACK EXT',  color: '#5a1515', longName: 'Venetian DeepStack Extravaganza III' },
+  'DeepStack Showdown (August) 2026':     { abbr: 'DS SHOWDOWN',    color: '#701a75', longName: 'DeepStack Showdown' },
+  'Elite 20K GTD':                        { abbr: 'ELITE 20K',      color: '#155e75', longName: 'Elite 20K GTD' },
+  'FINAL SIEGE 1OK GTD':                  { abbr: 'FINAL SIEGE',    color: '#831843', longName: 'Final Siege 10K GTD' },
+  "Potomac Summer Poker Open '26":        { abbr: 'POTOMAC',        color: '#9d174d', longName: 'Potomac Summer Poker Open' },
+  'Queens & Cards Weekend':               { abbr: 'QUEENS & CARDS', color: '#be185d', longName: 'Queens & Cards Weekend' },
+  'SUMMER SIZZLE SERIES 2':               { abbr: 'SUMMER SIZZLE',  color: '#a83208', longName: 'Summer Sizzle Series 2' },
+  'Série Estivale':                       { abbr: 'SÉRIE ESTIVALE', color: '#1e40af', longName: 'Série Estivale' },
+  'Tampa Deepstacks Challenge August 2026': { abbr: 'TAMPA',        color: '#047857', longName: 'Tampa Deepstacks Challenge' },
 };
+
+// ── Auto-derived venue identity (unmapped series) ─────────
+// The MTT feed's forward window rotates: series age out and brand-new ones appear
+// between releases. Without this, a new series falls back to slice(0,4) + gray —
+// which is why ~20 series all rendered as an identical gray "2026" strip. Derivation
+// gives every future arrival a readable abbreviation and a stable distinct color
+// until (or unless) someone adds a curated entry above.
+const DERIVE_STOPWORDS = new Set([
+  'poker', 'the', 'of', 'at', 'and', 'a', 'an', 'gtd', 'guaranteed', 'series',
+  'presents', 'event', 'events', 'tour', 'part',
+]);
+// Mid-to-dark hues only — the venue strip prints white text over these.
+const DERIVE_PALETTE = [
+  '#1f4e8c', '#0e7490', '#166534', '#7e22ce', '#b45309', '#b91c1c', '#0f766e',
+  '#4338ca', '#9a3412', '#86198f', '#3f6212', '#155e75', '#831843', '#5a1515',
+  '#065f46', '#7c2d12', '#1e3a8a', '#a21caf', '#0369a1', '#4d7c0f', '#701a75',
+  '#9d174d', '#2d7a3e', '#583c87',
+];
+function hashVenueName(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+export function deriveVenueInfo(v) {
+  const raw = String(v || '');
+  if (!raw) return { abbr: '?', color: '#808080', longName: '' };
+  const cleaned = raw
+    .replace(/\$[\d,.]+\s*(k|m|mil|million)?/gi, ' ')   // "$250,000", "$100K"
+    .replace(/\b(19|20)\d{2}(\s*-\s*\d{2})?\b/g, ' ')   // "2026", "2026-27"
+    .replace(/['’]\d{2}\b/g, ' ')                   // "'26"
+    .replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\b/gi, ' ')
+    .replace(/[^\w\s&-]/g, ' ');
+  const words = cleaned.split(/\s+/).filter(Boolean)
+    .filter(w => !DERIVE_STOPWORDS.has(w.toLowerCase()));
+  // Take whole words while they fit the strip (existing entries top out ~14 chars).
+  let abbr = '';
+  for (const w of words) {
+    const next = abbr ? `${abbr} ${w}` : w;
+    if (next.length > 14) break;
+    abbr = next;
+    if (abbr.split(' ').length >= 2) break;
+  }
+  abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 14) || '?';
+  return { abbr, color: DERIVE_PALETTE[hashVenueName(raw) % DERIVE_PALETTE.length], longName: raw };
+}
+
+// Derived entries are cached by abbr so getVenueBrandColor() can resolve their
+// fallback color the same way it resolves a curated one.
+const DERIVED_BY_ABBR = new Map();
 export function getVenueInfo(v) {
-  return VENUE_MAP[v] ?? { abbr: v ? v.slice(0, 4).toUpperCase() : '?', color: '#808080', longName: v || '' };
+  const mapped = VENUE_MAP[v];
+  if (mapped) return mapped;
+  const derived = deriveVenueInfo(v);
+  DERIVED_BY_ABBR.set(derived.abbr, derived);
+  return derived;
 }
 
 // Actual branded pill colors for mini late-reg bar
@@ -216,13 +378,27 @@ export const VENUE_BRAND_VAR = {
   'PRS':            '--venue-prs',
   'WSOPC-LV':       '--venue-wsopc-lv',
 };
+// abbr → curated color, built once. First entry wins so the legacy venue names above
+// stay authoritative for shared abbrs (e.g. both Wynn keys resolve to WYNN's red).
+const COLOR_BY_ABBR = (() => {
+  const m = new Map();
+  for (const k of Object.keys(VENUE_MAP)) {
+    const e = VENUE_MAP[k];
+    if (!m.has(e.abbr)) m.set(e.abbr, e.color);
+  }
+  return m;
+})();
+
 export function getVenueBrandColor(abbr) {
   let cssVar = VENUE_BRAND_VAR[abbr];
   if (!cssVar) {
     cssVar = `--venue-${abbr.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')}`;
     VENUE_BRAND_VAR[abbr] = cssVar;
   }
-  return `var(${cssVar}, ${(VENUE_MAP[Object.keys(VENUE_MAP).find(k => VENUE_MAP[k].abbr === abbr)] || {}).color || '#808080'})`;
+  const fallback = COLOR_BY_ABBR.get(abbr)
+    || (DERIVED_BY_ABBR.get(abbr) || {}).color
+    || '#808080';
+  return `var(${cssVar}, ${fallback})`;
 }
 
 // ── Bracelet Event Detection ──────────────────────────────
