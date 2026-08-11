@@ -16,7 +16,9 @@ const VENUE_CANVAS_COLORS = {
 
 function getVenueCanvasColor(venueName) {
   const info = getVenueInfo(venueName);
-  return VENUE_CANVAS_COLORS[info.abbr] || '#808080';
+  // Same fallback story as the PDF table: the canvas map only covers a handful of
+  // venues, so everything else uses its own brand color rather than a flat gray.
+  return VENUE_CANVAS_COLORS[info.abbr] || info.color || '#808080';
 }
 
 function drawWatermark(ctx, w, h, pos) {
@@ -493,8 +495,8 @@ function drawSchedulePage(ctx, w, h, pageEvents, pageNum, totalPages, title, opt
   };
   function getCanvasVenueColor(venueName) {
     const info = getVenueInfo(venueName);
-    if (isLight) return CANVAS_VENUE_LIGHT[info.abbr] || '#646464';
-    return VENUE_CANVAS_COLORS[info.abbr] || '#808080';
+    if (isLight) return CANVAS_VENUE_LIGHT[info.abbr] || info.color || '#646464';
+    return VENUE_CANVAS_COLORS[info.abbr] || info.color || '#808080';
   }
 
   ctx.fillStyle = cBG;
