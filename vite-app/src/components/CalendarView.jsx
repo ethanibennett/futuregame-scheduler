@@ -6,7 +6,7 @@ import {
   getVenueInfo, normaliseDate, parseDateTime, parseTournamentTime, parseDateTimeInTz,
   getToday, getNow, fmtShortDate, addDays, daysBetween,
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
-  haptic, VENUE_MAP, getVenueBrandColor, VENUE_COORDS, haversineDistance,
+  haptic, VENUE_MAP, getVenueBrandColor, getVenueCoords, haversineDistance,
   VENUE_TO_SERIES, LOCATION_REGIONS,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
@@ -750,15 +750,17 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
         }
         if (filters.selectedGames.length > 0 && !filters.selectedGames.includes(t.game_variant)) return false;
         if (filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.includes(t.venue)) return false;
+        // Both location filters treat an unknown location the same way: it can't be shown
+        // to match, so it's excluded. Previously distance kept un-located events (listing
+        // events nationwide under "within 50 miles") while region dropped them.
         if (filters.maxDistance && filters.userLocation) {
-          const coords = VENUE_COORDS[t.venue];
-          if (coords) {
-            const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
-            if (dist > Number(filters.maxDistance)) return false;
-          }
+          const coords = getVenueCoords(t.venue);
+          if (!coords) return false;
+          const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
+          if (dist > Number(filters.maxDistance)) return false;
         }
         if (filters.locationRegion) {
-          const coords = VENUE_COORDS[t.venue];
+          const coords = getVenueCoords(t.venue);
           const regionDef = typeof LOCATION_REGIONS !== 'undefined' && LOCATION_REGIONS[filters.locationRegion];
           if (regionDef) { if (!coords || !regionDef.test(coords)) return false; }
         }

@@ -6,7 +6,7 @@ import LocationDropdown from './LocationDropdown.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, findClosestFlight,
-  extractConditions, VENUE_COORDS, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
+  extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -1148,15 +1148,15 @@ export default function TournamentsView({
           if (!matchesGame && !matchesMixed) return false;
         }
         if (filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.includes(t.venue)) return false;
+        // Unknown location excludes from both filters — see the note in CalendarView.
         if (filters.maxDistance && filters.userLocation) {
-          const coords = VENUE_COORDS[t.venue];
-          if (coords) {
-            const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
-            if (dist > Number(filters.maxDistance)) return false;
-          }
+          const coords = getVenueCoords(t.venue);
+          if (!coords) return false;
+          const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
+          if (dist > Number(filters.maxDistance)) return false;
         }
         if (filters.locationRegion) {
-          const coords = VENUE_COORDS[t.venue];
+          const coords = getVenueCoords(t.venue);
           const regionDef = LOCATION_REGIONS[filters.locationRegion];
           if (regionDef) { if (!coords || !regionDef.test(coords)) return false; }
         }
