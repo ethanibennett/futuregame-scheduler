@@ -2831,76 +2831,10 @@ async function initDatabase() {
   }
 
   // ── MTT feed sync (mtt-series-watcher) ──
-  // The MTT series watcher (sibling repo mtt-series-watcher) emits pre-normalized snake_case seed
-  // files + a manifest into ./mtt-feed/. Unlike seedFiles (idempotent per-venue) this runs EVERY
-  // startup and UPSERTS by (venue, event_number), so re-emitted schedules update existing rows and
-  // add new events. Rows are already normalized (event_name/reentry/game_variant), so the JSON-seed
-  // path's lack of normalizeEventName()/normalizeReentry() is fine. Runs after dataMigrations so the
-  // added columns (prize_pool/house_fee/rake_*) already exist. No-ops when ./mtt-feed is absent.
-  try {
-    const manifestPath = path.join(__dirname, 'mtt-feed', 'manifest.json');
-    if (require('fs').existsSync(manifestPath)) {
-      const manifest = JSON.parse(require('fs').readFileSync(manifestPath, 'utf8'));
-      let upserts = 0, inserts = 0, pruned = 0;
-      // Prune feed-managed rows (source_pdf='mtt-feed') for series no longer in the manifest — i.e.
-      // series that ended or dropped out of the watcher's forward window. Keeps snbwsop in sync with
-      // the feed (add/update/remove) without touching non-feed tournaments.
-      const manifestVenues = new Set(manifest.map(e => e.venue));
-      const distinctFeed = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = 'mtt-feed'");
-      if (distinctFeed.length) {
-        for (const row of distinctFeed[0].values) {
-          const v = row[0];
-          if (!manifestVenues.has(v)) {
-            db.run("DELETE FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?", [v]);
-            pruned += db.getRowsModified();
-          }
-        }
-      }
-      for (const entry of manifest) {
-        const filePath = path.join(__dirname, 'mtt-feed', entry.file);
-        if (!require('fs').existsSync(filePath)) continue;
-        const rows = JSON.parse(require('fs').readFileSync(filePath, 'utf8'));
-        for (const t of rows) {
-          db.run(
-            `UPDATE tournaments SET
-               event_name = ?, date = ?, time = ?, buyin = ?, starting_chips = ?,
-               level_duration = ?, reentry = ?, late_reg = ?, late_reg_end = ?, game_variant = ?,
-               notes = ?, category = ?, is_satellite = ?, is_restart = ?, prize_pool = ?,
-               house_fee = ?, opt_add_on = ?, rake_pct = ?, rake_dollars = ?, is_deepstack = ?,
-               source_pdf = ?
-             WHERE venue = ? AND event_number = ?`,
-            [t.event_name, t.date, t.time, t.buyin, t.starting_chips,
-             t.level_duration, t.reentry, t.late_reg, t.late_reg_end, t.game_variant,
-             t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
-             t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
-             t.source_pdf || 'mtt-feed',
-             t.venue, t.event_number]
-          );
-          if (db.getRowsModified() > 0) { upserts++; continue; }
-          db.run(
-            `INSERT INTO tournaments (event_number, event_name, date, time, buyin,
-             starting_chips, level_duration, reentry, late_reg, late_reg_end,
-             game_variant, venue, notes, category, is_satellite, target_event,
-             is_restart, parent_event, prize_pool, house_fee, opt_add_on,
-             rake_pct, rake_dollars, source_pdf, is_deepstack)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
-             t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
-             t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
-             t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
-             t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0]
-          );
-          inserts++;
-        }
-      }
-      if (upserts + inserts + pruned > 0) {
-        await saveDatabase();
-        console.log(`MTT feed sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
-      }
-    }
-  } catch (e) {
-    console.log('MTT feed sync skipped:', e.message);
-  }
+  // Runs after dataMigrations so the added columns (prize_pool/house_fee/rake_*) already
+  // exist. Also re-runs hourly at :20 via cron (see app.listen) so the schedule tracks the
+  // watcher's :15 emits without needing a restart.
+  await ingestMttFeed();
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tracking_entries (
@@ -9327,6 +9261,121 @@ function backerRecordByToken(token) {
   return found;
 }
 
+// ── MTT feed ingest (mtt-series-watcher → scheduler) ──
+// The MTT series watcher (sibling repo mtt-series-watcher) emits pre-normalized snake_case
+// seed files + a manifest into ./mtt-feed/ hourly at :15. Unlike seedFiles (idempotent
+// per-venue) this UPSERTS by (venue, event_number), so re-emitted schedules update existing
+// rows and add new events. Rows are already normalized (event_name/reentry/game_variant),
+// so the JSON-seed path's lack of normalizeEventName()/normalizeReentry() is fine.
+// Runs at boot (from initDatabase, after dataMigrations) + hourly at :20. No-ops when
+// ./mtt-feed is absent. After each ingest, pushMttFeedToProd() mirrors the feed rows to
+// production (SYNC_TOKEN-gated; self-disables without the token, so the seam is opt-in).
+
+// Deterministic id for feed rows so /api/tournaments/feed-sync can upsert by stable_id.
+// event_number is unique within a venue (watcher-assigned, e.g. "PA-291042-20260811");
+// the MTT- prefix keeps these ids disjoint from the migration-era legacy ids.
+function feedStableId(t) {
+  if (!t.event_number) return null;
+  const v = String(t.venue || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12).toUpperCase();
+  return `MTT-${v}-${t.event_number}`;
+}
+
+async function ingestMttFeed() {
+  const fs = require('fs');
+  try {
+    const manifestPath = path.join(__dirname, 'mtt-feed', 'manifest.json');
+    if (!fs.existsSync(manifestPath)) return;
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    let upserts = 0, inserts = 0, pruned = 0;
+    // Prune feed-managed rows (source_pdf='mtt-feed') for series no longer in the manifest — i.e.
+    // series that ended or dropped out of the watcher's forward window. Keeps the schedule in sync
+    // with the feed (add/update/remove) without touching non-feed tournaments.
+    const manifestVenues = new Set(manifest.map(e => e.venue));
+    const distinctFeed = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = 'mtt-feed'");
+    if (distinctFeed.length) {
+      for (const row of distinctFeed[0].values) {
+        const v = row[0];
+        if (!manifestVenues.has(v)) {
+          db.run("DELETE FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?", [v]);
+          pruned += db.getRowsModified();
+        }
+      }
+    }
+    for (const entry of manifest) {
+      const filePath = path.join(__dirname, 'mtt-feed', entry.file);
+      if (!fs.existsSync(filePath)) continue;
+      const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      for (const t of rows) {
+        // COALESCE: backfill stable_id on rows that predate feedStableId without ever
+        // overwriting a legacy id production may already key on.
+        db.run(
+          `UPDATE tournaments SET
+             event_name = ?, date = ?, time = ?, buyin = ?, starting_chips = ?,
+             level_duration = ?, reentry = ?, late_reg = ?, late_reg_end = ?, game_variant = ?,
+             notes = ?, category = ?, is_satellite = ?, is_restart = ?, prize_pool = ?,
+             house_fee = ?, opt_add_on = ?, rake_pct = ?, rake_dollars = ?, is_deepstack = ?,
+             source_pdf = ?, stable_id = COALESCE(stable_id, ?)
+           WHERE venue = ? AND event_number = ?`,
+          [t.event_name, t.date, t.time, t.buyin, t.starting_chips,
+           t.level_duration, t.reentry, t.late_reg, t.late_reg_end, t.game_variant,
+           t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
+           t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
+           t.source_pdf || 'mtt-feed', feedStableId(t),
+           t.venue, t.event_number]
+        );
+        if (db.getRowsModified() > 0) { upserts++; continue; }
+        db.run(
+          `INSERT INTO tournaments (event_number, event_name, date, time, buyin,
+           starting_chips, level_duration, reentry, late_reg, late_reg_end,
+           game_variant, venue, notes, category, is_satellite, target_event,
+           is_restart, parent_event, prize_pool, house_fee, opt_add_on,
+           rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
+           t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
+           t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
+           t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
+           t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t)]
+        );
+        inserts++;
+      }
+    }
+    if (upserts + inserts + pruned > 0) {
+      await saveDatabase();
+      console.log(`MTT feed sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
+    }
+  } catch (e) {
+    console.log('MTT feed sync skipped:', e.message);
+  }
+}
+
+// Mirror feed-managed rows to production so futurega.me tracks the watcher without a
+// deploy or manual import. Only rows with a stable_id are sent (the endpoint upserts by
+// stable_id). Never runs ON production; requires SYNC_TOKEN to match Render's env.
+const FEED_SYNC_BASE_URL = process.env.FEED_SYNC_BASE_URL || 'https://futurega.me';
+async function pushMttFeedToProd() {
+  const token = process.env.SYNC_TOKEN;
+  if (!token) return;
+  if (process.env.RENDER || process.env.IS_PRODUCTION) return;
+  try {
+    const stmt = db.prepare("SELECT * FROM tournaments WHERE source_pdf = 'mtt-feed' AND stable_id IS NOT NULL");
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    if (!rows.length) return;
+    const res = await fetch(`${FEED_SYNC_BASE_URL}/api/tournaments/feed-sync/${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tournaments: rows })
+    });
+    if (!res.ok) { console.log('[MTT feed] prod push failed:', res.status); return; }
+    const result = await res.json();
+    console.log(`[MTT feed] → prod: ${result.inserted} new, ${result.updated} updated, ${result.skipped} skipped`);
+  } catch (err) {
+    console.error('[MTT feed] prod push error:', err.message);
+  }
+}
+
 // ── Backer-roster seam (dashboard → scheduler) ──
 // The backer roster (names/stakes) is authored in the standalone dashboard now;
 // our console_records 'backers' store froze at the 2026-08-09 cutover. Pull the
@@ -11117,6 +11166,59 @@ app.get('/api/tournaments/export', authenticateToken, (req, res) => {
   }
 });
 
+// Shared upsert-by-stable_id used by both sync endpoints. Rows without a stable_id are
+// skipped (there is nothing stable to key the upsert on).
+async function upsertTournamentsByStableId(tournaments, source) {
+  let inserted = 0, updated = 0, skipped = 0;
+  for (const t of tournaments) {
+    if (!t.stable_id || !t.date || !t.event_name) { skipped++; continue; }
+
+    // Genuine existence check — sql.js Statement.get() returns a truthy empty array on
+    // no-match, which made every insert count as an update (and muted the admin push).
+    const sel = db.prepare('SELECT id FROM tournaments WHERE stable_id = ?');
+    sel.bind([t.stable_id]);
+    const existing = sel.step();
+    sel.free();
+
+    db.run(
+      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(stable_id) DO UPDATE SET
+         event_number=excluded.event_number, event_name=excluded.event_name, date=excluded.date,
+         time=excluded.time, buyin=excluded.buyin, starting_chips=excluded.starting_chips,
+         level_duration=excluded.level_duration, reentry=excluded.reentry, late_reg=excluded.late_reg,
+         late_reg_end=excluded.late_reg_end, game_variant=excluded.game_variant, venue=excluded.venue,
+         notes=excluded.notes, category=excluded.category, is_satellite=excluded.is_satellite,
+         target_event=excluded.target_event, is_restart=excluded.is_restart, parent_event=excluded.parent_event,
+         day_length=excluded.day_length, prize_pool=excluded.prize_pool, house_fee=excluded.house_fee,
+         opt_add_on=excluded.opt_add_on, rake_pct=excluded.rake_pct, rake_dollars=excluded.rake_dollars,
+         is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path`,
+      [
+        t.stable_id, t.event_number || '', t.event_name, t.date, t.time || '12:00 PM',
+        t.buyin || 0, t.starting_chips || null, t.level_duration || null,
+        t.reentry || null, t.late_reg || null, t.late_reg_end || null,
+        t.game_variant || 'NLH', t.venue || 'Unknown', t.notes || null,
+        t.category || null, t.is_satellite ? 1 : 0, t.target_event || null,
+        t.is_restart ? 1 : 0, t.parent_event || null, t.day_length || null,
+        t.prize_pool || null, t.house_fee || null, t.opt_add_on || null,
+        t.rake_pct || null, t.rake_dollars || null, t.is_deepstack ? 1 : 0,
+        t.source_pdf || null, t.structure_sheet_path || null
+      ]
+    );
+    if (existing) updated++; else inserted++;
+  }
+
+  await saveDatabase();
+  console.log(`[Sync:${source}] ${inserted} new, ${updated} updated, ${skipped} skipped`);
+  if (inserted > 0 || updated > 0) {
+    broadcastToAll('schedule-refetch', { source: 'tournaments-sync', inserted, updated });
+  }
+  if (inserted > 0) {
+    sendPushToAdmin('Events Synced', `${inserted} new events added via sync`).catch(() => {});
+  }
+  return { inserted, updated, skipped };
+}
+
 // Import/sync tournaments from another environment (upserts by stable_id)
 app.post('/api/tournaments/sync', authenticateToken, express.json({ limit: '50mb' }), async (req, res) => {
   if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
@@ -11128,51 +11230,32 @@ app.post('/api/tournaments/sync', authenticateToken, express.json({ limit: '50mb
   }
 
   try {
-    let inserted = 0, updated = 0, skipped = 0;
-    for (const t of tournaments) {
-      if (!t.stable_id || !t.date || !t.event_name) { skipped++; continue; }
-
-      const existing = db.prepare('SELECT id FROM tournaments WHERE stable_id = ?').get(t.stable_id);
-
-      db.run(
-        `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(stable_id) DO UPDATE SET
-           event_number=excluded.event_number, event_name=excluded.event_name, date=excluded.date,
-           time=excluded.time, buyin=excluded.buyin, starting_chips=excluded.starting_chips,
-           level_duration=excluded.level_duration, reentry=excluded.reentry, late_reg=excluded.late_reg,
-           late_reg_end=excluded.late_reg_end, game_variant=excluded.game_variant, venue=excluded.venue,
-           notes=excluded.notes, category=excluded.category, is_satellite=excluded.is_satellite,
-           target_event=excluded.target_event, is_restart=excluded.is_restart, parent_event=excluded.parent_event,
-           day_length=excluded.day_length, prize_pool=excluded.prize_pool, house_fee=excluded.house_fee,
-           opt_add_on=excluded.opt_add_on, rake_pct=excluded.rake_pct, rake_dollars=excluded.rake_dollars,
-           is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path`,
-        [
-          t.stable_id, t.event_number || '', t.event_name, t.date, t.time || '12:00 PM',
-          t.buyin || 0, t.starting_chips || null, t.level_duration || null,
-          t.reentry || null, t.late_reg || null, t.late_reg_end || null,
-          t.game_variant || 'NLH', t.venue || 'Unknown', t.notes || null,
-          t.category || null, t.is_satellite ? 1 : 0, t.target_event || null,
-          t.is_restart ? 1 : 0, t.parent_event || null, t.day_length || null,
-          t.prize_pool || null, t.house_fee || null, t.opt_add_on || null,
-          t.rake_pct || null, t.rake_dollars || null, t.is_deepstack ? 1 : 0,
-          t.source_pdf || null, t.structure_sheet_path || null
-        ]
-      );
-      if (existing) updated++; else inserted++;
-    }
-
-    await saveDatabase();
-    console.log(`[Sync] ${inserted} new, ${updated} updated, ${skipped} skipped`);
-    if (inserted > 0 || updated > 0) {
-      broadcastToAll('schedule-refetch', { source: 'tournaments-sync', inserted, updated });
-    }
-    if (inserted > 0) {
-      sendPushToAdmin('Events Synced', `${inserted} new events added via sync`).catch(() => {});
-    }
-    res.json({ inserted, updated, skipped, total: tournaments.length });
+    const result = await upsertTournamentsByStableId(tournaments, 'admin');
+    res.json({ ...result, total: tournaments.length });
   } catch (err) {
     console.error('[Sync] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// MTT-feed seam: the Windows box's pm2 instance ingests ./mtt-feed/ hourly and mirrors the
+// rows here (see pushMttFeedToProd). Token-gated like the dashboard seams — no JWT login,
+// just a shared SYNC_TOKEN in both environments. 403s when SYNC_TOKEN is unset (opt-in).
+app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), async (req, res) => {
+  const expected = process.env.SYNC_TOKEN;
+  if (!expected || req.params.token !== expected) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const { tournaments } = req.body;
+  if (!tournaments || !Array.isArray(tournaments)) {
+    return res.status(400).json({ error: 'Expected { tournaments: [...] }' });
+  }
+
+  try {
+    const result = await upsertTournamentsByStableId(tournaments, 'mtt-feed');
+    res.json({ ...result, total: tournaments.length });
+  } catch (err) {
+    console.error('[FeedSync] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -11488,6 +11571,19 @@ initDatabase().then(() => {
       cron.schedule('35 * * * *', () => { syncBackerRoster(); }, { timezone: CONSOLE_TZ });
     } catch (err) {
       console.error('[roster] cron setup error:', err.message);
+    }
+    // MTT-feed seam: re-ingest hourly at :20 (the watcher emits at :15) and mirror the
+    // feed rows to production. Boot ingest already ran in initDatabase; the boot push
+    // here catches anything ingested while the server was down. Both self-disable
+    // appropriately (no ./mtt-feed → ingest no-ops; no SYNC_TOKEN → push no-ops).
+    try {
+      pushMttFeedToProd();
+      cron.schedule('20 * * * *', async () => {
+        await ingestMttFeed();
+        await pushMttFeedToProd();
+      }, { timezone: CONSOLE_TZ });
+    } catch (err) {
+      console.error('[MTT feed] cron setup error:', err.message);
     }
   });
 
