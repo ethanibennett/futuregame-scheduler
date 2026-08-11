@@ -1,4 +1,4 @@
-# Mac build runbook — wsop-2026-scheduler
+# Mac build runbook — futuregame-scheduler
 
 **Audience:** Claude Code running on the Mac laptop (or Ethan directly).
 **Role of this machine:** Xcode build node — the iOS/Android (Capacitor) app and the
@@ -24,7 +24,7 @@ One agent keeps both repos fresh. Adjust `REPOS` if your clone paths differ.
 #!/bin/bash
 # Pull latest master/main for the futuregame repos — only when the tree is clean.
 REPOS=(
-  "$HOME/Desktop/fg_solver/wsop"        # wsop-2026-scheduler (adjust if cloned elsewhere)
+  "$HOME/Desktop/fg_solver/wsop"        # futuregame-scheduler, formerly wsop-2026-scheduler (adjust if cloned elsewhere)
   "$HOME/Desktop/fg_solver/wsop-console-repo"  # wsop-console
 )
 for r in "${REPOS[@]}"; do
@@ -61,7 +61,7 @@ Check: `tail ~/Library/Logs/futuregame-autopull.log`
 The app wraps the **Vite build output** (`capacitor.config.json` → `webDir: public-vite`).
 
 ```bash
-cd <repo>            # wsop-2026-scheduler checkout
+cd <repo>            # futuregame-scheduler checkout
 npm install          # root deps (first time / after dep changes)
 node build.js        # vite-app deps + `vite build` → ../public-vite/
 npx cap sync ios     # copy web build + plugins into ios/App

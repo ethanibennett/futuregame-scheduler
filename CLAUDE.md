@@ -1,4 +1,4 @@
-# futuregame scheduler (wsop-2026-scheduler)
+# futuregame scheduler (futuregame-scheduler)
 
 The poker tournament scheduler/tracker at **futurega.me** — one of five projects in the
 futuregame suite (see "The suite" below). This directory is the project's **Windows home**;
@@ -51,7 +51,7 @@ on 3001 — test on a scratch port with a `DB_PATH` copy.
 ## The suite (each repo's CLAUDE.md is its handoff — open a session in that directory)
 | Project | Windows home | Repo |
 |---|---|---|
-| scheduler (this) | `D:\projects\scheduler` | wsop-2026-scheduler |
+| scheduler (this) | `D:\projects\scheduler` | futuregame-scheduler |
 | solver | `D:\projects\futuregame-solver` (grind runs in the WSL twin) | futuregame-solver |
 | cash watcher | `D:\projects\cash-game-watcher` | cash-game-watcher |
 | mtt watcher | `D:\projects\mtt-series-watcher` | mtt-series-watcher |
