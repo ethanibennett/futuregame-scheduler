@@ -43,6 +43,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   from the watcher's `series_directory` table (PokerAtlas `venue_name`), never guessed.
   Unmapped series fall back to `deriveVenueInfo()` (abbr from the title + a generated
   color), so a new series is readable before anyone curates it.
+- **Venue geo**: `PROPERTY_COORDS` (keyed by strip abbr) + `getVenueCoords(venue)` back the
+  location filters; a series inherits its property's coordinate. Values were geocoded via
+  Nominatim (the same service `/api/geocode` uses) from `venue_name` + `city_state`; lines
+  marked `city-level` are rooms OSM doesn't map by name and sit on the town centre — fine
+  at the 100-mile default, replace if a tight radius matters. Each entry carries a `region`
+  (US state or country code) because `LOCATION_REGIONS` tests states, not bounding boxes: a
+  rectangle around Texas also catches Bossier City LA and Hard Rock Tulsa OK. **A new
+  series needs a `VENUE_MAP` entry to be locatable** — without one it has no coordinate and
+  both location filters exclude it.
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).

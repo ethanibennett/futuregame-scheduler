@@ -499,48 +499,135 @@ export function getVenueTimezone(venue) {
 
 // ── Venue GPS Coordinates ─────────────────────────────────
 export const VENUE_COORDS = {
-  'Horseshoe / Paris Las Vegas': { lat: 36.1162, lng: -115.1745 },
-  'Horseshoe Las Vegas':         { lat: 36.1162, lng: -115.1745 },
-  'Paris Las Vegas':             { lat: 36.1162, lng: -115.1745 },
-  'Wynn Las Vegas':              { lat: 36.1267, lng: -115.1624 },
-  'Wynn':                        { lat: 36.1267, lng: -115.1624 },
-  'Aria':                        { lat: 36.1073, lng: -115.1765 },
-  'Aria Resort & Casino':        { lat: 36.1073, lng: -115.1765 },
-  'Resorts World':               { lat: 36.1247, lng: -115.1697 },
-  'Venetian':                    { lat: 36.1212, lng: -115.1696 },
-  'Venetian DeepStack Extravaganza': { lat: 36.1212, lng: -115.1696 },
-  'WSOPC Horseshoe Las Vegas':   { lat: 36.1162, lng: -115.1745 },
-  'Golden Nugget':               { lat: 36.1711, lng: -115.1447 },
-  'South Point':                 { lat: 36.0118, lng: -115.1720 },
-  'Orleans':                     { lat: 36.1020, lng: -115.2013 },
-  'MGM Grand':                   { lat: 36.1024, lng: -115.1696 },
-  'MGM National Harbor':         { lat: 38.7828, lng: -77.0189 },
-  'Irish Poker Open':            { lat: 53.3438, lng: -6.2530 },
-  'Turning Stone Casino':        { lat: 43.1215, lng: -75.5130 },
-  'Texas Card House':            { lat: 30.3553, lng: -97.7069 },
-  'Caesars Palace':              { lat: 36.1162, lng: -115.1745 },
-  'Seminole Hard Rock':          { lat: 26.0512, lng: -80.2109 },
-  'WSOP Europe':                 { lat: 50.0880, lng: 14.4208 },
-  'Borgata':                     { lat: 39.3772, lng: -74.4378 },
-  'Foxwoods':                    { lat: 41.4719, lng: -71.9699 },
-  'Thunder Valley':              { lat: 38.8023, lng: -121.2268 },
-  'Bellagio':                    { lat: 36.1129, lng: -115.1765 },
-  'Lodge Poker Club':            { lat: 30.6023, lng: -97.8603 },
-  'bestbet Jacksonville':        { lat: 30.3568, lng: -81.6085 },
-  "Bally's Lake Tahoe":          { lat: 38.9574, lng: -119.9459 },
-  "Harrah's Cherokee":           { lat: 35.4617, lng: -83.3225 },
-  'WSOPC Cherokee':              { lat: 35.4617, lng: -83.3225 },
-  'Choctaw Casino':              { lat: 34.0289, lng: -96.3931 },
-  'Horseshoe Tunica':            { lat: 34.6965, lng: -90.3398 },
+  'Horseshoe / Paris Las Vegas': { lat: 36.1162, lng: -115.1745, region: 'NV' },
+  'Horseshoe Las Vegas':         { lat: 36.1162, lng: -115.1745, region: 'NV' },
+  'Paris Las Vegas':             { lat: 36.1162, lng: -115.1745, region: 'NV' },
+  'Wynn Las Vegas':              { lat: 36.1267, lng: -115.1624, region: 'NV' },
+  'Wynn':                        { lat: 36.1267, lng: -115.1624, region: 'NV' },
+  'Aria':                        { lat: 36.1073, lng: -115.1765, region: 'NV' },
+  'Aria Resort & Casino':        { lat: 36.1073, lng: -115.1765, region: 'NV' },
+  'Resorts World':               { lat: 36.1247, lng: -115.1697, region: 'NV' },
+  'Venetian':                    { lat: 36.1212, lng: -115.1696, region: 'NV' },
+  'Venetian DeepStack Extravaganza': { lat: 36.1212, lng: -115.1696, region: 'NV' },
+  'WSOPC Horseshoe Las Vegas':   { lat: 36.1162, lng: -115.1745, region: 'NV' },
+  'Golden Nugget':               { lat: 36.1711, lng: -115.1447, region: 'NV' },
+  'South Point':                 { lat: 36.0118, lng: -115.1720, region: 'NV' },
+  'Orleans':                     { lat: 36.1020, lng: -115.2013, region: 'NV' },
+  'MGM Grand':                   { lat: 36.1024, lng: -115.1696, region: 'NV' },
+  'MGM National Harbor':         { lat: 38.7828, lng: -77.0189, region: 'MD' },
+  'Irish Poker Open':            { lat: 53.3438, lng: -6.2530, region: 'IE' },
+  'Turning Stone Casino':        { lat: 43.1215, lng: -75.5130, region: 'NY' },
+  'Texas Card House':            { lat: 30.3553, lng: -97.7069, region: 'TX' },
+  'Caesars Palace':              { lat: 36.1162, lng: -115.1745, region: 'NV' },
+  'Seminole Hard Rock':          { lat: 26.0512, lng: -80.2109, region: 'FL' },
+  'WSOP Europe':                 { lat: 50.0880, lng: 14.4208, region: 'CZ' },
+  'Borgata':                     { lat: 39.3772, lng: -74.4378, region: 'NJ' },
+  'Foxwoods':                    { lat: 41.4719, lng: -71.9699, region: 'CT' },
+  'Thunder Valley':              { lat: 38.8023, lng: -121.2268, region: 'CA' },
+  'Bellagio':                    { lat: 36.1129, lng: -115.1765, region: 'NV' },
+  'Lodge Poker Club':            { lat: 30.6023, lng: -97.8603, region: 'TX' },
+  'bestbet Jacksonville':        { lat: 30.3568, lng: -81.6085, region: 'FL' },
+  "Bally's Lake Tahoe":          { lat: 38.9574, lng: -119.9459, region: 'CA' },
+  "Harrah's Cherokee":           { lat: 35.4617, lng: -83.3225, region: 'NC' },
+  'WSOPC Cherokee':              { lat: 35.4617, lng: -83.3225, region: 'NC' },
+  'Choctaw Casino':              { lat: 34.0289, lng: -96.3931, region: 'OK' },
+  'Horseshoe Tunica':            { lat: 34.6965, lng: -90.3398, region: 'MS' },
 };
 
+// ── Property GPS coordinates (keyed by venue abbreviation) ──
+// VENUE_COORDS above is keyed by the raw venue string, which only ever covered the
+// legacy venues. Feed rows carry a SERIES title, so none of them resolved — and the two
+// location filters then disagreed: the distance filter KEPT an un-located event (so
+// "within 50 miles" quietly listed events across the country) while the region filter
+// DROPPED it (so picking "Texas" hid every feed event, including the Texas ones).
+//
+// Keying by abbreviation means every series at a property inherits one coordinate, the
+// same way they share a strip color. Coordinates were geocoded through Nominatim — the
+// service the app's own /api/geocode already uses — from the watcher's venue_name +
+// city_state, then sanity-checked against the expected state. Entries marked city-level
+// are small card rooms OSM has no record for by name; they resolve to the town centre,
+// which is within a few miles and fine for the 100-mile default radius. Replace any of
+// them with exact coordinates when it matters.
+export const PROPERTY_COORDS = {
+  'AMERISTAR':        { lat: 41.65264, lng: -87.43455, region: 'IN' },  
+  'BESTBET':          { lat: 30.3568, lng: -81.6085, region: 'FL' },   
+  'BIG BOLA':         { lat: 19.37721, lng: -99.25453, region: 'MX' },     // city-level
+  'BORGATA':          { lat: 39.37853, lng: -74.43493, region: 'NJ' },  
+  'BOSSIER CITY':     { lat: 32.5153, lng: -93.73822, region: 'LA' },  
+  'BRATISLAVA':       { lat: 48.1517, lng: 17.10931, region: 'SK' },      // city-level
+  'CAESARS SO IN':    { lat: 38.17941, lng: -85.90355, region: 'IN' },  
+  'CAESARS VA':       { lat: 36.57095, lng: -79.42819, region: 'VA' },  
+  'CANTERBURY':       { lat: 44.78731, lng: -93.48137, region: 'MN' },  
+  'CASINO MALTA':     { lat: 35.92069, lng: 14.49359, region: 'MT' },      // city-level
+  'CHAMPIONS':        { lat: 29.98425, lng: -95.53042, region: 'TX' },  
+  'CHEROKEE':         { lat: 35.46987, lng: -83.30399, region: 'NC' },  
+  'CHICAGO CHAR':     { lat: 41.85003, lng: -88.31257, region: 'IL' },     // city-level
+  'DANIA BEACH':      { lat: 26.05338, lng: -80.13719, region: 'FL' },  
+  'DAYTONA':          { lat: 29.21081, lng: -81.02283, region: 'FL' },     // city-level
+  'DOWNSTREAM':       { lat: 36.99676, lng: -94.62685, region: 'OK' },  
+  'ELITE MCALLEN':    { lat: 26.19347, lng: -98.26734, region: 'TX' },  
+  'FIREKEEPERS':      { lat: 42.29724, lng: -85.07504, region: 'MI' },  
+  'GRATON':           { lat: 38.3601, lng: -122.72263, region: 'CA' }, 
+  'HARD ROCK':        { lat: 26.05173, lng: -80.21124, region: 'FL' },  
+  'HARRAHS AC':       { lat: 39.38472, lng: -74.42738, region: 'NJ' },  
+  'HC COLUMBUS':      { lat: 39.94729, lng: -83.10746, region: 'OH' },  
+  'HR CINCINNATI':    { lat: 39.1082, lng: -84.50677, region: 'OH' },  
+  'HR TAMPA':         { lat: 27.99365, lng: -82.37105, region: 'FL' },  
+  'HR TULSA':         { lat: 36.16536, lng: -95.76544, region: 'OK' },  
+  'JACK CLEVELAND':   { lat: 41.49828, lng: -81.69299, region: 'OH' },  
+  'LIECHTENSTEIN':    { lat: 47.20517, lng: 9.50263, region: 'LI' },    
+  'LIVE! PHILLY':     { lat: 39.9098, lng: -75.16483, region: 'PA' },  
+  'LODGE':            { lat: 30.6023, lng: -97.8603, region: 'TX' },   
+  'MD LIVE!':         { lat: 39.19289, lng: -76.72414, region: 'MD' },     // city-level
+  'MGM NH':           { lat: 38.79506, lng: -77.00916, region: 'MD' },  
+  'MOHEGAN SUN':      { lat: 41.49236, lng: -72.08971, region: 'CT' },  
+  'OCALABETS':        { lat: 29.1872, lng: -82.14009, region: 'FL' },     // city-level
+  'ONE-EYED JACKS':   { lat: 27.33658, lng: -82.53085, region: 'FL' },     // city-level
+  'ORANGE CITY':      { lat: 28.94888, lng: -81.29867, region: 'FL' },     // city-level
+  'OXFORD DOWNS':     { lat: 29.00859, lng: -82.03481, region: 'FL' },     // city-level
+  'PALACE POKER':     { lat: 32.74596, lng: -96.99778, region: 'TX' },     // city-level
+  'PARX':             { lat: 40.11853, lng: -74.95271, region: 'PA' },  
+  'PLAYGROUND':       { lat: 45.37676, lng: -73.70632, region: 'CA-QC' },  
+  'PORTLAND':         { lat: 45.56237, lng: -122.5792, region: 'OR' },  
+  'SILVERADO':        { lat: 44.37438, lng: -103.72907, region: 'SD' },    // city-level
+  'STAR SYDNEY':      { lat: -33.86792, lng: 151.19505, region: 'AU' },  
+  'TALKING STICK':    { lat: 33.54081, lng: -111.86967, region: 'AZ' }, 
+  'TCH AUSTIN':       { lat: 30.44562, lng: -97.79045, region: 'TX' },  
+  'TCH DALLAS':       { lat: 32.77627, lng: -96.79686, region: 'TX' },     // city-level
+  'THE BARREL':       { lat: 36.74653, lng: -86.56505, region: 'KY' },  
+  'THE BIKE':         { lat: 33.96946, lng: -118.1504, region: 'CA' },     // city-level
+  'TUNICA':           { lat: 34.84728, lng: -90.33075, region: 'MS' },  
+  'TURNING STONE':    { lat: 43.11505, lng: -75.58879, region: 'NY' },  
+  'VENETIAN':         { lat: 36.12171, lng: -115.16934, region: 'NV' }, 
+  'WAR ROOM':         { lat: 31.84571, lng: -102.36769, region: 'TX' },    // city-level
+  'WILDHORSE':        { lat: 45.64762, lng: -118.6796, region: 'OR' },  
+  'WOLINAK':          { lat: 46.32897, lng: -72.42083, region: 'CA-QC' },  
+  'WYNN':             { lat: 36.12662, lng: -115.1654, region: 'NV' },
+};
+
+// Resolve a venue string to coordinates: an explicit legacy entry first, then the
+// property behind the series. Returns null when the location is genuinely unknown —
+// callers must decide what that means rather than assuming a match.
+export function getVenueCoords(venue) {
+  const direct = VENUE_COORDS[venue];
+  if (direct) return direct;
+  const info = VENUE_MAP[venue];
+  return (info && PROPERTY_COORDS[info.abbr]) || null;
+}
+
 // ── Location Regions ─────────────────────────────────────
+// State-code tests, not bounding boxes. No rectangle fits Texas: the old box
+// (lng -106.6..-93.5) also swallowed Bossier City in Louisiana and Hard Rock Tulsa in
+// Oklahoma. That went unnoticed while feed venues had no coordinates at all — nothing
+// could match any region. Coordinates still drive Las Vegas (a metro, not a state) and
+// Europe (a continent), where a radius and a box are the honest shapes.
+const NORTHEAST_STATES = new Set(['NY', 'NJ', 'PA', 'CT', 'MA', 'RI', 'VT', 'NH', 'ME', 'MD', 'DE']);
 export const LOCATION_REGIONS = {
   lasvegas: { label: 'Las Vegas', test: (c) => haversineDistance(36.115, -115.17, c.lat, c.lng) <= 30 },
-  texas: { label: 'Texas', test: (c) => c.lat >= 25.8 && c.lat <= 36.5 && c.lng >= -106.6 && c.lng <= -93.5 },
-  florida: { label: 'Florida', test: (c) => c.lat >= 24.5 && c.lat <= 31 && c.lng >= -87.6 && c.lng <= -80 },
+  texas: { label: 'Texas', test: (c) => c.region === 'TX' },
+  florida: { label: 'Florida', test: (c) => c.region === 'FL' },
   europe: { label: 'Europe', test: (c) => c.lng >= -25 && c.lng <= 40 && c.lat >= 35 && c.lat <= 72 },
-  northeast: { label: 'Northeast US', test: (c) => c.lat >= 38.5 && c.lat <= 45 && c.lng >= -80 && c.lng <= -70 },
+  northeast: { label: 'Northeast US', test: (c) => NORTHEAST_STATES.has(c.region) },
 };
 
 // ── Haversine distance (miles) ────────────────────────────
