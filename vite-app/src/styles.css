@@ -3445,7 +3445,14 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: rgba(255,255,255,0.85);
-      border-radius: 0;
+      /* Round the strip itself rather than leaning on .cal-event-row's
+         overflow:hidden. Expanding transitions font-size/letter-spacing, which
+         composites this (already rotated) element onto its own layer, and a
+         composited child is clipped by the parent's RECTANGLE but not by its
+         border-radius — so an open card lost its left corners.
+         The values look mirrored because transform: rotate(180deg) below swaps
+         the corners: element top-right/bottom-right paint at visual LEFT. */
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       position: relative;
       user-select: none;
       padding: 0 2px 0 0;
