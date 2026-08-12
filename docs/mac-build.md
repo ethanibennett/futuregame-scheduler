@@ -107,6 +107,49 @@ it so the repo matches TestFlight.
 
 Signing is automatic against team `27TK6846H8`; bundle ID `app.futurega.me.beta`.
 
+### Automatic builds (self-hosted runner)
+
+`.github/workflows/ios-testflight.yml` runs the script above on this Mac whenever
+a push to `master` touches something the app bundles (`vite-app/**`, `ios/**`,
+`capacitor.config.json`, `build.js`). Merge a frontend change on the Windows box
+and the Mac starts archiving within seconds — no polling, nobody remembering.
+
+It can also be fired manually from the Actions tab, or programmatically from
+anywhere:
+
+```bash
+gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=ios-testflight
+```
+
+Rapid merges collapse into a single build (`concurrency.cancel-in-progress`)
+rather than queueing an archive per commit.
+
+**This does not ship tournament data.** The installed app fetches events live
+from `https://futurega.me/api` (`API_URL` in `vite-app/src/utils/api.js` points
+there on native) and refetches on the SSE `schedule-refetch` broadcast, so feed
+updates reach phones in seconds with no build at all. Only bundled web assets and
+the native project need a rebuild — hence the path filter.
+
+#### One-time: install the runner
+
+GitHub hosts no macOS runner that can sign with your key, so the runner lives
+here:
+
+1. Repo → **Settings → Actions → Runners → New self-hosted runner → macOS**.
+2. Run the `./config.sh` command it gives you (it embeds a registration token).
+   Accept the default labels — the workflow targets `[self-hosted, macOS]`.
+3. Install it as a background service so it survives reboots:
+   ```bash
+   ./svc.sh install && ./svc.sh start && ./svc.sh status
+   ```
+
+The runner executes as your user, so it picks up the App Store Connect key at
+`~/.appstoreconnect/private_keys/` and the Xcode toolchain already configured
+here. **The key is deliberately not a GitHub secret** — it never leaves this Mac.
+
+To pause automatic builds, stop the service (`./svc.sh stop`); the script keeps
+working by hand.
+
 ### Running it by hand instead
 
 ```bash
