@@ -88,6 +88,21 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 | dashboard | `D:\projects\wsop-console` (prod on Render + WSL standby) | wsop-console |
 
 The Mac is the Xcode build node (iOS/Watch/screensaver) — see `docs/mac-build.md`.
+Ship the app with `./scripts/ios-testflight.sh` there (NOT `deploy.sh --ios`, which
+also pushes master, deploys Render and syncs the prod DB — none of it the Mac's job).
+
+### Cross-machine handoff
+Claude Code sessions are per-machine and cannot message each other, so machines
+coordinate through GitHub issues: `./scripts/handoff.sh`.
+```bash
+./scripts/handoff.sh inbox                        # open items for THIS machine
+./scripts/handoff.sh send mac "Ship a build"      # ask the other side to do something
+./scripts/handoff.sh read 42 / reply 42 "…" / done 42
+```
+Open issue = the other machine still owes you something; `done` closes it. **Check
+`inbox` at the start of a session on either box.** Messages carry INTENT, not code —
+code moves through commits, and the machine split stands: Windows owns the server,
+DB and web deploys; the Mac only builds the app.
 Pre-reorg session history: this repo's git log, plus the solver-era session log preserved
 at `futuregame-solver/docs/legacy-scheduler-era-CLAUDE.md`.
 
