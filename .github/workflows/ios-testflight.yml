@@ -1,0 +1,77 @@
+name: iOS TestFlight
+
+# Real-time app builds on the Mac, triggered by GitHub rather than by a human
+# remembering to run something. Requires a self-hosted runner on the Mac (see
+# docs/mac-build.md); GitHub-hosted macOS runners can't be used because signing
+# needs the App Store Connect key that lives on that machine.
+#
+# IMPORTANT — this is NOT how tournament data reaches the app. The installed app
+# fetches events live from https://futurega.me/api and refetches on the SSE
+# `schedule-refetch` broadcast, so new events from the MTT feed appear within
+# seconds without any build. Only changes to the BUNDLED web assets (vite-app/)
+# or the native project need a new TestFlight build, which is exactly what the
+# path filter below matches. Rebuilding on every feed ingest would ship an
+# hourly build that changes nothing a user can see.
+
+on:
+  # A push to master that changes what the app actually bundles.
+  push:
+    branches: [master]
+    paths:
+      - 'vite-app/**'
+      - 'ios/**'
+      - 'capacitor.config.json'
+      - 'build.js'
+      - 'scripts/ios-testflight.sh'
+  # Manual, from the Actions tab.
+  workflow_dispatch:
+  # Programmatic, so the Windows box (or anything else) can decide when to ship:
+  #   gh api repos/ethanibennett/futuregame-scheduler/dispatches \
+  #     -f event_type=ios-testflight
+  repository_dispatch:
+    types: [ios-testflight]
+
+# Several merges in quick succession collapse into one build rather than
+# queueing five archives and burning five build numbers. The newest wins.
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: true
+
+jobs:
+  testflight:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show what triggered this
+        run: |
+          echo "event:  ${{ github.event_name }}"
+          echo "commit: $(git rev-parse --short HEAD)"
+          git log -1 --pretty='%s'
+
+      - name: Build and upload to TestFlight
+        # --no-pull because actions/checkout has already placed the tree at the
+        # right commit; letting the script pull would race with the runner.
+        #
+        # No --commit on purpose. The script bumps CURRENT_PROJECT_VERSION in
+        # project.pbxproj, and ios/** is in the path filter above — committing
+        # that from CI would retrigger this workflow forever. The number is
+        # reconciled against App Store Connect on every run, so the committed
+        # value is a record, not the source of truth, and letting it go stale
+        # costs nothing.
+        run: ./scripts/ios-testflight.sh --no-pull
+
+      - name: Report
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "Uploaded. Processing at App Store Connect usually takes 5-15 min."
+          else
+            echo "Build failed — the archive (if any) is under \$TMPDIR/futuregame.xcarchive."
+            echo "Retry by hand: ./scripts/ios-testflight.sh --no-pull"
+          fi
