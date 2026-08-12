@@ -1,0 +1,4 @@
+# Shell scripts run on macOS (iOS builds) and Linux (Render). A CR at the end of
+# each line makes bash fail with errors that point nowhere near the real cause,
+# so pin them to LF regardless of the committer's core.autocrlf setting.
+*.sh text eol=lf
