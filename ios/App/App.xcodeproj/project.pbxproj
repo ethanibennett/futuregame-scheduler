@@ -15,10 +15,16 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		706A4BBB9DD0554AF69ECB3A /* InstagramStoriesPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 706A4BBB9DD0554AF69ECB39 /* InstagramStoriesPlugin.m */; };
+		8C3D4E22B20690FA5FCB3900 /* InstagramStoriesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 872F4FF4A89D7080B7457353 /* InstagramStoriesPlugin.swift */; };
+		C6CA40378C2063C5A26BDC5F /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6CA40378C2063C5A26BDC5E /* MainViewController.swift */; };
+		2FE244ECBD5EE96C33A197F5 /* VideoComposerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE244ECBD5EE96C33A197F4 /* VideoComposerPlugin.swift */; };
+		C17644068655A87D825CB749 /* VideoComposerPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = C17644068655A87D825CB748 /* VideoComposerPlugin.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		2FE244ECBD5EE96C33A197F4 /* VideoComposerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoComposerPlugin.swift; path = App/Plugins/VideoComposerPlugin.swift; sourceTree = SOURCE_ROOT; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* futurega.me.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = futurega.me.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -27,7 +33,11 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		706A4BBB9DD0554AF69ECB39 /* InstagramStoriesPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = InstagramStoriesPlugin.m; path = App/Plugins/InstagramStoriesPlugin.m; sourceTree = SOURCE_ROOT; };
+		872F4FF4A89D7080B7457353 /* InstagramStoriesPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstagramStoriesPlugin.swift; path = App/Plugins/InstagramStoriesPlugin.swift; sourceTree = SOURCE_ROOT; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		C17644068655A87D825CB748 /* VideoComposerPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VideoComposerPlugin.m; path = App/Plugins/VideoComposerPlugin.m; sourceTree = SOURCE_ROOT; };
+		C6CA40378C2063C5A26BDC5E /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MainViewController.swift; path = App/MainViewController.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +58,11 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				872F4FF4A89D7080B7457353 /* InstagramStoriesPlugin.swift */,
+				706A4BBB9DD0554AF69ECB39 /* InstagramStoriesPlugin.m */,
+				C6CA40378C2063C5A26BDC5E /* MainViewController.swift */,
+				2FE244ECBD5EE96C33A197F4 /* VideoComposerPlugin.swift */,
+				C17644068655A87D825CB748 /* VideoComposerPlugin.m */,
 			);
 			sourceTree = "<group>";
 		};
@@ -105,7 +120,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 0920;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
@@ -113,7 +128,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
+			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "futurega.me" */;
 			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -156,6 +171,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				8C3D4E22B20690FA5FCB3900 /* InstagramStoriesPlugin.swift in Sources */,
+				706A4BBB9DD0554AF69ECB3A /* InstagramStoriesPlugin.m in Sources */,
+				C6CA40378C2063C5A26BDC5F /* MainViewController.swift in Sources */,
+				2FE244ECBD5EE96C33A197F5 /* VideoComposerPlugin.swift in Sources */,
+				C17644068655A87D825CB749 /* VideoComposerPlugin.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,6 +206,7 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -249,6 +270,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -309,7 +331,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 62;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -333,7 +355,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 62;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -353,7 +375,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
+		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "futurega.me" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				504EC3141FED79650016851F /* Debug */,

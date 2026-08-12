@@ -25,5 +25,11 @@
       "style": "DARK",
       "backgroundColor": "#111111"
     }
-  }
+  },
+  "packageClassList": [
+    "SplashScreenPlugin",
+    "StatusBarPlugin",
+    "InstagramStoriesPlugin",
+    "VideoComposerPlugin"
+  ]
 }

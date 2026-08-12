@@ -98,7 +98,16 @@ export async function exportReplayGif({
     const elW = tableEl.offsetWidth;
     const elH = tableEl.offsetHeight;
     const dpr = window.devicePixelRatio || 2;
-    const s = scale || dpr;
+    // Cap the captured longest edge at 1620px. Instagram Stories renders at
+    // 1080×1920; encoding our 2:3 felt at longest-edge 1620 yields 1080×1620
+    // — which IG drops into Story at exact horizontal resolution with the
+    // transparent margin showing above/below. No upscaling = no pixelation.
+    // (We previously capped at 720 for the URL-scheme pasteboard's ~8MB
+    // limit; the share-sheet path tolerates tens of MB, so we can go big.)
+    const MAX_EDGE = 1620;
+    const longest = Math.max(elW, elH);
+    const cappedScale = Math.min(scale || dpr, MAX_EDGE / longest);
+    const s = Math.max(cappedScale, 0.5);
 
     // Capture all frames first
     const frames = [];
@@ -183,55 +192,15 @@ export async function exportReplayGif({
     const blob = new Blob([encoder.bytes()], { type: 'image/gif' });
     const file = new File([blob], filename, { type: 'image/gif' });
 
-    // shareMethod tells the caller which path the GIF took so the UI can
-    // show context-appropriate feedback ("Opened Instagram", "Saved to
-    // Files", etc.). The auto-share order: iOS native IG → Web Share API
-    // (share sheet) → direct download.
-    let shareMethod = 'download';
-    let shareError = null;
+    // Encode-only — no auto-share. The caller shows Share / Save buttons in
+    // the post-encode overlay so the user's tap on either is a fresh user
+    // gesture (navigator.share requires that — without it iOS throws
+    // NotAllowedError, as we saw in earlier auto-share attempts).
+    const debug = [
+      'gif=' + Math.round(blob.size / 1024) + 'KB ' + frameW + 'x' + frameH + ' ' + frames.length + 'fr',
+    ];
 
-    const { canShareToInstagram, shareGifToInstagramStories } = await import('./instagram-stories.js');
-    if (canShareToInstagram()) {
-      try {
-        // Brand-matched gradient behind the sticker.
-        await shareGifToInstagramStories(blob, {
-          backgroundTopColor: '#0f172a',
-          backgroundBottomColor: '#1e293b',
-        });
-        shareMethod = 'instagram';
-      } catch (e) {
-        shareError = e;
-        console.warn('Instagram direct share failed, falling back:', e);
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: 'Hand Replay' });
-            shareMethod = 'share-sheet';
-          } catch (e2) { shareError = e2; }
-        }
-      }
-    } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'Hand Replay' });
-        shareMethod = 'share-sheet';
-      } catch (e) {
-        shareError = e;
-      }
-    }
-
-    // If no share method succeeded, save to the user's downloads.
-    if (shareMethod === 'download') {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
-
-    onDone({ shareMethod, shareError, blob });
+    onDone({ blob, file, filename, debug });
   } catch (err) {
     tableEl.style.paddingTop = origPadTop;
     tableEl.style.marginTop = origMarginTop;

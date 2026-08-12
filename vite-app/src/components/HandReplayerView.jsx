@@ -9,6 +9,9 @@ import { encodeHand, decodeHand, GAME_CODES } from '../utils/hand-shorthand.js';
 import { loadCardImages } from '../utils/export.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
+import { recordStoryReplay } from '../utils/replay-story-export.js';
+import { canComposeVideo } from '../utils/video-composer.js';
+import StoryComposer from './StoryComposer.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { parseHandText } from '../utils/hand-text-parser.js';
 
@@ -257,6 +260,21 @@ function getChipBreakdown(amount) {
     while (remaining >= d.value && chips.length < 5) { chips.push(d.color); remaining -= d.value; }
   }
   if (chips.length === 0) chips.push('#22c55e');
+  // Aim for at least 2 visible chips: if the breakdown collapsed to a single
+  // big-denom chip (e.g. 500 = one 500 chip), split it into the next-smaller
+  // denomination so the pot always shows a stack rather than a lonely disc.
+  if (chips.length === 1 && remaining === 0) {
+    const usedIdx = CHIP_DENOMS.findIndex(d => d.color === chips[0]);
+    if (usedIdx >= 0 && usedIdx < CHIP_DENOMS.length - 1) {
+      const used = CHIP_DENOMS[usedIdx];
+      const smaller = CHIP_DENOMS[usedIdx + 1];
+      const count = Math.min(Math.floor(used.value / smaller.value), 5);
+      if (count >= 2) {
+        chips.length = 0;
+        for (let i = 0; i < count; i++) chips.push(smaller.color);
+      }
+    }
+  }
   return chips;
 }
 
@@ -3337,6 +3355,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
 function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
+  const toast = useToast();
   const [streetIdx, setStreetIdx] = useState(0);
   const [actionIdx, setActionIdx] = useState(-1);
   const [playing, setPlaying] = useState(false);
@@ -3364,11 +3383,25 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStep, setVideoStep] = useState(0);
   const [videoTotal, setVideoTotal] = useState(0);
-  // GIF export state
+  // GIF export state. gifExporting = encode in progress (spinner). gifReady
+  // holds the encoded file once the encoder finishes so the post-encode
+  // overlay can hand it to navigator.share() under a fresh user gesture.
   const [gifExporting, setGifExporting] = useState(false);
   const [gifProgress, setGifProgress] = useState(0);
   const [gifStep, setGifStep] = useState(0);
   const [gifTotal, setGifTotal] = useState(0);
+  const [gifReady, setGifReady] = useState(null);    // { blob, file, filename, debug } | null
+  const [gifShareNote, setGifShareNote] = useState(null);
+  // Story composer state. storyComposerOpen toggles the background-picker
+  // modal. storyExporting is the encode/share overlay. storyProgress is the
+  // frame-capture % so the user has feedback during the longer compose.
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [storyBgColor, setStoryBgColor] = useState('#0f172a');
+  const [storyBgImage, setStoryBgImage] = useState(null);  // HTMLImageElement
+  const [storyBgImageUrl, setStoryBgImageUrl] = useState(null); // object URL for preview
+  const [storyExporting, setStoryExporting] = useState(false);
+  const [storyProgress, setStoryProgress] = useState(0);
+  const [storyStatusMsg, setStoryStatusMsg] = useState('');
   // Refs that stay live with current values so the async export loop always calls latest functions
   const canGoForwardRef = useRef(true);
   const stepForwardRef = useRef(null);
@@ -3388,7 +3421,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
   const _cardBack = useReplayerSetting('CardBack', 'default');
   const _cardBackColor = useReplayerSetting('CardBackColor', '#1a3a6e');
   const _fourColor = useReplayerSetting('FourColorDeck', false);
-  const _showChipStacks = useReplayerSetting('ShowChipStacks', false);
+  const _showChipStacks = useReplayerSetting('ShowChipStacks', true);
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
   const _showPotOdds = useReplayerSetting('ShowPotOdds', false);
   const _showCommentary = useReplayerSetting('ShowCommentary', false);
@@ -3978,19 +4011,125 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
       canGoForwardRef,
       onProgress: (pct, step, total) => { setGifProgress(pct); setGifStep(step); setGifTotal(total); },
       onDone: (info) => {
+        // Encode done — stash the file and switch the overlay into "ready"
+        // mode (Share / Save buttons). DO NOT auto-share; navigator.share
+        // requires the call site to be a fresh user-gesture handler, and
+        // this onDone callback runs after async work so the gesture has
+        // already been consumed.
         setGifExporting(false); setGifProgress(0);
-        // Surface which path the share took so the user knows where the GIF went.
-        if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
-        else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
-        else if (info?.shareMethod === 'download') toast?.success?.('GIF saved');
+        setGifReady(info);
+        setGifShareNote(null);
       },
       onError: (err) => {
         console.error('GIF export error:', err);
         setGifExporting(false); setGifProgress(0);
+        setGifReady(null);
         toast?.error?.('GIF export failed: ' + (err?.message || 'unknown'));
       },
     });
   }, [gifExporting, videoExporting, hand]);
+
+  // Share the encoded GIF via the iOS share sheet. MUST be invoked from a
+  // synchronous user-gesture handler (button onClick). navigator.share
+  // throws NotAllowedError otherwise.
+  const handleShareReadyGif = useCallback(() => {
+    if (!gifReady?.file) return;
+    setGifShareNote('Opening share sheet…');
+    // Call navigator.share synchronously in the gesture; don't await it
+    // before the call so the gesture context isn't lost.
+    const p = navigator.share?.({ files: [gifReady.file], title: 'Hand Replay' });
+    if (!p) {
+      setGifShareNote('Share sheet not available on this device');
+      return;
+    }
+    p.then(() => {
+      setGifShareNote('Shared');
+      setTimeout(() => { setGifReady(null); setGifShareNote(null); }, 600);
+    }).catch(err => {
+      // AbortError = user dismissed the share sheet; treat as benign.
+      if (err && err.name === 'AbortError') {
+        setGifShareNote(null);
+        return;
+      }
+      setGifShareNote('Share failed: ' + (err?.message || err?.name || 'unknown'));
+    });
+  }, [gifReady]);
+
+  // Pick a photo for the Story background. Uses a hidden <input type="file">
+  // because Capacitor's Camera plugin isn't installed and the file input is
+  // a known-working WKWebView path.
+  const handlePickStoryPhoto = useCallback((file) => {
+    if (!file) return;
+    if (storyBgImageUrl) URL.revokeObjectURL(storyBgImageUrl);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      setStoryBgImage(img);
+      setStoryBgImageUrl(url);
+    };
+    img.src = url;
+  }, [storyBgImageUrl]);
+
+  // Encode the composed replay (frames composited onto chosen background)
+  // and save to Photos. Background + placement come from the composer's
+  // drag/pinch UI.
+  const handleComposeAndShareStory = useCallback(async ({ background, placement }) => {
+    if (storyExporting) return;
+    if (!tableRef.current) return;
+    if (!canComposeVideo()) {
+      setStoryStatusMsg('Native composer is iOS-only — open the app on your phone');
+      return;
+    }
+    setStreetIdx(0); setActionIdx(-1); setShowResult(false);
+    setHiloAnimate(false); setPlaying(false);
+    await new Promise(r => setTimeout(r, 120));
+    setStoryComposerOpen(false);
+    setStoryExporting(true);
+    setStoryProgress(0);
+    setStoryStatusMsg('Capturing frames…');
+    try {
+      // Native WKWebView snapshot per frame, capsule mask in Swift, MP4
+      // encode, save to Photos on finish (no share sheet).
+      const result = await recordStoryReplay({
+        hand,
+        tableEl: tableRef.current,
+        stepForward: () => stepForwardRef.current?.(),
+        canGoForwardRef,
+        background,
+        placement,
+        onProgress: (pct) => setStoryProgress(pct),
+        outputMode: 'save',
+      });
+      const sizeMB = ((result.sizeBytes || 0) / 1048576).toFixed(1);
+      if (result.saved) {
+        setStoryStatusMsg('Saved to Photos · ' + sizeMB + 'MB');
+      } else {
+        setStoryStatusMsg('Save failed · ' + (result.saveError ?? 'no error info from native'));
+      }
+      const dwell = result.saved ? 2200 : 5000;
+      setTimeout(() => { setStoryExporting(false); setStoryStatusMsg(''); }, dwell);
+    } catch (err) {
+      console.error('Story compose failed:', err);
+      setStoryStatusMsg('Failed: ' + (err?.message || 'unknown'));
+      setTimeout(() => { setStoryExporting(false); setStoryStatusMsg(''); }, 3000);
+    }
+  }, [storyExporting, hand]);
+
+  // Trigger a normal download of the encoded GIF.
+  const handleSaveReadyGif = useCallback(() => {
+    if (!gifReady?.blob) return;
+    const url = URL.createObjectURL(gifReady.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = gifReady.filename || 'replay.gif';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setGifShareNote('Saved');
+    setTimeout(() => { setGifReady(null); setGifShareNote(null); }, 600);
+  }, [gifReady]);
 
   // ── OFC Replay View ──
   if (hand.gameType === 'OFC') {
@@ -4060,16 +4199,20 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
   }
 
   // ── Table layout ──
-  // Top/bottom seats sit at y=16/84 instead of y=6/94 so their cards (which
-  // extend above the seat marker by ~44px) fit fully inside the table's
-  // bounding box — html2canvas only captures the box, anything overflowing
-  // is clipped from the GIF/video exports.
+  // Felt inset = 16% / 84%. Top/bottom seats are positioned so the chip box
+  // (~6% of table height with current fonts) just touches the rail's inner
+  // border: top chip bottom at y=16, bottom chip top at y=84.
+  //   Top seat center  y = 16 - chipHalf ≈ 13
+  //   Bot seat center  y = 84 + chipHalf ≈ 87
+  // Cards extend ~8% above the chip for top seats — at y=13 that's still
+  // inside the table bounding box (card top ≈ y=2), so html2canvas exports
+  // won't clip.
   const layouts = {
-    2:[[50,16],[50,84]], 3:[[35,16],[50,84],[65,16]], 4:[[50,16],[82,50],[50,84],[18,50]],
-    5:[[35,16],[82,50],[50,84],[18,50],[65,16]], 6:[[50,16],[82,34],[82,66],[50,84],[18,66],[18,34]],
-    7:[[35,16],[82,34],[82,66],[50,84],[18,66],[18,34],[65,16]], 8:[[50,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28]],
-    9:[[35,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28],[65,16]],
-    10:[[30,16],[50,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28],[70,16]],
+    2:[[50,13],[50,87]], 3:[[35,13],[50,87],[65,13]], 4:[[50,13],[82,50],[50,87],[18,50]],
+    5:[[35,13],[82,50],[50,87],[18,50],[65,13]], 6:[[50,13],[82,34],[82,66],[50,87],[18,66],[18,34]],
+    7:[[35,13],[82,34],[82,66],[50,87],[18,66],[18,34],[65,13]], 8:[[50,13],[82,28],[82,50],[82,72],[50,87],[18,72],[18,50],[18,28]],
+    9:[[35,13],[82,28],[82,50],[82,72],[50,87],[18,72],[18,50],[18,28],[65,13]],
+    10:[[30,13],[50,13],[82,28],[82,50],[82,72],[50,87],[18,72],[18,50],[18,28],[70,13]],
   };
 
   const n = hand.players.length;
@@ -4077,6 +4220,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
   const bottomIdx = Math.floor(n / 2);
   const rotation = (bottomIdx - replayHeroIdx + n) % n;
   const seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
+  const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
 
   return (
     <div className={'replayer-replay' + fourColorClass}>
@@ -4138,8 +4282,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
           return (
             <div className="replayer-pot-display">
               <div className="replayer-pot-label">Pot</div>
+              <div className="replayer-pot-amount">{formatChipAmount(displayPot)}</div>
               {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={displayPot} />}
-              {formatChipAmount(displayPot)}
             </div>
           );
         })()}
@@ -4192,9 +4336,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
             muckStyle['--muck-rot'] = (mdx > 0 ? -12 : 12) + 'deg';
           }
 
+          // Top seats pulled 15px outward from felt center; bottom seats pulled
+          // 5px outward (lighter so the hero doesn't sit on the home indicator).
+          // Side seats (y mid-range) are unchanged.
+          const yShift = pos[1] <= 20 ? '-15px' : pos[1] >= 80 ? '5px' : '0px';
           return (
             <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`}
-              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle}}>
+              style={{left: pos[0] + '%', top: `calc(${pos[1]}% + ${yShift})`, ...muckStyle}}>
               <div className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) ? 'replayer-hilo-high' + (hiloAnimate ? ' animate' : '') : ''}`}>
                 <CardRow text={cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
                   placeholderCount={!cards && !folded.has(pi) ? gameCfg.heroCards : 0}
@@ -4225,6 +4373,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
                 if (!d) return null;
                 return <div className="replayer-seat-draw-badge">{d.discarded === 0 ? 'Pat' : 'D' + d.discarded}</div>;
               })()}
+              {/* Dealer button — anchored to the corner of the name chip nearest
+                  felt center (50, 50). Vert: 'b' if seat above center, 't' below.
+                  Horiz: 'r' if seat left of center, 'l' if right. The button's
+                  center sits ON the chip corner; only an empty-padding quadrant
+                  of the chip is covered, so name/stack text stays clear. */}
+              {pi === btnIdx && p.position !== '' && (() => {
+                const sx = pos[0], sy = pos[1];
+                const vert = sy < 50 ? 'b' : 't';
+                const horiz = sx <= 50 ? 'r' : 'l';
+                return <div className={`replayer-dealer-btn corner-${vert}${horiz}`}>D</div>;
+              })()}
             </div>
           );
         })}
@@ -4254,31 +4413,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
           );
         }).filter(Boolean)}
 
-        {/* Dealer button */}
-        {(() => {
-          const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
-          if (btnIdx < 0) return null;
-          const btnPos = seats[btnIdx] || [50, 50];
-          const isBottom = btnPos[1] >= 70;
-          let dealerStyle;
-          if (isBottom) {
-            const dx = (50 - btnPos[0]) * 0.12;
-            const dy = (50 - btnPos[1]) * 0.12;
-            dealerStyle = {left: (btnPos[0]+dx) + '%', top: (btnPos[1]+dy) + '%', transform:'translate(-50%,-50%)'};
-          } else {
-            const isTop = btnPos[1] <= 15;
-            const isLeft = btnPos[0] <= 20;
-            const isRight = btnPos[0] >= 80;
-            let ox = 0, oy = 0;
-            if (isTop && btnPos[0] < 50) { ox = 4; oy = 5; }
-            else if (isTop) { ox = -4; oy = 5; }
-            else if (isLeft) { ox = 5; oy = 4; }
-            else if (isRight) { ox = -5; oy = 4; }
-            else { ox = btnPos[0] < 50 ? 4 : -4; oy = 4; }
-            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+oy) + '%', transform:'translate(-50%,-50%)'};
-          }
-          return <div className="replayer-dealer-btn" style={dealerStyle}>D</div>;
-        })()}
+        {/* Dealer button is rendered inside the BTN player's seat above, so
+            it anchors to the chip corner nearest felt center. */}
 
         {/* Flying chip animations */}
         {flyingChips.map(fc => (
@@ -4428,6 +4564,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
             style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.04em',padding:'0 6px',lineHeight:'24px'}}>
             GIF
           </button>
+          <button className="btn btn-ghost btn-sm" disabled={gifExporting || videoExporting || storyExporting}
+            title="Compose Instagram Story (animated)" onClick={() => setStoryComposerOpen(true)}
+            style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.04em',padding:'0 6px',lineHeight:'24px'}}>
+            STORY
+          </button>
           <button className="replayer-gear-btn" onClick={() => setShowSettings(true)} title="Replayer Settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -4461,14 +4602,14 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
         document.body
       )}
 
-      {/* GIF export progress overlay */}
+      {/* GIF export progress overlay (encoding) */}
       {gifExporting && createPortal(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999}}>
           <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             Building GIF…
           </div>
           <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
-            Transparent · upload to GIPHY for Instagram sticker
+            Transparent · animated
           </div>
           <div style={{width:'220px',height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',marginBottom:'10px',overflow:'hidden'}}>
             <div style={{width:gifProgress+'%',height:'100%',background:'var(--accent, #a78bfa)',borderRadius:'3px',transition:'width 0.3s ease'}} />
@@ -4476,9 +4617,120 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay }) {
           <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {gifStep} of {gifTotal}
           </div>
-          <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
-            Export will download automatically when complete
+        </div>,
+        document.body
+      )}
+
+      {/* GIF ready — Share / Save buttons. The Share button's onClick is a
+          fresh user-gesture handler, which is the synchronous context
+          navigator.share() requires on iOS. */}
+      {gifReady && createPortal(
+        <div style={{position:'fixed',inset:0,background:'#000',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999,padding:'24px'}}
+             onClick={(e) => { if (e.target === e.currentTarget) { setGifReady(null); setGifShareNote(null); } }}>
+          <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
+            GIF Ready
           </div>
+          <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'18px',letterSpacing:'0.04em',textAlign:'center'}}>
+            {gifReady.debug ? gifReady.debug.join(' · ') : ''}
+          </div>
+          <img src={URL.createObjectURL(gifReady.blob)}
+               alt="Replay preview"
+               style={{maxWidth:'70%',maxHeight:'40vh',marginBottom:'18px',borderRadius:'6px',background:'transparent'}} />
+          <div style={{display:'flex',gap:'10px',marginBottom:'10px'}}>
+            <button type="button" className="btn btn-primary btn-sm"
+                    onClick={handleShareReadyGif}
+                    style={{minWidth:'120px',fontSize:'1rem',padding:'10px 18px'}}>
+              Share
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm"
+                    onClick={handleSaveReadyGif}
+                    style={{minWidth:'120px',fontSize:'1rem',padding:'10px 18px'}}>
+              Save GIF
+            </button>
+          </div>
+          {gifShareNote && (
+            <div style={{color:'rgba(255,255,255,0.7)',fontSize:'0.75rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'4px'}}>
+              {gifShareNote}
+            </div>
+          )}
+          <button type="button"
+                  onClick={() => { setGifReady(null); setGifShareNote(null); }}
+                  style={{position:'absolute',top:'18px',right:'18px',background:'transparent',border:'none',color:'rgba(255,255,255,0.6)',fontSize:'1.4rem',padding:'8px 12px',cursor:'pointer'}}>
+            ×
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {/* Story Composer — drag/pinch the replay onto a background, then save.
+          getFeltPreview returns a transparent-background PNG of the current
+          felt state so the composer can show a true WYSIWYG preview. We use
+          modern-screenshot here (not WKWebView native snapshot) because
+          modern-screenshot DOES preserve alpha — the WKWebView path is fast
+          but always opaque, which would defeat the capsule preview. */}
+      <StoryComposer
+        open={storyComposerOpen}
+        onClose={() => setStoryComposerOpen(false)}
+        onSave={handleComposeAndShareStory}
+        initialColor={storyBgColor}
+        getFeltPreview={async () => {
+          if (!tableRef.current) return null;
+          try {
+            const { domToCanvas } = await import('modern-screenshot');
+            const canvas = await domToCanvas(tableRef.current, {
+              backgroundColor: null,
+              scale: 1,
+            });
+            return canvas.toDataURL('image/png');
+          } catch (e) {
+            console.warn('[felt-preview] failed:', e);
+            return null;
+          }
+        }}
+      />
+
+      {/* Story progress — a thin strip at the very top of the screen so it
+          does NOT overlay the felt (WKWebView.takeSnapshot captures whatever
+          is on the surface, including our own UI — covering the felt with a
+          modal would record the modal). */}
+      {storyExporting && createPortal(
+        <div style={{
+          position:'fixed', top:0, left:0, right:0,
+          background:'rgba(0,0,0,0.55)',
+          padding:'6px 12px',
+          display:'flex', alignItems:'center', gap:'10px',
+          zIndex:9999,
+          fontFamily:"'Univers Condensed','Univers',sans-serif",
+          // Sit above the status bar's safe area so the strip is visible.
+          paddingTop:'calc(env(safe-area-inset-top, 0px) + 6px)',
+        }}>
+          <span style={{
+            width:'8px', height:'8px', borderRadius:'50%',
+            background:'#f87171', flexShrink:0,
+          }} />
+          <span style={{color:'#fff', fontSize:'0.72rem', letterSpacing:'0.06em', textTransform:'uppercase'}}>
+            Recording
+          </span>
+          <div style={{flex:1, height:'3px', background:'rgba(255,255,255,0.15)', borderRadius:'2px', overflow:'hidden'}}>
+            <div style={{width:storyProgress+'%', height:'100%', background:'var(--accent, #a78bfa)', borderRadius:'2px', transition:'width 0.2s ease'}} />
+          </div>
+          <span style={{color:'rgba(255,255,255,0.7)', fontSize:'0.7rem', minWidth:'36px', textAlign:'right'}}>
+            {storyProgress}%
+          </span>
+        </div>,
+        document.body
+      )}
+      {/* Status toast — only after capture is complete so it doesn't get
+          recorded into the MP4 if the felt extends near the bottom. */}
+      {storyExporting && storyStatusMsg && storyProgress >= 100 && createPortal(
+        <div style={{
+          position:'fixed', bottom:'18px', left:'50%', transform:'translateX(-50%)',
+          background:'rgba(0,0,0,0.6)', color:'#fff',
+          padding:'6px 12px', borderRadius:'14px',
+          fontFamily:"'Univers Condensed','Univers',sans-serif", fontSize:'0.7rem',
+          letterSpacing:'0.04em', zIndex:9999,
+        }}>
+          {storyStatusMsg}
         </div>,
         document.body
       )}

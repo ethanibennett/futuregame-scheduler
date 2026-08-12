@@ -666,7 +666,12 @@
     /* ── Hand Replayer ── */
     .replayer-view { max-width: 600px; margin: 0 auto; }
     .replayer-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-    .replayer-header h2 { font-family:'Univers Condensed','Univers',sans-serif; font-size:1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
+    .replayer-header h2 { font-family:'Univers Condensed','Univers',sans-serif; font-size:1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin:0; }
+    /* In replay mode, hug the felt to the LHE HAND header — strip the default
+       h2 vertical margins and shrink the gap. The chip layout (top seat at
+       y=12%) provides enough card-clearance above without needing extra rail
+       space above the seats. */
+    .replayer-view:has(.replayer-replay) .replayer-header { margin-bottom: 2px; }
     .replayer-header-actions { display:flex; gap:6px; }
 
     /* Hand list */
@@ -1357,10 +1362,10 @@
          subtracted separately to handle iPhone home-indicator devices. */
       width: min(100%, calc((100vh - var(--header-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 140px) * 0.6667));
       aspect-ratio: 3 / 4.5;
-      /* Hug the top: horizontal auto centers, top margin is small so
-         any leftover slack sits below the table (between hero seat and
-         the bar) instead of being split top/bottom. */
-      margin: 4px auto 0;
+      /* Hug the top: horizontal auto centers, negative top margin pulls the
+         entire table (felt, rail, seats, dealer button — everything) up by
+         5px from where it would naturally sit. */
+      margin: -1px auto 0;
     }
     .replayer-table-rail {
       position: absolute;
@@ -1424,10 +1429,10 @@
 
     .replayer-pot-display {
       position:absolute; left:50%; top:35%; transform:translate(-50%,-50%);
-      z-index:2; text-align:center; font-size:0.78rem; font-weight:600; color:#fff;
+      z-index:2; text-align:center; font-size:1rem; font-weight:600; color:#fff;
       font-family:'Univers Condensed','Univers',sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
-    .replayer-pot-label { font-size:0.5rem; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px; }
+    .replayer-pot-label { font-size:0.65rem; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px; }
     .replayer-split-circles { display:flex; justify-content:center; align-items:center; }
     .replayer-split-circle {
       width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -1448,7 +1453,7 @@
 
     .replayer-street-label {
       position:absolute; left:50%; top:28%; transform:translate(-50%,-50%);
-      z-index:2; font-size:0.55rem; color:rgba(255,255,255,0.6); font-family:'Univers Condensed','Univers',sans-serif;
+      z-index:2; font-size:0.72rem; color:rgba(255,255,255,0.6); font-family:'Univers Condensed','Univers',sans-serif;
       text-transform:uppercase; letter-spacing:0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.4);
     }
 
@@ -1489,14 +1494,22 @@
     .replayer-seat-cards .card-row .card-unknown { width:30px; height:44px; }
     .replayer-seat-cards .card-row .card-placeholder { width:30px; height:44px; }
 
+    /* When inside a seat, the dealer button anchors to a corner of the chip
+       (the .replayer-seat box, since cards are positioned out-of-flow above).
+       Quarter overlap with the chip lands in the empty corner padding —
+       name/stack text isn't touched. Offset = half the button size. */
+    .replayer-seat .replayer-dealer-btn.corner-tr { top: -10px; right: -10px; }
+    .replayer-seat .replayer-dealer-btn.corner-tl { top: -10px; left: -10px; }
+    .replayer-seat .replayer-dealer-btn.corner-br { bottom: -10px; right: -10px; }
+    .replayer-seat .replayer-dealer-btn.corner-bl { bottom: -10px; left: -10px; }
     .replayer-dealer-btn {
       position: absolute;
-      width: 24px; height: 24px;
+      width: 19px; height: 19px;
       border-radius: 50%;
       background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 40%, #e5e5e5 100%);
       color: #111;
       font-family: var(--serif);
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       font-weight: 900;
       letter-spacing: -0.5px;
       line-height: 1;
@@ -1534,18 +1547,18 @@
       border-color: #facc15;
       box-shadow: 0 0 8px rgba(250,204,21,0.35), 0 0 16px rgba(250,204,21,0.15);
     }
-    .replayer-seat-name { font-size:0.62rem; font-weight:600; color:var(--text); font-family:'Univers Condensed','Univers',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80px; }
-    .replayer-seat-pos { font-size:0.5rem; color:var(--accent2); font-family:'Univers Condensed','Univers',sans-serif; }
-    .replayer-seat-stack { font-size:0.62rem; font-weight:600; color:var(--text); font-family:'Univers Condensed','Univers',sans-serif; }
+    .replayer-seat-name { font-size:0.66rem; font-weight:600; color:var(--text); font-family:'Univers Condensed','Univers',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:88px; }
+    .replayer-seat-pos { font-size:0.52rem; color:var(--accent2); font-family:'Univers Condensed','Univers',sans-serif; }
+    .replayer-seat-stack { font-size:0.66rem; font-weight:600; color:var(--text); font-family:'Univers Condensed','Univers',sans-serif; }
     .replayer-seat-action {
-      font-size:0.52rem; color:var(--accent2); font-family:'Univers Condensed','Univers',sans-serif;
+      font-size:0.56rem; color:var(--accent2); font-family:'Univers Condensed','Univers',sans-serif;
       min-height:12px;
       transition: opacity 0.2s;
     }
     .replayer-bet-chip {
       position: absolute;
       transform: translate(-50%, -50%);
-      font-size: 0.55rem;
+      font-size: 0.72rem;
       font-family: 'Univers Condensed', 'Univers', sans-serif;
       font-weight: 600;
       color: #fff;
@@ -1565,7 +1578,7 @@
       left: 50%;
       top: 100%;
       transform: translateX(-50%);
-      font-size:0.5rem; color:#eab308; font-family:'Univers Condensed','Univers',sans-serif;
+      font-size:0.7rem; color:#eab308; font-family:'Univers Condensed','Univers',sans-serif;
       background: var(--surface);
       border: 1.5px solid rgba(234,179,8,0.4);
       border-radius: 6px;
@@ -1697,28 +1710,32 @@
     .app-shell:has(.tab-panel.tab-active[data-tab="hands"]) #above-nav-slot {
       display: block;
     }
+    /* Bar action row (Back / Edit / Link / share / save / GIF) — bigger text
+       but ~half height of a standard btn-sm. Scoped to the bar so it doesn't
+       leak into other btn-sm uses. */
+    .replayer-bottom-fixed .btn-sm { font-size: 0.95rem; padding: 2px 14px; line-height: 1; }
     .replayer-bottom-fixed > * {
       max-width: 600px;
       margin: 0 auto;
       width: 100%;
     }
     .replayer-controls {
-      display:flex; justify-content:center; align-items:center; gap:8px; padding:6px 0 4px;
+      display:flex; justify-content:center; align-items:center; gap:8px; padding:2px 0 1px;
       border-top:1px solid var(--border);
     }
     .replayer-controls button {
-      width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
+      width:36px; height:18px; border-radius:9px; border:1px solid var(--border);
       background:transparent; color:var(--text); font-family:'Univers Condensed','Univers',sans-serif;
-      font-size:0.75rem; cursor:pointer; transition:background 0.15s,border-color 0.15s;
+      font-size:0.9rem; cursor:pointer; transition:background 0.15s,border-color 0.15s;
       display:flex; align-items:center; justify-content:center; gap:0;
       line-height:1; flex-shrink:0; padding:0;
     }
     /* Play/pause button is slightly larger */
-    .replayer-controls button:nth-child(3) { width:38px; height:38px; border-color:var(--accent2); }
+    .replayer-controls button:nth-child(3) { width:42px; height:20px; border-radius:10px; border-color:var(--accent2); }
     .replayer-controls button:hover { background:var(--surface2); border-color:var(--accent); }
     .replayer-controls button:disabled { opacity:0.3; cursor:default; }
     .replayer-controls button:disabled:hover { background:transparent; border-color:var(--border); }
-    .replayer-speed-label { font-size:0.6rem; line-height:1; color:var(--text-muted); font-family:'Univers Condensed','Univers',sans-serif; }
+    .replayer-speed-label { font-size:0.78rem; line-height:1; color:var(--text-muted); font-family:'Univers Condensed','Univers',sans-serif; }
 
     .replayer-street-indicator {
       display:flex; gap:4px; justify-content:center; margin-bottom:6px;
@@ -1952,7 +1969,7 @@
       background:var(--surface); border:1px solid var(--border); border-radius:6px;
     }
     .replayer-hand-strength-label {
-      font-size:0.58rem; color:var(--text-muted); font-family:'Univers Condensed','Univers',sans-serif;
+      font-size:0.75rem; color:var(--text-muted); font-family:'Univers Condensed','Univers',sans-serif;
       text-transform:uppercase; letter-spacing:0.3px; white-space:nowrap;
     }
     .replayer-hand-strength-bar {
@@ -1960,8 +1977,8 @@
     }
     .replayer-hand-strength-fill { height:100%; border-radius:3px; transition:width 0.4s ease-out; }
     .replayer-hand-strength-pct {
-      font-size:0.62rem; font-weight:600; font-family:'Univers Condensed','Univers',sans-serif;
-      min-width:32px; text-align:right;
+      font-size:0.82rem; font-weight:600; font-family:'Univers Condensed','Univers',sans-serif;
+      min-width:36px; text-align:right;
     }
 
     /* ── Pot Odds Display ── */
@@ -2223,15 +2240,19 @@
 
     /* ── Pot chip stacks visual ── */
     .replayer-pot-chips {
-      display:flex; gap:3px; justify-content:center; align-items:flex-end;
+      display:flex; gap:4px; justify-content:center; align-items:flex-end;
+      margin:4px 0 2px;
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column-reverse; align-items:center; }
     .replayer-pot-chip-disc {
-      width:14px; height:5px; border-radius:50%;
-      border:0.5px solid rgba(255,255,255,0.35);
-      margin-top:-3px; box-shadow:0 1px 1px rgba(0,0,0,0.3);
+      width:22px; height:7px; border-radius:50%;
+      border:0.5px solid rgba(255,255,255,0.4);
+      margin-top:-4px; box-shadow:0 1px 2px rgba(0,0,0,0.4);
     }
-    .replayer-pot-chip-disc:first-child { margin-top:0; }
+    /* No first-child exception — every disc overlaps the one below it so the
+       stack reads as one continuous pile. The topmost disc shows its full
+       face (natural for a chip stack); every other disc shows only its
+       top-edge sliver. */
 
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
@@ -2249,9 +2270,12 @@
       background: var(--bg);
     }
     /* When the replayer tab is active, lock scrolling on the content area.
-       The replayer's own flex layout fits in the viewport — no scroll. */
+       The replayer's own flex layout fits in the viewport — no scroll.
+       Trim top padding too so the LHE HAND header hugs the app header and
+       the table can sit as high as possible. */
     .content-area:has(.tab-panel.tab-active .replayer-replay) {
       overflow: hidden;
+      padding-top: 4px;
       padding-bottom: 0;
     }
     .view-fade {
