@@ -264,6 +264,23 @@ export const VENUE_MAP = {
   '2026 Summer Poker Round Up':                             { abbr: 'WILDHORSE',        color: '#1f8457', longName: 'Wildhorse Casino' },
   '2026 Wynn Fall Classic':                                 { abbr: 'WYNN',             color: '#cc0000', longName: 'Wynn Las Vegas' },
   'Wynn Signature Series August 2026':                      { abbr: 'WYNN',             color: '#cc0000', longName: 'Wynn Las Vegas' },
+
+  // WSOP Circuit stops (wsop-circuit source, not PokerAtlas — no series_directory row,
+  // so the room comes from the series title itself). Rooms the map already knows reuse
+  // their abbreviation and color; Gran Vía, Grand Victoria, Partouche and The Reserve are
+  // new. longName keeps the WSOPC prefix so isRingEvent fires.
+  'WSOP Circuit Big Bola Casinos 2026':         { abbr: 'BIG BOLA',        color: '#1f843d', longName: 'WSOPC Big Bola Casinos Santa Fe' },
+  'WSOP Circuit Casino Gran Via 2026':          { abbr: 'GRAN VIA',        color: '#731f84', longName: 'WSOPC Casino Gran Vía Madrid' },
+  'WSOP Circuit Casino Malta 2026':             { abbr: 'CASINO MALTA',    color: '#38841f', longName: 'WSOPC Casino Malta' },
+  'WSOP Circuit Grand Victoria 2026':           { abbr: 'GRAND VICTORIA',  color: '#77841f', longName: 'WSOPC Grand Victoria Elgin' },
+  'WSOP Circuit Hard Rock Tulsa 2026':          { abbr: 'HR TULSA',        color: '#1f8481', longName: 'WSOPC Hard Rock Tulsa' },
+  "WSOP Circuit Harrah's Atlantic City 2026":   { abbr: 'HARRAHS AC',      color: '#841f6b', longName: "WSOPC Harrah's Atlantic City" },
+  'WSOP Circuit Horseshoe Tunica 2026':         { abbr: 'TUNICA',          color: '#0d6efd', longName: 'WSOPC Horseshoe Tunica' },
+  'WSOP Circuit Partouche Pasino Club 2026':    { abbr: 'PARTOUCHE',       color: '#1f5a84', longName: 'WSOPC Partouche Casino Club Paris' },
+  'WSOP Circuit Texas Card House 2026':         { abbr: 'TCH AUSTIN',      color: '#84701f', longName: 'WSOPC Texas Card House Austin' },
+  'WSOP Circuit The Reserve Poker Club 2026':   { abbr: 'THE RESERVE',     color: '#841f3c', longName: 'WSOPC The Reserve Poker Club' },
+  'WSOP Circuit Thunder Valley 2026':           { abbr: 'THUNDER VALLEY',  color: '#a87c0a', longName: 'WSOPC Thunder Valley' },
+  'WSOP Circuit Turning Stone 2026':            { abbr: 'TURNING STONE',   color: '#8b0000', longName: 'WSOPC Turning Stone' },
 };
 
 // ── Auto-derived venue identity (unmapped series) ─────────
@@ -603,7 +620,26 @@ export const PROPERTY_COORDS = {
   'WILDHORSE':        { lat: 45.64762, lng: -118.6796, region: 'OR' },  
   'WOLINAK':          { lat: 46.32897, lng: -72.42083, region: 'CA-QC' },  
   'WYNN':             { lat: 36.12662, lng: -115.1654, region: 'NV' },
+  'GRAN VIA':         { lat: 40.42015,   lng: -3.70103,    region: 'ES' },
+  'GRAND VICTORIA':   { lat: 42.03132,   lng: -88.27965,   region: 'IL' },
+  'PARTOUCHE':        { lat: 48.87146,   lng: 2.307,       region: 'FR' },
+  'THE RESERVE':      { lat: 41.60464,   lng: -83.663,     region: 'OH' },
 };
+
+// abbr → coordinates, merging both tables. PROPERTY_COORDS wins; legacy VENUE_COORDS
+// entries fill in the rest by resolving each legacy venue name to its abbreviation.
+// That second half matters: a room the app has only ever known by name (Thunder Valley,
+// Foxwoods, Choctaw…) has no PROPERTY_COORDS row, so when the feed later carries a series
+// there, the series would resolve to an abbr with no coordinate and drop out of both
+// location filters. Merging here fixes that for every such room at once.
+const COORDS_BY_ABBR = (() => {
+  const m = new Map(Object.entries(PROPERTY_COORDS));
+  for (const name of Object.keys(VENUE_COORDS)) {
+    const info = VENUE_MAP[name];
+    if (info && !m.has(info.abbr)) m.set(info.abbr, VENUE_COORDS[name]);
+  }
+  return m;
+})();
 
 // Resolve a venue string to coordinates: an explicit legacy entry first, then the
 // property behind the series. Returns null when the location is genuinely unknown —
@@ -612,7 +648,7 @@ export function getVenueCoords(venue) {
   const direct = VENUE_COORDS[venue];
   if (direct) return direct;
   const info = VENUE_MAP[venue];
-  return (info && PROPERTY_COORDS[info.abbr]) || null;
+  return (info && COORDS_BY_ABBR.get(info.abbr)) || null;
 }
 
 // ── Location Regions ─────────────────────────────────────
