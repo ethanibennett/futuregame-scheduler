@@ -56,20 +56,64 @@ done
 Install: `launchctl load ~/Library/LaunchAgents/me.futurega.autopull.plist`
 Check: `tail ~/Library/Logs/futuregame-autopull.log`
 
-## Build the iOS app (Capacitor)
-
-The app wraps the **Vite build output** (`capacitor.config.json` → `webDir: public-vite`).
+## Ship to TestFlight (one command)
 
 ```bash
-cd <repo>            # futuregame-scheduler checkout
-npm install          # root deps (first time / after dep changes)
-node build.js        # vite-app deps + `vite build` → ../public-vite/
-npx cap sync ios     # copy web build + plugins into ios/App
-npx cap open ios     # opens Xcode
+./scripts/ios-testflight.sh
 ```
 
-In Xcode: select device/simulator → **▶ Run**, or Product → Archive for
-TestFlight (signing uses the team already configured in `ios/App`).
+Pulls `master`, builds the web app, syncs it into the Capacitor project, bumps
+the build number past whatever App Store Connect already has, archives, and
+uploads. Roughly five minutes, most of it in `xcodebuild archive`.
+
+The app **bundles** the web build (`capacitor.config.json` → `webDir: public-vite`),
+so shipping a frontend change to the app means rebuilding and re-uploading —
+a Render deploy alone does not reach installed apps.
+
+Useful flags:
+
+| flag | effect |
+|---|---|
+| `--dry-run` | everything up to the archive, then stop — good for checking the sync |
+| `--no-pull` | build the working tree as-is instead of pulling |
+| `--commit` | commit the build-number bump for you |
+| `--build N` | force a specific build number |
+
+**What it will not do:** touch Render, touch the database, or push to `master`.
+That is deliberate. `deploy.sh --ios` does all three, so it can no longer be used
+here — it exits without a `RENDER_API_KEY`, prompts for admin credentials, starts
+a local server to sync the production database, and runs `git push origin master`
+(which auto-deploys futurega.me). Shipping the app should not require deploying
+the web app, and the Mac is not supposed to touch the database at all.
+
+The only file the script changes is `project.pbxproj` (the build number). Commit
+it so the repo matches TestFlight.
+
+### One-time setup
+
+1. **App Store Connect API key.** appstoreconnect.apple.com → Users and Access →
+   Integrations → App Store Connect API → generate a key with the **App Manager**
+   role. Save the `.p8` as
+   `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`.
+   Apple lets you download it **once**. It is a credential — never commit it.
+   If your key ID differs from the default, export `ASC_KEY_ID` / `ASC_ISSUER_ID`.
+2. **Share the Xcode scheme.** Xcode → Product → Scheme → Manage Schemes → tick
+   **Shared** for `futurega.me`, then commit `ios/App/App.xcodeproj/xcshareddata/`.
+   Schemes otherwise live in gitignored `xcuserdata`, so `xcodebuild -scheme`
+   works only on a machine where Xcode has already generated one. The script
+   warns rather than failing if it is missing.
+3. **Xcode command line tools** selected:
+   `sudo xcode-select -s /Applications/Xcode.app`
+
+Signing is automatic against team `27TK6846H8`; bundle ID `app.futurega.me.beta`.
+
+### Running it by hand instead
+
+```bash
+npm install && node build.js   # vite build → public-vite/
+npx cap sync ios               # copy web build + plugins into ios/App
+npx cap open ios               # then Product → Archive → Distribute App
+```
 
 Android, when needed: `npx cap sync android && npx cap open android`.
 
