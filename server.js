@@ -368,8 +368,14 @@ app.get('/api/backer/:token/feed', (req, res) => {
       openingCents = Math.round((Number(rec.opening) || 0) * 100);
     }
     const events = [];
+    // Newest session FIRST, by the session's own date — not by `ts`, which is
+    // when notify fired. The two diverge whenever a session is logged late (a
+    // Saturday session notified after Sunday's has a larger ts but an earlier
+    // date), which put older sessions above newer ones on the page. `date` is
+    // an ISO YYYY-MM-DD string, so it orders correctly as text; ts breaks ties
+    // within a day.
     const estmt = db.prepare(
-      'SELECT ts, date, game, venue, hours, session_result_cents, pct, share_cents FROM backer_events WHERE token = ? ORDER BY ts DESC LIMIT 200'
+      'SELECT ts, date, game, venue, hours, session_result_cents, pct, share_cents FROM backer_events WHERE token = ? ORDER BY date DESC, ts DESC LIMIT 200'
     );
     estmt.bind([token]);
     while (estmt.step()) {
@@ -547,8 +553,10 @@ app.get('/api/schedule/:token/upcoming', (req, res) => {
     try {
       const token = String(req.params.token || '');
       if (!/^[A-Za-z0-9]{6,64}$/.test(token)) return res.status(400).json({ error: 'bad token' });
+      // Same order as the backer's own page (see the feed route) so the review
+      // list here matches what they see.
       const s = db.prepare(
-        'SELECT session_id, date, game, venue, hours, session_result_cents, pct, share_cents, ts FROM backer_events WHERE token = ? ORDER BY ts DESC LIMIT 500'
+        'SELECT session_id, date, game, venue, hours, session_result_cents, pct, share_cents, ts FROM backer_events WHERE token = ? ORDER BY date DESC, ts DESC LIMIT 500'
       );
       s.bind([token]);
       const events = [];
