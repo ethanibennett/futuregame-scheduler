@@ -1,6 +1,8 @@
 # Mac build runbook — futuregame-scheduler
 
 **Audience:** Claude Code running on the Mac laptop (or Ethan directly).
+**Moving to a new Mac?** See `docs/mac-migration.md` — the five things here that
+aren't in git, and the order to move them in.
 **Role of this machine:** Xcode build node — the iOS/Android (Capacitor) app and the
 macOS screensaver. Nothing else. The 24/7 runtime moved to the Windows box
 (2026-08-09): scheduler server + MTT feed run under pm2 on Windows, the solver
