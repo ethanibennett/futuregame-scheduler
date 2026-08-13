@@ -1,7 +1,7 @@
 # Mac build runbook — futuregame-scheduler
 
 **Audience:** Claude Code running on the Mac laptop (or Ethan directly).
-**Moving to a new Mac?** See `docs/mac-migration.md` — the five things here that
+**Moving to a new Mac?** See `docs/mac-migration.md` — the six things here that
 aren't in git, and the order to move them in.
 **Role of this machine:** Xcode build node — the iOS/Android (Capacitor) app and the
 macOS screensaver. Nothing else. The 24/7 runtime moved to the Windows box
@@ -121,6 +121,20 @@ it so the repo matches TestFlight.
    warns rather than failing if it is missing.
 3. **Xcode command line tools** selected:
    `sudo xcode-select -s /Applications/Xcode.app`
+4. **An App Store provisioning profile** for `app.futurega.me.beta` must be present
+   in `~/Library/Developer/Xcode/UserData/Provisioning Profiles/`. A fresh machine
+   has none, and the App-Manager-role ASC key cannot mint one — the archive
+   succeeds and the *export* fails with `No profiles for 'app.futurega.me.beta'
+   were found`. See `docs/mac-migration.md` item 6.
+5. **Git identity**, before this machine commits anything:
+   ```bash
+   git config --global user.name "Ethan Bennett"
+   git config --global user.email "ethanibennett@gmail.com"
+   ```
+   The script commits the build-number bump with `--commit`, and the runner does
+   it unattended. Without this, git synthesises an address from the hostname
+   (e.g. `ethanibennett@mac.lan`) and every automated build commit lands
+   unattributed to your GitHub account.
 
 Signing is automatic against team `27TK6846H8`; bundle ID `app.futurega.me.beta`.
 
