@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+
+    <key>CFBundleExecutable</key>
+    <string>DashboardSaver</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>me.futurega.DashboardSaver</string>
+
+    <key>CFBundleName</key>
+    <string>DashboardSaver</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>Daily Dashboard</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <!-- BNDL is the required package type for a .saver bundle -->
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <!-- Principal class = module.class. The @objc(DashboardSaverView) name and the module
+         (product) name both matter; with the swiftc build below the module is "DashboardSaver",
+         so the fully-qualified principal class is DashboardSaver.DashboardSaverView. -->
+    <key>NSPrincipalClass</key>
+    <string>DashboardSaver.DashboardSaverView</string>
+
+    <!-- Minimum system version: Swift screensavers need a modern runtime. -->
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 futurega.me</string>
+</dict>
+</plist>

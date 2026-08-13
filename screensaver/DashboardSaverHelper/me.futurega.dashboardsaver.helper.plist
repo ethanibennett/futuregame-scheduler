@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>me.futurega.dashboardsaver.helper</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/ethanibennett/src/DashboardSaverHelper/build/DashboardSaverHelper</string>
+    </array>
+
+    <!-- Resident agent: launch at login and keep alive; it renders on its own 60s timer. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Pin the render's displayed clock/dateline to Eastern regardless of where the laptop
+         physically is (Ethan's "day" is always New York). The .timestamp sidecar is an
+         absolute epoch, so staleness math is unaffected. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TZ</key>
+        <string>America/New_York</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/ethanibennett/Library/Logs/DashboardSaver/helper.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ethanibennett/Library/Logs/DashboardSaver/helper.log</string>
+</dict>
+</plist>
