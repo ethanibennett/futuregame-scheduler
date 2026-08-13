@@ -169,17 +169,57 @@ here:
 1. Repo → **Settings → Actions → Runners → New self-hosted runner → macOS**.
 2. Run the `./config.sh` command it gives you (it embeds a registration token).
    Accept the default labels — the workflow targets `[self-hosted, macOS]`.
-3. Install it as a background service so it survives reboots:
+
+   ⚠️ **Run `config.sh` from a shell where the full toolchain is already on
+   `PATH`.** The runner freezes `PATH` into `~/actions-runner/.path` at
+   registration time and uses that forever. Register from a shell that hasn't
+   sourced nvm and the runner cannot find `node`, so every build fails with no
+   obvious cause. Verify:
    ```bash
-   ./svc.sh install && ./svc.sh start && ./svc.sh status
+   env -i PATH="$(cat ~/actions-runner/.path)" sh -c 'command -v node xcodebuild git gh'
    ```
+   Re-register if anything is missing — editing `.path` by hand is not supported.
+
+3. Start it. **Do not use `svc.sh` if the job needs to codesign** — see below.
+
+> ### ⚠️ `svc.sh` runners cannot codesign against the login keychain
+>
+> A runner installed with `./svc.sh install` fails at `xcodebuild archive` with:
+> ```
+> .../Cordova.framework: errSecInternalComponent
+> ** ARCHIVE FAILED **
+> ```
+> This is a launchd-session limitation, **not** a permissions problem, and it is
+> immune to every fix that looks like the answer: `security
+> set-key-partition-list`, `SessionCreate`/`ProcessType: Interactive` in the
+> plist, and an unlocked no-timeout keychain change nothing. The failure
+> signature never varies, which is what makes it so slow to diagnose.
+>
+> **One-step diagnostic:** the same identity signs fine from an interactive
+> shell. If a manual `./scripts/ios-testflight.sh` archives and the runner
+> doesn't, it is this — stop investigating certificates and profiles.
+>
+> **Resolution:** run the agent from a session-inheriting process instead:
+> ```bash
+> ./svc.sh stop && ./svc.sh uninstall
+> cd ~/actions-runner && ./run.sh
+> ```
+> `svc.sh uninstall` removes only the launchd service. It does **not**
+> deregister the runner — that is `./config.sh remove` — so registration and
+> credentials survive.
+>
+> The tradeoff: `run.sh` dies with its session and does not survive a reboot. A
+> Login Item restores it but makes an unattended build node depend on a GUI
+> login. The version that survives everything is a **dedicated build keychain**
+> created and unlocked inside the job, which works under `svc.sh` with no GUI
+> session at all — at the cost of needing the `.p12` and its export password
+> during setup.
 
 The runner executes as your user, so it picks up the App Store Connect key at
 `~/.appstoreconnect/private_keys/` and the Xcode toolchain already configured
 here. **The key is deliberately not a GitHub secret** — it never leaves this Mac.
 
-To pause automatic builds, stop the service (`./svc.sh stop`); the script keeps
-working by hand.
+To pause automatic builds, stop the runner; the script keeps working by hand.
 
 ### Running it by hand instead
 

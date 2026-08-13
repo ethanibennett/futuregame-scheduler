@@ -14,7 +14,7 @@ that **aren't**, and the order to move them in.
 |---|---|---|---|
 | 1 | App Store Connect API key | `~/.appstoreconnect/private_keys/AuthKey_UCFMFW9636.p8` | **No** — Apple allows exactly one download |
 | 2 | Render + admin credentials | `~/.claude/projects/-Users-ethanibennett-WSOP-scheduler/render.env` | Yes, if you have the values elsewhere |
-| 3 | Apple Distribution cert + private key | login keychain | Yes — reissue in the developer portal |
+| 3 | Apple Distribution cert + private key | login keychain | Yes — reissue in the developer portal (see the WWDR note below) |
 | 4 | Auto-pull launchd agent | `~/bin/futuregame-autopull.sh`, `~/Library/LaunchAgents/me.futurega.autopull.plist` | Yes — both are in `docs/mac-build.md` |
 | 5 | GitHub Actions self-hosted runner | wherever `actions-runner/` was unpacked | Yes — registration is machine-bound and **must** be recreated |
 | 6 | Provisioning profiles | `~/Library/Developer/Xcode/UserData/Provisioning Profiles/` (older Xcode: `~/Library/MobileDevice/Provisioning Profiles/`) | Yes, but **not** by the build script alone — see below |
@@ -65,6 +65,25 @@ generate a new key in App Store Connect and update `ASC_KEY_ID` / `ASC_ISSUER_ID
 > ⚠️ Items 1–3 are credentials. Never commit them, never print them to a terminal
 > or into a chat, and move them only inside an encrypted disk image or by AirDrop.
 > Confirming a file exists and copied is enough; its contents never need to be read.
+
+### A good `.p12` that yields zero identities: the WWDR intermediate
+
+A fresh Mac ships only the **legacy** Apple Worldwide Developer Relations
+intermediate, which expired 2023-02-07. Import a perfectly valid `.p12` and
+`security find-identity -v -p codesigning` still reports **0 valid identities**,
+which reads exactly like a failed or cert-only import — and sends you re-exporting
+a `.p12` that was never the problem.
+
+The tell is to drop `-v`, which lists invalid identities too:
+
+```bash
+security find-identity -p codesigning      # no -v
+# → CSSMERR_TP_NOT_TRUSTED against the identity you just imported
+```
+
+Fix: install the current **WWDR G3** intermediate from
+<https://www.apple.com/certificateauthority/>. The identity becomes valid
+immediately; no re-import or re-issue is needed.
 
 ## Order of operations
 
