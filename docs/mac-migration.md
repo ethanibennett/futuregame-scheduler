@@ -17,6 +17,46 @@ that **aren't**, and the order to move them in.
 | 3 | Apple Distribution cert + private key | login keychain | Yes — reissue in the developer portal |
 | 4 | Auto-pull launchd agent | `~/bin/futuregame-autopull.sh`, `~/Library/LaunchAgents/me.futurega.autopull.plist` | Yes — both are in `docs/mac-build.md` |
 | 5 | GitHub Actions self-hosted runner | wherever `actions-runner/` was unpacked | Yes — registration is machine-bound and **must** be recreated |
+| 6 | Provisioning profiles | `~/Library/Developer/Xcode/UserData/Provisioning Profiles/` (older Xcode: `~/Library/MobileDevice/Provisioning Profiles/`) | Yes, but **not** by the build script alone — see below |
+
+Item 6 is the one that actually bit during the 2026-08 migration, because it is
+invisible until the very last step. The build node needs an **App Store**
+distribution profile for `app.futurega.me.beta` (a profile with no
+`ProvisionedDevices`). On a machine that has used Xcode's GUI for a while one is
+simply present; on a fresh machine there is none, and Xcode tries to create one
+through the API and fails with:
+
+```
+Cloud signing permission error
+No profiles for 'app.futurega.me.beta' were found
+```
+
+An **App Manager**-role ASC key cannot mint profiles — that needs
+Certificates/Identifiers/Profiles rights (Admin). So a fresh machine has three
+ways out, cheapest first:
+
+1. Copy the `.mobileprovision` files from the old machine (they are not secrets;
+   AirDrop is fine). This is what unblocked 2026-08.
+2. Sign in to Xcode → Settings → Accounts → Download Manual Profiles, or create
+   the profile by hand in the developer portal.
+3. Generate an ASC key with **Admin** role so cloud signing can mint profiles
+   itself, and update `ASC_KEY_ID` / `ASC_ISSUER_ID`. A new key is additive — the
+   existing `.p8` is not invalidated.
+
+Option 1 or 2 unblocks a migration; **option 3 is the only one that survives
+unattended operation**, because copied profiles expire (the 2026-08 one expires
+2027-04-08) and a runner with no human at the GUI cannot renew them. Do it
+deliberately before the expiry rather than discovering it from a failed
+automated build.
+
+> Two traps when diagnosing this:
+> - `--dry-run` **cannot** catch it. The failure lands at `exportArchive`, which
+>   is past where the dry run stops. A green dry run proves nothing about signing.
+> - The signing identity in the archive log is a **red herring**. The archive may
+>   be signed `Apple Development: Created via API` and still export fine, because
+>   `exportArchive` re-signs using the identity and profile named in
+>   `ios/ExportOptions.plist`. The signal to read is
+>   `No profiles for '<bundle id>' were found`.
 
 Item 1 is the only genuinely irreplaceable one. If it's lost you are not stuck:
 generate a new key in App Store Connect and update `ASC_KEY_ID` / `ASC_ISSUER_ID`
@@ -29,7 +69,7 @@ generate a new key in App Store Connect and update `ASC_KEY_ID` / `ASC_ISSUER_ID
 ## Order of operations
 
 1. Inventory + protect unpushed work on the **old** Mac.
-2. Bundle the five items above.
+2. Bundle the six items above.
 3. Set up the **new** Mac and get a `--dry-run` passing.
 4. Only then: deregister the runner on the old Mac, register it on the new one.
 5. Only then: wipe the old Mac.
@@ -82,22 +122,32 @@ PHASE 2 — PROTECT UNPUSHED WORK. Before anything else, for every clone found: 
 uncommitted changes, unpushed commits, and stashes. Anything unpushed is the only thing
 here that doesn't exist elsewhere — surface it and ask me what to do. Do not discard it.
 
-PHASE 3 — FIX ONE THING WHILE YOU'RE STILL ON A WORKING BUILD MACHINE. The repo has no
-shared Xcode scheme, so schemes live in gitignored xcuserdata and a fresh clone can't run
-`xcodebuild -scheme "futurega.me"`. That will bite on the new Mac. In Xcode: Product →
-Scheme → Manage Schemes → tick "Shared" for futurega.me, then commit
-ios/App/App.xcodeproj/xcshareddata/ on a branch and open a PR. Verify first with
-`./scripts/ios-testflight.sh --dry-run` (stops before the archive, uploads nothing).
+PHASE 3 — CHECK WHAT ONLY A WORKING BUILD MACHINE CAN TELL YOU. The shared Xcode scheme
+is already committed (xcshareddata/xcschemes/futurega.me.xcscheme) — confirm it is still
+there rather than re-doing it. What you cannot recreate later is local signing state:
+list the provisioning profiles in ~/Library/Developer/Xcode/UserData/Provisioning Profiles/
+with `security cms -D -i <file>` and confirm an App Store profile for app.futurega.me.beta
+(no ProvisionedDevices) exists, plus its expiry. That profile is item 6 and a fresh
+machine cannot mint it with the App-Manager-role key. Verify the build path with
+`./scripts/ios-testflight.sh --dry-run` (stops before the archive, uploads nothing) —
+but note a green dry run does NOT prove signing works.
 
 PHASE 4 — BUNDLE THE THINGS THAT AREN'T IN GIT. Collect into ~/Desktop/mac-migration/:
   - the .p8 key (Apple allows exactly one download — if this is lost, the key is gone and
     a new one must be generated)
-  - render.env
+  - render.env (skip it if the target is only a build node — see the note above)
   - the autopull script + plist
   - the Apple Distribution certificate AND its private key, exported as a .p12 with a
-    password (Keychain Access → My Certificates → right-click → Export)
+    password (Keychain Access → My Certificates → right-click → Export). Keychain Access
+    is at /System/Library/CoreServices/Applications/ on macOS 26 — not in Utilities, and
+    Spotlight does not index it.
 Then turn that folder into an ENCRYPTED disk image (Disk Utility → File → New Image →
 Image from Folder → AES-256) and tell me the path. Transfer by AirDrop or a cable.
+
+Separately, and NOT in the encrypted image (they aren't secrets): copy
+~/Library/Developer/Xcode/UserData/Provisioning Profiles/*.mobileprovision into a plain
+folder and AirDrop that too. Without the App Store profile for app.futurega.me.beta the
+new machine archives fine and then fails at export.
 
 RULES:
   - Never print the contents of the .p8, .p12 or render.env to the terminal or to me.
