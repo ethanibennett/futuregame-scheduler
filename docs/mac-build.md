@@ -20,18 +20,33 @@ directly.
 
 One agent keeps both repos fresh. Adjust `REPOS` if your clone paths differ.
 
+> ⚠️ **Do not put the clones under `~/Desktop`, `~/Documents` or `~/Downloads`.**
+> Those directories are TCC-protected, and a launchd agent has no access to them.
+> The agent loads and fires, but every run dies with
+> `fatal: Unable to read current working directory: Operation not permitted`,
+> while running the same script by hand works — which makes it look like a git
+> problem rather than a permissions one. Keeping the clones directly under
+> `$HOME` avoids it. Granting `/bin/bash` Full Disk Access also works, but that
+> is a broad, permanent grant on a machine that runs a self-hosted Actions
+> runner, so prefer the path.
+
 `~/bin/futuregame-autopull.sh` (chmod +x):
 
 ```bash
 #!/bin/bash
 # Pull latest master/main for the futuregame repos — only when the tree is clean.
+# Paths must stay outside ~/Desktop, ~/Documents and ~/Downloads (TCC — see above).
 REPOS=(
-  "$HOME/Desktop/fg_solver/wsop"        # futuregame-scheduler, formerly wsop-2026-scheduler (adjust if cloned elsewhere)
-  "$HOME/Desktop/fg_solver/wsop-console-repo"  # wsop-console
+  "$HOME/fg_solver/wsop"               # futuregame-scheduler, formerly wsop-2026-scheduler
+  "$HOME/fg_solver/wsop-console-repo"  # wsop-console
 )
 for r in "${REPOS[@]}"; do
   [ -d "$r/.git" ] || continue
-  if [ -z "$(git -C "$r" status --porcelain)" ]; then
+  # Check git's exit status, not just its stdout: a failed `git status` prints
+  # nothing, which an emptiness test reads as "clean" and pulls over a dirty tree.
+  if ! status="$(git -C "$r" status --porcelain 2>&1)"; then
+    echo "$(date): $r — git status failed, skipped: $status" >> "$HOME/Library/Logs/futuregame-autopull.log"
+  elif [ -z "$status" ]; then
     git -C "$r" pull --ff-only >> "$HOME/Library/Logs/futuregame-autopull.log" 2>&1
   else
     echo "$(date): $r dirty — skipped" >> "$HOME/Library/Logs/futuregame-autopull.log"
