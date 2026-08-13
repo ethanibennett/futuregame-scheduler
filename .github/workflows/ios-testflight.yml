@@ -44,9 +44,15 @@ jobs:
 
     steps:
       - name: Checkout
+        # Shallow on purpose. This repo is ~218 MB across 57 branches, and
+        # fetch-depth: 0 made every build re-fetch all of it before doing any
+        # work — which failed repeatedly mid-fetch ("RPC failed ... fatal: early
+        # EOF") and surfaced as the misleading annotation "self-hosted runner
+        # lost communication", pointing the investigation at the Mac rather than
+        # at this line. Nothing in this job needs history: the build script runs
+        # with --no-pull, the build number comes from App Store Connect, and the
+        # only git calls below work fine at depth 1.
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Show what triggered this
         run: |
