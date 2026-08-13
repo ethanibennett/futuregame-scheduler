@@ -37,6 +37,22 @@ generate a new key in App Store Connect and update `ASC_KEY_ID` / `ASC_ISSUER_ID
 Runner registration is bound to a machine, so it has to be removed on the old one
 and created on the new one — in that order, and not before step 3 succeeds.
 
+> ⚠️ **`--dry-run` is not a full gate.** It stops before the archive, so it never
+> passes `-scheme` to `xcodebuild` and cannot catch a missing or broken scheme.
+> A green dry run plus a failing real run is the expected shape of that bug.
+> Treat step 3 as done only after a **real** run reaches App Store Connect.
+>
+> Related: `scripts/ios-testflight.sh` discards stderr when querying ASC for the
+> latest build and falls back to a local counter, so an auth failure degrades
+> quietly. The `iOS build number: N → M (past ASC latest …)` line is the proof
+> the key worked; `using local counter` means it did not.
+
+**`render.env` is not needed on a build node.** `deploy.sh` is retired there, and
+the file carries `RENDER_API_KEY` and `ADMIN_PASS`. A build node runs a
+self-hosted Actions runner that executes repo workflow code as your user, so
+every credential in that home directory widens the blast radius. Migrate it only
+to a machine that actually deploys.
+
 ## On the old Mac
 
 Paste this into a fresh Claude Code session, from inside the scheduler clone:
@@ -47,7 +63,8 @@ one. This machine is the futuregame suite's Xcode build node: it builds the iOS 
 the macOS screensaver, and nothing else runs here.
 
 Read CLAUDE.md, docs/mac-build.md and docs/mac-migration.md first. The scheduler clone is
-probably ~/Desktop/fg_solver/wsop — confirm before trusting it.
+probably ~/fg_solver/wsop (older machines: ~/Desktop/fg_solver/wsop) — confirm before
+trusting it, and don't assume the clone Xcode builds from is the only one.
 
 PHASE 1 — INVENTORY ONLY. Change nothing. Report what exists, with dates and sizes:
   1. ~/.appstoreconnect/private_keys/           App Store Connect API key (AuthKey_UCFMFW9636.p8)
