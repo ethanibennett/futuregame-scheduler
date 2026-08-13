@@ -60,6 +60,33 @@ jobs:
           echo "commit: $(git rev-parse --short HEAD)"
           git log -1 --pretty='%s'
 
+      - name: Unlock build keychain
+        # Signing runs against a dedicated keychain, not the login keychain. A
+        # runner started by launchd (svc.sh) cannot use login-keychain keys at
+        # all: every codesign fails with errSecInternalComponent regardless of
+        # partition lists, SessionCreate, or lock state. See docs/mac-build.md.
+        #
+        # build.keychain-db holds BOTH identities plus the WWDR G3 intermediate,
+        # because it is alone on the search list and cannot borrow anything from
+        # login.keychain. The archive signs with Apple Development; exportArchive
+        # re-signs with Apple Distribution — a keychain holding only the
+        # distribution identity fails before export is ever reached.
+        #
+        # NOTE: `security list-keychains -d user -s` replaces the USER's search
+        # list, not just this job's — it outlives the job. The always() restore
+        # step below is what keeps an interactive Xcode session working
+        # afterwards. If a run is hard-killed mid-job and Xcode suddenly cannot
+        # see your certificates, that restore is what didn't happen; re-run it
+        # by hand:
+        #   security list-keychains -d user -s ~/Library/Keychains/login.keychain-db
+        env:
+          BUILD_KEYCHAIN_PASSWORD: ${{ secrets.BUILD_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN="$HOME/Library/Keychains/build.keychain-db"
+          security list-keychains -d user -s "$KEYCHAIN"
+          security unlock-keychain -p "$BUILD_KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings "$KEYCHAIN"   # no auto-relock mid-archive
+
       - name: Build and upload to TestFlight
         # --no-pull because actions/checkout has already placed the tree at the
         # right commit; letting the script pull would race with the runner.
@@ -71,6 +98,11 @@ jobs:
         # value is a record, not the source of truth, and letting it go stale
         # costs nothing.
         run: ./scripts/ios-testflight.sh --no-pull
+
+      - name: Restore keychain search list
+        # Always, including on failure — see the note on the unlock step above.
+        if: always()
+        run: security list-keychains -d user -s "$HOME/Library/Keychains/login.keychain-db"
 
       - name: Report
         if: always()
