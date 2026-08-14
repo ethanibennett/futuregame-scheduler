@@ -118,4 +118,9 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   "- Day 1"/"- Flight A" suffixes; include format only when distinctive ("7-Max", "Freezeout").
 - "Opponent" not "villain". Card notation `AhKs`, suits h/d/c/s, x = face-down.
 - Dropdowns/panels use portals to document.body to escape stacking contexts.
+- **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
+  tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
+  for the steps and what each replaces. Never write a bare literal for anything a
+  token covers. Migration off the ~3,900 existing literals is in progress; the
+  checklist at the foot of that doc tracks it.
 - Update this file when architecture or suite topology changes — it is the handoff.
