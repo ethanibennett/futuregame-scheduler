@@ -1238,3 +1238,15 @@ export const isDarkTheme = (t) => t === 'dark' || t === 'dusk';
 export const THEME_ICON = { dark: 'moon', dusk: 'sunset', light: 'sun', cloudy: 'cloud' };
 export const THEME_LABEL = { dark: 'Dark', dusk: 'Dusk', light: 'Light', cloudy: 'Cloudy' };
 export const THEME_META = { dark: '#111111', dusk: '#0d1525', light: '#f5f5f5', cloudy: '#cbcbcb' };
+
+// Display-font options. SERIF_FONTS is every value that still resolves to real
+// CSS (helvetica keeps its [data-serif] rules but is not in the toggle cycle);
+// SERIF_ORDER is what the Settings button actually cycles through.
+export const SERIF_FONTS = ['baskerville', 'univers', 'helvetica'];
+export const SERIF_ORDER = ['baskerville', 'univers'];
+export const SERIF_LABEL = { baskerville: 'Baskerville', univers: 'Univers', helvetica: 'Helvetica' };
+export const SERIF_STACK = {
+  baskerville: "'Libre Baskerville', Georgia, serif",
+  univers: "'Univers', sans-serif",
+  helvetica: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+};
