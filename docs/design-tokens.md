@@ -116,12 +116,30 @@ operates in.
 
 ## Migration status
 
-- [x] Tokens defined (no consumers yet)
-- [ ] Radius literals migrated
-- [ ] Shadow literals migrated
-- [ ] Font stacks migrated
-- [ ] `!important` sweep
+Two buckets. **Exact** means the literal equals the token's computed value, so
+the change cannot alter rendering and lands without review. **Reviewed** means
+the snap is a judgment call with a visible result, and wants eyes on it first.
+
+- [x] Tokens defined
+- [x] Radius, exact snaps — 43 sites (`4px` `8px` `12px` `999px`, plus two
+      contradictory fallbacks)
+- [x] Font stacks, exact snaps — 149 sites onto `--font-condensed`
+- [ ] **Reviewed:** radius judgment snaps — 61 sites (`3px` `6px` `2px` `10px`
+      `20px` `1.5px`), each a real 1–2px change
+- [ ] **Reviewed:** type scale — every size moves; `0.42rem`/`0.48rem` snap up
+- [ ] **Reviewed:** spacing — every gap and pad moves
+- [ ] **Reviewed:** shadows onto `--elev-*` — 59 sites, all inexact by nature
+- [ ] **Reviewed:** primary actions onto `--brand`
+- [ ] `!important` sweep — 55 sites, each its own specificity question
 - [ ] Stylesheet split into modules
-- [ ] Type scale migrated
-- [ ] Spacing migrated
-- [ ] Primary actions moved to `--brand`
+- [ ] Motion: the five `transition: all` declarations onto `--dur-*`/`--ease-*`
+- [ ] `:focus-visible` ring audit
+
+Three font spellings are deliberately still literal. `'Univers'` and
+`'Univers Condensed'` carry no fallback, and `'Univers', sans-serif` lacks the
+`--font-sans` fallback tail, so none is an exact swap. The three
+`'Libre Baskerville', Georgia, serif !important` sites are a bigger catch:
+`--font-display` resolves through `--serif`, which *varies by `data-serif`
+theme*. Moving them onto the token would make them start following the display
+font picker — arguably right, but a behaviour change, so it belongs with the
+`!important` sweep rather than a no-op pass.
