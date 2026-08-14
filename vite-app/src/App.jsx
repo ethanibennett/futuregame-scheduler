@@ -65,6 +65,11 @@ export default function App() {
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
   const [authView, setAuthView] = useState('login');
   const [currentView, _setCurrentView] = useState('dashboard');
+  // Set when the dashboard's Up Next card is tapped; ScheduleView consumes it
+  // to expand and scroll to that row, then clears it so a later visit to the
+  // schedule does not re-focus the same event.
+  const [scheduleFocusId, setScheduleFocusId] = useState(null);
+  const clearScheduleFocus = useCallback(() => setScheduleFocusId(null), []);
   const [viewKey, setViewKey] = useState(0);
   const [visitedTabs, setVisitedTabs] = useState(new Set(['dashboard']));
   const scrollPositions = useRef({});
@@ -1236,6 +1241,7 @@ export default function App() {
         {visitedTabs.has('dashboard') && (!dataLoaded ? <SkeletonDashboard /> :
           <DashboardView
             key={debugTimeKey}
+            onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
             mySchedule={mySchedule}
             myActiveUpdates={myActiveUpdates}
             trackingData={trackingData}
@@ -1295,6 +1301,8 @@ export default function App() {
           <ScheduleView
             key={debugTimeKey}
             onNavigate={(v) => setCurrentView(v)}
+            focusTournamentId={scheduleFocusId}
+            onFocusConsumed={clearScheduleFocus}
             mySchedule={mySchedule}
             onToggle={toggleTournament}
             shareBuddies={shareBuddies}
