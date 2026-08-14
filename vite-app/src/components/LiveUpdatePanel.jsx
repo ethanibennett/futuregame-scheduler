@@ -461,7 +461,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
           return { top: r.bottom + 8, left, maxWidth: vw - 16, maxHeight: vh - r.bottom - 16 };
         })()}>
           {allOptions.length === 0 ? (
-            <div className="live-update-empty">No tournaments on your schedule today</div>
+            <div className="live-update-empty">Nothing on your schedule today — live updates attach to an event you are playing.</div>
           ) : (
             <>
               {allOptions.length > 1 ? (

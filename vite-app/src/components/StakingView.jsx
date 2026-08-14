@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
+import { FirstRun } from './EmptyState.jsx';
 import { API_URL } from '../utils/api.js';
 import { formatBuyin } from '../utils/utils.js';
 
@@ -309,11 +310,13 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onB
       </div>
 
       {series.length === 0 ? (
-        <div className="empty-state">
-          <Icon.handshake />
-          <h3>No staking series yet</h3>
-          <p>Create a series to start tracking your staking deals</p>
-        </div>
+        <FirstRun
+          icon="handshake"
+          title="Create your first series"
+          body="A series groups the events a backing deal covers, so makeup and settlements calculate across the whole run."
+          actionLabel="+ Series"
+          onAction={onCreate}
+        />
       ) : series.map(s => (
         <button key={s.id} className="staking-series-card" onClick={() => onSelect(s)}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
@@ -517,11 +520,11 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
 
       <div style={{padding:'12px 16px'}}>
         {backers.length === 0 ? (
-          <div className="empty-state">
-            <Icon.people />
-            <h3>No backers yet</h3>
-            <p>Add your backers to start creating staking agreements</p>
-          </div>
+          <FirstRun
+            icon="people"
+            title="Add your first backer"
+            body="A backer needs to exist before you can write an agreement against them."
+          />
         ) : backers.map(b => (
           <div key={b.id} className="staking-backer-card">
             <div style={{flex:1,minWidth:0}}>
@@ -579,11 +582,11 @@ function BackerSummaryView({ token, onBack, onManage }) {
       </div>
 
       {summaries.length === 0 ? (
-        <div className="empty-state">
-          <Icon.people />
-          <h3>No backers yet</h3>
-          <p>Add backers and log events to see P&amp;L summaries here</p>
-        </div>
+        <FirstRun
+          icon="people"
+          title="No summaries yet"
+          body="P&amp;L appears here once you have backers and logged events to calculate against."
+        />
       ) : summaries.map(b => {
         const badge = get1099Status(b.ytd_winnings);
         const isExpanded = expandedId === b.id;

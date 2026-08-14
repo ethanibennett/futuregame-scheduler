@@ -4,6 +4,7 @@ import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import ScheduleExportModal from './ScheduleExportModal.jsx';
+import { FirstRun } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, fmtShortDate, formatBuyin, currencySymbol,
   parseTournamentTime, findClosestFlight, extractConditions, detectConflicts,
@@ -116,7 +117,8 @@ export default function ScheduleView({
   onAcceptRequest, onRejectRequest, token, onSetCondition, onRemoveCondition,
   allTournaments, onToggleAnchor, onSetPlannedEntries,
   onAddPersonalEvent, onUpdatePersonalEvent,
-  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit
+  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit,
+  onNavigate
 }) {
   const displayName = useDisplayName();
   const { conflicts, expectedConflicts } = useMemo(() => detectConflicts(mySchedule), [mySchedule]);
@@ -324,11 +326,13 @@ export default function ScheduleView({
       )}
 
       {sorted.length === 0 ? (
-        <div className="empty-state">
-          <Icon.star />
-          <h3>No events saved</h3>
-          <p>Browse All Tournaments and tap "+ Add to My Schedule"</p>
-        </div>
+        <FirstRun
+          icon="star"
+          title="Build your schedule"
+          body="Add events from All Tournaments and they collect here, sorted by date with your travel days in between."
+          actionLabel="Browse tournaments"
+          onAction={onNavigate ? () => onNavigate('tournaments') : undefined}
+        />
       ) : (
       <div>
       <div className="schedule-sticky-header" ref={schedHeaderRef}>

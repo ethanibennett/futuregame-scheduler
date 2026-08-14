@@ -3176,6 +3176,42 @@
     .empty-state h3 { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
     .empty-state p { font-size: 0.85rem; }
 
+    /* Inline contexts — dropdowns, panel sections, cards — where the 60px
+       first-run padding would blow the container out. */
+    .empty-state-compact { padding: var(--space-2xl) var(--space-xl); }
+    .empty-state-compact svg { width: 28px; height: 28px; margin-bottom: var(--space-md); }
+    .empty-state-compact h3 { font-size: var(--fs-md); }
+    .empty-state-compact p { font-size: var(--fs-sm); }
+
+    .empty-state p { max-width: 34ch; margin-left: auto; margin-right: auto; line-height: var(--lh-snug); }
+
+    .empty-state-actions {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: var(--space-md); margin-top: var(--space-lg);
+    }
+    .empty-state-action {
+      margin-top: var(--space-lg);
+      padding: var(--space-sm) var(--space-lg);
+      border: 1px solid var(--brand);
+      border-radius: var(--radius-sm);
+      background: var(--brand);
+      color: var(--on-brand);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      cursor: pointer;
+      transition: background var(--dur-snap) var(--ease-out),
+                  border-color var(--dur-snap) var(--ease-out);
+    }
+    .empty-state-actions .empty-state-action { margin-top: 0; }
+    .empty-state-action:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+    .empty-state-action:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+    /* Secondary ways out of a filter sit quiet — only one action should pull. */
+    .empty-state-action-quiet {
+      background: transparent; color: var(--text-muted); border-color: var(--border);
+    }
+    .empty-state-action-quiet:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+
     /* ── Calendar ── */
     .calendar-nav {
       display: flex;

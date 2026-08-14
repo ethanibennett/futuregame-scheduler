@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import TableScanner from './TableScanner.jsx';
+import { FirstRun } from './EmptyState.jsx';
 import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
   formatBuyin, currencySymbol, nativeCurrency, haptic, fmtShortDate,
@@ -832,13 +833,14 @@ export default function DashboardView({
               {nextUpcomingEvent.buy_in ? <div style={{fontSize:'0.72rem',color:'var(--accent)',marginTop:'2px'}}>{formatBuyin(nextUpcomingEvent.buy_in, nextUpcomingEvent.venue)}</div> : null}
             </div>
           ) : (
-            <div className="dash-empty">
-              <Icon.calendar />
-              <div>No events on your schedule</div>
-              <div style={{fontSize:'0.72rem',marginTop:'4px'}}>
-                Add events from the <button onClick={() => onNavigate('tournaments')} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontFamily:'inherit',fontSize:'inherit',textDecoration:'underline',padding:0}}>schedule</button> to see them here.
-              </div>
-            </div>
+            <FirstRun
+              icon="calendar"
+              title="Add your first event"
+              body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
+              actionLabel="Browse tournaments"
+              onAction={() => onNavigate('tournaments')}
+              compact
+            />
           )
         )}
       </div>
@@ -988,10 +990,14 @@ export default function DashboardView({
           </div>
           </>
         ) : (
-          <div className="dash-empty" style={{padding:'12px 16px'}}>
-            <Icon.tracking />
-            <div>No results logged yet</div>
-          </div>
+          <FirstRun
+            icon="tracking"
+            title="Log your first result"
+            body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
+            actionLabel="Log a result"
+            onAction={() => onNavigate('tracking')}
+            compact
+          />
         )}
       </div>
 
@@ -1056,10 +1062,14 @@ export default function DashboardView({
             )}
           </div>
         ) : (
-          <div className="dash-empty" style={{padding:'6px 16px',display:'flex',alignItems:'center',gap:'8px'}}>
-            <Icon.people />
-            <div>No connections active today</div>
-          </div>
+          <FirstRun
+            icon="people"
+            title="Connect with other players"
+            body="Follow people you play with to see where they are seated and how they are running."
+            actionLabel="Find players"
+            onAction={() => onNavigate('social')}
+            compact
+          />
         )}
       </div>
       </div>
