@@ -178,7 +178,8 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
 export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, shareBuddies,
   buddyLiveUpdates, buddyEvents, displayName, onPost, onDeleteUpdate,
-  onAddTracking, onResetResults, onNavigate, tournaments, onToggle, onRefresh
+  onAddTracking, onResetResults, onNavigate, tournaments, onToggle, onRefresh,
+  onOpenInSchedule
 }) {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
@@ -307,22 +308,31 @@ export default function DashboardView({
     }
     const typeOrder = { bagged: 0, anchor: 1, normal: 2, conditional: 3 };
     events.sort((a, b) => (typeOrder[a._type] || 2) - (typeOrder[b._type] || 2));
-    return events;
-  }, [baggedEvents, activePrevDayEvents, todayEvents]);
 
-  // Next upcoming event (when nothing today)
-  const nextUpcomingEvent = useMemo(() => {
-    if (whatsNextEvents.length > 0) return null;
-    const today = todayISO;
-    return (mySchedule || [])
-      .filter(t => normaliseDate(t.date) > today && t.venue !== 'Personal' && !t.is_restart)
+    // Everything still to come, appended after today's in date order, so the
+    // carousel swipes through the whole schedule. Today keeps its priority
+    // ordering at the front — what is live or bagged stays the first card.
+    const seen = new Set(events.map(e => e.id));
+    const later = (mySchedule || [])
+      .filter(t => !seen.has(t.id)
+        && normaliseDate(t.date) > todayISO
+        && t.venue !== 'Personal'
+        && !t.is_restart)
+      .map(t => ({
+        ...t,
+        _type: t.is_anchor ? 'anchor' : (t.conditions_json ? 'conditional' : 'normal'),
+        _future: true,
+      }))
       .sort((a, b) => {
         const ta = a.venue ? parseDateTimeInTz(a.date, a.time, a.venue) : parseDateTime(a.date, a.time);
         const tb = b.venue ? parseDateTimeInTz(b.date, b.time, b.venue) : parseDateTime(b.date, b.time);
         return ta - tb;
-      })[0] || null;
-  }, [whatsNextEvents, mySchedule, todayISO]);
+      });
 
+    return [...events, ...later];
+  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO]);
+
+  // Next upcoming event (when nothing today)
   function parseLevelDuration(t) {
     if (!t.level_duration) return null;
     const match = t.level_duration.match(/(\d+)/);
@@ -420,8 +430,29 @@ export default function DashboardView({
     const liveStack = activeUpdate?.stack;
     const stackBB = blindInfo && liveStack ? Math.floor(liveStack / blindInfo.bb) : null;
 
+    // Tapping the card opens this event in My Schedule, expanded. Guarded on
+    // swipeDx so finishing a carousel drag over the card does not navigate —
+    // the drag distance is reset on every touchstart, so a genuine tap reads 0.
+    const openInSchedule = () => {
+      if (Math.abs(swipeDx.current || 0) > 10) return;
+      if (onOpenInSchedule) onOpenInSchedule(event.id);
+    };
+
     return (
-      <div key={event.id} className={cardClass} style={cardStyle}>
+      <div
+        key={event.id}
+        className={cardClass}
+        style={cardStyle}
+        role={onOpenInSchedule ? 'button' : undefined}
+        tabIndex={onOpenInSchedule ? 0 : undefined}
+        /* Raw name, not formatEventName — that returns JSX for "… - Flight A"
+           names, which stringifies to [object Object] in an attribute. */
+        aria-label={onOpenInSchedule ? `Open ${event.event_name} in My Schedule` : undefined}
+        onClick={onOpenInSchedule ? openInSchedule : undefined}
+        onKeyDown={onOpenInSchedule ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInSchedule(); }
+        } : undefined}
+      >
         <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}>{venueInfo.abbr}</div>
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {!isConditionalOnPlaying && (
@@ -448,6 +479,11 @@ export default function DashboardView({
             <div className="dash-event-name">{formatEventName(event.event_name)}</div>
             {!isConditionalOnPlaying && (
               <div className="dash-event-meta" style={{marginTop:'2px'}}>
+                {/* The carousel now runs the whole schedule, so a card can be
+                    weeks out — time alone would be ambiguous. */}
+                {normaliseDate(event.date) !== todayISO && (
+                  <span><Icon.calendar /> {fmtShortDate(normaliseDate(event.date))}</span>
+                )}
                 <span><Icon.clock /> {event.time || 'TBD'}{event.venue ? ' ' + getVenueTzAbbr(event.venue) : ''}</span>
               </div>
             )}
@@ -811,59 +847,46 @@ export default function DashboardView({
                   </div>
                 ))}
               </div>
-              {whatsNextEvents.length > 1 && (
+              {/* Dots only while they stay countable. The carousel now runs
+                  the whole schedule, so a full season would be forty dots —
+                  past the cap it becomes a position readout instead. */}
+              {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
                 <div className="dash-upnext-dots">
                   {whatsNextEvents.map((_, i) => (
                     <div key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} style={{cursor:'pointer'}} />
                   ))}
                 </div>
               )}
+              {whatsNextEvents.length > 8 && (
+                <div className="dash-upnext-counter">
+                  <button
+                    type="button"
+                    className="dash-upnext-step"
+                    onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
+                    disabled={safeIdx === 0}
+                    aria-label="Previous event"
+                  >&#8249;</button>
+                  <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
+                  <button
+                    type="button"
+                    className="dash-upnext-step"
+                    onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
+                    disabled={safeIdx === whatsNextEvents.length - 1}
+                    aria-label="Next event"
+                  >&#8250;</button>
+                </div>
+              )}
             </div>
           );
         })() : (
-          nextUpcomingEvent ? (
-            (() => {
-              // Nothing today, so this is the next dated event. It used to be
-              // a hand-styled div, which meant every change to the Up Next
-              // card missed it — and since nothing is ever scheduled for
-              // *today* most days, this is the branch people actually see.
-              // Same shell as renderEventCard now, so the venue bar and the
-              // card styling apply here too.
-              const venueInfo = getVenueInfo(nextUpcomingEvent.venue);
-              const venueColor = getVenueBrandColor(venueInfo.abbr);
-              const venueStripText = venueInfo.abbr === 'WSOP' ? 'var(--bg)' : 'rgba(255,255,255,0.85)';
-              return (
-                <div className="dash-event-card next-up">
-                  <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}>{venueInfo.abbr}</div>
-                  <div className="dash-card-content">
-                    <div className="dash-event-header">
-                      <div style={{flex:1}}>
-                        <div className="dash-event-name">{formatEventName(nextUpcomingEvent.event_name)}</div>
-                        <div className="dash-event-meta" style={{marginTop:'2px'}}>
-                          <span><Icon.calendar /> {fmtShortDate(normaliseDate(nextUpcomingEvent.date))}</span>
-                          {nextUpcomingEvent.time ? <span><Icon.clock /> {nextUpcomingEvent.time}</span> : null}
-                        </div>
-                      </div>
-                      {/* Was nextUpcomingEvent.buy_in — no such column, so the
-                          figure never rendered here. The field is `buyin`. */}
-                      {nextUpcomingEvent.buyin ? (
-                        <div className="dash-event-buyin">{formatBuyin(nextUpcomingEvent.buyin, nextUpcomingEvent.venue)}</div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
-            <FirstRun
-              icon="calendar"
-              title="Add your first event"
-              body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
-              actionLabel="Browse tournaments"
-              onAction={() => onNavigate('tournaments')}
-              compact
-            />
-          )
+          <FirstRun
+            icon="calendar"
+            title="Add your first event"
+            body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
+            actionLabel="Browse tournaments"
+            onAction={() => onNavigate('tournaments')}
+            compact
+          />
         )}
       </div>
 

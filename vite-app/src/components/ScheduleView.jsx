@@ -118,7 +118,7 @@ export default function ScheduleView({
   allTournaments, onToggleAnchor, onSetPlannedEntries,
   onAddPersonalEvent, onUpdatePersonalEvent,
   buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit,
-  onNavigate
+  onNavigate, focusTournamentId, onFocusConsumed
 }) {
   const displayName = useDisplayName();
   const { conflicts, expectedConflicts } = useMemo(() => detectConflicts(mySchedule), [mySchedule]);
@@ -298,6 +298,17 @@ export default function ScheduleView({
     const targetId = findBestFlightSchedule(num, sat);
     if (targetId) { setFocusEventId(null); setTimeout(() => setFocusEventId(targetId), 0); }
   }, [findBestFlightSchedule]);
+
+  // Arriving from the dashboard's Up Next card. Same null-then-set as above so
+  // the row's focus effect re-fires when the same event is opened twice in a
+  // row; the row handles expanding and scrolling itself.
+  useEffect(() => {
+    if (!focusTournamentId) return;
+    setFocusEventId(null);
+    const t = setTimeout(() => setFocusEventId(focusTournamentId), 0);
+    if (onFocusConsumed) onFocusConsumed();
+    return () => clearTimeout(t);
+  }, [focusTournamentId, onFocusConsumed]);
 
   return (
     <div>
