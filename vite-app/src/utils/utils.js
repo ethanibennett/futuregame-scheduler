@@ -788,6 +788,52 @@ export function normaliseDate(d) {
   return y + '-' + m + '-' + day;
 }
 
+const MONTH_NAMES = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
+
+/**
+ * The header subtitle: the span the UPCOMING events cover, rather than a
+ * hardcoded season that goes stale as the feed window moves.
+ *
+ *   same month      → "august 2026"
+ *   same year       → "august-november 2026"
+ *   across new year → "december 2026-february 2027"
+ *
+ * Upcoming, not everything: the feed keeps events well after they are played
+ * (the DB currently reaches back to March), and a label starting five months
+ * in the past describes nothing anyone is looking at. Cutoff is getToday(),
+ * so debug time-travel moves the label too.
+ *
+ * The stored `date` is human-readable ("April 1, 2026"), so every value goes
+ * through normaliseDate first — after that they are ISO and min/max is a
+ * string comparison, with no Date parsing and no timezone rollover.
+ *
+ * Returns '' when there is nothing to describe. The pre-login screens have no
+ * tournament data at all and keep their own static wording.
+ */
+export function formatSeasonLabel(tournaments) {
+  if (!Array.isArray(tournaments) || tournaments.length === 0) return '';
+  const today = getToday();
+  let min = '';
+  let max = '';
+  for (const t of tournaments) {
+    const d = normaliseDate(t && t.date);
+    if (!d || d < today) continue;
+    if (!min || d < min) min = d;
+    if (!max || d > max) max = d;
+  }
+  if (!min) return '';
+  const fromYear = min.slice(0, 4);
+  const toYear = max.slice(0, 4);
+  const fromMonth = MONTH_NAMES[Number(min.slice(5, 7)) - 1];
+  const toMonth = MONTH_NAMES[Number(max.slice(5, 7)) - 1];
+  if (!fromMonth || !toMonth) return '';
+  if (fromYear !== toYear) return `${fromMonth} ${fromYear}-${toMonth} ${toYear}`;
+  return fromMonth === toMonth ? `${fromMonth} ${fromYear}` : `${fromMonth}-${toMonth} ${fromYear}`;
+}
+
 export function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 // addDays returns YYYY-MM-DD using LOCAL date components, not toISOString
 // (which would force UTC and roll the date over for users east of UTC).
