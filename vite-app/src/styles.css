@@ -622,7 +622,7 @@
       color: var(--text-muted);
       padding: 4px 8px;
       background: var(--surface2, var(--surface));
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       font-family: 'Univers Condensed', 'Univers', sans-serif;
     }
 
@@ -670,7 +670,7 @@
     .camera-step-indicator { position:absolute; top:14px; left:0; right:0; text-align:center; font-size:0.72rem; color:rgba(255,255,255,0.75); font-family:'Univers Condensed','Univers',sans-serif; letter-spacing:0.5px; pointer-events:none; z-index:1; }
     .camera-btn-next { background:#3b82f6; color:#fff; font-weight:600; }
     .camera-overlay-picker { position:absolute; top:40px; left:0; right:0; display:flex; justify-content:center; gap:6px; padding:0 12px; z-index:2; }
-    .camera-overlay-picker button { padding:4px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.5); color:rgba(255,255,255,0.7); font-family:'Univers Condensed','Univers',sans-serif; font-size:0.65rem; line-height:1; cursor:pointer; backdrop-filter:blur(4px); white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; }
+    .camera-overlay-picker button { padding:4px 10px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.5); color:rgba(255,255,255,0.7); font-family:'Univers Condensed','Univers',sans-serif; font-size:0.65rem; line-height:1; cursor:pointer; backdrop-filter:blur(4px); white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; }
     .camera-overlay-picker button.active { background:#22c55e; color:#000; border-color:#22c55e; font-weight:600; }
     .camera-overlay-picker button:disabled { opacity:0.3; cursor:default; }
 
@@ -764,7 +764,7 @@
     }
 
     /* ── Hand result (winner display) ── */
-    .hand-result { font-size:0.68rem; font-family:'Univers Condensed','Univers',sans-serif; padding:6px 8px; border-radius:4px; text-align:center; margin-top:2px; letter-spacing:0.3px; line-height:1.4; }
+    .hand-result { font-size:0.68rem; font-family:'Univers Condensed','Univers',sans-serif; padding:6px 8px; border-radius:var(--radius-xs); text-align:center; margin-top:2px; letter-spacing:0.3px; line-height:1.4; }
     .hand-result-hero { background:rgba(74,222,128,0.12); color:#4ade80; border:1px solid rgba(74,222,128,0.25); }
     .hand-result-opponent { background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.25); }
     .hand-result-split { background:rgba(250,204,21,0.12); color:#facc15; border:1px solid rgba(250,204,21,0.25); }
@@ -776,7 +776,7 @@
     .live-update-next-event {
       font-size: 0.7rem; color: var(--text-muted);
       padding: 6px 8px; background: var(--surface2, var(--surface));
-      border-radius: 4px; font-family: 'Univers Condensed', 'Univers', sans-serif;
+      border-radius: var(--radius-xs); font-family: 'Univers Condensed', 'Univers', sans-serif;
       line-height: 1.4;
     }
     .live-update-next-event strong { color: var(--text); }
@@ -802,7 +802,7 @@
     .replayer-hand-card:hover { border-color: var(--accent); }
     .replayer-hand-card-top { display:flex; justify-content:space-between; align-items:center; }
     .replayer-hand-card-title { font-size:0.82rem; font-weight:600; color:var(--text); }
-    .replayer-hand-card-game { font-size:0.65rem; color:var(--accent2); background:var(--surface2); padding:2px 6px; border-radius:4px; }
+    .replayer-hand-card-game { font-size:0.65rem; color:var(--accent2); background:var(--surface2); padding:2px 6px; border-radius:var(--radius-xs); }
     .replayer-hand-card-meta { font-size:0.65rem; color:var(--text-muted); margin-top:4px; }
     .replayer-hand-card-actions { display:flex; gap:6px; margin-top:6px; }
     .replayer-empty { text-align:center; color:var(--text-muted); font-size:0.82rem; padding:24px 0; }
@@ -831,7 +831,7 @@
     }
     .replayer-player-row:last-child { border-bottom:none; }
     .replayer-player-name { font-size:0.75rem; font-weight:600; min-width:60px; }
-    .replayer-player-pos { display:inline-flex; align-items:center; justify-content:center; font-size:0.62rem; line-height:1; color:var(--accent2); background:var(--surface2); padding:2px 5px; border-radius:4px; min-width:32px; text-align:center; transition: background 0.15s, color 0.15s, border-color 0.15s; border: 1.5px solid transparent; }
+    .replayer-player-pos { display:inline-flex; align-items:center; justify-content:center; font-size:0.62rem; line-height:1; color:var(--accent2); background:var(--surface2); padding:2px 5px; border-radius:var(--radius-xs); min-width:32px; text-align:center; transition: background 0.15s, color 0.15s, border-color 0.15s; border: 1.5px solid transparent; }
     .replayer-player-pos.hero { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
 
     /* Street entry */
@@ -843,7 +843,7 @@
     .replayer-action-list { display:flex; flex-direction:column; gap:3px; margin-top:6px; }
     .replayer-action-item {
       display:flex; align-items:center; gap:6px; font-size:0.7rem; font-family:'Univers Condensed','Univers',sans-serif;
-      padding:3px 6px; background:var(--surface2); border-radius:4px;
+      padding:3px 6px; background:var(--surface2); border-radius:var(--radius-xs);
     }
     .replayer-action-player { font-weight:600; color:var(--text); min-width:50px; }
     .replayer-action-type { color:var(--accent2); }
@@ -1073,7 +1073,7 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       padding: 1px 6px;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       flex-shrink: 0;
     }
     .gto-seat-result-badge.fold { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
@@ -1113,7 +1113,7 @@
       font-size: 0.6rem; font-weight: 600; color: var(--accent2);
       padding: 2px 6px; margin-left: auto; letter-spacing: 0.02em;
       font-family: 'Univers Condensed','Univers',sans-serif;
-      background: rgba(136,136,136,0.15); border-radius: 4px;
+      background: rgba(136,136,136,0.15); border-radius: var(--radius-xs);
       white-space: nowrap;
     }
 
@@ -1327,7 +1327,7 @@
     .card-picker-btn {
       aspect-ratio: 2/3;
       border: none;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       background: transparent;
       cursor: pointer;
       padding: 0;
@@ -1363,7 +1363,7 @@
     .card-picker-suit-label:first-child { padding-top: 0; }
 
     /* Draw discard section */
-    .replayer-draw-section { margin-top:6px; padding:6px 8px; background:var(--surface2); border-radius:4px; }
+    .replayer-draw-section { margin-top:6px; padding:6px 8px; background:var(--surface2); border-radius:var(--radius-xs); }
     .replayer-draw-label { font-size:0.65rem; color:var(--text-muted); font-family:'Univers Condensed','Univers',sans-serif; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.03em; }
 
     /* Draw info bar in replay mode */
@@ -1489,7 +1489,7 @@
     .replayer-table-rail {
       position: absolute;
       inset: calc(16% - 20px) calc(18% - 20px);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background:
         /* top-left light */
         linear-gradient(155deg,
@@ -1522,7 +1522,7 @@
          inner border of the rail (where the rail meets the felt). Felt
          inset is 16% 18% — this rule mirrors it. */
       inset: 16% 18%;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background: transparent;
       border: 1.5px solid rgba(255,255,255,0.4);
       box-shadow:
@@ -1535,7 +1535,7 @@
       position: absolute;
       inset: 16% 18%;
       background: radial-gradient(ellipse 80% 70% at 50% 45%, #887aae, #342c4d);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       border: 1px solid rgba(0,0,0,0.15);
       box-shadow: inset 0 4px 20px rgba(0,0,0,0.45);
       z-index: 1;
@@ -1639,7 +1639,7 @@
       z-index: 1;
       background: var(--surface);
       border: 1.5px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       padding: 4px 8px;
       min-width: 72px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
@@ -1710,7 +1710,7 @@
       bottom:-2px;
       font-size:0.48rem; font-weight:700; font-family:'Univers Condensed','Univers',sans-serif;
       color:#60a5fa; background:rgba(30,58,138,0.85);
-      border:1px solid rgba(96,165,250,0.4); border-radius:4px;
+      border:1px solid rgba(96,165,250,0.4); border-radius:var(--radius-xs);
       padding:1px 5px; white-space:nowrap;
       box-shadow:0 1px 3px rgba(0,0,0,0.3);
       animation:drawBadgePop 0.3s ease-out;
@@ -1741,7 +1741,7 @@
     .replayer-card-theme-picker { display: flex; align-items: center; gap: 3px; }
     .replayer-theme-btn {
       font-size: 0.5rem; font-family: 'Univers Condensed', 'Univers', sans-serif; padding: 2px 8px;
-      border: 1px solid var(--border); border-radius: 4px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--surface);
       color: var(--text-muted); cursor: pointer; transition: all 0.15s;
       line-height: 1; display: inline-flex; align-items: center; justify-content: center;
     }
@@ -1926,7 +1926,7 @@
       display:flex; gap:4px; flex-wrap:wrap;
     }
     .replayer-settings-pill {
-      padding:4px 10px; border-radius:12px; border:1px solid var(--border);
+      padding:4px 10px; border-radius:var(--radius); border:1px solid var(--border);
       background:transparent; color:var(--text-muted); font-size:0.62rem;
       font-family:'Univers Condensed','Univers',sans-serif; cursor:pointer; transition:all 0.15s;
     }
@@ -2092,7 +2092,7 @@
     .replayer-pot-odds {
       display:inline-flex; align-items:center; gap:4px; padding:2px 8px;
       background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.25);
-      border-radius:4px; font-size:0.58rem; color:#60a5fa;
+      border-radius:var(--radius-xs); font-size:0.58rem; color:#60a5fa;
       font-family:'Univers Condensed','Univers',sans-serif; margin-top:4px;
     }
 
@@ -2101,7 +2101,7 @@
       position:absolute; left:50%; top:29%; transform:translate(-50%,-50%);
       z-index:2; font-size:0.44rem; font-family:'Univers Condensed','Univers',sans-serif;
       color:rgba(255,255,255,0.7); background:rgba(0,0,0,0.35);
-      padding:1px 6px; border-radius:8px; white-space:nowrap;
+      padding:1px 6px; border-radius:var(--radius-sm); white-space:nowrap;
       letter-spacing:0.3px;
     }
     /* ── Pot Odds Badge (on felt, near pot) ── */
@@ -2110,7 +2110,7 @@
       z-index:3; font-size:0.44rem; font-family:'Univers Condensed','Univers',sans-serif; font-weight:600;
       color:#60a5fa; background:rgba(59,130,246,0.15);
       border:1px solid rgba(59,130,246,0.3);
-      padding:1px 6px; border-radius:8px; white-space:nowrap;
+      padding:1px 6px; border-radius:var(--radius-sm); white-space:nowrap;
     }
     /* ── Bet Sizing Label ── */
     .replayer-bet-sizing {
@@ -2159,7 +2159,7 @@
     }
     .replayer-notes-area textarea {
       width:100%; min-height:48px; resize:vertical; background:var(--bg); color:var(--text);
-      border:1px solid var(--border); border-radius:4px; padding:4px 6px;
+      border:1px solid var(--border); border-radius:var(--radius-xs); padding:4px 6px;
       font-size:0.65rem; font-family:'Univers Condensed','Univers',sans-serif; line-height:1.4;
     }
     .replayer-notes-area textarea:focus { outline:none; border-color:var(--accent); }
@@ -2671,7 +2671,7 @@
     .skeleton-text {
       height: 0.8rem;
       margin-bottom: 6px;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
     }
     .skeleton-text.sm { width: 40%; }
     .skeleton-text.md { width: 65%; }
@@ -2765,7 +2765,7 @@
       width: 44px;
       height: 24px;
       background: var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius);
       border: none;
       cursor: pointer;
       transition: background 0.2s;
@@ -2901,7 +2901,7 @@
       width: 32px;
       height: 32px;
       padding: 0;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
     }
     .filter-chip-square svg { width: 16px; height: 16px; }
 
@@ -3216,7 +3216,7 @@
       position: relative;
       display: inline-block;
       padding: 6px 14px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
       user-select: none;
       transition: background 0.15s;
@@ -3250,7 +3250,7 @@
     .cal-today-btn {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       padding: 6px 14px;
       font-family: 'Univers Condensed', 'Univers', sans-serif;
       font-size: 0.78rem;
@@ -3317,7 +3317,7 @@
       justify-content: center;
       width: 32px;
       height: 32px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
@@ -3355,7 +3355,7 @@
       text-transform: uppercase;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
       white-space: nowrap;
       color: var(--text);
@@ -4066,7 +4066,7 @@
       background: var(--accent);
       color: var(--bg);
       border: none;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       padding: 8px 18px;
       font-family: var(--serif);
       font-size: 0.82rem;
@@ -4222,7 +4222,7 @@
     .table-scanner-felt {
       position: absolute;
       inset: 18% 10%;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       border: 10px solid #1a5c2e;
       box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 2px 12px rgba(0,0,0,0.4);
       padding: 0;
@@ -4686,7 +4686,7 @@
       font-weight: 600;
       text-transform: uppercase;
       padding: 1px 5px;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       flex-shrink: 0;
     }
     .dash-collapsed-countdown {
@@ -4857,7 +4857,7 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
       padding: 2px 8px;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
     }
 
     .dash-event-tag.bagged {
@@ -5896,7 +5896,7 @@
     .staking-series-card:hover { border-color: var(--accent); }
     .staking-badge {
       font-size: 10px; font-weight: 700; text-transform: uppercase;
-      padding: 2px 8px; border-radius: 999px; letter-spacing: 0.5px;
+      padding: 2px 8px; border-radius: var(--radius-pill); letter-spacing: 0.5px;
       border: 1px solid;
     }
     .staking-badge-pre { color: var(--text-muted); border-color: var(--border); }
@@ -5904,13 +5904,13 @@
     .staking-badge-settled { color: #22c55e; border-color: #22c55e; }
     .staking-type-badge {
       font-size: 10px; font-weight: 600; text-transform: uppercase;
-      padding: 2px 6px; border-radius: 4px; letter-spacing: 0.3px;
+      padding: 2px 6px; border-radius: var(--radius-xs); letter-spacing: 0.3px;
       background: var(--border); color: var(--text-secondary);
     }
     .staking-modal {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; width: min(400px, 90vw); max-height: 85vh;
+      border-radius: var(--radius); width: min(400px, 90vw); max-height: 85vh;
       overflow-y: auto; z-index: 10001;
     }
     .staking-modal-header {
@@ -5928,7 +5928,7 @@
     .staking-field span { display: block; margin-bottom: 3px; font-weight: 500; }
     .staking-field input, .staking-field select {
       width: 100%; padding: 8px 10px; border: 1px solid var(--border);
-      border-radius: 8px; background: var(--bg); color: var(--text);
+      border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
       font-size: 13px; font-family: inherit; box-sizing: border-box;
     }
     .staking-field input:focus, .staking-field select:focus {
@@ -6334,7 +6334,7 @@
       margin-bottom: 14px;
       padding: 10px;
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm, 6px);
+      border-radius: var(--radius-sm);
       background: var(--surface, rgba(255,255,255,0.03));
     }
     .ofc-player-name {
@@ -6357,7 +6357,7 @@
       gap: 8px;
       padding: 6px 8px;
       border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm, 6px);
+      border-radius: var(--radius-sm);
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
     }
@@ -6394,7 +6394,7 @@
       margin-top: 8px;
       padding: 8px;
       background: var(--surface2, rgba(0,0,0,0.2));
-      border-radius: var(--radius-sm, 6px);
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border);
     }
     .ofc-picker-rank-row {
@@ -6407,7 +6407,7 @@
       width: 32px;
       height: 28px;
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       background: var(--surface, rgba(255,255,255,0.05));
       cursor: pointer;
       font-family: 'Univers Condensed', 'Univers', sans-serif;
@@ -6445,7 +6445,7 @@
     .ofc-replay-player {
       padding: 12px;
       border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm, 8px);
+      border-radius: var(--radius-sm);
       background: var(--surface, rgba(255,255,255,0.03));
     }
     .ofc-replay-player.ofc-hero {
@@ -6527,7 +6527,7 @@
       font-family: 'Univers Condensed', 'Univers', sans-serif;
       font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; color: #fff;
       background: rgba(0,0,0,0.45); border: 1px solid rgba(255,224,138,0.5);
-      border-radius: 999px; padding: 4px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+      border-radius: var(--radius-pill); padding: 4px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.4);
       white-space: nowrap;
     }
     /* Seats reuse .replayer-seat / .replayer-seat-info / .card-row from the replayer */
