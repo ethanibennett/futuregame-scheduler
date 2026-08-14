@@ -293,10 +293,6 @@
     [data-serif="helvetica"] {
       --serif: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
-    [data-serif="bahnschrift"] {
-      --serif: 'Bahnschrift', 'Univers Condensed', 'Univers', sans-serif;
-      font-stretch: 85%;
-    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -3799,17 +3795,6 @@
     [data-serif="helvetica"] .cal-event-name {
       font-weight: 700;
       letter-spacing: -0.025em;
-    }
-    [data-serif="bahnschrift"] .cal-event-name {
-      font-family: 'Bahnschrift', 'Univers', sans-serif;
-      font-weight: 600;
-      font-stretch: normal;
-    }
-    /* Date headers and event names render at normal width even when the
-       global Bahnschrift theme is set to 85% stretch. */
-    [data-serif="bahnschrift"] .schedule-date-break,
-    [data-serif="bahnschrift"] .schedule-date-break * {
-      font-stretch: normal;
     }
 
     .cal-event-buyin {

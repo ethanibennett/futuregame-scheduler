@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
-import { THEME_ORDER, THEME_LABEL, THEME_ICON, setDebugNow, getDebugNow, haptic } from '../utils/utils.js';
+import { THEME_ORDER, THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, setDebugNow, getDebugNow, haptic } from '../utils/utils.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 
@@ -188,9 +188,9 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
             <button
               className="btn btn-ghost btn-sm"
               onClick={toggleSerifFont}
-              style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',padding:'4px 10px',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)', fontFamily: serifFont === 'univers' ? "'Univers', sans-serif" : serifFont === 'bahnschrift' ? "'Bahnschrift', 'Univers Condensed', 'Univers', sans-serif" : "'Libre Baskerville', Georgia, serif"}}
+              style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',padding:'4px 10px',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)', fontFamily: SERIF_STACK[serifFont] || SERIF_STACK.baskerville}}
             >
-              {serifFont === 'univers' ? 'Univers' : serifFont === 'bahnschrift' ? 'Bahnschrift' : 'Baskerville'}
+              {SERIF_LABEL[serifFont] || SERIF_LABEL.baskerville}
             </button>
           </div>
         </div>

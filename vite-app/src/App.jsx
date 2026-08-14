@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspens
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
-import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, VENUE_BRAND_VAR, getVenueBrandColor } from './utils/utils.js';
+import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones, measureStickyStack } from './utils/milestones.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
@@ -200,7 +200,12 @@ export default function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
-  const [serifFont, setSerifFont] = useState(localStorage.getItem('serifFont') || 'baskerville');
+  // 'bahnschrift' was retired as a display-font option; anyone still holding it
+  // in localStorage lands back on the default rather than an unstyled data-serif.
+  const [serifFont, setSerifFont] = useState(() => {
+    const stored = localStorage.getItem('serifFont');
+    return SERIF_FONTS.includes(stored) ? stored : 'baskerville';
+  });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -1399,7 +1404,7 @@ export default function App() {
             cardSplay={cardSplay}
             toggleCardSplay={() => { setCardSplay(s => { const next = !s; localStorage.setItem('cardSplay', next ? 'on' : 'off'); return next; }); }}
             serifFont={serifFont}
-            toggleSerifFont={() => setSerifFont(f => { const order = ['baskerville','univers','bahnschrift']; return order[(order.indexOf(f) + 1) % order.length]; })}
+            toggleSerifFont={() => setSerifFont(f => SERIF_ORDER[(SERIF_ORDER.indexOf(f) + 1) % SERIF_ORDER.length])}
             onLogout={handleLogout}
             onDebugTimeChange={() => setDebugTimeKey(k => k + 1)}
             onUpload={handleFileUpload}
