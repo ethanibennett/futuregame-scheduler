@@ -822,16 +822,38 @@ export default function DashboardView({
           );
         })() : (
           nextUpcomingEvent ? (
-            <div style={{padding:'12px',background:'var(--surface)',borderRadius:'var(--radius)',border:'1px solid var(--border)'}}>
-              <div style={{fontSize:'0.68rem',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'6px'}}>Next on your schedule</div>
-              <div style={{fontWeight:700,fontSize:'0.85rem',marginBottom:'2px'}}>{nextUpcomingEvent.event_name}</div>
-              <div style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>
-                {fmtShortDate(normaliseDate(nextUpcomingEvent.date))}
-                {nextUpcomingEvent.time ? ' at ' + nextUpcomingEvent.time : ''}
-                {nextUpcomingEvent.venue ? ' — ' + nextUpcomingEvent.venue : ''}
-              </div>
-              {nextUpcomingEvent.buy_in ? <div style={{fontSize:'0.72rem',color:'var(--accent)',marginTop:'2px'}}>{formatBuyin(nextUpcomingEvent.buy_in, nextUpcomingEvent.venue)}</div> : null}
-            </div>
+            (() => {
+              // Nothing today, so this is the next dated event. It used to be
+              // a hand-styled div, which meant every change to the Up Next
+              // card missed it — and since nothing is ever scheduled for
+              // *today* most days, this is the branch people actually see.
+              // Same shell as renderEventCard now, so the venue bar and the
+              // card styling apply here too.
+              const venueInfo = getVenueInfo(nextUpcomingEvent.venue);
+              const venueColor = getVenueBrandColor(venueInfo.abbr);
+              const venueStripText = venueInfo.abbr === 'WSOP' ? 'var(--bg)' : 'rgba(255,255,255,0.85)';
+              return (
+                <div className="dash-event-card next-up">
+                  <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}>{venueInfo.abbr}</div>
+                  <div className="dash-card-content">
+                    <div className="dash-event-header">
+                      <div style={{flex:1}}>
+                        <div className="dash-event-name">{formatEventName(nextUpcomingEvent.event_name)}</div>
+                        <div className="dash-event-meta" style={{marginTop:'2px'}}>
+                          <span><Icon.calendar /> {fmtShortDate(normaliseDate(nextUpcomingEvent.date))}</span>
+                          {nextUpcomingEvent.time ? <span><Icon.clock /> {nextUpcomingEvent.time}</span> : null}
+                        </div>
+                      </div>
+                      {/* Was nextUpcomingEvent.buy_in — no such column, so the
+                          figure never rendered here. The field is `buyin`. */}
+                      {nextUpcomingEvent.buyin ? (
+                        <div className="dash-event-buyin">{formatBuyin(nextUpcomingEvent.buyin, nextUpcomingEvent.venue)}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             <FirstRun
               icon="calendar"
