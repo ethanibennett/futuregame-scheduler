@@ -97,6 +97,134 @@
       --venue-wsop-online:   #0e7490;
     }
 
+    /* ==================================================================
+       Token layer.
+
+       Nothing consumes these yet — they are defined ahead of the
+       migrations that move the ~3,900 hardcoded literals onto them, so
+       this block is a visual no-op on its own.
+
+       Steps were derived from what the stylesheet actually uses rather
+       than from a generic scale: this is a dense schedule UI whose type
+       clusters between 10px and 14px, so an off-the-shelf 16px-base
+       ramp would inflate every row. See docs/design-tokens.md.
+       ================================================================== */
+    :root {
+      /* --- Type scale ---------------------------------------------------
+         Nine steps covering the 25 sizes in use. The old 0.42rem (6.7px)
+         and 0.48rem have no step: both are below legible and snap up to
+         --fs-3xs on migration. */
+      --fs-3xs:  0.5625rem;   /*  9px */
+      --fs-2xs:  0.625rem;    /* 10px */
+      --fs-xs:   0.6875rem;   /* 11px */
+      --fs-sm:   0.75rem;     /* 12px */
+      --fs-md:   0.8125rem;   /* 13px */
+      --fs-lg:   0.9375rem;   /* 15px */
+      --fs-xl:   1.0625rem;   /* 17px */
+      --fs-2xl:  1.375rem;    /* 22px */
+      --fs-3xl:  1.75rem;     /* 28px */
+
+      --lh-tight: 1.15;
+      --lh-snug:  1.35;
+      --lh-base:  1.5;
+
+      /* --- Spacing ------------------------------------------------------
+         2px base, not 4px. A 4px grid would have to round away the 6px
+         gap, which appears 38 times and is load-bearing in the dense
+         rows; 2px keeps the system honest without inventing a value. */
+      --space-2xs: 2px;
+      --space-xs:  4px;
+      --space-sm:  6px;
+      --space-md:  8px;
+      --space-lg:  12px;
+      --space-xl:  16px;
+      --space-2xl: 24px;
+      --space-3xl: 32px;
+
+      /* --- Radius -------------------------------------------------------
+         --radius and --radius-sm keep their existing values so nothing
+         shifts; xs, lg and pill absorb the loose 2/3/4px and 20px+
+         literals. Never write a bare radius again. */
+      --radius-xs:   4px;
+      --radius-lg:   16px;
+      --radius-pill: 999px;
+
+      /* --- Elevation ----------------------------------------------------
+         Two layers each: a tight contact shadow plus a soft cast. The 59
+         hand-rolled single-blur shadows all map onto one of these. */
+      --elev-1: 0 1px 1px rgba(0,0,0,0.50), 0 2px 4px rgba(0,0,0,0.30);
+      --elev-2: 0 1px 2px rgba(0,0,0,0.55), 0 6px 14px rgba(0,0,0,0.38);
+      --elev-3: 0 2px 4px rgba(0,0,0,0.60), 0 14px 32px rgba(0,0,0,0.45);
+
+      /* --- Brand --------------------------------------------------------
+         The app has had no focal colour — --accent/--accent2 are greys —
+         so nothing on screen claims priority. Gold is safe against the
+         venue palette: every venue gold (#a87c0a, #bf7d08, #a8863f,
+         #9c7d20) is dark and desaturated, so a bright one can never be
+         misread as a venue stripe. --accent stays grey until the
+         migration moves primary actions across deliberately. */
+      --brand:       #f2a63b;
+      --brand-hover: #ffb851;
+      --brand-quiet: rgba(242,166,59,0.14);
+      --on-brand:    #1a1300;
+
+      /* --- Typography roles ---------------------------------------------
+         --font-display resolves through --serif so the data-serif themes
+         keep working while callers migrate off the old name. */
+      --font-sans:      'Univers', 'Helvetica Neue', Arial, sans-serif;
+      --font-condensed: 'Univers Condensed', 'Univers', sans-serif;
+      --font-display:   var(--serif);
+
+      /* --- Motion -------------------------------------------------------
+         Replaces the five `transition: all 0.3s ease` declarations.
+         Always name the property being transitioned, never `all`. */
+      --dur-fast: 120ms;
+      --dur-snap: 200ms;
+      --dur-base: 320ms;
+      --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+      /* --- Focus --------------------------------------------------------
+         One ring for every interactive element. Never `outline: none`
+         without putting this in its place. */
+      --focus-ring:   2px solid var(--brand);
+      --focus-offset: 2px;
+    }
+
+    /* Light grounds need shallower, cooler shadows and a darker gold —
+       #f2a63b on white fails contrast for text and small marks. */
+    [data-theme="light"],
+    [data-theme="cloudy"] {
+      --elev-1: 0 1px 1px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.06);
+      --elev-2: 0 1px 2px rgba(0,0,0,0.08), 0 6px 14px rgba(0,0,0,0.08);
+      --elev-3: 0 2px 4px rgba(0,0,0,0.10), 0 14px 32px rgba(0,0,0,0.10);
+      --brand:       #a8700c;
+      --brand-hover: #8c5c08;
+      --brand-quiet: rgba(168,112,12,0.12);
+      --on-brand:    #ffffff;
+    }
+
+    [data-contrast="high"] {
+      --brand:       #ffc046;
+      --brand-hover: #ffd27a;
+      --on-brand:    #000000;
+    }
+
+    [data-theme="light"][data-contrast="high"],
+    [data-theme="cloudy"][data-contrast="high"] {
+      --brand:       #6b4405;
+      --brand-hover: #533402;
+      --on-brand:    #ffffff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --dur-fast: 0ms;
+        --dur-snap: 0ms;
+        --dur-base: 0ms;
+      }
+    }
+
     [data-theme="light"] {
       --bg:        #f5f5f5;
       --surface:   #ffffff;
