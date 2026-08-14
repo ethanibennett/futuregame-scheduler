@@ -432,6 +432,33 @@ export function isBraceletEvent(t) {
   return !NON_BRACELET_KEYWORDS.some(kw => name.includes(kw));
 }
 
+/**
+ * Ring events are the numbered WSOP Circuit schedule. Side events at a circuit
+ * stop do not award a ring.
+ *
+ * This matters because several properties run their OWN series under a WSOPC
+ * longName — 'Turning Stone Casino' → 'WSOPC Turning Stone', 'Texas Card House'
+ * → 'WSOPC Austin' — and those schedules mix ring events and side events
+ * together. Keying on the longName alone put a ring on all of them.
+ *
+ * Two different signals are needed, because the feeds disagree. Properties
+ * running their own series set category='side' (Turning Stone, TCH). The
+ * `WSOPC …` feed series leave category null and say it in the name instead —
+ * "NLH Side Event - Nightly" at Cherokee, Atlantic City and Virginia. Keying
+ * on either alone leaves rings on roughly half of them, so this reuses
+ * NON_BRACELET_KEYWORDS, which already carries 'side event' for the bracelet
+ * check and keeps the two definitions of "not a trophy event" in one place.
+ */
+export function isRingEvent(t) {
+  if (!t) return false;
+  if (t.is_satellite) return false;
+  if (!t.event_number) return false;
+  if ((t.category || '').toLowerCase() === 'side') return false;
+  if (!/^WSOPC/.test(getVenueInfo(t.venue).longName || '')) return false;
+  const name = (t.event_name || '').toLowerCase();
+  return !NON_BRACELET_KEYWORDS.some(kw => name.includes(kw));
+}
+
 // ── Venue CSS class map ──────
 export const VENUE_CLASS_MAP = {
   'Horseshoe / Paris Las Vegas': 'venue-hs',

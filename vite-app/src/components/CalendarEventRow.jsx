@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
-  getVenueInfo, getVenueClass, getVenueBrandColor, getVariantColor, isBraceletEvent,
+  getVenueInfo, getVenueClass, getVenueBrandColor, getVariantColor, isBraceletEvent, isRingEvent,
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
   getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
   extractConditions, formatConditionLabel, formatConditionBadge,
@@ -580,7 +580,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const isBounty = /bounty|mystery millions/i.test(tournament.event_name);
   const isSat = !!tournament.is_satellite;
   const isRestart = !!tournament.is_restart;
-  const isRingEvent = /^WSOPC/.test(getVenueInfo(tournament.venue).longName) && !!tournament.event_number && !tournament.is_satellite;
+  const ringEvent = isRingEvent(tournament);
 
   const rowClasses = [
     'cal-event-row',
@@ -628,7 +628,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 {isSat && <span className="cal-bounty-icon"><Icon.satellite /></span>}
                 {isRestart && <span className="cal-bounty-icon"><Icon.restart /></span>}
                 {bracelet && <span className="cal-bracelet-icon"><Icon.bracelet /></span>}
-                {isRingEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
+                {ringEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
               </div>
               {showMiniLateReg && !open && <MiniLateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
             </>
@@ -1009,7 +1009,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   const isBounty = /bounty|mystery millions/i.test(tournament.event_name);
   const isSat = !!tournament.is_satellite;
   const isRestart = !!tournament.is_restart;
-  const isRingEvent = /^WSOPC/.test(getVenueInfo(tournament.venue).longName) && !!tournament.event_number && !tournament.is_satellite;
+  const ringEvent = isRingEvent(tournament);
   const tzAbbr = getVenueTzAbbr(tournament.venue);
   const timeLabel = (tournament.time || '—') + (tzAbbr ? ' ' + tzAbbr : '');
   let hasConditions = false;
@@ -1058,7 +1058,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
                 {isSat && <span className="cal-bounty-icon"><Icon.satellite /></span>}
                 {isRestart && <span className="cal-bounty-icon"><Icon.restart /></span>}
                 {bracelet && <span className="cal-bracelet-icon"><Icon.bracelet /></span>}
-                {isRingEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
+                {ringEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
               </div>
             </>
           )}
