@@ -744,6 +744,19 @@ function normalizeEventName(name, gameVariant) {
   // Normalize "PLO/NLH" → "NLH/PLO"
   n = n.replace(/\bPLO\/NLH\b/g, 'NLH/PLO');
 
+  // De-dot acronyms: "H.O.R.S.E." → "HORSE" (convention: no periods in acronyms).
+  n = n.replace(/\b(?:[A-Za-z]\.){2,}[A-Za-z]?\.?/g, (m) => m.replace(/\./g, ''));
+
+  // Abbreviate spelled-out game types. These arrive from the WSOP upload path, which does not
+  // share the MTT feed's normalizer, and they sit alongside rows that already use the short form —
+  // "Daily Deepstack: No Limit Hold'em" next to 97 rows of "Daily Deepstack: NLH Turbo".
+  // Replaced rather than stripped: the variant is the only distinguishing part of those names, so
+  // removing it would collapse three different events onto one title.
+  // "No" is required before "Limit Hold'em" so the Limit Hold'em variant is left alone.
+  n = n.replace(/\bNo[\s-]?Limit\s+Hold\s*'?\s*em\b/gi, 'NLH');
+  n = n.replace(/\bPot[\s-]?Limit\s+Omaha(?:\s+Hi[\s-]?Lo)?\b/gi, 'PLO');
+  n = n.replace(/\bLimit\s+HORSE\b/gi, 'HORSE');
+
   // Strip ALL re-entry policies (dash optional — catches "Single Re-Entry" anywhere)
   n = n.replace(/\s*[-–]?\s*(Single|Unlimited)\s+Re[\s-]?Entr(y|ies)\s*(per Flight)?\s*/gi, ' ');
 
@@ -844,8 +857,17 @@ function normalizeEventName(name, gameVariant) {
   // "PLO High Roller PLO/NL Landmark Satellite" → "PLO High Roller Landmark Satellite"
   n = n.replace(/(\bHigh Roller)\s+(?:PLO|NLH|NL)\/(?:PLO|NLH|NL)\s+/g, '$1 ');
 
-  // Final cleanup
+  // Final cleanup. The trailing-separator strip has to run HERE, after the variant prepend and
+  // dedup, not just at line ~793: those rules can empty the tail of a name and strand the
+  // separator that preceded it. "Satellite to NLH" becomes "Satellite - NLH", then the prepend
+  // strips the now-redundant NLH from the middle and leaves "NLH Satellite -". Looped because one
+  // pass only removes the outermost.
   n = n.replace(/\s{2,}/g, ' ').trim();
+  for (let i = 0; i < 3; i++) {
+    const before = n;
+    n = n.replace(/\s*[-–—:,]\s*$/, '').trim();
+    if (n === before) break;
+  }
 
   return n;
 }
@@ -1579,6 +1601,29 @@ async function initDatabase() {
           db.run('UPDATE tournaments SET event_name = ? WHERE id = ?', [name, id]);
         }
         console.log(`Variant dedup normalization: ${updates.length} rows updated`);
+      }
+    },
+    {
+      // Re-runs normalizeEventName after adding the de-dot and spelled-out-variant rules above.
+      // Skips MTT-feed rows on purpose: those are owned by mtt-series-watcher, which emits them
+      // pre-normalized and UPSERTs hourly, so anything rewritten here would be reverted at :20.
+      // Their equivalent fix lives in that repo's src/normalize/event-name.ts.
+      name: 'normalize-spelled-out-variants-2026-08',
+      fn: () => {
+        const stmt = db.prepare(
+          "SELECT id, event_name, game_variant FROM tournaments WHERE venue != 'Personal' AND (stable_id IS NULL OR stable_id NOT LIKE 'MTT-%')",
+        );
+        const updates = [];
+        while (stmt.step()) {
+          const { id, event_name, game_variant } = stmt.getAsObject();
+          const normalized = normalizeEventName(event_name, game_variant);
+          if (normalized !== event_name) updates.push([normalized, id]);
+        }
+        stmt.free();
+        for (const [name, id] of updates) {
+          db.run('UPDATE tournaments SET event_name = ? WHERE id = ?', [name, id]);
+        }
+        console.log(`Spelled-out variant normalization: ${updates.length} rows updated`);
       }
     },
     {
