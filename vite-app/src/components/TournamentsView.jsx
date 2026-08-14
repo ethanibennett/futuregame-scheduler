@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
+import { Filtered } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, findClosestFlight,
@@ -876,6 +877,18 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
   );
 }
 
+// Baseline filter state. Shared by the initial useState and clearAllFilters so
+// the two cannot drift — hideSatellites/hideRestarts are on by default, and
+// "clear filters" means back to these, not maximally permissive.
+const DEFAULT_FILTERS = {
+  minBuyin: '', maxBuyin: '', buyinRanges: [], rakeRanges: [], selectedGames: [],
+  hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
+  tagTeamOnly: false, employeesOnly: false, hideSatellites: true, hideRestarts: true,
+  hideSideEvents: false, hiddenMonths: [], ladiesOnly: false, seniorsOnly: false,
+  mixedOnly: false, dateFrom: '', dateTo: '',
+  maxDistance: '', userLocation: null, locationRegion: null, locationLabel: null,
+};
+
 // LocationDropdown lives in its own file now (shared with CalendarView).
 export default function TournamentsView({
   tournaments, mySchedule, onToggle, gameVariants, venues,
@@ -895,17 +908,21 @@ export default function TournamentsView({
       if (raw) savedLoc = JSON.parse(raw);
     } catch(e) {}
     return {
-      minBuyin: '', maxBuyin: '', buyinRanges: [], rakeRanges: [], selectedGames: [],
-      hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
-      tagTeamOnly: false, employeesOnly: false, hideSatellites: true, hideRestarts: true,
-      hideSideEvents: false, hiddenMonths: [], ladiesOnly: false, seniorsOnly: false,
-      mixedOnly: false, dateFrom: '', dateTo: '',
+      ...DEFAULT_FILTERS,
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
       locationLabel: savedLoc.locationLabel || null,
     };
   });
+  // Offered as the way out of the filtered-empty state. Clears the search box
+  // and every filter back to defaults, including the saved location — a
+  // distance radius is usually the thing hiding everything, and leaving it set
+  // would make "clear filters" appear to do nothing.
+  const clearAllFilters = () => {
+    setSearch('');
+    setFilters({ ...DEFAULT_FILTERS });
+  };
   // Persist location selection across sessions
   useEffect(() => {
     const { userLocation, locationRegion, maxDistance, locationLabel } = filters;
@@ -1410,11 +1427,11 @@ export default function TournamentsView({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="empty-state">
-          <Icon.empty />
-          <h3>No events found</h3>
-          <p>Try adjusting your search or filters</p>
-        </div>
+        <Filtered
+          title="No events match your filters"
+          hint="Every event is still here — the current search, venue, date or location filter is hiding them."
+          actions={[{ label: 'Clear filters', onClick: clearAllFilters }]}
+        />
       ) : (
         <div style={{minHeight:'100vh', paddingBottom:'60vh'}}>
           {(() => {

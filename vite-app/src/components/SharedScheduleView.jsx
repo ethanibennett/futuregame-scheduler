@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Icon from './Icon.jsx';
+import { FirstRun } from './EmptyState.jsx';
 import Avatar from './Avatar.jsx';
 import CalendarEventRow from './CalendarEventRow.jsx';
 import { API_URL } from '../utils/api.js';
@@ -76,7 +77,7 @@ export default function SharedScheduleView({ shareToken }) {
         </div>
         <div style={{minHeight:'100vh'}}>
         {sorted.length === 0 ? (
-          <div className="empty-state"><Icon.star /><h3>No events yet</h3><p>This schedule is empty</p></div>
+          <FirstRun icon="star" title="This schedule is empty" body="Whoever shared it has not added any events yet." />
         ) : (
           sorted.map(t => (
             <CalendarEventRow

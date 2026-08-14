@@ -1026,8 +1026,8 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
       {sortedEvents.length === 0 ? (
         <div className="empty-state" style={{padding:'40px 24px'}}>
           <Icon.empty />
-          <h3>No events</h3>
-          <p>No tournaments scheduled for this date</p>
+          <h3>No events on this date</h3>
+          <p>Other dates in this range have events — try moving forward or back.</p>
         </div>
       ) : showMySection ? (
         <div style={{minHeight:'100vh', paddingTop:'6px', paddingBottom:'100vh'}}>

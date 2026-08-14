@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Icon from './Icon.jsx';
+import { FirstRun } from './EmptyState.jsx';
 import ShareMenu from './ShareMenu.jsx';
 import WrapUpViewer from './WrapUpViewer.jsx';
 import { API_URL } from '../utils/api.js';
@@ -431,11 +432,13 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
       )}
 
       {trackingData.length === 0 && !showAddForm && !pendingFormId ? (
-        <div className="empty-state">
-          <Icon.tracking />
-          <h3>No results tracked yet</h3>
-          <p>Tap "+ Log Result" to record your first tournament entry</p>
-        </div>
+        <FirstRun
+          icon="tracking"
+          title="Log your first result"
+          body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
+          actionLabel="Log result"
+          onAction={() => { setShowAddForm(true); setEditingId(null); }}
+        />
       ) : (
         trackingData.map(entry => (
           <TrackingEntryRow

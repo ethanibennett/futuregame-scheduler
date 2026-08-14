@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspens
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
-import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor } from './utils/utils.js';
+import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones, measureStickyStack } from './utils/milestones.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
@@ -113,6 +113,9 @@ export default function App() {
   }, []);
 
   const [tournaments, setTournaments] = useState([]);
+  // Header subtitle — the months the loaded feed actually spans, so it tracks
+  // the window instead of naming a season that goes stale.
+  const seasonLabel = useMemo(() => formatSeasonLabel(tournaments), [tournaments]);
   const [mySchedule, setMySchedule] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [gameVariants, setGameVariants] = useState([]);
@@ -1109,7 +1112,7 @@ export default function App() {
       <header className="top-bar">
         <div className="top-bar-title">
           <h1>futurega.me</h1>
-          <small>spring/summer 2026</small>
+          {seasonLabel ? <small>{seasonLabel}</small> : null}
         </div>
         <div className="top-bar-actions">
           <button
@@ -1291,6 +1294,7 @@ export default function App() {
         {visitedTabs.has('schedule') && (!dataLoaded ? <SkeletonSchedule /> :
           <ScheduleView
             key={debugTimeKey}
+            onNavigate={(v) => setCurrentView(v)}
             mySchedule={mySchedule}
             onToggle={toggleTournament}
             shareBuddies={shareBuddies}
