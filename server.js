@@ -5164,6 +5164,31 @@ app.delete('/api/tracking/:entryId', authenticateToken, requireRegistered, async
   }
 });
 
+// Bulk-clear every tracking entry for the caller — the Dashboard "Reset"
+// button. The client has called this since a929d70 but the route was never
+// added, so it 404'd and surfaced as "Failed to reset results".
+// Returns { count } because the client reports how many were cleared.
+app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const countStmt = db.prepare('SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?');
+    countStmt.bind([req.user.id]);
+    countStmt.step();
+    const count = countStmt.getAsObject().n || 0;
+    countStmt.free();
+
+    // Only touch the DB when there is something to remove, so a no-op reset
+    // does not rewrite the database file.
+    if (count > 0) {
+      db.run('DELETE FROM tracking_entries WHERE user_id = ?', [req.user.id]);
+      await saveDatabase();
+    }
+    res.json({ message: 'Results cleared', count });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // ── Live Updates ──────────────────────────────────────────
 
 app.post('/api/live-update', authenticateToken, requireRegistered, async (req, res) => {
