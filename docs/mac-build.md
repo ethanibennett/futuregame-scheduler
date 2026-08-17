@@ -169,17 +169,99 @@ here:
 1. Repo → **Settings → Actions → Runners → New self-hosted runner → macOS**.
 2. Run the `./config.sh` command it gives you (it embeds a registration token).
    Accept the default labels — the workflow targets `[self-hosted, macOS]`.
-3. Install it as a background service so it survives reboots:
+
+   ⚠️ **Run `config.sh` from a shell where the full toolchain is already on
+   `PATH`.** The runner freezes `PATH` into `~/actions-runner/.path` at
+   registration time and uses that forever. Register from a shell that hasn't
+   sourced nvm and the runner cannot find `node`, so every build fails with no
+   obvious cause. Verify:
    ```bash
-   ./svc.sh install && ./svc.sh start && ./svc.sh status
+   env -i PATH="$(cat ~/actions-runner/.path)" sh -c 'command -v node xcodebuild git gh'
    ```
+   Re-register if anything is missing — editing `.path` by hand is not supported.
+
+3. Start it. **Do not use `svc.sh` if the job needs to codesign** — see below.
+
+> ### ⚠️ `svc.sh` runners cannot codesign against the login keychain
+>
+> A runner installed with `./svc.sh install` fails at `xcodebuild archive` with:
+> ```
+> .../Cordova.framework: errSecInternalComponent
+> ** ARCHIVE FAILED **
+> ```
+> This is a launchd-session limitation, **not** a permissions problem, and it is
+> immune to every fix that looks like the answer: `security
+> set-key-partition-list`, `SessionCreate`/`ProcessType: Interactive` in the
+> plist, and an unlocked no-timeout keychain change nothing. The failure
+> signature never varies, which is what makes it so slow to diagnose.
+>
+> **One-step diagnostic:** the same identity signs fine from an interactive
+> shell. If a manual `./scripts/ios-testflight.sh` archives and the runner
+> doesn't, it is this — stop investigating certificates and profiles.
+>
+> **Interim workaround:** run the agent from a session-inheriting process —
+> `./svc.sh stop && ./svc.sh uninstall`, then `cd ~/actions-runner && ./run.sh`.
+> This works, but dies with its session and does not survive a reboot. Useful for
+> diagnosis; not the answer.
+>
+> (`svc.sh uninstall` removes only the launchd service. It does **not**
+> deregister the runner — that is `./config.sh remove` — so registration and
+> credentials survive.)
+>
+> **The actual fix is the dedicated build keychain below.** It works under
+> `svc.sh` and survives reboots.
+
+#### Dedicated build keychain (what this machine runs)
+
+`login.keychain` is unreachable from a launchd service, so the runner uses its
+own keychain, unlocked inside the job:
+
+```bash
+security create-keychain ~/Library/Keychains/build.keychain-db   # omit -p: prompts, stays out of shell history
+security import <distribution>.p12 -k ~/Library/Keychains/build.keychain-db -T /usr/bin/codesign -T /usr/bin/xcodebuild
+security import <development>.p12  -k ~/Library/Keychains/build.keychain-db -T /usr/bin/codesign -T /usr/bin/xcodebuild
+security set-key-partition-list -S apple-tool:,apple:,codesign: ~/Library/Keychains/build.keychain-db
+```
+
+> ⚠️ **Both identities are required.** `xcodebuild archive` signs with the **Apple
+> Development** identity; `exportArchive` then re-signs with **Apple
+> Distribution** per `ios/ExportOptions.plist`. A build keychain holding only the
+> distribution identity fails at *archive*, before export is ever reached.
+
+WWDR G3 must be imported into this keychain too — once the job narrows the search
+list to build-only, it can no longer borrow the intermediate from
+`login.keychain`, and the distribution identity goes `CSSMERR_TP_NOT_TRUSTED`.
+
+Verify under the job's real conditions, not just the default search list:
+
+```bash
+security list-keychains -d user -s ~/Library/Keychains/build.keychain-db
+security find-identity -v -p codesigning        # expect BOTH identities valid
+security list-keychains -d user -s ~/Library/Keychains/login.keychain-db   # restore
+```
+
+The workflow unlocks it, runs the build, and restores the search list with
+`if: always()`. The password lives only in the `BUILD_KEYCHAIN_PASSWORD` repo
+secret.
+
+> `security list-keychains -d user -s` changes the search list for the **user**,
+> not just the job. The `always()` restore covers normal and cancelled runs, but
+> a hard kill mid-job leaves the interactive session with a build-only search
+> list — which later looks like Xcode.app mysteriously failing to sign. Fix by
+> re-running the restore command above.
+
+**Accepted limitation:** the runner is a LaunchAgent, so it starts at GUI login.
+This is deliberate, not an oversight — with FileVault on, the disk must be
+unlocked at boot before *any* agent or daemon runs, so a LaunchDaemon would not
+make reboots unattended either. Verified state is "no Terminal, no interactive
+session", not "no login". Automatic login is the only lever that changes this,
+and it is not worth disabling FileVault on a machine holding signing keys.
 
 The runner executes as your user, so it picks up the App Store Connect key at
 `~/.appstoreconnect/private_keys/` and the Xcode toolchain already configured
 here. **The key is deliberately not a GitHub secret** — it never leaves this Mac.
 
-To pause automatic builds, stop the service (`./svc.sh stop`); the script keeps
-working by hand.
+To pause automatic builds, stop the runner; the script keeps working by hand.
 
 ### Running it by hand instead
 
