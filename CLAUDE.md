@@ -124,3 +124,7 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   token covers. Migration off the ~3,900 existing literals is in progress; the
   checklist at the foot of that doc tracks it.
 - Update this file when architecture or suite topology changes — it is the handoff.
+- **Session state** lives in `docs/session-handoff.md` — what shipped recently,
+  what is waiting on Ethan, published artifact URLs, and the traps that have
+  already cost time (derived columns, feed-owned rows, deliberate naming rules).
+  Read it at the start of a session; update it at the end of a substantial one.
