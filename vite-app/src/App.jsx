@@ -233,6 +233,17 @@ export default function App() {
     localStorage.setItem('serifFont', serifFont);
   }, [serifFont]);
 
+  // Mirror the header subtitle into localStorage so the pre-boot splash in
+  // index.html can show the same span. The splash paints before React mounts
+  // and before any fetch, so it cannot compute this itself — it shows the
+  // previous run's label, which is right except on a first-ever load (falls
+  // back to the static wording) and on the day the window rolls to a new
+  // month, where it is one visit stale. Skip '' so a load that fetched
+  // nothing doesn't wipe a good label.
+  useEffect(() => {
+    if (seasonLabel) localStorage.setItem('seasonLabel', seasonLabel);
+  }, [seasonLabel]);
+
   // Measure the bottom nav's actual top edge and expose it as
   // --measured-nav-top (px from viewport bottom). CSS env() and var()
   // expressions for the same formula resolved to different numbers in
