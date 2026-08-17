@@ -838,7 +838,8 @@ const MONTH_NAMES = [
  * string comparison, with no Date parsing and no timezone rollover.
  *
  * Returns '' when there is nothing to describe. The pre-login screens have no
- * tournament data at all and keep their own static wording.
+ * tournament data of their own — they read the last computed value back via
+ * getStoredSeasonLabel().
  */
 export function formatSeasonLabel(tournaments) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) return '';
@@ -859,6 +860,25 @@ export function formatSeasonLabel(tournaments) {
   if (!fromMonth || !toMonth) return '';
   if (fromYear !== toYear) return `${fromMonth} ${fromYear}-${toMonth} ${toYear}`;
   return fromMonth === toMonth ? `${fromMonth} ${fromYear}` : `${fromMonth}-${toMonth} ${fromYear}`;
+}
+
+/**
+ * The wording the pre-login screens fall back to before any feed has loaded on
+ * this device. Kept in step with the same literal inlined in index.html's
+ * splash markup, which has to be static because it paints before any module
+ * runs.
+ */
+export const SEASON_FALLBACK = 'spring/summer 2026';
+
+/**
+ * The season label for screens that render before tournaments exist — the
+ * login screen, the shared-schedule states, and the splash. App.jsx persists
+ * formatSeasonLabel()'s output on every load, so this is the previous run's
+ * answer: correct except on a first-ever visit, and one visit stale on the day
+ * the feed window rolls into a new month.
+ */
+export function getStoredSeasonLabel() {
+  return localStorage.getItem('seasonLabel') || SEASON_FALLBACK;
 }
 
 export function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }

@@ -6,7 +6,7 @@ import CalendarEventRow from './CalendarEventRow.jsx';
 import { API_URL } from '../utils/api.js';
 import {
   getVenueInfo, normaliseDate, getToday, parseTournamentTime, extractConditions,
-  THEME_ORDER, THEME_LABEL, THEME_ICON,
+  THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel,
 } from '../utils/utils.js';
 
 export default function SharedScheduleView({ shareToken }) {
@@ -29,7 +29,7 @@ export default function SharedScheduleView({ shareToken }) {
   if (loading) return (
     <div className="auth-wrap">
       <div className="auth-card" style={{textAlign:'center'}}>
-        <div className="auth-logo"><h1>futurega.me</h1><p>spring/summer 2026</p></div>
+        <div className="auth-logo"><h1>futurega.me</h1><p>{getStoredSeasonLabel()}</p></div>
         <p style={{color:'var(--text-muted)',marginTop:'16px'}}>Loading schedule...</p>
       </div>
     </div>
@@ -38,7 +38,7 @@ export default function SharedScheduleView({ shareToken }) {
   if (error || !data) return (
     <div className="auth-wrap">
       <div className="auth-card" style={{textAlign:'center'}}>
-        <div className="auth-logo"><h1>futurega.me</h1><p>spring/summer 2026</p></div>
+        <div className="auth-logo"><h1>futurega.me</h1><p>{getStoredSeasonLabel()}</p></div>
         <p style={{color:'var(--text-muted)',marginTop:'16px'}}>{error || 'Schedule not found'}</p>
       </div>
     </div>
