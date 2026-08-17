@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
-import { THEME_ORDER, THEME_LABEL, THEME_ICON } from '../utils/utils.js';
+import { THEME_ORDER, THEME_LABEL, THEME_ICON, getStoredSeasonLabel } from '../utils/utils.js';
 
 export default function AuthScreen({ onSubmit, error, success, theme, toggleTheme, onForgotPassword, onGuestLogin, initialRegister }) {
   const [isRegister, setIsRegister] = useState(!!initialRegister);
@@ -17,7 +17,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         </div>
         <div className="auth-logo">
           <h1>futurega.me</h1>
-          <p>spring/summer 2026</p>
+          <p>{getStoredSeasonLabel()}</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
