@@ -49,7 +49,17 @@ trophy icons to the title line; #74 abbreviated spelled-out game types.
 `74e15c7` the `renormalize:names` migration, `6df72d4` no-limit draw games no
 longer classified as hold'em.
 
-All five suite repos are at **zero unpushed, zero modified**.
+**Mac build node** — #63 committed the screensaver Swift sources (`DashboardSaver/`,
+`DashboardSaverHelper/`, README), which until then existed only in `~/src` on the
+old Mac, a machine queued for wiping; #62 documented the three failures between
+TestFlight builds 62 and 63 (`svc.sh` runners cannot codesign against the login
+keychain, `config.sh` freezing `PATH` at registration, and the expired legacy
+WWDR intermediate yielding zero identities from a valid `.p12`). Both were opened
+2026-08-13 and merged 2026-08-17. Neither touches the `ios-testflight.yml`
+trigger paths, so no build fired.
+
+All five suite repos are at **zero unpushed, zero modified**, and this repo has
+**no open PRs**.
 
 ---
 
@@ -69,9 +79,14 @@ All five suite repos are at **zero unpushed, zero modified**.
    dynamic now, and Settings could be wired the same way. The pre-login screens
    genuinely cannot be; they render before any tournament data exists.
 
-Also open: **PR #63** in this repo commits the screensaver Swift sources, which
-by its own description exist only on the old Mac — a machine queued for wiping.
-Merging it is time-sensitive in a way nothing else here is.
+6. **Runner persistence: Login Item or a dedicated build keychain?** The
+   self-hosted runner is started with `run.sh`, so it dies with its session and
+   does not survive a reboot. A Login Item restores it but makes an unattended
+   build node depend on a GUI login; a dedicated build keychain is the only
+   option that works under launchd with no session at all. This is the reason
+   the **old Mac is being kept intact** — the keychain route needs the `.p12`
+   and its export password again. Raised in #62, which is now merged, so the
+   decision no longer has a PR carrying it.
 
 ---
 
