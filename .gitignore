@@ -130,3 +130,6 @@ solver/
 
 # local pm2 config (holds local JWT_SECRET)
 ecosystem.config.cjs
+
+# Holds a long-lived Claude Code auth token — never commit
+ecosystem.remote-control.cjs
