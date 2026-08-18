@@ -11440,7 +11440,31 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
   }
   const vapidConfigured = !!process.env.VAPID_PUBLIC_KEY;
   if (dryRun) {
-    return res.json({ ok: true, dryRun: true, subscribers, vapidConfigured });
+    // Aggregate by push-service host + age so "N subscribers" is interpretable. Endpoint URLs are
+    // deliberately NOT returned: they are capability URLs — anyone holding one can push to that
+    // device — so only the host and the created_at dates leave this endpoint.
+    const byHost = {};
+    try {
+      const rows = db.prepare(
+        `SELECT ps.endpoint, ps.created_at FROM push_subscriptions ps
+         JOIN users u ON ps.user_id = u.id
+         WHERE LOWER(u.username) = 'ham'`
+      );
+      while (rows.step()) {
+        const r = rows.getAsObject();
+        let host = 'unknown';
+        try { host = new URL(r.endpoint).host; } catch (_) {}
+        const day = String(r.created_at || '').slice(0, 10);
+        if (!byHost[host]) byHost[host] = { count: 0, oldest: day, newest: day };
+        byHost[host].count++;
+        if (day && day < byHost[host].oldest) byHost[host].oldest = day;
+        if (day && day > byHost[host].newest) byHost[host].newest = day;
+      }
+      rows.free();
+    } catch (err) {
+      console.error('[NewSeries] breakdown failed:', err.message);
+    }
+    return res.json({ ok: true, dryRun: true, subscribers, vapidConfigured, byHost });
   }
   try {
     const count = Array.isArray(series) ? series.length : 0;
