@@ -58,6 +58,16 @@ WWDR intermediate yielding zero identities from a valid `.p12`). Both were opene
 2026-08-13 and merged 2026-08-17. Neither touches the `ios-testflight.yml`
 trigger paths, so no build fired.
 
+**Season label** — #78 and #83 retired the hardcoded "spring/summer 2026",
+which was five months stale against a feed running august-november. The header
+has computed the real span since #68; `App.jsx` now persists that label and the
+splash, `AuthScreen` and `SharedScheduleView` read it back via
+`getStoredSeasonLabel()`, while `SettingsView` takes the live value as a prop.
+The pre-login screens cannot *compute* the label, but they can display one —
+the old "they genuinely cannot be dynamic" note was wrong. Still static on
+purpose: `SEASON_FALLBACK` (the single fallback literal), the splash's inline
+copy, `<title>`, and `manifest.json`, which the OS reads at install time.
+
 All five suite repos are at **zero unpushed, zero modified**, and this repo has
 **no open PRs**.
 
@@ -75,13 +85,6 @@ All five suite repos are at **zero unpushed, zero modified**, and this repo has
    `hint` prop already accepts it; nothing computes the count yet.
 4. **Display-font picker: two-way or three-way?** `helvetica` still has live CSS
    but was never in the toggle cycle, so it is unreachable dead code.
-5. **`SettingsView` still hardcodes "spring/summer 2026"** — the last one left.
-   #78 did the splash, `AuthScreen` and `SharedScheduleView` by persisting the
-   header's computed label to `localStorage` and reading it back, so the old
-   claim that the pre-login screens "genuinely cannot be" dynamic is retired:
-   they cannot *compute* the label, but they can display it. Settings can use
-   the same `getStoredSeasonLabel()`. `<title>` and `manifest.json` are left
-   static on purpose — the manifest is read by the OS at install time.
 
 ---
 
