@@ -94,14 +94,24 @@ rewritten. Reading the body and not the merged diff put a solved problem into
 this doc as an open decision, and sent the Mac an instruction the docs
 explicitly reject. Read what a PR *merged*, not what it *said*.
 
-**The Mac runner is a LaunchAgent, and offline usually means nobody is logged
-in.** `docs/mac-build.md` is the authority: the dedicated build keychain is in
-place (`ios-testflight.yml:63` unlocks `build.keychain-db`), the runner runs
-under `svc.sh`, and it starts at **GUI login** — an accepted limitation, since
-FileVault requires the disk be unlocked at boot before any agent runs. So a
-`status=offline` runner is normally a Mac sitting at the login screen, not a
-dead session. `run.sh` is the interim workaround and undoes the fix; use
-`svc.sh status` / `svc.sh start`. A queued job waits ~24h for a runner.
+**The Mac runner is a LaunchAgent under `svc.sh`, and `status=offline` does not
+tell you why.** `docs/mac-build.md` is the authority: the dedicated build
+keychain is in place (`ios-testflight.yml:63` unlocks `build.keychain-db`), and
+the runner starts at **GUI login** — an accepted limitation, since FileVault
+requires the disk be unlocked at boot before any agent runs. `run.sh` is the
+interim workaround and undoes the fix; use `svc.sh status` / `svc.sh start`. A
+queued job waits ~24h for a runner.
+
+On 2026-08-17 the #78 build showed how little `offline` tells you: the runner
+was down at 21:04, came up unprompted, took the job at 22:12, cleared checkout
+and the keychain unlock, then died ten minutes into the archive with *"the
+self-hosted runner lost communication"*. Not a logged-out Mac and not a dead
+session — a machine that most likely slept mid-build. **Read the job's step
+list before diagnosing from runner status.** Note also that a runner dying
+outright skips the `if: always()` keychain restore, which leaves the
+interactive user's search list build-only and later reads as Xcode failing to
+sign; `security list-keychains -d user -s ~/Library/Keychains/login.keychain-db`
+puts it back.
 
 **Not every "messy" name is a defect.** `mtt-series-watcher`'s
 `src/normalize/event-name.ts` has a deliberate rule that a lone variant token
