@@ -1448,6 +1448,7 @@ export default function App() {
             token={token}
             onRefreshTournaments={fetchTournaments}
             isAdmin={isAdmin}
+            seasonLabel={seasonLabel}
           />
         )}
         </div>
