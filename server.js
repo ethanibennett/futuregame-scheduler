@@ -11418,15 +11418,35 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
   if (!expected || req.get('x-sync-token') !== expected) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { title, body, series } = req.body || {};
-  if (!title || !body) {
+  const { title, body, series, dryRun } = req.body || {};
+  if (!dryRun && (!title || !body)) {
     return res.status(400).json({ error: 'Expected { title, body }' });
+  }
+  // Report how many subscriptions the push can actually reach, selected exactly as
+  // sendPushToAdmin selects them. Without this a 200 is unfalsifiable: sendPushToAdmin catches its
+  // own errors and returns nothing, so "sent to nobody" and "delivered" look identical to a caller.
+  // dryRun answers that question without putting a test notification on the admin's phone.
+  let subscribers = 0;
+  try {
+    const sub = db.prepare(
+      `SELECT COUNT(*) AS n FROM push_subscriptions ps
+       JOIN users u ON ps.user_id = u.id
+       WHERE LOWER(u.username) = 'ham'`
+    );
+    if (sub.step()) subscribers = sub.getAsObject().n;
+    sub.free();
+  } catch (err) {
+    console.error('[NewSeries] subscriber count failed:', err.message);
+  }
+  const vapidConfigured = !!process.env.VAPID_PUBLIC_KEY;
+  if (dryRun) {
+    return res.json({ ok: true, dryRun: true, subscribers, vapidConfigured });
   }
   try {
     const count = Array.isArray(series) ? series.length : 0;
     await sendPushToAdmin(String(title), String(body), '/');
-    console.log(`[NewSeries] pushed "${title}" (${count} series)`);
-    res.json({ ok: true, pushed: count });
+    console.log(`[NewSeries] pushed "${title}" (${count} series → ${subscribers} subscription(s))`);
+    res.json({ ok: true, seriesCount: count, subscribers, vapidConfigured });
   } catch (err) {
     console.error('[NewSeries] Error:', err.message);
     res.status(500).json({ error: err.message });
