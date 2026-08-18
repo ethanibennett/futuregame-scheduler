@@ -75,22 +75,33 @@ All five suite repos are at **zero unpushed, zero modified**, and this repo has
    `hint` prop already accepts it; nothing computes the count yet.
 4. **Display-font picker: two-way or three-way?** `helvetica` still has live CSS
    but was never in the toggle cycle, so it is unreachable dead code.
-5. **`SettingsView` still hardcodes "spring/summer 2026"** — the header is
-   dynamic now, and Settings could be wired the same way. The pre-login screens
-   genuinely cannot be; they render before any tournament data exists.
-
-6. **Runner persistence: Login Item or a dedicated build keychain?** The
-   self-hosted runner is started with `run.sh`, so it dies with its session and
-   does not survive a reboot. A Login Item restores it but makes an unattended
-   build node depend on a GUI login; a dedicated build keychain is the only
-   option that works under launchd with no session at all. This is the reason
-   the **old Mac is being kept intact** — the keychain route needs the `.p12`
-   and its export password again. Raised in #62, which is now merged, so the
-   decision no longer has a PR carrying it.
+5. **`SettingsView` still hardcodes "spring/summer 2026"** — the last one left.
+   #78 did the splash, `AuthScreen` and `SharedScheduleView` by persisting the
+   header's computed label to `localStorage` and reading it back, so the old
+   claim that the pre-login screens "genuinely cannot be" dynamic is retired:
+   they cannot *compute* the label, but they can display it. Settings can use
+   the same `getStoredSeasonLabel()`. `<title>` and `manifest.json` are left
+   static on purpose — the manifest is read by the OS at install time.
 
 ---
 
 ## Traps worth knowing
+
+**A PR description can be stale relative to its own branch.** #62's body says
+the runner-persistence question is "still open" — but the second commit on that
+same branch, `bb09675`, had already resolved it, and the description was never
+rewritten. Reading the body and not the merged diff put a solved problem into
+this doc as an open decision, and sent the Mac an instruction the docs
+explicitly reject. Read what a PR *merged*, not what it *said*.
+
+**The Mac runner is a LaunchAgent, and offline usually means nobody is logged
+in.** `docs/mac-build.md` is the authority: the dedicated build keychain is in
+place (`ios-testflight.yml:63` unlocks `build.keychain-db`), the runner runs
+under `svc.sh`, and it starts at **GUI login** — an accepted limitation, since
+FileVault requires the disk be unlocked at boot before any agent runs. So a
+`status=offline` runner is normally a Mac sitting at the login screen, not a
+dead session. `run.sh` is the interim workaround and undoes the fix; use
+`svc.sh status` / `svc.sh start`. A queued job waits ~24h for a runner.
 
 **Not every "messy" name is a defect.** `mtt-series-watcher`'s
 `src/normalize/event-name.ts` has a deliberate rule that a lone variant token
