@@ -133,3 +133,6 @@ ecosystem.config.cjs
 
 # Holds a long-lived Claude Code auth token — never commit
 ecosystem.remote-control.cjs
+
+# Generated hourly by mtt-emit (mtt-series-watcher) and ingested in-process — never committed.
+mtt-feed/
