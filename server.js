@@ -9269,7 +9269,7 @@ app.post('/api/push-unsubscribe', authenticateToken, requireRegistered, async (r
 
 // Helper: send push notification to admin user(s)
 async function sendPushToAdmin(title, body, url) {
-  if (!process.env.VAPID_PUBLIC_KEY) return;
+  if (!process.env.VAPID_PUBLIC_KEY) return { configured: false, results: [], pruned: 0 };
   try {
     const stmt = db.prepare(`
       SELECT ps.endpoint, ps.keys_p256dh, ps.keys_auth
@@ -9282,23 +9282,36 @@ async function sendPushToAdmin(title, body, url) {
     stmt.free();
 
     const payload = JSON.stringify({ title, body, url: url || '/', tag: 'admin' });
+    const results = [];
+    let pruned = 0;
     for (const sub of subs) {
+      let host = 'unknown';
+      try { host = new URL(sub.endpoint).host; } catch (_) {}
       try {
-        await webpush.sendNotification({
+        const r = await webpush.sendNotification({
           endpoint: sub.endpoint,
           keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth }
         }, payload);
+        results.push({ host, status: r && r.statusCode ? r.statusCode : 201, ok: true });
       } catch (err) {
+        results.push({ host, status: err.statusCode || null, ok: false });
         if (err.statusCode === 410 || err.statusCode === 404) {
           // Subscription expired — remove it
           db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [sub.endpoint]);
+          pruned++;
         } else {
           console.error('Push send error:', err.statusCode || err.message);
         }
       }
     }
+    // sql.js holds the DB in memory: without this the prune above is discarded on the next
+    // restart, so dead endpoints accumulate forever (13 stale Apple ones had piled up by
+    // 2026-08-18). The console's copy of this function has always saved; this one never did.
+    if (pruned) await saveDatabase();
+    return { configured: true, results, pruned };
   } catch (err) {
     console.error('sendPushToAdmin error:', err);
+    return { configured: true, results: [], pruned: 0, error: err.message };
   }
 }
 
@@ -11468,9 +11481,10 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
   }
   try {
     const count = Array.isArray(series) ? series.length : 0;
-    await sendPushToAdmin(String(title), String(body), '/');
-    console.log(`[NewSeries] pushed "${title}" (${count} series → ${subscribers} subscription(s))`);
-    res.json({ ok: true, seriesCount: count, subscribers, vapidConfigured });
+    const send = await sendPushToAdmin(String(title), String(body), '/');
+    const delivered = (send.results || []).filter((r) => r.ok).length;
+    console.log(`[NewSeries] pushed "${title}" (${count} series → ${delivered}/${subscribers} accepted)`);
+    res.json({ ok: true, seriesCount: count, subscribers, vapidConfigured, delivered, pruned: send.pruned, results: send.results });
   } catch (err) {
     console.error('[NewSeries] Error:', err.message);
     res.status(500).json({ error: err.message });
