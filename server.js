@@ -11396,6 +11396,30 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
   }
 });
 
+// New-series alert from the MTT watcher (mtt-series-watcher/src/notify/new-series.ts). Token-gated
+// like the feed seam above, but the token rides in a header instead of the path — URLs land in proxy
+// and access logs, headers don't. This only does anything in PRODUCTION: sendPushToAdmin needs VAPID
+// keys and a 'ham' push subscription, and the local box has neither.
+app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async (req, res) => {
+  const expected = process.env.SYNC_TOKEN;
+  if (!expected || req.get('x-sync-token') !== expected) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const { title, body, series } = req.body || {};
+  if (!title || !body) {
+    return res.status(400).json({ error: 'Expected { title, body }' });
+  }
+  try {
+    const count = Array.isArray(series) ? series.length : 0;
+    await sendPushToAdmin(String(title), String(body), '/');
+    console.log(`[NewSeries] pushed "${title}" (${count} series)`);
+    res.json({ ok: true, pushed: count });
+  } catch (err) {
+    console.error('[NewSeries] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Table Scanner: parse seating list image via Claude Vision ──
 const scanUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
