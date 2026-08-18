@@ -9569,6 +9569,19 @@ function dashboardUserId() {
     return id == null ? null : Number(id);
   } catch (_) { return null; }
 }
+// Local (not UTC) YYYY-MM-DD. computeDashboardEvents below has called this since
+// it was written, but the definition left with the console extraction - so every
+// request to /api/schedule/:token/upcoming threw ReferenceError and returned 500.
+// The dashboard's refreshDepartures() swallows that and serves [] forever, which
+// is why the departures board looked like an empty calendar rather than a fault.
+// Must stay LOCAL-date: it is compared against tournament dates entered as local
+// days, and a UTC version shifts every evening event a day early.
+function dashLocalDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function computeDashboardEvents(now = new Date(), limit = 6) {
   const uid = dashboardUserId();
   if (uid == null) return [];
