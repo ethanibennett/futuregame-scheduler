@@ -63,10 +63,14 @@ which was five months stale against a feed running august-november. The header
 has computed the real span since #68; `App.jsx` now persists that label and the
 splash, `AuthScreen` and `SharedScheduleView` read it back via
 `getStoredSeasonLabel()`, while `SettingsView` takes the live value as a prop.
-The pre-login screens cannot *compute* the label, but they can display one —
-the old "they genuinely cannot be dynamic" note was wrong. Still static on
-purpose: `SEASON_FALLBACK` (the single fallback literal), the splash's inline
-copy, `<title>`, and `manifest.json`, which the OS reads at install time.
+#85 then did the tab title, which needs a second write in `App.jsx` — on a
+first-ever load there is no stored label to title with, so without it the tab
+holds the static wording all session. The pre-login screens cannot *compute*
+the label, but they can display one — the old "they genuinely cannot be
+dynamic" note was wrong. The literals left are fallbacks, not oversights:
+`SEASON_FALLBACK`, the splash's inline copy and the static `<title>` (both
+overwritten during parse), plus `manifest.json`, which stays static because the
+OS reads it at install time.
 
 All five suite repos are at **zero unpushed, zero modified**, and this repo has
 **no open PRs**.
