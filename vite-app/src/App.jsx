@@ -241,7 +241,12 @@ export default function App() {
   // month, where it is one visit stale. Skip '' so a load that fetched
   // nothing doesn't wipe a good label.
   useEffect(() => {
-    if (seasonLabel) localStorage.setItem('seasonLabel', seasonLabel);
+    if (!seasonLabel) return;
+    localStorage.setItem('seasonLabel', seasonLabel);
+    // Retitle here as well as in the bootstrap: on a first-ever load there was
+    // no stored label to title with, and the tab would otherwise sit on the
+    // static wording for the whole session.
+    document.title = `futurega.me | ${seasonLabel}`;
   }, [seasonLabel]);
 
   // Measure the bottom nav's actual top edge and expose it as

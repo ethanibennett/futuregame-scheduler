@@ -60,14 +60,18 @@
     <p id="splash-season" style="font-family:'Univers Condensed','Univers',sans-serif;font-size:0.8rem;color:var(--text-muted);margin-top:4px;">spring/summer 2026</p>
   </div>
   <script>
-    // Match the splash subtitle to the in-app header, which labels the span the
-    // upcoming events actually cover. App.jsx writes that label here after each
-    // load; the markup above keeps the static wording as the first-run
-    // fallback. Runs during parse, so the static text never paints.
+    // Match the splash subtitle and the tab title to the in-app header, which
+    // labels the span the upcoming events actually cover. App.jsx writes that
+    // label here after each load; the markup above and the <title> keep the
+    // static wording as the first-run fallback. Runs during parse, so neither
+    // static string paints. App.jsx retitles again once the feed lands, which
+    // is what corrects a first-ever load.
     (function() {
       var label = localStorage.getItem('seasonLabel');
+      if (!label) return;
       var el = document.getElementById('splash-season');
-      if (label && el) el.textContent = label;
+      if (el) el.textContent = label;
+      document.title = 'futurega.me | ' + label;
     })();
   </script>
   <div id="root"></div>
