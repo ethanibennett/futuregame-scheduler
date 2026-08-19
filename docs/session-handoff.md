@@ -133,6 +133,23 @@ renormalize:names` first. Re-deriving `game_variant` is safe in one direction
 only: `game_type_long` was never persisted, so a recompute has less information
 than the original call and can only be trusted to replace the `'NLH'` fallback.
 
+**The MTT feed has TWO write paths, and they drift.** `ingestMttFeed()` (local,
+boot + hourly :20) and the `/api/tournaments/feed-sync/:token` receiver
+(`server.js:11331`, what prod runs) each have their own INSERT/UPDATE column
+lists. #87 found `structure_sheet_path` in the receiver but not in
+`ingestMttFeed()`, so a full local ingest wrote **0** rows while the code looked
+done. Add a feed column to *both*, and verify by ingesting into a DB copy and
+counting — not by reading the receiver. Note `pushMttFeedToProd()` does
+`SELECT *`, so anything the local path stores reaches prod for free.
+
+**Structure sheets come from the watcher, not from here.** PokerAtlas exposes
+`structure_url` / `blind_structure_link`; mtt-series-watcher has always
+collected it, but its emitter dropped it until `e58e9ba`. Coverage is
+per-series all-or-nothing (Legends of Poker, Summer Colorado, WPT bestbet,
+WSOPC Atlantic City ~100%; Wynn and most WSOPC zero) — 246 of 2,388 rows. The
+card suppresses the column when `venue.abbr === 'WSOP'` in favour of the
+computed WSOP PDF, which today affects only the two Horseshoe/Paris entries.
+
 **Feed rows are not this repo's to edit.** Anything with `stable_id LIKE 'MTT-%'`
 is owned by the watcher and re-UPSERTed hourly at :20, so a fix applied here is
 reverted within the hour. `server.js:9302` documents the contract. The split at
