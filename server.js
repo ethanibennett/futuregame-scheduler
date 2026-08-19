@@ -9443,13 +9443,18 @@ async function ingestMttFeed() {
              level_duration = ?, reentry = ?, late_reg = ?, late_reg_end = ?, game_variant = ?,
              notes = ?, category = ?, is_satellite = ?, is_restart = ?, prize_pool = ?,
              house_fee = ?, opt_add_on = ?, rake_pct = ?, rake_dollars = ?, is_deepstack = ?,
-             source_pdf = ?, stable_id = COALESCE(stable_id, ?)
+             source_pdf = ?, stable_id = COALESCE(stable_id, ?),
+             -- COALESCE, not a plain overwrite: the feed only has a structure sheet for
+             -- about a sixth of events, and a locally attached one (admin edit, or a PDF
+             -- in schedule-docs) must survive an hourly re-ingest that carries null.
+             -- Feed value wins when the feed has one.
+             structure_sheet_path = COALESCE(?, structure_sheet_path)
            WHERE venue = ? AND event_number = ?`,
           [t.event_name, t.date, t.time, t.buyin, t.starting_chips,
            t.level_duration, t.reentry, t.late_reg, t.late_reg_end, t.game_variant,
            t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
            t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
-           t.source_pdf || 'mtt-feed', feedStableId(t),
+           t.source_pdf || 'mtt-feed', feedStableId(t), t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
         if (db.getRowsModified() > 0) { upserts++; continue; }
@@ -9458,13 +9463,14 @@ async function ingestMttFeed() {
            starting_chips, level_duration, reentry, late_reg, late_reg_end,
            game_variant, venue, notes, category, is_satellite, target_event,
            is_restart, parent_event, prize_pool, house_fee, opt_add_on,
-           rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, structure_sheet_path)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
            t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
            t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
            t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
-           t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t)]
+           t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t),
+           t.structure_sheet_path || null]
         );
         inserts++;
       }
