@@ -449,11 +449,19 @@
       flex: 1;
       /* Only pad top for safe area — bottom is handled inside .bottom-nav itself */
       padding-top: env(safe-area-inset-top, 0px);
+      /* Header gradient, painted HERE rather than on .top-bar so it starts at the true top of the
+         screen: the shell's safe-area padding sits above the bar, and a gradient on the bar alone
+         would leave a flat band across the notch. Height therefore spans inset + header, and
+         .top-bar itself goes transparent to let it through. Unprefixed no-repeat leaves the rest of
+         the shell showing #root's --surface. */
+      background:
+        linear-gradient(to bottom, var(--surface2), var(--surface))
+        top / 100% calc(env(safe-area-inset-top, 0px) + var(--header-h)) no-repeat;
     }
 
     .top-bar {
       height: var(--header-h);
-      background: var(--surface);
+      background: transparent;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -2433,7 +2441,10 @@
     /* ── Bottom tab bar ── */
     .bottom-nav {
       height: var(--nav-h);
-      background: var(--surface);
+      /* Mirrors the header: deepest at the very bottom of the screen, settling to --surface where
+         the content meets it. --nav-h already includes safe-area-inset-bottom, so unlike the
+         header this one does reach the screen edge on its own. */
+      background: linear-gradient(to top, var(--surface2), var(--surface));
       border-top: 1px solid var(--border);
       display: flex;
       align-items: stretch;
@@ -2444,7 +2455,9 @@
     }
     /* Platform-specific tweaks: iOS Capacitor */
     html[data-platform="ios"] .bottom-nav {
-      background: var(--surface);
+      /* Must repeat the gradient, not --surface: this rule is more specific than .bottom-nav and
+         would otherwise flatten the nav back out on iOS only. */
+      background: linear-gradient(to top, var(--surface2), var(--surface));
     }
     html[data-platform="ios"] .nav-tab {
       padding-top: 10px;
