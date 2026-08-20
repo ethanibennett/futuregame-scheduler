@@ -142,6 +142,13 @@ done. Add a feed column to *both*, and verify by ingesting into a DB copy and
 counting — not by reading the receiver. Note `pushMttFeedToProd()` does
 `SELECT *`, so anything the local path stores reaches prod for free.
 
+**Structure sheets are hunted, not just read.** Beyond PokerAtlas's ~28%, the watcher now hunts
+venue sites (`mtt-series-watcher/src/structures/`, `npm run hunt`, hourly before emit). Wynn is
+the first resolver: bundled per-series PDFs matched to events on `total_buy_in` + `guarantee`,
+emitted as `<pdf>#page=N`. Live count went 0 → 246 → **301** rows. Adding a venue is one module
+there, not a change here — this repo needs nothing further. PokerAtlas itself is exhausted: no
+per-tournament endpoint, and its event-page HTML holds nothing the API does not.
+
 **Structure sheets come from the watcher, not from here.** PokerAtlas exposes
 `structure_url` / `blind_structure_link`; mtt-series-watcher has always
 collected it, but its emitter dropped it until `e58e9ba`. Coverage is
