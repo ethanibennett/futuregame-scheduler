@@ -47,6 +47,15 @@
       --border:    #333333;
       --accent:    #a0a0a0;
       --accent2:   #888888;
+      /* Translucent ring for the active-turn plaque. A token rather than color-mix(): that
+         function appears once in this whole file, and the replayer ships inside a WKWebView.
+         Light in EVERY theme, unlike --accent, because this ring is drawn on the purple felt
+         around a plaque that is now dark in all themes — the light/cloudy accent is near-black
+         and would read as a drop shadow rather than as attention. */
+      --accent-ring: rgba(220,220,220,0.6);
+      /* Seat-plaque bevel. Shared so the winner/turn/loser rules can add a glow WITHOUT
+         dropping it — box-shadow replaces wholesale, and those rules used to flatten it. */
+      --plaque-bevel: 0 3px 8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(0,0,0,0.5);
       --text:      #e8e8e8;
       --text-muted:#808080;
       --bg-contrast: #111111;
@@ -232,6 +241,7 @@
       --border:    #d0d0d0;
       --accent:    #555555;
       --accent2:   #777777;
+      --accent-ring: rgba(255,255,255,0.8);
       --text:      #1a1a1a;
       --text-muted:#888888;
       --bg-contrast: #ffffff;
@@ -281,6 +291,7 @@
       --border:    #2a3a58;
       --accent:    #8898b8;
       --accent2:   #6878a0;
+      --accent-ring: rgba(170,190,230,0.7);
       --text:      #d8dce8;
       --text-muted:#6878a0;
       --bg-contrast: #0d1525;
@@ -330,6 +341,7 @@
       --border:    #a0a0a0;
       --accent:    #505050;
       --accent2:   #686868;
+      --accent-ring: rgba(255,255,255,0.8);
       --text:      #1a1a1a;
       --text-muted:#606060;
       --bg-contrast: #c8c8c8;
@@ -1548,6 +1560,19 @@
       box-shadow: inset 0 4px 20px rgba(0,0,0,0.45);
       z-index: 1;
       cursor: pointer;
+      overflow: hidden;   /* keeps the weave inside the pill */
+    }
+    /* Woven texture. The felt was a single gradient, which reads as coloured plastic at any size;
+       a fine crosshatch at very low opacity makes it cloth. Deliberately an overlay rather than
+       part of the gradient, so the user's felt-colour setting keeps working underneath it. */
+    .replayer-table-felt::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.045) 2px, rgba(255,255,255,0.045) 3px),
+        repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 3px);
     }
     :is([data-theme="light"],[data-theme="cloudy"]) .replayer-table-felt {
       background: radial-gradient(ellipse 80% 70% at 50% 45%, #9b8dc0, #423a5b);
@@ -1574,7 +1599,10 @@
       z-index:2; display:flex; flex-direction:column; align-items:center; gap:3px;
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
-    .replayer-board-area .card-row img { height:44px; }
+    /* Board cards sit ON the felt. Without this they were the only cards with no shadow — hole
+       cards already have one — so the board looked printed on while the hole cards floated.
+       More vertical and softer than the hole-card shadow: light is overhead at the table centre. */
+    .replayer-board-area .card-row img { height:44px; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.5)); }
     .replayer-board-area .card-row .card-unknown { width:30px; height:44px; }
     .replayer-board-area .card-row .card-placeholder { width:30px; height:44px; }
 
@@ -1593,8 +1621,15 @@
     }
     .replayer-seat.seat-left { transform: translate(0%, -50%); }
     .replayer-seat.seat-right { transform: translate(-100%, -50%); }
+    /* Folded/mucked. opacity:0.5 faded the NAME AND STACK along with the plaque, losing the
+       information at the moment you are scanning who is left. Desaturating and stepping the plaque
+       back says "out of the hand" while keeping it readable. */
     .replayer-seat.folded .replayer-seat-info,
-    .replayer-seat.mucked .replayer-seat-info { opacity:0.5; }
+    .replayer-seat.mucked .replayer-seat-info {
+      filter: grayscale(1) brightness(0.62);
+      transform: scale(0.88);
+      transition: filter 0.25s, transform 0.25s;
+    }
 
     .replayer-seat-cards {
       position: absolute;
@@ -1642,33 +1677,44 @@
       text-shadow: 0 0.5px 0 rgba(255,255,255,0.5);
     }
 
+    /* Seat plaques. These used --surface on --border, i.e. the exact chrome of every event card in
+       the app, so the seats read as interface floating over a picture of a table rather than as
+       objects on one. Now a dark translucent nameplate with a thin bevel.
+       The plaque is deliberately dark in ALL themes — it sits on purple felt, not on app surface —
+       so the text inside it is pinned light rather than inheriting --text, which is near-black in
+       the light and cloudy themes and would be unreadable here. */
     .replayer-seat-info {
       position: relative;
       z-index: 1;
-      background: var(--surface);
-      border: 1.5px solid var(--border);
+      background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
+      border: 1px solid rgba(255,255,255,0.14);
       border-radius: var(--radius-sm);
       padding: 4px 8px;
       min-width: 72px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      box-shadow: var(--plaque-bevel);
       transition: border-color 0.2s, box-shadow 0.3s;
     }
-    .replayer-seat.active-turn .replayer-seat-info { border-color:var(--accent); }
+    /* Active turn was a single border-colour swap to --accent, which is #a0a0a0 in the dark theme —
+       a grey hairline on a stamp-sized plaque, easy to miss at replay speed. Now a ring too. */
+    .replayer-seat.active-turn .replayer-seat-info {
+      border-color: var(--accent);
+      box-shadow: var(--plaque-bevel), 0 0 0 2px var(--accent-ring), 0 0 12px 2px var(--accent-ring);
+    }
     .replayer-seat.winner .replayer-seat-info {
       border-color: #eab308;
-      box-shadow: 0 0 8px rgba(234,179,8,0.45), 0 0 18px rgba(234,179,8,0.2), inset 0 0 6px rgba(234,179,8,0.08);
+      box-shadow: var(--plaque-bevel), 0 0 8px rgba(234,179,8,0.45), 0 0 18px rgba(234,179,8,0.2), inset 0 0 6px rgba(234,179,8,0.08);
     }
     .replayer-seat.loser .replayer-seat-info {
       border-color: rgba(248,113,113,0.4);
-      box-shadow: 0 0 4px rgba(248,113,113,0.2);
+      box-shadow: var(--plaque-bevel), 0 0 4px rgba(248,113,113,0.2);
     }
     .replayer-seat.split .replayer-seat-info {
       border-color: #facc15;
-      box-shadow: 0 0 8px rgba(250,204,21,0.35), 0 0 16px rgba(250,204,21,0.15);
+      box-shadow: var(--plaque-bevel), 0 0 8px rgba(250,204,21,0.35), 0 0 16px rgba(250,204,21,0.15);
     }
-    .replayer-seat-name { font-size:0.62rem; font-weight:600; color:var(--text); font-family: var(--font-condensed); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80px; }
+    .replayer-seat-name { font-size:0.62rem; font-weight:600; color:#f2efe6; font-family: var(--font-condensed); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80px; }
     .replayer-seat-pos { font-size:0.5rem; color:var(--accent2); font-family: var(--font-condensed); }
-    .replayer-seat-stack { font-size:0.62rem; font-weight:600; color:var(--text); font-family: var(--font-condensed); }
+    .replayer-seat-stack { font-size:0.62rem; font-weight:600; color:#f2efe6; font-family: var(--font-condensed); }
     .replayer-seat-action {
       font-size:0.52rem; color:var(--accent2); font-family: var(--font-condensed);
       min-height:12px;
@@ -2256,12 +2302,14 @@
     }
 
     /* ── Winner Shimmer / Gold Pulse ── */
+    /* Each frame carries --plaque-bevel because box-shadow replaces wholesale: without it the
+       winning plaque loses its bevel for the 3.6s the shimmer runs and then snaps back. */
     @keyframes winnerShimmer {
-      0% { box-shadow:0 0 4px rgba(234,179,8,0.3), 0 0 8px rgba(234,179,8,0.1); border-color:rgba(234,179,8,0.4); }
-      20% { box-shadow:0 0 16px rgba(255,215,0,0.7), 0 0 32px rgba(255,215,0,0.3), inset 0 0 8px rgba(255,215,0,0.1); border-color:#ffd700; }
-      40% { box-shadow:0 0 10px rgba(234,179,8,0.5), 0 0 20px rgba(234,179,8,0.2); border-color:rgba(234,179,8,0.6); }
-      60% { box-shadow:0 0 14px rgba(255,215,0,0.6), 0 0 28px rgba(255,215,0,0.25), inset 0 0 6px rgba(255,215,0,0.08); border-color:#ffd700; }
-      100% { box-shadow:0 0 8px rgba(234,179,8,0.45), 0 0 18px rgba(234,179,8,0.2); border-color:#eab308; }
+      0% { box-shadow:var(--plaque-bevel), 0 0 4px rgba(234,179,8,0.3), 0 0 8px rgba(234,179,8,0.1); border-color:rgba(234,179,8,0.4); }
+      20% { box-shadow:var(--plaque-bevel), 0 0 16px rgba(255,215,0,0.7), 0 0 32px rgba(255,215,0,0.3), inset 0 0 8px rgba(255,215,0,0.1); border-color:#ffd700; }
+      40% { box-shadow:var(--plaque-bevel), 0 0 10px rgba(234,179,8,0.5), 0 0 20px rgba(234,179,8,0.2); border-color:rgba(234,179,8,0.6); }
+      60% { box-shadow:var(--plaque-bevel), 0 0 14px rgba(255,215,0,0.6), 0 0 28px rgba(255,215,0,0.25), inset 0 0 6px rgba(255,215,0,0.08); border-color:#ffd700; }
+      100% { box-shadow:var(--plaque-bevel), 0 0 8px rgba(234,179,8,0.45), 0 0 18px rgba(234,179,8,0.2); border-color:#eab308; }
     }
     @keyframes winnerBounce {
       0% { transform:scale(1); }
