@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
-  getVenueInfo, getVenueClass, getVenueBrandColor, getVariantColor, isBraceletEvent, isRingEvent,
+  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, getVariantColor, isBraceletEvent, isRingEvent,
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
   getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
   extractConditions, formatConditionLabel, formatConditionBadge,
@@ -606,7 +606,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
         onClick={() => setOpen(o => !o)}
-      ><span className="venue-strip-abbr">{venue.abbr}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
+      ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
       <div className="cal-event-row-content" style={isInSchedule ? {borderColor: conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
         <div className="cal-event-bar" onClick={() => setOpen(o => !o)}>
@@ -1109,7 +1109,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
         onClick={onExpand}
-      ><span className="venue-strip-abbr">{venue.abbr}</span></div>
+      ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span></div>
       <div className="cal-event-row-content" style={isInSchedule ? {borderColor: hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         <div className="cal-event-bar" onClick={onExpand}>
           {tournament.venue === 'Personal' ? (

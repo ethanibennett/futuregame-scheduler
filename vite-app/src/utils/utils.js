@@ -344,12 +344,41 @@ export function deriveVenueInfo(v) {
   let abbr = '';
   for (const w of words) {
     const next = abbr ? `${abbr} ${w}` : w;
-    if (next.length > 14) break;
+    if (next.length > 11) break;
     abbr = next;
     if (abbr.split(' ').length >= 2) break;
   }
-  abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 14) || '?';
+  abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 11) || '?';
   return { abbr, color: deriveColor(raw), longName: raw };
+}
+
+// Strip display names. The abbr doubles as a lookup key (PROPERTY_COORDS,
+// VENUE_BRAND_VAR, COLOR_BY_ABBR), so it cannot be shortened in place without
+// dropping venues out of the location filters. These are display-only: at 10px
+// with caps tracking, a 14-character rotated string needs ~95px of strip and
+// the collapsed row is 64px, so the long ones had nowhere to go but smaller.
+export const STRIP_ABBR = {
+  'ONE-EYED JACKS': 'ONE-EYED',
+  'GRAND VICTORIA': 'GRAND VIC',
+  'JACK CLEVELAND': 'JACK CLEV',
+  'THUNDER VALLEY': 'THUNDER V',
+  'CAESARS SO IN':  'CAESARS SI',
+  'TALKING STICK':  'TALKING',
+  'TURNING STONE':  'TURNING',
+  'ELITE MCALLEN':  'ELITE MCA',
+  'LIECHTENSTEIN':  'LIECHT',
+  'RESORTS WORLD':  'RESORTS',
+  'GOLDEN NUGGET':  'NUGGET',
+  'HR CINCINNATI':  'HR CINCY',
+  'CHICAGO CHAR':   'CHI CHAR',
+  'OXFORD DOWNS':   'OXFORD',
+  'PALACE POKER':   'PALACE',
+  'CASINO MALTA':   'MALTA',
+  'BOSSIER CITY':   'BOSSIER',
+  'LIVE! PHILLY':   'LIVE PHILLY',
+};
+export function getStripAbbr(abbr) {
+  return STRIP_ABBR[abbr] || abbr;
 }
 
 // Derived entries are cached by abbr so getVenueBrandColor() can resolve their

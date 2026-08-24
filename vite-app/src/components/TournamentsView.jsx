@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
+import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
 import { Filtered } from './EmptyState.jsx';
@@ -1479,59 +1480,11 @@ export default function TournamentsView({
               const isCollapsed = collapsedDates.has(group.date);
               return (
                 <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
-                  <div className="schedule-date-break" onClick={() => toggleDateCollapsed(group.date)} style={{
-                    position: 'sticky', top: dateBreakTop + 'px', zIndex: 5,
-                    padding: '12px 12px 8px 2px',
-                    background: 'var(--bg)',
-                    color: 'var(--text)',
-                    fontWeight: 700,
-                    borderBottom: 'none',
-                    display: 'flex', alignItems: 'baseline', gap: '4px',
-                    cursor: 'pointer', userSelect: 'none'
-                  }}>
-                    {isToday ? (
-                      <>
-                        <span style={{
-                          background: 'var(--accent)', display: 'inline-flex', alignItems: 'baseline', gap: '4px',
-                          padding: '4px 12px', borderRadius: '999px', cursor: 'pointer'
-                        }} onClick={(e) => {
-                          e.stopPropagation();
-                          const grp = e.currentTarget.closest('[data-date-group]');
-                          if (grp) scrollDateGroupToTop(grp);
-                        }}>
-                          <span style={{fontSize: '1.7rem', lineHeight: 1, fontFamily: "var(--serif)", color: 'var(--bg)'}}>{dayNum}</span>
-                          <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)", textTransform: 'capitalize', color: 'var(--bg)'}}>{monthAbbr}</span>
-                        </span>
-                        <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',marginLeft:'4px'}}>{dayEventCount} event{dayEventCount !== 1 ? 's' : ''}</span>
-                        <span style={{marginLeft: 'auto', display: 'inline-flex', alignItems: 'baseline', gap: '8px'}}>
-                          <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayOfWeek}</span>
-                          <span aria-label={isCollapsed ? 'Expand' : 'Collapse'} style={{
-                            display: 'inline-block', fontSize: '1.1rem', lineHeight: 1, color: 'var(--accent)',
-                            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                            transition: 'transform 0.15s ease'
-                          }}>{'▶'}</span>
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{fontSize: '1.7rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayNum}</span>
-                        <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)", textTransform: 'capitalize'}}>{monthAbbr}</span>
-                        <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',marginLeft:'4px'}}>{dayEventCount} event{dayEventCount !== 1 ? 's' : ''}</span>
-                        <span style={{marginLeft: 'auto', display: 'inline-flex', alignItems: 'baseline', gap: '8px'}}>
-                          <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayOfWeek}</span>
-                          <span aria-label={isCollapsed ? 'Expand' : 'Collapse'} style={{
-                            display: 'inline-block', fontSize: '1.1rem', lineHeight: 1, color: 'var(--accent)',
-                            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                            transition: 'transform 0.15s ease'
-                          }}>{'▶'}</span>
-                        </span>
-                      </>
-                    )}
-                  </div>
+                  <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />
                   {!isCollapsed && group.events.map(t => {
                     const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id;
                     return (
-                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 72px'}}>
+                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 94px'}}>
                       {needsFull ? (
                         <CalendarEventRow
                           tournament={t}

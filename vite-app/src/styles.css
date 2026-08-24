@@ -492,6 +492,104 @@
 
 
 
+
+
+    /* Referenced by SharedScheduleView and defined nowhere, so the count next
+       to the heading inherited body type on the app's only public page. */
+    .event-count-badge {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ==================================================================
+       Date break. The pinned header used to sit on a flat --bg with no
+       edge, no shadow and no scrim, while the rows scrolling under it are
+       1.08:1 against that same background - so the moment a header became
+       pinned was invisible. A gradient scrim rather than a box-shadow,
+       because both sticky ancestors above this one deleted their shadows
+       when the variable resolved late.
+       ================================================================== */
+    .schedule-date-break {
+      position: sticky;
+      z-index: var(--z-raised);
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-xs);
+      padding: var(--space-lg) var(--space-lg) var(--space-xl) var(--space-2xs);
+      color: var(--text);
+      background: linear-gradient(var(--bg) 0 calc(100% - 9px), rgba(0,0,0,0));
+      user-select: none;
+    }
+    .schedule-date-break[onclick],
+    .schedule-date-break.is-collapsible { cursor: pointer; }
+
+    .date-break-pill-btn {
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+    }
+    .date-break-pill {
+      display: inline-flex;
+      align-items: baseline;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-lg);
+      border-radius: var(--radius-pill);
+      background: var(--surface2);
+      color: var(--text);
+    }
+    /* The one mark the whole list is scrolled to on mount. --brand exists so
+       exactly one thing per screen can claim priority; this is the candidate. */
+    .schedule-date-break.is-today .date-break-pill {
+      background: var(--brand);
+      color: var(--on-brand);
+    }
+    .date-break-day {
+      font-family: var(--font-display);
+      font-size: var(--fs-3xl);
+      font-weight: var(--fw-regular);
+      line-height: 1;
+      font-variant-numeric: var(--num-tabular);
+    }
+    .date-break-mon {
+      font-family: var(--font-display);
+      font-size: var(--fs-md);
+      line-height: 1;
+      text-transform: capitalize;
+    }
+    .date-break-count {
+      font-size: var(--fs-2xs);
+      font-family: var(--font-condensed);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-left: var(--space-xs);
+    }
+    .date-break-end {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+    .date-break-dow {
+      font-family: var(--font-display);
+      font-size: var(--fs-md);
+      line-height: 1;
+    }
+    .date-break-chev {
+      display: inline-flex;
+      --icon-size: var(--icon-sm);
+      color: var(--text-muted);
+      transition: transform var(--dur-fast) var(--ease-out);
+    }
+    .date-break-chev.open { transform: rotate(90deg); }
+
     /* ==================================================================
        Icons. 37 of 45 glyphs are stroked and only three declared a width,
        so the rest inherited SVG's default of 1 - a 0.58px stroke at 14px,
@@ -3925,7 +4023,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: var(--space-sm) var(--space-ml);
+      padding: var(--space-ml) var(--space-ml);
       border-radius: var(--radius-sm);
       background: var(--surface);
       border: var(--bw-1) solid var(--border);
@@ -3941,7 +4039,7 @@
       .cal-date-btn { flex-basis: calc((100vw - 100px) / 7); }
     }
 
-    .cal-date-btn.active { background: var(--accent); border-color: var(--accent); animation: date-bounce 0.45s var(--ease-spring) both; }
+    .cal-date-btn.active { background: var(--brand); border-color: var(--brand); animation: date-bounce var(--dur-slow) var(--ease-spring) both; }
 
     @keyframes date-bounce {
       0%   { transform: scale(0.85); }
@@ -3957,7 +4055,7 @@
       color: var(--text-muted);
     }
 
-    .cal-date-btn.active .dow { color: var(--bg-contrast); }
+    .cal-date-btn.active .dow { color: var(--on-brand); }
 
     .cal-date-btn .dom {
       font-family: var(--font-condensed);
@@ -4033,9 +4131,24 @@
       border-radius: var(--radius-sm);
       margin-bottom: var(--space-sm);
       overflow: hidden;
-      transition: border-color var(--dur-snap);
+      box-shadow: var(--elev-1);
+      transition: border-color var(--dur-snap) var(--ease-out),
+                  box-shadow var(--dur-fast) var(--ease-out),
+                  background-color var(--dur-fast) var(--ease-out);
       display: flex;
       position: relative;
+    }
+
+    /* 26: the most-tapped element in the app had one line of interaction
+       vocabulary - a background change on :active - and no :hover at all, so
+       on the web build nothing said a row was clickable until it was pressed. */
+    @media (hover: hover) and (pointer: fine) {
+      .cal-event-row:hover {
+        box-shadow: var(--elev-2);
+      }
+      .cal-event-row:hover .cal-event-bar {
+        background: var(--hover-overlay);
+      }
     }
     /* Priority/anchor outline — drawn via a pseudo-element so it sits on
        top of the venue strip + content (which would otherwise cover the
@@ -4063,7 +4176,7 @@
     }
 
     .cal-venue-strip {
-      width: 22px;
+      width: 26px;
       flex-shrink: 0;
       align-self: stretch;
       display: grid;
@@ -4319,12 +4432,16 @@
       -webkit-user-select: none;
       box-sizing: border-box;
     }
+    /* A fixed 88px reserved the two-line worst case on every row, wrapped or
+       not - roughly 7 visible rows on a 390x844 phone, for a feed holding
+       2,388 events. min-height lets a single-line row collapse to ~64px and a
+       wrapping one keep its 88px; the -webkit-line-clamp below still bounds
+       the name, so max-height was only ever a second belt. */
     .cal-event-row:not(.open) .cal-event-bar {
-      height: 88px;
+      min-height: 64px;
       justify-content: center;
     }
     .cal-event-row:not(.open) {
-      max-height: 110px;
       overflow: hidden;
     }
 
@@ -4342,54 +4459,47 @@
       flex-shrink: 0;
     }
 
-    .cal-bounty-icon {
-      width: 14px;
-      height: 14px;
-      color: var(--text);
-      opacity: 0.5;
-      pointer-events: none;
-      flex-shrink: 0;
+    /* One cluster, one gap. These three icons used to be aligned by four
+       hand-tuned offsets (left: 1px / -3px / 3px / -5px, margin-right: -4.5px)
+       plus three copies of a centring calc with three different constants, and
+       the :has() rule existed to undo one of the others. A flex row at a single
+       box size does the same job and survives a change to the title size.
+
+       The gold is --accolade, declared rather than written twice as #c9a227:
+       an accolade is a property of the EVENT, --brand is the app talking, and
+       two undeclared golds 20px apart is a system with no owner. */
+    .cal-accolades {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
       margin-left: auto;
-      align-self: flex-start;
-      margin-top: calc((var(--cal-title-line) - 14px) / 2);
-      position: relative;
-      left: 1px;
-    }
-
-    .cal-bounty-icon + .cal-bounty-icon {
-      margin-left: var(--space-xs);
-    }
-
-    .cal-bounty-icon:has(+ .cal-bracelet-icon) {
-      left: -3px;
-    }
-
-    .cal-ring-icon {
-      width: 18px;
-      height: 18px;
-      color: #c9a227;
-      opacity: 0.85;
-      pointer-events: none;
       flex-shrink: 0;
       align-self: flex-start;
       margin-top: calc((var(--cal-title-line) - 18px) / 2);
-      position: relative;
-      left: 3px;
+      pointer-events: none;
     }
 
+    .cal-bounty-icon,
+    .cal-ring-icon,
     .cal-bracelet-icon {
-      width: 21px;
-      height: 21px;
-      color: #c9a227;
-      opacity: 0.85;
-      pointer-events: none;
+      --icon-size: 18px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
-      align-self: flex-start;
+      pointer-events: none;
+    }
+
+    .cal-bounty-icon { color: var(--text); opacity: 0.5; }
+    .cal-ring-icon,
+    .cal-bracelet-icon { color: var(--accolade); }
+
+    /* Kept for rows that have not been wrapped in .cal-accolades yet. */
+    .cal-bar-row2 > .cal-bounty-icon,
+    .cal-bar-row2 > .cal-ring-icon,
+    .cal-bar-row2 > .cal-bracelet-icon {
       margin-left: auto;
-      margin-right: -4.5px;
-      margin-top: calc((var(--cal-title-line) - 21px) / 2);
-      position: relative;
-      left: -5px;
+      align-self: flex-start;
+      margin-top: calc((var(--cal-title-line) - 18px) / 2);
     }
 
     .cal-bar-row1 {
@@ -4406,7 +4516,7 @@
       display: flex;
       align-items: flex-start;
       gap: var(--space-md);
-      --cal-title-line: calc(0.84rem * 1.3);
+      --cal-title-line: calc(var(--fs-sm) * var(--lh-snug));
     }
 
     .cal-event-time {
