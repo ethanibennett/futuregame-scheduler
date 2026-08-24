@@ -2883,6 +2883,33 @@ async function initDatabase() {
     }
   }
 
+  // ── Admin overrides ──
+  // Corrections an admin makes to feed-owned events. 100% of upcoming events come from the
+  // watcher and are re-UPSERTed at boot and hourly at :20, so an edit written straight to
+  // `tournaments` is silently reverted within the hour — the edit UI worked, the row just did not
+  // keep the value. Overrides are recorded here and re-applied after every ingest, which is what
+  // makes an admin correction durable.
+  //
+  // Keyed by stable_id (deterministic from venue+event_number) rather than tournaments.id,
+  // because a prune-and-reinsert cycle gives the row a NEW id and an id-keyed override would be
+  // orphaned. Local rows have no stable_id and use 'id:<n>' — nothing overwrites them anyway, so
+  // the key only has to be unique.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_overrides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      target_key TEXT NOT NULL,
+      field TEXT NOT NULL,
+      value TEXT,
+      updated_by TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(target_key, field)
+    )
+  `);
+
+  // NOTE: this table must exist BEFORE ingestMttFeed() below, which re-applies overrides as its
+  // last step. Created after it, the boot ingest logs 'no such table' and silently skips the
+  // re-apply — the hourly run then fixes it, but the window between boot and :20 shows feed values.
+
   // ── MTT feed sync (mtt-series-watcher) ──
   // Runs after dataMigrations so the added columns (prize_pool/house_fee/rake_*) already
   // exist. Also re-runs hourly at :20 via cron (see app.listen) so the schedule tracks the
@@ -9094,13 +9121,52 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
         changedFields[key] = normalized;
       }
     }
-    // Reject the whole edit rather than half-applying it — a partially saved row is harder to
-    // notice than a refused one.
+    // Is this row owned by the watcher? If so the edit needs recording as an override, or the
+    // next ingest silently reverts it — which is exactly what made the editor look broken.
+    const ownerStmt = db.prepare('SELECT id, stable_id, source_pdf FROM tournaments WHERE id = ?');
+    ownerStmt.bind([id]);
+    const target = ownerStmt.step() ? ownerStmt.getAsObject() : null;
+    ownerStmt.free();
+    if (!target) return res.status(404).json({ error: 'Tournament not found' });
+    const feedOwned = target.source_pdf === 'mtt-feed';
+
+    // venue and event_number are the feed's match key and the inputs to stable_id. Changing either
+    // does not revert — it makes the feed stop recognising the row entirely, so the next ingest
+    // recreates the original and prunes the edited copy (or, on a row someone has scheduled,
+    // leaves it behind as a duplicate). Refuse rather than let that happen quietly.
+    if (feedOwned) {
+      const keyEdits = ['venue', 'event_number'].filter((f) => f in changedFields);
+      if (keyEdits.length) {
+        return res.status(409).json({
+          error: `${keyEdits.join(' and ')} cannot be changed on a feed-managed event — ` +
+                 'it is how the watcher identifies this row. Correct it upstream in mtt-series-watcher.',
+          fields: keyEdits,
+        });
+      }
+    }
+
     if (problems.length) return res.status(400).json({ error: problems.join('; '), fields: problems });
     if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     values.push(id);
     db.run(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`, values);
     if (db.getRowsModified() === 0) return res.status(404).json({ error: 'Tournament not found' });
+
+    // Record the correction so it survives the next upsert. Only for fields the feed actually
+    // overwrites — recording anything else would pin a value nothing was going to change.
+    const key = overrideKeyFor(target);
+    let recorded = 0;
+    for (const [field, val] of Object.entries(changedFields)) {
+      if (!OVERRIDABLE_FIELDS.includes(field)) continue;
+      db.run(
+        `INSERT INTO admin_overrides (target_key, field, value, updated_by, updated_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(target_key, field)
+         DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`,
+        [key, field, val === null ? null : String(val), req.user.username || null]
+      );
+      recorded++;
+    }
+    if (recorded > 0) console.log(`[overrides] recorded ${recorded} field(s) for ${key}`);
     await saveDatabase();
     // Return updated tournament
     const stmt = db.prepare('SELECT * FROM tournaments WHERE id = ?');
@@ -9113,6 +9179,28 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
   } catch (error) {
     console.error('Admin update tournament error:', error);
     res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Drop every override on an event, letting the feed's own values take over again at the next
+// ingest. Without this an admin correction is permanent and there is no way back to source.
+app.delete('/api/tournaments/:id/overrides', authenticateToken, requireRegistered, async (req, res) => {
+  if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const id = parseInt(req.params.id);
+    const stmt = db.prepare('SELECT id, stable_id FROM tournaments WHERE id = ?');
+    stmt.bind([id]);
+    const row = stmt.step() ? stmt.getAsObject() : null;
+    stmt.free();
+    if (!row) return res.status(404).json({ error: 'Tournament not found' });
+    db.run('DELETE FROM admin_overrides WHERE target_key = ?', [overrideKeyFor(row)]);
+    const cleared = db.getRowsModified();
+    await saveDatabase();
+    res.json({ ok: true, cleared });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -9422,6 +9510,54 @@ function feedStableId(t) {
   return `MTT-${v}-${t.event_number}`;
 }
 
+// Fields an admin may override. Deliberately excludes venue and event_number: those two are the
+// ingest's match key AND the inputs to feedStableId, so changing either makes the feed stop
+// recognising the row. Observed directly — renaming a venue produced `1 inserted, 1 pruned`, i.e.
+// the edit was deleted and the original recreated, and on a row referenced by a saved schedule
+// (which prune refuses to touch) it would leave the orphan behind as a duplicate instead.
+const OVERRIDABLE_FIELDS = [
+  'event_name', 'date', 'time', 'buyin', 'game_variant', 'starting_chips', 'level_duration',
+  'reentry', 'late_reg', 'late_reg_end', 'notes', 'category', 'is_satellite', 'is_restart',
+  'rake_pct', 'rake_dollars', 'house_fee', 'opt_add_on', 'prize_pool', 'total_entries',
+];
+
+function overrideKeyFor(row) {
+  return row && row.stable_id ? row.stable_id : `id:${row && row.id}`;
+}
+
+// Re-apply every recorded override. Called at the end of ingestMttFeed() rather than from its call
+// sites so no future caller can forget it, and from the feed-sync receiver so production — which
+// receives pushed rows rather than ingesting files — stays corrected too.
+function applyAdminOverrides(label = 'overrides') {
+  try {
+    const stmt = db.prepare('SELECT target_key, field, value FROM admin_overrides');
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    if (!rows.length) return 0;
+    let applied = 0;
+    for (const r of rows) {
+      // Never interpolate `field` without this check — it is the one part of the statement that
+      // cannot be parameterised.
+      if (!OVERRIDABLE_FIELDS.includes(r.field)) continue;
+      const key = String(r.target_key);
+      if (key.startsWith('id:')) {
+        db.run(`UPDATE tournaments SET ${r.field} = ? WHERE id = ?`, [r.value, Number(key.slice(3))]);
+      } else {
+        db.run(`UPDATE tournaments SET ${r.field} = ? WHERE stable_id = ?`, [r.value, key]);
+      }
+      applied += db.getRowsModified();
+    }
+    if (applied > 0) console.log(`[${label}] re-applied ${applied} admin override(s)`);
+    return applied;
+  } catch (e) {
+    // An override failure must never take down an ingest — the feed data is still correct without
+    // it, just uncorrected.
+    console.log('[overrides] apply skipped:', e.message);
+    return 0;
+  }
+}
+
 // Tables holding user work that references a tournament. A feed row touched by any of
 // them is never pruned: a series dropping out of the watcher's window usually means it
 // ENDED, and those are exactly the events someone has results or a saved entry for.
@@ -9527,6 +9663,9 @@ async function ingestMttFeed() {
       }
     }
     if (upserts + inserts + pruned > 0) {
+      // Overrides go on AFTER the upsert, which is the whole point: the upsert has just
+      // overwritten every field the feed owns, including any admin correction.
+      applyAdminOverrides('MTT feed');
       await saveDatabase();
       console.log(`MTT feed sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
     }
@@ -11411,6 +11550,12 @@ async function upsertTournamentsByStableId(tournaments, source) {
     );
     if (existing) updated++; else inserted++;
   }
+
+  // Same reason as in ingestMttFeed: the upsert above has just overwritten every feed-owned field,
+  // so any admin correction has to be laid back on top. This is the production path — prod never
+  // reads ./mtt-feed, it only receives pushes — so without this, corrections stick locally and
+  // silently vanish on futurega.me.
+  if (inserted > 0 || updated > 0) applyAdminOverrides(`Sync:${source}`);
 
   await saveDatabase();
   console.log(`[Sync:${source}] ${inserted} new, ${updated} updated, ${skipped} skipped`);
