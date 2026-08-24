@@ -32,7 +32,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
             <div style={{display:'flex',alignItems:'center',gap:'12px',flex:1}}>
               <Avatar src={avatar} username={username} size={44} />
               <div>
-                <div style={{fontSize:'0.85rem',fontWeight:600,color:'var(--text)'}}>{realName || username}</div>
+                <div style={{fontSize:'0.85rem',fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{realName || username}</div>
                 <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginTop:'2px'}}>@{username}</div>
               </div>
             </div>
@@ -55,13 +55,13 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
             </div>
             <div style={{display:'flex',gap:'4px',background:'var(--bg)',borderRadius:'6px',padding:'2px'}}>
               <button onClick={() => onToggleNameMode('real')}
-                style={{padding:'4px 10px',borderRadius:'5px',border:'none',cursor:'pointer',fontSize:'0.72rem',fontWeight:600,
+                style={{padding:'4px 10px',borderRadius:'5px',border:'none',cursor:'pointer',fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',
                   background: nameMode === 'real' ? 'var(--accent)' : 'transparent',
                   color: nameMode === 'real' ? '#000' : 'var(--text-muted)'}}>
                 Real
               </button>
               <button onClick={() => onToggleNameMode('username')}
-                style={{padding:'4px 10px',borderRadius:'5px',border:'none',cursor:'pointer',fontSize:'0.72rem',fontWeight:600,
+                style={{padding:'4px 10px',borderRadius:'5px',border:'none',cursor:'pointer',fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',
                   background: nameMode === 'username' ? 'var(--accent)' : 'transparent',
                   color: nameMode === 'username' ? '#000' : 'var(--text-muted)'}}>
                 Username

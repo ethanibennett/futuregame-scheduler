@@ -3,6 +3,7 @@ import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import Avatar from './Avatar.jsx';
 import CalendarEventRow from './CalendarEventRow.jsx';
+import DateBreak from './DateBreak.jsx';
 import { API_URL } from '../utils/api.js';
 import {
   getVenueInfo, normaliseDate, getToday, parseTournamentTime, extractConditions,
@@ -79,17 +80,32 @@ export default function SharedScheduleView({ shareToken }) {
         {sorted.length === 0 ? (
           <FirstRun icon="star" title="This schedule is empty" body="Whoever shared it has not added any events yet." />
         ) : (
-          sorted.map(t => (
-            <CalendarEventRow
-              key={t.id}
-              tournament={t}
-              isInSchedule={true}
-              onToggle={() => {}}
-              isPast={normaliseDate(t.date) < todayISO}
-              readOnly={true}
-              conditions={extractConditions(t, true)}
-              isAnchor={!!t.is_anchor}
-            />
+          // Grouped by day, like every other schedule surface. A thirty-event
+          // trip used to render as thirty undifferentiated cards with no way to
+          // see where Tuesday ended - on the only page a non-user ever opens.
+          Object.entries(
+            sorted.reduce((acc, t) => {
+              const d = normaliseDate(t.date);
+              (acc[d] = acc[d] || []).push(t);
+              return acc;
+            }, {})
+          ).map(([date, events], gi) => (
+            <div key={date} data-date-group={date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
+              <DateBreak date={date} top={0} isToday={date === todayISO} eventCount={events.filter(t => !t.is_restart).length} />
+              {events.map(t => (
+                <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 94px'}}>
+                  <CalendarEventRow
+                    tournament={t}
+                    isInSchedule={true}
+                    onToggle={() => {}}
+                    isPast={normaliseDate(t.date) < todayISO}
+                    readOnly={true}
+                    conditions={extractConditions(t, true)}
+                    isAnchor={!!t.is_anchor}
+                  />
+                </div>
+              ))}
+            </div>
           ))
         )}
         </div>

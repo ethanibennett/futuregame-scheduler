@@ -174,7 +174,7 @@ export default function ScheduleExportModal({ events, onClose }) {
             {/* Series filter checkboxes */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Include Series</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Include Series</label>
                 <button
                   onClick={toggleAll}
                   style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
@@ -184,14 +184,18 @@ export default function ScheduleExportModal({ events, onClose }) {
                 {venueList.map(([abbr, info]) => (
                   <label
                     key={abbr}
-                    style={{ fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 500, color: info.color, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    style={{ fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-condensed)', fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     <input
                       type="checkbox"
                       checked={selectedVenues.has(abbr)}
                       onChange={() => toggleVenue(abbr)}
-                      style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--brand)', cursor: 'pointer' }}
                     />
+                    {/* Venue colour as a bar, never as type. These hexes were
+                        chosen to sit BEHIND white strip text, so used as a text
+                        colour on --surface five of them measured under 1.5:1. */}
+                    <span aria-hidden="true" style={{ width: '3px', alignSelf: 'stretch', minHeight: '14px', borderRadius: 'var(--radius-pill)', background: info.color, flex: 'none' }} />
                     {info.longName}
                   </label>
                 ))}
@@ -200,7 +204,7 @@ export default function ScheduleExportModal({ events, onClose }) {
 
             {/* Exclude satellites + event count */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 500, color: 'var(--text)', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={excludeSatellites}
@@ -215,7 +219,7 @@ export default function ScheduleExportModal({ events, onClose }) {
             </div>
 
             {/* Light mode toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 500, color: 'var(--text)', cursor: 'pointer', marginBottom: '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', marginBottom: '12px' }}>
               <input
                 type="checkbox"
                 checked={lightMode}
@@ -226,7 +230,7 @@ export default function ScheduleExportModal({ events, onClose }) {
             </label>
 
             {/* Group by buy-in range toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 500, color: 'var(--text)', cursor: 'pointer', marginBottom: groupByBuyin ? '8px' : '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', marginBottom: groupByBuyin ? '8px' : '12px' }}>
               <input
                 type="checkbox"
                 checked={groupByBuyin}
@@ -240,7 +244,7 @@ export default function ScheduleExportModal({ events, onClose }) {
             {groupByBuyin && (
               <div style={{ marginBottom: '12px', padding: '10px 12px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Ranges</span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Ranges</span>
                   <button
                     onClick={() => setBuyinRanges(prev => [...prev, { min: 0, max: 0, label: '' }])}
                     style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
@@ -303,7 +307,7 @@ export default function ScheduleExportModal({ events, onClose }) {
             {/* Total max buyins */}
             {totalMax > 0 && (
               <div style={{ marginBottom: '12px', padding: '10px 12px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Total Maximum Buy-ins</div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Total Maximum Buy-ins</div>
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>{'$' + totalMax.toLocaleString()}</div>
               </div>
             )}

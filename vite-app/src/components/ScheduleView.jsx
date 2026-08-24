@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffe
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
+import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import ScheduleExportModal from './ScheduleExportModal.jsx';
 import { FirstRun } from './EmptyState.jsx';
@@ -45,7 +46,7 @@ function TravelDayPicker({ onSave, onCancel }) {
 
   const TimeSelector = ({ hour, minute, amPm, onHour, onMinute, onAmPm, label }) => (
     <div>
-      <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight:600}}>{label}</div>
+      <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight: 'var(--fw-bold)'}}>{label}</div>
       <div style={{display:'flex', gap:'3px', alignItems:'center'}}>
         <select value={hour} onChange={e => onHour(Number(e.target.value))} style={selectStyle}>
           {hours.map(h => <option key={h} value={h}>{h}</option>)}
@@ -72,7 +73,7 @@ function TravelDayPicker({ onSave, onCancel }) {
         <span style={{fontWeight:700, fontSize:'0.88rem', color:'var(--text)'}}>Add Travel Day</span>
       </div>
       <div style={{marginBottom:'14px'}}>
-        <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight:600}}>Date</div>
+        <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight: 'var(--fw-bold)'}}>Date</div>
         <input ref={dateRef} type="date" value={date} onChange={e => setDate(e.target.value)}
           // iOS WKWebView frequently fails to open the native date picker
           // for `<input type="date">` inside a fixed-position overlay. Force
@@ -328,7 +329,7 @@ export default function ScheduleView({
                 <span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>wants to share schedules</span>
               </span>
               <span style={{display:'flex',gap:'6px'}}>
-                <button className="btn btn-ghost btn-sm" style={{color:'#22c55e',padding:'4px 10px',fontWeight:600}} onClick={() => onAcceptRequest(req.id)}>Accept</button>
+                <button className="btn btn-ghost btn-sm" style={{color:'#22c55e',padding:'4px 10px',fontWeight: 'var(--fw-bold)'}} onClick={() => onAcceptRequest(req.id)}>Accept</button>
                 <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',padding:'4px 8px'}} onClick={() => onRejectRequest(req.id)}>Decline</button>
               </span>
             </div>
@@ -425,34 +426,7 @@ export default function ScheduleView({
             if (needsRef) scrollRefAssigned = true;
             return (
               <div key={group.date} ref={needsRef ? todayRef : null} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
-                <div className="schedule-date-break" style={{
-                  position: 'sticky', top: schedDateTop + 'px', zIndex: 5,
-                  padding: '12px 12px 8px 2px',
-                  background: 'var(--bg)',
-                  color: 'var(--text)',
-                  fontWeight: 700,
-                  borderBottom: 'none',
-                  display: 'flex', alignItems: 'baseline', gap: '4px'
-                }}>
-                  {isGroupToday ? (
-                    <>
-                      <span style={{
-                        background: 'var(--accent)', display: 'inline-flex', alignItems: 'baseline', gap: '4px',
-                        padding: '4px 12px', borderRadius: '999px'
-                      }}>
-                        <span style={{fontSize: '1.7rem', lineHeight: 1, fontFamily: "var(--serif)", color: 'var(--bg)'}}>{dayNum}</span>
-                        <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)", textTransform: 'capitalize', color: 'var(--bg)'}}>{monthAbbr}</span>
-                      </span>
-                      <span style={{marginLeft: 'auto', fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayOfWeek}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{fontSize: '1.7rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayNum}</span>
-                      <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)", textTransform: 'capitalize'}}>{monthAbbr}</span>
-                      <span style={{marginLeft: 'auto', fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayOfWeek}</span>
-                    </>
-                  )}
-                </div>
+                <DateBreak date={group.date} top={schedDateTop} isToday={isGroupToday} />
                 {group.events.map(({ t, globalIdx: gIdx }) => {
                   if (gIdx >= visibleCount) return null;
                   // Today's rows need the full component for MiniLateRegBar timers.
@@ -460,7 +434,7 @@ export default function ScheduleView({
                   // Activated rows have been tapped open at least once.
                   const needsFull = isGroupToday || activatedIds.has(t.id) || focusEventId === t.id;
                   return (
-                  <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 72px'}}>
+                  <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 94px'}}>
                     {needsFull ? (
                       <CalendarEventRow
                         tournament={t}

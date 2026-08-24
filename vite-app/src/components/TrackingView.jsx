@@ -182,7 +182,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
           <div style={{fontSize:'0.72rem',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
             {entry.date} \u00b7 #{entry.event_number}
           </div>
-          <div style={{fontSize:'0.88rem',fontWeight:600,color:'var(--text)',marginTop:'2px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+          <div style={{fontSize:'0.88rem',fontWeight: 'var(--fw-bold)',color:'var(--text)',marginTop:'2px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             {entry.event_name}
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
             {exchangeRates && (
               <select value={displayCurrency} onChange={e => onCurrencyChange(e.target.value)}
                 style={{fontSize:'0.7rem',padding:'3px 6px',border:'1px solid var(--border)',borderRadius:'6px',
-                  background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight:600}}>
+                  background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
                 <option value="NATIVE">Native</option>
                 {(exchangeRates ? Object.keys(CURRENCY_CONFIG) : ['USD','EUR']).map(c => (
                   <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
@@ -392,7 +392,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
               <div style={{fontSize:'0.7rem', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
                 {pendingEvent.date} \u00b7 #{pendingEvent.event_number?.replace(/^[A-Za-z]+-/, '')}
               </div>
-              <div style={{fontSize:'0.85rem', fontWeight:600, color:'var(--text)', marginTop:'2px', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+              <div style={{fontSize:'0.85rem', fontWeight: 'var(--fw-bold)', color:'var(--text)', marginTop:'2px', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                 {pendingEvent.event_name}
               </div>
               <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'2px'}}>

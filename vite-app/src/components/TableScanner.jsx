@@ -524,7 +524,7 @@ export default function TableScanner() {
       {state === 'results' && (
         <div className="table-scanner-results">
           <div className="table-scanner-results-header">
-            <span style={{fontWeight:600,fontSize:'0.82rem',color:'var(--text)',flex:1,minWidth:0}}>
+            <span style={{fontWeight: 'var(--fw-bold)',fontSize:'0.82rem',color:'var(--text)',flex:1,minWidth:0}}>
               {eventTitle ? `${eventTitle}: ` : ''}{players.length} player{players.length !== 1 ? 's' : ''} found
             </span>
             <button className="table-scanner-rescan" onClick={() => setPortrait(p => !p)} style={{padding:'4px 6px',marginRight:'4px'}} title={portrait ? 'Landscape' : 'Portrait'}>

@@ -959,7 +959,7 @@ export default function DashboardView({
                 <button
                   onClick={() => setResetConfirmOpen(true)}
                   title="Clear all logged results"
-                  style={{fontSize:'0.7rem',fontWeight:600,padding:'3px 8px',border:'1px solid var(--border)',borderRadius:'5px',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
+                  style={{fontSize:'0.7rem',fontWeight: 'var(--fw-bold)',padding:'3px 8px',border:'1px solid var(--border)',borderRadius:'5px',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
                 >
                   Reset
                 </button>
@@ -971,7 +971,7 @@ export default function DashboardView({
             {plData.count > 0 && dashRates && (
               <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)}
                 style={{fontSize:'0.65rem',padding:'2px 4px',border:'1px solid var(--border)',borderRadius:'5px',
-                  background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight:600}}>
+                  background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
                 <option value="NATIVE">Native</option>
                 {Object.keys(CURRENCY_CONFIG).map(c => (
                   <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>

@@ -142,42 +142,42 @@ export const HAND_CONFIG = {
 
 // ── Venue Color + Abbreviation Map ───────────────────────
 export const VENUE_MAP = {
-  'Horseshoe / Paris Las Vegas': { abbr: 'WSOP',  color: '#a0a0a0', longName: 'WSOP Horseshoe / Paris' },
-  'Horseshoe Las Vegas':         { abbr: 'WSOP',  color: '#a0a0a0', longName: 'WSOP Horseshoe' },
-  'Paris Las Vegas':             { abbr: 'PRS',   color: '#909090', longName: 'Paris Las Vegas' },
-  'Wynn Las Vegas':              { abbr: 'WYNN',  color: '#cc0000', longName: 'Wynn Summer Classic' },
-  'Wynn':                        { abbr: 'WYNN',  color: '#cc0000', longName: 'Wynn Summer Classic' },
-  'Aria':                        { abbr: 'ARIA',  color: '#5a3a9a', longName: 'Aria Resort & Casino' },
-  'Aria Resort & Casino':        { abbr: 'ARIA',  color: '#5a3a9a', longName: 'Aria Resort & Casino' },
-  'Resorts World':               { abbr: 'RESORTS WORLD', color: '#7a7a7a', longName: 'Resorts World Las Vegas' },
-  'Venetian':                    { abbr: 'VENETIAN',   color: '#3b0a0a', longName: 'Venetian Poker Series' },
-  'Venetian DeepStack Extravaganza': { abbr: 'VENETIAN', color: '#3b0a0a', longName: 'Venetian DeepStack Extravaganza' },
-  'Golden Nugget':               { abbr: 'GOLDEN NUGGET', color: '#92700a', longName: 'Golden Nugget' },
-  'South Point':                 { abbr: 'SOUTH POINT', color: '#6b4226', longName: 'South Point Hotel & Casino' },
-  'Orleans':                     { abbr: 'ORLEANS', color: '#c2410c', longName: 'The Orleans' },
-  'MGM Grand':                   { abbr: 'MGM GRAND', color: '#15803d', longName: 'MGM Grand' },
-  'MGM National Harbor':         { abbr: 'MGM NH',    color: '#b8860b', longName: 'MGM National Harbor' },
+  'Horseshoe / Paris Las Vegas': { abbr: 'WSOP',  color: '#a63030', longName: 'WSOP Horseshoe / Paris' },
+  'Horseshoe Las Vegas':         { abbr: 'WSOP',  color: '#a63e30', longName: 'WSOP Horseshoe' },
+  'Paris Las Vegas':             { abbr: 'PRS',   color: '#a64c30', longName: 'Paris Las Vegas' },
+  'Wynn Las Vegas':              { abbr: 'WYNN',  color: '#ad1f1f', longName: 'Wynn Summer Classic' },
+  'Wynn':                        { abbr: 'WYNN',  color: '#ad301f', longName: 'Wynn Summer Classic' },
+  'Aria':                        { abbr: 'ARIA',  color: '#5730a4', longName: 'Aria Resort & Casino' },
+  'Aria Resort & Casino':        { abbr: 'ARIA',  color: '#6530a4', longName: 'Aria Resort & Casino' },
+  'Resorts World':               { abbr: 'RESORTS WORLD', color: '#a65930', longName: 'Resorts World Las Vegas' },
+  'Venetian':                    { abbr: 'VENETIAN',   color: '#570f0f', longName: 'Venetian Poker Series' },
+  'Venetian DeepStack Extravaganza': { abbr: 'VENETIAN', color: '#57170f', longName: 'Venetian DeepStack Extravaganza' },
+  'Golden Nugget':               { abbr: 'GOLDEN NUGGET', color: '#856917', longName: 'Golden Nugget' },
+  'South Point':                 { abbr: 'SOUTH POINT', color: '#704121', longName: 'South Point Hotel & Casino' },
+  'Orleans':                     { abbr: 'ORLEANS', color: '#af491f', longName: 'The Orleans' },
+  'MGM Grand':                   { abbr: 'MGM GRAND', color: '#167f3d', longName: 'MGM Grand' },
+  'MGM National Harbor':         { abbr: 'MGM NH',    color: '#94711a', longName: 'MGM National Harbor' },
   'Irish Poker Open':            { abbr: 'IPO',       color: '#1a6b3c', longName: 'Irish Poker Open' },
-  'Personal':                    { abbr: 'PERSONAL',  color: '#2f7fe0', longName: 'Personal' },
-  'Turning Stone Casino':        { abbr: 'TURNING STONE', color: '#8b0000', longName: 'WSOPC Turning Stone' },
+  'Personal':                    { abbr: 'PERSONAL',  color: '#2064b6', longName: 'Personal' },
+  'Turning Stone Casino':        { abbr: 'TURNING STONE', color: '#761515', longName: 'WSOPC Turning Stone' },
   'Texas Card House':            { abbr: 'TCH', color: '#a0522d', longName: 'WSOPC Austin' },
-  'Caesars Palace':              { abbr: 'CAESARS', color: '#9c7d20', longName: 'Caesars Palace' },
-  'Seminole Hard Rock':          { abbr: 'HARD ROCK', color: '#1a9e9e', longName: 'Seminole Hard Rock' },
+  'Caesars Palace':              { abbr: 'CAESARS', color: '#8f721d', longName: 'Caesars Palace' },
+  'Seminole Hard Rock':          { abbr: 'HARD ROCK', color: '#178383', longName: 'Seminole Hard Rock' },
   'WSOP Europe':                 { abbr: 'WSOPE', color: '#1a3c6e', longName: 'WSOP Europe' },
-  'WSOP Online':                 { abbr: 'WSOP.COM', color: '#0e7490', longName: 'WSOP Online' },
-  'WSOP.com':                    { abbr: 'WSOP.COM', color: '#0e7490', longName: 'WSOP Online' },
+  'WSOP Online':                 { abbr: 'WSOP.COM', color: '#186e86', longName: 'WSOP Online' },
+  'WSOP.com':                    { abbr: 'WSOP.COM', color: '#186186', longName: 'WSOP Online' },
   'Borgata':                     { abbr: 'BORGATA', color: '#6b21a8', longName: 'Borgata Spring Poker Open' },
-  'Foxwoods':                    { abbr: 'FOXWOODS', color: '#4a2d7a', longName: 'Foxwoods Poker Classic' },
-  'Thunder Valley':              { abbr: 'THUNDER VALLEY', color: '#a87c0a', longName: 'Thunder Valley Poker Series' },
-  'Bellagio':                    { abbr: 'BELLAGIO', color: '#a8863f', longName: 'Bellagio' },
-  'Lodge Poker Club':            { abbr: 'LODGE', color: '#2d5a27', longName: 'Lodge Championship Series' },
-  'bestbet Jacksonville':        { abbr: 'BESTBET', color: '#1a73e8', longName: 'bestbet Jacksonville' },
-  "Bally's Lake Tahoe":          { abbr: 'BALLY\'S', color: '#b91c1c', longName: 'WSOPC Lake Tahoe' },
-  "Harrah's Cherokee":           { abbr: 'CHEROKEE', color: '#e91e90', longName: 'WSOPC Cherokee' },
-  'WSOPC Cherokee':              { abbr: 'CHEROKEE', color: '#e91e90', longName: 'WSOPC Cherokee' },
-  'Choctaw Casino':              { abbr: 'CHOCTAW', color: '#dc2626', longName: 'WSOPC Choctaw' },
-  'Horseshoe Tunica':            { abbr: 'TUNICA', color: '#0d6efd', longName: 'WSOPC Tunica' },
-  'WSOPC Horseshoe Las Vegas':   { abbr: 'WSOPC-LV', color: '#bf7d08', longName: 'WSOPC Horseshoe LV' },
+  'Foxwoods':                    { abbr: 'FOXWOODS', color: '#482681', longName: 'Foxwoods Poker Classic' },
+  'Thunder Valley':              { abbr: 'THUNDER VALLEY', color: '#93711a', longName: 'Thunder Valley Poker Series' },
+  'Bellagio':                    { abbr: 'BELLAGIO', color: '#93712b', longName: 'Bellagio' },
+  'Lodge Poker Club':            { abbr: 'LODGE', color: '#25641d', longName: 'Lodge Championship Series' },
+  'bestbet Jacksonville':        { abbr: 'BESTBET', color: '#2061b6', longName: 'bestbet Jacksonville' },
+  "Bally's Lake Tahoe":          { abbr: 'BALLY\'S', color: '#b52020', longName: 'WSOPC Lake Tahoe' },
+  "Harrah's Cherokee":           { abbr: 'CHEROKEE', color: '#b62074', longName: 'WSOPC Cherokee' },
+  'WSOPC Cherokee':              { abbr: 'CHEROKEE', color: '#b62063', longName: 'WSOPC Cherokee' },
+  'Choctaw Casino':              { abbr: 'CHOCTAW', color: '#b62020', longName: 'WSOPC Choctaw' },
+  'Horseshoe Tunica':            { abbr: 'TUNICA', color: '#205db6', longName: 'WSOPC Tunica' },
+  'WSOPC Horseshoe Las Vegas':   { abbr: 'WSOPC-LV', color: '#9c6d1b', longName: 'WSOPC Horseshoe LV' },
 
   // ── MTT-feed series → their actual poker room ───────────
   // The watcher names each "venue" after the SERIES, so the raw feed value is a series
@@ -191,96 +191,96 @@ export const VENUE_MAP = {
   // venue identity. Rooms the app already knew (Wynn, Borgata, Venetian, Cherokee, MGM NH,
   // Turning Stone, TCH, bestbet, Lodge, Tunica) keep their established colors.
   // longName keeps a "WSOPC " prefix for circuit stops — isRingEvent keys on it.
-  "MSPT '26 Indiana Poker State Championship":              { abbr: 'AMERISTAR',        color: '#713d09', longName: 'Ameristar Casino East Chicago' },
-  '2026 WPT bestbet Scramble':                              { abbr: 'BESTBET',          color: '#1a73e8', longName: 'bestbet Jacksonville' },
-  '2026-27 WSOP International Circuit Mexico':              { abbr: 'BIG BOLA',         color: '#0eaa0e', longName: 'WSOPC Big Bola Casinos Santa Fe' },
-  'The Borgata Big, Big Series':                            { abbr: 'BORGATA',          color: '#6b21a8', longName: 'Borgata Hotel Casino & Spa' },
-  "The Mini Grind Series - Aug. '26":                       { abbr: 'BORGATA',          color: '#6b21a8', longName: 'Borgata Hotel Casino & Spa' },
-  "The Mini Grind Series - Sept. '26":                      { abbr: 'BORGATA',          color: '#6b21a8', longName: 'Borgata Hotel Casino & Spa' },
-  "The Pure Grind Series: Alpha Stack Madness - Aug. '26":  { abbr: 'BORGATA',          color: '#6b21a8', longName: 'Borgata Hotel Casino & Spa' },
-  "The Pure Grind Series: Super Seat Re-Up - Sept. '26":    { abbr: 'BORGATA',          color: '#6b21a8', longName: 'Borgata Hotel Casino & Spa' },
-  'RGPS: Golden Expedition-Louisville/S. Indiana':          { abbr: 'CAESARS SO IN',    color: '#091471', longName: 'Caesars Southern Indiana' },
-  '2026-27 WSOPC Virgnia':                                  { abbr: 'CAESARS VA',       color: '#59224e', longName: 'WSOPC Caesars Virginia' },
-  "Battle For The Chalice - Aug. '26":                      { abbr: 'CAESARS VA',       color: '#59224e', longName: 'Caesars Virginia' },
-  "Deep NLH - Aug. '26":                                    { abbr: 'CANTERBURY',       color: '#280971', longName: 'Canterbury Park' },
+  "MSPT '26 Indiana Poker State Championship":              { abbr: 'AMERISTAR',        color: '#683d12', longName: 'Ameristar Casino East Chicago' },
+  '2026 WPT bestbet Scramble':                              { abbr: 'BESTBET',          color: '#204fb6', longName: 'bestbet Jacksonville' },
+  '2026-27 WSOP International Circuit Mexico':              { abbr: 'BIG BOLA',         color: '#188918', longName: 'WSOPC Big Bola Casinos Santa Fe' },
+  'The Borgata Big, Big Series':                            { abbr: 'BORGATA',          color: '#7b21a8', longName: 'Borgata Hotel Casino & Spa' },
+  "The Mini Grind Series - Aug. '26":                       { abbr: 'BORGATA',          color: '#8a21a8', longName: 'Borgata Hotel Casino & Spa' },
+  "The Mini Grind Series - Sept. '26":                      { abbr: 'BORGATA',          color: '#9a21a8', longName: 'Borgata Hotel Casino & Spa' },
+  "The Pure Grind Series: Alpha Stack Madness - Aug. '26":  { abbr: 'BORGATA',          color: '#a821a6', longName: 'Borgata Hotel Casino & Spa' },
+  "The Pure Grind Series: Super Seat Re-Up - Sept. '26":    { abbr: 'BORGATA',          color: '#a82196', longName: 'Borgata Hotel Casino & Spa' },
+  'RGPS: Golden Expedition-Louisville/S. Indiana':          { abbr: 'CAESARS SO IN',    color: '#121b68', longName: 'Caesars Southern Indiana' },
+  '2026-27 WSOPC Virgnia':                                  { abbr: 'CAESARS VA',       color: '#5f1c52', longName: 'WSOPC Caesars Virginia' },
+  "Battle For The Chalice - Aug. '26":                      { abbr: 'CAESARS VA',       color: '#5f1c4a', longName: 'Caesars Virginia' },
+  "Deep NLH - Aug. '26":                                    { abbr: 'CANTERBURY',       color: '#2c1268', longName: 'Canterbury Park' },
   '2026-27 WSOP International Circuit Slovakia':            { abbr: 'BRATISLAVA',       color: '#841f55', longName: 'WSOPC Card Casino Bratislava' },
-  '2026-27 WSOP International Circuit Malta':               { abbr: 'CASINO MALTA',     color: '#2a96b2', longName: 'WSOPC Casino Malta' },
-  '2026 Summer Poker Open':                                 { abbr: 'CHAMPIONS',        color: '#6f2a46', longName: 'Champions Club' },
-  'Queens & Cards Weekend':                                 { abbr: 'CHAMPIONS',        color: '#6f2a46', longName: 'Champions Club' },
-  'CSOP 2026':                                              { abbr: 'CHICAGO CHAR',     color: '#cb1048', longName: 'Chicago Charitable Games' },
-  '$250,000 Multi-Room Mayhem IV Part 1':                   { abbr: 'DAYTONA',          color: '#3c9f95', longName: 'Daytona Beach Racing and Card Club' },
-  '2026 RUNGOOD AND THE GOLDEN EXPEDITION SERIES':          { abbr: 'DOWNSTREAM',       color: '#1080cb', longName: 'Downstream Casino' },
-  'Elite 20K GTD':                                          { abbr: 'ELITE MCALLEN',    color: '#818e0b', longName: 'Elite Poker Lounge Mcallen' },
-  '2026 Great Lakes Poker Classic - Summer':                { abbr: 'FIREKEEPERS',      color: '#2a60b2', longName: 'FireKeepers Casino' },
-  "MSPT '26 Spade Poker Championship":                      { abbr: 'FIREKEEPERS',      color: '#2a60b2', longName: 'FireKeepers Casino' },
-  '2026-27 WSOP International Circuit Liechtenstein':       { abbr: 'LIECHTENSTEIN',    color: '#3c9f8b', longName: 'WSOPC Grand Casino Liechtenstein' },
-  'Série Estivale':                                         { abbr: 'WOLINAK',          color: '#0eaa0e', longName: 'Grand Royal Wolinak Casino' },
-  'RunGood Events: NorCal Poker Championships':             { abbr: 'GRATON',           color: '#224859', longName: 'Graton Resort & Casino' },
-  'Hard Rock Fall Classic':                                 { abbr: 'HR CINCINNATI',    color: '#cb106e', longName: 'Hard Rock Casino Cincinnati' },
-  '2026-27 WSOPC Tulsa-Summer':                             { abbr: 'HR TULSA',         color: '#3c9f95', longName: 'WSOPC Hard Rock Tulsa' },
-  '2026-27 WSOPC Atlantic City':                            { abbr: 'HARRAHS AC',       color: '#aa0e5c', longName: "WSOPC Harrah's Atlantic City" },
-  '2026-27 WSOPC Cherokee-Summer':                          { abbr: 'CHEROKEE',         color: '#e91e90', longName: "WSOPC Harrah's Cherokee" },
-  "Columbus Quarterly Series - Sept. '26":                  { abbr: 'HC COLUMBUS',      color: '#0eaa0e', longName: 'Hollywood Casino Columbus' },
-  '2026 Louisiana State Poker Championship':                { abbr: 'BOSSIER CITY',     color: '#1093cb', longName: 'Horseshoe Casino Bossier City' },
-  '2026-27 WSOPC Tunica-Summer':                            { abbr: 'TUNICA',           color: '#0d6efd', longName: 'WSOPC Horseshoe Casino Tunica' },
-  "MSPT '26 Cleveland-Summer":                              { abbr: 'JACK CLEVELAND',   color: '#710909', longName: 'JACK Cleveland Casino' },
-  "$100K Road to Riches - Aug. '26":                        { abbr: 'LIVE! PHILLY',     color: '#482259', longName: 'Live! Casino Philadelphia' },
-  "$200K Multi-Flight - Aug. '26":                          { abbr: 'LIVE! PHILLY',     color: '#482259', longName: 'Live! Casino Philadelphia' },
-  '2026 MEGA Monster $1.5 MIllion Guaranteed':              { abbr: 'LODGE',            color: '#2d5a27', longName: 'Lodge Card Club Austin' },
-  '2026 Maryland State Poker Championship':                 { abbr: 'MD LIVE!',         color: '#b22a96', longName: 'Maryland Live! Casino at Arundel Mills' },
-  'MSPC Warm-Up':                                           { abbr: 'MD LIVE!',         color: '#b22a96', longName: 'Maryland Live! Casino at Arundel Mills' },
-  "Potomac Summer Poker Open '26":                          { abbr: 'MGM NH',           color: '#b8860b', longName: 'MGM National Harbor' },
-  "Summer Showdown '26":                                    { abbr: 'MOHEGAN SUN',      color: '#1010cb', longName: 'Mohegan Sun' },
-  'SUMMER SIZZLE SERIES 2':                                 { abbr: 'OCALABETS',        color: '#224859', longName: 'OcalaBetS' },
-  '2026 Summer Showdown':                                   { abbr: 'ONE-EYED JACKS',   color: '#cb5b10', longName: 'One-Eyed Jacks' },
-  '$250,000 Multi-Room Mayhem IV Part 2':                   { abbr: 'ORANGE CITY',      color: '#0b4d8e', longName: 'Orange City Racing & Card Club' },
-  'AUGUST CLASSIC':                                         { abbr: 'OXFORD DOWNS',     color: '#8e4d0b', longName: 'Oxford Downs Poker Room' },
-  '2026 RunGood Golden Expedition':                         { abbr: 'PALACE POKER',     color: '#6f4d2a', longName: 'Palace Poker' },
-  'RunGood Main Event Satellite':                           { abbr: 'PALACE POKER',     color: '#6f4d2a', longName: 'Palace Poker' },
-  'RunGood Mystery Bounty Satellite':                       { abbr: 'PALACE POKER',     color: '#6f4d2a', longName: 'Palace Poker' },
-  '2026 Legends of Poker':                                  { abbr: 'THE BIKE',         color: '#cb10cb', longName: 'Parkwest Bicycle Casino' },
-  'Big Stax XXXIX':                                         { abbr: 'PARX',             color: '#097109', longName: 'Parx Casino' },
-  'MSPT Canadian Poker Championship':                       { abbr: 'PLAYGROUND',       color: '#818e0b', longName: 'Playground Poker Club' },
-  'WSOP Super Circuit Canada':                              { abbr: 'PLAYGROUND',       color: '#818e0b', longName: 'WSOPC Playground Poker Club' },
-  'The Wild West Poker Tour 2026':                          { abbr: 'PORTLAND',         color: '#0b4d8e', longName: 'Portland Meadows' },
-  "August '26 Deep Stack Special":                          { abbr: 'HARD ROCK',        color: '#1a9e9e', longName: 'Seminole Hard Rock Hollywood' },
-  "Seminole Hard Rock Poker Open '26":                      { abbr: 'HARD ROCK',        color: '#1a9e9e', longName: 'Seminole Hard Rock Hollywood' },
-  'Tampa Deepstacks Challenge August 2026':                 { abbr: 'HR TAMPA',         color: '#1093cb', longName: 'Seminole Hard Rock Tampa' },
-  '2026 Deadwood Shootout':                                 { abbr: 'SILVERADO',        color: '#1010cb', longName: 'Silverado Franklin Casino' },
-  '2026 Wild West Outlaw Series':                           { abbr: 'SILVERADO',        color: '#1010cb', longName: 'Silverado Franklin Casino' },
-  'WPT Australia-Sydney':                                   { abbr: 'STAR SYDNEY',      color: '#0eaa0e', longName: 'Star Casino Sydney' },
-  '2026 Arizona State Poker Championship':                  { abbr: 'TALKING STICK',    color: '#1048cb', longName: 'Talking Stick Resort' },
-  "Anniversary Weekend At TCH Austin '26":                  { abbr: 'TCH AUSTIN',       color: '#b2892a', longName: 'TCH Social Austin' },
-  "Deaf Poker Tour At TCH Austin '26":                      { abbr: 'TCH AUSTIN',       color: '#b2892a', longName: 'TCH Social Austin' },
-  'Trailblazer Satellite Leaderboard':                      { abbr: 'TCH DALLAS',       color: '#435922', longName: 'Texas Card House Dallas' },
-  'Trailblazer Tour Season III':                            { abbr: 'TCH DALLAS',       color: '#435922', longName: 'Texas Card House Dallas' },
-  'Trailblazer Tour Season III':                            { abbr: 'TCH DALLAS',       color: '#435922', longName: 'Texas Card House Dallas' },
+  '2026-27 WSOP International Circuit Malta':               { abbr: 'CASINO MALTA',     color: '#248097', longName: 'WSOPC Casino Malta' },
+  '2026 Summer Poker Open':                                 { abbr: 'CHAMPIONS',        color: '#772245', longName: 'Champions Club' },
+  'Queens & Cards Weekend':                                 { abbr: 'CHAMPIONS',        color: '#77223b', longName: 'Champions Club' },
+  'CSOP 2026':                                              { abbr: 'CHICAGO CHAR',     color: '#b6204d', longName: 'Chicago Charitable Games' },
+  '$250,000 Multi-Room Mayhem IV Part 1':                   { abbr: 'DAYTONA',          color: '#26837a', longName: 'Daytona Beach Racing and Card Club' },
+  '2026 RUNGOOD AND THE GOLDEN EXPEDITION SERIES':          { abbr: 'DOWNSTREAM',       color: '#207ab6', longName: 'Downstream Casino' },
+  'Elite 20K GTD':                                          { abbr: 'ELITE MCALLEN',    color: '#717b16', longName: 'Elite Poker Lounge Mcallen' },
+  '2026 Great Lakes Poker Classic - Summer':                { abbr: 'FIREKEEPERS',      color: '#295dad', longName: 'FireKeepers Casino' },
+  "MSPT '26 Spade Poker Championship":                      { abbr: 'FIREKEEPERS',      color: '#294ead', longName: 'FireKeepers Casino' },
+  '2026-27 WSOP International Circuit Liechtenstein':       { abbr: 'LIECHTENSTEIN',    color: '#268370', longName: 'WSOPC Grand Casino Liechtenstein' },
+  'Série Estivale':                                         { abbr: 'WOLINAK',          color: '#188925', longName: 'Grand Royal Wolinak Casino' },
+  'RunGood Events: NorCal Poker Championships':             { abbr: 'GRATON',           color: '#1c4a5f', longName: 'Graton Resort & Casino' },
+  'Hard Rock Fall Classic':                                 { abbr: 'HR CINCINNATI',    color: '#b6206c', longName: 'Hard Rock Casino Cincinnati' },
+  '2026-27 WSOPC Tulsa-Summer':                             { abbr: 'HR TULSA',         color: '#268183', longName: 'WSOPC Hard Rock Tulsa' },
+  '2026-27 WSOPC Atlantic City':                            { abbr: 'HARRAHS AC',       color: '#9c1c5c', longName: "WSOPC Harrah's Atlantic City" },
+  '2026-27 WSOPC Cherokee-Summer':                          { abbr: 'CHEROKEE',         color: '#b62051', longName: "WSOPC Harrah's Cherokee" },
+  "Columbus Quarterly Series - Sept. '26":                  { abbr: 'HC COLUMBUS',      color: '#188932', longName: 'Hollywood Casino Columbus' },
+  '2026 Louisiana State Poker Championship':                { abbr: 'BOSSIER CITY',     color: '#1e7fa9', longName: 'Horseshoe Casino Bossier City' },
+  '2026-27 WSOPC Tunica-Summer':                            { abbr: 'TUNICA',           color: '#204bb6', longName: 'WSOPC Horseshoe Casino Tunica' },
+  "MSPT '26 Cleveland-Summer":                              { abbr: 'JACK CLEVELAND',   color: '#681212', longName: 'JACK Cleveland Casino' },
+  "$100K Road to Riches - Aug. '26":                        { abbr: 'LIVE! PHILLY',     color: '#4a1c5f', longName: 'Live! Casino Philadelphia' },
+  "$200K Multi-Flight - Aug. '26":                          { abbr: 'LIVE! PHILLY',     color: '#521c5f', longName: 'Live! Casino Philadelphia' },
+  '2026 MEGA Monster $1.5 MIllion Guaranteed':              { abbr: 'LODGE',            color: '#1d641d', longName: 'Lodge Card Club Austin' },
+  '2026 Maryland State Poker Championship':                 { abbr: 'MD LIVE!',         color: '#ad2992', longName: 'Maryland Live! Casino at Arundel Mills' },
+  'MSPC Warm-Up':                                           { abbr: 'MD LIVE!',         color: '#ad2983', longName: 'Maryland Live! Casino at Arundel Mills' },
+  "Potomac Summer Poker Open '26":                          { abbr: 'MGM NH',           color: '#877518', longName: 'MGM National Harbor' },
+  "Summer Showdown '26":                                    { abbr: 'MOHEGAN SUN',      color: '#2020b6', longName: 'Mohegan Sun' },
+  'SUMMER SIZZLE SERIES 2':                                 { abbr: 'OCALABETS',        color: '#1c425f', longName: 'OcalaBetS' },
+  '2026 Summer Showdown':                                   { abbr: 'ONE-EYED JACKS',   color: '#b65c20', longName: 'One-Eyed Jacks' },
+  '$250,000 Multi-Room Mayhem IV Part 2':                   { abbr: 'ORANGE CITY',      color: '#174d82', longName: 'Orange City Racing & Card Club' },
+  'AUGUST CLASSIC':                                         { abbr: 'OXFORD DOWNS',     color: '#824d17', longName: 'Oxford Downs Poker Room' },
+  '2026 RunGood Golden Expedition':                         { abbr: 'PALACE POKER',     color: '#774d22', longName: 'Palace Poker' },
+  'RunGood Main Event Satellite':                           { abbr: 'PALACE POKER',     color: '#775722', longName: 'Palace Poker' },
+  'RunGood Mystery Bounty Satellite':                       { abbr: 'PALACE POKER',     color: '#776122', longName: 'Palace Poker' },
+  '2026 Legends of Poker':                                  { abbr: 'THE BIKE',         color: '#b620b6', longName: 'Parkwest Bicycle Casino' },
+  'Big Stax XXXIX':                                         { abbr: 'PARX',             color: '#126812', longName: 'Parx Casino' },
+  'MSPT Canadian Poker Championship':                       { abbr: 'PLAYGROUND',       color: '#677d16', longName: 'Playground Poker Club' },
+  'WSOP Super Circuit Canada':                              { abbr: 'PLAYGROUND',       color: '#5b7d16', longName: 'WSOPC Playground Poker Club' },
+  'The Wild West Poker Tour 2026':                          { abbr: 'PORTLAND',         color: '#174182', longName: 'Portland Meadows' },
+  "August '26 Deep Stack Special":                          { abbr: 'HARD ROCK',        color: '#177683', longName: 'Seminole Hard Rock Hollywood' },
+  "Seminole Hard Rock Poker Open '26":                      { abbr: 'HARD ROCK',        color: '#176a83', longName: 'Seminole Hard Rock Hollywood' },
+  'Tampa Deepstacks Challenge August 2026':                 { abbr: 'HR TAMPA',         color: '#1e6fa9', longName: 'Seminole Hard Rock Tampa' },
+  '2026 Deadwood Shootout':                                 { abbr: 'SILVERADO',        color: '#3120b6', longName: 'Silverado Franklin Casino' },
+  '2026 Wild West Outlaw Series':                           { abbr: 'SILVERADO',        color: '#4320b6', longName: 'Silverado Franklin Casino' },
+  'WPT Australia-Sydney':                                   { abbr: 'STAR SYDNEY',      color: '#188840', longName: 'Star Casino Sydney' },
+  '2026 Arizona State Poker Championship':                  { abbr: 'TALKING STICK',    color: '#204db6', longName: 'Talking Stick Resort' },
+  "Anniversary Weekend At TCH Austin '26":                  { abbr: 'TCH AUSTIN',       color: '#927022', longName: 'TCH Social Austin' },
+  "Deaf Poker Tour At TCH Austin '26":                      { abbr: 'TCH AUSTIN',       color: '#897520', longName: 'TCH Social Austin' },
+  'Trailblazer Satellite Leaderboard':                      { abbr: 'TCH DALLAS',       color: '#445f1c', longName: 'Texas Card House Dallas' },
+  'Trailblazer Tour Season III':                            { abbr: 'TCH DALLAS',       color: '#3c5f1c', longName: 'Texas Card House Dallas' },
+  'Trailblazer Tour Season III':                            { abbr: 'TCH DALLAS',       color: '#345f1c', longName: 'Texas Card House Dallas' },
   '2026 RGPS Golden Expedition':                            { abbr: 'THE BARREL',       color: '#954523', longName: 'The Barrel Social Club' },
-  'Dania $100K Multi Flight August 2026':                   { abbr: 'DANIA BEACH',      color: '#239550', longName: 'The Casino @ Dania Beach' },
-  'FINAL SIEGE 1OK GTD':                                    { abbr: 'WAR ROOM',         color: '#090971', longName: 'The War Room' },
-  '2026-27 WSOPC Upstate NY-Fall':                          { abbr: 'TURNING STONE',    color: '#8b0000', longName: 'WSOPC Turning Stone Casino' },
-  'DeepStack Extravaganza III 2026':                        { abbr: 'VENETIAN',         color: '#3b0a0a', longName: 'Venetian Las Vegas' },
-  'DeepStack Showdown (August) 2026':                       { abbr: 'VENETIAN',         color: '#3b0a0a', longName: 'Venetian Las Vegas' },
-  '2026 Summer Poker Round Up':                             { abbr: 'WILDHORSE',        color: '#9f3c9f', longName: 'Wildhorse Casino' },
-  '2026 Wynn Fall Classic':                                 { abbr: 'WYNN',             color: '#cc0000', longName: 'Wynn Las Vegas' },
-  'Wynn Signature Series August 2026':                      { abbr: 'WYNN',             color: '#cc0000', longName: 'Wynn Las Vegas' },
+  'Dania $100K Multi Flight August 2026':                   { abbr: 'DANIA BEACH',      color: '#208748', longName: 'The Casino @ Dania Beach' },
+  'FINAL SIEGE 1OK GTD':                                    { abbr: 'WAR ROOM',         color: '#121268', longName: 'The War Room' },
+  '2026-27 WSOPC Upstate NY-Fall':                          { abbr: 'TURNING STONE',    color: '#762015', longName: 'WSOPC Turning Stone Casino' },
+  'DeepStack Extravaganza III 2026':                        { abbr: 'VENETIAN',         color: '#57200f', longName: 'Venetian Las Vegas' },
+  'DeepStack Showdown (August) 2026':                       { abbr: 'VENETIAN',         color: '#57280f', longName: 'Venetian Las Vegas' },
+  '2026 Summer Poker Round Up':                             { abbr: 'WILDHORSE',        color: '#a630a6', longName: 'Wildhorse Casino' },
+  '2026 Wynn Fall Classic':                                 { abbr: 'WYNN',             color: '#ad401f', longName: 'Wynn Las Vegas' },
+  'Wynn Signature Series August 2026':                      { abbr: 'WYNN',             color: '#ad511f', longName: 'Wynn Las Vegas' },
 
   // WSOP Circuit stops (wsop-circuit source, not PokerAtlas — no series_directory row,
   // so the room comes from the series title itself). Rooms the map already knows reuse
   // their abbreviation and color; Gran Vía, Grand Victoria, Partouche and The Reserve are
   // new. longName keeps the WSOPC prefix so isRingEvent fires.
-  'WSOP Circuit Big Bola Casinos 2026':         { abbr: 'BIG BOLA',        color: '#0eaa0e', longName: 'WSOPC Big Bola Casinos Santa Fe' },
-  'WSOP Circuit Casino Gran Via 2026':          { abbr: 'GRAN VIA',        color: '#0eaa0e', longName: 'WSOPC Casino Gran Vía Madrid' },
-  'WSOP Circuit Casino Malta 2026':             { abbr: 'CASINO MALTA',    color: '#2a96b2', longName: 'WSOPC Casino Malta' },
-  'WSOP Circuit Grand Victoria 2026':           { abbr: 'GRAND VICTORIA',  color: '#0eaa0e', longName: 'WSOPC Grand Victoria Elgin' },
-  'WSOP Circuit Hard Rock Tulsa 2026':          { abbr: 'HR TULSA',        color: '#3c9f95', longName: 'WSOPC Hard Rock Tulsa' },
-  "WSOP Circuit Harrah's Atlantic City 2026":   { abbr: 'HARRAHS AC',      color: '#aa0e5c', longName: "WSOPC Harrah's Atlantic City" },
-  'WSOP Circuit Horseshoe Tunica 2026':         { abbr: 'TUNICA',          color: '#0d6efd', longName: 'WSOPC Horseshoe Tunica' },
+  'WSOP Circuit Big Bola Casinos 2026':         { abbr: 'BIG BOLA',        color: '#18884c', longName: 'WSOPC Big Bola Casinos Santa Fe' },
+  'WSOP Circuit Casino Gran Via 2026':          { abbr: 'GRAN VIA',        color: '#188758', longName: 'WSOPC Casino Gran Vía Madrid' },
+  'WSOP Circuit Casino Malta 2026':             { abbr: 'CASINO MALTA',    color: '#247397', longName: 'WSOPC Casino Malta' },
+  'WSOP Circuit Grand Victoria 2026':           { abbr: 'GRAND VICTORIA',  color: '#188564', longName: 'WSOPC Grand Victoria Elgin' },
+  'WSOP Circuit Hard Rock Tulsa 2026':          { abbr: 'HR TULSA',        color: '#267683', longName: 'WSOPC Hard Rock Tulsa' },
+  "WSOP Circuit Harrah's Atlantic City 2026":   { abbr: 'HARRAHS AC',      color: '#9c1c4d', longName: "WSOPC Harrah's Atlantic City" },
+  'WSOP Circuit Horseshoe Tunica 2026':         { abbr: 'TUNICA',          color: '#203ab6', longName: 'WSOPC Horseshoe Tunica' },
   'WSOP Circuit Partouche Pasino Club 2026':    { abbr: 'PARTOUCHE',       color: '#236795', longName: 'WSOPC Partouche Casino Club Paris' },
-  'WSOP Circuit Texas Card House 2026':         { abbr: 'TCH AUSTIN',      color: '#b2892a', longName: 'WSOPC Texas Card House Austin' },
-  'WSOP Circuit The Reserve Poker Club 2026':   { abbr: 'THE RESERVE',     color: '#1010cb', longName: 'WSOPC The Reserve Poker Club' },
-  'WSOP Circuit Thunder Valley 2026':           { abbr: 'THUNDER VALLEY',  color: '#a87c0a', longName: 'WSOPC Thunder Valley' },
-  'WSOP Circuit Turning Stone 2026':            { abbr: 'TURNING STONE',   color: '#8b0000', longName: 'WSOPC Turning Stone' },
+  'WSOP Circuit Texas Card House 2026':         { abbr: 'TCH AUSTIN',      color: '#7f781e', longName: 'WSOPC Texas Card House Austin' },
+  'WSOP Circuit The Reserve Poker Club 2026':   { abbr: 'THE RESERVE',     color: '#5520b6', longName: 'WSOPC The Reserve Poker Club' },
+  'WSOP Circuit Thunder Valley 2026':           { abbr: 'THUNDER VALLEY',  color: '#887618', longName: 'WSOPC Thunder Valley' },
+  'WSOP Circuit Turning Stone 2026':            { abbr: 'TURNING STONE',   color: '#762c15', longName: 'WSOPC Turning Stone' },
 };
 
 // ── Auto-derived venue identity (unmapped series) ─────────
@@ -304,10 +304,13 @@ function hashVenueName(s) {
 // curated colors above, so a derived series reliably collided with a curated one
 // (RUNGOOD SAN landed on DS SHOWDOWN's purple, MSPT on DEEP NLH's olive).
 // Hue comes from the name so a series keeps its color across reloads; saturation
-// and lightness are fixed at values whose worst case over all 360 hues is 3.96:1
-// against the strip's white text.
+// and lightness are fixed at values whose worst case over all 360 hues is
+// 4.54:1 against the strip's white text. The old comment here claimed 3.96:1,
+// which was the figure for PURE white — the strip actually painted its text at
+// 85% alpha, so every derived series was below AA. The alpha is gone (it cost
+// 0.6:1 and bought nothing) and the lightness is tuned against the real value.
 const DERIVE_SAT = 0.62;
-const DERIVE_LIGHT = 0.32;
+const DERIVE_LIGHT = 0.295;
 function hslToHex(h, s, l) {
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
@@ -341,12 +344,41 @@ export function deriveVenueInfo(v) {
   let abbr = '';
   for (const w of words) {
     const next = abbr ? `${abbr} ${w}` : w;
-    if (next.length > 14) break;
+    if (next.length > 11) break;
     abbr = next;
     if (abbr.split(' ').length >= 2) break;
   }
-  abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 14) || '?';
+  abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 11) || '?';
   return { abbr, color: deriveColor(raw), longName: raw };
+}
+
+// Strip display names. The abbr doubles as a lookup key (PROPERTY_COORDS,
+// VENUE_BRAND_VAR, COLOR_BY_ABBR), so it cannot be shortened in place without
+// dropping venues out of the location filters. These are display-only: at 10px
+// with caps tracking, a 14-character rotated string needs ~95px of strip and
+// the collapsed row is 64px, so the long ones had nowhere to go but smaller.
+export const STRIP_ABBR = {
+  'ONE-EYED JACKS': 'ONE-EYED',
+  'GRAND VICTORIA': 'GRAND VIC',
+  'JACK CLEVELAND': 'JACK CLEV',
+  'THUNDER VALLEY': 'THUNDER V',
+  'CAESARS SO IN':  'CAESARS SI',
+  'TALKING STICK':  'TALKING',
+  'TURNING STONE':  'TURNING',
+  'ELITE MCALLEN':  'ELITE MCA',
+  'LIECHTENSTEIN':  'LIECHT',
+  'RESORTS WORLD':  'RESORTS',
+  'GOLDEN NUGGET':  'NUGGET',
+  'HR CINCINNATI':  'HR CINCY',
+  'CHICAGO CHAR':   'CHI CHAR',
+  'OXFORD DOWNS':   'OXFORD',
+  'PALACE POKER':   'PALACE',
+  'CASINO MALTA':   'MALTA',
+  'BOSSIER CITY':   'BOSSIER',
+  'LIVE! PHILLY':   'LIVE PHILLY',
+};
+export function getStripAbbr(abbr) {
+  return STRIP_ABBR[abbr] || abbr;
 }
 
 // Derived entries are cached by abbr so getVenueBrandColor() can resolve their
@@ -418,6 +450,22 @@ export function getVenueBrandColor(abbr) {
 
 // ── Bracelet Event Detection ──────────────────────────────
 export const NON_BRACELET_KEYWORDS = ['satellite', 'mega sat', 'super sat', 'qualifier', 'freeroll', 'charity', 'side event'];
+// The guarantee is the number a player uses first to decide whether an event is
+// worth entering, and the PDF export has always printed it - but it appeared
+// nowhere on the surface whose entire purpose is choosing tournaments, while
+// House Fee and Staff Fee each had a full cell in the detail grid.
+export function formatGuarantee(v, venue) {
+  const n = Number(v);
+  if (!n || !isFinite(n)) return '';
+  const sym = typeof currencySymbol === 'function' ? currencySymbol(venue) : '$';
+  const abbr = n >= 1000000
+    ? (n % 1000000 === 0 ? `${n / 1000000}M` : `${(n / 1000000).toFixed(1)}M`)
+    : n >= 1000
+      ? (n % 1000 === 0 ? `${n / 1000}K` : `${(n / 1000).toFixed(1)}K`)
+      : String(n);
+  return `${sym}${abbr} GTD`;
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;

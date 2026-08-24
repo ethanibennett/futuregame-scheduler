@@ -362,7 +362,7 @@ function GroupDetailView({
             <div key={t.id} className="group-schedule-card">
               <div className="group-schedule-card-top">
                 <div>
-                  <div style={{fontWeight:600,fontSize:14}}>{t.event_name}</div>
+                  <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{t.event_name}</div>
                   <div style={{fontSize:12,color:'var(--text-secondary)'}}>{t.date} \u00b7 {t.time} \u00b7 ${Number(t.buyin).toLocaleString()}</div>
                 </div>
                 <div style={{fontSize:11,color:'var(--text-secondary)'}}>{getVenueInfo(t.venue).abbr}</div>
@@ -399,7 +399,7 @@ function GroupDetailView({
                   </div>
                   <Avatar src={m.avatar} username={m.username} size={32} />
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,fontSize:14}}>{displayName(m)}</div>
+                    <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{displayName(m)}</div>
                     <div className="leaderboard-stats">
                       <span className={m.net_pl >= 0 ? 'leaderboard-net-pos' : 'leaderboard-net-neg'}>
                         {m.net_pl >= 0 ? '+' : ''}{formatBuyin(m.net_pl)} net
@@ -460,7 +460,7 @@ function GroupDetailView({
             <div key={m.id} className="group-member-card">
               <Avatar src={m.avatar} username={m.username} size={28} />
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:500}}>{displayName(m)}</div>
+                <div style={{fontSize:13,fontWeight: 'var(--fw-regular)'}}>{displayName(m)}</div>
                 {m.role === 'owner' && <div style={{fontSize:11,color:'var(--accent)'}}>Owner</div>}
               </div>
               {isOwner && m.role !== 'owner' && (
@@ -479,7 +479,7 @@ function GroupDetailView({
                 <div key={inv.id} className="group-member-card" style={{opacity:0.6}}>
                   <Avatar src={inv.avatar} username={inv.username} size={28} />
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,fontWeight:500}}>{displayName(inv)}</div>
+                    <div style={{fontSize:13,fontWeight: 'var(--fw-regular)'}}>{displayName(inv)}</div>
                     <div style={{fontSize:11,color:'var(--text-muted)'}}>Invited by {inv.invited_by_real_name || inv.invited_by_username}</div>
                   </div>
                   <span style={{fontSize:11,color:'var(--text-muted)',fontStyle:'italic'}}>Pending</span>
@@ -683,7 +683,7 @@ export default function SocialView({
             }}>
               <Avatar src={u.avatar} username={u.username} size={28} />
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:'0.78rem',fontWeight:600,color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                <div style={{fontSize:'0.78rem',fontWeight: 'var(--fw-bold)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                   {u.real_name || u.username}
                 </div>
                 {u.real_name && (
@@ -898,7 +898,7 @@ export default function SocialView({
                   }
                   return (
                     <div style={{borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'4px'}}>
-                      <div style={{padding:'6px 12px 4px',fontSize:'0.72rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+                      <div style={{padding:'6px 12px 4px',fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
                         Upcoming Schedule ({upcoming.length} event{upcoming.length !== 1 ? 's' : ''})
                       </div>
                       <div style={{display:'grid',gridTemplateColumns:'auto auto auto auto 1fr auto',gap:'0 6px',padding:'0 12px',fontSize:'0.8rem',alignItems:'center'}}>
@@ -915,10 +915,10 @@ export default function SocialView({
                                 <React.Fragment key={t.id}>
                                   <span style={{fontSize:'0.72rem',fontWeight:700,color:'var(--text-muted)',fontFamily:"'Libre Baskerville', Georgia, serif",whiteSpace:'nowrap',padding:'4px 0'}}>{i === 0 ? dayAbbr : ''}</span>
                                   <span style={{fontSize:'0.72rem',fontWeight:700,color:'var(--text)',fontFamily:"'Libre Baskerville', Georgia, serif",whiteSpace:'nowrap',padding:'4px 0'}}>{i === 0 ? dateLabel : ''}</span>
-                                  <span style={{color: getVenueBrandColor(v.abbr),fontWeight:600,fontSize:'0.65rem',whiteSpace:'nowrap',textAlign:'center'}}>{v.abbr}</span>
+                                  <span style={{color: getVenueBrandColor(v.abbr),fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',whiteSpace:'nowrap',textAlign:'center'}}>{v.abbr}</span>
                                   <span style={{color:'var(--text-muted)',fontSize:'0.72rem',whiteSpace:'nowrap',textAlign:'right'}}>{t.time || 'TBD'}</span>
                                   <span style={{color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{t.event_name}</span>
-                                  <span style={{color:'var(--text-muted)',fontSize:'0.72rem',fontWeight:600,whiteSpace:'nowrap',textAlign:'right'}}>{formatBuyin(t.buyin, t.venue)}</span>
+                                  <span style={{color:'var(--text-muted)',fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',whiteSpace:'nowrap',textAlign:'right'}}>{formatBuyin(t.buyin, t.venue)}</span>
                                 </React.Fragment>
                               );
                             })}
@@ -934,7 +934,7 @@ export default function SocialView({
                     {myGroups && myGroups.length > 0 && (
                       addToGroupBuddyId === buddy.id ? (
                         <div>
-                          <div style={{fontSize:'0.72rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',fontFamily:'Univers Condensed, Univers, sans-serif',marginBottom:'6px'}}>
+                          <div style={{fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',fontFamily:'Univers Condensed, Univers, sans-serif',marginBottom:'6px'}}>
                             Add to Group
                           </div>
                           {myGroups.map(g => {
@@ -982,7 +982,7 @@ export default function SocialView({
                           <button
                             onClick={(e) => { e.stopPropagation(); onRemoveBuddy(buddy.id); setConfirmRemoveId(null); setExpandedId(null); }}
                             style={{background:'#b91c1c',border:'none',borderRadius:'6px',
-                              color:'#fff',cursor:'pointer',fontSize:'0.75rem',padding:'4px 10px',fontWeight:600}}
+                              color:'#fff',cursor:'pointer',fontSize:'0.75rem',padding:'4px 10px',fontWeight: 'var(--fw-bold)'}}
                           >Remove</button>
                         </div>
                       </div>

@@ -262,7 +262,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
           <button key={id} onClick={() => setMode(id)}
             style={{
               padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: '0.74rem', fontWeight: 600,
+              fontSize: '0.74rem', fontWeight: 'var(--fw-bold)',
               border: '1px solid ' + (mode === id ? 'var(--accent)' : 'var(--border)'),
               background: mode === id ? 'var(--surface2)' : 'var(--surface)',
               color: mode === id ? 'var(--text)' : 'var(--text-muted)',

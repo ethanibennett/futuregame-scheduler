@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
+import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
 import { Filtered } from './EmptyState.jsx';
@@ -206,7 +207,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
             const pctR = (toIdx / totalDays) * 100;
             return (
               <div className="filter-group filter-row filter-daterange-cell" style={{marginBottom:'6px'}}>
-                <label style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'6px',display:'block',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
+                <label style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'6px',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
                 <div style={{padding:'0 6px'}}>
                   <div className="date-slider-wrap">
                     <div className="date-slider-track" />
@@ -258,7 +259,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-              <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                 <input type="checkbox"
                   checked={!filters.hiddenVenues || filters.hiddenVenues.length === 0}
                   ref={el => { if (el) el.indeterminate = filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.length < availableVenues.length; }}
@@ -312,8 +313,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               const allRakeChecked = (filters.rakeRanges || []).length === 0;
               return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 12px'}}>
                 <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Buy-in</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Buy-in</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allBuyinChecked}
                       onChange={() => setFilters(f => ({...f, buyinRanges: [], minBuyin: '', maxBuyin: ''}))}
                       style={{marginTop:'1px',flexShrink:0}}
@@ -329,8 +330,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   ))}
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Rake</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Rake</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allRakeChecked}
                       onChange={() => setFilters(f => ({...f, rakeRanges: []}))}
                       style={{marginTop:'1px',flexShrink:0}}
@@ -361,7 +362,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 setFilters(f => ({...f, selectedGames: checked ? [...f.selectedGames, v] : f.selectedGames.filter(g => g !== v)}));
               };
               return (<div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={allSelected}
                     onChange={() => setFilters(f => ({...f, selectedGames:[]}))}
                     style={{marginTop:'1px'}}
@@ -388,7 +389,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   const needsTopGap = group.label === 'Draw' || group.label === 'Mixed';
                   return (
                     <div key={group.label} style={needsTopGap ? {marginTop:'6px'} : undefined}>
-                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                         <input type="checkbox" checked={groupChecked}
                           ref={el => { if (el) el.indeterminate = groupPartial; }}
                           onChange={e => {
@@ -701,7 +702,7 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
             <Icon.upload /> {visionParsing ? 'Scanning...' : 'Upload File(s)'}
           </label>
           <div style={{display:'flex',alignItems:'center',gap:'8px',width:'100%'}}>
-            <span style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600}}>or</span>
+            <span style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>or</span>
             <input type="text" placeholder="Paste schedule URL..." value={visionUrl}
               onChange={e => setVisionUrl(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && visionUrl.trim()) handleVisionUrl(); }}
@@ -764,10 +765,10 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.75rem'}}>
                   <thead>
                     <tr style={{borderBottom:'2px solid var(--border)',position:'sticky',top:0,background:'var(--bg)'}}>
-                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:600,fontSize:'0.65rem',textTransform:'uppercase'}}>Date</th>
-                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:600,fontSize:'0.65rem',textTransform:'uppercase'}}>Time</th>
-                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:600,fontSize:'0.65rem',textTransform:'uppercase'}}>Event</th>
-                      <th style={{padding:'6px 8px',textAlign:'right',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:600,fontSize:'0.65rem',textTransform:'uppercase'}}>Buy-in</th>
+                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Date</th>
+                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Time</th>
+                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Event</th>
+                      <th style={{padding:'6px 8px',textAlign:'right',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Buy-in</th>
                       <th style={{padding:'6px 4px',textAlign:'center',width:'30px'}}></th>
                     </tr>
                   </thead>
@@ -780,12 +781,12 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
                           <td style={{padding:'6px 8px',whiteSpace:'nowrap',color:'var(--text)',fontSize:'0.73rem'}}>{ev.date ? ev.date.replace(/, \d{4}$/, '') : '?'}</td>
                           <td style={{padding:'6px 8px',whiteSpace:'nowrap',color:'var(--text-muted)',fontSize:'0.73rem'}}>{ev.time || '?'}</td>
                           <td style={{padding:'6px 8px',color:'var(--text)',fontSize:'0.73rem',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                            {ev.is_satellite && <span style={{fontSize:'0.6rem',padding:'1px 4px',borderRadius:'3px',background:'rgba(139,92,246,0.2)',color:'#a78bfa',marginRight:'4px',fontWeight:600}}>SAT</span>}
-                            {ev.is_restart && <span style={{fontSize:'0.6rem',padding:'1px 4px',borderRadius:'3px',background:'rgba(234,179,8,0.2)',color:'#eab308',marginRight:'4px',fontWeight:600}}>Restart</span>}
+                            {ev.is_satellite && <span style={{fontSize:'0.6rem',padding:'1px 4px',borderRadius:'3px',background:'rgba(139,92,246,0.2)',color:'#a78bfa',marginRight:'4px',fontWeight: 'var(--fw-bold)'}}>SAT</span>}
+                            {ev.is_restart && <span style={{fontSize:'0.6rem',padding:'1px 4px',borderRadius:'3px',background:'rgba(234,179,8,0.2)',color:'#eab308',marginRight:'4px',fontWeight: 'var(--fw-bold)'}}>Restart</span>}
                             {ev.event_name || '(unnamed)'}
                             {ev._warnings && ev._warnings.length > 0 && <span style={{color:'#eab308',marginLeft:'4px'}} title={ev._warnings.join(', ')}>!</span>}
                           </td>
-                          <td style={{padding:'6px 8px',textAlign:'right',color:'var(--text)',fontWeight:600,fontSize:'0.73rem'}}>{ev.buyin != null ? `$${ev.buyin.toLocaleString()}` : '\u2014'}</td>
+                          <td style={{padding:'6px 8px',textAlign:'right',color:'var(--text)',fontWeight: 'var(--fw-bold)',fontSize:'0.73rem'}}>{ev.buyin != null ? `$${ev.buyin.toLocaleString()}` : '\u2014'}</td>
                           <td style={{padding:'6px 4px',textAlign:'center'}}>
                             <button onClick={(e) => { e.stopPropagation(); removeVisionEvent(i); }}
                               style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:'0.7rem',padding:'2px 4px',lineHeight:1}}
@@ -1479,59 +1480,11 @@ export default function TournamentsView({
               const isCollapsed = collapsedDates.has(group.date);
               return (
                 <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
-                  <div className="schedule-date-break" onClick={() => toggleDateCollapsed(group.date)} style={{
-                    position: 'sticky', top: dateBreakTop + 'px', zIndex: 5,
-                    padding: '12px 12px 8px 2px',
-                    background: 'var(--bg)',
-                    color: 'var(--text)',
-                    fontWeight: 700,
-                    borderBottom: 'none',
-                    display: 'flex', alignItems: 'baseline', gap: '4px',
-                    cursor: 'pointer', userSelect: 'none'
-                  }}>
-                    {isToday ? (
-                      <>
-                        <span style={{
-                          background: 'var(--accent)', display: 'inline-flex', alignItems: 'baseline', gap: '4px',
-                          padding: '4px 12px', borderRadius: '999px', cursor: 'pointer'
-                        }} onClick={(e) => {
-                          e.stopPropagation();
-                          const grp = e.currentTarget.closest('[data-date-group]');
-                          if (grp) scrollDateGroupToTop(grp);
-                        }}>
-                          <span style={{fontSize: '1.7rem', lineHeight: 1, fontFamily: "var(--serif)", color: 'var(--bg)'}}>{dayNum}</span>
-                          <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)", textTransform: 'capitalize', color: 'var(--bg)'}}>{monthAbbr}</span>
-                        </span>
-                        <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontWeight:600,marginLeft:'4px'}}>{dayEventCount} event{dayEventCount !== 1 ? 's' : ''}</span>
-                        <span style={{marginLeft: 'auto', display: 'inline-flex', alignItems: 'baseline', gap: '8px'}}>
-                          <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayOfWeek}</span>
-                          <span aria-label={isCollapsed ? 'Expand' : 'Collapse'} style={{
-                            display: 'inline-block', fontSize: '1.1rem', lineHeight: 1, color: 'var(--accent)',
-                            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                            transition: 'transform 0.15s ease'
-                          }}>{'▶'}</span>
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{fontSize: '1.7rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayNum}</span>
-                        <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)", textTransform: 'capitalize'}}>{monthAbbr}</span>
-                        <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontWeight:600,marginLeft:'4px'}}>{dayEventCount} event{dayEventCount !== 1 ? 's' : ''}</span>
-                        <span style={{marginLeft: 'auto', display: 'inline-flex', alignItems: 'baseline', gap: '8px'}}>
-                          <span style={{fontSize: '0.85rem', lineHeight: 1, fontFamily: "var(--serif)"}}>{dayOfWeek}</span>
-                          <span aria-label={isCollapsed ? 'Expand' : 'Collapse'} style={{
-                            display: 'inline-block', fontSize: '1.1rem', lineHeight: 1, color: 'var(--accent)',
-                            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                            transition: 'transform 0.15s ease'
-                          }}>{'▶'}</span>
-                        </span>
-                      </>
-                    )}
-                  </div>
+                  <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />
                   {!isCollapsed && group.events.map(t => {
                     const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id;
                     return (
-                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 72px'}}>
+                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 94px'}}>
                       {needsFull ? (
                         <CalendarEventRow
                           tournament={t}
