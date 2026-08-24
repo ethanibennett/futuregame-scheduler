@@ -74,36 +74,36 @@
          two positions can never drift relative to each other. */
       --nav-h:     max(44px, calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)));
       /* Venue brand colors — muted for dark mode */
-      --venue-wsop:          #e8e8e8;
+      --venue-wsop:          #a63030;
       --venue-wsop-cond:     #999;
       --venue-ipo:           #1a6b3c;
-      --venue-personal:      #2f7fe0;
-      --venue-wynn:          #cc0000;
-      --venue-aria:          #5a3a9a;
-      --venue-golden-nugget: #7a6520;
-      --venue-resorts-world: #2a7a72;
-      --venue-south-point:   #5e4430;
-      --venue-orleans:       #944828;
-      --venue-mgm-grand:     #2a6a3e;
-      --venue-mgm-nh:        #8a7020;
-      --venue-ts:            #8a6508;
+      --venue-personal:      #2064b6;
+      --venue-wynn:          #ad1f1f;
+      --venue-aria:          #5730a4;
+      --venue-golden-nugget: #856917;
+      --venue-resorts-world: #a65930;
+      --venue-south-point:   #704121;
+      --venue-orleans:       #af491f;
+      --venue-mgm-grand:     #167f3d;
+      --venue-mgm-nh:        #94711a;
+      --venue-ts:            #761515;
       --venue-tch:           #a0522d;
-      --venue-caesars:       #9c7d20;
-      --venue-hardrock:      #1a9e9e;
+      --venue-caesars:       #8f721d;
+      --venue-hardrock:      #178383;
       --venue-wsope:         #1a3c6e;
-      --venue-venetian:      #3b0a0a;
+      --venue-venetian:      #570f0f;
       --venue-borgata:       #6b21a8;
-      --venue-foxwoods:      #4a2d7a;
-      --venue-thunder-valley:#a87c0a;
-      --venue-bellagio:      #a8863f;
-      --venue-lodge:         #2d5a27;
-      --venue-bestbet:       #1a73e8;
-      --venue-ballys:        #b91c1c;
-      --venue-cherokee:      #e91e90;
-      --venue-choctaw:       #dc2626;
-      --venue-tunica:        #0d6efd;
-      --venue-wsopc-lv:      #bf7d08;
-      --venue-wsop-online:   #0e7490;
+      --venue-foxwoods:      #482681;
+      --venue-thunder-valley:#93711a;
+      --venue-bellagio:      #93712b;
+      --venue-lodge:         #25641d;
+      --venue-bestbet:       #2061b6;
+      --venue-ballys:        #b52020;
+      --venue-cherokee:      #b62074;
+      --venue-choctaw:       #b62020;
+      --venue-tunica:        #205db6;
+      --venue-wsopc-lv:      #9c6d1b;
+      --venue-wsop-online:   #186e86;
     }
 
     /* ==================================================================
@@ -491,6 +491,26 @@
     }
 
 
+
+    /* ==================================================================
+       Icons. 37 of 45 glyphs are stroked and only three declared a width,
+       so the rest inherited SVG's default of 1 - a 0.58px stroke at 14px,
+       roughly half the weight of the Feather originals they were traced
+       from, sitting next to solid filled paths in the same button row.
+       Fixing the stroke alone visibly upgrades every toolbar, chip and nav
+       tab at once.
+
+       Size comes from the container via --icon-size so a component sets it
+       once, instead of 22 per-context `svg { width }` rules fighting 13
+       inline styles that always won.
+       ================================================================== */
+    svg[data-icon] {
+      width: var(--icon-size, var(--icon-md));
+      height: var(--icon-size, var(--icon-md));
+      stroke-width: var(--icon-stroke);
+      flex-shrink: 0;
+    }
+
     /* ==================================================================
        Utility roles.
 
@@ -565,36 +585,36 @@
       --venue-gn-bg:   #eeeeee;
       --hover-overlay: rgba(0,0,0,0.04);
       /* Venue brand colors — full saturation for light mode */
-      --venue-wsop:          #111111;
+      --venue-wsop:          #a63030;
       --venue-wsop-cond:     #444;
-      --venue-ipo:           #0d8a3e;
-      --venue-personal:      #2563eb;
-      --venue-wynn:          #cc0000;
-      --venue-aria:          #6d28d9;
-      --venue-golden-nugget: #92700a;
-      --venue-resorts-world: #0d9488;
-      --venue-south-point:   #6b4226;
-      --venue-orleans:       #c2410c;
-      --venue-mgm-grand:     #15803d;
-      --venue-mgm-nh:        #b8860b;
-      --venue-ts:            #7a5a06;
-      --venue-tch:           #b5603a;
-      --venue-caesars:       #9a7a20;
-      --venue-hardrock:      #0d8a8a;
-      --venue-wsope:         #1a4a8c;
-      --venue-venetian:      #5a1515;
-      --venue-borgata:       #7c3aed;
-      --venue-foxwoods:      #5b37a0;
-      --venue-thunder-valley:#a87f08;
-      --venue-bellagio:      #a08540;
-      --venue-lodge:         #1a8a1a;
-      --venue-bestbet:       #1565c0;
-      --venue-ballys:        #dc2626;
-      --venue-cherokee:      #d81b7f;
-      --venue-choctaw:       #e53935;
-      --venue-tunica:        #0d6efd;
-      --venue-wsopc-lv:      #bf7d08;
-      --venue-wsop-online:   #0e7490;
+      --venue-ipo:           #1a6b3c;
+      --venue-personal:      #2064b6;
+      --venue-wynn:          #ad1f1f;
+      --venue-aria:          #5730a4;
+      --venue-golden-nugget: #856917;
+      --venue-resorts-world: #a65930;
+      --venue-south-point:   #704121;
+      --venue-orleans:       #af491f;
+      --venue-mgm-grand:     #167f3d;
+      --venue-mgm-nh:        #94711a;
+      --venue-ts:            #761515;
+      --venue-tch:           #a0522d;
+      --venue-caesars:       #8f721d;
+      --venue-hardrock:      #178383;
+      --venue-wsope:         #1a3c6e;
+      --venue-venetian:      #570f0f;
+      --venue-borgata:       #6b21a8;
+      --venue-foxwoods:      #482681;
+      --venue-thunder-valley:#93711a;
+      --venue-bellagio:      #93712b;
+      --venue-lodge:         #25641d;
+      --venue-bestbet:       #2061b6;
+      --venue-ballys:        #b52020;
+      --venue-cherokee:      #b62074;
+      --venue-choctaw:       #b62020;
+      --venue-tunica:        #205db6;
+      --venue-wsopc-lv:      #9c6d1b;
+      --venue-wsop-online:   #186e86;
     }
 
     /* Dusk theme — deep navy/blue dark variant.
@@ -629,36 +649,36 @@
       --venue-gn-bg:   #121a2a;
       --hover-overlay: rgba(100,150,255,0.06);
       /* Venue brand colors — same as dark mode */
-      --venue-wsop:          #e8e8e8;
+      --venue-wsop:          #a63030;
       --venue-wsop-cond:     #999;
       --venue-ipo:           #1a6b3c;
-      --venue-personal:      #2f7fe0;
-      --venue-wynn:          #cc0000;
-      --venue-aria:          #5a3a9a;
-      --venue-golden-nugget: #7a6520;
-      --venue-resorts-world: #2a7a72;
-      --venue-south-point:   #5e4430;
-      --venue-orleans:       #944828;
-      --venue-mgm-grand:     #2a6a3e;
-      --venue-mgm-nh:        #8a7020;
-      --venue-ts:            #8a6508;
+      --venue-personal:      #2064b6;
+      --venue-wynn:          #ad1f1f;
+      --venue-aria:          #5730a4;
+      --venue-golden-nugget: #856917;
+      --venue-resorts-world: #a65930;
+      --venue-south-point:   #704121;
+      --venue-orleans:       #af491f;
+      --venue-mgm-grand:     #167f3d;
+      --venue-mgm-nh:        #94711a;
+      --venue-ts:            #761515;
       --venue-tch:           #a0522d;
-      --venue-caesars:       #9c7d20;
-      --venue-hardrock:      #1a9e9e;
+      --venue-caesars:       #8f721d;
+      --venue-hardrock:      #178383;
       --venue-wsope:         #1a3c6e;
-      --venue-venetian:      #3b0a0a;
+      --venue-venetian:      #570f0f;
       --venue-borgata:       #6b21a8;
-      --venue-foxwoods:      #4a2d7a;
-      --venue-thunder-valley:#a87c0a;
-      --venue-bellagio:      #a8863f;
-      --venue-lodge:         #2d5a27;
-      --venue-bestbet:       #1a73e8;
-      --venue-ballys:        #b91c1c;
-      --venue-cherokee:      #e91e90;
-      --venue-choctaw:       #dc2626;
-      --venue-tunica:        #0d6efd;
-      --venue-wsopc-lv:      #bf7d08;
-      --venue-wsop-online:   #0e7490;
+      --venue-foxwoods:      #482681;
+      --venue-thunder-valley:#93711a;
+      --venue-bellagio:      #93712b;
+      --venue-lodge:         #25641d;
+      --venue-bestbet:       #2061b6;
+      --venue-ballys:        #b52020;
+      --venue-cherokee:      #b62074;
+      --venue-choctaw:       #b62020;
+      --venue-tunica:        #205db6;
+      --venue-wsopc-lv:      #9c6d1b;
+      --venue-wsop-online:   #186e86;
     }
 
     /* Cloudy theme — muted grey light variant */
@@ -679,36 +699,36 @@
       --venue-gn-bg:   #c4c4c4;
       --hover-overlay: rgba(0,0,0,0.06);
       /* Venue brand colors — full saturation for light variant */
-      --venue-wsop:          #111111;
+      --venue-wsop:          #a63030;
       --venue-wsop-cond:     #444;
-      --venue-ipo:           #0d8a3e;
-      --venue-personal:      #2563eb;
-      --venue-wynn:          #cc0000;
-      --venue-aria:          #6d28d9;
-      --venue-golden-nugget: #92700a;
-      --venue-resorts-world: #0d9488;
-      --venue-south-point:   #6b4226;
-      --venue-orleans:       #c2410c;
-      --venue-mgm-grand:     #15803d;
-      --venue-mgm-nh:        #b8860b;
-      --venue-ts:            #7a5a06;
-      --venue-tch:           #b5603a;
-      --venue-caesars:       #9a7a20;
-      --venue-hardrock:      #0d8a8a;
-      --venue-wsope:         #1a4a8c;
-      --venue-venetian:      #5a1515;
-      --venue-borgata:       #7c3aed;
-      --venue-foxwoods:      #5b37a0;
-      --venue-thunder-valley:#a87f08;
-      --venue-bellagio:      #a08540;
-      --venue-lodge:         #1a8a1a;
-      --venue-bestbet:       #1565c0;
-      --venue-ballys:        #dc2626;
-      --venue-cherokee:      #d81b7f;
-      --venue-choctaw:       #e53935;
-      --venue-tunica:        #0d6efd;
-      --venue-wsopc-lv:      #bf7d08;
-      --venue-wsop-online:   #0e7490;
+      --venue-ipo:           #1a6b3c;
+      --venue-personal:      #2064b6;
+      --venue-wynn:          #ad1f1f;
+      --venue-aria:          #5730a4;
+      --venue-golden-nugget: #856917;
+      --venue-resorts-world: #a65930;
+      --venue-south-point:   #704121;
+      --venue-orleans:       #af491f;
+      --venue-mgm-grand:     #167f3d;
+      --venue-mgm-nh:        #94711a;
+      --venue-ts:            #761515;
+      --venue-tch:           #a0522d;
+      --venue-caesars:       #8f721d;
+      --venue-hardrock:      #178383;
+      --venue-wsope:         #1a3c6e;
+      --venue-venetian:      #570f0f;
+      --venue-borgata:       #6b21a8;
+      --venue-foxwoods:      #482681;
+      --venue-thunder-valley:#93711a;
+      --venue-bellagio:      #93712b;
+      --venue-lodge:         #25641d;
+      --venue-bestbet:       #2061b6;
+      --venue-ballys:        #b52020;
+      --venue-cherokee:      #b62074;
+      --venue-choctaw:       #b62020;
+      --venue-tunica:        #205db6;
+      --venue-wsopc-lv:      #9c6d1b;
+      --venue-wsop-online:   #186e86;
     }
 
     /* High contrast — dark */
@@ -1355,7 +1375,7 @@
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
-      color: rgba(255,255,255,0.85);
+      color: #ffffff;
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       padding: var(--space-xs) 0;
       white-space: nowrap;
@@ -4056,7 +4076,7 @@
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
-      color: rgba(255,255,255,0.85);
+      color: #ffffff;
       /* Round the strip itself rather than leaning on .cal-event-row's
          overflow:hidden. Expanding transitions font-size/letter-spacing, which
          composites this (already rotated) element onto its own layer, and a
@@ -5133,7 +5153,7 @@
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps-lg);
       text-transform: uppercase;
-      color: rgba(255,255,255,0.85);
+      color: #ffffff;
       user-select: none;
       overflow: hidden;
       line-height: 1;
