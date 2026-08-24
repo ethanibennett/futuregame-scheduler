@@ -220,6 +220,19 @@ export default function App() {
     localStorage.setItem('theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', THEME_META[theme] || '#111111');
+
+    // The <meta> above does nothing inside a Capacitor WKWebView, and
+    // capacitor.config.json pins the bar to a static dark style — so switching
+    // to light or cloudy left light glyphs on a near-white app. The plugin was
+    // in package.json and never imported. Driven off the same THEME_META map
+    // that feeds the meta tag, so the two cannot drift.
+    if (window.Capacitor?.isNativePlatform?.()) {
+      import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+        const light = theme === 'light' || theme === 'cloudy';
+        StatusBar.setStyle({ style: light ? Style.Light : Style.Dark }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: THEME_META[theme] || '#111111' }).catch(() => {});
+      }).catch(() => {});
+    }
   }, [theme]);
 
 

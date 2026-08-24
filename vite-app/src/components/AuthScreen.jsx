@@ -11,7 +11,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
     <div className="auth-wrap">
       <div className="auth-card">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'8px'}}>
-          <button className="btn btn-ghost btn-sm" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
+          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
         </div>
@@ -57,25 +57,25 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         </form>
 
         {!isRegister && (
-          <p style={{textAlign:'center',marginTop:'12px',marginBottom:'-8px'}}>
+          <p className="auth-hint" style={{textAlign:'center',marginTop:'var(--space-lg)'}}>
             <button onClick={onForgotPassword}
-              style={{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'0.82rem'}}>
+              className="auth-link-quiet">
               Forgot password?
             </button>
           </p>
         )}
 
-        <p style={{textAlign:'center',marginTop:'20px',fontSize:'0.85rem',color:'var(--text-muted)'}}>
+        <p className="auth-hint" style={{textAlign:'center',marginTop:'var(--space-2xl)'}}>
           {isRegister ? 'Already have an account? ' : "Don't have an account? "}
           <button onClick={() => setIsRegister(r => !r)}
-            style={{color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight: 'var(--fw-bold)',fontSize:'0.85rem'}}>
+            className="auth-link">
             {isRegister ? 'Sign in' : 'Register'}
           </button>
         </p>
 
-        <div style={{borderTop:'1px solid var(--border)',marginTop:'20px',paddingTop:'16px'}}>
-          <button onClick={onGuestLogin} className="btn btn-full"
-            style={{background:'transparent',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:'0.85rem'}}>
+        <div className="auth-divider">
+          <button onClick={onGuestLogin} className="btn btn-ghost btn-full"
+            >
             Continue as Guest
           </button>
           <p style={{textAlign:'center',marginTop:'8px',fontSize:'0.72rem',color:'var(--text-muted)',opacity:0.7}}>

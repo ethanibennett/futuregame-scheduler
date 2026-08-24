@@ -69,18 +69,28 @@ export default function AdminView({ token, onNavigate }) {
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>;
+  // Six rows shaped like real rows, rather than a bare string in an app that
+  // ships a full skeleton kit.
+  if (loading) return (
+    <div style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      {[0,1,2,3,4,5].map(i => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+          <div className="skeleton skeleton-circle" style={{ width: 24, height: 24, animationDelay: `${i * 80}ms` }} />
+          <div className="skeleton skeleton-text" style={{ flex: 1, height: 12, animationDelay: `${i * 80 + 40}ms` }} />
+          <div className="skeleton skeleton-text" style={{ width: 70, height: 12, animationDelay: `${i * 80 + 80}ms` }} />
+        </div>
+      ))}
+    </div>
+  );
 
-  const thStyle = {padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.7rem',textTransform:'uppercase',letterSpacing:'0.05em',cursor:'pointer',whiteSpace:'nowrap'};
-
-  return (
+return (
     <div style={{padding:'16px',maxWidth:'100%'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
-        <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'1.2rem',color:'var(--text)',margin:0}}>
+        <h2 style={{fontFamily:'var(--font-condensed)',fontWeight:700,fontSize:'1.2rem',color:'var(--text)',margin:0}}>
           ADMIN &mdash; {users.length} Users
         </h2>
         {onNavigate && (
-          <button onClick={() => onNavigate('hands')} style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
+          <button onClick={() => onNavigate('hands')} style={{padding:'6px 12px',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
             Hand Replayer
           </button>
         )}
@@ -93,19 +103,19 @@ export default function AdminView({ token, onNavigate }) {
         style={{width:'100%',padding:'8px 12px',marginBottom:'12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',boxSizing:'border-box'}}
       />
       <div style={{overflowX:'auto'}}>
-        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8rem'}}>
+        <table className="admin-table" style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8rem'}}>
           <thead>
-            <tr style={{borderBottom:'2px solid var(--border)'}}>
-              <th style={thStyle} onClick={() => handleSort('username')}>Username{sortArrow('username')}</th>
-              <th style={thStyle} onClick={() => handleSort('real_name')}>Name{sortArrow('real_name')}</th>
-              <th style={thStyle} onClick={() => handleSort('email')}>Email{sortArrow('email')}</th>
-              <th style={{...thStyle,textAlign:'center',cursor:'default'}}>Replayer</th>
-              <th style={{...thStyle,textAlign:'right'}} onClick={() => handleSort('created_at')}>Joined{sortArrow('created_at')}</th>
+            <tr>
+              <th onClick={() => handleSort('username')}>Username{sortArrow('username')}</th>
+              <th onClick={() => handleSort('real_name')}>Name{sortArrow('real_name')}</th>
+              <th onClick={() => handleSort('email')}>Email{sortArrow('email')}</th>
+              <th style={{textAlign:'center',cursor:'default'}}>Replayer</th>
+              <th style={{textAlign:'right'}} onClick={() => handleSort('created_at')}>Joined{sortArrow('created_at')}</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map(u => (
-              <tr key={u.id} style={{borderBottom:'1px solid var(--border)'}}>
+              <tr key={u.id}>
                 <td style={{padding:'8px',display:'flex',alignItems:'center',gap:'8px'}}>
                   {u.avatar ? (
                     <img src={u.avatar} style={{width:24,height:24,borderRadius:'50%',objectFit:'cover'}} alt={u.username} />
@@ -119,9 +129,11 @@ export default function AdminView({ token, onNavigate }) {
                 <td style={{padding:'8px',color:'var(--text-muted)'}}>{u.real_name || '\u2014'}</td>
                 <td style={{padding:'8px',color:'var(--text-muted)',fontSize:'0.75rem'}}>{u.email}</td>
                 <td style={{padding:'8px',textAlign:'center'}}>
-                  <button onClick={() => toggleReplayerAccess(u.id, !u.hand_replayer_access)}
-                    style={{background:'none',border:'none',cursor:'pointer',fontSize:'1.1rem',padding:0}}>
-                    {u.hand_replayer_access ? '\u2705' : '\u274c'}
+                  <button
+                    onClick={() => toggleReplayerAccess(u.id, !u.hand_replayer_access)}
+                    className={'settings-toggle admin-toggle' + (u.hand_replayer_access ? ' on' : '')}
+                    aria-pressed={!!u.hand_replayer_access}
+                    aria-label={`Replayer access for ${u.username}`}>
                   </button>
                 </td>
                 <td style={{padding:'8px',color:'var(--text-muted)',textAlign:'right',whiteSpace:'nowrap'}} title={u.created_at}>{timeAgo(u.created_at)}</td>

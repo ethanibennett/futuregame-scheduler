@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The foreground layer used to be the whole navy square (byte-identical
+     to the 192px web icon), composited over WHITE - so the white was never
+     seen except as clipped corner slivers, and the mark was cropped by
+     every mask. The navy lives here now, where a mask cannot reach it. -->
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_background">#0d1525</color>
 </resources>

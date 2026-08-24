@@ -51,10 +51,23 @@
     @media screen and (display-mode: standalone) {
       .app-shell { padding-top: max(env(safe-area-inset-top, 0px), 47px) !important; }
     }
+    /* The splash never moved, which reads as a frozen screenshot. One entrance,
+       staggered, so the (now much shorter) dwell is earned. Honours reduced
+       motion — this block cannot use the duration tokens because it paints
+       before the stylesheet's :root is applied. */
+    @keyframes splashRise {
+      from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    }
+    #splash img { animation: splashRise 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+    #splash h1  { animation: splashRise 0.5s cubic-bezier(0.22,1,0.36,1) 0.08s both; }
+    #splash p   { animation: splashRise 0.5s cubic-bezier(0.22,1,0.36,1) 0.14s both; }
+    @media (prefers-reduced-motion: reduce) {
+      #splash img, #splash h1, #splash p { animation: none; }
+    }
   </style>
 </head>
 <body>
-  <div id="splash" style="position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity 0.4s ease-out;">
+  <div id="splash" style="position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity 0.32s cubic-bezier(0.22,1,0.36,1);">
     <img src="/splash-icon.svg" alt="" style="width:80px;height:80px;margin-bottom:20px;" />
     <!-- -0.05em matches --track-wordmark, and the stack mirrors --serif. This is
          the only wordmark that can read neither (it paints before the stylesheet
@@ -91,10 +104,14 @@
       var obs = new MutationObserver(function() {
         if (document.getElementById('root').children.length > 0) {
           obs.disconnect();
+          // Was 1500ms of dwell plus a 400ms fade plus a 400ms removal — 1.9
+          // seconds of stillness AFTER the app was already ready, on a splash
+          // with no motion of its own, which reads as slowness rather than
+          // polish. The entrance below earns the remaining 250ms.
           setTimeout(function() {
             splash.style.opacity = '0';
-            setTimeout(function() { splash.remove(); }, 400);
-          }, 1500);
+            setTimeout(function() { splash.remove(); }, 320);
+          }, 250);
         }
       });
       obs.observe(document.getElementById('root'), { childList: true });
