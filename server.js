@@ -12075,6 +12075,24 @@ initDatabase().then(() => {
     } catch (err) {
       console.error('[MTT feed] cron setup error:', err.message);
     }
+    // TestFlight watchdog: GitHub force-fails a build at 600s when the Mac takes
+    // the job during a brief "dark wake" and then sleeps again, and nothing
+    // retries it — #91 sat unshipped for three days that way. Re-dispatches
+    // master HEAD when the newest run carries that signature, capped per SHA.
+    // Ticks at :05/:25/:45, clear of the mtt-emit :15, feed ingest :20 and
+    // roster :35. Opt-in via TESTFLIGHT_WATCHDOG so only this box runs it:
+    // Render has no gh, no runner, and no business dispatching builds.
+    try {
+      if (process.env.TESTFLIGHT_WATCHDOG === '1') {
+        const { runWatchdog } = require('./scripts/testflight-watchdog');
+        cron.schedule('5,25,45 * * * *', () => {
+          runWatchdog().catch((err) => console.error('[testflight] watchdog error:', err.message));
+        }, { timezone: CONSOLE_TZ });
+        console.log('[testflight] sleep-kill watchdog armed (:05, :25, :45)');
+      }
+    } catch (err) {
+      console.error('[testflight] watchdog setup error:', err.message);
+    }
   });
 
   const shutdown = () => {

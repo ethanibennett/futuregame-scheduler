@@ -136,3 +136,6 @@ ecosystem.remote-control.cjs
 
 # Generated hourly by mtt-emit (mtt-series-watcher) and ingested in-process — never committed.
 mtt-feed/
+
+# Retry budget for the TestFlight sleep-kill watchdog (runtime state, this box only)
+.testflight-watchdog.json
