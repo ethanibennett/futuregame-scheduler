@@ -31,11 +31,28 @@ on:
   repository_dispatch:
     types: [ios-testflight]
 
-# Several merges in quick succession collapse into one build rather than
-# queueing five archives and burning five build numbers. The newest wins.
+# Several merges in quick succession still collapse into one build — but by
+# superseding each other in the group's pending slot, not by shooting whatever
+# is already in flight. `cancel-in-progress: true` did the latter, and against a
+# Mac that is usually asleep that meant the next merge killed the build waiting
+# for it. Both halves are observed in this repo's own history: run 31774333122
+# was cancelled with `runner_name` empty and `started_at == created_at` — never
+# assigned to a runner, killed while still queued — at the exact second the
+# following run was created; run 31774443175 was cancelled 34 seconds into a
+# live archive on the Mac.
+#
+# With `cancel-in-progress: false`, a run already admitted to the group is left
+# alone — including one merely waiting for the offline runner, which holds the
+# active slot and not the pending one (31774333122 held it, and the run that
+# replaced it was picked up by the runner 78 seconds later). Later triggers
+# wait in the group's single pending slot, where the newest replaces the older.
+# That is the collapsing this block always wanted.
+#
+# Deliberately NOT `queue: max`: 100 pending runs would build every superseded
+# commit in sequence on the one flaky Mac instead of only the newest.
 concurrency:
   group: ios-testflight
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   testflight:
