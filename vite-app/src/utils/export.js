@@ -4,6 +4,25 @@
 import { getVenueInfo, formatBuyin, currencySymbol, formatChips, ordinalSuffix, parseTournamentTime, normaliseDate, getToday } from './utils.js';
 import { parseCardNotation } from './poker-engine.js';
 
+// Canvas does NOT trigger webfont loading and does NOT wait for it. Every
+// draw* function below sets ctx.font and draws immediately, so if a face has
+// not already been used and resolved on screen, the 1080x1080 PNG a user posts
+// is set in Arial. A grep for document.fonts across the whole source returned
+// zero hits before this. Awaited by every export entry point.
+export async function ensureExportFonts() {
+  if (typeof document === 'undefined' || !document.fonts) return;
+  try {
+    await Promise.all([
+      document.fonts.load('700 100px "Univers Condensed"'),
+      document.fonts.load('400 100px "Univers Condensed"'),
+      document.fonts.load('700 100px "Univers"'),
+      document.fonts.load('400 100px "Baskerville MT Std"'),
+    ]);
+    await document.fonts.ready;
+  } catch { /* a missing face must not block an export */ }
+}
+
+
 // Venue color lookup for canvas (not CSS vars -- returns hex)
 const VENUE_CANVAS_COLORS = {
   'WSOP': '#c0c0c0', 'IPO': '#1a6b3c', 'PERSONAL': '#4a9eff',
@@ -21,17 +40,35 @@ function getVenueCanvasColor(venueName) {
   return VENUE_CANVAS_COLORS[info.abbr] || info.color || '#808080';
 }
 
+// The signature was h*0.016 at 35% opacity - about 17px on a 1080 canvas, or
+// roughly 5px of grey at Instagram's feed scale. Functionally unsigned, on the
+// product's only public surface. A mark, not an apology: bigger, more opaque,
+// tracked, and preceded by a short brand rule. Kept at h*0.955 so it clears the
+// platform's own UI chrome.
 function drawWatermark(ctx, w, h, pos) {
-  const wms = Math.round(h * 0.016);
-  ctx.font = wms + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  const wms = Math.round(h * 0.022);
+  const y = Math.round(h * 0.955);
+  ctx.save();
+  ctx.font = '700 ' + wms + 'px "Univers Condensed", Univers, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '2px';
+  const label = 'FUTUREGA.ME';
+  const tw = ctx.measureText(label).width;
+  const ruleW = Math.round(w * 0.037);
+  const gap = Math.round(w * 0.012);
+  let x;
   if (pos === 'bottom-center') {
-    ctx.textAlign = 'center';
-    ctx.fillText('futurega.me', w / 2, Math.round(h * 0.96));
-    ctx.textAlign = 'left';
+    const total = ruleW + gap + tw;
+    x = Math.round((w - total) / 2);
   } else {
-    ctx.fillText('futurega.me', Math.round(w * 0.04), Math.round(h * 0.96));
+    x = Math.round(w * 0.04);
   }
+  ctx.fillStyle = 'rgba(242,166,59,0.6)';
+  ctx.fillRect(x, y - Math.round(wms * 0.3), ruleW, 1);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x + ruleW + gap, y);
+  ctx.restore();
 }
 
 // Share via Web Share API (mobile native sheet) or fall back to a download
@@ -63,6 +100,10 @@ export async function shareOrDownloadBlob(blob, filename, mimeType) {
 
 // Share or download a canvas
 export async function shareOrDownloadCanvas(canvas, filename) {
+  // Fonts first: the caller has already drawn into this canvas, but every
+  // other entry point routes through here, and awaiting is what makes the
+  // font available for the NEXT draw in the same session.
+  await ensureExportFonts();
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   if (!blob) return;
   await shareOrDownloadBlob(blob, filename, 'image/png');
@@ -719,17 +760,70 @@ export function generateScheduleImages(events, title, opts = {}) {
 
 // ── Camera Overlay Drawing Functions ──
 
+// The ground was a blue-purple that appears NOWHERE in the stylesheet - the
+// app's is #111111 and its dusk theme #0d1525 - overlaid with 27 green
+// scanlines on a 1080 square, which reads as a 2016 crypto dashboard. The
+// images that travel furthest looked least like the product they advertise.
+// A radial vignette replaces the grid: the app's own card grammar is hairline
+// rules, not texture.
+// A poker chip: two concentric discs and six edge notches. Used where the wrap
+// needs an ornament rather than a glyph borrowed from the system font.
+function drawChipMark(ctx, cx, cy, r) {
+  ctx.save();
+  ctx.fillStyle = '#f2a63b';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * r * 0.82, cy + Math.sin(a) * r * 0.82, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = Math.max(1, r * 0.12);
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+// A step line over a zero baseline. Results are discrete events, so the line
+// holds and jumps rather than interpolating a value that never existed.
+function drawCumulativeCurve(ctx, x, y, w, h, pts) {
+  if (!pts || pts.length < 2) return;
+  const max = Math.max(...pts, 0), min = Math.min(...pts, 0);
+  const span = (max - min) || 1;
+  const px = i => x + (i / (pts.length - 1)) * w;
+  const py = v => y + h - ((v - min) / span) * h;
+  const zero = py(0);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(pts[0]));
+  for (let i = 1; i < pts.length; i++) { ctx.lineTo(px(i), py(pts[i-1])); ctx.lineTo(px(i), py(pts[i])); }
+  ctx.lineTo(px(pts.length - 1), zero); ctx.lineTo(px(0), zero); ctx.closePath();
+  const final = pts[pts.length - 1];
+  ctx.fillStyle = final >= 0 ? 'rgba(70,184,119,0.16)' : 'rgba(212,105,95,0.16)';
+  ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x, zero); ctx.lineTo(x + w, zero);
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(pts[0]));
+  for (let i = 1; i < pts.length; i++) { ctx.lineTo(px(i), py(pts[i-1])); ctx.lineTo(px(i), py(pts[i])); }
+  ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px(pts.length - 1), py(final), 5, 0, Math.PI * 2);
+  ctx.fillStyle = final >= 0 ? '#46b877' : '#d4695f'; ctx.fill();
+  ctx.restore();
+}
+
 export function drawShareBackground(ctx, w, h) {
   const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, '#1a1a2e');
-  grad.addColorStop(1, '#0f0f1a');
+  grad.addColorStop(0, '#141414');
+  grad.addColorStop(1, '#0b0b0b');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(34,197,94,0.06)';
-  ctx.lineWidth = 1;
-  for (let y = 0; y < h; y += 40) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-  }
+  const vig = ctx.createRadialGradient(w * 0.5, h * 0.32, 0, w * 0.5, h * 0.32, Math.max(w, h) * 0.75);
+  vig.addColorStop(0, 'rgba(255,255,255,0.04)');
+  vig.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, w, h);
 }
 
 export function drawStatsOnCanvas(ctx, w, h, updateData, tournamentName, formatLiveUpdateFn) {
@@ -742,13 +836,13 @@ export function drawStatsOnCanvas(ctx, w, h, updateData, tournamentName, formatL
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.fillText(tournamentName || '', Math.round(w * 0.04), barY + Math.round(barH * 0.38));
   const statsSize = Math.round(h * 0.026);
-  ctx.font = '600 ' + statsSize + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + statsSize + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.fillText(formatLiveUpdateFn(updateData) || '', Math.round(w * 0.04), barY + Math.round(barH * 0.78));
   const wmSize = Math.round(h * 0.014);
   ctx.font = wmSize + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('snbwsop.com', Math.round(w * 0.03), Math.round(h * 0.03));
+  ctx.fillText('futurega.me', Math.round(w * 0.03), Math.round(h * 0.03));
 }
 
 export function drawRegistrationOverlay(ctx, w, h, data) {
@@ -765,7 +859,7 @@ export function drawRegistrationOverlay(ctx, w, h, data) {
   const num = data.eventNumber ? 'Event #' + data.eventNumber + ': ' : '';
   const buy = data.buyin ? '$' + Number(data.buyin).toLocaleString() + ' ' : '';
   const l2s = Math.round(h * 0.024);
-  ctx.font = '600 ' + l2s + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + l2s + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(num + buy + (data.eventName || ''), padX, barY + lineH * 1.85);
   const ss = data.startingChips ? formatChips(data.startingChips) + ' ss' : '';
@@ -791,14 +885,14 @@ export function drawRegistrationOverlay(ctx, w, h, data) {
   }
   if (data.entryNumber && data.entryNumber > 1) {
     const eS = Math.round(h * 0.018);
-    ctx.font = '600 ' + eS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + eS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#f59e0b';
     ctx.fillText(data.entryNumber + ordinalSuffix(data.entryNumber) + ' Entry', padX, barY + lineH * nextLine);
   }
   const wms = Math.round(h * 0.014);
   ctx.font = wms + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('snbwsop.com', Math.round(w * 0.03), Math.round(h * 0.03));
+  ctx.fillText('futurega.me', Math.round(w * 0.03), Math.round(h * 0.03));
 }
 
 export function drawDeepRunOverlay(ctx, w, h, data) {
@@ -813,7 +907,7 @@ export function drawDeepRunOverlay(ctx, w, h, data) {
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.fillText(data.tournamentName || '', padX, barY + Math.round(barH * 0.10));
   const posS = Math.round(h * 0.032);
-  ctx.font = '600 ' + posS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + posS + 'px Univers Condensed, Univers, sans-serif';
   const posNum = data.placesLeft ? Number(data.placesLeft) : '?';
   const totalNum = data.totalEntries ? Number(data.totalEntries).toLocaleString() : '?';
   ctx.fillStyle = '#ffffff';
@@ -825,7 +919,7 @@ export function drawDeepRunOverlay(ctx, w, h, data) {
   ctx.fillText(' of ' + totalNum, padX + posWidth, barY + Math.round(barH * 0.24));
   if (data.stack) {
     ctx.fillStyle = '#22c55e';
-    ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillText(formatChips(data.stack) + ' chips', padX, barY + Math.round(barH * 0.34));
   }
   const pbY = barY + Math.round(barH * 0.40);
@@ -906,7 +1000,7 @@ export function drawDeepRunOverlay(ctx, w, h, data) {
   const wms2 = Math.round(h * 0.014);
   ctx.font = wms2 + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('snbwsop.com', Math.round(w * 0.03), Math.round(h * 0.03));
+  ctx.fillText('futurega.me', Math.round(w * 0.03), Math.round(h * 0.03));
 }
 
 export function drawFinalTableOverlay(ctx, w, h, data) {
@@ -918,11 +1012,11 @@ export function drawFinalTableOverlay(ctx, w, h, data) {
   ctx.fillStyle = '#f59e0b';
   ctx.fillRect(0, barY, w, 3);
   const headerS = Math.round(h * 0.030);
-  ctx.font = '600 ' + headerS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + headerS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#f59e0b';
   ctx.fillText('\u{1F3C6} FINAL TABLE', padX, barY + Math.round(barH * 0.20));
   const nameS = Math.round(h * 0.022);
-  ctx.font = '600 ' + nameS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + nameS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   const buyinStr = data.buyin ? '$' + Number(data.buyin).toLocaleString() + ' ' : '';
   ctx.fillText(buyinStr + (data.tournamentName || ''), padX, barY + Math.round(barH * 0.40));
@@ -933,7 +1027,7 @@ export function drawFinalTableOverlay(ctx, w, h, data) {
   const entText = data.totalEntries ? ' of ' + Number(data.totalEntries).toLocaleString() + ' entries' : '';
   ctx.fillText(plText + entText, padX, barY + Math.round(barH * 0.58));
   const statsS = Math.round(h * 0.024);
-  ctx.font = '600 ' + statsS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + statsS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   const parts = [];
   if (data.stack) parts.push(formatChips(data.stack) + ' chips');
@@ -948,7 +1042,7 @@ export function drawFinalTableOverlay(ctx, w, h, data) {
   const wms = Math.round(h * 0.014);
   ctx.font = wms + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('snbwsop.com', Math.round(w * 0.03), Math.round(h * 0.03));
+  ctx.fillText('futurega.me', Math.round(w * 0.03), Math.round(h * 0.03));
 }
 
 export function drawCountdownOverlay(ctx, w, h, data) {
@@ -958,11 +1052,11 @@ export function drawCountdownOverlay(ctx, w, h, data) {
   ctx.fillStyle = 'rgba(0,0,0,0.72)';
   ctx.fillRect(0, barY, w, barH);
   const labelS = Math.round(h * 0.016);
-  ctx.font = '600 ' + labelS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + labelS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.fillText('NEXT UP', padX, barY + Math.round(barH * 0.18));
   const nameS = Math.round(h * 0.026);
-  ctx.font = '600 ' + nameS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + nameS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   const buyinStr = data.buyin ? '$' + Number(data.buyin).toLocaleString() + ' ' : '';
   ctx.fillText(buyinStr + (data.tournamentName || ''), padX, barY + Math.round(barH * 0.42));
@@ -971,13 +1065,13 @@ export function drawCountdownOverlay(ctx, w, h, data) {
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.fillText(data.venue || '', padX, barY + Math.round(barH * 0.60));
   const countS = Math.round(h * 0.030);
-  ctx.font = '600 ' + countS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + countS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.fillText('in ' + (data.timeUntil || '\u2014'), padX, barY + Math.round(barH * 0.85));
   const wms = Math.round(h * 0.014);
   ctx.font = wms + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('snbwsop.com', Math.round(w * 0.03), Math.round(h * 0.03));
+  ctx.fillText('futurega.me', Math.round(w * 0.03), Math.round(h * 0.03));
 }
 
 export function drawChipStackStory(ctx, w, h, data) {
@@ -986,10 +1080,10 @@ export function drawChipStackStory(ctx, w, h, data) {
   const padR = w - padX;
   const history = (data.stackHistory || []).filter(u => u.stack && Number(u.stack) > 0);
   const titleY = Math.round(h * 0.06);
-  ctx.font = '600 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.fillText('STACK TRACKER', padX, titleY);
-  ctx.font = '600 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.tournamentName || '', padX, titleY + Math.round(h * 0.035));
   ctx.fillStyle = '#22c55e';
@@ -1066,7 +1160,7 @@ export function drawChipStackStory(ctx, w, h, data) {
     else if (entry.is_itm) { label = 'ITM'; color = '#22c55e'; }
     if (entry.is_busted) { label = 'BUST'; color = '#f87171'; }
     if (label) {
-      ctx.font = '600 ' + labelSize + 'px Univers Condensed, Univers, sans-serif';
+      ctx.font = '400 ' + labelSize + 'px Univers Condensed, Univers, sans-serif';
       ctx.fillStyle = color; ctx.textAlign = 'center';
       ctx.fillText(label, p.x, p.y - 12); ctx.textAlign = 'left';
     }
@@ -1085,7 +1179,7 @@ export function drawChipStackStory(ctx, w, h, data) {
   ctx.textAlign = 'left';
   const currentStack = stacks[stacks.length - 1];
   const statY = Math.round(h * 0.85);
-  ctx.font = '600 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e'; ctx.textAlign = 'center';
   ctx.fillText(formatChips(currentStack), w / 2, statY);
   if (bb) {
@@ -1140,13 +1234,13 @@ export function drawSeriesScorecard(ctx, w, h, data) {
   const padX = Math.round(w * 0.08);
   const padR = w - padX;
 
-  ctx.font = '600 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = '#22c55e';
+  ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.fillStyle = '#f2a63b';  // chrome accent, NOT the money colour
   ctx.letterSpacing = '3px';
   ctx.fillText('SERIES SCORECARD', padX, Math.round(h * 0.07));
   ctx.letterSpacing = '0px';
 
-  ctx.font = '600 ' + Math.round(h * 0.032) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.032) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.venueName || 'My Results', padX, Math.round(h * 0.12));
 
@@ -1156,7 +1250,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
     ctx.fillText(data.dateRange, padX, Math.round(h * 0.155));
   }
 
-  ctx.fillStyle = '#22c55e';
+  ctx.fillStyle = '#f2a63b';  // chrome accent, NOT the money colour
   ctx.fillRect(padX, Math.round(h * 0.175), padR - padX, 2);
 
   const statStartY = Math.round(h * 0.22);
@@ -1169,7 +1263,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
     ctx.letterSpacing = '1px';
     ctx.fillText(label.toUpperCase(), x, y);
     ctx.letterSpacing = '0px';
-    ctx.font = '600 ' + Math.round(h * 0.030) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.034) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = color || '#ffffff';
     ctx.fillText(value, x, y + Math.round(h * 0.038));
   };
@@ -1187,18 +1281,24 @@ export function drawSeriesScorecard(ctx, w, h, data) {
   ctx.fillText('NET PROFIT / LOSS', w / 2, plY);
   ctx.letterSpacing = '0px';
   const pl = data.netPL || 0;
-  ctx.font = '700 ' + Math.round(h * 0.055) + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = pl >= 0 ? '#22c55e' : '#f87171';
+  ctx.font = '700 ' + Math.round(h * 0.070) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.fillStyle = pl >= 0 ? '#46b877' : '#d4695f';
   ctx.fillText((pl >= 0 ? '+' : '') + formatBuyin(pl), w / 2, plY + Math.round(h * 0.06));
 
   const roi = data.roi || 0;
-  ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = roi >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(248,113,113,0.7)';
   ctx.fillText((roi >= 0 ? '+' : '') + roi.toFixed(1) + '% ROI', w / 2, plY + Math.round(h * 0.095));
   ctx.textAlign = 'left';
 
+  // The curve, drawn into the empty band between the ROI line and the
+  // streak block - roughly a fifth of the canvas of bare gradient. Same
+  // visual language as the in-app chart: step line, hairline zero baseline,
+  // quiet fills either side, an endpoint dot coloured by sign, no axes.
+  drawCumulativeCurve(ctx, padX, plY + Math.round(h * 0.045), padR - padX,
+                      Math.round(h * 0.075), data.cumulative || []);
   const div2Y = plY + Math.round(h * 0.13);
-  ctx.fillStyle = 'rgba(34,197,94,0.2)';
+  ctx.fillStyle = (pl >= 0 ? 'rgba(70,184,119,0.28)' : 'rgba(212,105,95,0.28)');
   ctx.fillRect(padX, div2Y, padR - padX, 1);
 
   const streakY = div2Y + Math.round(h * 0.04);
@@ -1208,7 +1308,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
     ctx.letterSpacing = '1px';
     ctx.fillText('CURRENT STREAK', padX, streakY);
     ctx.letterSpacing = '0px';
-    ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#fbbf24';
     ctx.fillText(data.currentStreak, padX, streakY + Math.round(h * 0.035));
   }
@@ -1220,7 +1320,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
     ctx.letterSpacing = '1px';
     ctx.fillText('BIGGEST CASH', padX, bcY);
     ctx.letterSpacing = '0px';
-    ctx.font = '600 ' + Math.round(h * 0.026) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.034) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#fbbf24';
     ctx.fillText(formatBuyin(data.biggestCash), padX, bcY + Math.round(h * 0.035));
     if (data.biggestCashEvent) {
@@ -1239,13 +1339,13 @@ export function drawDeepRunStandalone(ctx, w, h, data) {
   const padX = Math.round(w * 0.08);
   const padR = w - padX;
 
-  ctx.font = '600 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '3px';
   ctx.fillText('DEEP RUN', padX, Math.round(h * 0.08));
   ctx.letterSpacing = '0px';
 
-  ctx.font = '600 ' + Math.round(h * 0.028) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.028) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   const buyinStr = data.buyin ? '$' + Number(data.buyin).toLocaleString() + ' ' : '';
   ctx.fillText(buyinStr + (data.tournamentName || ''), padX, Math.round(h * 0.12));
@@ -1269,7 +1369,7 @@ export function drawDeepRunStandalone(ctx, w, h, data) {
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.fillText('of ' + total.toLocaleString() + ' entries', w / 2, posY + Math.round(h * 0.04));
 
-  ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.fillText('Top ' + topPct + '%', w / 2, posY + Math.round(h * 0.08));
   ctx.textAlign = 'left';
@@ -1310,7 +1410,7 @@ export function drawDeepRunStandalone(ctx, w, h, data) {
     ctx.letterSpacing = '1px';
     ctx.fillText('STACK', w / 2, stackY);
     ctx.letterSpacing = '0px';
-    ctx.font = '600 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#22c55e';
     ctx.fillText(formatChips(data.stack), w / 2, stackY + Math.round(h * 0.05));
     ctx.textAlign = 'left';
@@ -1339,7 +1439,7 @@ export function drawCountdownStory(ctx, w, h, data) {
 
   const padX = Math.round(w * 0.10);
 
-  ctx.font = '600 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '4px';
   ctx.textAlign = 'center';
@@ -1369,7 +1469,7 @@ export function drawCountdownStory(ctx, w, h, data) {
     ctx.fillText('$' + Number(data.buyin).toLocaleString(), w / 2, detailY);
   }
 
-  ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   const nameLines = wrapText(ctx, data.tournamentName || '', w - padX * 2);
   nameLines.forEach((line, i) => {
@@ -1428,7 +1528,7 @@ export function drawFinalTableCard(ctx, w, h, data) {
   ctx.fillStyle = '#f59e0b';
   ctx.fillRect((w - lineW) / 2, headerY + Math.round(h * 0.02), lineW, 2);
 
-  ctx.font = '600 ' + Math.round(h * 0.026) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.026) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   const buyStr = data.buyin ? '$' + Number(data.buyin).toLocaleString() + ' ' : '';
   const eventText = buyStr + (data.tournamentName || '');
@@ -1499,7 +1599,7 @@ export function drawWrapSlide1(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   const padX = Math.round(w * 0.10);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '4px';
   ctx.fillText('SERIES WRAP', w / 2, Math.round(h * 0.10));
@@ -1513,7 +1613,7 @@ export function drawWrapSlide1(ctx, w, h, data) {
   ctx.font = '700 ' + Math.round(h * 0.14) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.fillText(String(data.eventsPlayed || 0), w / 2, Math.round(h * 0.52));
-  ctx.font = '600 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.fillText('events played', w / 2, Math.round(h * 0.57));
   if (data.dateRange) {
@@ -1528,7 +1628,7 @@ export function drawWrapSlide1(ctx, w, h, data) {
 export function drawWrapSlide2(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '4px';
   ctx.fillText('THE NUMBERS', w / 2, Math.round(h * 0.10));
@@ -1547,9 +1647,16 @@ export function drawWrapSlide2(ctx, w, h, data) {
   ctx.font = '700 ' + Math.round(h * 0.035) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(formatBuyin(data.totalCashed || 0), w / 2, row2Y + Math.round(h * 0.045));
-  ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.font = Math.round(h * 0.030) + 'px sans-serif';
-  ctx.fillText('\u2193', w / 2, Math.round(h * 0.43));
+  // Was a down-arrow drawn in the SYSTEM SANS to mean "therefore". A ledger
+  // rule is the same idea in the grammar the rest of the card already uses -
+  // a subtotal line - and it is not borrowed from a typeface used nowhere
+  // else in the app.
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(w / 2, row2Y + Math.round(h * 0.062));
+  ctx.lineTo(w / 2, Math.round(h * 0.455));
+  ctx.stroke();
   const plY = Math.round(h * 0.50);
   const pl2 = data.netPL || 0;
   ctx.font = Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
@@ -1558,7 +1665,7 @@ export function drawWrapSlide2(ctx, w, h, data) {
   ctx.font = '700 ' + Math.round(h * 0.07) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = pl2 >= 0 ? '#22c55e' : '#f87171';
   ctx.fillText((pl2 >= 0 ? '+' : '') + formatBuyin(pl2), w / 2, plY + Math.round(h * 0.07));
-  ctx.font = '600 ' + Math.round(h * 0.020) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.020) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   const roiStr = (data.roi || 0).toFixed(1) + '% ROI';
   const cashStr = (data.cashCount || 0) + '/' + (data.eventsPlayed || 0) + ' cashes (' + (data.cashRate || 0).toFixed(0) + '%)';
@@ -1570,13 +1677,15 @@ export function drawWrapSlide2(ctx, w, h, data) {
 export function drawWrapSlide3(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#fbbf24';
   ctx.letterSpacing = '4px';
   ctx.fillText('BEST MOMENT', w / 2, Math.round(h * 0.10));
   ctx.letterSpacing = '0px';
-  ctx.font = Math.round(h * 0.06) + 'px sans-serif';
-  ctx.fillText('*', w / 2, Math.round(h * 0.22));
+  // Was ctx.fillText('*') in the SYSTEM SANS - a typeface used nowhere else in
+  // the app - sitting at the focal point of the flagship shareable. A drawn
+  // chip is one helper and reads as poker instantly.
+  drawChipMark(ctx, w / 2, Math.round(h * 0.20), Math.round(h * 0.035));
   ctx.font = '700 ' + Math.round(h * 0.08) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#fbbf24';
   ctx.fillText(formatBuyin(data.biggestCash || 0), w / 2, Math.round(h * 0.38));
@@ -1584,7 +1693,7 @@ export function drawWrapSlide3(ctx, w, h, data) {
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.fillText('BIGGEST CASH', w / 2, Math.round(h * 0.42));
   if (data.biggestCashEvent) {
-    ctx.font = '600 ' + Math.round(h * 0.020) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.020) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     const lines = wrapText(ctx, data.biggestCashEvent, w * 0.7);
     lines.forEach((line, i) => {
@@ -1603,7 +1712,7 @@ export function drawWrapSlide3(ctx, w, h, data) {
 export function drawWrapSlide4(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '4px';
   ctx.fillText('GAME MIX', w / 2, Math.round(h * 0.10));
@@ -1617,7 +1726,11 @@ export function drawWrapSlide4(ctx, w, h, data) {
     drawWatermark(ctx, w, h, 'bottom-center');
     return;
   }
-  const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+  // A ranked composition, not eight unrelated categories - so a sequential
+  // ramp off the brand gold is the correct form anyway, and it frees green and
+  // red to mean money. The old ramp opened with the exact positive and negative
+  // money colours while the legend printed signed profit two inches away.
+  const colors = ['#f2a63b', '#c98428', '#a1651b', '#7a4a10', '#5c380c', '#8a8a8a', '#6b6b6b', '#4f4f4f'];
   const total = variants.reduce((s, v) => s + v.count, 0);
   const cx = w / 2, cy = Math.round(h * 0.30);
   const radius = Math.round(w * 0.18);
@@ -1628,8 +1741,12 @@ export function drawWrapSlide4(ctx, w, h, data) {
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, radius, angle, angle + sweep); ctx.closePath(); ctx.fill();
     angle += sweep;
   });
-  ctx.fillStyle = '#14142a';
+  // Punched, not painted. A flat #14142a disc over a VERTICAL gradient left a
+  // visible seam, because the hole only matched the background at one height.
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
   ctx.beginPath(); ctx.arc(cx, cy, radius * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
   ctx.font = '700 ' + Math.round(h * 0.030) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(String(total), cx, cy + Math.round(h * 0.01));
@@ -1644,14 +1761,14 @@ export function drawWrapSlide4(ctx, w, h, data) {
     const color = colors[i % colors.length];
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.arc(padX2, y, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.font = '600 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     ctx.fillText(v.name, padX2 + 18, y + 5);
     ctx.textAlign = 'right';
     ctx.font = Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText(v.count + 'x', w - padX2 - 80, y + 5);
+    ctx.fillText(v.count + 'x', w - padX2 - Math.round(w * 0.075), y + 5);
     ctx.fillStyle = v.profit >= 0 ? '#22c55e' : '#f87171';
     ctx.fillText((v.profit >= 0 ? '+' : '') + formatBuyin(v.profit), w - padX2, y + 5);
   });
@@ -1662,7 +1779,7 @@ export function drawWrapSlide4(ctx, w, h, data) {
     ctx.font = Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.fillText('BEST GAME', w / 2, bestY);
-    ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = '#22c55e';
     ctx.fillText(sorted2[0].name + ' (+' + formatBuyin(sorted2[0].profit) + ')', w / 2, bestY + Math.round(h * 0.03));
   }
@@ -1673,7 +1790,7 @@ export function drawWrapSlide4(ctx, w, h, data) {
 export function drawWrapSlide5(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '4px';
   ctx.fillText('FUN FACTS', w / 2, Math.round(h * 0.10));
@@ -1708,7 +1825,7 @@ export function drawWrapSlide5(ctx, w, h, data) {
     ctx.fill();
     if (v > 0) {
       ctx.fillStyle = '#ffffff';
-      ctx.font = '600 ' + Math.round(h * 0.013) + 'px Univers Condensed, Univers, sans-serif';
+      ctx.font = '400 ' + Math.round(h * 0.013) + 'px Univers Condensed, Univers, sans-serif';
       ctx.fillText(String(v), bx + barW2 / 2, by - 8);
     }
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
@@ -1745,10 +1862,9 @@ export function drawMilestoneImage(ctx, w, h, data) {
     ctx.beginPath(); ctx.moveTo(x, y - 10); ctx.lineTo(x, y + 10); ctx.stroke();
   }
   ctx.textAlign = 'center';
-  const icons = { 'break-even': '*', 'first-profit': '+', 'career-high': '!', 'game-best': '#' };
-  ctx.font = Math.round(h * 0.08) + 'px sans-serif';
-  ctx.fillStyle = '#fbbf24';
-  ctx.fillText(icons[data.type] || '*', w / 2, Math.round(h * 0.22));
+  // Same defect as slide 3's asterisk: ASCII placeholders in the system sans
+  // standing in for an ornament, at the focal point of a milestone card.
+  drawChipMark(ctx, w / 2, Math.round(h * 0.20), Math.round(h * 0.038));
   ctx.font = '700 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#fbbf24';
   const titleLines = wrapText(ctx, data.title || 'MILESTONE', w * 0.7);
@@ -1782,12 +1898,12 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   const padX4 = Math.round(w * 0.08);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '3px';
   ctx.fillText('HELP ME DECIDE', w / 2, Math.round(h * 0.08));
   ctx.letterSpacing = '0px';
-  ctx.font = '600 ' + Math.round(h * 0.026) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.026) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText('Which event should I play?', w / 2, Math.round(h * 0.12));
   const card1Y = Math.round(h * 0.20);
@@ -1801,8 +1917,8 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
   ctx.fillStyle = '#22c55e';
   ctx.fillText('A', w / 2, card1Y + Math.round(cardH * 0.25));
   const e1 = data.event1 || {};
-  if (e1.buyin) { ctx.font = '600 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('$' + Number(e1.buyin).toLocaleString(), w / 2, card1Y + Math.round(cardH * 0.48)); }
-  ctx.font = '600 ' + Math.round(h * 0.018) + 'px Univers Condensed, Univers, sans-serif';
+  if (e1.buyin) { ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('$' + Number(e1.buyin).toLocaleString(), w / 2, card1Y + Math.round(cardH * 0.48)); }
+  ctx.font = '400 ' + Math.round(h * 0.018) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   const name1Lines = wrapText(ctx, e1.name || 'Event 1', cardW * 0.8);
   name1Lines.forEach((line, i) => { ctx.fillText(line, w / 2, card1Y + Math.round(cardH * 0.65) + i * Math.round(h * 0.024)); });
@@ -1820,8 +1936,8 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
   ctx.fillStyle = '#3b82f6';
   ctx.fillText('B', w / 2, card2Y + Math.round(cardH * 0.25));
   const e2 = data.event2 || {};
-  if (e2.buyin) { ctx.font = '600 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('$' + Number(e2.buyin).toLocaleString(), w / 2, card2Y + Math.round(cardH * 0.48)); }
-  ctx.font = '600 ' + Math.round(h * 0.018) + 'px Univers Condensed, Univers, sans-serif';
+  if (e2.buyin) { ctx.font = '400 ' + Math.round(h * 0.024) + 'px Univers Condensed, Univers, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('$' + Number(e2.buyin).toLocaleString(), w / 2, card2Y + Math.round(cardH * 0.48)); }
+  ctx.font = '400 ' + Math.round(h * 0.018) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   const name2Lines = wrapText(ctx, e2.name || 'Event 2', cardW * 0.8);
   name2Lines.forEach((line, i) => { ctx.fillText(line, w / 2, card2Y + Math.round(cardH * 0.65) + i * Math.round(h * 0.024)); });
@@ -1836,12 +1952,12 @@ export function drawPollEventVsEvent(ctx, w, h, data) {
 export function drawPollOverUnder(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   ctx.textAlign = 'center';
-  ctx.font = '600 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#22c55e';
   ctx.letterSpacing = '3px';
   ctx.fillText('OVER / UNDER', w / 2, Math.round(h * 0.10));
   ctx.letterSpacing = '0px';
-  ctx.font = '600 ' + Math.round(h * 0.020) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.020) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.fillText(data.tournamentName || '', w / 2, Math.round(h * 0.15));
   ctx.font = Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
@@ -1855,7 +1971,7 @@ export function drawPollOverUnder(ctx, w, h, data) {
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.fillText((Number(data.currentStack) / Number(data.bb)).toFixed(1) + ' BB', w / 2, Math.round(h * 0.44));
   }
-  ctx.font = '600 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText('End of day stack prediction?', w / 2, Math.round(h * 0.56));
   const arrowY = Math.round(h * 0.66);
@@ -1931,6 +2047,18 @@ export function detectMilestones(trackingData, newEntry) {
 
 // ── Compute series scorecard data from tracking entries ──
 export function computeScorecardData(trackingData, venueName, tournaments) {
+  // Cumulative P&L, for the curve on the card. The walk below already sorts
+  // chronologically for the streak, so this is one accumulator, not a pass.
+  const cumulative = (() => {
+    const rows = [...(entries || [])].filter(e => e && e.date)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    let run = 0;
+    return rows.map(e => {
+      run += (e.cash_amount || 0) - ((e.buyin || 0) * (e.num_entries || 1));
+      return run;
+    });
+  })();
+
   let totalBuyins = 0, totalCashes = 0, eventsCashed = 0;
   let biggestCash = 0, biggestCashEvent = '';
   let streak = 0, streakType = null;
@@ -2018,7 +2146,8 @@ export function computeScorecardData(trackingData, venueName, tournaments) {
     biggestCashPlace: biggestEntry?.finish_place,
     gameBreakdown,
     eventsPerDay,
-    multiEntryCount
+    multiEntryCount,
+    cumulative
   };
 }
 
@@ -2056,7 +2185,7 @@ function drawCanvasCard(ctx, img, x, y, cw, ch) {
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.stroke();
     const qs = Math.round(ch * 0.35);
-    ctx.font = '600 ' + qs + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + qs + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.textAlign = 'center';
     ctx.fillText('?', x + cw / 2, y + ch / 2 + qs * 0.35); ctx.textAlign = 'left';
   }
@@ -2112,7 +2241,7 @@ export function drawHandOverlay(ctx, w, h, handData, images) {
     const contentTop = barY + labelZone;
     const lblS = Math.round(h * 0.014);
     let curY = contentTop;
-    ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillText('HERO', padX, curY + Math.round(perRowLabel * 0.7));
     drawCardRow(ctx, heroCards, images, padX, curY + perRowLabel, finalHVCardW, finalHVCardH, gap);
@@ -2120,14 +2249,14 @@ export function drawHandOverlay(ctx, w, h, handData, images) {
     curY += perRowLabel + finalHVCardH + rowGap;
     let lastOppBottomY = heroCardY + finalHVCardH;
     oppWithCards.forEach((oCards, idx) => {
-      ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+      ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.fillText(oppWithCards.length > 1 ? 'OPP ' + (idx + 1) : 'OPP', padX, curY + Math.round(perRowLabel * 0.7));
       drawCardRow(ctx, oCards, images, padX, curY + perRowLabel, finalHVCardW, finalHVCardH, gap);
       lastOppBottomY = curY + perRowLabel + finalHVCardH;
       curY += perRowLabel + finalHVCardH + rowGap;
     });
-    ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillText('BOARD', dividerX, contentTop + Math.round(perRowLabel * 0.7));
     const boardMidY = hasOpponents ? (heroCardY + lastOppBottomY) / 2 : heroCardY + finalHVCardH / 2;
@@ -2148,7 +2277,7 @@ export function drawHandOverlay(ctx, w, h, handData, images) {
     let curY = contentTop;
     const heroTotalW = heroCards.length * cardW + Math.max(0, heroCards.length - 1) * gap;
     const heroX = Math.round((w - heroTotalW) / 2);
-    ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.textAlign = 'center'; ctx.fillText('HERO', w / 2, curY + Math.round(perRowLabel * 0.7)); ctx.textAlign = 'left';
     drawCardRow(ctx, heroCards, images, heroX, curY + perRowLabel, cardW, cardH, gap);
@@ -2156,7 +2285,7 @@ export function drawHandOverlay(ctx, w, h, handData, images) {
     oppWithCards.forEach((oCards, idx) => {
       const oppTotalW = oCards.length * cardW + Math.max(0, oCards.length - 1) * gap;
       const oppX = Math.round((w - oppTotalW) / 2);
-      ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+      ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.textAlign = 'center'; ctx.fillText(oppWithCards.length > 1 ? 'OPP ' + (idx + 1) : 'OPP', w / 2, curY + Math.round(perRowLabel * 0.7)); ctx.textAlign = 'left';
       drawCardRow(ctx, oCards, images, oppX, curY + perRowLabel, cardW, cardH, gap);
@@ -2165,7 +2294,7 @@ export function drawHandOverlay(ctx, w, h, handData, images) {
   }
   if (results.length > 0) {
     const resS = Math.round(h * (results.length > 1 ? 0.015 : 0.020));
-    ctx.font = '600 ' + resS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + resS + 'px Univers Condensed, Univers, sans-serif';
     ctx.textAlign = 'center';
     const lineH = Math.round(resS * 1.3);
     const startY = barY + barH - Math.round(barH * 0.04) - (results.length * lineH);
@@ -2186,7 +2315,7 @@ export function drawHandOverlay(ctx, w, h, handData, images) {
   const wms = Math.round(h * 0.014);
   ctx.font = wms + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('snbwsop.com', Math.round(w * 0.03), Math.round(h * 0.03));
+  ctx.fillText('futurega.me', Math.round(w * 0.03), Math.round(h * 0.03));
 }
 
 export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName) {
@@ -2205,7 +2334,7 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
   ctx.textAlign = 'center';
   ctx.fillText(tournamentName || '', w / 2, Math.round(h * 0.06));
   const gameS = Math.round(h * 0.028);
-  ctx.font = '600 ' + gameS + 'px Univers Condensed, Univers, sans-serif';
+  ctx.font = '400 ' + gameS + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.fillText(handData.activeGame, w / 2, Math.round(h * 0.10));
   ctx.textAlign = 'left';
@@ -2228,7 +2357,7 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
     let bCardW = Math.floor((rightW - (boardCards.length - 1) * gap) / boardCards.length);
     let bCardH = Math.round(bCardW / cardRatio);
     if (bCardH > Math.round(h * 0.22)) { bCardH = Math.round(h * 0.22); bCardW = Math.round(bCardH * cardRatio); }
-    ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillText('HERO', padX, contentTop);
     const heroCardY = contentTop + rowLabelH;
@@ -2236,14 +2365,14 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
     let curY = heroCardY + hvCardH + oppGap;
     let lastOppBottom = heroCardY + hvCardH;
     oppWithCards.forEach((oCards, idx) => {
-      ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+      ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.fillText(oppWithCards.length > 1 ? 'OPP ' + (idx + 1) : 'OPP', padX, curY);
       drawCardRow(ctx, oCards, images, padX, curY + rowLabelH, hvCardW, hvCardH, gap);
       lastOppBottom = curY + rowLabelH + hvCardH;
       curY += rowLabelH + hvCardH + oppGap;
     });
-    ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillText('BOARD', rightX, contentTop);
     const boardCenterY = oppWithCards.length > 0 ? (heroCardY + lastOppBottom) / 2 : heroCardY + hvCardH / 2;
@@ -2262,7 +2391,7 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
     if (cardH > maxCardH) { cardH = maxCardH; cardW = Math.round(cardH * cardRatio); }
     const heroTotalW = heroCards.length * cardW + Math.max(0, heroCards.length - 1) * gap;
     const heroX = Math.round((w - heroTotalW) / 2);
-    ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.textAlign = 'center'; ctx.fillText('HERO', w / 2, contentTop); ctx.textAlign = 'left';
     drawCardRow(ctx, heroCards, images, heroX, contentTop + rowLabelH, cardW, cardH, gap);
@@ -2270,7 +2399,7 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
     oppWithCards.forEach((oCards, idx) => {
       const oppTotalW = oCards.length * cardW + Math.max(0, oCards.length - 1) * gap;
       const oppX = Math.round((w - oppTotalW) / 2);
-      ctx.font = '600 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
+      ctx.font = '400 ' + lblS + 'px Univers Condensed, Univers, sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.textAlign = 'center'; ctx.fillText(oppWithCards.length > 1 ? 'OPP ' + (idx + 1) : 'OPP', w / 2, curY); ctx.textAlign = 'left';
       drawCardRow(ctx, oCards, images, oppX, curY + rowLabelH, cardW, cardH, gap);
@@ -2279,7 +2408,7 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
   }
   if (results.length > 0) {
     const resS = Math.round(h * (results.length > 1 ? 0.022 : 0.028));
-    ctx.font = '600 ' + resS + 'px Univers Condensed, Univers, sans-serif';
+    ctx.font = '400 ' + resS + 'px Univers Condensed, Univers, sans-serif';
     ctx.textAlign = 'center';
     const lineH = Math.round(resS * 1.3);
     const startY = Math.round(h * 0.88) - Math.max(0, results.length - 1) * lineH / 2;
@@ -2295,6 +2424,6 @@ export function drawHandImageOverlay(ctx, w, h, handData, images, tournamentName
   ctx.font = wms + 'px Univers Condensed, Univers, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.textAlign = 'center';
-  ctx.fillText('snbwsop.com', w / 2, Math.round(h * 0.95));
+  ctx.fillText('futurega.me', w / 2, Math.round(h * 0.95));
   ctx.textAlign = 'left';
 }

@@ -138,14 +138,14 @@ function StakingSettings({ token, tournaments, onBack }) {
               Set default sell percentages by buyin tier or game type. These are used when creating new agreements.
             </p>
             <div style={{marginBottom:16}}>
-              <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-secondary)'}}>By Buyin Tier</div>
+              <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Buyin Tier</div>
               {BUYIN_TIERS.map(tier => (
                 <div key={tier.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
                   <span style={{fontSize:12}}>{tier.label}</span>
                   <div style={{display:'flex',alignItems:'center',gap:4}}>
                     <input type="number" value={getSellPct('buyin_tier', tier.key)} onChange={e => setSellPct('buyin_tier', tier.key, e.target.value)}
                       placeholder="\u2014" min="0" max="100" step="5"
-                      style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-primary)'}} />
+                      style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
                     <span style={{fontSize:11,color:'var(--text-muted)'}}>%</span>
                   </div>
                 </div>
@@ -153,14 +153,14 @@ function StakingSettings({ token, tournaments, onBack }) {
             </div>
             {GAME_PRESETS.length > 0 && (
               <div>
-                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-secondary)'}}>By Game Type</div>
+                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Game Type</div>
                 {GAME_PRESETS.map(game => (
                   <div key={game} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
                     <span style={{fontSize:12}}>{game}</span>
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
                       <input type="number" value={getSellPct('game_type', game)} onChange={e => setSellPct('game_type', game, e.target.value)}
                         placeholder="\u2014" min="0" max="100" step="5"
-                        style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-primary)'}} />
+                        style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
                       <span style={{fontSize:11,color:'var(--text-muted)'}}>%</span>
                     </div>
                   </div>
@@ -176,14 +176,14 @@ function StakingSettings({ token, tournaments, onBack }) {
               Set default markup multipliers by buyin tier or game type. 1.0 = no markup, 1.1 = 10% markup.
             </p>
             <div style={{marginBottom:16}}>
-              <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-secondary)'}}>By Buyin Tier</div>
+              <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Buyin Tier</div>
               {BUYIN_TIERS.map(tier => (
                 <div key={tier.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
                   <span style={{fontSize:12}}>{tier.label}</span>
                   <div style={{display:'flex',alignItems:'center',gap:4}}>
                     <input type="number" value={getMarkup('buyin_tier', tier.key)} onChange={e => setMarkupVal('buyin_tier', tier.key, e.target.value)}
                       placeholder="\u2014" min="1" max="3" step="0.05"
-                      style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-primary)'}} />
+                      style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
                     <span style={{fontSize:11,color:'var(--text-muted)'}}>&times;</span>
                   </div>
                 </div>
@@ -191,14 +191,14 @@ function StakingSettings({ token, tournaments, onBack }) {
             </div>
             {GAME_PRESETS.length > 0 && (
               <div>
-                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-secondary)'}}>By Game Type</div>
+                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Game Type</div>
                 {GAME_PRESETS.map(game => (
                   <div key={game} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
                     <span style={{fontSize:12}}>{game}</span>
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
                       <input type="number" value={getMarkup('game_type', game)} onChange={e => setMarkupVal('game_type', game, e.target.value)}
                         placeholder="\u2014" min="1" max="3" step="0.05"
-                        style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-primary)'}} />
+                        style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
                       <span style={{fontSize:11,color:'var(--text-muted)'}}>&times;</span>
                     </div>
                   </div>
@@ -322,7 +322,7 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onB
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
             <div style={{minWidth:0,flex:1}}>
               <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{s.name}</div>
-              {s.venue && <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:2}}>{s.venue}</div>}
+              {s.venue && <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{s.venue}</div>}
               {(s.start_date || s.end_date) && (
                 <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
                   {s.start_date && new Date(s.start_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})}
@@ -529,7 +529,7 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
           <div key={b.id} className="staking-backer-card">
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{b.name}</div>
-              {b.email && <div style={{fontSize:12,color:'var(--text-secondary)'}}>{b.email}</div>}
+              {b.email && <div style={{fontSize:12,color:'var(--text-muted)'}}>{b.email}</div>}
               {b.phone && <div style={{fontSize:12,color:'var(--text-muted)'}}>{b.phone}</div>}
               {b.notes && <div style={{fontSize:11,color:'var(--text-muted)',fontStyle:'italic',marginTop:2}}>{b.notes}</div>}
             </div>
@@ -605,12 +605,12 @@ function BackerSummaryView({ token, onBack, onManage }) {
                     }}>{badge.label}</span>
                   )}
                   {b.active_count > 0 && (
-                    <span style={{fontSize:10,color:'var(--text-muted)',background:'var(--bg-hover)',padding:'2px 6px',borderRadius:4}}>
+                    <span style={{fontSize:10,color:'var(--text-muted)',background:'var(--hover-overlay)',padding:'2px 6px',borderRadius:4}}>
                       {b.active_count} active
                     </span>
                   )}
                 </div>
-                {b.email && <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:2}}>{b.email}</div>}
+                {b.email && <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{b.email}</div>}
                 {b.phone && <div style={{fontSize:12,color:'var(--text-muted)'}}>{b.phone}</div>}
               </div>
               <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
@@ -632,7 +632,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
                 <div style={{fontSize:10,color:'var(--text-muted)'}}>Returned</div>
               </div>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',color: b.ytd_winnings > 0 ? '#f59e0b' : 'var(--text-secondary)'}}>
+                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',color: b.ytd_winnings > 0 ? '#f59e0b' : 'var(--text-muted)'}}>
                   {formatBuyin(b.ytd_winnings)}
                 </div>
                 <div style={{fontSize:10,color:'var(--text-muted)'}}>YTD</div>
@@ -712,7 +712,7 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
         <button className="group-back-btn" onClick={onBack}>&larr;</button>
         <div style={{flex:1}}>
           <div className="social-buddy-name" style={{fontSize:16}}>{series.name}</div>
-          <div style={{fontSize:12,color:'var(--text-secondary)'}}>
+          <div style={{fontSize:12,color:'var(--text-muted)'}}>
             {agreements.length} agreement{agreements.length !== 1 ? 's' : ''} &middot; {totalPct}% sold
           </div>
         </div>
@@ -807,7 +807,7 @@ function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements,
       </button>
 
       {agreements.length === 0 ? (
-        <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'30px 20px',fontSize:13}}>
+        <div style={{textAlign:'center',color:'var(--text-muted)',padding:'30px 20px',fontSize:13}}>
           No agreements yet. Add a backer agreement to get started.
         </div>
       ) : agreements.map(ag => (
@@ -818,10 +818,10 @@ function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements,
               <div style={{display:'flex',gap:6,alignItems:'center',marginTop:4,flexWrap:'wrap'}}>
                 <span className="staking-type-badge">{BACKER_TYPE_LABELS[ag.backer_type] || ag.backer_type}</span>
                 {ag.backer_type !== 'profit_share_only' && ag.percentage > 0 && (
-                  <span style={{fontSize:12,color:'var(--text-secondary)'}}>{ag.percentage}%</span>
+                  <span style={{fontSize:12,color:'var(--text-muted)'}}>{ag.percentage}%</span>
                 )}
                 {ag.markup > 1 && <span style={{fontSize:12,color:'var(--accent)'}}>{ag.markup}x markup</span>}
-                {ag.backer_type === 'profit_share_only' && <span style={{fontSize:12,color:'var(--text-secondary)'}}>{ag.percentage}% of profit</span>}
+                {ag.backer_type === 'profit_share_only' && <span style={{fontSize:12,color:'var(--text-muted)'}}>{ag.percentage}% of profit</span>}
               </div>
               {(ag.buyin_range_min || ag.buyin_range_max) && (
                 <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
@@ -831,13 +831,13 @@ function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements,
               {(ag.scope === 'custom_dates' || ag.variant_filter || ag.start_date) && (
                 <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:4}}>
                   {ag.scope === 'custom_dates' && ag.start_date && (
-                    <span style={{fontSize:10,background:'var(--bg-hover)',padding:'1px 6px',borderRadius:4,color:'var(--text-muted)'}}>
+                    <span style={{fontSize:10,background:'var(--hover-overlay)',padding:'1px 6px',borderRadius:4,color:'var(--text-muted)'}}>
                       {ag.start_date}{ag.end_date ? ` \u2192 ${ag.end_date}` : '+'}
                     </span>
                   )}
                   {ag.variant_filter && (() => {
                     try { const vf = JSON.parse(ag.variant_filter); return vf.map(v => (
-                      <span key={v} style={{fontSize:10,background:'var(--bg-hover)',padding:'1px 6px',borderRadius:4,color:'var(--text-muted)'}}>{v}</span>
+                      <span key={v} style={{fontSize:10,background:'var(--hover-overlay)',padding:'1px 6px',borderRadius:4,color:'var(--text-muted)'}}>{v}</span>
                     )); } catch { return null; }
                   })()}
                 </div>
@@ -1075,11 +1075,11 @@ function StakingEventTracking({ seriesId, agreements, eventStatuses, tournaments
   const activeAgreements = agreements.filter(a => a.is_active);
 
   if (activeAgreements.length === 0) {
-    return <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'30px 20px',fontSize:13}}>Add active agreements first to track events.</div>;
+    return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'30px 20px',fontSize:13}}>Add active agreements first to track events.</div>;
   }
 
   if (seriesEvents.length === 0) {
-    return <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'30px 20px',fontSize:13}}>No scheduled tournaments in this series date range.</div>;
+    return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'30px 20px',fontSize:13}}>No scheduled tournaments in this series date range.</div>;
   }
 
   return (
@@ -1102,7 +1102,7 @@ function StakingEventTracking({ seriesId, agreements, eventStatuses, tournaments
                   {status ? (
                     <div style={{fontSize:11}}>
                       <span style={{color:'var(--text-muted)'}}>B:{status.bullets_used || 1}</span>
-                      <span style={{marginLeft:6,color:'var(--text-secondary)'}}>In:{formatBuyin(status.buyin_amount || 0)}</span>
+                      <span style={{marginLeft:6,color:'var(--text-muted)'}}>In:{formatBuyin(status.buyin_amount || 0)}</span>
                       <span style={{marginLeft:6,color: (status.cash_amount || 0) > 0 ? '#22c55e' : 'var(--text-muted)'}}>
                         Out:{formatBuyin(status.cash_amount || 0)}
                       </span>
@@ -1194,13 +1194,13 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
   };
 
   if (!settlementData) {
-    return <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'30px 20px',fontSize:13}}>Loading settlement data&hellip;</div>;
+    return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'30px 20px',fontSize:13}}>Loading settlement data&hellip;</div>;
   }
 
   const settlements = settlementData.settlements || [];
 
   if (settlements.length === 0) {
-    return <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'30px 20px',fontSize:13}}>No agreements to settle. Add agreements and log events first.</div>;
+    return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'30px 20px',fontSize:13}}>No agreements to settle. Add agreements and log events first.</div>;
   }
 
   // Build 1099 rows: backers with positive returns in this settlement

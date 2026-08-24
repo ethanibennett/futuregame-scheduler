@@ -1054,7 +1054,12 @@ export function getIfIBagEvents(event, allTournaments, scheduleIds) {
 
 export function formatBuyin(val, venue) {
   if (!val && val !== 0) return '\u2014';
-  return currencySymbol(venue || '') + Number(val).toLocaleString();
+  // Sign OUTSIDE the symbol. Concatenating symbol-then-number produced
+  // $-4,250 for a negative, while formatCurrencyAmount produced -$4,250 \u2014 two
+  // money grammars in one product, and the staking backer summary, the
+  // settlement net line and the group leaderboard all used the broken one.
+  const n = Number(val) || 0;
+  return (n < 0 ? MINUS : '') + currencySymbol(venue || '') + Math.abs(n).toLocaleString();
 }
 
 export function calculateCountdown(date, time, venue) {
@@ -1196,12 +1201,28 @@ export const CURRENCY_CONFIG = {
   CNY: { symbol: '\u00a5', pos: 'pre', label: 'Chinese Yuan' },
 };
 export function currencySymbol(venue) { return (CURRENCY_CONFIG[nativeCurrency(venue)] || CURRENCY_CONFIG.USD).symbol; }
+// U+2212 MINUS SIGN, not the ASCII hyphen. Measured from the bundled faces:
+// the hyphen advances 313 units in Baskerville where the plus advances 667 and
+// digits 500; in Univers Condensed it is 333 against 500. So a losing row's
+// leading glyph was a third of an em narrower than a winning row's, and every
+// P&L column shifted horizontally depending on whether you won. U+2212 is
+// exactly plus-width in all three faces, so the signs align by construction
+// with no padding hack. The ASCII hyphen stays in aria-labels and filenames.
+export const MINUS = '\u2212';
+
 export function formatCurrencyAmount(val, currCode) {
   if (!val && val !== 0) return '\u2014';
   const cfg = CURRENCY_CONFIG[currCode] || CURRENCY_CONFIG.USD;
   const num = Math.round(Math.abs(val)).toLocaleString();
-  const sign = val < 0 ? '-' : '';
+  const sign = val < 0 ? MINUS : '';
   return cfg.pos === 'suf' ? sign + num + ' ' + cfg.symbol : sign + cfg.symbol + num;
+}
+
+// One signed-money formatter, so a summary and the rows beneath it cannot
+// disagree about whether the sign has already been applied.
+export function formatSignedMoney(val, currCode) {
+  const n = Number(val) || 0;
+  return (n >= 0 ? '+' : '') + formatCurrencyAmount(n, currCode);
 }
 export function convertAmount(amount, fromCurr, toCurr, rates) {
   if (!amount || !rates || fromCurr === toCurr) return amount;
