@@ -9023,6 +9023,51 @@ app.put('/api/admin/users/:id/replayer-access', authenticateToken, requireRegist
 });
 
 // Admin: update tournament fields
+// Field validators for the admin editor. Until these existed the route accepted anything the
+// allow-list named: buyin -500, starting_chips "lots" and date "the 32nd of Smarch" all returned
+// 200 and landed in the table. Everything here is checked on the value AFTER the ''→null step, so
+// clearing a field stays legal; only a present, malformed value is rejected.
+const ADMIN_EDIT_VALIDATORS = {
+  // Whole non-negative dollars/chips. Accepts a numeric string, since the edit form posts strings.
+  _count: (v, name) => {
+    const n = typeof v === 'number' ? v : Number(String(v).trim());
+    if (!Number.isFinite(n)) return `${name} must be a number`;
+    if (n < 0) return `${name} cannot be negative`;
+    if (!Number.isInteger(n)) return `${name} must be a whole number`;
+    return null;
+  },
+  date: (v) => (Number.isNaN(Date.parse(v)) ? 'date is not a real date' : null),
+  // '1:00 PM' / '13:00' — the two shapes already in the table.
+  time: (v) =>
+    /^\s*([01]?\d|2[0-3]):[0-5]\d(\s*[AaPp][Mm])?\s*$/.test(String(v)) ? null : 'time is not a valid clock time',
+  rake_pct: (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 'rake_pct must be a number';
+    return n >= 0 && n <= 100 ? null : 'rake_pct must be between 0 and 100';
+  },
+  category: (v) => (['primary', 'side'].includes(String(v)) ? null : "category must be 'primary' or 'side'"),
+  is_satellite: (v) => ([0, 1, '0', '1', true, false].includes(v) ? null : 'is_satellite must be 0 or 1'),
+  is_restart: (v) => ([0, 1, '0', '1', true, false].includes(v) ? null : 'is_restart must be 0 or 1'),
+  // Free text, but not blank-with-spaces and not unbounded.
+  _text: (v, name) => {
+    const t = String(v);
+    if (!t.trim()) return `${name} cannot be blank`;
+    if (t.length > 300) return `${name} is too long (max 300)`;
+    return null;
+  },
+};
+const ADMIN_COUNT_FIELDS = ['buyin', 'starting_chips', 'prize_pool', 'house_fee', 'rake_dollars',
+                            'total_entries', 'opt_add_on', 'late_reg_end'];
+const ADMIN_TEXT_FIELDS = ['event_name', 'venue', 'game_variant'];
+
+function validateAdminEdit(key, value) {
+  if (value === null) return null;                       // clearing a field is always allowed
+  if (ADMIN_COUNT_FIELDS.includes(key)) return ADMIN_EDIT_VALIDATORS._count(value, key);
+  if (ADMIN_TEXT_FIELDS.includes(key)) return ADMIN_EDIT_VALIDATORS._text(value, key);
+  const fn = ADMIN_EDIT_VALIDATORS[key];
+  return fn ? fn(value, key) : null;
+}
+
 app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req, res) => {
   if (!['ham', 'ham5'].includes((req.user.username || '').toLowerCase())) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -9038,14 +9083,20 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
     const updates = [];
     const values = [];
     const changedFields = {};
+    const problems = [];
     for (const [key, val] of Object.entries(req.body)) {
       if (allowedFields.includes(key)) {
         const normalized = val === '' ? null : val;
+        const problem = validateAdminEdit(key, normalized);
+        if (problem) { problems.push(problem); continue; }
         updates.push(`${key} = ?`);
         values.push(normalized);
         changedFields[key] = normalized;
       }
     }
+    // Reject the whole edit rather than half-applying it — a partially saved row is harder to
+    // notice than a refused one.
+    if (problems.length) return res.status(400).json({ error: problems.join('; '), fields: problems });
     if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     values.push(id);
     db.run(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`, values);
