@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-08-17.
+Last updated: 2026-08-24.
 
 ---
 
@@ -25,6 +25,27 @@ Publishing without the URL creates a second artifact instead of updating.
 
 ---
 
+## Shipped 2026-08-19 → 24
+
+**MTT feed** — #87 ingests `structure_sheet_path` from the feed (and found the
+two-write-path trap below); #88 and #89 recorded that trap and the structure hunt.
+
+**Admin** — #92 validates admin event edits instead of writing anything sent; #93
+makes admin corrections survive the feed's hourly re-upsert; #94 makes the editor
+honest about which rows are feed-owned and will be overwritten.
+
+**Visual** — #90 gradients the header and bottom nav from the screen edges; #91 gave
+the replayer felt texture, board shadows, a turn ring, a folded state and player
+plaques.
+
+**Two bugs found together** (`b18a7a7`) — `SolverPlayView`, the CFR self-play viewer,
+was dead UI: `App.jsx` rendered it on `handsTool === 'watch'`, but `'watch'` was never
+in the tool button list and nothing else set it, so the component was imported,
+lazy-loaded, code-split and unreachable. Finding that needed the second fix, below.
+
+**TestFlight reliability** — #95 and #96, see the two traps below.
+
+---
 ## Shipped 2026-08-14 → 17
 
 Twelve PRs, all merged to master and deployed (Render auto-deploys on push;
@@ -89,6 +110,16 @@ All five suite repos are at **zero unpushed, zero modified**, and this repo has
    `hint` prop already accepts it; nothing computes the count yet.
 4. **Display-font picker: two-way or three-way?** `helvetica` still has live CSS
    but was never in the toggle cycle, so it is unreachable dead code.
+5. **Keep the Mac awake while a build is in flight** — the only real cure for the
+   600-second dark-wake kill. #96 retries, but a healthy build needs 3–10 minutes
+   against that window, so retries are coin flips. Windows cannot fix this: there
+   is no API to pause a runner (`DELETE /actions/runners/{id}` deregisters it, and
+   re-registering needs `config.sh` ON the Mac — do not go near it).
+6. **Windows Credential Manager is not persisting credentials.** Both `gh` and git
+   broke on 2026-08-24 with "Unable to persist credentials with the 'wincredman'
+   credential store". Worked around with `gh auth login --insecure-storage` plus
+   `gh auth setup-git`, which stores the token in plaintext in `hosts.yml` — fine,
+   but a downgrade. Repairing the store itself is a Windows-side job.
 
 ---
 
@@ -120,6 +151,48 @@ interactive user's search list build-only and later reads as Xcode failing to
 sign; `security list-keychains -d user -s ~/Library/Keychains/login.keychain-db`
 puts it back.
 
+**A green `npm run build` on this box built nothing, for weeks.** `build.js` called
+`spawnSync('npm', ...)`, which fails ENOENT on native Windows because npm is a `.cmd`
+shim, returning `status === null` — and the guard `(build.status ?? 0) !== 0` coerces
+null to 0, i.e. to success. So the build printed "Running vite build...", exited 0, and
+left `public-vite/` untouched. Render builds on Linux and was never affected, which is
+exactly why it went unnoticed. Fixed in `b18a7a7` (`runOrDie()`, `shell: true`, fails on
+a spawn error or any non-zero/null status). **The consequence outlives the fix:** any
+"verified in the running app" claim made on this machine before 2026-08-24 was verified
+against a stale bundle. Re-check rather than trust those. And builds that used to fail
+silently now fail loudly — that is the point, but it may surface swallowed problems.
+
+**TestFlight builds die at exactly 600 seconds, and a sleeping Mac is not the whole
+story.** The runner is registered, so the job does NOT sit safely queued: the Mac
+surfaces in a brief "dark wake" with throttled networking, the runner reconnects, GitHub
+hands it the queued job within ~30 seconds, the Mac sleeps again, and GitHub force-fails
+at the communication timeout. Three failures, all exactly 600s. The corroborating detail
+is the giveaway: on #91 the Checkout step took 10m17s where it normally takes 3 seconds,
+and on #90 the runner was still reporting step results 19.5 minutes AFTER GitHub had
+declared the job failed. Read the job's step timings before diagnosing from runner
+status. #96 now retries these automatically (3 per SHA, then a handoff issue), but that
+is mitigation: a healthy build needs 3–10 minutes against a 600-second window, so every
+retry is a coin flip. **The cure is on the Mac.**
+
+**`cancel-in-progress: true` destroys queued runs, not just in-flight ones.** Until #95,
+a build waiting for the sleeping Mac was shot by the next merge — run `31774333122` was
+cancelled with `runner_name` empty and `started_at == created_at`, never assigned, at the
+exact second the following run was created. Run `31774443175` was cancelled 34 seconds
+into a live archive. Note what that first one also proves: a run merely *waiting* for a
+runner holds the group's ACTIVE slot, not the pending one, which is the fact the whole
+fix rests on and which GitHub's docs do not spell out.
+
+**Never retry a build with `gh run rerun`.** It replays the run's ORIGINAL head SHA —
+attempt 3 of #90 ran 24.5 hours after attempt 1 on the same commit. Since
+`scripts/ios-testflight.sh` reconciles the build number against App Store Connect, a
+stale rerun uploads older code carrying a HIGHER build number, making stale code the
+newest TestFlight build. Use `gh api repos/<repo>/dispatches -f event_type=ios-testflight`,
+which builds master HEAD. #96 does this.
+
+**A terminal screenshot does not tell you which machine ran the command.** During the
+2026-08-24 auth outage the first `gh auth login` was run on the Mac (`ethanibennett@mac ~ %`)
+while the broken box was Windows; nothing changed and the second attempt looked like a
+repeat failure. Check the prompt, or check `hosts.yml`'s mtime.
 **Not every "messy" name is a defect.** `mtt-series-watcher`'s
 `src/normalize/event-name.ts` has a deliberate rule that a lone variant token
 drops the separator — `NLH Flight A` is correct, and `NLH - Flight A` would be
