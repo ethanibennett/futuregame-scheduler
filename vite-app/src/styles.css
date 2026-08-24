@@ -6661,9 +6661,29 @@
        find the number they came for - and the Net cell, the only one that is
        NOT interactive, looked exactly like the two that are. A size step plus
        a raised ground answers the question before it is read. */
+    /* The Results header mirrors these columns so the Reset button stays
+       right-aligned with the Total Buyins card. They were literals in two
+       places - the header inline in JSX, the grid here - and item 43 changed
+       this one from repeat(3, 1fr) without the header following, which left
+       Reset overhanging the card by 33px. One variable now. */
+    :root { --pl-cols: 1fr 1fr 1.25fr; }
+    .dash-results-header {
+      display: grid;
+      grid-template-columns: var(--pl-cols);
+      gap: var(--space-md);
+      align-items: center;
+    }
+    .dash-results-header > .dash-results-head-left {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-md);
+      min-width: 0;
+    }
+
     .dash-pl-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1.25fr;
+      grid-template-columns: var(--pl-cols);
       gap: var(--space-md);
       align-items: stretch;
     }

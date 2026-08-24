@@ -958,8 +958,8 @@ export default function DashboardView({
             below: title + Reset on the left (Reset right-aligned to the
             Total Buyins col), empty middle, currency dropdown flush
             right with the Net card. */}
-        <div className="dashboard-section-header" style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'8px'}}>
-          <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:'8px'}}>
+        <div className="dashboard-section-header dash-results-header">
+          <div className="dash-results-head-left">
             <div className="dashboard-section-title">Results</div>
             {plData.count > 0 && onResetResults && (
               resetConfirmOpen ? (
