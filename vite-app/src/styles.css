@@ -1038,7 +1038,14 @@
        ================================================================== */
     .schedule-date-break {
       position: sticky;
-      z-index: var(--z-raised);
+      /* MUST stay below .schedule-sticky-header and .gto-sticky-header, which
+         are z-index 6 — those are the section headers the day groups scroll
+         UNDER. This was inline zIndex 5 before the component existed; moving it
+         onto --z-raised (10) put the date breaks on top of the header, which
+         read as the header falling behind the scroll. The app-level --z-*
+         ladder is for portalled layers, not for this local three-step stack
+         (rows → date break → section header). */
+      z-index: 5;
       display: flex;
       align-items: baseline;
       gap: var(--space-xs);
@@ -1476,12 +1483,11 @@
       line-height: var(--lh-tight);
       letter-spacing: var(--track-display);
     }
-    .top-bar-title small {
-      font-size: var(--fs-xs);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
+    /* The season label stays lowercase — item 52 set it in caps to read as a
+       label rather than a truncated sentence, but the wordmark above it is
+       lowercase too, so "futurega.me / AUGUST-DECEMBER 2026" put the emphasis
+       on the wrong line. The existing rule further down already had it right. */
+
     /* Below 380px the iOS action group (absolutely centred at a fixed 126px)
        and the username chip fight over ~124px each. */
     @media (max-width: 380px) {
