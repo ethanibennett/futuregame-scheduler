@@ -340,7 +340,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       className={`condition-sat-item ${selectedSatId === t.id ? 'selected' : ''}`}
       onClick={() => setSelectedSatId(t.id)}
     >
-      <span style={{fontWeight:600,flexShrink:0}}>#{t.event_number}</span>
+      <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0}}>#{t.event_number}</span>
       <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
       <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'0.72rem'}}>${t.buyin}</span>
     </div>
@@ -350,7 +350,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
     width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer'
   };
   const sectionLabelStyle = {
-    fontSize: '0.82rem', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 600, color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px'
+    fontSize: '0.82rem', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px'
   };
 
   return (
@@ -376,7 +376,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
           {suggestedSatellites.length > 0 && (
             <>
-              <div style={{fontSize:'0.68rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+              <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
                 Related Satellites
               </div>
               <div className="condition-sat-list">
@@ -385,7 +385,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
             </>
           )}
 
-          <div style={{fontSize:'0.68rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+          <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
             {suggestedSatellites.length > 0 ? 'Or search any event' : 'Search for an event'}
           </div>
           <input
@@ -410,7 +410,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
       {profitEnabled && (
         <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-          <div style={{fontSize:'0.68rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+          <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
             Profit threshold ($)
           </div>
           <input
@@ -436,7 +436,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
         {bustEnabled && (
           <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-            <div style={{fontSize:'0.68rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+            <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
               I'll play this if I bust from:
             </div>
             <div className="condition-sat-list">
@@ -446,7 +446,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
                   className={`condition-sat-item ${selectedBustId === t.id ? 'selected' : ''}`}
                   onClick={() => setSelectedBustId(t.id === selectedBustId ? null : t.id)}
                 >
-                  <span style={{fontWeight:600,flexShrink:0,fontSize:'0.72rem',color:'var(--text-muted)'}}>{t.time}</span>
+                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'0.72rem',color:'var(--text-muted)'}}>{t.time}</span>
                   <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
                   <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'0.72rem'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
                 </div>
@@ -467,7 +467,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
         {bagEnabled && (
           <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-            <div style={{fontSize:'0.68rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+            <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
               I'll play this if I bag from:
             </div>
             <div className="condition-sat-list">
@@ -477,7 +477,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
                   className={`condition-sat-item ${selectedBagId === t.id ? 'selected' : ''}`}
                   onClick={() => setSelectedBagId(t.id === selectedBagId ? null : t.id)}
                 >
-                  <span style={{fontWeight:600,flexShrink:0,fontSize:'0.72rem',color:'var(--text-muted)'}}>#{t.event_number}</span>
+                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'0.72rem',color:'var(--text-muted)'}}>#{t.event_number}</span>
                   <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
                   <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'0.72rem'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
                 </div>
@@ -524,7 +524,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
       {conditions.length > 0 && (
         <button
-          style={{marginTop:'8px',background:'none',border:'none',color:'var(--accent2)',fontSize:'0.75rem',cursor:'pointer',padding:'4px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight:600}}
+          style={{marginTop:'8px',background:'none',border:'none',color:'var(--accent2)',fontSize:'0.75rem',cursor:'pointer',padding:'4px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}
           onClick={onRemove}
         >
           Remove All Conditions
@@ -970,7 +970,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                               toast.error(e.message);
                             }
                             setSaving(false);
-                          }} style={{flex:1, padding:'8px', borderRadius:'6px', border:'none', background:'var(--accent)', color:'#fff', fontWeight:600, fontSize:'0.83rem', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
+                          }} style={{flex:1, padding:'8px', borderRadius:'6px', border:'none', background:'var(--accent)', color:'#fff', fontWeight: 'var(--fw-bold)', fontSize:'0.83rem', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
                             {saving ? 'Saving\u2026' : 'Save'}
                           </button>
                           <button disabled={saving}

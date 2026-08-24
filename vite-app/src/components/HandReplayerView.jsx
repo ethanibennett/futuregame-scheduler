@@ -1176,7 +1176,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
               return (
                 <div key={pi} className="replayer-draw-player-block" style={{marginBottom:'6px',padding:'4px 0',borderBottom:'1px solid var(--border)'}}>
                   <div className="replayer-row" style={{marginBottom:'2px',alignItems:'center'}}>
-                    <span style={{fontSize:'0.65rem',color:'var(--text-muted)',minWidth:'55px',fontWeight:600}}>{p.name}{isPatText}</span>
+                    <span style={{fontSize:'0.65rem',color:'var(--text-muted)',minWidth:'55px',fontWeight: 'var(--fw-bold)'}}>{p.name}{isPatText}</span>
                     <div className="replayer-field" style={{flex:'0 0 45px'}}>
                       <label style={{fontSize:'0.55rem'}}>Discard</label>
                       <input type="number" min="0" max={gameCfg.heroCards || 5} value={draw ? draw.discarded : ''} onChange={e => updateDrawDiscard(currentStreetIdx, pi, e.target.value)} placeholder="0" />
@@ -1608,7 +1608,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             {!isOfc && <div className="replayer-field"><label>BB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}}))} /></div>}
             {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
           </div>
-          {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
+          {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
             return (
@@ -1999,7 +1999,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             <div key={o.idx} className="gto-phase-card" style={{marginTop:'6px', opacity: isComplete ? 0.6 : 1}}>
               <div className="replayer-section">
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
-                  <div><span className="replayer-player-pos" style={{marginRight:'6px'}}>{o.player.position}</span><span style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.8rem',fontWeight:600,color:'var(--text)'}}>{o.player.name}</span></div>
+                  <div><span className="replayer-player-pos" style={{marginRight:'6px'}}>{o.player.position}</span><span style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.8rem',fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{o.player.name}</span></div>
                   {isMucked ? <button className="gto-undo-btn" onClick={clearOppCards} style={{fontSize:'0.6rem'}}>Undo Muck</button> : isComplete ? <button className="gto-undo-btn" onClick={clearOppCards} style={{fontSize:'0.6rem'}}>Clear</button> : <button className="gto-undo-btn" onClick={setMuck} style={{fontSize:'0.6rem'}}>Muck</button>}
                 </div>
                 {isMucked ? <div style={{textAlign:'center',padding:'8px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.75rem',color:'var(--text-muted)',fontStyle:'italic'}}>Mucked</div> : (
@@ -2111,7 +2111,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     return (
                       <button key={pi} style={{
                         flex:'1 1 0',padding:'8px 14px',borderRadius:'6px',border:'1.5px solid',cursor:'pointer',
-                        fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.75rem',fontWeight:600,transition:'all 0.15s',
+                        fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.75rem',fontWeight: 'var(--fw-bold)',transition:'all 0.15s',
                         background: isWinner ? 'rgba(74,222,128,0.15)' : isSplit ? 'rgba(250,204,21,0.15)' : 'transparent',
                         borderColor: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--border)',
                         color: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--text-muted)',
@@ -3232,14 +3232,14 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   return (
     <div className="replayer-view">
       <div className="replayer-header">
-        <h2 style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.85rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-muted)'}}>Hand Replayer</h2>
+        <h2 style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.85rem',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-muted)'}}>Hand Replayer</h2>
       </div>
 
       {/* New hand creation */}
       <div className="replayer-section" style={{marginBottom:'12px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
           <div className="replayer-section-title">New Hand</div>
-          <span style={{fontSize:'0.7rem',color:'var(--accent2)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight:600}}>{variantDisplayName}</span>
+          <span style={{fontSize:'0.7rem',color:'var(--accent2)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}>{variantDisplayName}</span>
         </div>
         {/* Favorites row — above the full picker */}
         <div className="game-subheading">Favorites</div>

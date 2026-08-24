@@ -60,7 +60,7 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
 
         <p style={{textAlign:'center',marginTop:'20px',fontSize:'0.85rem',color:'var(--text-muted)'}}>
           <button onClick={onBack}
-            style={{color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight:'600',fontSize:'0.85rem'}}>
+            style={{color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight: 'var(--fw-bold)',fontSize:'0.85rem'}}>
             Back to Sign In
           </button>
         </p>

@@ -1267,7 +1267,7 @@ export default function App() {
         <div style={{background:'var(--accent)',color:'#000',padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'0.8rem',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
           <span>Guest mode -- your schedule won't be saved. Register to keep it!</span>
           <button onClick={() => { handleLogout(); setAuthView('register'); }}
-            style={{background:'rgba(0,0,0,0.2)',color:'#000',border:'none',borderRadius:'4px',padding:'4px 12px',cursor:'pointer',fontSize:'0.75rem',fontWeight:600,fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+            style={{background:'rgba(0,0,0,0.2)',color:'#000',border:'none',borderRadius:'4px',padding:'4px 12px',cursor:'pointer',fontSize:'0.75rem',fontWeight: 'var(--fw-bold)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
             Register
           </button>
         </div>
@@ -1435,7 +1435,7 @@ export default function App() {
                         unreachable — restored 2026-08-18. */}
                     {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
                       <button key={id} onClick={() => setHandsTool(id)}
-                        style={{padding:'4px 12px',borderRadius:12,fontFamily:'inherit',fontSize:'0.7rem',fontWeight:600,cursor:'pointer',
+                        style={{padding:'4px 12px',borderRadius:12,fontFamily:'inherit',fontSize:'0.7rem',fontWeight: 'var(--fw-bold)',cursor:'pointer',
                           border:'1px solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
                           background: handsTool === id ? 'var(--accent)' : 'transparent',
                           color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>

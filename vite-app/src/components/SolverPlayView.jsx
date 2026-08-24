@@ -24,7 +24,7 @@ function StrategyRow({ action, chosen }) {
       <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`,
         background: isChosen ? 'rgba(74,158,255,0.20)' : 'rgba(128,128,128,0.12)' }} />
       <span style={{ position: 'relative', display: 'flex', justifyContent: 'space-between',
-        fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
+        fontSize: '0.82rem', fontWeight: 'var(--fw-bold)', color: 'var(--text)' }}>
         <span>{isChosen ? '✓ ' : ''}{action.label}</span>
         <span style={{ color: isChosen ? 'var(--accent)' : 'var(--text-muted)' }}>{pct}%</span>
       </span>
@@ -136,7 +136,7 @@ export default function SolverPlayView() {
               border: '1px solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
               background: g.id === gameId ? 'var(--accent)' : 'transparent',
               color: g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
-              fontFamily: FONT, fontSize: '0.75rem', fontWeight: 600, opacity: g.trained ? 1 : 0.5 }}>
+              fontFamily: FONT, fontSize: '0.75rem', fontWeight: 'var(--fw-bold)', opacity: g.trained ? 1 : 0.5 }}>
             {g.name}{!g.trained && ' (untrained)'}
           </button>
         ))}

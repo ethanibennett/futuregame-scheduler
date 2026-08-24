@@ -334,7 +334,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
       const history = (stackHistory || []).filter(u => u.stack && Number(u.stack) > 0);
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#22c55e',fontWeight:600,fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.65rem',letterSpacing:'1px'}}>STACK GRAPH</div>
+          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.65rem',letterSpacing:'1px'}}>STACK GRAPH</div>
           <div className="tournament-name">{tournamentName}</div>
           <div className="stats-line">{history.length} update{history.length !== 1 ? 's' : ''} tracked</div>
         </div>
@@ -361,7 +361,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
             ] : [])
           ),
           results.length > 0 && results.map((r, ri) =>
-            React.createElement('div', { key: ri, style: { fontSize: '0.65rem', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 600, color: r.result.color === 'green' ? '#4ade80' : r.result.color === 'red' ? '#f87171' : '#facc15' } },
+            React.createElement('div', { key: ri, style: { fontSize: '0.65rem', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: r.result.color === 'green' ? '#4ade80' : r.result.color === 'red' ? '#f87171' : '#facc15' } },
               (results.length > 1 ? 'vs Opp ' + (r.index + 1) + ': ' : '') + r.result.text
             )
           )
@@ -388,7 +388,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
     if (overlayType === 'finaltable') {
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#f59e0b',fontWeight:600,fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.9rem'}}>🏆 FINAL TABLE</div>
+          <div style={{color:'#f59e0b',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.9rem'}}>🏆 FINAL TABLE</div>
           <div className="tournament-name">{tournament?.buyin ? '$' + Number(tournament.buyin).toLocaleString() + ' ' : ''}{tournamentName}</div>
           <div className="stats-line">
             {updateData.placesLeft ? updateData.placesLeft + ' remain' : ''}
@@ -401,7 +401,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
     if (overlayType === 'countdown') {
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#22c55e',fontWeight:600,fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.65rem',letterSpacing:'1px'}}>NEXT UP</div>
+          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.65rem',letterSpacing:'1px'}}>NEXT UP</div>
           <div className="tournament-name">{tournament?.buyin ? '$' + Number(tournament.buyin).toLocaleString() + ' ' : ''}{tournamentName}</div>
           <div className="stats-line">in {countdownText}</div>
         </div>

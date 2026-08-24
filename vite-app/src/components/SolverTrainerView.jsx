@@ -81,7 +81,7 @@ export default function SolverTrainerView() {
               border: '1px solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
               background: g.id === gameId ? 'var(--accent)' : 'transparent',
               color: g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
-              fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, opacity: g.trained ? 1 : 0.5,
+              fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 'var(--fw-bold)', opacity: g.trained ? 1 : 0.5,
             }}>
             {g.name}{!g.trained && ' (untrained)'}
           </button>
@@ -157,7 +157,7 @@ export default function SolverTrainerView() {
                       position: 'relative', overflow: 'hidden', textAlign: 'left',
                       padding: '10px 12px', borderRadius: 8, cursor: picked ? 'default' : 'pointer',
                       border: '1px solid ' + (isPick ? 'var(--accent)' : isBest ? '#22c55e' : 'var(--border)'),
-                      background: 'transparent', color: 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600,
+                      background: 'transparent', color: 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 'var(--fw-bold)',
                     }}>
                     {picked && (
                       <span style={{

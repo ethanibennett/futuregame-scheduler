@@ -71,7 +71,7 @@ export default function AdminView({ token, onNavigate }) {
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>;
 
-  const thStyle = {padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:600,fontSize:'0.7rem',textTransform:'uppercase',letterSpacing:'0.05em',cursor:'pointer',whiteSpace:'nowrap'};
+  const thStyle = {padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.7rem',textTransform:'uppercase',letterSpacing:'0.05em',cursor:'pointer',whiteSpace:'nowrap'};
 
   return (
     <div style={{padding:'16px',maxWidth:'100%'}}>
@@ -80,7 +80,7 @@ export default function AdminView({ token, onNavigate }) {
           ADMIN &mdash; {users.length} Users
         </h2>
         {onNavigate && (
-          <button onClick={() => onNavigate('hands')} style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:600,cursor:'pointer'}}>
+          <button onClick={() => onNavigate('hands')} style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
             Hand Replayer
           </button>
         )}
@@ -114,7 +114,7 @@ export default function AdminView({ token, onNavigate }) {
                       {(u.username || '?')[0].toUpperCase()}
                     </div>
                   )}
-                  <span style={{fontWeight:600,color:'var(--text)'}}>{u.username}</span>
+                  <span style={{fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{u.username}</span>
                 </td>
                 <td style={{padding:'8px',color:'var(--text-muted)'}}>{u.real_name || '\u2014'}</td>
                 <td style={{padding:'8px',color:'var(--text-muted)',fontSize:'0.75rem'}}>{u.email}</td>

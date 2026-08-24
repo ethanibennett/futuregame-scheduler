@@ -45,7 +45,7 @@ function TravelDayPicker({ onSave, onCancel }) {
 
   const TimeSelector = ({ hour, minute, amPm, onHour, onMinute, onAmPm, label }) => (
     <div>
-      <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight:600}}>{label}</div>
+      <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight: 'var(--fw-bold)'}}>{label}</div>
       <div style={{display:'flex', gap:'3px', alignItems:'center'}}>
         <select value={hour} onChange={e => onHour(Number(e.target.value))} style={selectStyle}>
           {hours.map(h => <option key={h} value={h}>{h}</option>)}
@@ -72,7 +72,7 @@ function TravelDayPicker({ onSave, onCancel }) {
         <span style={{fontWeight:700, fontSize:'0.88rem', color:'var(--text)'}}>Add Travel Day</span>
       </div>
       <div style={{marginBottom:'14px'}}>
-        <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight:600}}>Date</div>
+        <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginBottom:'4px', fontWeight: 'var(--fw-bold)'}}>Date</div>
         <input ref={dateRef} type="date" value={date} onChange={e => setDate(e.target.value)}
           // iOS WKWebView frequently fails to open the native date picker
           // for `<input type="date">` inside a fixed-position overlay. Force
@@ -328,7 +328,7 @@ export default function ScheduleView({
                 <span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>wants to share schedules</span>
               </span>
               <span style={{display:'flex',gap:'6px'}}>
-                <button className="btn btn-ghost btn-sm" style={{color:'#22c55e',padding:'4px 10px',fontWeight:600}} onClick={() => onAcceptRequest(req.id)}>Accept</button>
+                <button className="btn btn-ghost btn-sm" style={{color:'#22c55e',padding:'4px 10px',fontWeight: 'var(--fw-bold)'}} onClick={() => onAcceptRequest(req.id)}>Accept</button>
                 <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',padding:'4px 8px'}} onClick={() => onRejectRequest(req.id)}>Decline</button>
               </span>
             </div>

@@ -272,7 +272,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
             const pctR = (toIdx / totalDays) * 100;
             return (
               <div className="filter-group filter-row" style={{marginBottom:'6px'}}>
-                <label style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'6px',display:'block',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
+                <label style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'6px',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
                 <div style={{padding:'0 6px'}}>
                   <div className="date-slider-wrap">
                     <div className="date-slider-track" />
@@ -326,7 +326,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-              <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                 <input type="checkbox"
                   checked={!filters.hiddenVenues || filters.hiddenVenues.length === 0}
                   ref={el => { if (el) el.indeterminate = filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.length < availableVenues.length; }}
@@ -380,8 +380,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               const allRakeChecked = (filters.rakeRanges || []).length === 0;
               return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 12px'}}>
                 <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Buy-in</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Buy-in</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allBuyinChecked}
                       onChange={() => setFilters(f => ({...f, buyinRanges: [], minBuyin: '', maxBuyin: ''}))}
                       style={{marginTop:'1px',flexShrink:0}}
@@ -399,8 +399,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   ))}
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Rake</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Rake</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allRakeChecked}
                       onChange={() => setFilters(f => ({...f, rakeRanges: []}))}
                       style={{marginTop:'1px',flexShrink:0}}
@@ -433,7 +433,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 setFilters(f => ({...f, selectedGames: checked ? [...f.selectedGames, v] : f.selectedGames.filter(g => g !== v)}));
               };
               return (<div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={allSelected}
                     onChange={() => setFilters(f => ({...f, selectedGames:[]}))}
                     style={{marginTop:'1px'}}
@@ -460,7 +460,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   const needsTopGap = group.label === 'Draw' || group.label === 'Mixed';
                   return (
                     <div key={group.label} style={needsTopGap ? {marginTop:'6px'} : undefined}>
-                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:600,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                         <input type="checkbox" checked={groupChecked}
                           ref={el => { if (el) el.indeterminate = groupPartial; }}
                           onChange={e => {

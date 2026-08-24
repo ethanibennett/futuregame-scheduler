@@ -68,7 +68,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         <p style={{textAlign:'center',marginTop:'20px',fontSize:'0.85rem',color:'var(--text-muted)'}}>
           {isRegister ? 'Already have an account? ' : "Don't have an account? "}
           <button onClick={() => setIsRegister(r => !r)}
-            style={{color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight:'600',fontSize:'0.85rem'}}>
+            style={{color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight: 'var(--fw-bold)',fontSize:'0.85rem'}}>
             {isRegister ? 'Sign in' : 'Register'}
           </button>
         </p>

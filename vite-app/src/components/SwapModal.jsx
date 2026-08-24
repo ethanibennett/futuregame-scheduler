@@ -46,7 +46,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
           </div>
         </div>
         <div style={{background:'var(--surface2)',borderRadius:8,padding:'8px 12px',marginBottom:'12px',fontSize:'0.82rem'}}>
-          <div style={{color:'var(--text)',fontWeight:600}}>{tournament.event_name}</div>
+          <div style={{color:'var(--text)',fontWeight: 'var(--fw-bold)'}}>{tournament.event_name}</div>
           <div style={{color:'var(--text-muted)',fontSize:'0.72rem',marginTop:2}}>{tournament.date} · {tournament.time} · {formatBuyin(tournament.buyin, tournament.venue)}</div>
         </div>
         <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
@@ -55,7 +55,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
               flex:1,padding:'8px',borderRadius:8,border:'1px solid var(--border)',
               background: type === t ? 'var(--accent)' : 'var(--surface)',
               color: type === t ? 'var(--bg)' : 'var(--text)',
-              fontWeight:600,fontSize:'0.85rem',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',cursor:'pointer'
+              fontWeight: 'var(--fw-bold)',fontSize:'0.85rem',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',cursor:'pointer'
             }}>{t}</button>
           ))}
         </div>
@@ -66,7 +66,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <input type="number" min="1" max="100" value={myPct} onChange={e => setMyPct(e.target.value)}
                   style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
-                <span style={{color:'var(--text-muted)',fontWeight:600}}>%</span>
+                <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
             </div>
             <div style={{flex:1}}>
@@ -74,7 +74,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <input type="number" min="1" max="100" value={theirPct} onChange={e => setTheirPct(e.target.value)}
                   style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
-                <span style={{color:'var(--text-muted)',fontWeight:600}}>%</span>
+                <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <input type="number" min="1" max="100" value={cbPct} onChange={e => setCbPct(e.target.value)}
                   style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
-                <span style={{color:'var(--text-muted)',fontWeight:600}}>%</span>
+                <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
             </div>
             <div style={{flex:1}}>
@@ -93,7 +93,7 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <input type="number" min="0" value={cbCap} onChange={e => setCbCap(e.target.value)} placeholder={'\u2014'}
                   style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
-                <span style={{color:'var(--text-muted)',fontWeight:600}}>{currencySymbol(tournament.venue)}</span>
+                <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>{currencySymbol(tournament.venue)}</span>
               </div>
             </div>
           </div>
