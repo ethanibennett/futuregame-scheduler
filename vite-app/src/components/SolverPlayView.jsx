@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
+import StrategyRibbon from './StrategyRibbon.jsx';
 
 // ── CFR Solver Self-Play Viewer ─────────────────────────────
 // Deals a full hand and plays both seats from the trained strategy,
@@ -119,7 +120,7 @@ export default function SolverPlayView() {
       padding: '7px 12px', borderRadius: 8, fontFamily: FONT, fontSize: '0.78rem', fontWeight: 700,
       cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1,
       border: '1px solid ' + (primary ? 'var(--accent)' : 'var(--border)'),
-      background: primary ? 'var(--accent)' : 'transparent', color: primary ? '#fff' : 'var(--text)',
+      background: primary ? 'var(--brand)' : 'transparent', color: primary ? 'var(--on-brand)' : 'var(--text)',
     }}>{txt}</button>
   );
 
@@ -193,7 +194,8 @@ export default function SolverPlayView() {
                 {step.kind === 'draw' ? ' draw strategy' : ' betting strategy'}
                 {!step.trained && ' · (unvisited — uniform)'}
               </div>
-              {step.actions.map(a => <StrategyRow key={a.id} action={a} chosen={step.chosen} />)}
+              {/* One ribbon instead of a row per action: the mix now sums to 100% by construction. */}
+              <StrategyRibbon actions={step.actions.map(a => ({ id: a.id, label: a.label, prob: a.prob, ev: a.ev }))} chosen={step.chosen} best={step.best} showEv />
               {step.explain && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)',
                   fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>

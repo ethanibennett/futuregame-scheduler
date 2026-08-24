@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
+import StrategyRibbon from './StrategyRibbon.jsx';
 
 // ── MULTIWAY (3-player razz) TRAINER — MVP ────────────────────────────────────
 // Play a full 3-handed razz hand as the hero against TWO blueprint-profile seats,
@@ -194,8 +195,8 @@ export default function Multiway3TrainerView() {
               <button key={a.id} onClick={() => pickAction(a.id)} disabled={stepping}
                 style={{
                   padding: '8px 18px', borderRadius: 10, fontFamily: 'inherit', fontSize: '0.82rem',
-                  fontWeight: 700, cursor: stepping ? 'default' : 'pointer', color: '#fff',
-                  border: '1px solid var(--accent)', background: 'var(--accent)', opacity: stepping ? 0.5 : 1,
+                  fontWeight: 'var(--fw-bold)', cursor: stepping ? 'default' : 'pointer', color: 'var(--on-brand)',
+                  border: '1px solid var(--brand)', background: 'var(--brand)', opacity: stepping ? 0.5 : 1,
                 }}>
                 {a.label}
               </button>
@@ -433,28 +434,21 @@ function GradeCard3({ g, heroSeat }) {
 
       {/* profile action mix as frequency bars (the blueprint's mix, not a claim of perfect play) */}
       <div style={{ ...label, marginBottom: 4 }}>Profile action mix{mix.trained === false ? ' (untrained → uniform)' : ''}</div>
-      <div style={{ marginBottom: 8 }}>
-        {actions.map((a, i) => {
-          const p = probs[i] != null ? probs[i] : 0;
-          const ev = g.perActionEV && g.perActionEV[a] != null ? g.perActionEV[a] : null;
-          const isChosen = a === chose;
-          const isBest = a === best;
-          return (
-            <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-              <span style={{ fontSize: '0.66rem', width: 92, color: isChosen ? 'var(--text)' : 'var(--text-muted)', fontWeight: isChosen ? 700 : 400 }}>
-                {labels[i] || a}{isBest ? ' ★' : ''}
-              </span>
-              <div style={{ flex: 1, height: 9, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${Math.round(p * 100)}%`, height: '100%', background: isChosen ? 'var(--accent)' : 'var(--text-muted)' }} />
-              </div>
-              <span style={{ fontSize: '0.62rem', width: 34, textAlign: 'right', color: 'var(--text-muted)' }}>{Math.round(p * 100)}%</span>
-              <span style={{ fontSize: '0.62rem', width: 52, textAlign: 'right', color: ev == null ? 'var(--border)' : 'var(--text)' }}>
-                {ev == null ? '—' : `${ev >= 0 ? '+' : ''}${ev.toFixed(2)}`}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {/* One ribbon. This was the fifth hand-rolled rendering of a mix, and
+          the one that drew UNCHOSEN actions in the muted-text grey - the same
+          colour as the label beside them. perActionEV rides along as the
+          diverging strip, which is the number being graded. */}
+      <StrategyRibbon
+        actions={actions.map((a, i) => ({
+          id: a,
+          label: labels[i] || a,
+          prob: probs[i] != null ? probs[i] : 0,
+          ev: (g.perActionEV && g.perActionEV[a] != null) ? g.perActionEV[a] : undefined,
+        }))}
+        chosen={chose}
+        best={best}
+        showEv
+      />
 
       {/* verdict */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem' }}>

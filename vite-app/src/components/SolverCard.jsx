@@ -12,11 +12,9 @@ export default function SolverCard({ str, faceDown, dim, size = 'md', raised }) 
 
   if (faceDown || !str) {
     return (
-      <span style={{
-        display: 'inline-block', height: h, width: Math.round(h * 0.7),
-        borderRadius: Math.round(h * 0.09), margin: '0 1.5px', verticalAlign: 'middle', transform: raise,
-        background: 'repeating-linear-gradient(45deg, var(--accent), var(--accent) 4px, color-mix(in srgb, var(--accent) 60%, #000) 4px, color-mix(in srgb, var(--accent) 60%, #000) 8px)',
-        border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+      <span className="card-back" style={{
+        height: h, width: Math.round(h * 0.7),
+        margin: '0 1.5px', verticalAlign: 'middle', transform: raise,
       }} />
     );
   }

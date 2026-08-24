@@ -951,7 +951,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
               style={{
                 flex: '1 1 auto', minWidth: 140, padding: '11px 16px', borderRadius: 8,
                 cursor: drawDecision.stepping ? 'wait' : 'pointer', border: 'none',
-                background: 'var(--accent)', color: '#fff', fontFamily: 'inherit',
+                background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'inherit',
                 fontSize: '0.9rem', fontWeight: 700, opacity: drawDecision.stepping ? 0.6 : 1,
               }}>
               {throwCount === 0 ? 'Confirm — Stand Pat' : `Confirm Discard — Draw ${throwCount}`}

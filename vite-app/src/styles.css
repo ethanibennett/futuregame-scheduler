@@ -703,6 +703,179 @@
       z-index: var(--z-panel);
     }
 
+
+    /* --- Action scale -------------------------------------------------
+       The same five actions were coloured differently in two widgets that
+       sit ~200px apart on one screen. Only "call" agreed:
+
+         action   badge (felt)        timeline dot
+         fold     #ef4444 red         #6b7280 grey
+         check    #9ca3af grey        #22c55e GREEN
+         bet      #22c55e green       #f59e0b amber
+         raise    #22c55e green       #ef4444 RED
+         all-in   #eab308 gold        #a855f7 purple
+
+       So a red dot in the timeline meant raise while a red badge on the felt
+       meant fold - and scrubbing the timeline is the fastest read in the
+       replayer. One escalation-ordered scale, used by both.
+
+       Fold and check drop out of the red/green pair entirely: they are not
+       outcomes, and spending semantic colour on them is what forced raise
+       and bet to share a green. */
+    :root {
+      --act-fold:  #6b7280;
+      --act-check: #9ca3af;
+      --act-call:  #3b82f6;
+      --act-bet:   #f59e0b;
+      --act-raise: #ef4444;
+      --act-allin: #a855f7;
+    }
+
+
+    /* One card back. The replayer's is a navy woven back; the solver's - used
+       by every trainer - was a barber pole built from repeating-linear-gradient
+       on --accent, which in the dark theme means the trainers dealt SILVER
+       STRIPED cards. Face-down cards are half the pixels in a stud trainer, so
+       two backs on adjacent screens made the trainers look like a different
+       product. This also removes a color-mix() from a WKWebView path, which an
+       earlier pass had deliberately avoided on this surface. */
+    .card-back {
+      display: inline-block;
+      border-radius: var(--radius-xs);
+      background:
+        repeating-linear-gradient(45deg, transparent, transparent 2.5px, rgba(255,255,255,0.07) 2.5px, rgba(255,255,255,0.07) 3.5px),
+        repeating-linear-gradient(-45deg, transparent, transparent 2.5px, rgba(255,255,255,0.07) 2.5px, rgba(255,255,255,0.07) 3.5px),
+        linear-gradient(180deg, #243b5c 0%, #1a2744 40%, #152238 100%);
+      border: var(--bw-1) solid #3a5a8a;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,0.08), 0 1px 2px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .card-back::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 1px;
+    }
+
+
+    /* The deck is already four-colour - four distinct hues baked into 52 SVGs.
+       What it lacks is VALUE separation: every suit is darker than the felt's
+       dark stop, so a flop of Ks 9c 4d reads as three dark rectangles at replay
+       speed. This is the control the deck actually needed. */
+    .hc-deck .card-row img,
+    .hc-deck img.card-img {
+      filter: saturate(1.35) brightness(1.25);
+    }
+
+    /* The chip stack's own discs, matching the pot stack's clay treatment. */
+    .chip-disc {
+      --chip: currentColor;
+      background: linear-gradient(90deg,
+        var(--chip) 0 18%,
+        rgba(255,255,255,0.55) 18% 26%,
+        var(--chip) 26% 74%,
+        rgba(255,255,255,0.55) 74% 82%,
+        var(--chip) 82% 100%);
+      border-top: 1px solid rgba(255,255,255,0.45);
+      border-bottom: 1px solid rgba(0,0,0,0.5);
+      box-shadow: 0 1px 1px rgba(0,0,0,0.3);
+    }
+
+    /* A denominated flying chip builds its sphere from inset shadows rather
+       than a colour-mix gradient, so any flat denomination colour works - and
+       no color-mix() enters this WKWebView path. */
+    .replayer-flying-chip.denom {
+      width: 18px;
+      height: 18px;
+      background: var(--fly-color, #d4a420);
+      box-shadow:
+        inset 0 -2px 3px rgba(0,0,0,0.45),
+        inset 0 2px 2px rgba(255,255,255,0.35),
+        0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    /* The light strip finally reads the property it has always been handed. */
+    .replayer-light-strip {
+      border-color: var(--strip-color, rgba(255,255,255,0.4));
+    }
+
+
+    /* ==================================================================
+       Strategy ribbon. Frequency over actions is a part-to-whole, and five
+       separate bars asked the reader to sum them; a segmented track sums to
+       100% by construction. Segments carry the ACTION colour so the language
+       matches the felt and the timeline, and the sampled action gets an inset
+       ring rather than a recolour - the old bars recoloured the chosen action,
+       which is why a 30% action could look bigger than a 60% one.
+       ================================================================== */
+    .freq-ribbon { margin: var(--space-sm) 0 var(--space-lg); }
+    .freq-ribbon-track {
+      display: flex;
+      height: 24px;
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      background: var(--surface2);
+    }
+    .freq-seg {
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      transition: width var(--dur-slow) var(--ease-standard);
+    }
+    .freq-seg.is-chosen { box-shadow: inset 0 0 0 2px var(--brand); }
+    .freq-seg-pct {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      color: #fff;
+      font-variant-numeric: var(--num-tabular);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+    }
+
+    /* EV diverging from a centre line - the number the trainer is grading, and
+       the one thing none of the five old renderings showed spatially. */
+    .freq-ev {
+      position: relative;
+      height: 6px;
+      margin-top: var(--space-xs);
+      border-radius: var(--radius-pill);
+      background: var(--surface2);
+      overflow: hidden;
+    }
+    .freq-ev::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--text-muted);
+    }
+    .freq-ev-bar { position: absolute; top: 0; bottom: 0; }
+    .freq-ev-bar.pos { background: var(--ok); }
+    .freq-ev-bar.neg { background: var(--danger); }
+
+    .freq-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md) var(--space-lg);
+      margin-top: var(--space-sm);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .freq-legend-item { display: inline-flex; align-items: center; gap: var(--space-xs); }
+    .freq-legend-item i { width: 8px; height: 8px; border-radius: var(--radius-xs); display: inline-block; }
+    .freq-legend-item b { font-variant-numeric: var(--num-tabular); color: var(--text); }
+    /* The best action gets a tick under its swatch, so "best" and "sampled"
+       stay two separate marks instead of one overloaded colour. */
+    .freq-legend-item.is-best { color: var(--text); }
+    .freq-legend-item.is-best i { box-shadow: 0 3px 0 -1px var(--brand); }
+
     /* ==================================================================
        Date break. The pinned header used to sit on a flat --bg with no
        edge, no shadow and no scrim, while the rows scrolling under it are
@@ -1370,7 +1543,7 @@
     }
     .live-update-tabs button:last-child { border-right: none; }
     .live-update-tabs button.active {
-      background: var(--accent); color: #fff; font-weight: var(--fw-bold);
+      background: var(--brand); color: var(--on-brand); font-weight: var(--fw-bold);
     }
     @media (hover: hover) and (pointer: fine) {
       .live-update-tabs button:not(.active):hover {
@@ -1420,7 +1593,7 @@
     /* ── Card row ── */
     .card-row { display:flex; gap: var(--space-2xs); align-items:center; min-height:32px; flex-wrap:wrap; }
     .card-row.card-row-splay { gap:0; align-items:flex-end; position:relative; height:56px; min-width:60px; overflow:visible; }
-    .card-row img { height:28px; border-radius:2px; }
+    .card-row img { height:28px; border-radius:2px; box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30); }
     .card-row .card-unknown,
     .card-row .card-placeholder {
       width:20px; height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center;
@@ -2242,7 +2415,10 @@
       background: radial-gradient(ellipse 80% 70% at 50% 45%, #887aae, #342c4d);
       border-radius: var(--radius-pill);
       border: 1px solid rgba(0,0,0,0.15);
-      box-shadow: inset 0 4px 20px rgba(0,0,0,0.45);
+      /* The rail above is lit from the top-left; the felt beneath it was lit
+         from nowhere, which is why the composite still read as flat art with
+         lit stickers on it. The bottom cushion casts too now. */
+      box-shadow: inset 0 4px 20px rgba(0,0,0,0.45), inset 0 -2px 10px rgba(0,0,0,0.30);
       z-index: 1;
       cursor: pointer;
       overflow: hidden;   /* keeps the weave inside the pill */
@@ -2250,12 +2426,21 @@
     /* Woven texture. The felt was a single gradient, which reads as coloured plastic at any size;
        a fine crosshatch at very low opacity makes it cloth. Deliberately an overlay rather than
        part of the gradient, so the user's felt-colour setting keeps working underneath it. */
+    /* Specular pool + vignette, layered onto the existing overlay (already
+       pointer-events:none, so the felt-colour picker keeps working - the same
+       reasoning the weave used). The pool sits where the pot and board are,
+       matching the board cards' drop-shadow which already implies a light
+       directly overhead. The vignette is what makes the oval read as DISHED
+       rather than flat, and it does the heavy lifting in export, where the
+       table currently ends at a hard rail edge. */
     .replayer-table-felt::after {
       content: '';
       position: absolute;
       inset: 0;
       pointer-events: none;
       background-image:
+        radial-gradient(ellipse 55% 40% at 50% 22%, rgba(255,244,220,0.13), transparent 70%),
+        radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.30) 100%),
         repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.045) 2px, rgba(255,255,255,0.045) 3px),
         repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 3px);
     }
@@ -2264,12 +2449,29 @@
       border-color: #a595cf;
     }
 
+    /* The pot is the single number the whole frame is organised around, and
+       in the replayer it was bare text on cloth - while the solver self-play
+       view, built later on the same felt, had a proper plaque. Promoted here
+       and shared; a dark lozenge also gives it a ground independent of the
+       user's chosen felt colour, where white text was nearly invisible. */
     .replayer-pot-display {
       position:absolute; left:50%; top:35%; transform:translate(-50%,-50%);
       z-index:2; text-align:center; font-size: var(--fs-sm); font-weight: var(--fw-bold); color:#fff;
-      font-family: var(--font-condensed); text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      font-family: var(--font-condensed);
+      background: rgba(0,0,0,0.42);
+      border: 1px solid rgba(255,224,138,0.45);
+      border-radius: var(--radius-pill);
+      padding: var(--space-2xs) var(--space-xl);
+      backdrop-filter: blur(2px);
+      box-shadow: var(--elev-1);
+      white-space: nowrap;
     }
-    .replayer-pot-label { font-size: var(--fs-2xs); color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing: var(--track-caps); }
+    .replayer-pot-label {
+      font-size: var(--fs-2xs); color:rgba(255,255,255,0.75);
+      text-transform:uppercase; letter-spacing: var(--track-caps);
+      position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6); white-space: nowrap;
+    }
     .replayer-split-circles { display:flex; justify-content:center; align-items:center; }
     .replayer-split-circle {
       width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -2287,7 +2489,19 @@
     /* Board cards sit ON the felt. Without this they were the only cards with no shadow — hole
        cards already have one — so the board looked printed on while the hole cards floated.
        More vertical and softer than the hole-card shadow: light is overhead at the table centre. */
-    .replayer-board-area .card-row img { height:44px; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.5)); }
+    /* The faces are full-bleed saturated colour, not white stock: hearts
+       #6f0020, spades #231f20, clubs #005020, diamonds #005374 - all four
+       darker than the felt's dark stop. The only edge definition was a
+       drop-shadow, i.e. a DARK mark against a dark card, so the silhouette
+       dissolved into its own shadow and the spade had no outline at all.
+       Shadow separates a card from what is BEHIND it; a lit edge is what
+       gives it a body. Warmed on the board so the top light reads as
+       overhead tungsten rather than a stroke. */
+    .replayer-board-area .card-row img {
+      height:44px;
+      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.5));
+      box-shadow: 0 0 0 0.75px rgba(255,236,200,0.34);
+    }
     .replayer-board-area .card-row .card-unknown { width:30px; height:44px; }
     .replayer-board-area .card-row .card-placeholder { width:30px; height:44px; }
 
@@ -2337,7 +2551,11 @@
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(3) { z-index:3; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(4) { z-index:4; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(5) { z-index:5; }
-    .replayer-seat-cards .card-row img { height:44px; width:30px; filter:drop-shadow(-2px 1px 2px rgba(0,0,0,0.5)); }
+    .replayer-seat-cards .card-row img {
+      height:44px; width:30px;
+      filter:drop-shadow(-2px 1px 2px rgba(0,0,0,0.5));
+      box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30);
+    }
     .replayer-seat-cards .card-row .card-unknown { width:30px; height:44px; }
     .replayer-seat-cards .card-row .card-placeholder { width:30px; height:44px; }
 
@@ -2412,7 +2630,11 @@
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       color: #fff;
-      background: none;
+      /* This had `background: none; border-radius: 0` with the padding of the
+         lozenge it used to be left behind - and two of the five themes still
+         set a background on it, which is the tell. Wagers are the objects that
+         MOVE, and what arrived was a text label with a smudge behind it. */
+      background: radial-gradient(ellipse 120% 140% at 50% 0%, rgba(0,0,0,0.55), rgba(0,0,0,0.34));
       padding: var(--space-2xs) var(--space-sm);
       border-radius: 0;
       white-space: nowrap;
@@ -2429,8 +2651,13 @@
       top: 100%;
       transform: translateX(-50%);
       font-size: var(--fs-2xs); color:#eab308; font-family: var(--font-condensed);
-      background: var(--surface);
-      border: var(--bw-1) solid rgba(234,179,8,0.4);
+      /* The hand name at showdown is the payoff moment, and it was rendered in
+         event-card chrome - so in the light theme the winner's hand was a
+         white sticker on purple cloth. Same argument the felt pass made for
+         the plaques; this was the exception left standing, and the worst one,
+         because it is what the winner shimmer draws the eye to. */
+      background: linear-gradient(180deg, rgba(28,22,6,0.94), rgba(16,12,2,0.94));
+      border: 1px solid rgba(234,179,8,0.55);
       border-radius: var(--radius-sm);
       white-space: pre-line;
       text-align: center;
@@ -2508,12 +2735,12 @@
       font-weight: var(--fw-bold); line-height: 1; white-space: nowrap;
       pointer-events: none;
     }
-    .replayer-action-badge.action-fold, .replayer-action-badge-outer.action-fold { background: rgba(239,68,68,0.2); color: #ef4444; }
-    .replayer-action-badge.action-check, .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: #9ca3af; }
-    .replayer-action-badge.action-call, .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: #3b82f6; }
-    .replayer-action-badge.action-bet, .replayer-action-badge-outer.action-bet,
-    .replayer-action-badge.action-raise, .replayer-action-badge-outer.action-raise { background: rgba(34,197,94,0.2); color: #22c55e; }
-    .replayer-action-badge.action-allin, .replayer-action-badge-outer.action-allin { background: rgba(234,179,8,0.25); color: #eab308; }
+    .replayer-action-badge.action-fold, .replayer-action-badge-outer.action-fold { background: rgba(107,114,128,0.22); color: var(--act-fold); }
+    .replayer-action-badge.action-check, .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: var(--act-check); }
+    .replayer-action-badge.action-call, .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
+    .replayer-action-badge.action-bet, .replayer-action-badge-outer.action-bet { background: rgba(245,158,11,0.2); color: var(--act-bet); }
+    .replayer-action-badge.action-raise, .replayer-action-badge-outer.action-raise { background: rgba(239,68,68,0.2); color: var(--act-raise); }
+    .replayer-action-badge.action-allin, .replayer-action-badge-outer.action-allin { background: rgba(168,85,247,0.22); color: var(--act-allin); }
 
     /* Winner trophy star */
     .replayer-winner-star {
@@ -2812,12 +3039,12 @@
       .replayer-timeline-dot:hover { transform:scale(1.4); }
     }
     .replayer-timeline-dot.current { border-color:#fff; transform:scale(1.3); }
-    .replayer-timeline-dot.action-fold { background:#6b7280; }
-    .replayer-timeline-dot.action-check { background:#22c55e; }
-    .replayer-timeline-dot.action-call { background:#3b82f6; }
-    .replayer-timeline-dot.action-bet { background:#f59e0b; }
-    .replayer-timeline-dot.action-raise { background:#ef4444; }
-    .replayer-timeline-dot.action-allin { background:#a855f7; }
+    .replayer-timeline-dot.action-fold { background: var(--act-fold); }
+    .replayer-timeline-dot.action-check { background: var(--act-check); }
+    .replayer-timeline-dot.action-call { background: var(--act-call); }
+    .replayer-timeline-dot.action-bet { background: var(--act-bet); }
+    .replayer-timeline-dot.action-raise { background: var(--act-raise); }
+    .replayer-timeline-dot.action-allin { background: var(--act-allin); }
     .replayer-timeline-dot.street-marker {
       width:2px; height:14px; border-radius:1px; background:var(--border); cursor:default;
     }
@@ -2923,10 +3150,12 @@
       font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase;
       letter-spacing: var(--track-tight); padding: 0 var(--space-2xs); flex-shrink:0; opacity:0.7;
     }
-    .replayer-timeline-dot.street-preflop { background:#9ca3af; }
-    .replayer-timeline-dot.street-flop { background:#22c55e; }
-    .replayer-timeline-dot.street-turn { background:#3b82f6; }
-    .replayer-timeline-dot.street-river { background:#ef4444; }
+    /* Streets are a SEQUENCE, so they read as value steps of one neutral -
+       four more hues in the same strip collided with the action scale above. */
+    .replayer-timeline-dot.street-preflop { background: rgba(255,255,255,0.28); }
+    .replayer-timeline-dot.street-flop    { background: rgba(255,255,255,0.45); }
+    .replayer-timeline-dot.street-turn    { background: rgba(255,255,255,0.62); }
+    .replayer-timeline-dot.street-river   { background: rgba(255,255,255,0.80); }
     .replayer-timeline-dot.street-preflop.current,
     .replayer-timeline-dot.street-flop.current,
     .replayer-timeline-dot.street-turn.current,
@@ -3097,9 +3326,12 @@
     /* ── Player stats overlay ── */
     .replayer-player-stats {
       position:absolute; top:-2px; right:-2px;
-      font-size: var(--fs-2xs); font-family: var(--font-condensed); color:var(--text-muted);
-      background:var(--surface2); padding: var(--nudge-1) var(--space-xs); border-radius:3px;
-      border:1px solid var(--border); white-space:nowrap; z-index:5;
+      font-size: var(--fs-2xs); font-family: var(--font-condensed);
+      /* An engraved sub-line on the plaque, not a UI chip pinned to it. */
+      color: rgba(255,255,255,0.62);
+      background: rgba(10,8,14,0.8); padding: var(--nudge-1) var(--space-xs);
+      border-radius: var(--radius-xs);
+      border: 1px solid rgba(255,255,255,0.12); white-space:nowrap; z-index:5;
     }
 
     /* ── Pot chip stacks visual ── */
@@ -3107,10 +3339,25 @@
       display:flex; gap: var(--space-xs); justify-content:center; align-items:flex-end;
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column-reverse; align-items:center; }
+    /* Chip stacks are the most poker-specific graphic in the product and
+       rendered as flat coloured ellipses - a stack of Tic Tacs. Edge spots are
+       the single detail that says "clay", they cost six gradient stops, and
+       unlike a bevel they are hard edges that survive both the GIF's 256-colour
+       quantisation and the video downscale. The old 0.5px border did neither:
+       it does not exist at 1x. */
     .replayer-pot-chip-disc {
-      width:14px; height:5px; border-radius:50%;
-      border: var(--bw-hair) solid rgba(255,255,255,0.35);
-      margin-top:-3px; box-shadow:0 1px 1px rgba(0,0,0,0.3);
+      width:14px; height:7px; border-radius:50%;
+      --chip: currentColor;
+      background: linear-gradient(90deg,
+        var(--chip) 0 18%,
+        rgba(255,255,255,0.55) 18% 26%,
+        var(--chip) 26% 74%,
+        rgba(255,255,255,0.55) 74% 82%,
+        var(--chip) 82% 100%);
+      border: 0;
+      border-top: 1px solid rgba(255,255,255,0.45);
+      border-bottom: 1px solid rgba(0,0,0,0.5);
+      margin-top:-4px; box-shadow:0 1px 1px rgba(0,0,0,0.3);
     }
     .replayer-pot-chip-disc:first-child { margin-top:0; }
 
@@ -7604,9 +7851,14 @@
     }
     /* Seats reuse .replayer-seat / .replayer-seat-info / .card-row from the replayer */
     .solver-rseat { z-index: 3; }
-    .solver-rseat.active-turn .replayer-seat-info {
-      box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 55%, transparent), 0 2px 6px rgba(0,0,0,0.25);
-    }
+    /* Deleted rule, kept as a note: this set box-shadow wholesale on the
+       acting seat, which REPLACES --plaque-bevel rather than layering on it -
+       the exact defect the felt pass fixed and documented. It also won on
+       specificity over .replayer-seat.active-turn, so the one plaque in the
+       app that flickered its bevel was the one on the screen whose whole job
+       is showing a seat acting. The shared rule already does this correctly;
+       if self-play ever needs to differ, LAYER it:
+         box-shadow: var(--plaque-bevel), 0 0 0 2px var(--accent-ring), ...  */
     .solver-toact { color: var(--accent); }
     .solver-contrib { color: var(--accent2, #eab308); font-weight: var(--fw-bold); }
     .solver-deadstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xl); margin: 0 0 var(--space-lg); }

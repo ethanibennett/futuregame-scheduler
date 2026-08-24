@@ -756,7 +756,7 @@ export default function SocialView({
         {hasBuddies && (
           <button
             className="dashboard-section-badge"
-            style={{cursor:'pointer',background:'var(--accent)',color:'#fff',border:'none',borderRadius:12,padding:'2px 10px',fontSize:12,fontWeight:700}}
+            style={{cursor:'pointer',background:'var(--brand)',color:'var(--on-brand)',border:'none',borderRadius:12,padding:'2px 10px',fontSize:12,fontWeight:700}}
             onClick={() => setShowCreateGroup(true)}
           >+ New</button>
         )}
