@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import TableScanner from './TableScanner.jsx';
@@ -743,6 +744,27 @@ export default function DashboardView({
   }, [trackingData, tournaments, dashCurrency, dashRates]);
 
   const [plDropdown, setPlDropdown] = useState(null);
+  // The trigger's rect, captured on click, so the panel can be rendered at
+  // the document root instead of inside .dashboard-view's overflow:hidden.
+  const [plRect, setPlRect] = useState(null);
+  const togglePl = (key) => (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setPlRect({ left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width });
+    setPlDropdown(d => (d === key ? null : key));
+  };
+  // Anchored panel, flipped above the trigger when it would run off the bottom.
+  const plPanelStyle = () => {
+    if (!plRect) return { position: 'fixed' };
+    const openAbove = plRect.top > window.innerHeight / 2;
+    return {
+      position: 'fixed',
+      left: Math.min(Math.max(8, plRect.left + plRect.width / 2 - 110), window.innerWidth - 228),
+      transform: 'none',
+      ...(openAbove
+        ? { bottom: window.innerHeight - plRect.top + 4 }
+        : { top: plRect.bottom + 4 }),
+    };
+  };
 
   // Friends currently playing
   const activeFriends = useMemo(() => {
@@ -833,7 +855,7 @@ export default function DashboardView({
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              style={{overflow:'hidden', touchAction:'pan-y'}}
+              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 12px 12px', margin:'0 -12px -12px'}}
             >
               <div
                 className="dash-carousel-track"
@@ -853,7 +875,7 @@ export default function DashboardView({
               {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
                 <div className="dash-upnext-dots">
                   {whatsNextEvents.map((_, i) => (
-                    <div key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} style={{cursor:'pointer'}} />
+                    <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
                   ))}
                 </div>
               )}
@@ -903,7 +925,7 @@ export default function DashboardView({
               const stack = lu?.stack ? Number(lu.stack).toLocaleString() : null;
               const blinds = lu?.bb ? `${lu.sb ? Number(lu.sb).toLocaleString() : '?'}/${Number(lu.bb).toLocaleString()}${(lu.bbAnte || lu.bb_ante) ? '/' + Number(lu.bbAnte || lu.bb_ante).toLocaleString() : ''}` : null;
               return (
-                <div key={f.id} className="dash-friend-chip" onClick={() => onNavigate('social')}>
+                <button type="button" key={f.id} className="dash-friend-chip" onClick={() => onNavigate('social')}>
                   <Avatar src={f.avatar} username={f.username} size={28} />
                   <div className="friend-info">
                     <div className="friend-name">{displayName(f)}</div>
@@ -914,7 +936,7 @@ export default function DashboardView({
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -987,11 +1009,11 @@ export default function DashboardView({
           <>
           <div className="dash-pl-grid">
             {(() => { const fmtPl = (v) => formatCurrencyAmount(v, dashCurrency === 'NATIVE' ? 'USD' : dashCurrency); return (<>
-            <div className="dash-pl-card dash-pl-btn" onClick={() => setPlDropdown(d => d === 'buyins' ? null : 'buyins')}>
+            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}>
               <div className="dash-pl-value">{fmtPl(plData.invested)}</div>
               <div className="dash-pl-label">Total Buyins &#9662;</div>
-              {plDropdown === 'buyins' && (
-                <div className="dash-pl-dropdown">
+              {plDropdown === 'buyins' && createPortal(
+                <div className="dash-pl-dropdown portalled" style={plPanelStyle()} onClick={e => e.stopPropagation()}>
                   {Object.entries(plData.byVenue)
                     .filter(([, v]) => v.invested > 0)
                     .sort((a, b) => b[1].invested - a[1].invested)
@@ -1002,14 +1024,15 @@ export default function DashboardView({
                       </div>
                     ))
                   }
-                </div>
+                </div>,
+                document.body
               )}
-            </div>
-            <div className="dash-pl-card dash-pl-btn" onClick={() => setPlDropdown(d => d === 'cashes' ? null : 'cashes')}>
+            </button>
+            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}>
               <div className="dash-pl-value">{fmtPl(plData.cashed)}</div>
               <div className="dash-pl-label">Cashes &#9662;</div>
-              {plDropdown === 'cashes' && (
-                <div className="dash-pl-dropdown">
+              {plDropdown === 'cashes' && createPortal(
+                <div className="dash-pl-dropdown portalled" style={plPanelStyle()} onClick={e => e.stopPropagation()}>
                   {Object.entries(plData.byVenue)
                     .filter(([, v]) => v.cashed > 0)
                     .sort((a, b) => b[1].cashed - a[1].cashed)
@@ -1020,15 +1043,19 @@ export default function DashboardView({
                       </div>
                     ))
                   }
-                </div>
+                </div>,
+                document.body
               )}
-            </div>
-            <div className="dash-pl-card">
+            </button>
+            <div className="dash-pl-card dash-pl-card--net">
               <div className={`dash-pl-value ${plData.net >= 0 ? 'positive' : 'negative'}`}>
                 {plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
               </div>
               <div className="dash-pl-label">
-                Net — {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
+                Net
+                <span className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
+                  {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
+                </span>
               </div>
             </div>
             </>); })()}
@@ -1070,9 +1097,22 @@ export default function DashboardView({
                 <span className="conn-name">{displayName(f)}</span>
                 {connDropdownId === f.id && (() => {
                   const rect = connDropdownRef.current?.getBoundingClientRect();
-                  const openAbove = rect && rect.top > window.innerHeight / 2;
-                  return (
-                    <div className={'dash-conn-dropdown ' + (openAbove ? 'above' : 'below')} onClick={e => e.stopPropagation()}>
+                  if (!rect) return null;
+                  const openAbove = rect.top > window.innerHeight / 2;
+                  // Anchored to the trigger's rect and rendered at the document
+                  // root, so no ancestor's overflow can clip it. left is clamped
+                  // rather than centred with a transform, which keeps the panel
+                  // on screen for the first and last avatar in the row.
+                  const pos = {
+                    position: 'fixed',
+                    left: Math.min(Math.max(8, rect.left + rect.width / 2 - 100), window.innerWidth - 212),
+                    transform: 'none',
+                    ...(openAbove
+                      ? { bottom: window.innerHeight - rect.top + 4 }
+                      : { top: rect.bottom + 4 }),
+                  };
+                  return createPortal(
+                    <div className="dash-conn-dropdown portalled" style={pos} onClick={e => e.stopPropagation()}>
                       <div className="dash-conn-dropdown-name">{displayName(f)}</div>
                       {f.isPlaying && f.liveUpdate && (
                         <>
@@ -1095,7 +1135,8 @@ export default function DashboardView({
                       {!f.isPlaying && (!f.todayEvents || f.todayEvents.length === 0) && (
                         <div className="dash-conn-dropdown-event" style={{color:'var(--text-muted)'}}>No events today</div>
                       )}
-                    </div>
+                    </div>,
+                    document.body
                   );
                 })()}
               </button>

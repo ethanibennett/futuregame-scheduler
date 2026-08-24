@@ -28,12 +28,21 @@ export default function MilestoneCelebration({ milestone, onShare, onDismiss }) 
         <div className="milestone-title">{milestone.title}</div>
         <div className="milestone-desc">{milestone.description}</div>
         {milestone.value && (
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#22c55e', fontFamily: "'Univers Condensed','Univers',sans-serif", marginBottom: '16px' }}>
+          <div style={{
+            // was green regardless of sign, on a component that fires for
+            // break-even as well as first-profit
+            fontSize: 'var(--fs-2xl)',
+            fontWeight: 'var(--fw-bold)',
+            color: String(milestone.value).trim().startsWith('-') ? 'var(--danger)' : 'var(--ok)',
+            fontFamily: 'var(--font-condensed)',
+            fontVariantNumeric: 'var(--num-tabular)',
+            marginBottom: 'var(--space-xl)',
+          }}>
             {milestone.value}
           </div>
         )}
         <div className="milestone-actions">
-          <button className="btn btn-primary btn-sm" onClick={handleShare}>Share</button>
+          <button className="btn btn-primary btn-brand btn-sm" onClick={handleShare}>Share</button>
           <button className="btn btn-ghost btn-sm" onClick={onDismiss}>Dismiss</button>
         </div>
       </div>

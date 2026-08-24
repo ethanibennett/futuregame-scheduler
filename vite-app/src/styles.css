@@ -604,6 +604,105 @@
       box-shadow: var(--focus-ring-inset);
     }
 
+
+    @keyframes milestoneIn {
+      from { opacity: 0; transform: scale(0.92) translateY(8px); }
+    }
+    .milestone-modal-backdrop { backdrop-filter: blur(6px); }
+
+
+    /* The carousel dot was a 6x6px target with a click handler, which is why
+       the carousel is swipe-only in practice. The visible size is unchanged -
+       the target grows behind it, so nothing in the design moves. */
+    .dash-upnext-dot {
+      position: relative;
+      background: var(--border);
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+    .dash-upnext-dot::after {
+      content: '';
+      position: absolute;
+      inset: -19px;
+      border-radius: var(--radius-circle);
+    }
+    .dash-upnext-dot.active { background: var(--brand); }
+    /* ...so the expanded targets cannot overlap each other. */
+    .dash-upnext-dots { gap: var(--space-md); }
+
+    .dash-friend-chip {
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .dash-undo-x::after,
+    .dash-unbag-x::after,
+    .top-bar-actions .btn-icon::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+    }
+    .dash-undo-x, .dash-unbag-x, .top-bar-actions .btn-icon { position: relative; }
+
+
+    /* Skeleton geometry that predicts the real card, so hand-off does not
+       reflow. The container is a real surface: only the children shimmer, and
+       they are staggered, because a block that pulses in phase reads as one
+       object loading rather than four. */
+    .skeleton-hero-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--elev-1);
+      overflow: hidden;
+    }
+    .skeleton-hero-body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      padding: var(--space-ml) var(--space-xl) var(--space-lg);
+    }
+    .skeleton-hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-md);
+      margin: var(--space-xs) 0;
+    }
+    .skeleton-hero-stats > * { height: 26px; }
+    .skeleton-pl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.25fr;
+      gap: var(--space-md);
+    }
+
+
+    /* Opt-in brand fill. .btn-primary itself is --accent grey until item 89
+       moves it deliberately; this lets the celebration modal lead. */
+    .btn.btn-brand {
+      background: var(--brand);
+      color: var(--on-brand);
+      border: 1px solid var(--brand);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn.btn-brand:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+    }
+
+
+    /* Portalled to document.body, so the anchor comes from the trigger's rect
+       and the absolute-positioning rules above must not fight it. */
+    .dash-conn-dropdown.portalled,
+    .dash-pl-dropdown.portalled {
+      position: fixed;
+      left: auto;
+      right: auto;
+      transform: none;
+      z-index: var(--z-panel);
+    }
+
     /* ==================================================================
        Date break. The pinned header used to sit on a flat --bg with no
        edge, no shadow and no scrim, while the rows scrolling under it are
@@ -1035,13 +1134,28 @@
       flex-direction: column;
     }
 
+    /* The splash sets this wordmark at 1.6rem/-0.02em; the bar set it at
+       15.2px/-0.05em, tight enough at that size to close the gap between the
+       "a" and the ".", so pre-login and post-login were different typographic
+       objects. --track-display is -0.02em, matching the splash. */
     .top-bar-title h1 {
-      font-family: var(--serif);
-      font-size: var(--fs-md);
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
       font-weight: var(--fw-bold);
       color: var(--text);
-      line-height: 1.2;
+      line-height: var(--lh-tight);
       letter-spacing: var(--track-display);
+    }
+    .top-bar-title small {
+      font-size: var(--fs-xs);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    /* Below 380px the iOS action group (absolutely centred at a fixed 126px)
+       and the username chip fight over ~124px each. */
+    @media (max-width: 380px) {
+      .username-chip span { display: none; }
     }
 
     .top-bar-title small {
@@ -3074,8 +3188,15 @@
     }
 
     /* ── Bottom tab bar ── */
+    /* The safe-area inset was folded into the HEIGHT but never reserved as
+       padding, so on a 34px-inset iPhone the tabs stretched across all 64px
+       and centring put the label around y=17..47 - inside the home-indicator
+       zone that starts at y=30. The iOS padding-top override existed only to
+       compensate for that, and pushed them further down. */
     .bottom-nav {
-      height: var(--nav-h);
+      height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+      min-height: 44px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
       /* Mirrors the header: deepest at the very bottom of the screen, settling to --surface where
          the content meets it. --nav-h already includes safe-area-inset-bottom, so unlike the
          header this one does reach the screen edge on its own. */
@@ -3094,9 +3215,7 @@
          would otherwise flatten the nav back out on iOS only. */
       background: linear-gradient(to top, var(--surface2), var(--surface));
     }
-    html[data-platform="ios"] .nav-tab {
-      padding-top: var(--space-ml);
-    }
+    /* Deleted: this compensated for the mis-centring fixed above. */
     /* iOS: spread top-bar action icons horizontally across the Dynamic Island's width.
        Absolutely-centered means the user chip (a separate sibling) keeps its normal
        far-right placement undisturbed. */
@@ -3131,9 +3250,25 @@
       text-transform: none;
     }
 
-    .nav-tab.active { color: var(--accent); }
+    /* Inactive #808080 vs active #a0a0a0 reads 3.9:1 and 5.4:1 against the
+       background but only about 1.4:1 against EACH OTHER - which is the number
+       that matters for "which tab am I on". Gold is the one hue the token doc
+       guarantees cannot be misread as a venue stripe. */
+    .nav-tab.active { color: var(--brand); }
+    .nav-tab { position: relative; }
+    .nav-tab.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 22%;
+      right: 22%;
+      height: 2px;
+      border-radius: var(--radius-pill);
+      background: var(--brand);
+    }
 
-    .nav-tab svg { width: 20px; height: 20px; stroke-width: 1.8; }
+    .nav-tab svg { width: var(--icon-lg); height: var(--icon-lg); stroke-width: var(--icon-stroke); }
+    .nav-tab.active svg { stroke-width: 2.2; }
 
     .nav-tab-center {
       flex: 1.3;
@@ -5146,9 +5281,14 @@
       letter-spacing: var(--track-caps);
     }
 
-    .late-reg-label.open   { color: #b0b0b0; }
-    .late-reg-label.soon   { color: #909090; }
-    .late-reg-label.urgent { color: #707070; }
+    /* The ramp used to run open #b0b0b0 -> soon #909090 -> urgent #707070:
+       greyscale, and DESCENDING, so the more urgent the state the harder it
+       was to read - #707070 on --surface is about 3.1:1, failing AA on the one
+       line that has a job. It climbs now, and weight carries a second signal
+       using the only two tiers the family actually has. */
+    .late-reg-label.open   { color: var(--text-muted); }
+    .late-reg-label.soon   { color: var(--warn); }
+    .late-reg-label.urgent { color: var(--danger); font-weight: var(--fw-bold); }
     .late-reg-label.closed { color: var(--text-muted); }
     .late-reg-label.pending { color: var(--text-muted); }
     .late-reg-time.pending  { color: var(--text-muted); }
@@ -5159,9 +5299,9 @@
       font-weight: var(--fw-bold);
     }
 
-    .late-reg-time.open   { color: #b0b0b0; }
-    .late-reg-time.soon   { color: #909090; }
-    .late-reg-time.urgent { color: #707070; }
+    .late-reg-time.open   { color: var(--text-muted); }
+    .late-reg-time.soon   { color: var(--warn); }
+    .late-reg-time.urgent { color: var(--danger); }
     .late-reg-time.closed { color: var(--text-muted); }
 
     .late-reg-bar-bg {
@@ -5179,11 +5319,11 @@
       transition: width 1s linear;
     }
 
-    .late-reg-bar-fill.open   { background: #b0b0b0; }
-    .late-reg-bar-fill.soon   { background: #909090; }
-    .late-reg-bar-fill.urgent { background: #707070; }
+    .late-reg-bar-fill.open   { background: var(--text-muted); }
+    .late-reg-bar-fill.soon   { background: var(--warn); }
+    .late-reg-bar-fill.urgent { background: var(--danger); }
     .late-reg-bar-fill.closed { background: var(--border); width: 0% !important; }
-    .late-reg-bar-fill.critical { background: #c0392b; animation: regPulse 1.2s ease-in-out infinite; }
+    .late-reg-bar-fill.critical { background: var(--danger); animation: regPulse 1.2s var(--ease-standard) infinite; }
 
     @keyframes regPulse {
       0%, 100% { opacity: 1; }
@@ -5199,6 +5339,24 @@
       justify-content: flex-start;
       margin-top: -2px;
     }
+    /* DashboardView renders .mini-late-reg-label and the stylesheet defined
+       .mini-late-reg, -time, -track and -fill - but never -label, and none of
+       the status modifiers. So the text inherited from body: 16px at
+       line-height 1.5 in full --text, inside a card whose other meta text is
+       11.5px muted. That is what every busted card showed. */
+    .mini-late-reg-label {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .mini-late-reg-label.soon   { color: var(--warn); }
+    .mini-late-reg-label.urgent { color: var(--danger); }
+    .mini-late-reg-label.closed { opacity: 0.6; }
+
     .mini-late-reg-time {
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
@@ -5716,9 +5874,9 @@
       gap: var(--space-md);
       width: 100%;
       padding: var(--space-md) var(--space-xl);
-      border: 1px solid var(--accent);
+      border: 1px solid var(--ok);
       border-radius: var(--radius-sm);
-      background: rgba(160,160,160,0.08);
+      background: var(--ok-bg);
       color: var(--accent);
       font-family: var(--font-condensed);
       font-size: var(--fs-sm);
@@ -5727,15 +5885,32 @@
       letter-spacing: var(--track-caps);
     }
 
+    /* The single most important state the dashboard reports was rendered in
+       #a0a0a0 grey while the Bag / Bust / Update buttons beside it carried
+       saturation - a glance did not answer "am I in a tournament right now?".
+
+       The pulse is a ring that expands away from a solid core, not the core
+       itself fading to 0.3. A dimming light reads as something switching off;
+       a ring reads as something broadcasting. */
     .dash-playing-dot {
       width: 8px;
       height: 8px;
       border-radius: var(--radius-circle);
-      background: var(--accent);
-      animation: playingPulse 1.5s ease-in-out infinite;
+      background: var(--ok);
+      box-shadow: 0 0 0 0 var(--ok);
+      animation: playingPulse 1.8s var(--ease-out) infinite;
     }
 
     @keyframes playingPulse {
+      from { box-shadow: 0 0 0 0 var(--ok-line); }
+      to   { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+    }
+    /* Reduced motion keeps the ring, static, so the live signal survives. */
+    @media (prefers-reduced-motion: reduce) {
+      .dash-playing-dot { box-shadow: 0 0 0 3px var(--ok-bg); }
+    }
+
+    @keyframes playingPulseLegacy {
       0%, 100% { opacity: 1; }
       50% { opacity: var(--state-disabled); }
     }
@@ -5921,19 +6096,48 @@
     .dash-unbag-x:active { opacity: 1; transform: scale(0.9); }
 
     /* P&L Widget */
+    /* Three identical 1fr cells meant the reader had to parse all three to
+       find the number they came for - and the Net cell, the only one that is
+       NOT interactive, looked exactly like the two that are. A size step plus
+       a raised ground answers the question before it is read. */
     .dash-pl-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr 1.25fr;
       gap: var(--space-md);
+      align-items: stretch;
     }
 
     .dash-pl-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: var(--space-sm) var(--space-md);
+      padding: var(--space-md) var(--space-lg);
       text-align: center;
+      /* these are <button> now, so undo the UA defaults */
+      font: inherit;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: var(--space-2xs);
     }
+    .dash-pl-btn { cursor: pointer; position: relative; }
+
+    .dash-pl-card--net {
+      background: var(--surface-raised);
+      border-color: var(--border-strong);
+    }
+    .dash-pl-card--net .dash-pl-value { font-size: var(--fs-xl); }
+    .dash-pl-card:not(.dash-pl-card--net) .dash-pl-value { font-size: var(--fs-md); }
+    /* "Net — +12.4% ROI" was one 9.3px string doing two jobs. */
+    .dash-pl-roi {
+      display: block;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      letter-spacing: var(--track-caps);
+    }
+    .dash-pl-roi.pos { color: var(--ok); }
+    .dash-pl-roi.neg { color: var(--danger); }
 
     .dash-pl-value {
       font-family: var(--font-condensed);
@@ -6845,12 +7049,16 @@
       inset: 0;
       z-index: var(--z-scrim);
     }
+    /* .app-shell applies padding-top: env(safe-area-inset-top), so the
+       header's real bottom edge is inset + --header-h. Positioning at a flat
+       64px opened this 47px too high on an iPhone 14 - over the header it is
+       anchored to - and over-reported max-height by the same amount. */
     .notif-panel {
       position: fixed;
-      top: calc(var(--header-h, 60px) + 4px);
-      right: 12px;
+      top: calc(env(safe-area-inset-top, 0px) + var(--header-h, 60px) + var(--space-xs));
+      right: max(var(--space-lg), env(safe-area-inset-right, 0px));
       width: min(360px, calc(100vw - 24px));
-      max-height: calc(100vh - var(--header-h, 60px) - 20px);
+      max-height: calc(100vh - env(safe-area-inset-top, 0px) - var(--header-h, 60px) - var(--nav-h) - var(--space-xl));
       overflow-y: auto;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -7119,9 +7327,15 @@
       background: rgba(0,0,0,0.7);
       display: flex; align-items: center; justify-content: center;
     }
+    /* #fbbf24 is not --brand and had no light-theme override, so on a light
+       ground the title sat at about 1.9:1. Two golds in one app is a system
+       with no owner. And the app's most celebratory moment simply appeared,
+       while the notifications panel next door gets a slide-down. */
     .milestone-modal {
       background: var(--surface);
-      border: 2px solid #fbbf24;
+      box-shadow: var(--elev-3);
+      animation: milestoneIn var(--dur-base) var(--ease-out) both;
+      border: 2px solid var(--brand);
       border-radius: var(--radius);
       padding: var(--space-3xl) var(--space-3xl);
       max-width: 340px; width: 90%;
