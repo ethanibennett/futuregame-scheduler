@@ -56,11 +56,14 @@
 <body>
   <div id="splash" style="position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity 0.4s ease-out;">
     <img src="/splash-icon.svg" alt="" style="width:80px;height:80px;margin-bottom:20px;" />
-    <!-- -0.05em matches --track-wordmark. This is the only wordmark that cannot
-         read the token (it paints before the stylesheet), so the two have to be
-         kept in step by hand — they disagreed until now, and the wordmark
-         visibly re-tracked at the moment the splash cross-faded into the app. -->
-    <h1 style="font-family:'Libre Baskerville',Georgia,serif;font-size:1.6rem;color:var(--text);letter-spacing:-0.05em;margin:0;">futurega.me</h1>
+    <!-- -0.05em matches --track-wordmark, and the stack mirrors --serif. This is
+         the only wordmark that can read neither (it paints before the stylesheet
+         loads), so both have to be kept in step by hand. They disagreed until
+         now: the wordmark visibly re-tracked at the moment the splash
+         cross-faded into the app, and with the CDN unreachable the FIRST frame
+         fell to Georgia while every screen after it degraded to a real
+         Baskerville. -->
+    <h1 style="font-family:'Libre Baskerville','Baskerville MT Std',Georgia,serif;font-size:1.6rem;color:var(--text);letter-spacing:-0.05em;margin:0;">futurega.me</h1>
     <p id="splash-season" style="font-family:'Univers Condensed','Univers',sans-serif;font-size:0.8rem;color:var(--text-muted);margin-top:4px;">spring/summer 2026</p>
   </div>
   <script>
