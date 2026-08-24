@@ -196,6 +196,10 @@
       --track-caps:    0.08em;
       --track-tight:   0.01em;
       --track-display: -0.02em;
+      /* The wordmark sets tighter than the rest of the display type. This is
+         the setting it has always used; at -0.02em it reads as a different
+         face at these sizes, which is what it was mistaken for. */
+      --track-wordmark: -0.05em;
 
       /* Digits that change, or stack vertically, must not shuffle. */
       --num-tabular: tabular-nums lining-nums;
@@ -1479,11 +1483,11 @@
        objects. --track-display is -0.02em, matching the splash. */
     .top-bar-title h1 {
       font-family: var(--font-display);
-      font-size: var(--fs-lg);
+      font-size: var(--fs-md);
       font-weight: var(--fw-bold);
       color: var(--text);
       line-height: var(--lh-tight);
-      letter-spacing: var(--track-display);
+      letter-spacing: var(--track-wordmark);
     }
     /* The season label stays lowercase — item 52 set it in caps to read as a
        label rather than a truncated sentence, but the wordmark above it is
@@ -3712,7 +3716,7 @@
       margin-bottom: var(--space-3xl);
     }
 
-    .auth-logo h1 { font-family: var(--serif); font-size: var(--fs-2xl); font-weight: var(--fw-bold); color: var(--text); margin-bottom: var(--space-xs); letter-spacing: var(--track-display); }
+    .auth-logo h1 { font-family: var(--serif); font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--text); margin-bottom: var(--space-xs); letter-spacing: var(--track-wordmark); }
     .auth-logo p { font-size: var(--fs-sm); color: var(--text-muted); }
 
     .form-field { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-xl); }
@@ -4011,7 +4015,7 @@
       font-size: var(--fs-lg);
       color: var(--text);
       margin-bottom: var(--space-xs);
-      letter-spacing: var(--track-display);
+      letter-spacing: var(--track-wordmark);
     }
 
     /* ── Search & filters ── */
