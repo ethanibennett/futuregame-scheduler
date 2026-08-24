@@ -48,7 +48,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       position:'fixed', top: rect.bottom + 4, left: rect.left,
       zIndex:999, background:'var(--surface)', border:'1px solid var(--border)',
       borderRadius:'var(--radius)', padding:'6px 0', minWidth:'240px', maxWidth:'320px',
-      boxShadow:'0 8px 24px rgba(0,0,0,0.3)',
+      boxShadow:'var(--elev-2)',
     }}>
       <div style={{padding:'6px 10px 8px'}}>
         <div style={{display:'flex',gap:'6px',alignItems:'center',marginBottom:'6px'}}>
@@ -73,9 +73,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
               <button key={i} onClick={() => selectGeoResult(r)} style={{
                 display:'block',width:'100%',padding:'6px 4px',background:'none',border:'none',
                 color:'var(--text)',fontSize:'0.78rem',cursor:'pointer',textAlign:'left',borderRadius:'4px',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              }}>
                 {r.short || r.display}
               </button>
             ))}
@@ -103,7 +101,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         }
       }} style={{
         display:'flex',alignItems:'center',gap:'8px',width:'100%',
-        padding:'8px 14px',background:'none',border:'none',
+        padding:'var(--space-lg) var(--space-xl)',background:'none',border:'none',
         color: (filters.userLocation && !filters.locationRegion) ? 'var(--accent)' : 'var(--text)',
         fontWeight: (filters.userLocation && !filters.locationRegion) ? 700 : 400,
         fontSize:'0.85rem',cursor:'pointer',textAlign:'left',
@@ -119,7 +117,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           onClose();
         }} style={{
           display:'flex',alignItems:'center',gap:'8px',width:'100%',
-          padding:'8px 14px',background:'none',border:'none',
+          padding:'var(--space-lg) var(--space-xl)',background:'none',border:'none',
           color: filters.locationRegion === key ? 'var(--accent)' : 'var(--text)',
           fontWeight: filters.locationRegion === key ? 700 : 400,
           fontSize:'0.85rem',cursor:'pointer',textAlign:'left',
@@ -136,7 +134,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
             setFilters(f => ({...f, locationRegion: null, userLocation: null, maxDistance: '', locationLabel: null}));
             onClose();
           }} style={{
-            display:'block',width:'100%',padding:'8px 14px',
+            display:'block',width:'100%',padding:'var(--space-lg) var(--space-xl)',
             background:'none',border:'none',color:'var(--text-muted)',
             fontSize:'0.8rem',cursor:'pointer',textAlign:'left',
           }}>

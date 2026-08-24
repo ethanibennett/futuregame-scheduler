@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
-  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, getVariantColor, isBraceletEvent, isRingEvent,
+  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, getVariantColor, isBraceletEvent, isRingEvent,
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
   getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
   extractConditions, formatConditionLabel, formatConditionBadge,
@@ -606,10 +606,14 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
         onClick={() => setOpen(o => !o)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
       <div className="cal-event-row-content" style={isInSchedule ? {borderColor: conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
-        <div className="cal-event-bar" onClick={() => setOpen(o => !o)}>
+        <div className="cal-event-bar" onClick={() => setOpen(o => !o)} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}>
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'8px'}}>
               <span className="cal-event-name" style={{fontSize:'0.88rem'}}>
@@ -625,15 +629,24 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
-                <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
+                <span className="cal-event-money">
+                  <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
+                  {Number(tournament.guarantee) > 0 && (
+                    <span className="cal-event-gtd">{formatGuarantee(tournament.guarantee, tournament.venue)}</span>
+                  )}
+                </span>
               </div>
               <div className="cal-bar-row2">
                 <span className="cal-event-name">{formatEventName(tournament.event_name)}</span>
-                {isBounty && !isSat && <span className="cal-bounty-icon"><Icon.crosshairs /></span>}
-                {isSat && <span className="cal-bounty-icon"><Icon.satellite /></span>}
-                {isRestart && <span className="cal-bounty-icon"><Icon.restart /></span>}
-                {bracelet && <span className="cal-bracelet-icon"><Icon.bracelet /></span>}
-                {ringEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
+                {(isBounty || isSat || isRestart || bracelet || ringEvent) && (
+                  <span className="cal-accolades">
+                    {isBounty && !isSat && <span className="cal-bounty-icon"><Icon.crosshairs /></span>}
+                    {isSat && <span className="cal-bounty-icon"><Icon.satellite /></span>}
+                    {isRestart && <span className="cal-bounty-icon"><Icon.restart /></span>}
+                    {bracelet && <span className="cal-bracelet-icon"><Icon.bracelet /></span>}
+                    {ringEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
+                  </span>
+                )}
               </div>
               {showMiniLateReg && !open && <MiniLateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
             </>
@@ -696,10 +709,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   <div className="cal-detail-badges">
                     <div className="cal-badges-left">
                       {tournament.event_number && (
-                        <span className="badge badge-event" style={{background: stripColor, color: stripTextColor}}>#{tournament.event_number.replace(/^[A-Za-z]+-/, '')}</span>
+                        <span className="cal-meta-line">#{tournament.event_number.replace(/^[A-Za-z]+-/, '')}</span>
                       )}
                       {tournament.game_variant && getGamePills(tournament.game_variant, tournament.event_name).map((g, i) => (
-                        <span key={i} className="badge badge-variant">{g}</span>
+                        <span key={i} className="cal-meta-line">{g}</span>
                       ))}
                     </div>
                     <div className="cal-badges-right">
@@ -1108,10 +1121,10 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
-        onClick={onExpand}
+        onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span></div>
       <div className="cal-event-row-content" style={isInSchedule ? {borderColor: hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
-        <div className="cal-event-bar" onClick={onExpand}>
+        <div className="cal-event-bar" onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}>
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'8px'}}>
               <span className="cal-event-name" style={{fontSize:'0.88rem'}}>
@@ -1127,20 +1140,29 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
-                <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
+                <span className="cal-event-money">
+                  <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
+                  {Number(tournament.guarantee) > 0 && (
+                    <span className="cal-event-gtd">{formatGuarantee(tournament.guarantee, tournament.venue)}</span>
+                  )}
+                </span>
               </div>
               <div className="cal-bar-row2">
                 <span className="cal-event-name">{formatEventName(tournament.event_name)}</span>
-                {isBounty && !isSat && <span className="cal-bounty-icon"><Icon.crosshairs /></span>}
-                {isSat && <span className="cal-bounty-icon"><Icon.satellite /></span>}
-                {isRestart && <span className="cal-bounty-icon"><Icon.restart /></span>}
-                {bracelet && <span className="cal-bracelet-icon"><Icon.bracelet /></span>}
-                {ringEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
+                {(isBounty || isSat || isRestart || bracelet || ringEvent) && (
+                  <span className="cal-accolades">
+                    {isBounty && !isSat && <span className="cal-bounty-icon"><Icon.crosshairs /></span>}
+                    {isSat && <span className="cal-bounty-icon"><Icon.satellite /></span>}
+                    {isRestart && <span className="cal-bounty-icon"><Icon.restart /></span>}
+                    {bracelet && <span className="cal-bracelet-icon"><Icon.bracelet /></span>}
+                    {ringEvent && <span className="cal-ring-icon"><Icon.ring /></span>}
+                  </span>
+                )}
               </div>
             </>
           )}
         </div>
-        <div className="cal-event-chevron" onClick={onExpand}>
+        <div className="cal-event-chevron" onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>

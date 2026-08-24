@@ -563,6 +563,18 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
 export default function CalendarView({ allTournaments, mySchedule, onToggle, gameVariants, venues, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, buddyLiveUpdates, onOpenScheduleView }) {
   const allDates = useMemo(() => buildAllDates(allTournaments), [allTournaments]);
+  // Per-day event counts for the strip's density mark.
+  const dateCounts = React.useMemo(() => {
+    const m = {};
+    for (const t of (allTournaments || [])) {
+      const d = normaliseDate(t.date);
+      if (d) m[d] = (m[d] || 0) + 1;
+    }
+    return m;
+  }, [allTournaments]);
+  const maxDateCount = React.useMemo(
+    () => Object.values(dateCounts).reduce((a, b) => Math.max(a, b), 0) || 1,
+    [dateCounts]);
   const today = getToday();
   const defaultDate = allDates.includes(today) ? today : allDates[0] || today;
   const [selectedDate, setSelectedDate] = useState(defaultDate);
@@ -963,6 +975,9 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
             event in their schedule on this date, the button border
             takes the venue brand color of the priority event (or, if
             no priority is set, the first chronological event). */}
+        {/* One pass for the per-day counts, off the same list the strip
+            already walks - this is the information the control was missing. */}
+        {null}
         <div className="cal-date-strip">
           {allDates.map(d => {
             const dObj = new Date(d + 'T12:00:00');
@@ -971,19 +986,22 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
             const venueColor = myEvent
               ? getVenueBrandColor(getVenueInfo(myEvent.venue).abbr)
               : null;
-            const style = venueColor
-              ? { borderColor: venueColor, borderWidth: '2px' }
-              : undefined;
+            // The user's-event signal moves off the border so the active
+            // state's own border stays unambiguous - the two used to compete.
+            const density = dateCounts[d] ? Math.min(1, dateCounts[d] / maxDateCount) : 0;
             return (
               <button
                 key={d}
                 ref={isSel ? activeDateRef : null}
                 className={`cal-date-btn ${isSel ? 'active' : ''} ${myEvent ? 'has-mine' : ''}`}
                 onClick={() => setSelectedDate(d)}
-                style={style}
               >
+                {venueColor && <span className="cal-date-mine" style={{background: venueColor}} aria-hidden="true" />}
                 <span className="dow">{DOW[dObj.getDay()]}</span>
                 <span className="dom">{dObj.getDate()}</span>
+                <span className="cal-date-density" aria-hidden="true">
+                  <span style={{width: `${Math.round(density * 100)}%`}} />
+                </span>
               </button>
             );
           })}

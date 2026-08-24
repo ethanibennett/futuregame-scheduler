@@ -184,14 +184,18 @@ export default function ScheduleExportModal({ events, onClose }) {
                 {venueList.map(([abbr, info]) => (
                   <label
                     key={abbr}
-                    style={{ fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: info.color, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    style={{ fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-condensed)', fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     <input
                       type="checkbox"
                       checked={selectedVenues.has(abbr)}
                       onChange={() => toggleVenue(abbr)}
-                      style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--brand)', cursor: 'pointer' }}
                     />
+                    {/* Venue colour as a bar, never as type. These hexes were
+                        chosen to sit BEHIND white strip text, so used as a text
+                        colour on --surface five of them measured under 1.5:1. */}
+                    <span aria-hidden="true" style={{ width: '3px', alignSelf: 'stretch', minHeight: '14px', borderRadius: 'var(--radius-pill)', background: info.color, flex: 'none' }} />
                     {info.longName}
                   </label>
                 ))}

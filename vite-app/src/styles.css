@@ -3,7 +3,7 @@
       font-family: 'Univers';
       src: url('/fonts/univers-light.woff2') format('woff2'),
            url('/fonts/univers-light.ttf') format('truetype');
-      font-weight: var(--fw-light);
+      font-weight: 300;
       font-style: normal;
       font-display: swap;
     }
@@ -11,7 +11,7 @@
       font-family: 'Univers';
       src: url('/fonts/univers-regular.woff2') format('woff2'),
            url('/fonts/univers-regular.ttf') format('truetype');
-      font-weight: var(--fw-regular);
+      font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
@@ -19,7 +19,7 @@
       font-family: 'Univers';
       src: url('/fonts/univers-bold.woff2') format('woff2'),
            url('/fonts/univers-bold.ttf') format('truetype');
-      font-weight: var(--fw-bold);
+      font-weight: 700;
       font-style: normal;
       font-display: swap;
     }
@@ -27,7 +27,7 @@
       font-family: 'Univers Condensed';
       src: url('/fonts/univers-condensed.woff2') format('woff2'),
            url('/fonts/univers-condensed.ttf') format('truetype');
-      font-weight: var(--fw-regular);
+      font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
@@ -35,7 +35,7 @@
       font-family: 'Univers Condensed';
       src: url('/fonts/univers-bold-condensed.woff2') format('woff2'),
            url('/fonts/univers-bold-condensed.ttf') format('truetype');
-      font-weight: var(--fw-bold);
+      font-weight: 700;
       font-style: normal;
       font-display: swap;
     }
@@ -503,6 +503,105 @@
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
+    }
+
+
+    /* The region rows implemented hover in JavaScript, writing to
+       style.background - which cannot answer :focus-visible and leaves the
+       style attribute dirty afterwards. */
+    .location-dropdown-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      width: 100%;
+      padding: var(--space-lg) var(--space-xl);
+      font-size: var(--fs-sm);
+      background: none;
+      border: 0;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .location-dropdown-row:hover { background: var(--hover-overlay); }
+    }
+    .location-dropdown-row:active { background: var(--surface2); }
+    .location-dropdown-row .check { margin-left: auto; color: var(--brand); --icon-size: var(--icon-sm); display: inline-flex; }
+
+
+    /* The money column. The guarantee sits under the buy-in rather than in a
+       badge, because it is a fact about the event and not a scored value. */
+    .cal-event-money {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: var(--lh-tight);
+    }
+    .cal-event-gtd {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      color: var(--text-muted);
+      letter-spacing: var(--track-tight);
+      margin-top: var(--space-2xs);
+    }
+
+    /* Event number and game variants were grey pills, distinguishable from
+       each other only by 3% of background alpha - four of them diluting the
+       one badge in the row that carries meaning (the rake grade). As a
+       typographic meta line they stop competing with it. */
+    .cal-meta-line {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-regular);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .cal-meta-line + .cal-meta-line::before {
+      content: '\00b7';
+      margin: 0 var(--space-sm);
+      opacity: 0.7;
+    }
+
+
+    /* The strip is the navigation control for the whole calendar tab and
+       carried one bit of information: whether the user had an event that day,
+       encoded in a border that competed with the active state's own border. */
+    .cal-date-btn { position: relative; }
+    .cal-date-mine {
+      position: absolute;
+      top: var(--space-xs);
+      left: var(--space-xs);
+      width: 5px;
+      height: 5px;
+      border-radius: var(--radius-circle);
+    }
+    .cal-date-density {
+      display: block;
+      width: 60%;
+      height: 2px;
+      margin-top: var(--space-xs);
+      border-radius: var(--radius-pill);
+      background: var(--border);
+      overflow: hidden;
+    }
+    .cal-date-density > span {
+      display: block;
+      height: 100%;
+      background: var(--text-muted);
+      border-radius: inherit;
+    }
+    .cal-date-btn.active .cal-date-density { background: var(--ov-black-2); }
+    .cal-date-btn.active .cal-date-density > span { background: var(--on-brand); }
+
+
+    /* .cal-event-row is overflow:hidden, so an outline on the strip or the bar
+       is clipped away. --focus-ring-inset exists for exactly this. */
+    .cal-venue-strip:focus-visible,
+    .cal-event-bar:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring-inset);
     }
 
     /* ==================================================================

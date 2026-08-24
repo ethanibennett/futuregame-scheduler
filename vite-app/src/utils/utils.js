@@ -450,6 +450,22 @@ export function getVenueBrandColor(abbr) {
 
 // ── Bracelet Event Detection ──────────────────────────────
 export const NON_BRACELET_KEYWORDS = ['satellite', 'mega sat', 'super sat', 'qualifier', 'freeroll', 'charity', 'side event'];
+// The guarantee is the number a player uses first to decide whether an event is
+// worth entering, and the PDF export has always printed it - but it appeared
+// nowhere on the surface whose entire purpose is choosing tournaments, while
+// House Fee and Staff Fee each had a full cell in the detail grid.
+export function formatGuarantee(v, venue) {
+  const n = Number(v);
+  if (!n || !isFinite(n)) return '';
+  const sym = typeof currencySymbol === 'function' ? currencySymbol(venue) : '$';
+  const abbr = n >= 1000000
+    ? (n % 1000000 === 0 ? `${n / 1000000}M` : `${(n / 1000000).toFixed(1)}M`)
+    : n >= 1000
+      ? (n % 1000 === 0 ? `${n / 1000}K` : `${(n / 1000).toFixed(1)}K`)
+      : String(n);
+  return `${sym}${abbr} GTD`;
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;
