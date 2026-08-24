@@ -377,9 +377,16 @@
       --dur-slow:    480ms;
       --dur-amble:   800ms;
       --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
-      --ease-standard: var(--ease-standard);
-      --ease-emphatic: var(--ease-emphatic);
-      --ease-spring:   var(--ease-spring);
+      /* These three must hold LITERALS. The sweep that moved call sites onto
+         these tokens matched the bezier strings globally, and these definitions
+         contained those very strings — so each token was rewritten to point at
+         itself. A self-referential custom property is invalid at computed-value
+         time, which invalidates every declaration consuming it, so all 24 sites
+         (the replayer's board deal, chip flight, winner bounce, street label,
+         the date-button bounce) silently resolved to `animation: none`. */
+      --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-emphatic: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-spring:   cubic-bezier(0.18, 1.8, 0.35, 1);
       --ease-linear:   linear;
 
       /* --- State ---------------------------------------------------------
@@ -1515,7 +1522,7 @@
 
     [data-serif="univers"] {
       --serif: 'Univers', 'Helvetica Neue', Arial, sans-serif;
-    }
+    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -5346,7 +5353,7 @@
     [data-serif="univers"] .cal-event-name {
       font-family: 'Univers', sans-serif;
       font-weight: var(--fw-bold);
-    }
+    }
 
     .cal-event-buyin {
       font-family: var(--serif);
