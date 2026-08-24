@@ -3616,6 +3616,7 @@ app.get('/api/tournaments', authenticateToken, (req, res) => {
     }
     stmt.free();
     
+    attachOverrideFields(tournaments);
     res.json(tournaments);
   } catch (error) {
     console.error(error);
@@ -3902,6 +3903,7 @@ app.get('/api/my-schedule', authenticateToken, (req, res) => {
     }
     stmt.free();
     
+    attachOverrideFields(tournaments);
     res.json(tournaments);
   } catch (error) {
     console.error(error);
@@ -9110,12 +9112,12 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
     const updates = [];
     const values = [];
     const changedFields = {};
-    const problems = [];
+    const problems = [];   // [{ field, message }] — keyed so the editor can mark the input
     for (const [key, val] of Object.entries(req.body)) {
       if (allowedFields.includes(key)) {
         const normalized = val === '' ? null : val;
         const problem = validateAdminEdit(key, normalized);
-        if (problem) { problems.push(problem); continue; }
+        if (problem) { problems.push({ field: key, message: problem }); continue; }
         updates.push(`${key} = ?`);
         values.push(normalized);
         changedFields[key] = normalized;
@@ -9141,21 +9143,38 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
           error: `${keyEdits.join(' and ')} cannot be changed on a feed-managed event — ` +
                  'it is how the watcher identifies this row. Correct it upstream in mtt-series-watcher.',
           fields: keyEdits,
+          fieldErrors: Object.fromEntries(
+            keyEdits.map((f) => [f, `${f} is set by the feed and cannot be changed here`])
+          ),
         });
       }
     }
 
-    if (problems.length) return res.status(400).json({ error: problems.join('; '), fields: problems });
+    // One shape for both failure modes — `error` is the sentence, `fields` the offending keys,
+    // `fieldErrors` the key→message map. `fields` previously returned MESSAGES despite its name,
+    // which made it useless for highlighting an input; nothing consumed it, so this is safe.
+    if (problems.length) {
+      return res.status(400).json({
+        error: problems.map((p) => p.message).join('; '),
+        fields: problems.map((p) => p.field),
+        fieldErrors: Object.fromEntries(problems.map((p) => [p.field, p.message])),
+      });
+    }
     if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     values.push(id);
     db.run(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`, values);
     if (db.getRowsModified() === 0) return res.status(404).json({ error: 'Tournament not found' });
 
-    // Record the correction so it survives the next upsert. Only for fields the feed actually
-    // overwrites — recording anything else would pin a value nothing was going to change.
+    // Record the correction so it survives the next upsert — but ONLY for feed-owned rows.
+    //
+    // Recording on a local row looked harmless and is not: applyAdminOverrides has no source_pdf
+    // filter, so a pinned value is re-written on every ingest. Local rows are still touched by
+    // upsertTournamentsByStableId (PDF re-upload, /api/tournaments/sync) — 428 of the 649 non-feed
+    // rows carry a stable_id — so an override there would silently revert a LEGITIMATE later
+    // correction, which is the exact bug this whole feature exists to fix, pointed the wrong way.
     const key = overrideKeyFor(target);
     let recorded = 0;
-    for (const [field, val] of Object.entries(changedFields)) {
+    for (const [field, val] of Object.entries(feedOwned ? changedFields : {})) {
       if (!OVERRIDABLE_FIELDS.includes(field)) continue;
       db.run(
         `INSERT INTO admin_overrides (target_key, field, value, updated_by, updated_at)
@@ -9174,6 +9193,7 @@ app.put('/api/tournaments/:id', authenticateToken, requireRegistered, async (req
     let updated = null;
     if (stmt.step()) updated = stmt.getAsObject();
     stmt.free();
+    if (updated) attachOverrideFields([updated]);
     broadcastToAll('tournament-changed', { id, fields: changedFields });
     res.json(updated);
   } catch (error) {
@@ -9523,6 +9543,43 @@ const OVERRIDABLE_FIELDS = [
 
 function overrideKeyFor(row) {
   return row && row.stable_id ? row.stable_id : `id:${row && row.id}`;
+}
+
+// Tag rows the admin has corrected, so the editor can say so. Without this the client has no way
+// to know an override exists: admin_overrides is written by the PUT and read only by
+// applyAdminOverrides, and no payload has ever carried a marker.
+//
+// Sparse on purpose — a row with no overrides gains no key at all, so this costs nothing on the
+// 2,600-row list while the table is empty. Field NAMES only: no value, no updated_by, no
+// updated_at. One scan of admin_overrides per request, not one per row.
+//
+// Wrapped in try/catch like applyAdminOverrides: this runs inside the app's hottest endpoint, and
+// an unguarded throw here would 500 the schedule for every user, not just admins.
+function attachOverrideFields(rows) {
+  try {
+    if (!Array.isArray(rows) || !rows.length) return rows;
+    const stmt = db.prepare('SELECT target_key, field FROM admin_overrides');
+    const byKey = new Map();
+    while (stmt.step()) {
+      const r = stmt.getAsObject();
+      // Same guard as applyAdminOverrides — a field that is no longer overridable is not applied,
+      // so it must not be advertised either.
+      if (!OVERRIDABLE_FIELDS.includes(r.field)) continue;
+      const list = byKey.get(r.target_key);
+      if (list) list.push(r.field);
+      else byKey.set(r.target_key, [r.field]);
+    }
+    stmt.free();
+    if (!byKey.size) return rows;
+    for (const row of rows) {
+      const fields = byKey.get(overrideKeyFor(row));
+      if (fields) row.overridden_fields = fields;
+    }
+    return rows;
+  } catch (e) {
+    console.log('[overrides] tagging skipped:', e.message);
+    return rows;
+  }
 }
 
 // Re-apply every recorded override. Called at the end of ingestMttFeed() rather than from its call

@@ -534,7 +534,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
   );
 }
 
-function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, buddyLiveUpdates, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onNavigateToEvent, initialOpen }) {
+function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, buddyLiveUpdates, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, onNavigateToEvent, initialOpen }) {
   // Support both conditions array (legacy) and conditionsJson string (memo-friendly)
   const conditions = conditionsProp || React.useMemo(() => {
     if (!conditionsJson) return [];
@@ -548,6 +548,11 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState({});
   const [saving, setSaving] = useState(false);
+  // Per-field messages from a rejected save (400/409), plus a form-level one for errors the server
+  // could not attribute to a field (403, network).
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState('');
+  const [clearing, setClearing] = useState(false);
   const toast = useToast();
   const displayName = useDisplayName();
   const rowRef = useRef(null);
@@ -825,24 +830,57 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   {/* Admin edit panel */}
                   {isAdmin && editing && (() => {
                     const f = { ...tournament, ...editFields };
+                    // The server's own ownership test (source_pdf === 'mtt-feed'), applied client
+                    // side. Feed rows are re-UPSERTed hourly, which is why they behave differently.
+                    const feedOwned = tournament.source_pdf === 'mtt-feed';
+                    const overridden = new Set(tournament.overridden_fields || []);
+                    // venue and event_number are the feed's match key. Editing them does not get
+                    // reverted — it makes the feed stop recognising the row — so they are shown as
+                    // text rather than offered and refused. The server 409s as the backstop.
+                    const locked = key => feedOwned && (key === 'venue' || key === 'event_number');
+                    const clearFieldError = key => setFieldErrors(prev => {
+                      if (!prev[key]) return prev;
+                      const next = { ...prev }; delete next[key]; return next;
+                    });
+                    const inputStyle = key => ({
+                      width:'100%', fontSize:'0.83rem', padding:'4px 8px', borderRadius:'6px',
+                      // Inline rather than a CSS class: the base border is inline too, so a class
+                      // would lose the specificity fight and silently do nothing.
+                      border:`1px solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`,
+                      background:'var(--surface)', color:'var(--text)', outline:'none',
+                    });
                     const field = (label, key, type) => (
                       <div className="cal-detail-item" key={key}>
-                        <span className="cal-detail-label">{label}</span>
-                        {type === 'select-category' ? (
-                          <select value={f[key] || ''} onChange={e => setEditFields(p => ({...p, [key]: e.target.value}))}
-                            style={{fontSize:'0.83rem', padding:'4px 8px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)'}}>
+                        <span className="cal-detail-label">
+                          {label}
+                          {overridden.has(key) && (
+                            <span className="badge badge-override"
+                              title="Pinned by an admin edit — survives the feed's hourly sync">override</span>
+                          )}
+                        </span>
+                        {locked(key) ? (
+                          <span className="cal-detail-value" title="Set by the feed — this is how the watcher identifies the event">
+                            {f[key] || '—'}
+                          </span>
+                        ) : type === 'select-category' ? (
+                          <select value={f[key] || ''}
+                            onChange={e => { clearFieldError(key); setEditFields(p => ({...p, [key]: e.target.value})); }}
+                            style={{fontSize:'0.83rem', padding:'4px 8px', borderRadius:'6px', border:`1px solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, background:'var(--surface)', color:'var(--text)'}}>
                             <option value="primary">Primary</option>
                             <option value="side">Side</option>
                           </select>
                         ) : (
-                          <input type={type || 'text'} value={f[key] ?? ''} onChange={e => setEditFields(p => ({...p, [key]: e.target.value}))}
-                            style={{width:'100%', fontSize:'0.83rem', padding:'4px 8px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', outline:'none'}} />
+                          <input type={type || 'text'} value={f[key] ?? ''} aria-invalid={!!fieldErrors[key]}
+                            onChange={e => { clearFieldError(key); setEditFields(p => ({...p, [key]: e.target.value})); }}
+                            style={inputStyle(key)} />
                         )}
+                        {fieldErrors[key] && <div className="admin-field-error">{fieldErrors[key]}</div>}
                       </div>
                     );
                     return (
                       <div className="admin-edit-panel" onClick={e => e.stopPropagation()} style={{marginBottom:'10px', padding:'10px', borderRadius:'8px', background:'var(--surface)', border:'1px solid var(--border)'}}>
                         <div style={{fontSize:'0.75rem', fontWeight:700, color:'var(--accent)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px'}}>Admin Edit</div>
+                        {formError && <div className="admin-field-error" style={{marginBottom:'8px'}}>{formError}</div>}
                         <div className="cal-detail-grid" style={{gap:'8px'}}>
                           {field('Event Name', 'event_name')}
                           {field('Event #', 'event_number')}
@@ -858,6 +896,32 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           {field('Category', 'category', 'select-category')}
                           {field('Notes', 'notes')}
                         </div>
+                        {feedOwned && (
+                          <div style={{fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'8px', lineHeight:1.4}}>
+                            Venue and Event # are the feed&rsquo;s match key &mdash; correct them in mtt-series-watcher.
+                            Everything else is pinned here and survives the hourly sync.
+                          </div>
+                        )}
+                        {/* Clear overrides. Deliberately outside the Save/Cancel transaction: like
+                            the strip-color picker below it writes immediately, so it must not look
+                            like part of the pending edit. */}
+                        {overridden.size > 0 && onClearOverrides && (
+                          <div style={{marginTop:'8px'}}>
+                            <button className="admin-revert-btn" disabled={saving || clearing} onClick={async () => {
+                              const n = overridden.size;
+                              const plural = n === 1 ? '' : 's';
+                              if (!window.confirm(`Clear ${n} override${plural} on this event?
+
+The feed's own values return at the next hourly sync — your edits stay visible until then.`)) return;
+                              setClearing(true);
+                              try { await onClearOverrides(tournament.id); }
+                              catch (e) { toast.error(e.message); }
+                              setClearing(false);
+                            }}>
+                              {clearing ? 'Clearing…' : `Clear ${overridden.size} override${overridden.size === 1 ? '' : 's'}`}
+                            </button>
+                          </div>
+                        )}
                         {/* Venue strip color picker */}
                         {(() => {
                           const venueInfo = getVenueInfo(tournament.venue);
@@ -889,16 +953,29 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           <button disabled={saving} onClick={async () => {
                             if (Object.keys(editFields).length === 0) { setEditing(false); return; }
                             setSaving(true);
+                            setFieldErrors({}); setFormError('');
                             try {
                               await onAdminEdit(tournament.id, editFields);
                               setEditing(false);
                               setEditFields({});
-                            } catch(e) { alert('Save failed: ' + e.message); }
+                            } catch(e) {
+                              // Prefer the server's key→message map; fall back to painting every
+                              // named field with the sentence; fall back again to a form-level line
+                              // for errors with no field at all (403, network).
+                              const fe = Object.keys(e.fieldErrors || {}).length
+                                ? e.fieldErrors
+                                : Object.fromEntries((e.fields || []).map(k => [k, e.message]));
+                              setFieldErrors(fe);
+                              if (!Object.keys(fe).length) setFormError(e.message);
+                              toast.error(e.message);
+                            }
                             setSaving(false);
                           }} style={{flex:1, padding:'8px', borderRadius:'6px', border:'none', background:'var(--accent)', color:'#fff', fontWeight:600, fontSize:'0.83rem', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
                             {saving ? 'Saving\u2026' : 'Save'}
                           </button>
-                          <button onClick={() => { setEditing(false); setEditFields({}); }} style={{padding:'8px 16px', borderRadius:'6px', border:'1px solid var(--border)', background:'transparent', color:'var(--text)', fontSize:'0.83rem', cursor:'pointer'}}>
+                          <button disabled={saving}
+                            onClick={() => { setEditing(false); setEditFields({}); setFieldErrors({}); setFormError(''); }}
+                            style={{padding:'8px 16px', borderRadius:'6px', border:'1px solid var(--border)', background:'transparent', color:'var(--text)', fontSize:'0.83rem', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
                             Cancel
                           </button>
                         </div>

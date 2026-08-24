@@ -893,7 +893,7 @@ const DEFAULT_FILTERS = {
 export default function TournamentsView({
   tournaments, mySchedule, onToggle, gameVariants, venues,
   onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries,
-  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit,
+  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
   token, onRefreshTournaments, onOpenCalendarView
 }) {
   const toast = useToast();
@@ -1558,6 +1558,7 @@ export default function TournamentsView({
                           scheduleIds={scheduleIds}
                           isAdmin={isAdmin}
                           onAdminEdit={onAdminEdit}
+                          onClearOverrides={onClearOverrides}
                           initialOpen={activatedIds.has(t.id)}
                         />
                       ) : (
