@@ -1,20 +1,14 @@
 import React, { useState, useRef } from 'react';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
-import { THEME_ORDER, THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, setDebugNow, getDebugNow, haptic, getStoredSeasonLabel } from '../utils/utils.js';
+import { THEME_ORDER, THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, SERIF_ORDER, setDebugNow, getDebugNow, haptic, getStoredSeasonLabel } from '../utils/utils.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 
 export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel }) {
   const toast = useToast();
   const displayName = useDisplayName();
-  const [debugInput, setDebugInput] = useState(getDebugNow());
-  const [iconBg, setIconBg] = useState(() => localStorage.getItem('iconBg') || '#0d1525');
-  const iconColorRef = useRef(null);
-
-  const applyIconBg = (color) => {
-    localStorage.setItem('iconBg', color);
-  };
+  const [debugInput, setDebugInput] = useState(getDebugNow());
 
   const applyDebugTime = (val) => {
     setDebugInput(val);
@@ -167,31 +161,29 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               onClick={toggleContrast}
             />
           </div>
-          <div className="settings-row">
-            <span className="settings-row-label">Icon background</span>
-            <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-              <div
-                onClick={() => iconColorRef.current?.click()}
-                style={{width:28,height:28,borderRadius:6,border:'2px solid var(--border)',background:iconBg,cursor:'pointer',position:'relative',overflow:'hidden'}}
-              >
-                <input ref={iconColorRef} type="color" value={iconBg}
-                  onChange={e => { setIconBg(e.target.value); localStorage.setItem('iconBg', e.target.value); applyIconBg(e.target.value); }}
-                  style={{opacity:0,position:'absolute',inset:0,width:'100%',height:'100%',cursor:'pointer',border:'none',padding:0}} />
-              </div>
-              {iconBg !== '#0d1525' && (
-                <button className="btn btn-ghost btn-sm" style={{fontSize:'0.72rem',padding:'3px 8px'}} onClick={() => { setIconBg('#0d1525'); localStorage.setItem('iconBg', '#0d1525'); applyIconBg('#0d1525'); }}>Reset</button>
-              )}
-            </div>
-          </div>
-          <div className="settings-row">
+          <div className="settings-row settings-row--stack">
             <span className="settings-row-label">Display font</span>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={toggleSerifFont}
-              style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',padding:'4px 10px',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)', fontFamily: SERIF_STACK[serifFont] || SERIF_STACK.baskerville}}
-            >
-              {SERIF_LABEL[serifFont] || SERIF_LABEL.baskerville}
-            </button>
+            {/* Each tile renders the WORDMARK in its own stack, so you see what
+                you are switching TO. The old control previewed the font you
+                already had. */}
+            <div className="font-pick">
+              {/* The parent exposes a cycle, not a setter, so a tile toggles when
+                  it is not already active. That is exact while SERIF_ORDER holds
+                  two faces; a third would need a real setter. */}
+              {SERIF_ORDER.map(key => (
+                <button
+                  key={key}
+                  type="button"
+                  className={'font-pick-tile' + (serifFont === key ? ' is-on' : '')}
+                  aria-pressed={serifFont === key}
+                  onClick={() => { if (serifFont !== key) toggleSerifFont(); }}
+                  style={{ fontFamily: SERIF_STACK[key] }}
+                >
+                  futurega.me
+                  <i>{SERIF_LABEL[key]}</i>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

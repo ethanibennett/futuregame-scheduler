@@ -1034,6 +1034,39 @@
     .leaderboard-bar-fill.pos { left: 50%; background: var(--pos); }
     .leaderboard-bar-fill.neg { right: 50%; background: var(--neg); }
 
+
+    /* Display-font picker: two tiles, each showing the wordmark in the face it
+       selects. The old control was a single button that rendered its own label
+       in the CURRENT stack, so it previewed the state you were leaving. */
+    .settings-row--stack { flex-direction: column; align-items: stretch; gap: var(--space-md); }
+    .font-pick { display: flex; gap: var(--space-md); }
+    .font-pick-tile {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: none;
+      color: var(--text);
+      padding: var(--space-lg) var(--space-md);
+      font-size: var(--fs-lg);
+      letter-spacing: var(--track-wordmark);
+      cursor: pointer;
+      text-align: center;
+    }
+    .font-pick-tile i {
+      display: block;
+      font-style: normal;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: var(--space-xs);
+    }
+    .font-pick-tile.is-on {
+      border-color: var(--brand);
+      background: var(--brand-quiet);
+    }
+
     /* ==================================================================
        Date break. The pinned header used to sit on a flat --bg with no
        edge, no shadow and no scrim, while the rows scrolling under it are
@@ -1416,10 +1449,7 @@
 
     [data-serif="univers"] {
       --serif: 'Univers', 'Helvetica Neue', Arial, sans-serif;
-    }
-    [data-serif="helvetica"] {
-      --serif: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
+    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -5250,11 +5280,7 @@
     [data-serif="univers"] .cal-event-name {
       font-family: 'Univers', sans-serif;
       font-weight: var(--fw-bold);
-    }
-    [data-serif="helvetica"] .cal-event-name {
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-display);
-    }
+    }
 
     .cal-event-buyin {
       font-family: var(--serif);
