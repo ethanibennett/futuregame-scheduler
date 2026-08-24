@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   computeScorecardData, drawSeriesScorecard, drawCountdownStory,
-  drawPollEventVsEvent, shareOrDownloadCanvas,
+  drawPollEventVsEvent, shareOrDownloadCanvas, ensureExportFonts,
 } from '../utils/export.js';
 import {
   parseDateTimeInTz, parseDateTime,
@@ -57,6 +57,10 @@ export default function ShareMenu({ trackingData, tournaments, mySchedule, myAct
   }, [mySchedule]);
 
   const handleGenerate = async (type) => {
+    // BEFORE the first fillText, not after: canvas neither triggers webfont
+    // loading nor waits for it, so drawing first would set the type in Arial
+    // and awaiting afterwards would only help the next export.
+    await ensureExportFonts();
     const canvas = document.createElement('canvas');
     let ctx, filename;
 

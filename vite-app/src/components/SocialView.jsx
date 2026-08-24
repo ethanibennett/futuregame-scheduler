@@ -391,6 +391,9 @@ function GroupDetailView({
             </div>
           ) : (() => {
             const maxWon = Math.max(...leaderboardData.map(m => m.total_won), 1);
+            // Scale the diverging bar by the largest ABSOLUTE net in the
+            // group, so the axis means the same thing for every member.
+            const maxAbsNet = Math.max(...leaderboardData.map(m => Math.abs(m.net_pl || 0)), 1);
             return leaderboardData.map((m, i) => (
               <div key={m.id} className="leaderboard-card">
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -408,8 +411,15 @@ function GroupDetailView({
                       {' \u00b7 '}{m.final_tables} FT{m.final_tables !== 1 ? 's' : ''}
                       {' \u00b7 '}{m.wins}W
                     </div>
-                    <div className="leaderboard-bar-wrap">
-                      <div className="leaderboard-bar" style={{width: `${Math.max((m.total_won / maxWon) * 100, 2)}%`}} />
+                    {/* Diverging on NET, the figure directly above it. Scaled
+                        by gross winnings, this bar said the opposite: buy in
+                        for 60k, win 50k, and you got the longest bar on the
+                        board under a headline reading minus 10,000. */}
+                    <div className="leaderboard-bar-track">
+                      <div
+                        className={'leaderboard-bar-fill ' + (m.net_pl >= 0 ? 'pos' : 'neg')}
+                        style={{width: `${Math.min(50, Math.max(Math.abs(m.net_pl) / (maxAbsNet || 1) * 50, 1))}%`}}
+                      />
                     </div>
                     <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
                       {formatBuyin(m.total_won)} won \u00b7 {m.events_played} event{m.events_played !== 1 ? 's' : ''}

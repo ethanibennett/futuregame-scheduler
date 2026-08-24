@@ -9,6 +9,7 @@ import {
   CURRENCY_CONFIG, formatCurrencyAmount, convertAmount, isPOYEligible,
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
 } from '../utils/utils.js';
+import ResultsCurve from './ResultsCurve.jsx';
 
 // ── Tracking Entry Form ─────────────────────────────────────
 function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit }) {
@@ -359,7 +360,11 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
             <div className="cal-detail-item">
               <span className="cal-detail-label">Profit</span>
               <span className={`cal-detail-value ${stats.profit >= 0 ? 'tracking-profit-pos' : 'tracking-profit-neg'}`}>
-                {stats.profit >= 0 ? '+' : '-'}{fmtStat(stats.profit)}
+                {/* formatCurrencyAmount already prepends its own sign, so the
+                    manual '-' rendered a losing series as two minus signs -
+                    and the row formatter twelve lines up did it correctly, so
+                    the summary card and the rows disagreed on one page. */}
+                {stats.profit >= 0 ? '+' : ''}{fmtStat(stats.profit)}
               </span>
             </div>
             <div className="cal-detail-item">
@@ -375,6 +380,11 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
               </div>
             )}
           </div>
+          <ResultsCurve
+            entries={trackingData}
+            convert={(v) => convertAmount(v, 'USD', displayCurrency === 'NATIVE' ? 'USD' : displayCurrency, exchangeRates)}
+            format={fmtStat}
+          />
           <p style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:'8px'}}>
             {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} played \u00b7 {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''}
             {stats.poyEventCount > 0 && <> \u00b7 {stats.poyEventCount} POY event{stats.poyEventCount !== 1 ? 's' : ''}</>}

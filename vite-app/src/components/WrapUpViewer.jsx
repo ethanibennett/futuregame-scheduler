@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   computeScorecardData, drawWrapSlide1, drawWrapSlide2, drawWrapSlide3,
-  drawWrapSlide4, drawWrapSlide5, shareOrDownloadCanvas,
+  drawWrapSlide4, drawWrapSlide5, shareOrDownloadCanvas, ensureExportFonts,
 } from '../utils/export.js';
 
 export default function WrapUpViewer({ trackingData, tournaments, onClose }) {
@@ -33,11 +33,21 @@ export default function WrapUpViewer({ trackingData, tournaments, onClose }) {
   // Preview canvas
   const previewRef = useRef(null);
   useEffect(() => {
-    const cvs = previewRef.current;
-    if (!cvs) return;
-    cvs.width = 1080; cvs.height = 1920;
-    const ctx = cvs.getContext('2d');
-    slideFns[currentSlide](ctx, 1080, 1920, data);
+    // Canvas neither triggers webfont loading nor waits for it, so drawing
+    // synchronously here set five 1080x1920 slides in Arial whenever the face
+    // had not already resolved on screen. `cancelled` guards the await: the
+    // slide can change while the fonts are still loading.
+    let cancelled = false;
+    (async () => {
+      await ensureExportFonts();
+      if (cancelled) return;
+      const cvs = previewRef.current;
+      if (!cvs) return;
+      cvs.width = 1080; cvs.height = 1920;
+      const ctx = cvs.getContext('2d');
+      slideFns[currentSlide](ctx, 1080, 1920, data);
+    })();
+    return () => { cancelled = true; };
   }, [currentSlide, data]);
 
   return createPortal(
