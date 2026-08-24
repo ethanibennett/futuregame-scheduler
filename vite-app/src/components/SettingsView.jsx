@@ -42,7 +42,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onAvatarUpload} style={{display:'none'}} />
               </label>
               {avatar && (
-                <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',fontSize:'0.75rem',padding:'4px 10px'}} onClick={onAvatarRemove}>Remove</button>
+                <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',fontSize:'0.75rem',padding:'4px 10px'}} onClick={onAvatarRemove}>Remove</button>
               )}
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
                 <button className="btn btn-ghost btn-sm" style={{display:'inline-flex',alignItems:'center',gap:'4px'}} onClick={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/shared/${shareToken}`);
                 }}><Icon.copy /> Copy</button>
-                <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c'}} onClick={onRevokeShareToken}>Revoke</button>
+                <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={onRevokeShareToken}>Revoke</button>
               </div>
             ) : (
               <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start',display:'inline-flex',alignItems:'center',gap:'6px'}} onClick={onGenerateShareToken}>
@@ -122,7 +122,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
                       <Avatar src={r.avatar} username={r.username} size={22} />
                       {displayName(r)}
                     </span>
-                    <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',padding:'4px 8px'}} onClick={() => onCancelRequest(r.id)}>Cancel</button>
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',padding:'4px 8px'}} onClick={() => onCancelRequest(r.id)}>Cancel</button>
                   </div>
                 ))}
               </div>
@@ -137,7 +137,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
                       <Avatar src={b.avatar} username={b.username} size={22} />
                       {displayName(b)}
                     </span>
-                    <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',padding:'4px 8px'}} onClick={() => onRemoveBuddy(b.id)}>Remove</button>
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',padding:'4px 8px'}} onClick={() => onRemoveBuddy(b.id)}>Remove</button>
                   </div>
                 ))}
               </div>

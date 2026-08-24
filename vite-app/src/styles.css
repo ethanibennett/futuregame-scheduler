@@ -3693,21 +3693,36 @@
     .nav-tab-center svg { width: 24px; height: 24px; }
 
     /* ── Auth screen ── */
+    /* The document is overflow:hidden with a fixed full-bleed root, and the
+       auth screens render OUTSIDE .app-shell so they get none of its safe-area
+       padding. In register mode the card runs ~620px; with the iOS keyboard up
+       it exceeded the viewport and, because the parent clips, there was no way
+       to reach the submit button. `safe center` keeps the card centred when it
+       fits and top-aligns it when it does not, instead of overflowing equally
+       in both directions. */
     .auth-wrap {
       display: flex;
-      align-items: center;
+      align-items: safe center;
       justify-content: center;
-      min-height: 100vh;
-      padding: var(--space-3xl) var(--space-xl);
-      background: var(--bg);
+      min-height: 100dvh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: max(var(--space-3xl), env(safe-area-inset-top, 0px)) var(--space-xl)
+               max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
+      /* Something for the card to float over, echoing the app-shell header. */
+      background: radial-gradient(120% 80% at 50% 0%, var(--surface2), var(--bg) 60%);
     }
 
+    /* --surface on --bg is a nine-point luminance step, so a 1px hairline was
+       the only thing separating the card from the page - on the first screen
+       anyone sees. --elev-3 exists for exactly this and had no consumers. */
     .auth-card {
       width: 100%;
       max-width: 400px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--elev-3);
       padding: var(--space-4xl) var(--space-3xl);
     }
 
@@ -3757,9 +3772,17 @@
 
     .btn:active { transform: scale(0.97); }
 
-    .btn-primary { background: var(--accent); color: var(--bg-contrast); }
+    /* Sign In, Create Account, Send Reset Link, Set New Password - every
+       primary action on the auth screens was --accent, a GREY, the same colour
+       as the borders around it. The token block's own comment named the
+       problem: "the app has had no focal colour, so nothing on screen claims
+       priority". --brand already carries light and high-contrast overrides, so
+       all four themes and both contrast modes come along with no new values.
+       Hover is a real colour now rather than an opacity fade, which dimmed the
+       label along with the fill. */
+    .btn-primary { background: var(--brand); color: var(--on-brand); border: 1px solid var(--brand); }
     @media (hover: hover) and (pointer: fine) {
-      .btn-primary:hover { opacity: 0.88; }
+      .btn-primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
     }
     .btn-primary:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
 
@@ -3793,8 +3816,12 @@
       gap: var(--space-md);
     }
 
-    .alert-error { background: rgba(136,136,136,0.15); border: 1px solid rgba(136,136,136,0.4); color: #999999; }
-    .alert-success { background: rgba(160,160,160,0.12); border: 1px solid rgba(160,160,160,0.4); color: var(--accent); }
+    /* Two greys 24 RGB points apart, differing by 0.03 of background alpha -
+       so on the one screen where feedback decides whether the user gets in,
+       failure and success were indistinguishable. The app already owned
+       semantic colours: the toasts sixty lines below were using them. */
+    .alert-error   { background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger); }
+    .alert-success { background: var(--ok-bg);     border: 1px solid var(--ok);     color: var(--ok); }
 
     /* ── Toasts ── */
     .toast-container {
@@ -3962,20 +3989,41 @@
     }
     .settings-row-btn:last-child { border-bottom: none; }
     .settings-row-btn:active { background: var(--hover-overlay); }
-    .settings-row-btn.danger { color: #b91c1c; }
+    /* #b91c1c was fixed across all four themes and computes to about 3.1:1 on
+       --surface - under the floor for the 14px text it styles - while the error
+       toast next door used a red that DOES pass on dark. The app had two reds
+       and picked the wrong one for its own default theme. */
+    .settings-row-btn.danger { color: var(--danger); }
+    /* One treatment for all five destructive controls in the screen; the other
+       four were inline literals. */
+    .btn-danger-quiet {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid transparent;
+      cursor: pointer;
+      font: inherit;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-danger-quiet:hover { background: var(--danger-bg); }
+    }
 
+    /* Three problems in one control. The pill shape was a COINCIDENCE -
+       --radius happened to equal height/2, so any change to it would have
+       squared the switch off. The on-state was --accent, a grey, so an active
+       switch read as disabled. And the knob was a hardcoded white, which in the
+       light theme is white-on-#d0d0d0: the off state nearly disappeared. */
     .settings-toggle {
       position: relative;
       width: 44px;
       height: 24px;
       background: var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--radius-pill);
       border: none;
       cursor: pointer;
-      transition: background var(--dur-snap);
+      transition: background-color var(--dur-snap) var(--ease-out);
       flex-shrink: 0;
     }
-    .settings-toggle.on { background: var(--accent); }
+    .settings-toggle.on { background: var(--brand); }
     .settings-toggle::after {
       content: '';
       position: absolute;
@@ -3983,10 +4031,15 @@
       left: 2px;
       width: 20px;
       height: 20px;
-      background: white;
+      /* --surface, not a hardcoded white: on the light theme white-on-#d0d0d0
+         made the OFF state nearly invisible. --on-brand when active keeps the
+         knob legible against gold in every theme. */
+      background: var(--surface);
+      box-shadow: var(--elev-1);
       border-radius: var(--radius-circle);
-      transition: transform var(--dur-snap);
+      transition: transform var(--dur-snap) var(--ease-out);
     }
+    .settings-toggle.on::after { background: var(--on-brand); }
     .settings-toggle.on::after { transform: translateX(20px); }
 
     .settings-debug-input {
