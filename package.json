@@ -22,7 +22,8 @@
     "razz": "cd solver/neural && python3 solve_spot.py --game razz",
     "solve": "cd solver/neural && python3 solve_spot.py",
     "solve:range": "cd solver/neural && .venv/bin/python solve_range.py",
-    "query": "node solver/query.js"
+    "query": "node solver/query.js",
+    "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js"
   },
   "keywords": [],
   "author": "",

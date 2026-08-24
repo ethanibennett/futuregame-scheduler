@@ -26,7 +26,7 @@ nightly at 05:00 (hygiene only now — the MTT feed re-ingests hourly in-process
 `pm2 logs futuregame-scheduler`. Reboot persistence via Task Scheduler
 `futuregame-pm2-resurrect`. Don't start a second server on 3001 — test on a scratch
 port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
-(`JWT_SECRET`, `SYNC_TOKEN`); after editing it, `pm2 restart ecosystem.config.cjs
+(`JWT_SECRET`, `SYNC_TOKEN`, `TESTFLIGHT_WATCHDOG`); after editing it, `pm2 restart ecosystem.config.cjs
 --update-env && pm2 save`.
 
 ## Data flows
@@ -58,6 +58,14 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - #3 roster: `syncBackerRoster()` pulls `dashboard.futurega.me/api/roster/:token`
     hourly at :35 + at boot (self-disables without `DASHBOARD_TOKEN`; the local pm2
     instance has no token, so local roster sync is off by design).
+- **TestFlight watchdog (out)**: `scripts/testflight-watchdog.js`, scheduled in-process at
+  :05/:25/:45. GitHub force-fails a build at exactly 600s when the Mac takes a queued job
+  during a brief "dark wake" and then sleeps again, and nothing retries it — #91 sat
+  unshipped for three days. The watchdog re-dispatches master HEAD (`repository_dispatch`,
+  NEVER `gh run rerun`, which replays the run's original SHA and can make stale code the
+  newest build), capped at 3 attempts per SHA, then opens a handoff issue for the Mac.
+  Opt-in via `TESTFLIGHT_WATCHDOG=1` so only this box runs it; Render has no `gh` and no
+  business dispatching builds. Mitigation only — the cure for the dark wake is on the Mac.
 - **Backer surface stays here**: `/b/:token` public pages, Sunday weekly digest, backer
   web-push (`backer_push_subs`), `console_records` store='backers' (fed by seam #3).
 
