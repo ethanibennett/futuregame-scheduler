@@ -40,35 +40,37 @@
       font-display: swap;
     }
 
-    /* The display serif was the ONE asset the app did not control: declared as
-       'Libre Baskerville' and served only from a Google Fonts <link>, while two
-       Baskerville OTFs sat in public/fonts referenced by nothing. Under
-       Capacitor, offline, or on casino wifi that request fails and every money
-       figure, the wordmark, three replayer themes and the canvas exports
-       silently became Georgia - a different skeleton at a tracking tuned for
-       something else.
+    /* Libre Baskerville IS the wordmark — that is a settled brand decision, not
+       an accident, so it stays first and keeps coming from the CDN.
 
-       Worth knowing: the bundled files are Baskerville MT Std (verified from
-       the name table), NOT Libre Baskerville. They are two different faces, so
-       putting the local one first is a deliberate, visible change - it is also
-       the only way to stop depending on a third party for the brand wordmark.
-       Reverting is one line: put 'Libre Baskerville' back in front.
+       What this block fixes is the fallback behind it. The face was served ONLY
+       from a Google Fonts <link>, while two Baskerville OTFs sat in
+       public/fonts referenced by nothing, so under Capacitor, offline, or on
+       casino wifi every money figure, the wordmark, three replayer themes and
+       the canvas exports silently became GEORGIA — a different skeleton at a
+       tracking tuned for something else.
 
-       Still OTF rather than woff2 - roughly 67KB against ~35KB - because there
+       The bundled files are Baskerville MT Std (verified from the name table),
+       a different face from Libre Baskerville. Second in the stack it is never
+       seen while the CDN is reachable, and when it is not, the app degrades to
+       a real Baskerville instead of Georgia.
+
+       Still OTF rather than woff2 — roughly 67KB against ~35KB — because there
        is no converter on this box. Worth doing on the Mac. */
     @font-face {
       font-family: 'Baskerville MT Std';
       src: url('/fonts/baskerville-regular.otf') format('opentype');
       font-weight: 400;
       font-style: normal;
-      font-display: block;
+      /* swap, not block: as a FALLBACK this must never hide text while it loads. */
+      font-display: swap;
     }
     @font-face {
       font-family: 'Baskerville MT Std';
       src: url('/fonts/baskerville-italic.otf') format('opentype');
       font-weight: 400;
       font-style: italic;
-      font-display: block;
+      font-display: swap;
     }
 
     :root {
@@ -95,7 +97,7 @@
       --venue-aria-bg: #141414;
       --venue-gn-bg:   #141414;
       --hover-overlay: rgba(255,255,255,0.04);
-      --serif:     'Baskerville MT Std', 'Libre Baskerville', Georgia, serif;
+      --serif:     'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
       --radius:    12px;
       --radius-sm: 8px;
       --tab-h:     30px;
