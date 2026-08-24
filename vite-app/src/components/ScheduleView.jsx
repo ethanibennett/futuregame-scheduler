@@ -117,7 +117,7 @@ export default function ScheduleView({
   onAcceptRequest, onRejectRequest, token, onSetCondition, onRemoveCondition,
   allTournaments, onToggleAnchor, onSetPlannedEntries,
   onAddPersonalEvent, onUpdatePersonalEvent,
-  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit,
+  buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
   onNavigate, focusTournamentId, onFocusConsumed
 }) {
   const displayName = useDisplayName();
@@ -485,6 +485,7 @@ export default function ScheduleView({
                         scheduleIds={scheduleIds}
                         isAdmin={isAdmin}
                         onAdminEdit={onAdminEdit}
+                        onClearOverrides={onClearOverrides}
                         initialOpen={activatedIds.has(t.id)}
                       />
                     ) : (

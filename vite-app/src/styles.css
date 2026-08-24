@@ -4241,6 +4241,39 @@
 
     .cal-detail-item { display: flex; flex-direction: column; gap: 1px; }
     .cal-detail-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    /* ── Admin editor: override + validation affordances ── */
+    /* Marks a field an admin has pinned. Greys reuse the values already used by .conflict-badge
+       so this joins the existing badge family rather than starting another one. */
+    .badge-override {
+      background: rgba(136,136,136,0.15);
+      border: 1px solid rgba(136,136,136,0.4);
+      color: #999999;
+      font-size: var(--fs-3xs);
+      padding: 1px var(--space-sm);
+      margin-left: var(--space-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    /* #ef4444 is the error red already used across this file. The matching input border is set
+       inline in CalendarEventRow, because the base border is inline too and a class would lose. */
+    .admin-field-error {
+      color: #ef4444;
+      font-size: var(--fs-3xs);
+      margin-top: var(--space-2xs);
+      line-height: 1.35;
+    }
+    .admin-revert-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: #ef4444;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .admin-revert-btn:disabled { opacity: 0.5; cursor: default; }
+
     .cal-detail-value { font-family: var(--serif); font-size: 0.82rem; color: var(--text); font-weight: 400; }
 
     .cal-detail-badges {

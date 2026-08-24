@@ -781,17 +781,53 @@ export default function App() {
     } catch {}
   };
 
+  // Plain fetch, not guardedFetch: that one signs the user out on 401 OR 403, and a 403 here just
+  // means this account is not on the server's admin list.
   const adminEditTournament = useCallback(async (tournamentId, fields) => {
     const res = await fetch(`${API_URL}/tournaments/${tournamentId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(fields),
     });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Failed to save'); }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      // Carry the server's per-field detail through. Throwing only `.message` is what forced the
+      // editor into a single alert() — the 400/409 bodies name the offending fields.
+      const err = new Error(e.error || 'Failed to save');
+      err.status = res.status;
+      err.fields = Array.isArray(e.fields) ? e.fields : [];
+      err.fieldErrors = e.fieldErrors && typeof e.fieldErrors === 'object' ? e.fieldErrors : {};
+      throw err;
+    }
     const updated = await res.json();
-    setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, ...updated } : t));
-    setMySchedule(prev => prev.map(t => t.id === tournamentId ? { ...t, ...updated } : t));
+    // overridden_fields is set EXPLICITLY rather than left to the spread: a spread never deletes a
+    // key, so once a row had the marker the badge could never clear again.
+    const merge = t => (t.id === tournamentId
+      ? { ...t, ...updated, overridden_fields: updated.overridden_fields }
+      : t);
+    setTournaments(prev => prev.map(merge));
+    setMySchedule(prev => prev.map(merge));
     toast.success('Event updated');
+  }, [token, toast]);
+
+  // Drop every override on an event so the feed's own values take over at the next sync.
+  const clearTournamentOverrides = useCallback(async (tournamentId) => {
+    const res = await fetch(`${API_URL}/tournaments/${tournamentId}/overrides`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || 'Failed to clear overrides');
+    }
+    const { cleared } = await res.json();
+    const drop = t => (t.id === tournamentId ? { ...t, overridden_fields: undefined } : t);
+    setTournaments(prev => prev.map(drop));
+    setMySchedule(prev => prev.map(drop));
+    // cleared === 0 means the badge was stale, not that anything was undone — say so rather than
+    // reporting a success that did nothing.
+    if (cleared === 0) toast.info('No overrides to clear');
+    else toast.success(`Cleared ${cleared} override${cleared === 1 ? '' : 's'}`);
   }, [token, toast]);
 
   const toggleTournament = useCallback(async (tournamentId) => {
@@ -1093,7 +1129,16 @@ export default function App() {
     })();
   }, [token, username, isGuest]);
 
+  // isAdmin is a STAGED-ROLLOUT flag, not an authorisation one. It gates the Hands tab, the
+  // solver/replayer panel and StakingView — none of whose endpoints are admin-gated server side —
+  // so narrowing it to match the server's write allowlist would revoke working features from
+  // 'claude' rather than fix anything.
   const isAdmin = ['ham', 'ham5', 'claude'].includes((username || '').toLowerCase());
+  // The write capability is separate and DOES have to match the server, which gates every admin
+  // route on ['ham','ham5'] in 8 places. Passing the callbacks conditionally is enough: the row
+  // renders its Edit button on `isAdmin && onAdminEdit`, so an account without the capability
+  // keeps the rollout features and simply never sees an editor it cannot save from.
+  const canEditEvents = ['ham', 'ham5'].includes((username || '').toLowerCase());
 
   // ── Render: shared schedule page ──
   if (SHARED_TOKEN) {
@@ -1304,7 +1349,8 @@ export default function App() {
             buddyLiveUpdates={buddyLiveUpdates}
             onBuddySwap={onBuddySwap}
             isAdmin={isAdmin}
-            onAdminEdit={adminEditTournament}
+            onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+            onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
             token={token}
             onRefreshTournaments={fetchTournaments}
             onOpenCalendarView={() => setCurrentView('calendar')}
@@ -1338,7 +1384,8 @@ export default function App() {
             buddyLiveUpdates={buddyLiveUpdates}
             onBuddySwap={onBuddySwap}
             isAdmin={isAdmin}
-            onAdminEdit={adminEditTournament}
+            onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+            onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
           />
         )}
         </div>
