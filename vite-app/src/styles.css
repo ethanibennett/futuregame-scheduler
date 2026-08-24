@@ -1058,20 +1058,25 @@
       font: inherit;
       color: inherit;
     }
+    /* Only TODAY gets a pill. Giving every date break one made the "you are
+       here" mark compete with 30 identical siblings, which is the opposite of
+       what it is for — an ordinary date is just its numerals. */
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
       gap: var(--space-xs);
-      padding: var(--space-xs) var(--space-lg);
-      border-radius: var(--radius-pill);
-      background: var(--surface2);
       color: var(--text);
     }
     /* The one mark the whole list is scrolled to on mount. --brand exists so
        exactly one thing per screen can claim priority; this is the candidate. */
+    /* Inverted against the ground rather than brand gold: near-white on the
+       dark themes, near-black on the light ones. Taken from the ends of the
+       neutral ramp, so dusk and cloudy get it right without their own rule. */
     .schedule-date-break.is-today .date-break-pill {
-      background: var(--brand);
-      color: var(--on-brand);
+      padding: var(--space-xs) var(--space-lg);
+      border-radius: var(--radius-pill);
+      background: var(--n-8);
+      color: var(--n-0);
     }
     .date-break-day {
       font-family: var(--font-display);
