@@ -58,9 +58,9 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
           </form>
         )}
 
-        <p style={{textAlign:'center',marginTop:'20px',fontSize:'0.85rem',color:'var(--text-muted)'}}>
+        <p className="auth-hint" style={{textAlign:'center',marginTop:'var(--space-2xl)'}}>
           <button onClick={onBack}
-            style={{color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight: 'var(--fw-bold)',fontSize:'0.85rem'}}>
+            className="auth-link">
             Back to Sign In
           </button>
         </p>
