@@ -1430,7 +1430,10 @@ export default function App() {
             ? <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
                 {isAdmin && (
                   <div style={{display:'flex',gap:6,padding:'8px 14px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",flexWrap:'wrap'}}>
-                    {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
+                    {/* ids must match the handsTool render chain below; 'watch' (SolverPlayView)
+                        was rendered there but had no button, so the self-play viewer was
+                        unreachable — restored 2026-08-18. */}
+                    {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
                       <button key={id} onClick={() => setHandsTool(id)}
                         style={{padding:'4px 12px',borderRadius:12,fontFamily:'inherit',fontSize:'0.7rem',fontWeight:600,cursor:'pointer',
                           border:'1px solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),

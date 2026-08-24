@@ -7,6 +7,24 @@
 // then runs `npm run build` inside vite-app/ to emit ../public-vite/.
 
 const { spawnSync } = require('child_process');
+
+// npm is a .cmd shim on Windows: a bare spawnSync('npm', ...) fails ENOENT there,
+// and spawning 'npm.cmd' directly fails EINVAL on current Node (which refuses to
+// exec .cmd without a shell). `shell: true` is what actually works on both
+// platforms. Every guard below must treat a null status as a FAILURE —
+// `(status ?? 0) !== 0` reads null as success, which silently skipped the entire
+// vite build on Windows while the command still exited 0.
+function runOrDie(args, cwd, what) {
+  const r = spawnSync('npm', args, { cwd, stdio: 'inherit', shell: true });
+  if (r.error) {
+    console.error(`[build] ${what} could not be started: ${r.error.code || r.error.message}`);
+    process.exit(1);
+  }
+  if (r.status !== 0) {
+    console.error(`[build] ${what} FAILED (exit ${r.status})`);
+    process.exit(r.status ?? 1);
+  }
+}
 const path = require('path');
 const fs = require('fs');
 
@@ -18,8 +36,7 @@ if (!fs.existsSync(path.join(viteAppDir, 'node_modules'))) {
   // Prefer `npm ci` when a lockfile is present for reproducibility; otherwise fall back to `npm install`.
   const hasLock = fs.existsSync(path.join(viteAppDir, 'package-lock.json'));
   const installCmd = hasLock ? 'ci' : 'install';
-  const install = spawnSync('npm', [installCmd], { cwd: viteAppDir, stdio: 'inherit' });
-  if (install.status !== 0) process.exit(install.status);
+  runOrDie([installCmd], viteAppDir, `vite-app npm ${installCmd}`);
 }
 
 // 2. Stamp a version.txt so the legacy auto-reload shim (if any lingers) keeps working.
@@ -31,8 +48,7 @@ console.log(`[build] Wrote version.txt = ${buildVersion}`);
 
 // 3. Run vite build.
 console.log('[build] Running vite build...');
-const build = spawnSync('npm', ['run', 'build'], { cwd: viteAppDir, stdio: 'inherit' });
-if ((build.status ?? 0) !== 0) process.exit(build.status);
+runOrDie(['run', 'build'], viteAppDir, 'vite build');
 
 // 3b. Solver — now lives in its OWN repo (github.com/ethanibennett/
 // futuregame-solver, private; carved out 2026-08-09 with history). server.js
