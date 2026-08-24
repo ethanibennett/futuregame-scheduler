@@ -450,6 +450,11 @@ export function getVenueBrandColor(abbr) {
 
 // ── Bracelet Event Detection ──────────────────────────────
 export const NON_BRACELET_KEYWORDS = ['satellite', 'mega sat', 'super sat', 'qualifier', 'freeroll', 'charity', 'side event'];
+// The advertised guarantee. NOTE: the column is prize_pool - there is no
+// "guarantee" column in the schema, though TournamentsView's admin form and
+// export.js both reference one, so those two are writing/reading a field that
+// does not exist. Verified against the live DB: 1,416 of 2,548 rows carry
+// prize_pool.
 // The guarantee is the number a player uses first to decide whether an event is
 // worth entering, and the PDF export has always printed it - but it appeared
 // nowhere on the surface whose entire purpose is choosing tournaments, while
@@ -464,6 +469,16 @@ export function formatGuarantee(v, venue) {
       ? (n % 1000 === 0 ? `${n / 1000}K` : `${(n / 1000).toFixed(1)}K`)
       : String(n);
   return `${sym}${abbr} GTD`;
+}
+
+// Feed rows carry a composite event_number - 1-272685-20260815 is event 1
+// plus a source id and a date, and stripping only the alpha prefix left all
+// three on screen. As a coloured badge that was merely ugly; as a meta line
+// it is the first thing under the title, so it gets trimmed to the part a
+// player would say out loud. Short forms like WYNN-4-D2 keep their suffix.
+export function shortEventNumber(v) {
+  const t = String(v || {}).replace(/^[A-Za-z]+-/, '');
+  return t.length > 6 ? t.split('-')[0] : t;
 }
 
 export function isBraceletEvent(t) {

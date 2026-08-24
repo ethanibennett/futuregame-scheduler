@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
 import { wsopStructureUrlFor } from '../utils/wsop-structure-pages.js';
 import {
-  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, getVariantColor, isBraceletEvent, isRingEvent,
+  getVenueInfo, getVenueClass, getVenueBrandColor, getStripAbbr, formatGuarantee, shortEventNumber, getVariantColor, isBraceletEvent, isRingEvent,
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
   getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
   extractConditions, formatConditionLabel, formatConditionBadge,
@@ -598,7 +598,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   ].filter(Boolean).join(' ');
 
   const stripColor = getVenueBrandColor(venue.abbr);
-  const stripTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : 'rgba(255,255,255,0.85)';
+  // Opaque, not 0.85. The venue palette is tuned so WHITE text clears 4.5:1
+  // on every swatch; the alpha cost ~0.6:1 and bought nothing, and because it
+  // was set inline it silently beat the stylesheet rule that removed it.
+  const stripTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff';
 
   return (
     <div ref={rowRef} className={rowClasses} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
@@ -631,8 +634,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 <span className="cal-event-time">{timeLabel}</span>
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
-                  {Number(tournament.guarantee) > 0 && (
-                    <span className="cal-event-gtd">{formatGuarantee(tournament.guarantee, tournament.venue)}</span>
+                  {Number(tournament.prize_pool) > 0 && (
+                    <span className="cal-event-gtd">{formatGuarantee(tournament.prize_pool, tournament.venue)}</span>
                   )}
                 </span>
               </div>
@@ -709,7 +712,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   <div className="cal-detail-badges">
                     <div className="cal-badges-left">
                       {tournament.event_number && (
-                        <span className="cal-meta-line">#{tournament.event_number.replace(/^[A-Za-z]+-/, '')}</span>
+                        <span className="cal-meta-line">#{shortEventNumber(tournament.event_number)}</span>
                       )}
                       {tournament.game_variant && getGamePills(tournament.game_variant, tournament.event_name).map((g, i) => (
                         <span key={i} className="cal-meta-line">{g}</span>
@@ -1094,7 +1097,10 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   const venue = getVenueInfo(tournament.venue);
   const venueClass = getVenueClass(tournament);
   const stripColor = getVenueBrandColor(venue.abbr);
-  const stripTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : 'rgba(255,255,255,0.85)';
+  // Opaque, not 0.85. The venue palette is tuned so WHITE text clears 4.5:1
+  // on every swatch; the alpha cost ~0.6:1 and bought nothing, and because it
+  // was set inline it silently beat the stylesheet rule that removed it.
+  const stripTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff';
   const bracelet = isBraceletEvent(tournament);
   const isBounty = /bounty|mystery millions/i.test(tournament.event_name);
   const isSat = !!tournament.is_satellite;
@@ -1142,8 +1148,8 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
                 <span className="cal-event-time">{timeLabel}</span>
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
-                  {Number(tournament.guarantee) > 0 && (
-                    <span className="cal-event-gtd">{formatGuarantee(tournament.guarantee, tournament.venue)}</span>
+                  {Number(tournament.prize_pool) > 0 && (
+                    <span className="cal-event-gtd">{formatGuarantee(tournament.prize_pool, tournament.venue)}</span>
                   )}
                 </span>
               </div>
