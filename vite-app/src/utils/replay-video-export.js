@@ -45,11 +45,21 @@ export async function exportReplayVideo({ hand, tableEl, stepForward, canGoForwa
       fileExt = 'webm';
     }
 
-    // Off-screen recording canvas (matches the table element's rendered size)
+    // Off-screen recording canvas.
+    //
+    // This was a fixed 540x540 SQUARE while .replayer-table is aspect-ratio
+    // 3/4.5, so html2canvas produced a 540x810 capture that was then drawn into
+    // 540x540: every exported clip was the table vertically compressed to 67%.
+    // Cards became lozenges, the oval became a circle, the dealer button became
+    // an ellipse. The GIF path derives its height from the element's own
+    // aspect and always got this right, so the two exports of one replay
+    // disagreed.
     const SIZE = 540;
+    const OUT_W = SIZE;
+    const OUT_H = Math.round(SIZE * (tableEl.offsetHeight / tableEl.offsetWidth)) || SIZE;
     const canvas = document.createElement('canvas');
-    canvas.width = SIZE;
-    canvas.height = SIZE;
+    canvas.width = OUT_W;
+    canvas.height = OUT_H;
     const ctx = canvas.getContext('2d');
 
     // Set up MediaRecorder on canvas stream
@@ -100,17 +110,17 @@ export async function exportReplayVideo({ hand, tableEl, stepForward, canGoForwa
 
         if (isGreenScreen) {
           ctx.fillStyle = '#00ff00';
-          ctx.fillRect(0, 0, SIZE, SIZE);
+          ctx.fillRect(0, 0, OUT_W, OUT_H);
         } else {
-          ctx.clearRect(0, 0, SIZE, SIZE);
+          ctx.clearRect(0, 0, OUT_W, OUT_H);
         }
-        ctx.drawImage(captured, 0, 0, SIZE, SIZE);
+        ctx.drawImage(captured, 0, 0, OUT_W, OUT_H);
 
         // Pause on each frame for ~900ms (≈ 21-22 frames at 24fps = ~1s per action)
         await new Promise(r => setTimeout(r, 900));
       } catch (captureErr) {
         // If html2canvas fails on this frame, draw a blank transparent frame and continue
-        ctx.clearRect(0, 0, SIZE, SIZE);
+        ctx.clearRect(0, 0, OUT_W, OUT_H);
         await new Promise(r => setTimeout(r, 100));
       }
 

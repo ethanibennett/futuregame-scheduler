@@ -347,9 +347,11 @@ function ChipStack({ amount }) {
     <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'3px', verticalAlign:'middle' }}>
       {chips.map((color, i) => (
         <div key={i} className="chip-disc" style={{
-          width: '12px', height: '4px', borderRadius: '50%', background: color,
-          border: '0.5px solid rgba(255,255,255,0.35)', marginTop: i === 0 ? 0 : '-2px',
-          boxShadow: '0 1px 1px rgba(0,0,0,0.3)', position: 'relative', zIndex: chips.length - i,
+          // 18x6 rather than 12x4: at the old size the denomination colour was
+          // a 4px sliver, so the one thing the stack encodes was unreadable.
+          width: '18px', height: '6px', borderRadius: '50%', '--chip': color,
+          marginTop: i === 0 ? 0 : '-4px',
+          position: 'relative', zIndex: chips.length - i,
         }} />
       ))}
     </div>
@@ -715,7 +717,7 @@ function PotChipVisual({ amount }) {
       {stacks.slice(0, 5).map((stack, i) => (
         <div key={i} className="replayer-pot-chip-stack">
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
-            <div key={j} className="replayer-pot-chip-disc" style={{ background: stack.color }} />
+            <div key={j} className="replayer-pot-chip-disc" style={{ '--chip': stack.color }} />
           ))}
         </div>
       ))}
@@ -908,10 +910,13 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
           </div>
           <div className="replayer-settings-row" style={{ marginTop:'6px' }}>
             <div>
-              <div className="replayer-settings-label">4-Color Deck</div>
-              <div className="replayer-settings-sublabel">Diamonds=blue, Clubs=green</div>
+              <div className="replayer-settings-label">High-Contrast Deck</div>
+              <div className="replayer-settings-sublabel">Lifts the suits off the felt</div>
             </div>
-            <button className={'replayer-settings-toggle' + (settings.fourColorDeck ? ' on' : '')}
+            <button
+              className={'replayer-settings-toggle' + (settings.fourColorDeck ? ' on' : '')}
+              aria-pressed={!!settings.fourColorDeck}
+              aria-label="High-contrast deck"
               onClick={() => onUpdate('fourColorDeck', !settings.fourColorDeck)} />
           </div>
           <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
@@ -3568,13 +3573,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   }, [showResult, rSettings.animateDeal]);
 
   // Flying chip helper
-  const spawnFlyingChips = useCallback((fromPct, toPct, count, toWinner) => {
+  const spawnFlyingChips = useCallback((fromPct, toPct, count, toWinner, amount) => {
     if (!tableRef.current) return;
     const rect = tableRef.current.getBoundingClientRect();
+    // Colour-coding is the entire reason casinos denominate chips, and both the
+    // palette and the breakdown already exist - the flying chip just never
+    // asked. The to-winner chip stays gold: that one IS the pot, not a
+    // denomination.
+    const denom = amount ? getChipBreakdown(amount)[0] : null;
     const chips = [];
     for (let i = 0; i < Math.min(count, 5); i++) {
       chips.push({
         id: Date.now() + '-' + i,
+        color: denom,
         x0: (fromPct[0] / 100) * rect.width,
         y0: (fromPct[1] / 100) * rect.height,
         x1: (toPct[0] / 100) * rect.width,
@@ -3858,7 +3869,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
   const themeClass = rSettings.theme !== 'default' ? ' theme-' + rSettings.theme : '';
   const shapeClass = rSettings.tableShape !== 'oval' ? ' shape-' + rSettings.tableShape : '';
-  const fourColorClass = rSettings.fourColorDeck ? ' four-color-deck' : '';
+  // Was ' four-color-deck', a class with zero rules in the stylesheet - a dead
+  // switch. The deck is already four-colour; what it needs is value separation.
+  const fourColorClass = rSettings.fourColorDeck ? ' hc-deck' : '';
   const boardAnimClass = getBoardAnimClass();
 
   // Share as image
@@ -4175,6 +4188,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {/* Table */}
       <div ref={tableRef} className={'replayer-table' + themeClass}>
         <div className="replayer-table-rail" style={{'--rail-color': feltColor}} />
+        {/* --strip-color was handed in and the rule never read it - a dead
+            property alongside the dead four-color-deck class. The strip now
+            takes its tint from the felt, which is what the prop intended. */}
         {rSettings.lightStrip && <div className="replayer-light-strip" style={{'--strip-color': feltColor}} />}
         {/* Felt — wrap in a <label> so a tap on the felt opens the native
             color picker directly (mirrors TableScanner). The hidden color
@@ -4372,11 +4388,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
         {/* Flying chip animations */}
         {flyingChips.map(fc => (
-          <div key={fc.id} className={'replayer-flying-chip' + (fc.toWinner ? ' to-winner' : '')}
+          <div key={fc.id} className={'replayer-flying-chip' + (fc.toWinner ? ' to-winner' : '') + (fc.color && !fc.toWinner ? ' denom' : '')}
             style={{
               '--fly-x0': fc.x0 + 'px', '--fly-y0': fc.y0 + 'px',
               '--fly-x1': fc.x1 + 'px', '--fly-y1': fc.y1 + 'px',
               '--fly-duration': '0.4s',
+              ...(fc.color ? { '--fly-color': fc.color } : null),
               animationDelay: fc.delay + 'ms',
             }} />
         ))}
@@ -4502,7 +4519,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             <button className="btn btn-sm" onClick={handleSolveSpot} disabled={!canSolveSpot}
               title={canSolveSpot ? 'Open this spot in the Solver' : 'Solver supports stud8 / razz spots'}
               style={canSolveSpot
-                ? { border: '1px solid var(--accent)', background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '5px' }
+                ? { border: '1px solid var(--brand)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'inline-flex', alignItems: 'center', gap: '5px' }
                 : { border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               Solve this spot

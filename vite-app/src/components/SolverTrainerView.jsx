@@ -188,8 +188,8 @@ export default function SolverTrainerView() {
             </span>
             <button onClick={() => dealSpot(gameId)}
               style={{
-                padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)',
-                color: '#fff', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
+                padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--brand)',
+                color: 'var(--on-brand)', fontFamily: 'inherit', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-bold)', cursor: 'pointer',
               }}>
               {picked ? 'Next Spot' : 'Skip'}
             </button>

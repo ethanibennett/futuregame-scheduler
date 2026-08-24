@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
+import StrategyRibbon from './StrategyRibbon.jsx';
 
 // ── Live Solver tool ────────────────────────────────────────
 // React port of solver/razz-solver-gui.html into the app's design
@@ -67,9 +68,11 @@ function StrategyNode({ hist, node }) {
         <span style={{ fontSize: '0.78rem', fontWeight: 700, color: who === 'Hero' ? 'var(--text)' : 'var(--accent)' }}>{who} to act</span>
         <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>{ctxLabel(hist)}</span>
       </div>
-      {(node.actions || []).map((nm, i) => (
-        <ActionBar key={i} name={nm} pct={pcts[i]} best={pcts[i] === best} />
-      ))}
+      {/* One ribbon: five separate bars asked the reader to sum them. */}
+      <StrategyRibbon
+        actions={(node.actions || []).map((nm, i) => ({ id: nm, label: nm, prob: pcts[i] }))}
+        best={(node.actions || [])[pcts.indexOf(best)]}
+      />
     </div>
   );
 }
