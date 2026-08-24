@@ -99,6 +99,31 @@ The Mac is the Xcode build node (iOS/Watch/screensaver) — see `docs/mac-build.
 Ship the app with `./scripts/ios-testflight.sh` there (NOT `deploy.sh --ios`, which
 also pushes master, deploys Render and syncs the prod DB — none of it the Mac's job).
 
+### Working from the Mac without the Mac mattering
+The Mac SSHes into this box over Tailscale (`ethans-macbook-pro` 100.108.175.125
+→ `ethanibennett-windows11` 100.69.155.34) and is **only a terminal** — every
+pm2 service, the DB and all web deploys run here regardless of whether it is
+awake. The one thing that used to die with the connection was the interactive
+Claude Code process, because it was a child of the SSH session.
+
+Start long sessions inside tmux so a sleeping Mac only detaches the view:
+```bash
+# from the PowerShell prompt you land in over SSH
+C:\msys64\usr\bin\bash.exe -lc "tmux new -A -s scheduler"
+claude                       # inside tmux; reattach later with the same command
+```
+`-A` attaches if the session exists and creates it otherwise, so one command
+covers both. A drop still loses whatever step was mid-flight — tmux keeps the
+process and scrollback, it does not replay an interrupted tool call.
+
+MSYS2 exists **solely** to host tmux; the session still drives Windows-native
+node, git, gh and pm2 (`/etc/profile.d/zz-windows-toolchain.sh` puts them on
+MSYS2's deliberately-minimal PATH). tmux could not be dropped into Git Bash
+instead: Git Bash ships msys-2.0.dll 3.3.6, MSYS2's tmux is built against 3.6.9,
+and that runtime is not version-portable — replacing Git Bash's copy breaks Git
+Bash. Pair it with `caffeinate -i ssh …` on the Mac, since not dropping beats
+recovering.
+
 ### Cross-machine handoff
 Claude Code sessions are per-machine and cannot message each other, so machines
 coordinate through GitHub issues: `./scripts/handoff.sh`.
