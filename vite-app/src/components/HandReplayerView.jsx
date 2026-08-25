@@ -395,7 +395,14 @@ function formatChipAmount(val, bigBlind) {
     const bb = n / bigBlind;
     return (bb >= 100 ? Math.round(bb) : Math.round(bb * 10) / 10) + ' BB';
   }
-  if (n >= 1000) return CHIP_COMPACT.format(n);
+  /* 42: everything at or above 1,000 went through compact notation, so a
+     2,400 pot rendered as '2.4K'. At live-tournament stakes almost every
+     number on this table is in that band, which made the felt mostly
+     one-decimal approximations of numbers the player knows exactly — and
+     '2,400' is both more precise and more recognisable than '2.4K' to the
+     person whose hand it is. Compact starts where a tournament clock's own
+     shorthand starts. */
+  if (n >= 100000) return CHIP_COMPACT.format(n);
   return CHIP_PLAIN.format(n);
 }
 
@@ -450,6 +457,25 @@ function ChipStack({ amount }) {
       ))}
     </span>
   );
+}
+
+/* 45: the plaque truncates at 88px with an ellipsis, which in a condensed
+   face at 10px is about fifteen characters — and the cut fell mid-word with
+   nothing carrying the rest, so the one string on the plaque the reader
+   supplied was the one that could be silently lost. A name shortens the way
+   people shorten names. */
+function shortenName(name) {
+  const t = String(name || '').trim();
+  if (t.length <= 15) return t;
+  const parts = t.split(/\s+/);
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1];
+    const initials = parts.slice(0, -1).map(p => p[0].toUpperCase() + '.').join(' ');
+    const short = initials + ' ' + last;
+    if (short.length <= 15) return short;
+    return parts[0][0].toUpperCase() + '. ' + last.slice(0, 12);
+  }
+  return t.slice(0, 14);
 }
 
 // ── Player name helpers ──
@@ -4695,6 +4721,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   ];
   const muckCount = folded.size;
 
+  /* The light sits at the felt's specular pool. A shadow points away from it,
+     and grows with the distance — the aspect correction is the same one the
+     bet chips use, because a percentage of height is not a percentage of
+     width on a 3:4.5 box. */
+  const castStyle = (pos) => {
+    const AR = 4.5 / 3;
+    const dx = pos[0] - 50, dy = (pos[1] - 44) * AR;
+    const len = Math.hypot(dx, dy) || 1;
+    const reach = Math.min(1, len / 46);
+    return {
+      '--cast-x': (dx / len * reach * 3.2).toFixed(1) + 'px',
+      '--cast-y': (1.2 + Math.max(-0.4, dy / len) * reach * 3.4).toFixed(1) + 'px',
+      '--cast-blur': (3 + reach * 4).toFixed(1) + 'px',
+    };
+  };
+
   return (
     /* 77: isLandscape was computed at mount and kept current by a live
        matchMedia listener, and then referenced nowhere — so forty lines of
@@ -4885,7 +4927,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
         {/* Watermark */}
         <div className="replayer-watermark"
-          style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)',zIndex:1}}>futurega.me</div>
+          style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
 
         {/* Player seats */}
         {hand.players.map((p, pi) => {
@@ -4913,8 +4955,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           }
 
           return (
+            /* 21: cards, plaques and the dealer button all carried the same
+               generic downward blur regardless of where they sat, so an object
+               at the top of the table and one at the bottom cast identically —
+               which is what makes a composite read as layers rather than as a
+               scene. The light is above and in front (the felt's specular pool
+               is at 50% 44%); every seat now knows which way its own shadow
+               falls and how long it is. */
             <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`}
-              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle}}>
+              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos)}}>
               {/* 12: opponent cards were hidden until showResult and then
                   appeared in a single frame — the only card event in the
                   replayer with no motion, at the moment the whole replay has
@@ -4956,11 +5005,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     was defined and never used, so blinds and everyone but the
                     button were anonymous — and position is the single most
                     important context for judging any action in a replay. */}
-                <div className="replayer-seat-name">
+                <div className="replayer-seat-name" title={p.name}>
                   {p.position && (
                     <span className={'replayer-seat-pos' + (p.position === 'SB' || p.position === 'BB' ? ' is-blind' : '')}>{p.position}</span>
                   )}
-                  {p.name}
+                  {shortenName(p.name)}
                 </div>
                 <div className="replayer-seat-stack">{fmtChips(stacks[pi])}</div>
                 {/* 43: estimateRange returns a label AND a CSS class per
