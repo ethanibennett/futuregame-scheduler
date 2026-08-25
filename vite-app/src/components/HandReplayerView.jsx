@@ -4207,12 +4207,35 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table */}
-      <div ref={tableRef} className={'replayer-table' + themeClass}>
-        <div className="replayer-table-rail" style={{'--rail-color': feltColor}} />
+      {/* data-cardback is what makes the six-option Card Back setting real;
+          --back-custom feeds the custom colour through to the gradient stops. */}
+      <div ref={tableRef} className={'replayer-table' + themeClass}
+        data-cardback={rSettings.cardBack || 'default'}
+        style={rSettings.cardBack === 'custom' ? (() => {
+          // Same derivation as the felt below, and for the same reason.
+          const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+          if (!m) return undefined;
+          const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+          const mix = (f, w) => `rgb(${Math.round(r * f + 255 * w)},${Math.round(g * f + 255 * w)},${Math.round(b * f + 255 * w)})`;
+          return {
+            '--back-custom-1': mix(1, 0),
+            '--back-custom-2': mix(0.8, 0),
+            '--back-custom-3': mix(0.6, 0),
+            '--back-custom-border': mix(0.7, 0.3),
+          };
+        })() : undefined}>
+        {/* Only the default theme takes its rail from the felt picker; the
+            themes now bring their own, so handing feltColor in would override
+            them with whatever colour happened to be stored. */}
+        <div className="replayer-table-rail"
+          style={rSettings.theme === 'default' ? {'--rail-color': feltColor} : undefined} />
         {/* --strip-color was handed in and the rule never read it - a dead
             property alongside the dead four-color-deck class. The strip now
             takes its tint from the felt, which is what the prop intended. */}
-        {rSettings.lightStrip && <div className="replayer-light-strip" style={{'--strip-color': feltColor}} />}
+        {rSettings.lightStrip && (
+          <div className="replayer-light-strip"
+            style={rSettings.theme === 'default' ? {'--strip-color': feltColor} : undefined} />
+        )}
         {/* Felt — wrap in a <label> so a tap on the felt opens the native
             color picker directly (mirrors TableScanner). The hidden color
             input lives inside the label and receives the native picker

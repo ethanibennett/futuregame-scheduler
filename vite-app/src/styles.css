@@ -789,8 +789,8 @@
       background:
         repeating-linear-gradient(45deg, transparent, transparent 2.5px, rgba(255,255,255,0.07) 2.5px, rgba(255,255,255,0.07) 3.5px),
         repeating-linear-gradient(-45deg, transparent, transparent 2.5px, rgba(255,255,255,0.07) 2.5px, rgba(255,255,255,0.07) 3.5px),
-        linear-gradient(180deg, #243b5c 0%, #1a2744 40%, #152238 100%);
-      border: var(--bw-1) solid #3a5a8a;
+        linear-gradient(180deg, var(--back-1) 0%, var(--back-2) 40%, var(--back-3) 100%);
+      border: var(--bw-1) solid var(--back-border);
       box-shadow: inset 0 1px 2px rgba(255,255,255,0.08), 0 1px 2px rgba(0,0,0,0.3);
       position: relative;
       overflow: hidden;
@@ -1874,6 +1874,22 @@
        A fixed 2px clipped a squarer corner than the card, and the rim light
        below then traced that wrong corner over the transparent pixels. */
     .card-row img { height:28px; border-radius:7.1%; box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30); }
+    /* One back, and it finally reads the setting.
+       REPLAYER_CARD_BACKS offered six options and consumed none of them: the
+       value round-tripped through state and never reached a class or a
+       variable, so every face-down card was this one hard-coded navy. The
+       stops are variables now, and .card-back (the shared class the solver and
+       trainers use) inherits the same ones — the two decks used to disagree
+       about what a face-down card looks like, and the trainers dealt silver
+       barber-pole cards next to the replayer's weave. */
+    .card-row .card-unknown,
+    .card-row .card-placeholder,
+    .card-back {
+      --back-1: #243b5c;
+      --back-2: #1a2744;
+      --back-3: #152238;
+      --back-border: #3a5a8a;
+    }
     .card-row .card-unknown,
     .card-row .card-placeholder {
       width:20px; height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center;
@@ -1881,8 +1897,8 @@
       background:
         repeating-linear-gradient(45deg, transparent, transparent 2.5px, rgba(255,255,255,0.07) 2.5px, rgba(255,255,255,0.07) 3.5px),
         repeating-linear-gradient(-45deg, transparent, transparent 2.5px, rgba(255,255,255,0.07) 2.5px, rgba(255,255,255,0.07) 3.5px),
-        linear-gradient(180deg, #243b5c 0%, #1a2744 40%, #152238 100%);
-      border: var(--bw-1) solid #3a5a8a;
+        linear-gradient(180deg, var(--back-1) 0%, var(--back-2) 40%, var(--back-3) 100%);
+      border: var(--bw-1) solid var(--back-border);
       box-shadow: inset 0 1px 2px rgba(255,255,255,0.08), 0 1px 2px rgba(0,0,0,0.3);
       position: relative;
       overflow: hidden;
@@ -3666,6 +3682,61 @@
       margin-top:-4px; box-shadow:0 1px 1px rgba(0,0,0,0.3);
     }
     .replayer-pot-chip-disc:first-child { margin-top:0; }
+
+
+    /* The six options the settings panel has always offered. Custom feeds
+       --back-custom from the colour input and derives its own stops, using the
+       same lighten/darken maths the felt gradient already does inline. */
+    .replayer-table[data-cardback="classic"] .card-row .card-unknown,
+    .replayer-table[data-cardback="classic"] .card-row .card-placeholder {
+      --back-1:#2f5aa8; --back-2:#22417a; --back-3:#182e57; --back-border:#4a78c8;
+    }
+    .replayer-table[data-cardback="casino-red"] .card-row .card-unknown,
+    .replayer-table[data-cardback="casino-red"] .card-row .card-placeholder {
+      --back-1:#5c2430; --back-2:#442028; --back-3:#361a20; --back-border:#8a3a4a;
+    }
+    .replayer-table[data-cardback="black-diamond"] .card-row .card-unknown,
+    .replayer-table[data-cardback="black-diamond"] .card-row .card-placeholder {
+      --back-1:#1c1c22; --back-2:#141418; --back-3:#0e0e12; --back-border:#3a3a44;
+    }
+    /* Bicycle keeps the navy and doubles the printed frame instead. */
+    .replayer-table[data-cardback="bicycle"] .card-row .card-unknown,
+    .replayer-table[data-cardback="bicycle"] .card-row .card-placeholder { position: relative; }
+    .replayer-table[data-cardback="bicycle"] .card-row .card-unknown::before,
+    .replayer-table[data-cardback="bicycle"] .card-row .card-placeholder::before {
+      content:''; position:absolute; inset:5px;
+      border:1px solid rgba(255,255,255,0.10); border-radius:1px;
+    }
+    /* All four stops are computed in JS and handed in, exactly as the felt
+       gradient does — html2canvas cannot parse color-mix(), and html2canvas is
+       what the video exporter captures with, so a color-mix back would render
+       as nothing in every exported clip. */
+    .replayer-table[data-cardback="custom"] .card-row .card-unknown,
+    .replayer-table[data-cardback="custom"] .card-row .card-placeholder {
+      --back-1: var(--back-custom-1, #1a3a6e);
+      --back-2: var(--back-custom-2, #142e58);
+      --back-3: var(--back-custom-3, #0f2242);
+      --back-border: var(--back-custom-border, #3a5a8a);
+    }
+
+
+    /* Theme rails and light strips.
+       --rail-color was fed the user's feltColor unconditionally and no theme
+       overrode it, so picking Casino Royale while your felt was the default
+       purple put a navy oval inside a PURPLE padded rail with a purple light
+       strip. The rail is the largest surface after the felt; a theme that
+       restyles the felt and not its frame reads as half-applied. */
+    .replayer-table.theme-casino-royale .replayer-table-rail { background-color: #0d1526; }
+    .replayer-table.theme-neon-vegas    .replayer-table-rail { background-color: #0a0a0a; }
+    .replayer-table.theme-vintage       .replayer-table-rail { background-color: #4a3a26; }
+    .replayer-table.theme-minimalist    .replayer-table-rail { background-color: #e0e0e0; }
+    .replayer-table.theme-high-stakes   .replayer-table-rail { background-color: #151515; }
+
+    .replayer-table.theme-casino-royale .replayer-light-strip { border-color: rgba(232,200,120,0.45); }
+    .replayer-table.theme-neon-vegas    .replayer-light-strip { border-color: rgba(0,229,255,0.50); }
+    .replayer-table.theme-vintage       .replayer-light-strip { border-color: rgba(230,210,170,0.40); }
+    .replayer-table.theme-minimalist    .replayer-light-strip { border-color: rgba(0,0,0,0.12); }
+    .replayer-table.theme-high-stakes   .replayer-light-strip { border-color: rgba(200,170,90,0.35); }
 
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
