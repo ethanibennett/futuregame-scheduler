@@ -377,6 +377,41 @@ function feltStops(hex) {
   };
 }
 
+/* 66 + 67: the pot swapped three digits in a single frame and a player's
+   stack dropped the instant they bet — while their chips were still animating
+   toward a pot that had already been paid. The money left the stack before it
+   arrived, and neither event was connected to the other. Conservation is the
+   whole point of animating chips: watching the same quantity leave one place
+   and arrive at another.
+
+   This tweens a displayed value toward its target over the flight's duration.
+   A counting number is one of the few places where motion carries information
+   rather than decoration — it shows the SIZE of the change, not just the
+   result. Scrubbing (a jump of more than one step, or backwards) snaps. */
+function useCountUp(target, enabled) {
+  const [shown, setShown] = useState(target);
+  const fromRef = useRef(target);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    cancelAnimationFrame(rafRef.current);
+    const from = fromRef.current;
+    if (!enabled || from === target) { fromRef.current = target; setShown(target); return; }
+    const t0 = performance.now();
+    const DUR = 420;
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / DUR);
+      // ease-out: the count decelerates into its landing, like the chips do.
+      const e = 1 - Math.pow(1 - p, 3);
+      setShown(Math.round(from + (target - from) * e));
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
+      else fromRef.current = target;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, enabled]);
+  return shown;
+}
+
 // ── Formatting helpers ──
 /* 44: this was a hand-rolled divide-and-suffix with a hardcoded '.' decimal
    point and a mixed-case suffix — '1.5k' but '1.5M' — and there was no Intl
@@ -476,6 +511,12 @@ function shortenName(name) {
     return parts[0][0].toUpperCase() + '. ' + last.slice(0, 12);
   }
   return t.slice(0, 14);
+}
+
+/* One counter per seat: a hook cannot be called inside the seat map, so the
+   count lives in a leaf component that gets remounted with the seat. */
+function CountedChips({ value, fmt, live }) {
+  return fmt(useCountUp(value, live));
 }
 
 // ── Player name helpers ──
@@ -910,7 +951,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
     return (
       <div className={"card-row" + (splay ? " card-row-splay" : "")}>
         {Array.from({ length: placeholderCount }, (_, i) => {
-          const style = splay ? getSplayStyle(i, placeholderCount, splay, 0, reverseZ) : undefined;
+          const style = { '--ci': i, ...(splay ? getSplayStyle(i, placeholderCount, splay, 0, reverseZ) : null) };
           return <div key={'ph' + i} className="card-placeholder" style={style} />;
         })}
       </div>
@@ -929,9 +970,12 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
         const faceUp = c.suit !== 'x' && !isDown;
-        const splayStyle = splay
+        // 63: --ci is the card's place in the hand. The per-card deal
+        // stagger multiplies it by one round of the table, so a hand is dealt
+        // one card at a time round the seats rather than arriving as a block.
+        const splayStyle = { '--ci': i, ...(splay
           ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ && !faceUp)
-          : undefined;
+          : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
         }
@@ -3953,7 +3997,14 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     setTimeout(() => { setFlyingChips([]); }, 700);
   }, []);
 
-  /* 47: spawnFlyingChips computes the denomination colour, staggers up to
+  /* 70: nothing moved at a street boundary — animStreetTransition drove the
+     board's own classes and the rest of the table was static, so the wagers
+     standing in front of the players simply vanished as the next street
+     began. Collecting the bets is the physical event that SEPARATES two
+     streets; without it the streets run together. The chip-flight system was
+     right there.
+
+     47: spawnFlyingChips computes the denomination colour, staggers up to
      five chips and has a live render block and a denominated variant — and
      nothing in the file ever called it, so flyingChips was permanently empty
      and the whole system was decoration on an unreachable code path. The step
@@ -3977,7 +4028,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       const winners = hand.result?.winners || [];
       winners.forEach(w => {
         const seat = seats[w.playerIdx];
-        if (seat) spawnFlyingChips([50, 42], seat, 5, true, pot);
+        if (seat) spawnFlyingChips([50, 37], seat, 5, true, pot);
       });
       if (winners.length) {
         setAnimPotCollect(true);
@@ -3985,12 +4036,29 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       }
       return;
     }
+    // 70: a new street means the previous street's bets are swept in.
+    if (streetIdx > pS && actionIdx < 0) {
+      const sweeping = hand.streets[pS]?.actions || [];
+      const seen = new Set();
+      sweeping.forEach(a => {
+        if (!a.amount || seen.has(a.player) || folded.has(a.player)) return;
+        seen.add(a.player);
+        const seat = seats[a.player];
+        if (seat) spawnFlyingChips(seat, [50, 37], 3, false, a.amount);
+      });
+      if (seen.size) markPotLanding();
+      return;
+    }
+
     const act = currentActions[actionIdx];
     if (!act || !act.amount) return;
     if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
     const seat = seats[act.player];
-    if (seat) spawnFlyingChips(seat, [50, 42], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
-  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips]);
+    if (seat) {
+      spawnFlyingChips(seat, [50, 37], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
+      markPotLanding();
+    }
+  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips, folded, markPotLanding]);
 
   // Determine board animation class based on which street just appeared
   const getBoardAnimClass = () => {
@@ -4050,6 +4118,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Pot and stacks
   const { stacks, pot, folded } = useMemo(() => calcPotsAndStacks(hand, streetIdx, actionIdx), [hand, streetIdx, actionIdx]);
   const displayPot = useMemo(() => calcPotsAndStacks(hand, streetIdx, -1).pot, [hand, streetIdx]);
+  /* 66: the pot counts toward its new value over the chips' flight. It snaps
+     while scrubbing, because a rewind is not a payment. */
+  const countedPot = useCountUp(displayPot, rSettings.animateChips && !rewinding);
 
   // "Solve this spot" → Solver handoff. Enabled only when the hand's
   // game maps to a solver-supported stud game (Stud 8 / Razz).
@@ -4173,11 +4244,28 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Update inline so the export loop always gets the latest closure
   stepForwardRef.current = stepForward;
 
+  /* 71: the animation guards correctly suppress the deal, the muck and the
+     board slide when stepping BACK — which left going backwards a series of
+     instant state swaps while going forwards was choreographed, so the two
+     directions felt like different applications. Scrubbing is how people
+     actually study a hand; it was the least finished way to move through one.
+     A short cross-fade on the whole table says "rewinding" without replaying
+     a single piece of forward choreography. */
+  const [rewinding, setRewinding] = useState(false);
+  const rewindTimer = useRef(0);
+  const markRewind = useCallback(() => {
+    setRewinding(true);
+    clearTimeout(rewindTimer.current);
+    rewindTimer.current = setTimeout(() => setRewinding(false), 260);
+  }, []);
+  useEffect(() => () => clearTimeout(rewindTimer.current), []);
+
   const stepBack = useCallback(() => {
+    markRewind();
     if (showResult) { setShowResult(false); setHiloAnimate(false); }
     else if (actionIdx >= 0) setActionIdx(a => a - 1);
     else if (streetIdx > 0) { const prevStreet = hand.streets[streetIdx - 1]; setStreetIdx(s => s - 1); setActionIdx((prevStreet?.actions?.length || 0) - 1); }
-  }, [actionIdx, streetIdx, showResult, hand]);
+  }, [actionIdx, streetIdx, showResult, hand, markRewind]);
 
   const goToStart = () => { setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   /* 51: this set the last street and the last action and stopped one step
@@ -4213,6 +4301,20 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const dot = el.querySelector('.replayer-timeline-dot.current');
     if (dot && dot.scrollIntoView) dot.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }, [streetIdx, actionIdx]);
+
+  /* 65: the flying chips landed at 50%/42% and disappeared while the pot's
+     number swapped on the same render — so they arrived at a coordinate
+     rather than at the pot. The pot now takes the impact. */
+  const [potLanding, setPotLanding] = useState(false);
+  const potLandTimer = useRef(0);
+  const markPotLanding = useCallback(() => {
+    clearTimeout(potLandTimer.current);
+    potLandTimer.current = setTimeout(() => {
+      setPotLanding(true);
+      setTimeout(() => setPotLanding(false), 320);
+    }, 300);
+  }, []);
+  useEffect(() => () => clearTimeout(potLandTimer.current), []);
 
   const [showExportMenu, setShowExportMenu] = useState(false);
   /* 94: the overlays described one outcome and the code produced another. Ask
@@ -4743,7 +4845,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        fullscreen CSS (fixed inset, modal layer, app chrome hidden through a
        :has() rule) could never fire, and turning the phone sideways just
        letterboxed the table. */
-    <div className={'replayer-replay' + hcDeckClass + (isLandscape ? ' replayer-landscape' : '')}>
+    <div className={'replayer-replay' + hcDeckClass + (isLandscape ? ' replayer-landscape' : '')
+      + (rewinding ? ' is-rewinding' : '')}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table */}
@@ -4836,10 +4939,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             );
           }
           return (
-            <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')}>
+            <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
+              + (potLanding ? ' is-landing' : '')}>
               <div className="replayer-pot-label">Pot</div>
               {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={displayPot} />}
-              {fmtChips(displayPot)}
+              {fmtChips(countedPot)}
             </div>
           );
         })()}
@@ -4976,11 +5080,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                 style={(() => {
                   const st = {};
                   if (animDealing) {
-                    // The inverse of the muck vector already written below: cards
-                    // arrive FROM the dealer rather than leaving toward the centre.
-                    st['--deal-dx'] = ((50 - pos[0]) * 1.6) + 'px';
-                    st['--deal-dy'] = ((50 - pos[1]) * 0.9 - 40) + 'px';
-                    st['--deal-seat-delay'] = (dealOrder.indexOf(pi) * 80) + 'ms';
+                    /* 64: the offset was computed from the table CENTRE with a
+                       flat -40px, so cards arrived from a point above the
+                       middle of the felt. They come from the deck, which is
+                       now an object on the table with a known position. */
+                    st['--deal-dx'] = ((dealerSpot[0] - pos[0]) * 1.9).toFixed(1) + 'px';
+                    st['--deal-dy'] = ((dealerSpot[1] - pos[1]) * 1.3).toFixed(1) + 'px';
+                    /* 63: the stagger was per SEAT, so each player's whole hand
+                       flew in as one block — the one thing a dealer never
+                       does. Per card as well as per seat, so the deal goes
+                       round the table once for each card. */
+                    st['--deal-seat-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
+                    st['--deal-round'] = String(hand.players.length * 70);
                   }
                   // 12: opponents reveal clockwise from the hero, not all at once.
                   if (animShowdown) st['--showdown-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
@@ -5011,7 +5122,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   )}
                   {shortenName(p.name)}
                 </div>
-                <div className="replayer-seat-stack">{fmtChips(stacks[pi])}</div>
+                {/* 67: the stack dropped the instant the bet was recorded,
+                    while the chips were still in flight toward a pot that had
+                    already been paid. It counts down over the same duration
+                    the pot counts up. */}
+                <div className="replayer-seat-stack"><CountedChips value={stacks[pi]} fmt={fmtChips}
+                  live={rSettings.animateChips && !rewinding} /></div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
                     merged into the settings object — and no seat ever wore

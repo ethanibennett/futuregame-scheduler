@@ -523,6 +523,7 @@
         --dur-base: 0ms;
         --dur-slow: 0ms;
         --dur-amble: 0ms;
+        --dur-beat: 0ms;
         --state-press: none;
       }
       *, *::before, *::after {
@@ -532,6 +533,29 @@
         scroll-behavior: auto !important;
       }
       .skeleton { background: var(--surface2) !important; }
+
+      /* 74: the rule above is the right app-wide policy and the wrong one for
+         a replay. Zeroed, every step of a hand became an instantaneous state
+         swap with nothing at all to say that anything had happened — which is
+         harder to follow, not easier, and the setting means less vestibular
+         MOVEMENT, not less feedback. The replayer's changing elements keep a
+         cross-fade: no travel, no scale, no bounce, but not nothing. */
+      @keyframes rmFade { from { opacity: 0 } to { opacity: 1 } }
+      .replayer-replay .replayer-seat-cards,
+      .replayer-replay .replayer-action-badge-outer,
+      .replayer-replay .replayer-seat-hand-name,
+      .replayer-replay .replayer-board-area .card-row > *,
+      .replayer-replay .replayer-bet-chip,
+      .replayer-replay .replayer-street-label {
+        animation-name: rmFade !important;
+        animation-duration: 140ms !important;
+        animation-delay: 0s !important;
+        transition-duration: 140ms !important;
+      }
+      /* Travel is what the setting is actually about, so the two systems that
+         move objects across the felt stay off entirely. */
+      .replayer-replay .replayer-flying-chip,
+      .replayer-replay .replayer-draw-discard-card { display: none !important; }
     }
 
 
@@ -2913,6 +2937,26 @@
       --ring-1: 0 0 0 2px;
       --ring-2: 0 0 12px 2px;
 
+      /* 61: --ease-emphatic (a heavy overshoot) or --ease-out was applied to
+         the deal, the fold, the board slide, the badge entrance, the showdown
+         reveal, the chip flight and the pot collect alike. A card being dealt
+         and a badge appearing are not the same physical event, and easing is
+         how motion communicates weight — one curve for everything makes
+         everything feel like the same weight, which is to say weightless.
+         Three curves, by mass:
+
+           --ease-object  things with momentum that settle: cards, chips
+           --ease-label   things that simply appear: badges, labels, numbers
+           --ease-leave   things going away: the muck, the pot collect
+
+         62: and the durations were literals — 0.4s deal, 0.7s bounce, 1.8s
+         shimmer, 0.5s star, 3s neon, 0.6s collect — none of them on the
+         four-value ladder the app maintains for exactly this. */
+      --ease-object: cubic-bezier(0.16, 1.36, 0.36, 1);
+      --ease-label:  cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-leave:  cubic-bezier(0.55, 0, 0.85, 0.35);
+      --dur-beat:    1200ms;   /* a held moment: the celebration, the result */
+
       /* The felt's inset, named once and read by the rail, the light strip,
          the felt and the outer shadow — they used to hold four copies of the
          same two numbers, and the rail's copy had a 20px literal in it. */
@@ -3119,7 +3163,7 @@
       border: 1px solid rgba(255,224,138,0.45);
       border-radius: var(--radius-pill);
       padding: var(--space-2xs) var(--space-xl);
-      box-shadow: var(--plaque-bevel);
+      box-shadow: var(--plate-bevel);
       white-space: nowrap;
     }
     .replayer-pot-label {
@@ -3992,12 +4036,24 @@
     }
     @media (prefers-reduced-motion: no-preference) {
       .replayer-table.theme-neon-vegas .replayer-table-felt::before {
-        animation: neonGlowPulse 3s ease-in-out infinite;
+        animation: neonGlowPulse 9s ease-in-out infinite;
       }
     }
+    /* 72: a 3-second infinite pulse on one theme, and every other table
+       completely still between steps — so the frame had no idle state, only
+       "dead" and "never settles". A very slow specular drift on every theme,
+       and the neon slowed to match: ambient motion should be the thing you
+       notice only when it stops. */
     @keyframes neonGlowPulse {
-      0%, 100% { opacity: 0.55; }
+      0%, 100% { opacity: 0.62; }
       50%      { opacity: 1; }
+    }
+    @keyframes feltBreathe {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.93; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .replayer-table-felt::after { animation: feltBreathe 14s ease-in-out infinite; }
     }
 
     @keyframes neonPulse {
@@ -4208,11 +4264,15 @@
       100% { opacity:1; transform:none; }
     }
     .replayer-seat-cards.animate-deal {
-      animation:cinematicDeal 0.4s var(--ease-emphatic) both;
+      animation:cinematicDeal var(--dur-base) var(--ease-object) both;
     }
-    /* Stagger deal animation per seat */
-    .replayer-seat-cards.animate-deal {
-      animation-delay: var(--deal-seat-delay, 0ms);
+    /* 63: the delay was per SEAT, so a player's whole hand arrived as one
+       block. Each card in the row waits its own round of the table on top of
+       its seat's place in the order, which is how a deal actually goes. */
+    .replayer-seat-cards.animate-deal { animation-delay: var(--deal-seat-delay, 0ms); }
+    .replayer-seat-cards.animate-deal .card-row > * {
+      animation: cinematicDeal var(--dur-base) var(--ease-object) both;
+      animation-delay: calc(var(--deal-seat-delay, 0ms) + var(--deal-round, 0) * 1ms * var(--ci, 0));
     }
 
     /* 12: the reveal the flip was supposed to be. Opacity and a small lift on
@@ -4223,7 +4283,7 @@
       100% { opacity:1; transform:translateY(0); }
     }
     .replayer-seat-cards.animate-showdown {
-      animation: showdownReveal var(--dur-slow) var(--ease-emphatic) both;
+      animation: showdownReveal var(--dur-slow) var(--ease-object) both;
       animation-delay: var(--showdown-delay, 0ms);
     }
     @media (prefers-reduced-motion: reduce) {
@@ -4247,23 +4307,29 @@
        elements in this row, so counting children would animate the wrong card
        the moment the board is grouped — the exact trap that kept the gap class
        unrendered. data-slot is the card's own index and cannot drift. */
-    .replayer-board-area.animate-board-flop .card-row > [data-slot="0"] { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:0ms; }
-    .replayer-board-area.animate-board-flop .card-row > [data-slot="1"] { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:120ms; }
-    .replayer-board-area.animate-board-flop .card-row > [data-slot="2"] { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:240ms; }
-    .replayer-board-area.animate-board-turn .card-row > [data-slot="3"] { animation:turnRiverSlide 0.35s var(--ease-emphatic) both; }
-    .replayer-board-area.animate-board-river .card-row > [data-slot="4"] { animation:turnRiverSlide 0.35s var(--ease-emphatic) both; }
+    .replayer-board-area.animate-board-flop .card-row > [data-slot="0"] { animation:flopCardSlide var(--dur-base) var(--ease-object) both; animation-delay:0ms; }
+    .replayer-board-area.animate-board-flop .card-row > [data-slot="1"] { animation:flopCardSlide var(--dur-base) var(--ease-object) both; animation-delay:120ms; }
+    .replayer-board-area.animate-board-flop .card-row > [data-slot="2"] { animation:flopCardSlide var(--dur-base) var(--ease-object) both; animation-delay:240ms; }
+    .replayer-board-area.animate-board-turn .card-row > [data-slot="3"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
+    .replayer-board-area.animate-board-river .card-row > [data-slot="4"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
     /* Legacy fallback */
     .replayer-board-area.animate-board .card-img,
-    .replayer-board-area.animate-board .card-classic { animation:flopCardSlide 0.4s var(--ease-emphatic) both; }
+    .replayer-board-area.animate-board .card-classic { animation:flopCardSlide var(--dur-base) var(--ease-object) both; }
 
     /* ── Fold Animation (cards slide to muck) ── */
     @keyframes foldToMuck {
-      0% { opacity:1; transform:translateX(-50%) scale(1) rotate(0deg); }
-      40% { opacity:0.7; transform:translateX(calc(-50% + var(--muck-dx,0px))) translateY(var(--muck-dy,20px)) scale(0.85) rotate(var(--muck-rot,-8deg)); }
-      100% { opacity:0; transform:translateX(calc(-50% + var(--muck-dx,0px))) translateY(var(--muck-dy,40px)) scale(0.4) rotate(var(--muck-rot,-15deg)); }
+      0%   { opacity:1; transform:none; }
+      100% { opacity:0;
+             transform: translate(calc(var(--muck-dx) * 0.45), calc(var(--muck-dy) * 0.45))
+                        rotate(calc(var(--muck-rot) * 0.4)) scale(0.94); }
     }
     .replayer-seat.anim-fold .replayer-seat-cards {
-      animation:foldToMuck 0.4s cubic-bezier(0.4,0,0.2,1) forwards !important;
+      /* 69: a fold animated five properties — a scale, an opacity fade, a
+         20px drop, a rotation and a translate toward the centre — while a
+         raise got a badge and a chip. Motion is an attention budget and most
+         of it was being spent on players LEAVING the hand. A fade and a
+         settle; the recovered attention goes to the aggressive actions. */
+      animation:foldToMuck var(--dur-base) var(--ease-leave) forwards !important;
     }
     .replayer-seat.anim-fold .replayer-seat-info {
       transition:opacity var(--dur-base) var(--dur-fast);
@@ -4277,7 +4343,7 @@
       100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
     }
     .replayer-bet-chip.animate-chips {
-      animation:chipSlideToPot 0.35s var(--ease-emphatic) both;
+      animation:chipSlideToPot var(--dur-base) var(--ease-object) both;
     }
 
     /* ── Pot Collection Animation (chips slide to winner) ── */
@@ -4286,18 +4352,27 @@
       100% { opacity:0; transform:translate(calc(-50% + var(--win-dx,0px)),calc(-50% + var(--win-dy,0px))) scale(0.3); }
     }
     .replayer-pot-display.anim-pot-collect {
-      animation:potCollect 0.5s cubic-bezier(0.4,0,0.2,1) forwards;
+      animation:potCollect var(--dur-slow) var(--ease-leave) forwards;
     }
 
-    /* ── Winner Shimmer / Gold Pulse ── */
-    /* Each frame carries --plaque-bevel because box-shadow replaces wholesale: without it the
-       winning plaque loses its bevel for the 3.6s the shimmer runs and then snaps back. */
-    @keyframes winnerShimmer {
-      0% { box-shadow:var(--plaque-bevel), 0 0 4px rgba(234,179,8,0.3), 0 0 8px rgba(234,179,8,0.1); border-color:rgba(234,179,8,0.4); }
-      20% { box-shadow:var(--plaque-bevel), 0 0 16px rgba(255,215,0,0.7), 0 0 32px rgba(255,215,0,0.3), inset 0 0 8px rgba(255,215,0,0.1); border-color:#ffd700; }
-      40% { box-shadow:var(--plaque-bevel), 0 0 10px rgba(234,179,8,0.5), 0 0 20px rgba(234,179,8,0.2); border-color:rgba(234,179,8,0.6); }
-      60% { box-shadow:var(--plaque-bevel), 0 0 14px rgba(255,215,0,0.6), 0 0 28px rgba(255,215,0,0.25), inset 0 0 6px rgba(255,215,0,0.08); border-color:#ffd700; }
-      100% { box-shadow:var(--plaque-bevel), 0 0 8px rgba(234,179,8,0.45), 0 0 18px rgba(234,179,8,0.2); border-color:#eab308; }
+    /* ── The winner sequence ──
+       68: the whole celebration was one simultaneous effect — a border glow
+       that brightened and faded — so at the climax of a hand the table's
+       entire response was that a 72px nameplate got briefly brighter. A
+       single simultaneous effect has no shape; a sequence has a rhythm, and
+       rhythm is what makes a moment feel authored. Four beats, in order:
+
+         0.00s  the pot leaves the felt        (.replayer-pot-display.anim-collect)
+         0.30s  the winner's plaque takes it   (winnerArrive, below)
+         0.55s  the cards lift                 (winnerBounce)
+         0.80s  the hand name lands            (.replayer-seat-hand-name)
+
+       Each frame carries --plate-bevel because box-shadow replaces wholesale:
+       without it the plaque loses its bevel for the run and snaps back. */
+    @keyframes winnerArrive {
+      0%   { box-shadow: var(--plate-bevel); border-color: rgba(234,179,8,0.35); }
+      55%  { box-shadow: var(--plate-bevel), 0 0 0 3px rgba(255,215,0,0.75), 0 0 26px 6px rgba(255,215,0,0.45); border-color:#ffd700; }
+      100% { box-shadow: var(--plate-bevel), var(--ring-1) rgba(234,179,8,0.55), var(--ring-2) rgba(234,179,8,0.40); border-color:#eab308; }
     }
     @keyframes winnerBounce {
       0% { transform:scale(1); }
@@ -4307,12 +4382,16 @@
       60% { transform:scale(0.99); }
       100% { transform:scale(1); }
     }
-    .replayer-seat.winner .replayer-seat-cards { animation:winnerBounce 0.7s var(--ease-emphatic); }
+    .replayer-seat.winner .replayer-seat-cards { animation:winnerBounce var(--dur-slow) var(--ease-object) 0.55s both; }
     /* 55: this ran the 1.8s shimmer TWICE — 3.6 seconds of a plaque pulsing
        to a 32px gold bloom and back, long after the result has been read, and
        then dropping to nothing. The border and glow in .replayer-seat.winner
        are already the steady state; the shimmer only has to arrive at it. */
-    .replayer-seat.winner .replayer-seat-info { animation:winnerShimmer 1.8s ease-in-out 1 both; }
+    .replayer-seat.winner .replayer-seat-info { animation:winnerArrive var(--dur-beat) var(--ease-label) 0.30s both; }
+    /* The last beat: the sentence the whole replay was building to. */
+    .replayer-seat.winner .replayer-seat-hand-name {
+      animation: showdownReveal var(--dur-slow) var(--ease-label) 0.80s both;
+    }
     /* 57: the panel promised "Winner Effects" and animateWinner was read by
        nothing at all — the bounce, the shimmer and the star ran unconditionally.
        The steady gold border stays either way; it is result, not celebration. */
@@ -4324,7 +4403,7 @@
       50% { transform:scale(1.3) rotate(180deg); opacity:1; }
       100% { transform:scale(1) rotate(360deg); opacity:1; }
     }
-    .replayer-seat.winner .replayer-winner-star { animation:winnerStarSpin 0.5s ease-out; display:inline-block; }
+    .replayer-seat.winner .replayer-winner-star { animation:winnerStarSpin var(--dur-slow) var(--ease-label) 0.30s both; display:inline-block; }
 
     /* ── Showdown Card Flip (3D) ── */
     /* Showdown flip disabled — conflicts with card splay transforms */
@@ -4336,7 +4415,7 @@
       100% { opacity:1; }
     }
     .replayer-table.anim-street-transition .replayer-table-felt {
-      animation:streetTransition 0.5s ease-in-out;
+      animation:streetTransition var(--dur-slow) var(--ease-label);
     }
     /* The keyframe carried the old absolute centring in its transform, so
        reusing it in flow would have thrown the label half its size up-left. */
@@ -4346,7 +4425,16 @@
       100% { opacity:1; transform:scale(1); }
     }
     .replayer-street-label.anim-pop {
-      animation:streetLabelPop 0.4s var(--ease-emphatic);
+      animation:streetLabelPop var(--dur-base) var(--ease-label);
+    }
+
+    /* 71: a rewind is one short cross-fade over the whole felt, and no
+       forward choreography at all — the guards already suppress that. */
+    @keyframes rewindFade { from { opacity: 0.45 } to { opacity: 1 } }
+    @media (prefers-reduced-motion: no-preference) {
+      .replayer-replay.is-rewinding .replayer-table-felt ~ * {
+        animation: rewindFade var(--dur-snap) var(--ease-label) both;
+      }
     }
 
     /* ── Chip icon for bet animation ── */
@@ -4364,16 +4452,23 @@
          The path was also dead straight: real chips are pushed, so they arc.
          --fly-dx/--fly-dy are the delta the JS already had both ends of. */
       left: var(--fly-x0); top: var(--fly-y0);
-      animation:flyChipToPot var(--fly-duration,0.4s) var(--ease-emphatic) forwards;
+      animation:flyChipToPot var(--fly-duration, var(--dur-base)) var(--ease-object) forwards;
     }
+    /* 73: every animation went from its start state to its end state and
+       nothing else — no object dipped before it moved and nothing overshot
+       and settled. Anticipation and follow-through are the two oldest
+       principles in animation and the cheapest to add; they are the
+       difference between interpolation and performance. The chip pulls back
+       at the seat before it goes. */
     @keyframes flyChipToPot {
       0%   { opacity:1; transform:translate(0,0) scale(0.6); }
-      55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - 14px)) scale(0.9); }
+      14%  { transform:translate(calc(var(--fly-dx) * -0.07), calc(var(--fly-dy) * -0.06)) scale(0.54); }
+      60%  { transform:translate(calc(var(--fly-dx) * 0.6), calc(var(--fly-dy) * 0.6 - 15px)) scale(0.92); }
       100% { opacity:0.8; transform:translate(var(--fly-dx), var(--fly-dy)) scale(1); }
     }
     .replayer-flying-chip.to-winner {
       background:radial-gradient(ellipse, #ffd700 0%, #e8b800 60%, #c4980a 100%);
-      animation:flyChipToWinner var(--fly-duration,0.5s) var(--ease-emphatic) forwards;
+      animation:flyChipToWinner var(--fly-duration, var(--dur-slow)) var(--ease-object) forwards;
     }
     @keyframes flyChipToWinner {
       0%   { opacity:1; transform:translate(0,0) scale(1); }
@@ -4688,7 +4783,17 @@
       100% { opacity:0; transform:translate(-50%,-50%) scale(0.55); }
     }
     .replayer-pot-display.anim-collect {
-      animation: potCollect 0.6s var(--ease-emphatic) 0.15s both;
+      animation: potCollect var(--dur-slow) var(--ease-leave) 0.15s both;
+    }
+    /* 65: the impact. Three percent is enough to say the chips arrived HERE,
+       rather than at a coordinate that happens to be where the pot is. */
+    @keyframes potImpact {
+      0%   { transform: translate(-50%,-50%) scale(1); }
+      35%  { transform: translate(-50%,-50%) scale(1.035); }
+      100% { transform: translate(-50%,-50%) scale(1); }
+    }
+    .replayer-pot-display.is-landing {
+      animation: potImpact var(--dur-base) var(--ease-object);
     }
 
     /* 58: the badge under each seat is the densest thing on the felt that
@@ -4701,7 +4806,7 @@
       70%  { opacity:1; transform:translateY(0) scale(1.05); }
       100% { opacity:1; transform:translateY(0) scale(1); }
     }
-    .replayer-action-badge-outer { animation: actionBadgeIn var(--dur-base) var(--ease-emphatic) both; }
+    .replayer-action-badge-outer { animation: actionBadgeIn var(--dur-snap) var(--ease-label) both; }
     @media (prefers-reduced-motion: reduce) {
       .replayer-action-badge-outer,
       .replayer-pot-display.anim-collect { animation: none; }
