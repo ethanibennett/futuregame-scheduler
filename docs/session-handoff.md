@@ -307,3 +307,45 @@ size. Three items are consequences of the first pass and say so.
 
 Build systems for both catalogues are in the session scratchpad
 (`scratchpad/replayer/` and `scratchpad/polish/`), not the repo.
+
+## 2026-08-25 — Replayer polish catalogue implemented (99 of 100)
+
+All of catalogue two is in on `feat/replayer-cards` ([PR #104](https://github.com/ethanibennett/futuregame-scheduler/pull/104)),
+eight more commits. **22 was skipped** (felt wear and history) and **26-29 were
+reverted** after review — the white-stock deck, the edge band, the mirrored
+index and the twelve court panels are out, and everything retuned for white
+stock went back with them (the warm rim light is load-bearing again, because
+all four suit fills are darker than the felt's dark stop).
+
+**The big ones:** the rail was lit from two opposite corners while everything
+else described one source. The table is a container now, so the rail, the cards
+and the weave scale with it instead of being three fixed sizes on a fluid box.
+The felt went from a 1:1.59 portrait oval — a shape no poker table has — to
+1.30:1, and the seat coordinates are derived from the inset rather than being
+ten hand-written tables holding a copy of it. Eleven kinds of information at
+one type size became three tiers. Four shadow directions became one. The
+transport bar joined the table's world. The four "Coming Soon" sounds are built
+(Web Audio, synthesised, no assets).
+
+**Verification changed this session.** The build cannot see a runtime error, and
+the previous pass shipped two: `toast` referenced out of scope, and the
+chip-flight effect's dependency array naming three consts declared further down
+the component — a dep array evaluates on every render, so the render sat in
+their temporal dead zone and the replay view threw into its error boundary.
+There is now a scan for that pattern (`dep arrays naming a later const`), and a
+render harness: `scratchpad/harness/` inlines the built stylesheet and the real
+card SVGs into a static page and screenshots it with headless Edge
+(`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new
+--screenshot=...`). Rebuild it with `python refresh.py` after any build.
+
+That harness caught four things reading could not: **ALL-IN rendered as a solid
+purple slab with no text**, because the generic per-action colour rule sets
+`color: var(--act-allin)` over the badge's own purple ground; the deck landed
+on the button player's cards; the board ran under the mid-height side plaques
+(pre-existing, and worse before this pass); and the pot sat hard against the
+top edge of the shallower felt.
+
+**Still unrendered:** the React logic. The harness is static markup, so autoplay
+pacing, the count-ups, the rewind cross-fade, the bookends and the exports have
+not been exercised. The Chrome extension's PreToolUse hook times out on this
+box, which is what forced the harness route.
