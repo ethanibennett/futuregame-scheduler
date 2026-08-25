@@ -5298,6 +5298,80 @@
       color: rgba(242,239,230,0.55); white-space: nowrap;
     }
 
+
+    /* 96: the bookends. On screen they would sit between the reader and the
+       table, so they are gated on the capture state — and because the
+       exporter starts at the opening state and stops at the result, they land
+       in exactly the first and last frames of every clip. */
+    .replayer-bookend {
+      position: absolute; inset: 0; z-index: var(--z-flight);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center; gap: var(--space-xs);
+      padding: var(--space-xl);
+      text-align: center;
+      background: linear-gradient(165deg, rgba(28,24,44,0.97), rgba(10,8,16,0.99));
+      border-radius: var(--radius-pill);
+      pointer-events: none;
+    }
+    .replayer-table[data-capturing="1"] .replayer-bookend.is-live { display: flex; }
+    .replayer-bookend-eyebrow {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: var(--brand);
+    }
+    .replayer-bookend-title {
+      font-family: var(--font-display);
+      font-size: var(--fs-lg); font-weight: var(--fw-bold);
+      color: #f6f3ec; line-height: 1.2; text-wrap: balance;
+      max-width: 22ch;
+    }
+    .replayer-bookend-sub {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: rgba(246,243,236,0.5);
+    }
+    .replayer-bookend-cards { display: block; margin: var(--space-xs) 0; }
+
+    /* 97: the push. Suppressed while capturing — a transform on the captured
+       root is not reliably reproduced, and a clip that drifts between frames
+       is worse than one that holds still. */
+    @media (prefers-reduced-motion: no-preference) {
+      .replayer-table:not([data-capturing="1"]) {
+        transform: translate(var(--push-x, 0), var(--push-y, 0)) scale(1.02);
+        transition: transform var(--dur-slow) var(--ease-label);
+      }
+    }
+
+    /* 100: a player's line through the hand, from the history already indexed
+       by player. */
+    .replayer-seat-info { cursor: pointer; }
+    .replayer-seat-line {
+      position: absolute; left: 50%; top: calc(100% + 4px);
+      transform: translateX(-50%);
+      z-index: var(--z-flight);
+      min-width: 132px; max-width: 190px;
+      padding: var(--space-xs) var(--space-sm);
+      border-radius: var(--r-object);
+      background: linear-gradient(180deg, rgba(28,24,40,0.98), rgba(12,10,17,0.98));
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+      text-align: left;
+    }
+    .replayer-seat-line-row {
+      display: flex; gap: var(--space-xs);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      color: rgba(242,239,230,0.86);
+      line-height: 1.45;
+    }
+    .replayer-seat-line-street {
+      flex: 0 0 34px;
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: var(--brand);
+    }
+
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
     .replayer-table-felt.shape-octagon {

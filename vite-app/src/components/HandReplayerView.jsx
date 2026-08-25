@@ -7,6 +7,7 @@ import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, ass
          bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES } from '../utils/hand-shorthand.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
+import { playTableSound } from '../utils/replay-sound.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -1242,17 +1243,27 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             </div>
           ))}
         </div>
+        {/* 99: four disabled rows labelled "Coming Soon", on screen long
+            enough to have accumulated their own accessibility treatment — a
+            promise the interface kept making and never kept. The four are
+            synthesised rather than sampled: no asset, no licence, nothing
+            added to the bundle, and no cold start on the first card. */}
         <div className="replayer-settings-group">
-          <div className="replayer-settings-group-title">Sound (Coming Soon)</div>
+          <div className="replayer-settings-group-title">Sound</div>
           {[
-            { key:'soundDeal', label:'Card Deal Sound' },
-            { key:'soundChips', label:'Chip Sound' },
-            { key:'soundFold', label:'Fold Sound' },
-            { key:'soundAllIn', label:'All-In Sound' },
+            { key:'soundDeal', label:'Card Deal', sub:'A short hiss as each card lands' },
+            { key:'soundChips', label:'Chips', sub:'Clay on clay, when a wager moves' },
+            { key:'soundFold', label:'Fold', sub:'Cards pushed away' },
+            { key:'soundAllIn', label:'All-In', sub:'The one moment that earns a pitch' },
           ].map(opt => (
-            <div key={opt.key} className="replayer-settings-row is-disabled">
-              <div className="replayer-settings-label">{opt.label}</div>
-              <button className="replayer-settings-toggle" disabled aria-label={opt.label} />
+            <div key={opt.key} className="replayer-settings-row">
+              <div>
+                <div className="replayer-settings-label">{opt.label}</div>
+                <div className="replayer-settings-sublabel">{opt.sub}</div>
+              </div>
+              <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
+                onClick={() => onUpdate(opt.key, !settings[opt.key])} />
             </div>
           ))}
         </div>
@@ -3901,6 +3912,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _showChipDelta = useReplayerSetting('ShowChipDelta', false);
   const _showEquity = useReplayerSetting('ShowEquity', false);
   const _stacksInBB = useReplayerSetting('StacksInBB', false);
+  // 99: off by default. Sound that starts without being asked for is worse
+  // than no sound, and this is a screen people open in card rooms.
+  const _soundDeal = useReplayerSetting('SoundDeal', false);
+  const _soundChips = useReplayerSetting('SoundChips', false);
+  const _soundFold = useReplayerSetting('SoundFold', false);
+  const _soundAllIn = useReplayerSetting('SoundAllIn', false);
   const _cardSplay = useReplayerSetting('CardSplay', true);
   const _lightStrip = useReplayerSetting('LightStrip', false);
   const _animDeal = useReplayerSetting('AnimateDeal', true);
@@ -3917,6 +3934,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
     showEquity: _showEquity[0], stacksInBB: _stacksInBB[0],
+    soundDeal: _soundDeal[0], soundChips: _soundChips[0],
+    soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
     animateFold: _animFold[0],
     cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0],
@@ -3930,12 +3949,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     showSPR: _showSPR[1], showBetSizing: _showBetSizing[1],
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
     showEquity: _showEquity[1], stacksInBB: _stacksInBB[1],
+    soundDeal: _soundDeal[1], soundChips: _soundChips[1],
+    soundFold: _soundFold[1], soundAllIn: _soundAllIn[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     animateFold: _animFold[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
     cardSplay: _cardSplay[1], lightStrip: _lightStrip[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
+  /* The sound calls live inside effects whose dependency arrays deliberately
+     do not name the settings object — re-running a deal because a toggle moved
+     would re-deal the hand. A ref keeps them reading the current settings. */
+  const rSettingsRef = useRef(rSettings);
+  rSettingsRef.current = rSettings;
 
   /* 44: the display surfaces where depth is the point — stacks, pot, wagers —
      go through this; commentary and exports keep chip counts, because prose
@@ -3987,6 +4013,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const movedForward = actionIdx > prevActionIdxRef.current;
     if (movedForward && actionIdx >= 0 && actionIdx < currentActions.length) {
       const act = currentActions[actionIdx];
+      if (act && act.action === 'fold') playTableSound('fold', rSettingsRef.current);
+      if (act && act.action === 'all-in') playTableSound('allIn', rSettingsRef.current);
       if (act && act.action === 'fold' && rSettings.animateFold) {
         setAnimFolded(prev => { const n = new Set(prev); n.add(act.player); return n; });
         setTimeout(() => { setAnimFolded(prev => { const n = new Set(prev); n.delete(act.player); return n; }); }, 450);
@@ -4009,9 +4037,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     if (!rSettings.animateDeal) { setAnimDealing(false); return; }
     if (streetIdx !== 0 || actionIdx >= 0 || showResult) return;
     setAnimDealing(true);
+    // 99: one hiss per card, on the same stagger the animation uses.
+    const cards = gameCfg.heroCards || 2;
+    const shots = [];
+    for (let c = 0; c < cards; c++) {
+      for (let i = 0; i < hand.players.length; i++) {
+        shots.push(setTimeout(() => playTableSound('deal', rSettingsRef.current),
+          c * hand.players.length * 70 + i * 70));
+      }
+    }
     // 400ms animation + the longest per-seat delay.
     const t = setTimeout(() => setAnimDealing(false), 400 + hand.players.length * 80);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); shots.forEach(clearTimeout); };
     // Deliberately keyed on the hand and the return-to-start, not on every render.
   }, [hand, streetIdx, actionIdx, showResult, rSettings.animateDeal]);
 
@@ -4381,6 +4418,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      showing them is better feedback AND a far better advertisement for the
      feature than a bar. */
   const [exportPreview, setExportPreview] = useState(null);
+  const [inspecting, setInspecting] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   /* 94: the overlays described one outcome and the code produced another. Ask
      the platform once, and say what will happen. */
@@ -4417,10 +4455,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const atLastAction = actionIdx >= currentActions.length - 1;
     const streetBreak = atLastAction && streetIdx < totalStreets - 1;
     const resultBreak = atLastAction && streetIdx >= totalStreets - 1 && !showResult;
+    /* 98: the pacing already varied by street boundary and by the result,
+       which is the right shape — but a fold and a three-bet still got the
+       same beat and an all-in got no more room than a check. The pacing IS
+       the edit; weighting it by significance is what turns a sequence of
+       steps into a story. */
+    const next = currentActions[actionIdx + 1];
+    const weight = { fold: -0.35, check: -0.3, call: 0, bet: 0.35, raise: 0.5, 'all-in': 1 };
+    const actBeat = next ? (weight[next.action] ?? 0) * speed : 0;
     const allowance = rSettings.animateDeal
       ? (resultBreak ? 700 : streetBreak ? 650 : 0)
       : 0;
-    const t = setTimeout(() => stepForwardRef.current?.(), speed + allowance * scale);
+    const t = setTimeout(() => stepForwardRef.current?.(),
+      Math.max(120, speed + actBeat + allowance * scale));
     return () => clearTimeout(t);
   }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
@@ -4892,6 +4939,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   ];
   const muckCount = folded.size;
 
+  /* Where the attention is: the acting seat, or the board on a new street. */
+  const pushStyle = useMemo(() => {
+    if (!rSettings.animateChips) return undefined;
+    let target = null;
+    if (actionIdx < 0 && streetIdx > 0) target = [50, 44];          // the board
+    else if (currentActions[actionIdx]) target = seats[currentActions[actionIdx].player];
+    if (!target) return undefined;
+    const dx = (50 - target[0]) * 0.06;
+    const dy = (44 - target[1]) * 0.06;
+    return { '--push-x': dx.toFixed(2) + '%', '--push-y': dy.toFixed(2) + '%' };
+  }, [rSettings.animateChips, actionIdx, streetIdx, currentActions, seats]);
+
   /* This effect has to live BELOW seats, folded and markPotLanding: a
      dependency array is evaluated on every render, not when the effect
      runs, so naming a const that is declared further down the component
@@ -4956,6 +5015,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     if (seat) {
       spawnFlyingChips(seat, [50, 37], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
       markPotLanding();
+      playTableSound('chips', rSettingsRef.current);
     }
   }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips, folded, markPotLanding]);
 
@@ -4989,7 +5049,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {/* Table */}
       {/* data-cardback is what makes the six-option Card Back setting real;
           --back-custom feeds the custom colour through to the gradient stops. */}
+      /* 97: the camera was fixed — the whole table, the same framing, every
+         frame of every hand — while a broadcast cuts to the player who is
+         acting and to the board as it lands. Even a few percent is enough to
+         direct attention, and it costs one transform on a container that
+         already exists. The push is suppressed during capture: a transform on
+         the captured root is not reliably reproduced by the renderer, and a
+         clip that drifts between frames is worse than one that does not. */
       <div ref={tableRef} className={'replayer-table' + themeClass}
+        style={pushStyle}
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
         style={rSettings.cardBack === 'custom' ? (() => {
@@ -5226,6 +5294,27 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           );
         })()}
 
+        {/* 96: the replay opened on the first street already dealt and ended
+            on the showdown frame, so an exported clip started mid-scene and
+            stopped dead. Every clip that gets shared needs a first frame that
+            explains itself and a last frame that resolves. These are gated on
+            [data-capturing] in CSS — on screen they would be in the way, and
+            in an export they land in exactly the first and last frames,
+            because that is where the exporter starts and stops. */}
+        <div className={'replayer-bookend is-open' + (streetIdx === 0 && actionIdx < 0 && !showResult ? ' is-live' : '')}>
+          <span className="replayer-bookend-eyebrow">{hand.gameType}{(hand.blinds || {}).bb ? ' \u00b7 ' + formatChipAmount(hand.blinds.sb) + '/' + formatChipAmount(hand.blinds.bb) : ''}</span>
+          <span className="replayer-bookend-title">{hand.title || 'Hand replay'}</span>
+          {heroCards && <span className="replayer-bookend-cards"><CardRow text={heroCards} max={gameCfg.heroCards} cardTheme={cardTheme} /></span>}
+          <span className="replayer-bookend-sub">{hand.players.length}-handed</span>
+        </div>
+        <div className={'replayer-bookend is-close' + (showResult ? ' is-live' : '')}>
+          <span className="replayer-bookend-eyebrow">Result</span>
+          <span className="replayer-bookend-title">
+            {(evalResult && evalResult[0]?.result?.text) || 'Hand complete'}
+          </span>
+          <span className="replayer-bookend-sub">{fmtChips(displayPot)} pot</span>
+        </div>
+
         {/* Watermark */}
         <div className="replayer-watermark"
           style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
@@ -5306,7 +5395,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx} />
               </div>
-              <div className="replayer-seat-info">
+              {/* 100: between steps the table was completely inert — no way to
+                  inspect a player, no response to anything but the transport,
+                  in a feature whose whole purpose is STUDYING hands. The only
+                  thing you could do to a hand was watch it go past. The
+                  action history is already indexed by player. */}
+              <div className="replayer-seat-info" role="button" tabIndex={0}
+                aria-expanded={inspecting === pi}
+                onClick={(e) => { e.stopPropagation(); setInspecting(inspecting === pi ? null : pi); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setInspecting(inspecting === pi ? null : pi); } }}>
                 {rSettings.showPlayerStats && (
                   /* 41: this rendered "23/15/2.1" — three fabricated numbers
                      (a hash of the name) with no key to what they are. An
@@ -5359,6 +5456,24 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   );
                 })()}
               </div>
+              {inspecting === pi && (
+                <div className="replayer-seat-line">
+                  {(() => {
+                    const line = [];
+                    hand.streets.forEach((st, si) => {
+                      const acts = (st.actions || []).filter(a => a.player === pi);
+                      if (!acts.length) return;
+                      line.push(
+                        <div key={si} className="replayer-seat-line-row">
+                          <span className="replayer-seat-line-street">{st.name || ('St' + si)}</span>
+                          <span>{acts.map(a => a.action + (a.amount ? ' ' + fmtChips(a.amount) : '')).join(' \u00b7 ')}</span>
+                        </div>
+                      );
+                    });
+                    return line.length ? line : <div className="replayer-seat-line-row">No action yet</div>;
+                  })()}
+                </div>
+              )}
               {/* 26: filled by leader, below the plaque so it does not fight
                   the hand name. */}
               {showdownEquity && showdownEquity[pi] != null && !folded.has(pi) && (() => {
