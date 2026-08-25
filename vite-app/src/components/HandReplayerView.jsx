@@ -4051,68 +4051,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     setTimeout(() => { setFlyingChips([]); }, 700);
   }, []);
 
-  /* 70: nothing moved at a street boundary — animStreetTransition drove the
-     board's own classes and the rest of the table was static, so the wagers
-     standing in front of the players simply vanished as the next street
-     began. Collecting the bets is the physical event that SEPARATES two
-     streets; without it the streets run together. The chip-flight system was
-     right there.
-
-     47: spawnFlyingChips computes the denomination colour, staggers up to
-     five chips and has a live render block and a denominated variant — and
-     nothing in the file ever called it, so flyingChips was permanently empty
-     and the whole system was decoration on an unreachable code path. The step
-     effect is where a wager actually happens, so that is where it belongs. */
-  const prevChipStepRef = useRef('');
-  useEffect(() => {
-    if (!rSettings.animateChips) return;
-    const key = streetIdx + ':' + actionIdx + ':' + (showResult ? 'r' : '');
-    const prev = prevChipStepRef.current;
-    prevChipStepRef.current = key;
-    if (!prev || prev === key) return;
-    // Scrubbing backwards should not re-throw chips that are already in the pot.
-    const [pS, pA] = prev.split(':').map(Number);
-    if (streetIdx < pS || (streetIdx === pS && actionIdx < pA)) return;
-
-    if (showResult) {
-      /* 48: the pot travelling to the winner is the payoff shot of a poker
-         broadcast, and animPotCollect was declared, never set and never read
-         while potCollect sat unused — so at showdown the pot pill simply sat
-         there. One burst per winner, from the pot toward the seat. */
-      const winners = hand.result?.winners || [];
-      winners.forEach(w => {
-        const seat = seats[w.playerIdx];
-        if (seat) spawnFlyingChips([50, 37], seat, 5, true, pot);
-      });
-      if (winners.length) {
-        setAnimPotCollect(true);
-        setTimeout(() => setAnimPotCollect(false), 700);
-      }
-      return;
-    }
-    // 70: a new street means the previous street's bets are swept in.
-    if (streetIdx > pS && actionIdx < 0) {
-      const sweeping = hand.streets[pS]?.actions || [];
-      const seen = new Set();
-      sweeping.forEach(a => {
-        if (!a.amount || seen.has(a.player) || folded.has(a.player)) return;
-        seen.add(a.player);
-        const seat = seats[a.player];
-        if (seat) spawnFlyingChips(seat, [50, 37], 3, false, a.amount);
-      });
-      if (seen.size) markPotLanding();
-      return;
-    }
-
-    const act = currentActions[actionIdx];
-    if (!act || !act.amount) return;
-    if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
-    const seat = seats[act.player];
-    if (seat) {
-      spawnFlyingChips(seat, [50, 37], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
-      markPotLanding();
-    }
-  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips, folded, markPotLanding]);
 
   // Determine board animation class based on which street just appeared
   const getBoardAnimClass = () => {
@@ -4172,6 +4110,65 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Pot and stacks
   const { stacks, pot, folded } = useMemo(() => calcPotsAndStacks(hand, streetIdx, actionIdx), [hand, streetIdx, actionIdx]);
   const displayPot = useMemo(() => calcPotsAndStacks(hand, streetIdx, -1).pot, [hand, streetIdx]);
+
+  /* 91: a player who moved all-in got an ALL-IN badge for exactly one step and
+     then reverted to an ordinary seat with a zero stack. All-in is the state
+     that changes what every SUBSEQUENT action means — it is the reason the
+     rest of the hand plays out the way it does — and it lasted one frame.
+     Committed once, committed for the hand. */
+  const allIn = useMemo(() => {
+    const out = new Set();
+    for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
+      const acts = hand.streets[si].actions || [];
+      const upTo = si === streetIdx ? actionIdx : acts.length - 1;
+      for (let ai = 0; ai <= upTo && ai < acts.length; ai++) {
+        if (acts[ai].action === 'all-in') out.add(acts[ai].player);
+      }
+    }
+    // A stack that has reached zero without folding is all-in whether or not
+    // the action was recorded with that word.
+    hand.players.forEach((_, pi) => {
+      if (!folded.has(pi) && stacks[pi] <= 0) out.add(pi);
+    });
+    return out;
+  }, [hand, streetIdx, actionIdx, folded, stacks]);
+
+  /* 92: one pot number. In any multi-way all-in there is a main pot and one
+     or more side pots with different eligible players, and the split display
+     only appeared at the RESULT — so the hands people actually save and share
+     were the ones this table could not describe. Built from each player's
+     total contribution: everyone matches the shortest stack into the main
+     pot, the rest match the next, and so on. */
+  const potLayers = useMemo(() => {
+    const contrib = hand.players.map((_, pi) => {
+      let total = 0;
+      for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
+        const acts = hand.streets[si].actions || [];
+        const upTo = si === streetIdx ? actionIdx : acts.length - 1;
+        let street = 0;
+        for (let ai = 0; ai <= upTo && ai < acts.length; ai++) {
+          const a = acts[ai];
+          if (a.player !== pi || !a.amount) continue;
+          street = a.action === 'raise' || a.action === 'all-in' ? Math.max(street, a.amount) : street + a.amount;
+        }
+        total += street;
+      }
+      return total;
+    });
+    const live = hand.players.map((_, pi) => pi).filter(pi => contrib[pi] > 0);
+    if (!live.length) return [];
+    const caps = [...new Set(live.filter(pi => allIn.has(pi)).map(pi => contrib[pi]))].sort((a, b) => a - b);
+    const layers = [];
+    let floor = 0;
+    [...caps, Infinity].forEach(cap => {
+      const eligible = live.filter(pi => contrib[pi] > floor && !folded.has(pi));
+      const amount = live.reduce((sum, pi) => sum + Math.max(0, Math.min(contrib[pi], cap) - floor), 0);
+      if (amount > 0 && eligible.length) layers.push({ amount, eligible: eligible.length });
+      if (cap === Infinity) return;
+      floor = cap;
+    });
+    return layers.length > 1 ? layers : [];
+  }, [hand, streetIdx, actionIdx, allIn, folded]);
   /* 66: the pot counts toward its new value over the chips' flight. It snaps
      while scrubbing, because a rewind is not a payment. */
   const countedPot = useCountUp(displayPot, rSettings.animateChips && !rewinding);
@@ -4257,12 +4254,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* 26: calcShowdownEquity and a finished bar-plus-percentage style were
      both dead code, so at an all-in showdown the felt said nothing about who
      was ahead — the single question a viewer has at that moment. */
+  /* 90: the bar rendered when showResult was true, which is after the hand
+     has been decided — a scoreboard shown after the whistle. The moment a
+     viewer wants a percentage is when the money goes IN, and then again as
+     each card lands. It runs from the point the last live player is committed. */
+  const runout = allIn.size > 0 && (hand.players.length - folded.size - allIn.size) <= 0;
   const showdownEquity = useMemo(() => {
-    if (!rSettings.showEquity || !showResult || !gameEval) return null;
+    if (!rSettings.showEquity || !gameEval) return null;
+    if (!showResult && !runout) return null;
     try {
       return calcShowdownEquity(hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx);
     } catch { return null; }
-  }, [rSettings.showEquity, showResult, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx]);
+  }, [rSettings.showEquity, showResult, runout, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx]);
 
   /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
      nudged 8px up together, which communicates nothing — and the down-shifting
@@ -4889,6 +4892,74 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   ];
   const muckCount = folded.size;
 
+  /* This effect has to live BELOW seats, folded and markPotLanding: a
+     dependency array is evaluated on every render, not when the effect
+     runs, so naming a const that is declared further down the component
+     puts the render itself in that const’s temporal dead zone. */
+  /* 70: nothing moved at a street boundary — animStreetTransition drove the
+     board's own classes and the rest of the table was static, so the wagers
+     standing in front of the players simply vanished as the next street
+     began. Collecting the bets is the physical event that SEPARATES two
+     streets; without it the streets run together. The chip-flight system was
+     right there.
+
+     47: spawnFlyingChips computes the denomination colour, staggers up to
+     five chips and has a live render block and a denominated variant — and
+     nothing in the file ever called it, so flyingChips was permanently empty
+     and the whole system was decoration on an unreachable code path. The step
+     effect is where a wager actually happens, so that is where it belongs. */
+  const prevChipStepRef = useRef('');
+  useEffect(() => {
+    if (!rSettings.animateChips) return;
+    const key = streetIdx + ':' + actionIdx + ':' + (showResult ? 'r' : '');
+    const prev = prevChipStepRef.current;
+    prevChipStepRef.current = key;
+    if (!prev || prev === key) return;
+    // Scrubbing backwards should not re-throw chips that are already in the pot.
+    const [pS, pA] = prev.split(':').map(Number);
+    if (streetIdx < pS || (streetIdx === pS && actionIdx < pA)) return;
+
+    if (showResult) {
+      /* 48: the pot travelling to the winner is the payoff shot of a poker
+         broadcast, and animPotCollect was declared, never set and never read
+         while potCollect sat unused — so at showdown the pot pill simply sat
+         there. One burst per winner, from the pot toward the seat. */
+      const winners = hand.result?.winners || [];
+      winners.forEach(w => {
+        const seat = seats[w.playerIdx];
+        if (seat) spawnFlyingChips([50, 37], seat, 5, true, pot);
+      });
+      if (winners.length) {
+        setAnimPotCollect(true);
+        setTimeout(() => setAnimPotCollect(false), 700);
+      }
+      return;
+    }
+    // 70: a new street means the previous street's bets are swept in.
+    if (streetIdx > pS && actionIdx < 0) {
+      const sweeping = hand.streets[pS]?.actions || [];
+      const seen = new Set();
+      sweeping.forEach(a => {
+        if (!a.amount || seen.has(a.player) || folded.has(a.player)) return;
+        seen.add(a.player);
+        const seat = seats[a.player];
+        if (seat) spawnFlyingChips(seat, [50, 37], 3, false, a.amount);
+      });
+      if (seen.size) markPotLanding();
+      return;
+    }
+
+    const act = currentActions[actionIdx];
+    if (!act || !act.amount) return;
+    if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
+    const seat = seats[act.player];
+    if (seat) {
+      spawnFlyingChips(seat, [50, 37], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
+      markPotLanding();
+    }
+  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips, folded, markPotLanding]);
+
+
   /* The light sits at the felt's specular pool. A shadow points away from it,
      and grows with the distance — the aspect correction is the same one the
      bet chips use, because a percentage of height is not a percentage of
@@ -5006,10 +5077,21 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           }
           return (
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
-              + (potLanding ? ' is-landing' : '')}>
-              <div className="replayer-pot-label">Pot</div>
-              {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={displayPot} />}
-              {fmtChips(countedPot)}
+              + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
+              <div className="replayer-pot-label">{potLayers.length ? 'Main' : 'Pot'}</div>
+              {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+              {fmtChips(potLayers.length ? potLayers[0].amount : countedPot)}
+              {/* 92: who is playing for what. */}
+              {potLayers.length > 1 && (
+                <div className="replayer-side-pots">
+                  {potLayers.slice(1, 4).map((layer, i) => (
+                    <div key={i} className="replayer-side-pot">
+                      <span className="replayer-side-pot-label">Side {i + 1} &middot; {layer.eligible}-way</span>
+                      {fmtChips(layer.amount)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -5033,6 +5115,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   // Flop | turn | river. Grouping is how every broadcast graphic
                   // and every real table shows which street the hand is on; the
                   // gap class existed for it and had never been rendered.
+                  /* 93: the street label sat under the WHOLE board. Broadcast
+                     graphics label the groups — FLOP under the first three,
+                     TURN under the fourth, RIVER under the fifth — and the
+                     gaps that separate those groups were already here for
+                     exactly this reason. */
                   const gap = (i === 3 || i === 4)
                     ? <div key={'gap' + i} className="board-street-gap" aria-hidden="true" />
                     : null;
@@ -5052,11 +5139,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   return gap ? [gap, card] : card;
                 })}
               </div>
-              {streetIdx > 0 && currentStreet.name && (
-                <div className={'replayer-street-label' + (animStreetLabel ? ' anim-pop' : '')}>
-                  {currentStreet.name}
-                </div>
-              )}
+              <div className="replayer-board-labels" aria-hidden="true">
+                <span className={parsed.length >= 3 ? 'is-dealt' : ''} style={{flex: '0 0 auto', width: 'calc(var(--card-w) * 3 + var(--space-2xs) * 2)'}}>Flop</span>
+                <span className="board-street-gap" />
+                <span className={parsed.length >= 4 ? 'is-dealt' : ''} style={{flex: '0 0 auto', width: 'var(--card-w)'}}>Turn</span>
+                <span className="board-street-gap" />
+                <span className={parsed.length >= 5 ? 'is-dealt' : ''} style={{flex: '0 0 auto', width: 'var(--card-w)'}}>Riv</span>
+              </div>
             </div>
           );
         })()}
@@ -5113,6 +5202,30 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           );
         })()}
 
+        {/* 94: hand.blinds carries sb, bb and ante and none of them appeared
+            anywhere on the felt — so a stack of 24,000 had no meaning without
+            opening the hand's title, which makes every stack number on the
+            table meaningless. It is one line of data that already exists.
+
+            95: and a saved hand from a tournament has a place IN one. The
+            difference between "a big pot" and "a big pot on the money bubble"
+            is the whole reason a hand is worth revisiting. */}
+        {(() => {
+          const b = hand.blinds || {};
+          const level = b.bb ? formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb)
+            + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '') : null;
+          const avg = stacks.length ? Math.round(stacks.reduce((a, v) => a + v, 0) / stacks.length) : 0;
+          if (!level && !hand.playersLeft) return null;
+          return (
+            <div className="replayer-level">
+              {level && <span className="replayer-level-blinds">{level}</span>}
+              {avg > 0 && <span className="replayer-level-avg">avg {formatChipAmount(avg)}</span>}
+              {hand.playersLeft && <span className="replayer-level-left">{hand.playersLeft} left</span>}
+              {hand.payoutNote && <span className="replayer-level-left">{hand.payoutNote}</span>}
+            </div>
+          );
+        })()}
+
         {/* Watermark */}
         <div className="replayer-watermark"
           style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
@@ -5150,7 +5263,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                scene. The light is above and in front (the felt's specular pool
                is at 50% 44%); every seat now knows which way its own shadow
                falls and how long it is. */
-            <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`}
+            /* 88: the hero got the bottom seat and face-up cards, and was
+               otherwise identical to the eight opponents — same plaque, same
+               type, same card size. Every poker broadcast makes the featured
+               player unmistakable, and it is the seat the eye returns to
+               after every single action. */
+            <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
+              + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')}
               style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos)}}>
               {/* 12: opponent cards were hidden until showResult and then
                   appeared in a single frame — the only card event in the
@@ -5210,8 +5329,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     while the chips were still in flight toward a pot that had
                     already been paid. It counts down over the same duration
                     the pot counts up. */}
-                <div className="replayer-seat-stack"><CountedChips value={stacks[pi]} fmt={fmtChips}
-                  live={rSettings.animateChips && !rewinding} /></div>
+                <div className="replayer-seat-stack">
+                  {allIn.has(pi) && stacks[pi] <= 0
+                    ? <span className="replayer-allin-mark">ALL-IN</span>
+                    : <CountedChips value={stacks[pi]} fmt={fmtChips} live={rSettings.animateChips && !rewinding} />}
+                </div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
                     merged into the settings object — and no seat ever wore

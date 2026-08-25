@@ -5182,6 +5182,122 @@
       color: #f2efe6; white-space: nowrap;
     }
 
+
+    /* 89: the hole cards floated above each plaque with no container, and the
+       broadcast convention — the thing that made televised poker legible — is
+       a small framed panel holding the cards, the name and the stack as ONE
+       unit. All the parts were here, sitting next to each other unframed.
+       The cards get a tray in the plaque's own material and the plaque loses
+       its top corners, so the two read as a single graphic without moving
+       either of them. */
+    .replayer-seat-cards {
+      padding: var(--space-2xs) var(--space-2xs) calc(var(--space-2xs) + 4px);
+      background: linear-gradient(180deg, rgba(30,26,42,0.90), rgba(20,17,29,0.94));
+      border: 1px solid rgba(255,255,255,0.12);
+      border-bottom: none;
+      border-radius: var(--r-object) var(--r-object) 0 0;
+      box-shadow: 0 -1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .replayer-seat-info {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+    /* A splayed fan overflows its tray on purpose, so the tray stops being a
+       box round the cards and becomes the thing they are held over. */
+    .replayer-seat-cards:has(.card-row-splay) {
+      background: linear-gradient(180deg, rgba(30,26,42,0), rgba(20,17,29,0.92) 62%);
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
+    .replayer-seat.is-hero { --card-h: clamp(44px, 15cqw, 64px); }
+    .replayer-seat.is-hero .replayer-seat-info {
+      min-width: 92px;
+      padding: var(--space-sm) var(--space-ml);
+      border-color: rgba(242,166,59,0.5);
+    }
+    .replayer-seat.is-hero .replayer-seat-cards { border-color: rgba(242,166,59,0.35); }
+    .replayer-seat.is-hero .replayer-seat-stack { font-size: var(--fs-md); }
+
+    /* 91: committed, and it shows for the rest of the hand. */
+    .replayer-seat.is-allin .replayer-seat-info {
+      border-color: var(--act-allin);
+      box-shadow: var(--plate-bevel), var(--ring-1) rgba(168,85,247,0.42);
+    }
+    .replayer-allin-mark {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      color: #c9a2f5;
+    }
+
+    /* 93: one label per group, in the gap that separates them. A street that
+       has not been dealt yet is present but quiet, so the board reads as a
+       sequence with a known length rather than as however many cards are out. */
+    .replayer-board-labels {
+      display: flex; align-items: center; gap: var(--space-2xs);
+      justify-content: center; width: 100%;
+    }
+    .replayer-board-labels > span {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      transition: color var(--dur-base) var(--ease-label);
+    }
+    .replayer-board-labels > span.is-dealt { color: rgba(255,255,255,0.66); }
+
+
+    /* 92 */
+    .replayer-side-pots {
+      display: flex; flex-direction: column; gap: 1px;
+      margin-top: var(--space-2xs);
+      padding-top: var(--space-2xs);
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+    .replayer-side-pot {
+      font-family: var(--font-display);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      font-variant-numeric: var(--num-tabular);
+      color: rgba(255,255,255,0.82);
+      white-space: nowrap;
+    }
+    .replayer-side-pot-label {
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-regular);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin-right: var(--space-xs);
+    }
+    .replayer-pot-display.has-sides { padding-bottom: var(--space-xs); }
+
+    /* 94 + 95: the level, and where this hand sits in the tournament. */
+    .replayer-level {
+      position: absolute; right: 2.5%; bottom: 1.5%;
+      z-index: var(--z-pot);
+      display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+      padding: var(--space-2xs) var(--space-sm);
+      border-radius: var(--r-object);
+      background: linear-gradient(180deg, rgba(24,21,32,0.82), rgba(12,10,17,0.82));
+      box-shadow: var(--plate-bevel);
+      pointer-events: none;
+    }
+    .replayer-level-blinds {
+      font-family: var(--font-display);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      font-variant-numeric: var(--num-tabular);
+      color: #f2efe6; white-space: nowrap;
+    }
+    .replayer-level-avg, .replayer-level-left {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: rgba(242,239,230,0.55); white-space: nowrap;
+    }
+
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
     .replayer-table-felt.shape-octagon {
