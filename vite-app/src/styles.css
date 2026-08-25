@@ -1990,6 +1990,40 @@
     .replayer-hand-card.is-row .replayer-hand-card-meta { margin-top:0; }
     .replayer-empty { text-align:center; color:var(--text-muted); font-size: var(--fs-sm); padding: var(--space-3xl) 0; }
 
+
+    /* 76: the read-only view uses the editor's own type, so notes look the
+       same whether you are writing them or reading them back. */
+    .replayer-notes-read {
+      font-size: var(--fs-2xs); font-family: var(--font-condensed);
+      line-height: 1.4; color: var(--text); white-space: pre-wrap;
+    }
+
+    /* 78 */
+    .replayer-empty-cards {
+      display: flex; justify-content: center; margin-bottom: var(--space-ml);
+    }
+    .replayer-empty-cards .card-unknown {
+      width: 36px; height: 52px; display: block;
+    }
+    .replayer-empty-cards .card-unknown:last-child {
+      margin-left: -14px; transform: rotate(8deg);
+    }
+    .replayer-empty-cards .card-unknown:first-child { transform: rotate(-8deg); }
+    .replayer-empty-line { margin-bottom: var(--space-ml); }
+
+
+    /* 79: the row that wraps instead of crushing. */
+    .replayer-actions-bar {
+      display: flex; gap: var(--space-xs); justify-content: center;
+      align-items: center; flex-wrap: wrap;
+    }
+    /* 80 */
+    .replayer-bar-note {
+      text-align: center; margin-top: var(--space-xs);
+      font-size: var(--fs-2xs); color: var(--text-muted);
+      font-family: var(--font-condensed);
+    }
+
     /* Entry mode */
     .replayer-entry { display:flex; flex-direction:column; gap: var(--space-ml); }
     .replayer-step-label { font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-2xs); }
@@ -2030,14 +2064,77 @@
     }
     .replayer-action-player { font-weight: var(--fw-bold); color:var(--text); min-width:50px; }
     .replayer-action-type { color:var(--accent2); }
-    .replayer-action-type.fold { color:#f87171; }
-    .replayer-action-type.raise, .replayer-action-type.bet { color:#4ade80; }
-    .replayer-action-type.call { color:#60a5fa; }
-    .replayer-action-type.check { color:var(--text-muted); }
+    /* 71: the recorded-action list and the buttons below it were still on the
+       pre-token palette, and it disagreed with the felt in the worst possible
+       way: the button you press to record a RAISE was green while the badge
+       that replays it is red, and fold was red on entry and grey on the table.
+       The same word had two colours depending on which screen you were on.
+       The --act-* scale shipped for the table; it just never reached here. */
+    .replayer-action-type.fold  { color: var(--act-fold); }
+    .replayer-action-type.raise { color: var(--act-raise); }
+    .replayer-action-type.bet   { color: var(--act-bet); }
+    .replayer-action-type.call  { color: var(--act-call); }
+    .replayer-action-type.check { color: var(--act-check); }
+    /* the class is the raw action string, so all-in arrives hyphenated */
+    .replayer-action-type.allin, .replayer-action-type.all-in { color: var(--act-allin); }
     .replayer-action-amount { color:var(--text); margin-left:auto; }
     .replayer-action-remove { cursor:pointer; color:var(--text-muted); font-size: var(--fs-2xs); margin-left: var(--space-xs); }
     @media (hover: hover) and (pointer: fine) {
       .replayer-action-remove:hover { color:#f87171; }
+    }
+
+
+    /* 72: the winner picker, on the status ramps, with a transition that names
+       its three properties instead of animating everything the element has. */
+    .replayer-winner-btn {
+      padding: var(--space-xs) var(--space-ml);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+      transition: background-color var(--dur-fast) var(--ease-out),
+                  border-color var(--dur-fast) var(--ease-out),
+                  color var(--dur-fast) var(--ease-out);
+    }
+    .replayer-winner-btn.is-win {
+      background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok);
+    }
+    .replayer-winner-btn.is-split {
+      background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn);
+    }
+
+    /* 74 */
+    .replayer-pot-helper {
+      padding: var(--space-2xs) var(--space-sm);
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-pot-helper:hover { border-color: var(--brand-line); color: var(--text); }
+    }
+    .replayer-field-hint {
+      font-size: var(--fs-2xs); color: var(--text-muted);
+      font-family: var(--font-condensed); margin-top: var(--space-xs);
+    }
+
+    /* 73: a focused border was the ONLY state these inputs had, so a typo like
+       "Ahh" or a duplicate card simply rendered no card row — the field looked
+       accepted and the hand was silently wrong. */
+    .replayer-field input.is-invalid,
+    .replayer-field input.is-invalid:focus { border-color: var(--danger); }
+    .replayer-field-error {
+      font-size: var(--fs-2xs); color: var(--danger);
+      font-family: var(--font-condensed); margin-top: var(--nudge-1);
     }
 
     /* Action buttons row */
@@ -2050,19 +2147,22 @@
     @media (hover: hover) and (pointer: fine) {
       .replayer-action-btns button:hover { border-color:var(--accent); color:var(--accent); }
     }
-    .replayer-action-btns button.action-fold { border-color:rgba(248,113,113,0.4); color:#f87171; }
+    /* 71: one hue per action, one alpha for every border, shared with the
+       badges on the felt — so the button that records a bet is the colour the
+       bet will be when you replay it. */
+    .replayer-action-btns button.action-fold  { border-color: color-mix(in srgb, var(--act-fold) 40%, transparent);  color: var(--act-fold); }
+    .replayer-action-btns button.action-check { border-color: color-mix(in srgb, var(--act-check) 40%, transparent); color: var(--act-check); }
+    .replayer-action-btns button.action-call  { border-color: color-mix(in srgb, var(--act-call) 40%, transparent);  color: var(--act-call); }
+    .replayer-action-btns button.action-bet   { border-color: color-mix(in srgb, var(--act-bet) 40%, transparent);   color: var(--act-bet); }
+    .replayer-action-btns button.action-raise { border-color: color-mix(in srgb, var(--act-raise) 40%, transparent); color: var(--act-raise); }
+    .replayer-action-btns button.action-allin { border-color: color-mix(in srgb, var(--act-allin) 40%, transparent); color: var(--act-allin); }
     @media (hover: hover) and (pointer: fine) {
-      .replayer-action-btns button.action-fold:hover { background:rgba(248,113,113,0.1); }
-    }
-    .replayer-action-btns button.action-bet,
-    .replayer-action-btns button.action-raise { border-color:rgba(74,222,128,0.4); color:#4ade80; }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-action-btns button.action-bet:hover,
-      .replayer-action-btns button.action-raise:hover { background:rgba(74,222,128,0.1); }
-    }
-    .replayer-action-btns button.action-call { border-color:rgba(96,165,250,0.4); color:#60a5fa; }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-action-btns button.action-call:hover { background:rgba(96,165,250,0.1); }
+      .replayer-action-btns button.action-fold:hover  { background: color-mix(in srgb, var(--act-fold) 12%, transparent); }
+      .replayer-action-btns button.action-check:hover { background: color-mix(in srgb, var(--act-check) 12%, transparent); }
+      .replayer-action-btns button.action-call:hover  { background: color-mix(in srgb, var(--act-call) 12%, transparent); }
+      .replayer-action-btns button.action-bet:hover   { background: color-mix(in srgb, var(--act-bet) 12%, transparent); }
+      .replayer-action-btns button.action-raise:hover { background: color-mix(in srgb, var(--act-raise) 12%, transparent); }
+      .replayer-action-btns button.action-allin:hover { background: color-mix(in srgb, var(--act-allin) 12%, transparent); }
     }
 
     /* ── GTO Entry View ── */
@@ -2630,12 +2730,20 @@
     }
 
     /* Landscape: fullscreen replayer, hide app chrome */
+    /* 77: about forty lines of fullscreen CSS that could never fire — the
+       class appeared in no className, while isLandscape was computed and kept
+       fresh by a live matchMedia listener that nothing read. In landscape the
+       phone is held for exactly this and the app just letterboxed the table.
+       The insets were missing too: a notch sits in the landscape long edge. */
     .replayer-landscape {
       position: fixed;
       inset: 0;
       z-index: var(--z-modal);
       background: var(--bg);
       overflow: hidden;
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      box-sizing: border-box;
     }
     .replayer-landscape .replayer-table {
       aspect-ratio: 3 / 4.5;
@@ -3035,35 +3143,43 @@
     }
 
     /* Felt color picker & card theme */
-    .replayer-options-row {
-      display: flex; justify-content: center; align-items: center; gap: var(--space-xl);
-      padding: var(--space-xs) 0; flex-wrap: wrap;
-    }
-    .replayer-option-label {
-      font-size: var(--fs-2xs); color: var(--text-muted); font-family: var(--font-condensed);
-      text-transform: uppercase; letter-spacing: var(--track-caps); margin-right: var(--space-xs);
-    }
-    .replayer-felt-picker { display: flex; align-items: center; gap: var(--space-xs); }
+    /* 63: .replayer-options-row, -option-label, -felt-picker,
+       -card-theme-picker and -theme-btn were leftovers of the inline pickers
+       the settings panel replaced — five classes in no JSX, and the dead
+       theme button still carried the old grey-accent fill with a hardcoded
+       white foreground. Only the felt swatch survived into the panel.
+
+       68: and it survived at 18px — under half the 44px touch minimum — with
+       an active ring of literal #fff that disappears against the light
+       theme's panel, next to a 24px RECTANGULAR colour input: a different
+       size and a different shape in the same row of six. */
     .felt-color-swatch {
-      width: 18px; height: 18px; border-radius: var(--radius-circle); border: 2px solid transparent;
-      cursor: pointer; transition: border-color var(--dur-fast), transform var(--dur-fast);
+      width: 28px; height: 28px; border-radius: var(--radius-circle);
+      border: 2px solid transparent;
+      cursor: pointer; transition: box-shadow var(--dur-fast), transform var(--dur-fast);
       box-shadow: var(--elev-1), inset 0 1px 2px rgba(255,255,255,0.15);
       padding: 0;
     }
     @media (hover: hover) and (pointer: fine) {
-      .felt-color-swatch:hover { transform: scale(1.15); }
+      .felt-color-swatch:hover { transform: scale(1.1); }
     }
-    .felt-color-swatch.active { border-color: #fff; transform: scale(1.15); }
-    .replayer-card-theme-picker { display: flex; align-items: center; gap: var(--space-xs); }
-    .replayer-theme-btn {
-      font-size: var(--fs-2xs); font-family: var(--font-condensed); padding: var(--space-2xs) var(--space-md);
-      border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--surface);
-      color: var(--text-muted); cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-      line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+    /* Surface ring plus text halo, so the active swatch reads on either theme
+       — white only worked because the panel happened to be dark. */
+    .felt-color-swatch.active {
+      box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text), var(--elev-1);
+      transform: scale(1.1);
     }
-    .replayer-theme-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-theme-btn:hover { border-color: var(--accent); }
+    /* 68: the custom colour input joins the family instead of standing out of
+       it — same circle, same size, the native swatch filling it. */
+    .felt-color-custom {
+      width: 28px; height: 28px; border-radius: var(--radius-circle);
+      overflow: hidden; padding: 0; border: 2px solid var(--border);
+      cursor: pointer; flex-shrink: 0; position: relative;
+      box-shadow: var(--elev-1);
+    }
+    .felt-color-custom input[type="color"] {
+      position: absolute; inset: -25%; width: 150%; height: 150%;
+      border: none; padding: 0; background: transparent; cursor: pointer;
     }
 
     /* Action badges */
@@ -3286,20 +3402,37 @@
     .replayer-stud-reorder .card-img.ungrouped { opacity: 0.4; transform: scale(0.9); }
 
     /* ── Replayer Settings Panel ── */
+    /* 64: --z-sticky is 100, which ties with the bottom nav — the scrim only
+       won by portal document order — while its own panel sits at --z-panel
+       (400). --z-scrim (300) exists for exactly this pairing, and the token
+       block's comment says a scrim and its panel always travel together. */
     .replayer-settings-backdrop {
-      position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index: var(--z-sticky);
+      position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index: var(--z-scrim);
       animation: settingsFadeIn 0.15s ease-out;
     }
     @keyframes settingsFadeIn { from{opacity:0} to{opacity:1} }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    /* 65: fixed to the bottom with no safe-area padding, unlike the nav and
+       the auth screens, so on a home-indicator iPhone the last settings group
+       sat under the swipe bar. It also had bare literals for radius and
+       shadow, no width cap — spanning a desktop viewport edge to edge beneath
+       a 600px column — and no overscroll containment, so scrolling past the
+       end of the sheet scrolled the replayer behind it. */
     .replayer-settings-panel {
-      position:fixed; bottom:0; left:0; right:0; z-index: var(--z-panel);
-      background:var(--surface); border-radius:16px 16px 0 0;
-      max-height:85vh; overflow-y:auto; padding: var(--space-xl) var(--space-xl) var(--space-4xl);
-      box-shadow:0 -4px 24px rgba(0,0,0,0.4);
+      position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+      width:100%; max-width:600px; z-index: var(--z-panel);
+      background:var(--surface);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      max-height:85vh; overflow-y:auto; overscroll-behavior: contain;
+      padding: var(--space-xl) var(--space-xl)
+               calc(var(--space-4xl) + env(safe-area-inset-bottom, 0px));
+      box-shadow: var(--elev-3);
       animation: settingsSlideUp 0.25s ease-out;
     }
-    @keyframes settingsSlideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    /* The panel is now centred with translateX, so the slide has to carry it. */
+    @keyframes settingsSlideUp {
+      from{transform:translate(-50%,100%)} to{transform:translate(-50%,0)}
+    }
     .replayer-settings-header {
       display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-xl);
       font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color:var(--text);
@@ -3315,8 +3448,19 @@
       font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold); color:var(--accent2);
       text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-md);
     }
+    /* 66: every pill row overrode this with an inline column layout at 6px,
+       while toggle rows used an inline 6px in one place and 8px in two
+       others — three vertical rhythms in one panel, all bare px, across nine
+       inline style objects. One row rhythm and one stacked modifier. */
     .replayer-settings-row {
-      display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-md);
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom: var(--space-md);
+    }
+    .replayer-settings-row.is-stacked {
+      flex-direction: column; align-items: flex-start; gap: var(--space-xs);
+    }
+    .replayer-settings-swatches {
+      display:flex; gap: var(--space-xs); align-items:center; flex-wrap:wrap;
     }
     .replayer-settings-label {
       font-size: var(--fs-xs); color:var(--text); font-family: var(--font-condensed);
@@ -3335,19 +3479,59 @@
     @media (hover: hover) and (pointer: fine) {
       .replayer-settings-pill:hover { border-color:var(--accent); color:var(--text); }
     }
+    /* 62: --accent is the neutral hairline grey the app uses for DISABLED,
+       so the chosen Theme, Shape and Card Back read as the switched-off one.
+       Brand tint with a brand hairline rather than a solid fill, because up to
+       six of these sit in a row and six solid brand blocks is a lot of gold. */
     .replayer-settings-pill.active {
-      background:var(--accent); color:var(--bg); border-color:var(--accent);
+      background: var(--brand-tint);
+      color: var(--text);
+      border-color: var(--brand-line);
     }
+    /* 69: themes rendered as six identical text pills, so the only way to
+       learn what High Stakes looks like was to apply it and close the panel
+       over the table. --pill-swatch is the theme's own felt, set per pill. */
+    .replayer-settings-pill .pill-swatch {
+      display:inline-block; width:12px; height:12px; border-radius: var(--radius-circle);
+      margin-right: var(--space-xs); vertical-align:-2px;
+      background: var(--pill-swatch, var(--surface2));
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+    }
+    /* 61: this was a 36x20 second implementation of .settings-toggle whose ON
+       state was --accent — the grey the app uses for disabled — with a
+       hardcoded white knob: the exact light-theme failure the real control
+       already fixed. It is a size modifier of the real control now, so there
+       is one switch in the app and it only has to be right once. */
     .replayer-settings-toggle {
-      width:36px; height:20px; border-radius:10px; border:none; cursor:pointer;
-      background:var(--border); position:relative; transition:background var(--dur-snap);
+      position: relative;
+      width: 36px; height: 20px;
+      background: var(--border);
+      border-radius: var(--radius-pill);
+      border: none;
+      cursor: pointer;
+      transition: background-color var(--dur-snap) var(--ease-out);
+      flex-shrink: 0;
     }
-    .replayer-settings-toggle.on { background:var(--accent); }
+    .replayer-settings-toggle.on { background: var(--brand); }
     .replayer-settings-toggle::after {
-      content:''; position:absolute; top:2px; left:2px; width:16px; height:16px;
-      border-radius:50%; background:#fff; transition:transform var(--dur-snap);
+      content: '';
+      position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      background: var(--surface);
+      box-shadow: var(--elev-1);
+      border-radius: var(--radius-circle);
+      transition: transform var(--dur-snap) var(--ease-out);
     }
-    .replayer-settings-toggle.on::after { transform:translateX(16px); }
+    .replayer-settings-toggle.on::after {
+      background: var(--on-brand);
+      transform: translateX(16px);
+    }
+    /* 67: the Sound group faked disabled with an inline opacity:0.4 — a fifth
+       spelling of the app's one disabled state — and its dead toggles kept
+       cursor:pointer from the class, so they invited a tap that did nothing. */
+    .replayer-settings-row.is-disabled { opacity: var(--state-disabled); }
+    .replayer-settings-toggle:disabled { cursor: default; }
+
     .replayer-gear-btn {
       background:var(--surface); border:1px solid var(--border); color:var(--text-muted); cursor:pointer;
       padding: var(--space-sm); display:flex; align-items:center; transition:color var(--dur-fast), background var(--dur-fast);

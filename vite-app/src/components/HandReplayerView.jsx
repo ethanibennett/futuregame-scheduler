@@ -308,6 +308,29 @@ function buildSolverSpot({ hand, game, streetIdx, heroCards, opponentCards, repl
   };
 }
 
+/* 73: parseCardNotation silently DROPS any character it does not recognise
+   and pairs whatever ranks and suits survive, so "Ahh" parses as one card,
+   "AhAh" as two identical ones, and a bare "A" as an unknown-suit card - all
+   of which render as a shorter card row than the player typed, with nothing
+   anywhere saying why. This reports what the parser threw away. */
+function checkCardText(text) {
+  if (!text) return null;
+  const stripped = String(text).replace(/\s/g, '');
+  if (!stripped) return null;
+  const bad = [...new Set(stripped.split('').filter(ch =>
+    !'AKQJT98765432'.includes(ch.toUpperCase()) && !'hdcsx'.includes(ch.toLowerCase())))];
+  if (bad.length) return 'Not card notation: ' + bad.join(' ');
+  const cards = parseCardNotation(stripped);
+  const seen = new Set();
+  for (const c of cards) {
+    if (c.suit === 'x') continue;
+    const key = c.rank + c.suit;
+    if (seen.has(key)) return 'Duplicate card: ' + key;
+    seen.add(key);
+  }
+  return null;
+}
+
 // ── Formatting helpers ──
 /* 44: this was a hand-rolled divide-and-suffix with a hardcoded '.' decimal
    point and a mixed-case suffix — '1.5k' but '1.5M' — and there was no Intl
@@ -831,10 +854,15 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
 }
 
 // ── Replayer settings ──
+/* 69: `swatch` is that theme's felt, lifted from the gradient the theme rule
+   already paints, so the pill shows what it does instead of only naming it. */
 const REPLAYER_THEMES = [
-  { id: 'default', label: 'Default' }, { id: 'casino-royale', label: 'Casino Royale' },
-  { id: 'neon-vegas', label: 'Neon Vegas' }, { id: 'vintage', label: 'Vintage' },
-  { id: 'minimalist', label: 'Minimalist' }, { id: 'high-stakes', label: 'High Stakes' },
+  { id: 'default', label: 'Default', swatch: null },
+  { id: 'casino-royale', label: 'Casino Royale', swatch: '#123a5c' },
+  { id: 'neon-vegas', label: 'Neon Vegas', swatch: '#12021f' },
+  { id: 'vintage', label: 'Vintage', swatch: '#6b5432' },
+  { id: 'minimalist', label: 'Minimalist', swatch: '#f0f0f0' },
+  { id: 'high-stakes', label: 'High Stakes', swatch: '#1d1d1d' },
 ];
 const REPLAYER_CARD_BACKS = [
   { id: 'default', label: 'Default' }, { id: 'classic', label: 'Classic Blue' },
@@ -869,16 +897,21 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Table</div>
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Theme</div>
             <div className="replayer-settings-pills">
               {REPLAYER_THEMES.map(t => (
                 <button key={t.id} className={'replayer-settings-pill' + (settings.theme === t.id ? ' active' : '')}
-                  onClick={() => onUpdate('theme', t.id)}>{t.label}</button>
+                  aria-pressed={settings.theme === t.id}
+                  onClick={() => onUpdate('theme', t.id)}>
+                  <span className="pill-swatch" aria-hidden="true"
+                    style={{ '--pill-swatch': t.swatch || settings.feltColor }} />
+                  {t.label}
+                </button>
               ))}
             </div>
           </div>
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px', marginTop:'8px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Table Shape</div>
             <div className="replayer-settings-pills">
               {REPLAYER_TABLE_SHAPES.map(s => (
@@ -888,9 +921,9 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             </div>
           </div>
           {settings.theme === 'default' && (
-            <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px', marginTop:'8px' }}>
+            <div className="replayer-settings-row is-stacked">
               <div className="replayer-settings-label">Felt Color</div>
-              <div style={{ display:'flex', gap:'4px', alignItems:'center', flexWrap:'wrap' }}>
+              <div className="replayer-settings-swatches">
                 {[
                   { name:'Lavender', color:'#6b5b8a' }, { name:'Classic Green', color:'#2d5a27' },
                   { name:'Blue', color:'#1a3a5c' }, { name:'Red', color:'#5a1a1a' },
@@ -900,15 +933,18 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                     style={{ background: fc.color }} title={fc.name}
                     onClick={() => onUpdate('feltColor', fc.color)} />
                 ))}
-                <input type="color" value={settings.feltColor} onChange={e => onUpdate('feltColor', e.target.value)}
-                  style={{ width:'24px', height:'24px', border:'none', cursor:'pointer', borderRadius:'4px', marginLeft:'4px' }} title="Custom color" />
+                {/* 68: this was a 24px rectangle sitting in a row of circles. */}
+                <span className="felt-color-custom" title="Custom color">
+                  <input type="color" value={settings.feltColor} aria-label="Custom felt color"
+                    onChange={e => onUpdate('feltColor', e.target.value)} />
+                </span>
               </div>
             </div>
           )}
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Cards</div>
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Card Back Design</div>
             <div className="replayer-settings-pills">
               {REPLAYER_CARD_BACKS.map(cb => (
@@ -918,13 +954,15 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             </div>
           </div>
           {settings.cardBack === 'custom' && (
-            <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
+            <div className="replayer-settings-row">
               <div className="replayer-settings-label">Custom Card Back Color</div>
-              <input type="color" value={settings.cardBackColor} onChange={e => onUpdate('cardBackColor', e.target.value)}
-                style={{ width:'32px', height:'24px', border:'none', cursor:'pointer', borderRadius:'4px' }} />
+              <span className="felt-color-custom" title="Custom card back color">
+                <input type="color" value={settings.cardBackColor} aria-label="Custom card back color"
+                  onChange={e => onUpdate('cardBackColor', e.target.value)} />
+              </span>
             </div>
           )}
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px', marginTop:'8px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Card Front Style</div>
             <div className="replayer-settings-pills">
               {[{ id: 'default', label: 'Standard' }, { id: 'classic', label: 'Classic' }].map(ct => (
@@ -933,7 +971,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               ))}
             </div>
           </div>
-          <div className="replayer-settings-row" style={{ marginTop:'6px' }}>
+          <div className="replayer-settings-row">
             <div>
               <div className="replayer-settings-label">High-Contrast Deck</div>
               <div className="replayer-settings-sublabel">Lifts the suits off the felt</div>
@@ -944,14 +982,22 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               aria-label="High-contrast deck"
               onClick={() => onUpdate('fourColorDeck', !settings.fourColorDeck)} />
           </div>
-          <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
+          {/* 70: only the high-contrast toggle three rows up had aria-pressed
+              and a label. Every other switch in this panel — Splay, Rail
+              Light, seven Display rows and five Animation rows — was a bare
+              <button> with no text inside, which is an unnamed, stateless
+              control to a screen reader: thirteen buttons all announcing
+              "button". The pattern was already written; it just stopped. */}
+          <div className="replayer-settings-row">
             <div className="replayer-settings-label">Splay Hole Cards</div>
             <button className={'replayer-settings-toggle' + (settings.cardSplay ? ' on' : '')}
+              aria-pressed={!!settings.cardSplay} aria-label="Splay hole cards"
               onClick={() => onUpdate('cardSplay', !settings.cardSplay)} />
           </div>
-          <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
+          <div className="replayer-settings-row">
             <div className="replayer-settings-label">Rail Light Strip</div>
             <button className={'replayer-settings-toggle' + (settings.lightStrip ? ' on' : '')}
+              aria-pressed={!!settings.lightStrip} aria-label="Rail light strip"
               onClick={() => onUpdate('lightStrip', !settings.lightStrip)} />
           </div>
         </div>
@@ -979,6 +1025,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 <div className="replayer-settings-sublabel">{opt.sub}</div>
               </div>
               <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
                 onClick={() => onUpdate(opt.key, !settings[opt.key])} />
             </div>
           ))}
@@ -1004,6 +1051,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 <div className="replayer-settings-sublabel">{opt.sub}</div>
               </div>
               <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
                 onClick={() => onUpdate(opt.key, !settings[opt.key])} />
             </div>
           ))}
@@ -1016,9 +1064,9 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'soundFold', label:'Fold Sound' },
             { key:'soundAllIn', label:'All-In Sound' },
           ].map(opt => (
-            <div key={opt.key} className="replayer-settings-row" style={{ opacity: 0.4 }}>
+            <div key={opt.key} className="replayer-settings-row is-disabled">
               <div className="replayer-settings-label">{opt.label}</div>
-              <button className="replayer-settings-toggle" disabled />
+              <button className="replayer-settings-toggle" disabled aria-label={opt.label} />
             </div>
           ))}
         </div>
@@ -1191,22 +1239,33 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
           <span className="replayer-street-name">{currentStreet.name}</span>
           <span className="replayer-street-pot">Pot: {formatChipAmount(currentPot)}</span>
         </div>
+        {/* 73: a focused border was the ONLY state these fields had, so
+            "Ahh", a repeated card or a bare "A" simply produced no card row
+            and no message — the input looked accepted and the saved hand was
+            quietly wrong. checkCardText reports what the parser could not
+            use, which is information the parser already has. */}
         <div className="replayer-field" style={{marginBottom:'6px'}}>
           <label>Hero Cards</label>
-          <input type="text" placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
+          <input type="text" className={checkCardText(currentStreet.cards.hero) ? 'is-invalid' : undefined}
+            placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
+          {checkCardText(currentStreet.cards.hero) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.hero)}</div>}
           <CardRow text={currentStreet.cards.hero} stud={gameCfg.isStud} max={gameCfg.heroCards} />
         </div>
         {category === 'community' && currentStreetIdx > 0 && (
           <div className="replayer-field" style={{marginBottom:'6px'}}>
             <label>Board ({currentStreet.name})</label>
-            <input type="text" placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
+            <input type="text" className={checkCardText(currentStreet.cards.board) ? 'is-invalid' : undefined}
+              placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
+            {checkCardText(currentStreet.cards.board) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.board)}</div>}
             <CardRow text={currentStreet.cards.board} max={streetDef.boardCards[currentStreetIdx]} />
           </div>
         )}
         {hand.players.slice(1).map((p, oi) => (
           <div key={oi} className="replayer-field" style={{marginBottom:'4px'}}>
             <label>{p.name} Cards</label>
-            <input type="text" placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
+            <input type="text" className={checkCardText((currentStreet.cards.opponents || [])[oi] || '') ? 'is-invalid' : undefined}
+              placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
+            {checkCardText((currentStreet.cards.opponents || [])[oi] || '') && <div className="replayer-field-error">{checkCardText((currentStreet.cards.opponents || [])[oi] || '')}</div>}
             <CardRow text={(currentStreet.cards.opponents || [])[oi] || ''} stud={gameCfg.isStud} max={gameCfg.heroCards} placeholderCount={!(currentStreet.cards.opponents || [])[oi] ? gameCfg.heroCards : 0} />
           </div>
         ))}
@@ -1229,12 +1288,14 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
                   {discardCount > 0 && (
                     <div className="replayer-row" style={{marginTop:'2px',gap:'4px'}}>
                       <div className="replayer-field" style={{flex:1}}>
-                        <label style={{fontSize:'0.55rem'}}>Discarded Cards</label>
+                        {/* 74: an 8.8px label overriding a field-label rule that
+                            is already tokenised at a readable size. */}
+                        <label>Discarded Cards</label>
                         <input type="text" placeholder={'e.g. 7h3c'} value={(draw && draw.discardedCards) || ''} onChange={e => updateDrawField(currentStreetIdx, pi, 'discardedCards', e.target.value)} />
                         {draw?.discardedCards && <CardRow text={draw.discardedCards} max={discardCount} />}
                       </div>
                       <div className="replayer-field" style={{flex:1}}>
-                        <label style={{fontSize:'0.55rem'}}>New Cards</label>
+                        <label>New Cards</label>
                         <input type="text" placeholder={'e.g. Ah5s'} value={(draw && draw.newCards) || ''} onChange={e => updateDrawField(currentStreetIdx, pi, 'newCards', e.target.value)} />
                         {draw?.newCards && <CardRow text={draw.newCards} max={discardCount} />}
                       </div>
@@ -1261,7 +1322,12 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
               <input type="text" inputMode="decimal" placeholder={bettingContext.betting === 'pl' ? (bettingContext.facingBet ? 'Raise to (max ' + formatChipAmount(bettingContext.potRaiseAmount) + ')' : 'Bet (max ' + formatChipAmount(bettingContext.betAmount) + ')') : 'Amount'} value={actionAmount} onChange={e => setActionAmount(e.target.value)} />
             </div>
             {bettingContext.betting === 'pl' && (
-              <button style={{fontSize:'0.6rem',padding:'2px 6px',borderRadius:'4px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer'}} onClick={() => setActionAmount(String(bettingContext.facingBet ? bettingContext.potRaiseAmount : bettingContext.betAmount))}>{bettingContext.facingBet ? 'Pot Raise' : 'Pot Bet'}</button>
+              /* 74: a 0.6rem button with five inline literals sitting beside
+                 the amount field. It is an action helper; it looks like one. */
+              <button className="replayer-pot-helper"
+                onClick={() => setActionAmount(String(bettingContext.facingBet ? bettingContext.potRaiseAmount : bettingContext.betAmount))}>
+                {bettingContext.facingBet ? 'Pot Raise' : 'Pot Bet'}
+              </button>
             )}
           </div>
         )}
@@ -1288,13 +1354,15 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
             const isWinner = winners.some(w => w.playerIdx === pi && !w.split);
             const isSplit = winners.some(w => w.playerIdx === pi && w.split);
             return (
-              <button key={pi} style={{
-                padding:'4px 10px',borderRadius:'6px',border:'1px solid',cursor:'pointer',
-                fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.68rem',transition:'all 0.15s',
-                background: isWinner ? 'rgba(74,222,128,0.15)' : isSplit ? 'rgba(250,204,21,0.15)' : 'transparent',
-                borderColor: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--border)',
-                color: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--text-muted)',
-              }} onClick={() => {
+              /* 72: this was padding, a font-family STRING, a size, a
+                 transition:all and a hardcoded green/amber pair inline —
+                 exactly the literals the status ramps were declared to
+                 retire — and transition:all meant hovering also animated
+                 border-radius, for free, forever. */
+              <button key={pi}
+                className={'replayer-winner-btn' + (isWinner ? ' is-win' : isSplit ? ' is-split' : '')}
+                aria-pressed={isWinner || isSplit}
+                onClick={() => {
                 setHand(prev => {
                   const prevWinners = prev.result?.winners || [];
                   const existing = prevWinners.find(w => w.playerIdx === pi);
@@ -1310,7 +1378,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
             );
           })}
         </div>
-        <div style={{fontSize:'0.55rem',color:'var(--text-muted)',marginTop:'4px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}</div>
+        <div className="replayer-field-hint">{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}</div>
       </div>
       <div style={{display:'flex',gap:'6px',justifyContent:'flex-end'}}>
         <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
@@ -2362,7 +2430,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                         <input type="text" placeholder="e.g. 7h3c" value={de.discardedCards || ''} onChange={e => updateDrawCardsFn(pi, 'discardedCards', e.target.value)} />
                       </div>
                       <div className="replayer-field" style={{flex:1,minWidth:'80px'}}>
-                        <label style={{fontSize:'0.55rem'}}>New Cards</label>
+                        <label>New Cards</label>
                         <input type="text" placeholder="e.g. Ah5s" value={de.newCards || ''} onChange={e => updateDrawCardsFn(pi, 'newCards', e.target.value)} />
                         {de.newCards && <CardRow text={de.newCards} max={de.discarded} />}
                       </div>
@@ -3190,7 +3258,17 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           <h2>{title || currentHand.gameType + ' Hand'}</h2>
           <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds ? ' ' + formatChipAmount(currentHand.blinds.sb) + '/' + formatChipAmount(currentHand.blinds.bb) + (currentHand.blinds.ante ? '/' + formatChipAmount(currentHand.blinds.ante) : '') : '')}</span>
         </div>
-        {notes && <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginBottom:'8px'}}>{notes}</div>}
+        {/* 76: .replayer-notes-area — label, textarea, focus ring, all
+            tokenised — had zero JSX consumers, so notes were write-only from
+            the API's point of view and read back through an inline 0.7rem
+            div. The isPublic flag was in the save payload with no control
+            anywhere that could set it. */}
+        {notes && (
+          <div className="replayer-notes-area">
+            <label>Notes</label>
+            <div className="replayer-notes-read">{notes}</div>
+          </div>
+        )}
         <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
           <HandReplayerReplayView
             hand={currentHand}
@@ -3219,12 +3297,29 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             <button className={entryMode === 'gto' ? 'active' : ''} onClick={() => setEntryMode('gto')}>GTO Style</button>
             <button className={entryMode === 'classic' ? 'active' : ''} onClick={() => setEntryMode('classic')}>Classic</button>
           </div>}
-          {entryTab === 'form' && <div className="replayer-row" style={{marginBottom:'8px'}}>
-            <div className="replayer-field">
-              <label>Title</label>
-              <input type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
+          {entryTab === 'form' && <>
+            <div className="replayer-row" style={{marginBottom:'8px'}}>
+              <div className="replayer-field">
+                <label>Title</label>
+                <input type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
             </div>
-          </div>}
+            {/* 76: .replayer-notes-area was fully styled — label, textarea,
+                focus ring, all tokenised — with no JSX consumer anywhere, and
+                isPublic went into the save payload with no control that could
+                ever set it. Both were saved and neither was editable. */}
+            <div className="replayer-notes-area">
+              <label htmlFor="replayer-notes">Notes</label>
+              <textarea id="replayer-notes" value={notes} placeholder="What were you thinking here?"
+                onChange={e => setNotes(e.target.value)} />
+              <div className="replayer-settings-row" style={{marginBottom:0}}>
+                <div className="replayer-settings-label">Share publicly</div>
+                <button className={'replayer-settings-toggle' + (isPublic ? ' on' : '')}
+                  aria-pressed={isPublic} aria-label="Share this hand publicly"
+                  onClick={() => setIsPublic(v => !v)} />
+              </div>
+            </div>
+          </>}
           <div id="gto-sticky-slot"></div>
         </div>
         {entryTab === 'text' ? (
@@ -3237,8 +3332,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
               value={shorthandText}
               onChange={e => setShorthandText(e.target.value)}
             />
+            {/* 73: --text-warning is defined nowhere in the stylesheet, so this
+                always fell through to the literal after the comma — a
+                token-shaped string that was never a token. --warn is the one
+                the ramp actually declares. */}
             {shorthandErrors.length > 0 && (
-              <div style={{color:'var(--text-warning, #f59e0b)', fontSize:'0.72rem', marginTop:6}}>
+              <div className="replayer-field-error" style={{color:'var(--warn)'}}>
                 {shorthandErrors.map((e,i) => <div key={i}>&#9888; {e}</div>)}
               </div>
             )}
@@ -3276,7 +3375,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   return (
     <div className="replayer-view">
       <div className="replayer-header">
-        <h2 style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.85rem',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-muted)'}}>Hand Replayer</h2>
+        {/* 75: replay mode used the stylesheet's heading, list mode
+            inline-overrode the SAME element to a smaller muted size with a
+            literal tracking and a font-family string, and entry mode rendered
+            it unstyled — so the page title shrank and greyed as you navigated
+            between three screens of one feature. */}
+        <h2>Hand Replayer</h2>
       </div>
 
       {/* New hand creation */}
@@ -3433,8 +3537,19 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
       {/* Saved hands list */}
       <div className="replayer-section-title" style={{marginBottom:'6px'}}>Saved Hands</div>
+      {/* 78: a single grey sentence — "Create one above" — pointing at a picker
+          the user may well have scrolled past, on the screen whose entire job
+          is to get a first hand recorded. */}
       {hands.length === 0 ? (
-        <div className="replayer-empty">No saved hands yet. Create one above.</div>
+        <div className="replayer-empty">
+          <div className="replayer-empty-cards" aria-hidden="true">
+            <span className="card-unknown" /><span className="card-unknown" />
+          </div>
+          <div className="replayer-empty-line">No saved hands yet.</div>
+          <button className="btn btn-primary btn-sm" onClick={startNewHand}>
+            Create {variantDisplayName} Hand
+          </button>
+        </div>
       ) : (
         <div className="replayer-hand-list">
           {hands.map(h => (
@@ -3951,6 +4066,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     if (dot && dot.scrollIntoView) dot.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }, [streetIdx, actionIdx]);
 
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [tabHidden, setTabHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -4399,7 +4515,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
 
   return (
-    <div className={'replayer-replay' + fourColorClass}>
+    /* 77: isLandscape was computed at mount and kept current by a live
+       matchMedia listener, and then referenced nowhere — so forty lines of
+       fullscreen CSS (fixed inset, modal layer, app chrome hidden through a
+       :has() rule) could never fire, and turning the phone sideways just
+       letterboxed the table. */
+    <div className={'replayer-replay' + fourColorClass + (isLandscape ? ' replayer-landscape' : '')}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table */}
@@ -4962,38 +5083,25 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             );
           })()}
         </div>
-        <div style={{display:'flex',gap:'6px',justifyContent:'center'}}>
+        {/* 79: Back, Edit, Solve, Link, image share, WebM, GIF and the gear
+            sat in ONE inline flex row with no wrap plan, so at 320px eight
+            controls either overflowed or crushed each other — and four of the
+            eight were exports, which is a task, not a navigation control. The
+            row is navigation now; the exports live behind one Share button in
+            the sheet the app already ships for exactly this. */}
+        <div className="replayer-actions-bar">
           <button className="btn btn-ghost btn-sm" onClick={onBack}>Back</button>
           <button className="btn btn-ghost btn-sm" onClick={onEdit}>Edit</button>
           {onSolveSpot && (
-            <button className="btn btn-sm" onClick={handleSolveSpot} disabled={!canSolveSpot}
-              title={canSolveSpot ? 'Open this spot in the Solver' : 'Solver supports stud8 / razz spots'}
-              style={canSolveSpot
-                ? { border: '1px solid var(--brand)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'inline-flex', alignItems: 'center', gap: '5px' }
-                : { border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <button className={'btn btn-sm ' + (canSolveSpot ? 'btn-primary' : 'btn-ghost')}
+              onClick={handleSolveSpot} disabled={!canSolveSpot}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               Solve this spot
             </button>
           )}
-          <button className="btn btn-ghost btn-sm" onClick={copyShareLink} title="Copy share link">
-            {shareLinkCopied ? 'Copied!' : 'Link'}
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={shareReplayImage} title="Share as image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" style={{width:'14px',height:'14px'}}>
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-          </button>
-          <button className="btn btn-ghost btn-sm" disabled={videoExporting || gifExporting}
-            title="Export WebM (transparent overlay)" onClick={handleExportVideo}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:'14px',height:'14px'}}>
-              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/>
-            </svg>
-          </button>
-          <button className="btn btn-ghost btn-sm" disabled={gifExporting || videoExporting}
-            title="Export GIF (Instagram sticker)" onClick={handleExportGif}
-            style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.04em',padding:'0 6px',lineHeight:'24px'}}>
-            GIF
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowExportMenu(true)}
+            disabled={videoExporting || gifExporting}>
+            Share
           </button>
           <button className="replayer-gear-btn" onClick={() => setShowSettings(true)} title="Replayer Settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -5001,6 +5109,46 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             </svg>
           </button>
         </div>
+        {/* 80: the ONLY explanation of why Solve is dead was a title
+            attribute — invisible to every touch user, which is most of them
+            on this app. */}
+        {onSolveSpot && !canSolveSpot && (
+          <div className="replayer-bar-note">Solving is available for stud8 and razz spots.</div>
+        )}
+        {/* 79: the exports, in the sheet grammar the app already uses. */}
+        {showExportMenu && createPortal(
+          <>
+            <div className="share-menu-backdrop" onClick={() => setShowExportMenu(false)} />
+            <div className="share-menu-panel">
+              <h3>Share this hand</h3>
+              <div className="share-menu-grid">
+                <div className="share-menu-item" onClick={() => { copyShareLink(); setShowExportMenu(false); }}>
+                  <span className="share-icon">{'\uD83D\uDD17'}</span>
+                  <span className="share-label">{shareLinkCopied ? 'Copied' : 'Copy link'}</span>
+                  <span className="share-desc">A public link to this replay</span>
+                </div>
+                <div className="share-menu-item" onClick={() => { shareReplayImage(); setShowExportMenu(false); }}>
+                  <span className="share-icon">{'\uD83D\uDDBC'}</span>
+                  <span className="share-label">Image</span>
+                  <span className="share-desc">A still of the hand at this point</span>
+                </div>
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo(); setShowExportMenu(false); } }}>
+                  <span className="share-icon">{'\uD83C\uDFAC'}</span>
+                  <span className="share-label">WebM</span>
+                  <span className="share-desc">Transparent overlay for editing</span>
+                </div>
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportGif(); setShowExportMenu(false); } }}>
+                  <span className="share-icon">{'\u2728'}</span>
+                  <span className="share-label">GIF</span>
+                  <span className="share-desc">Instagram sticker</span>
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
       </div>
         );
         return slot ? createPortal(controls, slot) : controls;
