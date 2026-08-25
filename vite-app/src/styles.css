@@ -817,18 +817,45 @@
       filter: saturate(1.35) brightness(1.25);
     }
 
-    /* The chip stack's own discs, matching the pot stack's clay treatment. */
+    /* 17 + 18: the chips a wager is made of. Columns by denomination, and
+       each disc is a piece of RIM — the shading runs top-to-bottom across the
+       edge, the denomination stripes run across it, and only the topmost disc
+       in a column carries a face. A column of five reads as a cylinder rather
+       than as five coins with gaps between them. */
+    .chip-stack-visual {
+      display: inline-flex; align-items: flex-end; gap: 2px;
+      vertical-align: bottom; margin-right: var(--space-2xs);
+    }
+    .chip-col { display: inline-flex; flex-direction: column-reverse; }
     .chip-disc {
       --chip: currentColor;
-      background: linear-gradient(90deg,
-        var(--chip) 0 18%,
-        rgba(255,255,255,0.55) 18% 26%,
-        var(--chip) 26% 74%,
-        rgba(255,255,255,0.55) 74% 82%,
-        var(--chip) 82% 100%);
-      border-top: 1px solid rgba(255,255,255,0.45);
-      border-bottom: 1px solid rgba(0,0,0,0.5);
-      box-shadow: 0 1px 1px rgba(0,0,0,0.3);
+      width: 17px; height: 7px; border-radius: 9px / 4px;
+      display: block; position: relative;
+      margin-top: -2px;
+      background:
+        linear-gradient(180deg,
+          rgba(255,255,255,0.34) 0 20%,
+          rgba(255,255,255,0.04) 44%,
+          rgba(0,0,0,0.10) 62%,
+          rgba(0,0,0,0.40) 100%),
+        linear-gradient(90deg,
+          var(--chip) 0 18%,
+          rgba(255,255,255,0.55) 18% 26%,
+          var(--chip) 26% 74%,
+          rgba(255,255,255,0.55) 74% 82%,
+          var(--chip) 82% 100%);
+      box-shadow: 0 1px 1px rgba(0,0,0,0.45);
+    }
+    /* The face of the top chip, and only of the top chip. */
+    .chip-col .chip-disc:last-child::after {
+      content: '';
+      position: absolute;
+      left: 1px; right: 1px; top: -2px; height: 5px;
+      border-radius: 50%;
+      background:
+        radial-gradient(ellipse at 50% 26%, rgba(255,255,255,0.48), rgba(255,255,255,0) 72%),
+        var(--chip);
+      box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.35);
     }
 
     /* A denominated flying chip builds its sphere from inset shadows rather
@@ -2745,15 +2772,23 @@
       padding-right: env(safe-area-inset-right, 0px);
       box-sizing: border-box;
     }
+    /* 25 + 16: in landscape the phone is being held for exactly this, and
+       the table was still a portrait oval letterboxed in the middle of it.
+       Turned over, and deliberately wider than the frame so the rail runs off
+       both edges — a contained table reads as a diagram of a table; a cropped
+       one reads as a camera pointed at one. */
     .replayer-landscape .replayer-table {
-      aspect-ratio: 3 / 4.5;
-      margin-top: var(--space-xs);
+      aspect-ratio: 4.5 / 3;
+      --felt-y: 12%;
+      --felt-x: 16%;
+      width: 116%;
+      max-width: none;
+      margin: 0 -8% ;
       flex: 1;
       min-height: 0;
       max-height: calc(100vh - 60px);
-      margin-left: auto;
-      margin-right: auto;
     }
+    .replayer-landscape { overflow: hidden; }
     .replayer-landscape .replayer-bottom-fixed {
       position: relative;
       bottom: auto;
@@ -2791,29 +2826,75 @@
          any leftover slack sits below the table (between hero seat and
          the bar) instead of being split top/bottom. */
       margin: 4px auto 0;
+
+      /* Everything on this table now measures itself against the TABLE, not
+         against the viewport. Before this the felt inset was a percentage,
+         the rail was a flat 20px and the cards were a flat 44px, so the same
+         table was three different pieces of furniture depending on the
+         device: on a 320px phone the rail was proportionally 1.9x fatter than
+         in the 600px column, and the cards were proportionally twice the
+         size. One container, one scale, one object. */
+      container-type: inline-size;
+
+      /* The felt's inset, named once and read by the rail, the light strip,
+         the felt and the outer shadow — they used to hold four copies of the
+         same two numbers, and the rail's copy had a 20px literal in it. */
+      /* 3/4.5 gave a felt of 1:1.59 — a PORTRAIT oval, which is a shape no
+         poker table has. Even from a steep overhead-front camera a table is
+         wider than it is deep; the old proportion was what fits a phone, and
+         it was the silhouette every other decision on this table sat inside.
+
+         The box stays portrait, because that is the space a phone has. The
+         PLAYING SURFACE inside it becomes wide and shallow — 0.80 x 0.52 of
+         the box, so the felt itself is now landscape — which is exactly what
+         foreshortening looks like, and it hands the extra height to the seats
+         above and below, where the cards live. The seat coordinates in
+         HandReplayerView are derived from these two numbers. */
+      --felt-y: 24%;
+      --felt-x: 10%;
+      --rail-w: 5.6cqw;
+
+      /* 44px at a ~350px table, which is where it has been, but now it holds
+         its proportion instead of its pixel count. The clamp keeps a card
+         legible on a small phone and stops it becoming a poster on a desktop. */
+      --card-h: clamp(38px, 12.6cqw, 54px);
+      --card-w: calc(var(--card-h) * 0.7143);   /* the artwork is 180:252 */
+
+      /* The crosshatch was two perfectly regular gradients at +45 and -45,
+         which at any opacity reads as printed cloth rather than as fibre —
+         real baize has no period and no direction. A low-frequency noise
+         layer goes underneath and the lattice drops to a third of its old
+         weight, so the lattice stops being the dominant texture and starts
+         being the weave inside one. */
+      --felt-weave:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E"),
+        repeating-linear-gradient(45deg, transparent, transparent 0.62cqw, rgba(255,255,255,0.018) 0.62cqw, rgba(255,255,255,0.018) 0.93cqw),
+        repeating-linear-gradient(-45deg, transparent, transparent 0.62cqw, rgba(0,0,0,0.020) 0.62cqw, rgba(0,0,0,0.020) 0.93cqw);
     }
+    /* The rail carried TWO specular gradients — 155deg with a 28% white
+       highlight at top-left and 335deg with an 18% white highlight at
+       bottom-right — so the cushion had a lit edge in two opposite corners
+       while the felt inside it, the board cards' drop shadows and the
+       specular pool all described a single source above and in front. Two
+       speculars on one ring is the clearest possible tell of art that was
+       assembled rather than lit.
+
+       One source now: the 155deg pass keeps the highlight and carries the
+       falloff all the way round, and the second gradient becomes a pure
+       contact shade with no white in it at all — the far cushion turning
+       away from the light rather than catching a second lamp. */
     .replayer-table-rail {
       position: absolute;
-      inset: calc(16% - 20px) calc(18% - 20px);
+      inset: calc(var(--felt-y) - var(--rail-w)) calc(var(--felt-x) - var(--rail-w));
       border-radius: var(--radius-pill);
       background:
-        /* top-left light */
         linear-gradient(155deg,
-          rgba(255,255,255,0.28) 0%,
-          rgba(255,255,255,0.1) 12%,
-          transparent 30%,
-          transparent 70%,
-          rgba(0,0,0,0.06) 85%,
-          rgba(0,0,0,0.15) 100%
-        ),
-        /* bottom-right light */
-        linear-gradient(335deg,
-          rgba(255,255,255,0.18) 0%,
-          rgba(255,255,255,0.06) 12%,
-          transparent 30%,
-          transparent 70%,
-          rgba(0,0,0,0.04) 85%,
-          rgba(0,0,0,0.1) 100%
+          rgba(255,255,255,0.30) 0%,
+          rgba(255,255,255,0.11) 14%,
+          transparent 34%,
+          transparent 62%,
+          rgba(0,0,0,0.10) 84%,
+          rgba(0,0,0,0.22) 100%
         );
       background-color: var(--rail-color, #6b5b8a);
       border: none;
@@ -2822,34 +2903,80 @@
         0 -3px 6px rgba(0,0,0,0.25) inset,
         0 1px 3px rgba(0,0,0,0.15);
     }
+    /* The table's outer edge was a 1px/3px drop against a near-black page,
+       which is next to invisible — so the silhouette dissolved exactly where
+       it should be strongest, and the whole table floated on a ground of its
+       own tone. Two shadows: the object's weight, and where it meets the
+       ground it is standing on. */
+    .replayer-table::after {
+      content: '';
+      position: absolute;
+      inset: calc(var(--felt-y) - var(--rail-w)) calc(var(--felt-x) - var(--rail-w));
+      border-radius: var(--radius-pill);
+      pointer-events: none;
+      /* Non-inset box-shadow paints entirely outside the border box, so
+         this needs no negative layer to stay behind the rail — and a negative
+         one would fall behind any ancestor that paints a background. */
+      z-index: 0;
+      box-shadow:
+        0 10px 22px rgba(0,0,0,0.42),
+        0 26px 60px rgba(0,0,0,0.34);
+    }
+    /* A uniform 40%-white ring with a symmetrical glow: the same brightness
+       the whole way round, on a table lit from above and in front. A ring
+       that varies with the light is chrome trim on a lit object; a ring that
+       does not is a decal. The gradient goes through a masked border so the
+       brightness can run from the near cushion to the far one. */
     .replayer-light-strip {
       position: absolute;
-      /* Matches the felt's inset so the light strip sits exactly on the
-         inner border of the rail (where the rail meets the felt). Felt
-         inset is 16% 18% — this rule mirrors it. */
-      inset: 16% 18%;
+      inset: var(--felt-y) var(--felt-x);
       border-radius: var(--radius-pill);
-      background: transparent;
-      border: var(--bw-1) solid rgba(255,255,255,0.4);
-      box-shadow:
-        0 0 6px 2px rgba(255,255,255,0.18),
-        0 0 3px 0px rgba(255,255,255,0.22) inset;
+      border: var(--bw-1) solid transparent;
+      background:
+        linear-gradient(180deg,
+          rgba(255,255,255,0.13) 0%,
+          rgba(255,255,255,0.30) 42%,
+          rgba(255,255,255,0.62) 100%) border-box;
+      -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      box-shadow: 0 3px 10px -3px rgba(255,255,255,0.30);
       z-index: 2;
       pointer-events: none;
     }
     .replayer-table-felt {
       position: absolute;
-      inset: 16% 18%;
-      background: radial-gradient(ellipse 80% 70% at 50% 45%, #887aae, #342c4d);
+      inset: var(--felt-y) var(--felt-x);
+      background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--felt-lit, #9478b4), var(--felt-shade, #2c2e50));
       border-radius: var(--radius-pill);
       border: 1px solid rgba(0,0,0,0.15);
-      /* The rail above is lit from the top-left; the felt beneath it was lit
-         from nowhere, which is why the composite still read as flat art with
-         lit stickers on it. The bottom cushion casts too now. */
-      box-shadow: inset 0 4px 20px rgba(0,0,0,0.45), inset 0 -2px 10px rgba(0,0,0,0.30);
+      box-shadow:
+        /* The cushion overhangs the cloth, so the boundary between them is a
+           contact shade rather than the mathematical edge it used to be. */
+        inset 0 4px 20px rgba(0,0,0,0.45),
+        inset 0 -2px 10px rgba(0,0,0,0.30),
+        inset 0 3px 5px rgba(0,0,0,0.36);
       z-index: 1;
       cursor: pointer;
-      overflow: hidden;   /* keeps the weave inside the pill */
+      /* The felt no longer clips: the weave and the tuck line are drawn by
+         ::after and ::before, which clip themselves, while the objects that
+         reach the felt's edge — the seats and their glows — no longer get
+         sliced by it. */
+      overflow: visible;
+    }
+    /* Every real table has its baize stretched over a bed and tucked under the
+       cushion, which leaves a compression ring just inside the rail. The felt
+       had no seam at all, so the cloth read as painted on rather than
+       stretched over something. Brightest at the bottom, where the light is. */
+    .replayer-table-felt::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow:
+        inset 0 -2px 3px rgba(0,0,0,0.5),
+        inset 0 1px 2px rgba(0,0,0,0.3);
     }
     /* Woven texture. The felt was a single gradient, which reads as coloured plastic at any size;
        a fine crosshatch at very low opacity makes it cloth. Deliberately an overlay rather than
@@ -2865,12 +2992,20 @@
       content: '';
       position: absolute;
       inset: 0;
+      border-radius: inherit;
       pointer-events: none;
       background-image:
-        radial-gradient(ellipse 55% 40% at 50% 22%, rgba(255,244,220,0.13), transparent 70%),
-        radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.30) 100%),
-        repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.045) 2px, rgba(255,255,255,0.045) 3px),
-        repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 3px);
+        /* The specular pool sat at 50% 22% while the pot plaque is at 35% and
+           the board at 50%, so the brightest part of the cloth was the empty
+           strip between the top seats and the pot, and the board sat on the
+           shoulder of the falloff. Overhead light at a poker table points at
+           the board. */
+        radial-gradient(ellipse 55% 40% at 50% 44%, rgba(255,244,220,0.14), transparent 70%),
+        /* The vignette was concentric at 50% 50% while the light was at 22%,
+           so the highlight and the falloff came from two different places.
+           Falloff comes from the light. */
+        radial-gradient(ellipse 100% 100% at 50% 40%, transparent 55%, rgba(0,0,0,0.30) 100%),
+        var(--felt-weave);
     }
     :is([data-theme="light"],[data-theme="cloudy"]) .replayer-table-felt {
       background: radial-gradient(ellipse 80% 70% at 50% 45%, #9b8dc0, #423a5b);
@@ -2886,12 +3021,17 @@
       position:absolute; left:50%; top:35%; transform:translate(-50%,-50%);
       z-index:2; text-align:center; font-size: var(--fs-sm); font-weight: var(--fw-bold); color:#fff;
       font-family: var(--font-condensed);
-      background: rgba(0,0,0,0.42);
+      /* backdrop-filter: blur(2px) was the only refraction anywhere on the
+         table, so the pot was the one object made of glass in a scene of
+         cloth, card and plastic — and over a smooth gradient there is nothing
+         behind it to blur, so it cost a compositor layer and showed nothing.
+         It takes the plaque language instead, which is what the seats are
+         made of and what the pot already argued for. */
+      background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
       border: 1px solid rgba(255,224,138,0.45);
       border-radius: var(--radius-pill);
       padding: var(--space-2xs) var(--space-xl);
-      backdrop-filter: blur(2px);
-      box-shadow: var(--elev-1);
+      box-shadow: var(--plaque-bevel);
       white-space: nowrap;
     }
     .replayer-pot-label {
@@ -2928,13 +3068,17 @@
        Shadow separates a card from what is BEHIND it; a lit edge is what
        gives it a body. Warmed on the board so the top light reads as
        overhead tungsten rather than a stroke. */
+    /* One soft, evenly distributed halo under each board card. A card lying
+       flat on cloth has almost no gap at its edges and a slight compression
+       under it, so the darkness should be tight and hard right at the edge
+       and soft everywhere else. Two shadows: contact, then cast. */
     .replayer-board-area .card-row img {
-      height:44px;
-      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.5));
+      height: var(--card-h);
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.72)) drop-shadow(0 4px 6px rgba(0,0,0,0.38));
       box-shadow: 0 0 0 0.75px rgba(255,236,200,0.34);
     }
-    .replayer-board-area .card-row .card-unknown { width:30px; height:44px; }
-    .replayer-board-area .card-row .card-placeholder { width:30px; height:44px; }
+    .replayer-board-area .card-row .card-unknown,
+    .replayer-board-area .card-row .card-placeholder { width: var(--card-w); height: var(--card-h); }
 
     /* 24: absolutely positioned at top:28%, which is where the pot eyebrow
        already lives. As a flow child of the board column it sits under the
@@ -2994,21 +3138,31 @@
        only and so rendered at their natural 31.4px. Two widths in one hand.
        width:auto lets both follow the artwork. */
     .replayer-seat-cards .card-row img {
-      height:44px; width:auto;
+      height: var(--card-h); width:auto;
       filter:drop-shadow(-2px 1px 2px rgba(0,0,0,0.5));
       box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30);
     }
     /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
-    .replayer-seat-cards .card-row .card-unknown { width:31.4px; height:44px; }
-    .replayer-seat-cards .card-row .card-placeholder { width:31.4px; height:44px; }
+    .replayer-seat-cards .card-row .card-unknown,
+    .replayer-seat-cards .card-row .card-placeholder { width: var(--card-w); height: var(--card-h); }
 
+    /* 19: white-to-#e5e5e5 with an inset white highlight made this hard,
+       bright plastic — by some distance the highest-value object in a frame
+       of mid-purple cloth, so it pulled the eye before the pot did. The
+       button matters; it is not the subject. Ivory body, warmer bevel, and a
+       contact shadow ON the cloth rather than a drop that leaves it floating.
+
+       20: font-family was var(--serif) — the app's PROSE token, which
+       [data-serif="univers"] redefines to a sans stack. A reader who prefers
+       sans body text was also changing the letterform on the dealer button.
+       Nothing about a dealer button should follow a reading preference. */
     .replayer-dealer-btn {
       position: absolute;
       width: 24px; height: 24px;
       border-radius: var(--radius-circle);
-      background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 40%, #e5e5e5 100%);
-      color: #111;
-      font-family: var(--serif);
+      background: linear-gradient(145deg, #f3ead6 0%, #e6dabf 45%, #d8caab 100%);
+      color: #3a3020;
+      font-family: 'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-display);
@@ -3017,10 +3171,19 @@
       align-items: center;
       justify-content: center;
       z-index: 3;
-      border: var(--bw-1) solid #ccc;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.35), inset 0 1px 2px rgba(255,255,255,0.9), inset 0 -1px 1px rgba(0,0,0,0.1);
+      border: var(--bw-1) solid #b9a884;
+      box-shadow:
+        0 1px 2px rgba(0,0,0,0.5),
+        0 4px 5px -2px rgba(0,0,0,0.4),
+        inset 0 1px 1px rgba(255,255,255,0.6),
+        inset 0 -1px 1px rgba(0,0,0,0.12);
       pointer-events: none;
-      text-shadow: 0 0.5px 0 rgba(255,255,255,0.5);
+      text-shadow: 0 0.5px 0 rgba(255,255,255,0.45);
+    }
+    /* The engraved D, rather than a letter printed on a disc. */
+    .replayer-dealer-btn > span {
+      display: block;
+      text-shadow: 0 0.5px 0 rgba(255,255,255,0.7), 0 -0.5px 0 rgba(0,0,0,0.25);
     }
 
     /* Seat plaques. These used --surface on --border, i.e. the exact chrome of every event card in
@@ -3236,8 +3399,8 @@
 
     /* Board card street spacing */
     .replayer-board-spaced { display:flex; align-items:center; gap: var(--space-2xs); justify-content:center; flex-wrap:nowrap; }
-    .replayer-board-spaced img { height:44px; }
-    .replayer-board-spaced .card-unknown { width:30px; height:44px; }
+    .replayer-board-spaced img { height: var(--card-h); }
+    .replayer-board-spaced .card-unknown { width: var(--card-w); height: var(--card-h); }
     /* Flop | turn | river. This class was written for exactly this and never
        rendered, so five community cards ran together at a uniform 4px and the
        only street cue was the dots under the table. 12px reads at 44px tall. */
@@ -4110,6 +4273,31 @@
       inset: 12% 22%;
       border-radius: var(--radius-circle);
     }
+    /* The shape presets reset the insets and, for the octagon, a clip-path —
+       and then inherited the oval's radial specular, so a faceted table was
+       lit as though it were round, which is to say it read as an oval with
+       its corners cut off. A conic gradient keyed to the eight faces gives
+       each face its own value, which is what makes a facet a facet. */
+    .replayer-table .shape-octagon {
+      background:
+        conic-gradient(from 202deg,
+          var(--felt-lit, #9478b4)   0deg  45deg,
+          var(--felt-shade, #2c2e50) 45deg 90deg,
+          var(--felt-lit, #9478b4)   90deg 135deg,
+          var(--felt-shade, #2c2e50) 135deg 180deg,
+          var(--felt-lit, #9478b4)   180deg 225deg,
+          var(--felt-shade, #2c2e50) 225deg 270deg,
+          var(--felt-lit, #9478b4)   270deg 315deg,
+          var(--felt-shade, #2c2e50) 315deg 360deg) !important;
+    }
+    /* The conic above is deliberately harsh; this softens each face into its
+       neighbours so the result is eight values, not eight wedges. */
+    .replayer-table .shape-octagon::before {
+      box-shadow: none;
+      background: radial-gradient(ellipse 78% 78% at 50% 44%,
+        var(--felt-lit, #9478b4), transparent 78%);
+      opacity: 0.82;
+    }
     .replayer-table:has(.shape-octagon) .replayer-table-rail {
       inset: calc(8% - 20px) calc(18% - 20px);
       border-radius: 0;
@@ -4331,6 +4519,70 @@
       opacity: 0.32 !important;
       color: #fff !important;
       text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+    }
+
+
+    /* Five themes each swapped the felt's colour and some chrome, and all five
+       inherited the identical inset shadow stack, the identical specular pool
+       and the identical weave. Six colourways of one lighting setup read as
+       six skins; six lighting setups read as six rooms. Each theme moves the
+       pool, the falloff and the shadow density to describe its own room. */
+    .replayer-table.theme-casino-royale .replayer-table-felt::after {
+      background-image:
+        radial-gradient(ellipse 48% 34% at 50% 40%, rgba(255,238,200,0.16), transparent 70%),
+        radial-gradient(ellipse 100% 100% at 50% 36%, transparent 48%, rgba(0,0,0,0.42) 100%),
+        var(--felt-weave);
+    }
+    /* Neon Vegas is lit by its own strip, from below and in front. */
+    .replayer-table.theme-neon-vegas .replayer-table-felt::after {
+      background-image:
+        radial-gradient(ellipse 66% 42% at 50% 78%, rgba(0,229,255,0.13), transparent 72%),
+        radial-gradient(ellipse 100% 100% at 50% 72%, transparent 46%, rgba(0,0,0,0.55) 100%),
+        var(--felt-weave);
+    }
+    .replayer-table.theme-neon-vegas .replayer-table-felt {
+      box-shadow:
+        inset 0 -4px 22px rgba(0,0,0,0.5),
+        inset 0 3px 12px rgba(0,0,0,0.55),
+        inset 0 3px 5px rgba(0,0,0,0.36);
+    }
+    /* Vintage: a wide, soft overhead with very little falloff. */
+    .replayer-table.theme-vintage .replayer-table-felt::after {
+      background-image:
+        radial-gradient(ellipse 88% 72% at 50% 40%, rgba(255,236,196,0.11), transparent 82%),
+        radial-gradient(ellipse 100% 100% at 50% 44%, transparent 66%, rgba(0,0,0,0.20) 100%),
+        var(--felt-weave);
+    }
+    .replayer-table.theme-vintage .replayer-table-felt {
+      box-shadow:
+        inset 0 3px 14px rgba(60,40,16,0.34),
+        inset 0 -2px 8px rgba(60,40,16,0.22),
+        inset 0 2px 4px rgba(60,40,16,0.26);
+    }
+    /* High Stakes: a tight, low-key pool and a hard falloff. */
+    .replayer-table.theme-high-stakes .replayer-table-felt::after {
+      background-image:
+        radial-gradient(ellipse 38% 26% at 50% 44%, rgba(255,244,220,0.15), transparent 66%),
+        radial-gradient(ellipse 100% 100% at 50% 42%, transparent 34%, rgba(0,0,0,0.60) 100%),
+        var(--felt-weave);
+    }
+
+    /* 14: this theme paints a #f0f0f0 felt and then inherited the shared inset
+       stack — inset 0 4px 20px rgba(0,0,0,0.45) — so a near-white surface
+       carried a 45% BLACK bloom round its whole inner edge and read as grey.
+       Shadow density on a light surface is a different number, and its colour
+       is a cool grey, not black. */
+    .replayer-table.theme-minimalist .replayer-table-felt {
+      box-shadow:
+        inset 0 3px 12px rgba(92,92,116,0.16),
+        inset 0 -1px 6px rgba(92,92,116,0.10),
+        inset 0 1px 2px rgba(92,92,116,0.14);
+    }
+    .replayer-table.theme-minimalist .replayer-table-felt::before { box-shadow: none; }
+    .replayer-table.theme-minimalist .replayer-table-felt::after {
+      background-image:
+        radial-gradient(ellipse 76% 60% at 50% 42%, rgba(255,255,255,0.55), transparent 78%),
+        radial-gradient(ellipse 100% 100% at 50% 44%, transparent 70%, rgba(92,92,116,0.10) 100%);
     }
 
     /* ── Table shapes ── */

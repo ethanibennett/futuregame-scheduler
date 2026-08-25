@@ -345,6 +345,38 @@ function outcomeOf(h) {
   return mine ? (mine.split ? 'split' : 'win') : 'loss';
 }
 
+/* The felt's two stops.
+
+   7: these used to be the same hue at two lightnesses — the lit centre and the
+   shaded edge were literally the same colour, which no lit surface ever is.
+   Every real material shifts hue between its highlight and its shade, and that
+   shift is most of what separates a render from a fill. The highlight warms
+   toward the lamp; the shadow cools toward the room.
+
+   11: and the derivation could destroy the lighting model outright. It was
+   `light = c*0.9 + white*0.1` and `dark = c*0.6`, so picking near-black gave
+   two stops that were both nearly black and the radial gradient vanished, and
+   picking white gave a blown-out table with no card contrast — one tap from a
+   colour input that is always on screen. The chosen colour is pulled into a
+   band that always leaves room for a highlight above it and a shade below. */
+function feltStops(hex) {
+  const m = String(hex || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+  if (!m) return null;
+  let r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  const lum = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 255;
+  if (lum > 0.004) {
+    const k = Math.min(0.62, Math.max(0.16, lum)) / lum;
+    r *= k; g *= k; b *= k;
+  } else {
+    r = g = b = 42;
+  }
+  const mix = (c, t, w) => Math.round(Math.min(255, Math.max(0, c * (1 - w) + t * w)));
+  return {
+    lit: `rgb(${mix(r * 1.18, 255, 0.10)},${mix(g * 1.13, 246, 0.10)},${mix(b * 1.04, 214, 0.10)})`,
+    shade: `rgb(${mix(r * 0.52, 12, 0.18)},${mix(g * 0.52, 16, 0.18)},${mix(b * 0.58, 52, 0.18)})`,
+  };
+}
+
 // ── Formatting helpers ──
 /* 44: this was a hand-rolled divide-and-suffix with a hardcoded '.' decimal
    point and a mixed-case suffix — '1.5k' but '1.5M' — and there was no Intl
@@ -387,24 +419,36 @@ function getChipBreakdown(amount) {
   return chips;
 }
 
+/* 17: a wager used to be a pill with a number in it and a single six-pixel
+   column of discs tucked inside the pill — so the most recognisable image in
+   the game, chips sitting on cloth, was a typographic detail. The breakdown
+   is grouped into columns by denomination the way the pot's own visual
+   already does, and the columns sit ON the felt beside the number rather than
+   inside it.
+
+   18: and the discs were drawn as flat ellipses stacked with a gap, which is
+   a stack of coins seen from directly above — at a table drawn from in front.
+   What you actually see of a stack is the EDGE: the striped rim carries the
+   denomination and the height. The rim is where the shading goes now, and
+   only the topmost chip shows any face at all. */
 function ChipStack({ amount }) {
   const chips = getChipBreakdown(amount); // [biggest, ..., smallest]
+  const cols = [];
+  chips.forEach(color => {
+    const last = cols[cols.length - 1];
+    if (last && last.color === color) last.count++;
+    else cols.push({ color, count: 1 });
+  });
   return (
-    // Normal column flow (not column-reverse) puts chips[0]=biggest at the
-    // top of the pile. Negative margin-top on each subsequent chip slides it
-    // up beneath the bigger one; higher z-index on the bigger chip keeps it
-    // drawn on top, so the biggest-denom chip is the visible face.
-    <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'3px', verticalAlign:'middle' }}>
-      {chips.map((color, i) => (
-        <div key={i} className="chip-disc" style={{
-          // 18x6 rather than 12x4: at the old size the denomination colour was
-          // a 4px sliver, so the one thing the stack encodes was unreadable.
-          width: '18px', height: '6px', borderRadius: '50%', '--chip': color,
-          marginTop: i === 0 ? 0 : '-4px',
-          position: 'relative', zIndex: chips.length - i,
-        }} />
+    <span className="chip-stack-visual">
+      {cols.slice(0, 4).map((col, i) => (
+        <span key={i} className="chip-col">
+          {Array.from({ length: Math.min(col.count, 5) }, (_, j) => (
+            <span key={j} className="chip-disc" style={{ '--chip': col.color }} />
+          ))}
+        </span>
       ))}
-    </div>
+    </span>
   );
 }
 
@@ -4586,17 +4630,30 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     );
   }
 
-  // ── Table layout ──
-  // Top/bottom seats sit at y=16/84 instead of y=6/94 so their cards (which
-  // extend above the seat marker by ~44px) fit fully inside the table's
-  // bounding box — html2canvas only captures the box, anything overflowing
-  // is clipped from the GIF/video exports.
+  /* ── Table layout ──
+     These were ten hand-written coordinate tables holding two numbers each —
+     x in [18,82] and y in [16,84] — which are exactly the felt's old inset,
+     copied by hand. They are derived from it now, so changing the table's
+     shape moves the seats with it instead of leaving them floating over the
+     new felt. The felt is currently inset 24% vertically and 10%
+     horizontally, which makes the playing surface wide and shallow (see the
+     --felt-y / --felt-x block in styles.css) and hands the recovered height
+     to the top and bottom seats, whose cards extend a card's height above
+     the marker and used to sit close to the export's clipping edge. */
+  const FY = 24, FX = 10;                 // must match --felt-y / --felt-x
+  const T = FY, B = 100 - FY;             // the top and bottom edges of the felt
+  const L = FX, R = 100 - FX;             // the left and right edges
+  const my = (t) => Math.round(T + (B - T) * t);   // a fraction down the felt
   const layouts = {
-    2:[[50,16],[50,84]], 3:[[35,16],[50,84],[65,16]], 4:[[50,16],[82,50],[50,84],[18,50]],
-    5:[[35,16],[82,50],[50,84],[18,50],[65,16]], 6:[[50,16],[82,34],[82,66],[50,84],[18,66],[18,34]],
-    7:[[35,16],[82,34],[82,66],[50,84],[18,66],[18,34],[65,16]], 8:[[50,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28]],
-    9:[[35,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28],[65,16]],
-    10:[[30,16],[50,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28],[70,16]],
+    2:  [[50,T],[50,B]],
+    3:  [[35,T],[50,B],[65,T]],
+    4:  [[50,T],[R,50],[50,B],[L,50]],
+    5:  [[35,T],[R,50],[50,B],[L,50],[65,T]],
+    6:  [[50,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)]],
+    7:  [[35,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)],[65,T]],
+    8:  [[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)]],
+    9:  [[35,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)],[65,T]],
+    10: [[30,T],[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)],[70,T]],
   };
 
   const n = hand.players.length;
@@ -4649,16 +4706,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             color picker directly (mirrors TableScanner). The hidden color
             input lives inside the label and receives the native picker
             event; no popup, no extra UI. */}
+        {/* The stops go through custom properties rather than a composed
+            background string, so the felt rule keeps its own gradient geometry
+            and the picker only supplies the two colours. */}
         <label className={'replayer-table-felt' + shapeClass} style={rSettings.theme === 'default' ? (() => {
-          // Compute color-mix equivalents inline (html2canvas can't parse color-mix)
-          const m = feltColor.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
-          if (m) {
-            const [r,g,b] = [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)];
-            const light = `rgb(${Math.round(r*0.9+255*0.1)},${Math.round(g*0.9+255*0.1)},${Math.round(b*0.9+255*0.1)})`;
-            const dark = `rgb(${Math.round(r*0.6)},${Math.round(g*0.6)},${Math.round(b*0.6)})`;
-            return { background: `radial-gradient(ellipse 80% 70% at 50% 45%, ${light}, ${dark})`, borderColor: feltColor + 'cc' };
-          }
-          return { borderColor: feltColor + 'cc' };
+          const st = feltStops(feltColor);
+          if (!st) return { borderColor: feltColor + 'cc' };
+          return { '--felt-lit': st.lit, '--felt-shade': st.shade, borderColor: feltColor + 'cc' };
         })() : {}}
           title={rSettings.theme === 'default' ? 'Tap to change felt color' : undefined}>
           {/* The themed backgrounds carry !important, so on any non-default
@@ -4982,7 +5036,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             else { ox = btnPos[0] < 50 ? 4 : -4; oy = 4; }
             dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+oy) + '%', transform:'translate(-50%,-50%)'};
           }
-          return <div className="replayer-dealer-btn" style={dealerStyle}>D</div>;
+          return <div className="replayer-dealer-btn" style={dealerStyle}><span>D</span></div>;
         })()}
 
         {/* Flying chip animations */}
