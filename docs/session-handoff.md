@@ -267,3 +267,43 @@ was readable.
 **Do not start a second server on :3001.** pm2 runs `futuregame-scheduler` from
 this checkout. Test on a scratch port with a `DB_PATH` copy, and stop the
 watcher's collector before running any migration against `mtt-series.db`.
+
+## 2026-08-24 — Replayer: catalogue one implemented, catalogue two published
+
+**Shipped (PR #104, branch `feat/replayer-cards`, 8 commits)** — all 100 items of
+the first replayer catalogue. Grouped by surface: cards 1-14, table and seats
+15-45, motion 46-60, chrome 61-80, exports 81-100. The dominant pattern was
+finished work that was never connected: the action timeline (fully styled CSS,
+setting defaulting to **true**, a panel row advertising it, no markup),
+`spawnFlyingChips` (no callers), `calcSPR` / `estimateRange` /
+`calcShowdownEquity` / `.replayer-seat-pos` / `.replayer-chip-delta` (all
+complete, none rendered), landscape fullscreen (computed, listened for by a live
+matchMedia listener, applied to nothing).
+
+**Not merged.** Build is clean, `node --check server.js` passes, both chunks
+parse, and a cross-component scope audit ran — but nothing has been rendered in
+a browser. Worth eyeballing the felt, the settings sheet and one export first.
+
+**Found in passing, both pre-existing:**
+- `toast` was referenced throughout `HandReplayerReplayView` but declared only in
+  the outer `HandReplayerView`. Optional chaining does not save an *undeclared*
+  identifier, so every GIF export's completion toast has thrown a ReferenceError
+  since f701013 (2026-05-19). Fixed in this branch.
+- The whole saved-hands API block is registered **twice** in `server.js` (~7168
+  and ~7292). Express serves the first; the second is dead. Spawned as its own
+  task, not fixed here.
+- `/api/hands` is not the endpoint the replayer calls — it uses
+  `/api/replayer/hands`, which spreads the entire `hand_data` blob into every
+  list row. Anything the picker needs is already client-side.
+- esbuild reports one `Unexpected "@media"` CSS warning in `styles.css`. It
+  predates this work (reproduced against `fd45213`) and is still unexplained.
+
+**Catalogue two — published:** https://claude.ai/code/artifact/2ab02148-2c58-4adc-a456-7c6c09f70545
+100 craft items with 100 live before/after specimens built from the replayer's
+own materials. Nothing in it is a bug; it is about agreement — the rail is lit
+from two directions and the felt from one, four objects within 40px cast four
+different shadows, nine corner radii, eleven kinds of information at one type
+size. Three items are consequences of the first pass and say so.
+
+Build systems for both catalogues are in the session scratchpad
+(`scratchpad/replayer/` and `scratchpad/polish/`), not the repo.
