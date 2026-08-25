@@ -5257,18 +5257,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             every screenshot and every share was a table with no context at all
             beyond a 10%-opacity wordmark. The exports are the version of this
             most people will ever see. */}
-        {(() => {
-          const b = hand.blinds || {};
-          const level = b.bb ? formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb)
-            + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '') : null;
-          if (!level && !hand.title) return null;
-          return (
-            <div className="replayer-table-title">
-              {hand.title && <span className="replayer-table-title-name">{hand.title}</span>}
-              {level && <span className="replayer-table-title-level">{level}</span>}
-            </div>
-          );
-        })()}
+        {hand.title && (
+          <div className="replayer-table-title">
+            <span className="replayer-table-title-name">{hand.title}</span>
+          </div>
+        )}
 
         {/* 94: hand.blinds carries sb, bb and ante and none of them appeared
             anywhere on the felt — so a stack of 24,000 had no meaning without

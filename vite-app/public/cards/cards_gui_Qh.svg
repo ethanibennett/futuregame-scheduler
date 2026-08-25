@@ -8,15 +8,15 @@
         font-weight: 700;
       }
       .cls-1 {
-        fill: #b3123a;
+        fill: #520010;
       }
 
       .cls-2 {
-        fill: #fbfaf7;
+        fill: #6f0020;
       }
 
       .cls-3 {
-        fill: #b3123a;
+        fill: #fff;
         font-family: 'Univers Condensed', 'Univers-Condensed-Bold', sans-serif;
         font-size: 78px;
         font-weight: 700;
@@ -25,25 +25,12 @@
   </defs>
   <g id="Layer_1">
     <rect class="cls-2" width="180" height="252" rx="18" ry="18"/>
+    <path class="cls-1" d="M152.78,145.69c7,0,13.28,2.55,18.86,7.65,5.57,5.1,8.36,12.99,8.36,23.66,0,11.86-3.44,22.2-10.32,31-6.88,8.81-14.29,16.8-22.24,23.98-3.97,3.62-7.81,7.07-11.52,10.36-3.71,3.29-6.89,6.51-9.56,9.65h-.8c-2.67-3.14-5.84-6.36-9.52-9.65-3.68-3.29-7.5-6.75-11.48-10.36-7.95-7.18-15.36-15.17-22.24-23.98-6.88-8.81-10.32-19.14-10.32-31,0-10.56,2.77-18.42,8.32-23.57,5.55-5.16,11.85-7.74,18.9-7.74s12.17,1.66,16.41,4.98c4.24,3.32,7.55,7,9.92,11.03h.8c2.37-3.97,5.65-7.64,9.83-10.99,4.18-3.35,9.71-5.03,16.59-5.03Z"/>
   </g>
   <g id="_x3C_Layer_x3E_">
     <text class="cls-3" transform="translate(13.7 72)"><tspan x="0" y="0">Q</tspan></text>
   </g>
   <g data-corner-pip="1" transform="translate(14.0,84.0) scale(1.5)">
     <path class="cls-1" d="M12 21.2c-.5-.4-7.6-5-9.7-9.5C.5 7.7 2.6 3.9 6.4 3.9c2.3 0 4 1.4 5.6 3.4 1.6-2 3.3-3.4 5.6-3.4 3.8 0 5.9 3.8 4.1 7.8-2.1 4.5-9.2 9.1-9.7 9.5z"/>
-  </g>
-  <g data-white-stock="1">
-    <rect x="60" y="76" width="60" height="124" rx="6" ry="6" fill="none" stroke="#b3123a" stroke-width="2.6"/>
-    <rect x="65" y="81" width="50" height="114" rx="3" ry="3" fill="none" stroke="#b3123a" stroke-width="1" opacity="0.5"/>
-    <text x="90" y="150" text-anchor="middle" fill="#b3123a" font-family="Libre Baskerville, Baskerville MT Std, Georgia, serif" font-weight="700" font-size="52">Q</text>
-    <path transform="translate(76.8,158) scale(1.1)" fill="#b3123a" d="M12 21.2c-.5-.4-7.6-5-9.7-9.5C.5 7.7 2.6 3.9 6.4 3.9c2.3 0 4 1.4 5.6 3.4 1.6-2 3.3-3.4 5.6-3.4 3.8 0 5.9 3.8 4.1 7.8-2.1 4.5-9.2 9.1-9.7 9.5z"/>
-  </g>
-  <clipPath id="cardclip"><rect width="180" height="252" rx="18" ry="18"/></clipPath>
-  <g clip-path="url(#cardclip)" data-white-stock="1">
-    <rect x="0" y="0" width="9" height="252" fill="#b3123a"/>
-  </g>
-  <g transform="rotate(180 90 126)" data-white-stock="1">
-    <text class="cls-3" transform="translate(13.7 72)"><tspan x="0" y="0">Q</tspan></text>
-    <g transform="translate(14.0,84.0) scale(1.5)"><path class="cls-1" d="M12 21.2c-.5-.4-7.6-5-9.7-9.5C.5 7.7 2.6 3.9 6.4 3.9c2.3 0 4 1.4 5.6 3.4 1.6-2 3.3-3.4 5.6-3.4 3.8 0 5.9 3.8 4.1 7.8-2.1 4.5-9.2 9.1-9.7 9.5z"/></g>
   </g>
 </svg>

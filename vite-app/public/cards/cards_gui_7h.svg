@@ -8,15 +8,15 @@
         font-weight: 700;
       }
       .cls-1 {
-        fill: #b3123a;
+        fill: #520010;
       }
 
       .cls-2 {
-        fill: #fbfaf7;
+        fill: #6f0020;
       }
 
       .cls-3 {
-        fill: #b3123a;
+        fill: #fff;
         font-family: 'Univers Condensed', 'Univers-Condensed-Bold', sans-serif;
         font-size: 78px;
         font-weight: 700;
@@ -32,13 +32,5 @@
   </g>
   <g data-corner-pip="1" transform="translate(14.0,84.0) scale(1.5)">
     <path class="cls-1" d="M12 21.2c-.5-.4-7.6-5-9.7-9.5C.5 7.7 2.6 3.9 6.4 3.9c2.3 0 4 1.4 5.6 3.4 1.6-2 3.3-3.4 5.6-3.4 3.8 0 5.9 3.8 4.1 7.8-2.1 4.5-9.2 9.1-9.7 9.5z"/>
-  </g>
-  <clipPath id="cardclip"><rect width="180" height="252" rx="18" ry="18"/></clipPath>
-  <g clip-path="url(#cardclip)" data-white-stock="1">
-    <rect x="0" y="0" width="9" height="252" fill="#b3123a"/>
-  </g>
-  <g transform="rotate(180 90 126)" data-white-stock="1">
-    <text class="cls-3" transform="translate(17.3 72)"><tspan x="0" y="0">7</tspan></text>
-    <g transform="translate(14.0,84.0) scale(1.5)"><path class="cls-1" d="M12 21.2c-.5-.4-7.6-5-9.7-9.5C.5 7.7 2.6 3.9 6.4 3.9c2.3 0 4 1.4 5.6 3.4 1.6-2 3.3-3.4 5.6-3.4 3.8 0 5.9 3.8 4.1 7.8-2.1 4.5-9.2 9.1-9.7 9.5z"/></g>
   </g>
 </svg>

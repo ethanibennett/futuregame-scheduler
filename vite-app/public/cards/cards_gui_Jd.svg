@@ -8,15 +8,15 @@
         font-weight: 700;
       }
       .cls-1 {
-        fill: #0d6ea0;
+        fill: #003048;
       }
 
       .cls-2 {
-        fill: #fbfaf7;
+        fill: #005374;
       }
 
       .cls-3 {
-        fill: #0d6ea0;
+        fill: #fff;
         font-family: 'Univers Condensed', 'Univers-Condensed-Bold', sans-serif;
         font-size: 78px;
         font-weight: 700;
@@ -30,22 +30,9 @@
     <text class="cls-3" transform="translate(17.3 72)"><tspan x="0" y="0">J</tspan></text>
   </g>
   <g id="Isolation_Mode">
+    <path class="cls-1" d="M73.15,180.1l53.95-72.1,54.05,72.1-54.05,71.9-53.95-71.9Z"/>
   </g>
   <g data-corner-pip="1" transform="translate(14.0,84.0) scale(1.5)">
     <path class="cls-1" d="M12 2.2 21.4 12 12 21.8 2.6 12z"/>
-  </g>
-  <g data-white-stock="1">
-    <rect x="60" y="76" width="60" height="124" rx="6" ry="6" fill="none" stroke="#0d6ea0" stroke-width="2.6"/>
-    <rect x="65" y="81" width="50" height="114" rx="3" ry="3" fill="none" stroke="#0d6ea0" stroke-width="1" opacity="0.5"/>
-    <text x="90" y="150" text-anchor="middle" fill="#0d6ea0" font-family="Libre Baskerville, Baskerville MT Std, Georgia, serif" font-weight="700" font-size="52">J</text>
-    <path transform="translate(76.8,158) scale(1.1)" fill="#0d6ea0" d="M12 2.2 21.4 12 12 21.8 2.6 12z"/>
-  </g>
-  <clipPath id="cardclip"><rect width="180" height="252" rx="18" ry="18"/></clipPath>
-  <g clip-path="url(#cardclip)" data-white-stock="1">
-    <rect x="0" y="0" width="9" height="252" fill="#0d6ea0"/>
-  </g>
-  <g transform="rotate(180 90 126)" data-white-stock="1">
-    <text class="cls-3" transform="translate(17.3 72)"><tspan x="0" y="0">J</tspan></text>
-    <g transform="translate(14.0,84.0) scale(1.5)"><path class="cls-1" d="M12 2.2 21.4 12 12 21.8 2.6 12z"/></g>
   </g>
 </svg>

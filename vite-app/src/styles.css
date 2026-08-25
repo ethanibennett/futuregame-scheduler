@@ -835,13 +835,10 @@
     /* The filter targeted img only, so the classic theme — whose cards are
        divs — was excluded from the one control that exists to lift the suits
        off the felt. */
-    /* brightness(1.25) was lifting a dark full-bleed face toward the felt.
-       On white stock it only blows out the paper; what needs lifting now is
-       the coloured mark against it, which is contrast, not brightness. */
     .hc-deck .card-row img,
     .hc-deck img.card-img,
     .hc-deck .card-classic {
-      filter: saturate(1.5) contrast(1.14);
+      filter: saturate(1.35) brightness(1.25);
     }
 
     /* 17 + 18: the chips a wager is made of. Columns by denomination, and
@@ -2121,8 +2118,8 @@
     }
     .replayer-settings-thumb .thumb-felt i {
       width: 7px; height: 10px; border-radius: 1.5px; display: block;
-      background: linear-gradient(180deg,#fdfcf9,#f2efe7);
-      box-shadow: 0 1px 1px rgba(0,0,0,0.5);
+      background: linear-gradient(180deg,#7a1030,#5c0018);
+      box-shadow: 0 0 0 0.5px rgba(255,236,200,0.4), 0 1px 1px rgba(0,0,0,0.5);
     }
     .replayer-settings-thumb .thumb-back {
       width: 60px; height: 38px; border-radius: var(--r-object, 6px);
@@ -3320,13 +3317,7 @@
       height: var(--card-h);
       filter: drop-shadow(0 1px 1px rgba(0,0,0,0.72))
               drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(0,0,0,0.38));
-      /* 27: a 0.75px WARM rim light existed because all four suit fills were
-         darker than the felt's dark stop, so the cards had no silhouette —
-         a rim doing the job the card stock should be doing, at a width that
-         renders inconsistently across device pixel ratios. White stock
-         separates itself; what is left is a hairline that keeps the paper
-         from bleaching into the specular pool. */
-      box-shadow: 0 0 0 0.75px rgba(40,30,20,0.28);
+      box-shadow: 0 0 0 0.75px rgba(255,236,200,0.34);
     }
     .replayer-board-area .card-row .card-unknown,
     .replayer-board-area .card-row .card-placeholder {
@@ -3395,7 +3386,7 @@
        showing through, which is what you actually see at a table. */
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
       margin-left:-12px;
-      box-shadow: -1px 0 0 rgba(255,255,255,0.62), 0 0 0 0.75px rgba(40,30,20,0.26);
+      box-shadow: -1px 0 0 rgba(255,255,255,0.62), 0 0 0 0.75px rgba(255,255,255,0.30);
     }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(1) { z-index:1; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(2) { z-index:2; }
@@ -3413,7 +3404,7 @@
          every frame — while the board two rules up, the felt's own inset and
          the rail's highlight all said the light is above and in front. */
       filter: drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(0,0,0,0.5));
-      box-shadow: 0 0 0 0.75px rgba(40,30,20,0.26);
+      box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30);
     }
     /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
     .replayer-seat-cards .card-row .card-unknown,
@@ -3804,7 +3795,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 0;
       font-family: var(--serif); font-weight: var(--fw-bold);
-      box-shadow: 0 0 0 0.75px rgba(40,30,20,0.26);
+      box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30);
       filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6)) drop-shadow(0 4px 6px rgba(0,0,0,0.32));
       border: none;
       line-height: 1;
