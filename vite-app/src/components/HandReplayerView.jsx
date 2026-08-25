@@ -3629,6 +3629,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
 function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }) {
+  /* The GIF export's completion toasts referenced `toast` from inside this
+     component, where it was never declared - the outer HandReplayerView owns
+     the one call to useToast(). Optional chaining does not save an UNDECLARED
+     identifier, so every successful GIF export ended in a ReferenceError
+     inside onDone, which is why it never announced where the file went. */
+  const toast = useToast();
   const [streetIdx, setStreetIdx] = useState(0);
   const [actionIdx, setActionIdx] = useState(-1);
   const [playing, setPlaying] = useState(false);
