@@ -4251,10 +4251,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           }
           return { borderColor: feltColor + 'cc' };
         })() : {}}
-          title="Tap to change felt color">
-          <input type="color" value={feltColor}
+          title={rSettings.theme === 'default' ? 'Tap to change felt color' : undefined}>
+          {/* The themed backgrounds carry !important, so on any non-default
+              theme picking a colour updated state and changed nothing — while
+              the felt kept its pointer cursor, its tooltip and its native
+              colour picker. An affordance that silently no-ops teaches people
+              the table is broken. */}
+          {rSettings.theme === 'default' && <input type="color" value={feltColor}
             onChange={e => rSetters.feltColor(e.target.value)}
-            style={{position:'absolute', inset:0, opacity:0, cursor:'pointer', border:'none', padding:0, background:'transparent', width:'100%', height:'100%'}} />
+            style={{position:'absolute', inset:0, opacity:0, cursor:'pointer', border:'none', padding:0, background:'transparent', width:'100%', height:'100%'}} />}
         </label>
 
         {/* Pot */}
@@ -4330,7 +4335,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         })()}
 
         {/* Watermark */}
-        <div style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)',zIndex:1,opacity:0.1,pointerEvents:'none',fontFamily:"'Libre Baskerville',Georgia,serif",fontWeight:700,color:'#fff',letterSpacing:'-0.05em',whiteSpace:'nowrap',fontSize:'1.06rem'}}>futurega.me</div>
+        <div className="replayer-watermark"
+          style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)',zIndex:1}}>futurega.me</div>
 
         {/* Player seats */}
         {hand.players.map((p, pi) => {
@@ -4364,10 +4370,40 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
               </div>
               <div className="replayer-seat-info">
                 {rSettings.showPlayerStats && (
-                  <div className="replayer-player-stats">{(() => { const st = getPlayerStats(p.name); return st.vpip + '/' + st.pfr + '/' + st.ag; })()}</div>
+                  /* 41: this rendered "23/15/2.1" — three fabricated numbers
+                     (a hash of the name) with no key to what they are. An
+                     unlabelled triplet styled as an engraving reads as
+                     authoritative, which is the worst combination. Prefixed
+                     until real stats exist. */
+                  <div className="replayer-player-stats">{(() => { const st = getPlayerStats(p.name); return 'V' + st.vpip + ' P' + st.pfr + ' A' + st.ag; })()}</div>
                 )}
-                <div className="replayer-seat-name">{p.name}</div>
+                {/* 20: every player carries p.position and .replayer-seat-pos
+                    was defined and never used, so blinds and everyone but the
+                    button were anonymous — and position is the single most
+                    important context for judging any action in a replay. */}
+                <div className="replayer-seat-name">
+                  {p.position && (
+                    <span className={'replayer-seat-pos' + (p.position === 'SB' || p.position === 'BB' ? ' is-blind' : '')}>{p.position}</span>
+                  )}
+                  {p.name}
+                </div>
                 <div className="replayer-seat-stack">{formatChipAmount(stacks[pi])}</div>
+                {/* 39: the delta styles were written, colour-coded and even
+                    added to the tabular-figures group, and nothing ever drew
+                    them — so "who finished up" could only be answered by
+                    remembering the starting stack. */}
+                {showResult && (() => {
+                  const start = p.startingStack ?? p.stack ?? null;
+                  if (start == null) return null;
+                  const d = stacks[pi] - start;
+                  if (!d) return null;
+                  const cls = d > 0 ? 'positive' : 'negative';
+                  return (
+                    <div className={'replayer-chip-delta ' + cls}>
+                      {d > 0 ? '+' : '\u2212'}{formatChipAmount(Math.abs(d))}
+                    </div>
+                  );
+                })()}
               </div>
               {lastAct && (() => {
                 const actText = lastAct.action;

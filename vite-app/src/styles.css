@@ -1294,6 +1294,8 @@
     .tracking-profit-pos, .tracking-profit-neg,
     .leaderboard-net-pos, .leaderboard-net-neg,
     .staking-pnl-pos, .staking-pnl-neg,
+    .replayer-bet-chip, .replayer-hand-strength-pct, .replayer-equity-pct,
+    .replayer-split-circle,
     .replayer-seat-stack, .replayer-pot-display, .replayer-chip-delta,
     .late-reg-time, .mini-late-reg-time, .countdown-pill {
       font-variant-numeric: var(--num-tabular);
@@ -2769,8 +2771,11 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.6); white-space: nowrap;
     }
     .replayer-split-circles { display:flex; justify-content:center; align-items:center; }
+    /* 30: a 7.2px Hi/Lo label crammed above the amount inside a 36px disc,
+       with the circles overlapped by an inline -8px that clipped every gold
+       ring after the first. The tag moves out to a caption below. */
     .replayer-split-circle {
-      width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
       background: radial-gradient(ellipse, rgba(234,179,8,0.35) 0%, rgba(234,179,8,0.15) 100%);
       border: var(--bw-1) solid rgba(234,179,8,0.6);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); line-height:1; color:#facc15; font-family: var(--font-condensed);
@@ -2941,8 +2946,17 @@
          set a background on it, which is the tell. Wagers are the objects that
          MOVE, and what arrived was a text label with a smudge behind it. */
       background: radial-gradient(ellipse 120% 140% at 50% 0%, rgba(0,0,0,0.55), rgba(0,0,0,0.34));
-      padding: var(--space-2xs) var(--space-sm);
-      border-radius: 0;
+      /* 33: the rule's own comment says the background was rebuilt and the
+         "lozenge it used to be" left its padding behind — border-radius: 0
+         survived too, making the wager the only sharp-cornered thing on a
+         felt of pills and plaques. 31: it also tied with the resting stack at
+         10px bold, so a number in flight and a number at rest were
+         typographically identical. */
+      padding: var(--space-2xs) var(--space-ml);
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255,255,255,0.10);
+      font-size: var(--fs-xs);
+      font-variant-numeric: var(--num-tabular);
       white-space: nowrap;
       z-index: 4;
       text-shadow: 0 1px 3px rgba(0,0,0,0.7);
@@ -2969,8 +2983,12 @@
       text-align: center;
       line-height: 1.3;
       padding: var(--space-2xs) var(--space-sm);
+      /* 28: this rule declares white-space: pre-line five lines above, because
+         the JSX builds hi-lo names as parts.join('\n') — and then cancelled it
+         here, so "Hi: Aces Up / Lo: 7-5-4-3-2" rendered as one 30-character
+         strip across the felt at the exact moment the split is the result. */
       margin-top: var(--space-2xs);
-      white-space: nowrap;
+      max-width: 150px;
       box-shadow: var(--elev-1);
     }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
@@ -3040,6 +3058,29 @@
       padding: var(--nudge-1) var(--space-sm); border-radius: var(--radius-xs); text-transform: uppercase; letter-spacing: var(--track-tight);
       font-weight: var(--fw-bold); line-height: 1; white-space: nowrap;
       pointer-events: none;
+    }
+    /* 34: the OUTER badges sit on cloth whose colour the user picks — a 20%
+       amber wash over a red felt preset is amber-on-red, and the free colour
+       input makes contrast unguaranteeable. They carry their own dark ground
+       now and use the action colour as border and text, exactly the argument
+       the pot plaque makes. The in-chrome badges keep the tint. */
+    .replayer-action-badge-outer {
+      background: rgba(10,8,14,0.82) !important;
+      border: 1px solid currentColor;
+      letter-spacing: var(--track-caps);
+    }
+    /* 36: these are 10px uppercase and were tracked at --track-tight (0.01em),
+       while the app's caps grammar — used correctly by the pot eyebrow and the
+       street label — is --track-caps. */
+    .replayer-action-badge { letter-spacing: var(--track-caps); }
+    /* 35: ALL-IN was visually interchangeable with a fold. It is the
+       stakes-defining action of a hand. */
+    .replayer-action-badge-outer.action-allin {
+      background: var(--act-allin) !important;
+      color: #fff;
+      border-color: var(--act-allin);
+      font-size: var(--fs-xs);
+      padding: 2px var(--space-ml);
     }
     .replayer-action-badge.action-fold, .replayer-action-badge-outer.action-fold { background: rgba(107,114,128,0.22); color: var(--act-fold); }
     .replayer-action-badge.action-check, .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: var(--act-check); }
@@ -3281,11 +3322,35 @@
     .replayer-table.theme-neon-vegas .replayer-bet-chip {
       background:rgba(255,0,128,0.5); box-shadow:0 0 6px rgba(255,0,128,0.3);
     }
+    /* 18: the static shadow is three layers — a cyan ring, an inset cyan wash
+       and a magenta outer glow — and neonPulse animated box-shadow between
+       stacks containing only the first, so starting the animation DELETED the
+       other two. It also repainted box-shadow forever on a mobile WKWebView.
+       The glow moves to a pseudo-element whose opacity pulses instead, which
+       is compositor-only and leaves the static stack intact. */
+    .replayer-table.theme-neon-vegas .replayer-table-felt::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: 0 0 30px rgba(0,229,255,0.25), 0 0 40px rgba(255,0,128,0.18);
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .replayer-table.theme-neon-vegas .replayer-table-felt::before {
+        animation: neonGlowPulse 3s ease-in-out infinite;
+      }
+    }
+    @keyframes neonGlowPulse {
+      0%, 100% { opacity: 0.55; }
+      50%      { opacity: 1; }
+    }
+
     @keyframes neonPulse {
       0%,100% { box-shadow:0 0 0 2px rgba(0,229,255,0.3), 0 0 20px rgba(0,229,255,0.1); }
       50% { box-shadow:0 0 0 2px rgba(0,229,255,0.6), 0 0 30px rgba(0,229,255,0.2); }
     }
-    .replayer-table.theme-neon-vegas .replayer-table-felt { animation:neonPulse 3s ease-in-out infinite; }
+    .replayer-table.theme-neon-vegas .replayer-table-felt { /* neonPulse replaced by neonGlowPulse on ::before — see above */ }
 
     /* ── Theme: Vintage ── */
     .replayer-table.theme-vintage .replayer-table-felt {
@@ -3737,6 +3802,159 @@
     .replayer-table.theme-vintage       .replayer-light-strip { border-color: rgba(230,210,170,0.40); }
     .replayer-table.theme-minimalist    .replayer-light-strip { border-color: rgba(0,0,0,0.12); }
     .replayer-table.theme-high-stakes   .replayer-light-strip { border-color: rgba(200,170,90,0.35); }
+
+
+    /* ---- 16: shapes broke out of their own rail --------------------------
+       shape-round moves the felt to inset 12%/22% and shape-octagon to 8%/18%,
+       but the rail's inner edge stayed derived from the OVAL inset (16%/18%
+       minus 20px) and the light strip stayed a pill at 16%/18%. So the octagon
+       felt started well above the rail's inner edge — the felt escaped its
+       cushion — and the strip floated across the felt boundary instead of
+       tracing it. All three layers mirror the shape now. */
+    .replayer-table:has(.shape-round) .replayer-table-rail {
+      inset: calc(12% - 20px) calc(22% - 20px);
+      border-radius: var(--radius-circle);
+    }
+    .replayer-table:has(.shape-round) .replayer-light-strip {
+      inset: 12% 22%;
+      border-radius: var(--radius-circle);
+    }
+    .replayer-table:has(.shape-octagon) .replayer-table-rail {
+      inset: calc(8% - 20px) calc(18% - 20px);
+      border-radius: 0;
+      clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+    }
+    /* A border cannot follow a clip-path, so the strip has nothing to trace. */
+    .replayer-table:has(.shape-octagon) .replayer-light-strip { display: none; }
+
+    /* ---- 17: minimalist converted the text and stopped -------------------
+       The theme paints a #f0f0f0 felt and white plaques, then leaves the pot
+       lozenge as smoked glass with a warm-gold border and its text overridden
+       to #222 — dark on dark, with a gold border that is off-language on a
+       monochrome theme. The stats chip and card backs stayed dark too. */
+    .replayer-table.theme-minimalist .replayer-pot-display {
+      background: #fff;
+      border-color: #ddd;
+      color: #222;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      backdrop-filter: none;
+    }
+    .replayer-table.theme-minimalist .replayer-pot-label {
+      color: #999;
+      text-shadow: none;
+    }
+    .replayer-table.theme-minimalist .replayer-player-stats {
+      background: #f5f5f5;
+      color: #888;
+      border-color: #e0e0e0;
+    }
+    .replayer-table.theme-minimalist .card-row .card-unknown,
+    .replayer-table.theme-minimalist .card-row .card-placeholder {
+      --back-1: #e8e8e8; --back-2: #dedede; --back-3: #d4d4d4; --back-border: #c0c0c0;
+    }
+
+    /* ---- 21: the dealer button never joined three themes -----------------
+       It is the one object a poker player's eye checks first, and Casino
+       Royale, Vintage and Neon Vegas all left it as stark white plastic. */
+    .replayer-table.theme-casino-royale .replayer-dealer-btn {
+      background: linear-gradient(145deg, #f5e2a8, #d9b95c, #c9a84c);
+      border-color: #a8863a;
+      color: #3a2a10;
+    }
+    .replayer-table.theme-vintage .replayer-dealer-btn {
+      background: linear-gradient(145deg, #f5e6c8, #e0cda2);
+      border-color: #c4a878;
+      color: #5c4a32;
+    }
+    .replayer-table.theme-neon-vegas .replayer-dealer-btn {
+      background: #111;
+      color: #00e5ff;
+      border-color: rgba(0,229,255,0.5);
+      box-shadow: 0 0 6px rgba(0,229,255,0.4);
+    }
+
+    /* ---- 27: the watermark vanished on two themes ------------------------
+       10% white is invisible on the minimalist #f0f0f0 felt and nearly so on
+       vintage's tan — and it sits inside tableRef, so it is on every GIF and
+       every video. Blend mode plus per-theme colour makes it present without
+       making it loud. */
+    .replayer-watermark {
+      mix-blend-mode: overlay;
+      opacity: 0.22;
+      font-family: var(--font-display);
+      font-size: var(--fs-md);
+      letter-spacing: var(--track-wordmark);
+      font-weight: var(--fw-bold);
+      color: #fff;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .replayer-table.theme-minimalist .replayer-watermark,
+    .replayer-table.theme-vintage .replayer-watermark {
+      mix-blend-mode: multiply;
+      color: #3a3050;
+      opacity: 0.30;
+    }
+
+
+    /* 37: name and stack were both --fs-2xs / --fw-bold / #f2efe6 — two
+       indistinguishable bold lines, so scanning six seats for stack depths
+       meant reading every plaque twice. The stack is the number that changes
+       and the one being scanned for, so it wins; the name recedes. */
+    .replayer-seat-name {
+      font-weight: var(--fw-regular);
+      color: rgba(242,239,230,0.74);
+    }
+    .replayer-seat-stack {
+      color: #ffd98a;
+      font-variant-numeric: var(--num-tabular);
+    }
+    /* 20: the badge the stylesheet already defined, finally worn. */
+    .replayer-seat-pos {
+      display: inline-block;
+      font-size: var(--fs-2xs);
+      font-family: var(--font-condensed);
+      letter-spacing: var(--track-caps);
+      color: #c9b6ff;
+      margin-right: var(--space-xs);
+    }
+    .replayer-seat-pos.is-blind {
+      background: rgba(59,130,246,0.18);
+      border-radius: var(--radius-xs);
+      padding: 0 3px;
+    }
+    /* 39 */
+    .replayer-chip-delta {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-variant-numeric: var(--num-tabular);
+      line-height: 1.2;
+    }
+    .replayer-chip-delta.positive { color: var(--ok); }
+    .replayer-chip-delta.negative { color: var(--danger); }
+
+
+    /* 22: the 10-max layout puts three seats on the top edge at 30/50/70%.
+       On a 375px phone that is ~70px between seat centres while each plaque is
+       at least 72px wide plus an overhanging stats chip — adjacent plaques
+       physically overlap and their card fans interleave. Full ring is the
+       common live-tournament format this app records; its densest row should
+       not be the broken one. */
+    .replayer-table[data-players="9"] .replayer-seat-info,
+    .replayer-table[data-players="10"] .replayer-seat-info {
+      min-width: 56px;
+      padding: var(--space-xs) var(--space-sm);
+    }
+    .replayer-table[data-players="9"] .replayer-seat-name,
+    .replayer-table[data-players="10"] .replayer-seat-name {
+      max-width: 56px;
+    }
+
+    /* 45: the plaque is the densest object on the felt and had no hover or
+       focus state at all, so nothing said whether it was interactive. */
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-seat-info:hover { border-color: rgba(255,255,255,0.22); }
+    }
 
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
