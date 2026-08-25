@@ -4404,7 +4404,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const el = timelineRef.current;
     if (!el) return;
     const dot = el.querySelector('.replayer-timeline-dot.current');
-    if (dot && dot.scrollIntoView) dot.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    if (!dot) return;
+    /* This was dot.scrollIntoView({ block: 'nearest', inline: 'center' }),
+       which scrolls EVERY scrollable ancestor, not just the strip — including
+       .replayer-replay, whose overflow:hidden does not stop it being scrolled
+       programmatically. Measured: the moment a draw street inserted its info
+       bar below the table, the timeline dropped out of view, this fired, and
+       the whole column scrolled 52px — which is the table moving under you
+       mid-hand. The strip scrolls itself, horizontally, and nothing else
+       moves. */
+    const target = dot.offsetLeft - el.clientWidth / 2 + dot.offsetWidth / 2;
+    const max = el.scrollWidth - el.clientWidth;
+    el.scrollTo({ left: Math.max(0, Math.min(max, target)), behavior: 'smooth' });
   }, [streetIdx, actionIdx]);
 
   /* 65: the flying chips landed at 50%/42% and disappeared while the pot's
