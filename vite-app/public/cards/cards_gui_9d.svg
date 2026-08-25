@@ -8,15 +8,15 @@
         font-weight: 700;
       }
       .cls-1 {
-        fill: #003048;
+        fill: #0d6ea0;
       }
 
       .cls-2 {
-        fill: #005374;
+        fill: #fbfaf7;
       }
 
       .cls-3 {
-        fill: #fff;
+        fill: #0d6ea0;
         font-family: 'Univers Condensed', 'Univers-Condensed-Bold', sans-serif;
         font-size: 78px;
         font-weight: 700;
@@ -34,5 +34,13 @@
   </g>
   <g data-corner-pip="1" transform="translate(14.0,84.0) scale(1.5)">
     <path class="cls-1" d="M12 2.2 21.4 12 12 21.8 2.6 12z"/>
+  </g>
+  <clipPath id="cardclip"><rect width="180" height="252" rx="18" ry="18"/></clipPath>
+  <g clip-path="url(#cardclip)" data-white-stock="1">
+    <rect x="0" y="0" width="9" height="252" fill="#0d6ea0"/>
+  </g>
+  <g transform="rotate(180 90 126)" data-white-stock="1">
+    <text class="cls-3" transform="translate(17.3 72)"><tspan x="0" y="0">9</tspan></text>
+    <g transform="translate(14.0,84.0) scale(1.5)"><path class="cls-1" d="M12 2.2 21.4 12 12 21.8 2.6 12z"/></g>
   </g>
 </svg>

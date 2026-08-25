@@ -829,31 +829,50 @@ function PotChipVisual({ amount }) {
 // top-left — there is no bottom-right mirror — so every buried card showed
 // nothing but a blank right edge and the opponent's hand was unreadable.
 // Face-up cards therefore always fan rightmost-on-top; see faceUp below.
+/* 35: the pivot was at 50% 120% — a point directly below the CENTRE of the
+   hand, so the fan opened around a hinge under the middle of it and came out
+   perfectly symmetrical. A hand pivots around the bottom corner nearest the
+   thumb, which is why every real fan is lopsided. Symmetry is the tell.
+
+   34: and the fan was a pure 2D rotation, which is cards printed on a page.
+   A real fan also lifts each successive card slightly out of the plane, so it
+   grows a little and throws a longer shadow toward the top of the arc. */
 function getSplayStyle(index, total, angle, yOffset, reverseZ) {
   if (total <= 1) return {};
   const step = (2 * angle) / (total - 1);
   const rot = -angle + step * index;
   const extraY = yOffset || 0;
   const z = reverseZ ? (total - 1 - index) : index;
+  // The lift runs along the arc, not with the z-order, so a reversed fan still
+  // lifts in the direction the hand is held.
+  const lift = index / Math.max(1, total - 1);
+  const scale = 1 + lift * 0.05;
+  const shadow = 'drop-shadow(' + (-1 - lift * 2).toFixed(1) + 'px '
+    + (1 + lift * 2).toFixed(1) + 'px ' + (2 + lift * 3).toFixed(1) + 'px rgba(0,0,0,0.5))';
   if (total <= 2) {
     return {
-      transform: 'rotate(' + rot + 'deg)',
-      transformOrigin: '50% 120%',
+      transform: 'rotate(' + rot + 'deg) scale(' + scale.toFixed(3) + ')',
+      transformOrigin: '18% 118%',
       marginLeft: index === 0 ? 0 : -22,
       marginTop: extraY || undefined,
+      filter: shadow,
       zIndex: z,
     };
   }
-  // 3+ cards: arc from a true shared pivot point using trig
+  // 3+ cards: arc from a true shared pivot point using trig. The pivot sits
+  // left of centre, so the arc opens the way a thumb opens it.
   const rad = rot * Math.PI / 180;
   const radius = total <= 5 ? 85 : 110;
-  const x = Math.sin(rad) * radius;
+  const x = Math.sin(rad) * radius - 9;
   const y = -Math.cos(rad) * radius + radius + extraY;
   return {
     position: 'absolute',
     left: '50%',
     bottom: 0,
-    transform: 'translate(calc(-50% + ' + x.toFixed(1) + 'px), ' + y.toFixed(1) + 'px) rotate(' + rot + 'deg)',
+    transform: 'translate(calc(-50% + ' + x.toFixed(1) + 'px), ' + y.toFixed(1) + 'px) rotate('
+      + rot + 'deg) scale(' + scale.toFixed(3) + ')',
+    transformOrigin: '18% 118%',
+    filter: shadow,
     zIndex: z,
   };
 }
@@ -4662,6 +4681,20 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const rotation = (bottomIdx - replayHeroIdx + n) % n;
   const seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
 
+  /* The dealer stands just outside the button's seat, and the muck sits beside
+     the deck. Both are pulled toward the table centre so they land on cloth
+     rather than on the rail. */
+  const btnSeat = seats[hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D')] || seats[0] || [50, 50];
+  const dealerSpot = [
+    Math.round(btnSeat[0] + (50 - btnSeat[0]) * 0.22),
+    Math.round(btnSeat[1] + (50 - btnSeat[1]) * 0.22),
+  ];
+  const muckTarget = [
+    Math.round(dealerSpot[0] + (50 - dealerSpot[0]) * 0.30),
+    Math.round(dealerSpot[1] + (50 - dealerSpot[1]) * 0.30),
+  ];
+  const muckCount = folded.size;
+
   return (
     /* 77: isLandscape was computed at mount and kept current by a live
        matchMedia listener, and then referenced nowhere — so forty lines of
@@ -4826,6 +4859,30 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return spr ? <div className="replayer-spr-badge">SPR {spr}</div> : null;
         })()}
 
+        {/* 38: the deal animation brought cards in from a computed offset and
+            the muck sent them to a coordinate, because there was no deck and
+            no muck pile anywhere on the felt — so cards came from a point in
+            space and vanished into another one. Both are always present at a
+            real table, both are two elements, and both give the choreography
+            somewhere to come from and go to. */}
+        {(() => {
+          const [dx, dy] = dealerSpot;
+          return (
+            <>
+              <div className="replayer-deck" style={{left: dx + '%', top: dy + '%'}} aria-hidden="true">
+                <span /><span /><span />
+              </div>
+              {muckCount > 0 && (
+                <div className="replayer-muck" style={{left: muckTarget[0] + '%', top: muckTarget[1] + '%'}} aria-hidden="true">
+                  {Array.from({length: Math.min(muckCount, 4)}, (_, i) => (
+                    <span key={i} style={{'--mi': i}} />
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
+
         {/* Watermark */}
         <div className="replayer-watermark"
           style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)',zIndex:1}}>futurega.me</div>
@@ -4843,10 +4900,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
           const muckStyle = {};
           if (foldAnimClass) {
-            const mdx = (50 - pos[0]) * 1.5;
-            const mdy = (50 - pos[1]) * 0.8;
-            muckStyle['--muck-dx'] = mdx + 'px';
-            muckStyle['--muck-dy'] = mdy + 'px';
+            /* 37: this aimed at 50%/50% — the middle of the felt, which is
+               where the BOARD is, so every folded hand flew into the community
+               cards. That is the one place on a poker table cards never go.
+               They go to the dealer, whose position is derivable from the
+               button and already known. */
+            const mdx = (muckTarget[0] - pos[0]) * 1.4;
+            const mdy = (muckTarget[1] - pos[1]) * 1.1;
+            muckStyle['--muck-dx'] = mdx.toFixed(1) + 'px';
+            muckStyle['--muck-dy'] = mdy.toFixed(1) + 'px';
             muckStyle['--muck-rot'] = (mdx > 0 ? -12 : 12) + 'deg';
           }
 
