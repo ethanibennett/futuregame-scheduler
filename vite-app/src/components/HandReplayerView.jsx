@@ -462,36 +462,29 @@ function getChipBreakdown(amount) {
   return chips;
 }
 
-/* 17: a wager used to be a pill with a number in it and a single six-pixel
-   column of discs tucked inside the pill — so the most recognisable image in
-   the game, chips sitting on cloth, was a typographic detail. The breakdown
-   is grouped into columns by denomination the way the pot's own visual
-   already does, and the columns sit ON the felt beside the number rather than
-   inside it.
-
-   18: and the discs were drawn as flat ellipses stacked with a gap, which is
-   a stack of coins seen from directly above — at a table drawn from in front.
-   What you actually see of a stack is the EDGE: the striped rim carries the
-   denomination and the height. The rim is where the shading goes now, and
-   only the topmost chip shows any face at all. */
 function ChipStack({ amount }) {
   const chips = getChipBreakdown(amount); // [biggest, ..., smallest]
-  const cols = [];
-  chips.forEach(color => {
-    const last = cols[cols.length - 1];
-    if (last && last.color === color) last.count++;
-    else cols.push({ color, count: 1 });
-  });
   return (
-    <span className="chip-stack-visual">
-      {cols.slice(0, 4).map((col, i) => (
-        <span key={i} className="chip-col">
-          {Array.from({ length: Math.min(col.count, 5) }, (_, j) => (
-            <span key={j} className="chip-disc" style={{ '--chip': col.color }} />
-          ))}
-        </span>
+    // Normal column flow (not column-reverse) puts chips[0]=biggest at the
+    // top of the pile. Negative margin-top on each subsequent chip slides it
+    // up beneath the bigger one; higher z-index on the bigger chip keeps it
+    // drawn on top, so the biggest-denom chip is the visible face.
+    //
+    // Polish 17/18 broke this into one column per denomination with 17x7 rim
+    // discs advancing 5px apiece. On the felt that read as coins with daylight
+    // between them rather than as a stack, so both are reverted: one column,
+    // 18x6, overlapped to a 2px advance.
+    <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'3px', verticalAlign:'middle' }}>
+      {chips.map((color, i) => (
+        <div key={i} className="chip-disc" style={{
+          // 18x6 rather than 12x4: at the old size the denomination colour was
+          // a 4px sliver, so the one thing the stack encodes was unreadable.
+          width: '18px', height: '6px', borderRadius: '50%', '--chip': color,
+          marginTop: i === 0 ? 0 : '-4px',
+          position: 'relative', zIndex: chips.length - i,
+        }} />
       ))}
-    </span>
+    </div>
   );
 }
 
@@ -5189,14 +5182,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   // Flop | turn | river. Grouping is how every broadcast graphic
                   // and every real table shows which street the hand is on; the
                   // gap class existed for it and had never been rendered.
-                  /* 93: the street label sat under the WHOLE board. Broadcast
-                     graphics label the groups — FLOP under the first three,
-                     TURN under the fourth, RIVER under the fifth — and the
-                     gaps that separate those groups were already here for
-                     exactly this reason. */
-                  const gap = (i === 3 || i === 4)
-                    ? <div key={'gap' + i} className="board-street-gap" aria-hidden="true" />
-                    : null;
                   let card;
                   if (c.suit === 'x') {
                     card = <div key={key} data-slot={i} className="card-unknown" />;
@@ -5210,15 +5195,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   } else {
                     card = <img key={key} data-slot={i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
                   }
-                  return gap ? [gap, card] : card;
+                  return card;
                 })}
-              </div>
-              <div className="replayer-board-labels" aria-hidden="true">
-                <span className={parsed.length >= 3 ? 'is-dealt' : ''} style={{flex: '0 0 auto', width: 'calc(var(--card-w) * 3 + var(--space-2xs) * 2)'}}>Flop</span>
-                <span className="board-street-gap" />
-                <span className={parsed.length >= 4 ? 'is-dealt' : ''} style={{flex: '0 0 auto', width: 'var(--card-w)'}}>Turn</span>
-                <span className="board-street-gap" />
-                <span className={parsed.length >= 5 ? 'is-dealt' : ''} style={{flex: '0 0 auto', width: 'var(--card-w)'}}>Riv</span>
               </div>
             </div>
           );

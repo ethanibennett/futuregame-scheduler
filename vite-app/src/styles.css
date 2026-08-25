@@ -841,45 +841,21 @@
       filter: saturate(1.35) brightness(1.25);
     }
 
-    /* 17 + 18: the chips a wager is made of. Columns by denomination, and
-       each disc is a piece of RIM — the shading runs top-to-bottom across the
-       edge, the denomination stripes run across it, and only the topmost disc
-       in a column carries a face. A column of five reads as a cylinder rather
-       than as five coins with gaps between them. */
-    .chip-stack-visual {
-      display: inline-flex; align-items: flex-end; gap: 2px;
-      vertical-align: bottom; margin-right: var(--space-2xs);
-    }
-    .chip-col { display: inline-flex; flex-direction: column-reverse; }
+    /* The chip stack's own discs, matching the pot stack's clay treatment.
+       Polish 17/18 rebuilt these as 17x7 rim discs in per-denomination columns
+       advancing 5px apiece; on the felt that read as coins with daylight
+       between them, so the tight overlap is back. */
     .chip-disc {
       --chip: currentColor;
-      width: 17px; height: 7px; border-radius: 9px / 4px;
-      display: block; position: relative;
-      margin-top: -2px;
-      background:
-        linear-gradient(180deg,
-          rgba(255,255,255,0.34) 0 20%,
-          rgba(255,255,255,0.04) 44%,
-          rgba(0,0,0,0.10) 62%,
-          rgba(0,0,0,0.40) 100%),
-        linear-gradient(90deg,
-          var(--chip) 0 18%,
-          rgba(255,255,255,0.55) 18% 26%,
-          var(--chip) 26% 74%,
-          rgba(255,255,255,0.55) 74% 82%,
-          var(--chip) 82% 100%);
-      box-shadow: 0 1px 1px rgba(0,0,0,0.45);
-    }
-    /* The face of the top chip, and only of the top chip. */
-    .chip-col .chip-disc:last-child::after {
-      content: '';
-      position: absolute;
-      left: 1px; right: 1px; top: -2px; height: 5px;
-      border-radius: 50%;
-      background:
-        radial-gradient(ellipse at 50% 26%, rgba(255,255,255,0.48), rgba(255,255,255,0) 72%),
-        var(--chip);
-      box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.35);
+      background: linear-gradient(90deg,
+        var(--chip) 0 18%,
+        rgba(255,255,255,0.55) 18% 26%,
+        var(--chip) 26% 74%,
+        rgba(255,255,255,0.55) 74% 82%,
+        var(--chip) 82% 100%);
+      border-top: 1px solid rgba(255,255,255,0.45);
+      border-bottom: 1px solid rgba(0,0,0,0.5);
+      box-shadow: 0 1px 1px rgba(0,0,0,0.3);
     }
 
     /* A denominated flying chip builds its sphere from inset shadows rather
@@ -3298,7 +3274,7 @@
     }
 
     .replayer-board-area {
-      --card-h: clamp(28px, 9.2cqw, 44px);
+      --card-h: clamp(32px, 10.4cqw, 48px);
       position:absolute; left:50%; top:54%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
@@ -3793,10 +3769,9 @@
     .replayer-board-spaced { display:flex; align-items:center; gap: var(--space-2xs); justify-content:center; flex-wrap:nowrap; }
     .replayer-board-spaced img { height: var(--card-h); }
     .replayer-board-spaced .card-unknown { width: var(--card-w); height: var(--card-h); }
-    /* Flop | turn | river. This class was written for exactly this and never
-       rendered, so five community cards ran together at a uniform 4px and the
-       only street cue was the dots under the table. 12px reads at 44px tall. */
-    .board-street-gap { width:12px; flex-shrink:0; }
+    /* The board is one uniform row of five again: the flop/turn/river gaps and
+       their labels are reverted. The street is still stated twice — in the
+       commentary's lower third and in the timeline's street groups. */
 
     /* Classic card theme */
     /* 30: the two decks shared no proportions, no corner radius, no shadow
@@ -5244,23 +5219,6 @@
       color: #c9a2f5;
     }
 
-    /* 93: one label per group, in the gap that separates them. A street that
-       has not been dealt yet is present but quiet, so the board reads as a
-       sequence with a known length rather than as however many cards are out. */
-    .replayer-board-labels {
-      display: flex; align-items: center; gap: var(--space-2xs);
-      justify-content: center; width: 100%;
-    }
-    .replayer-board-labels > span {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-      letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: rgba(255,255,255,0.28);
-      text-align: center;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
-      transition: color var(--dur-base) var(--ease-label);
-    }
-    .replayer-board-labels > span.is-dealt { color: rgba(255,255,255,0.66); }
 
 
     /* 92 */
