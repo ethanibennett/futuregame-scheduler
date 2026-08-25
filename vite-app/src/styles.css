@@ -808,8 +808,12 @@
        What it lacks is VALUE separation: every suit is darker than the felt's
        dark stop, so a flop of Ks 9c 4d reads as three dark rectangles at replay
        speed. This is the control the deck actually needed. */
+    /* The filter targeted img only, so the classic theme — whose cards are
+       divs — was excluded from the one control that exists to lift the suits
+       off the felt. */
     .hc-deck .card-row img,
-    .hc-deck img.card-img {
+    .hc-deck img.card-img,
+    .hc-deck .card-classic {
       filter: saturate(1.35) brightness(1.25);
     }
 
@@ -1865,7 +1869,11 @@
     /* ── Card row ── */
     .card-row { display:flex; gap: var(--space-2xs); align-items:center; min-height:32px; flex-wrap:wrap; }
     .card-row.card-row-splay { gap:0; align-items:flex-end; position:relative; height:56px; min-width:60px; overflow:visible; }
-    .card-row img { height:28px; border-radius:2px; box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30); }
+    /* 7.1% not 2px: the artwork's own corner is rx=18 on a 252-tall viewBox,
+       so a percentage tracks it at every size (2px at 28px, 3.1px at 44px).
+       A fixed 2px clipped a squarer corner than the card, and the rim light
+       below then traced that wrong corner over the transparent pixels. */
+    .card-row img { height:28px; border-radius:7.1%; box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30); }
     .card-row .card-unknown,
     .card-row .card-placeholder {
       width:20px; height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center;
@@ -2811,7 +2819,12 @@
       justify-content: center;
       z-index: 0;
       overflow: visible;
-      transition: opacity var(--dur-slow) var(--ease-out);
+      /* The folded/mucked state changes opacity AND transform, but only
+         opacity was whitelisted — so the scale-to-0.8 and 20px drop snapped,
+         and un-folding on a backward step popped the cards back to full size
+         with just the fade smoothed. */
+      transition: opacity var(--dur-slow) var(--ease-out),
+                  transform var(--dur-slow) var(--ease-out);
     }
     .replayer-seat.folded .replayer-seat-cards,
     .replayer-seat.mucked .replayer-seat-cards { opacity:0; transform: scale(0.8) translateY(20px); }
@@ -2823,13 +2836,18 @@
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(3) { z-index:3; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(4) { z-index:4; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(5) { z-index:5; }
+    /* The faces are 180:252 = 1:1.400. Forcing 30x44 is 1:1.467 — a 4.6%
+       horizontal squeeze on every hole card, while the BOARD imgs set height
+       only and so rendered at their natural 31.4px. Two widths in one hand.
+       width:auto lets both follow the artwork. */
     .replayer-seat-cards .card-row img {
-      height:44px; width:30px;
+      height:44px; width:auto;
       filter:drop-shadow(-2px 1px 2px rgba(0,0,0,0.5));
       box-shadow: 0 0 0 0.75px rgba(255,255,255,0.30);
     }
-    .replayer-seat-cards .card-row .card-unknown { width:30px; height:44px; }
-    .replayer-seat-cards .card-row .card-placeholder { width:30px; height:44px; }
+    /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
+    .replayer-seat-cards .card-row .card-unknown { width:31.4px; height:44px; }
+    .replayer-seat-cards .card-row .card-placeholder { width:31.4px; height:44px; }
 
     .replayer-dealer-btn {
       position: absolute;
@@ -3023,7 +3041,10 @@
     .replayer-board-spaced { display:flex; align-items:center; gap: var(--space-2xs); justify-content:center; flex-wrap:nowrap; }
     .replayer-board-spaced img { height:44px; }
     .replayer-board-spaced .card-unknown { width:30px; height:44px; }
-    .board-street-gap { width:8px; flex-shrink:0; }
+    /* Flop | turn | river. This class was written for exactly this and never
+       rendered, so five community cards ran together at a uniform 4px and the
+       only street cue was the dots under the table. 12px reads at 44px tall. */
+    .board-street-gap { width:12px; flex-shrink:0; }
 
     /* Classic card theme */
     .card-classic {
@@ -3034,8 +3055,17 @@
       border: 1px solid rgba(255,255,255,0.15);
       line-height: 1;
     }
-    .card-classic-red { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #fff; }
-    .card-classic-dark { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; }
+    /* Four suits, four fills, matching the SVG deck's own hue language
+       (hearts crimson, diamonds blue, clubs green, spades slate). The binary
+       red/dark split made Ah and Ad pixel-identical apart from a 9px glyph —
+       and .card-classic-red / -dark are kept as aliases so any caller that
+       still emits them keeps working. */
+    .card-classic-red,
+    .card-classic-h { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #fff; }
+    .card-classic-d { background: linear-gradient(135deg, #0369a1 0%, #075985 100%); color: #fff; }
+    .card-classic-c { background: linear-gradient(135deg, #15803d 0%, #166534 100%); color: #fff; }
+    .card-classic-dark,
+    .card-classic-s { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; }
     .card-classic-rank { font-size: var(--fs-xs); line-height: 1; }
     .card-classic-suit { font-size: var(--fs-2xs); line-height: 1; margin-top: -1px; }
     .replayer-seat-cards .card-classic { width: 30px; height: 44px; }
@@ -3461,11 +3491,15 @@
       60% { opacity:0.9; transform:translateX(4px) scale(1.02); filter:blur(0); }
       100% { opacity:1; transform:translateX(0) scale(1); filter:blur(0); }
     }
-    .replayer-board-area.animate-board-flop .card-row > :nth-child(1) { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:0ms; }
-    .replayer-board-area.animate-board-flop .card-row > :nth-child(2) { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:120ms; }
-    .replayer-board-area.animate-board-flop .card-row > :nth-child(3) { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:240ms; }
-    .replayer-board-area.animate-board-turn .card-row > :nth-child(4) { animation:turnRiverSlide 0.35s var(--ease-emphatic) both; }
-    .replayer-board-area.animate-board-river .card-row > :nth-child(5) { animation:turnRiverSlide 0.35s var(--ease-emphatic) both; }
+    /* Targeted by data-slot, not :nth-child. The street gaps below are real
+       elements in this row, so counting children would animate the wrong card
+       the moment the board is grouped — the exact trap that kept the gap class
+       unrendered. data-slot is the card's own index and cannot drift. */
+    .replayer-board-area.animate-board-flop .card-row > [data-slot="0"] { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:0ms; }
+    .replayer-board-area.animate-board-flop .card-row > [data-slot="1"] { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:120ms; }
+    .replayer-board-area.animate-board-flop .card-row > [data-slot="2"] { animation:flopCardSlide 0.4s var(--ease-emphatic) both; animation-delay:240ms; }
+    .replayer-board-area.animate-board-turn .card-row > [data-slot="3"] { animation:turnRiverSlide 0.35s var(--ease-emphatic) both; }
+    .replayer-board-area.animate-board-river .card-row > [data-slot="4"] { animation:turnRiverSlide 0.35s var(--ease-emphatic) both; }
     /* Legacy fallback */
     .replayer-board-area.animate-board .card-img,
     .replayer-board-area.animate-board .card-classic { animation:flopCardSlide 0.4s var(--ease-emphatic) both; }

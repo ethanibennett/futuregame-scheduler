@@ -727,9 +727,14 @@ function PotChipVisual({ amount }) {
 
 // ── Card Row component ──
 // Trig-based card splay: shared pivot point for natural fan.
-// reverseZ flips the z-index ordering — used for opponent seats so the
-// leftmost card sits on top of the fan instead of the rightmost (which
-// is how a real player would hold cards facing away from the viewer).
+// reverseZ flips the z-index ordering so the LEFTMOST card sits on top,
+// which is how a player holds cards facing away from the viewer.
+//
+// That rationale only holds for face-DOWN backs. At showdown the revealed fan
+// stacked leftmost-on-top, and the card faces carry their rank index ONLY at
+// top-left — there is no bottom-right mirror — so every buried card showed
+// nothing but a blank right edge and the opponent's hand was unreadable.
+// Face-up cards therefore always fan rightmost-on-top; see faceUp below.
 function getSplayStyle(index, total, angle, yOffset, reverseZ) {
   if (total <= 1) return {};
   const step = (2 * angle) / (total - 1);
@@ -782,14 +787,21 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         const isDown = downIdx && downIdx.has(i);
         const isStudUp = stud && !isDown && i >= 2 && i <= 5;
         const studYOffset = isStudUp ? -5 : isDown ? 5 : 0;
-        const splayStyle = splay ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ) : undefined;
+        // A revealed face never reverses: the rank index lives at top-left only,
+        // so leftmost-on-top buries every rank but the first.
+        const faceUp = c.suit !== 'x' && !isDown;
+        const splayStyle = splay
+          ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ && !faceUp)
+          : undefined;
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
         }
         if (cardTheme === 'classic') {
-          const isRed = c.suit === 'h' || c.suit === 'd';
+          // One class per suit. The old red/dark binary made Ah and Ad — and
+          // As and Ac — pixel-identical apart from a ~9px glyph, which is not
+          // a suit signal at the speed a replay runs.
           return (
-            <div key={k} className={'card-classic' + (isRed ? ' card-classic-red' : ' card-classic-dark')}
+            <div key={k} className={'card-classic card-classic-' + c.suit}
               style={splayStyle}>
               <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
               <span className="card-classic-suit">{SUIT_SYMBOLS[c.suit] || ''}</span>
@@ -3552,7 +3564,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Fold animation
   useEffect(() => {
     if (actionIdx < 0) { prevActionIdxRef.current = actionIdx; return; }
-    if (actionIdx >= 0 && actionIdx < currentActions.length) {
+    // Direction guard. prevActionIdxRef was already being tracked and never
+    // compared, so stepping BACK onto a fold — or landing on one via a street
+    // rewind — re-threw the muck on cards the .folded class had already hidden,
+    // making ghost cards flash and re-muck. Rewinding reconstructs state; only
+    // forward motion performs it.
+    const movedForward = actionIdx > prevActionIdxRef.current;
+    if (movedForward && actionIdx >= 0 && actionIdx < currentActions.length) {
       const act = currentActions[actionIdx];
       if (act && act.action === 'fold' && rSettings.animateDeal) {
         setAnimFolded(prev => { const n = new Set(prev); n.add(act.player); return n; });
@@ -3600,7 +3618,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
   // Determine board animation class based on which street just appeared
   const getBoardAnimClass = () => {
-    if (!rSettings.animateBoard || prevStreetRef.current === streetIdx) return '';
+    // >= not !==: the deal animation means "a new card arrives", so playing it
+    // for a card already on the felt breaks the metaphor. Backing turn -> flop
+    // used to replay the full three-card stagger.
+    if (!rSettings.animateBoard || prevStreetRef.current >= streetIdx) return '';
     let boardLen = 0;
     for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
       if (hand.streets[si].cards.board) boardLen += parseCardNotation(hand.streets[si].cards.board).length;
@@ -4258,17 +4279,27 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             <div className={'replayer-board-area' + boardAnimClass}>
               <div className="card-row replayer-board-spaced">
                 {parsed.map((c, i) => {
-                  if (c.suit === 'x') return <div key={c.rank+c.suit+'_'+i} className="card-unknown" />;
-                  if (cardTheme === 'classic') {
-                    const isRed = c.suit === 'h' || c.suit === 'd';
-                    return (
-                      <div key={c.rank+c.suit+'_'+i} className={'card-classic' + (isRed ? ' card-classic-red' : ' card-classic-dark')}>
+                  const key = c.rank + c.suit + '_' + i;
+                  // Flop | turn | river. Grouping is how every broadcast graphic
+                  // and every real table shows which street the hand is on; the
+                  // gap class existed for it and had never been rendered.
+                  const gap = (i === 3 || i === 4)
+                    ? <div key={'gap' + i} className="board-street-gap" aria-hidden="true" />
+                    : null;
+                  let card;
+                  if (c.suit === 'x') {
+                    card = <div key={key} data-slot={i} className="card-unknown" />;
+                  } else if (cardTheme === 'classic') {
+                    card = (
+                      <div key={key} data-slot={i} className={'card-classic card-classic-' + c.suit}>
                         <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
                         <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
                       </div>
                     );
+                  } else {
+                    card = <img key={key} data-slot={i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
                   }
-                  return <img key={c.rank+c.suit+'_'+i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
+                  return gap ? [gap, card] : card;
                 })}
               </div>
             </div>
