@@ -349,3 +349,36 @@ top edge of the shallower felt.
 pacing, the count-ups, the rewind cross-fade, the bookends and the exports have
 not been exercised. The Chrome extension's PreToolUse hook times out on this
 box, which is what forced the harness route.
+
+### 2026-08-25 (later) — merged and deployed, and how the last three bugs were found
+
+`master` at `4ca6371`, deployed, production serving `index-3BTCZ7pL.js`. The
+merge went out clean; Render 502s for a minute or two mid-deploy, which is
+normal.
+
+The static harness was not enough. Driving the REAL app through Chrome DevTools
+Protocol found three more things it could not:
+
+1. **A paragraph of source comment rendering on the page** above the table. A
+   block comment in JSX *children* position is text, not a comment — React
+   renders it and the build says nothing, because it is valid JSX. Check for
+   it by grepping the built bundle for your own comment text: esbuild strips
+   real comments, so anything that survives is being rendered.
+2. **The replayer crashing into its error boundary on mount** — a third
+   temporal-dead-zone bug. `scripts/tdz_scan.py` now covers `const NAME`,
+   `const { A, B }` **and** `const [a, b] = useState()`; missing the last form
+   is why the scan reported clean while the app was dead.
+3. **Shared `#h/` links have never worked for their audience.** The replayer is
+   admin-only and a share link is the one way anyone else sees a hand — but the
+   replayer consumes `initialHand` and calls `onClearInitialHand`, which nulls
+   `sharedHandData`, and the tab was gated on `isAdmin || sharedHandData`. The
+   table rendered, cleared itself, and the visitor got "Coming Soon". Fixed by
+   remembering that a hand *arrived*.
+
+**The CDP smoke test** is `scratchpad/harness/live.mjs`. It mints a guest token,
+opens a shared-hand link, steps the transport, and reports every console error.
+`SMOKE_ORIGIN=https://futurega.me node live.mjs out.png` runs it against
+production. Two things to know if you rebuild it: navigating from `/` to
+`/#h/...` is a *hash* change and never remounts the app (use a different path),
+and Edge caches `index.html`, so disable the network cache or you will test the
+previous build.
