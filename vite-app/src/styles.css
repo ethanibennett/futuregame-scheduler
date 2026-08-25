@@ -5139,33 +5139,14 @@
     }
 
 
-    /* 89: the hole cards floated above each plaque with no container, and the
-       broadcast convention — the thing that made televised poker legible — is
-       a small framed panel holding the cards, the name and the stack as ONE
-       unit. All the parts were here, sitting next to each other unframed.
-       The cards get a tray in the plaque's own material and the plaque loses
-       its top corners, so the two read as a single graphic without moving
-       either of them. */
-    .replayer-seat-cards:empty { display: none; }
-    .replayer-seat-cards {
-      padding: var(--space-2xs) var(--space-2xs) calc(var(--space-2xs) + 4px);
-      background: linear-gradient(180deg, rgba(30,26,42,0.90), rgba(20,17,29,0.94));
-      border: 1px solid rgba(255,255,255,0.12);
-      border-bottom: none;
-      border-radius: var(--r-object) var(--r-object) 0 0;
-      box-shadow: 0 -1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
-    }
-    .replayer-seat-info {
-      border-top-left-radius: 0;
-      border-top-right-radius: 0;
-    }
-    /* A splayed fan overflows its tray on purpose, so the tray stops being a
-       box round the cards and becomes the thing they are held over. */
-    .replayer-seat-cards:has(.card-row-splay) {
-      background: linear-gradient(180deg, rgba(30,26,42,0), rgba(20,17,29,0.92) 62%);
-      border-color: transparent;
-      box-shadow: none;
-    }
+    /* Polish 89 put the hole cards in a tray made of the plaque's own material
+       so the two would read as one graphic — the broadcast hole-card panel.
+       On a light page it read as a box behind every hand instead: measured,
+       the tray's bottom edge is a hard 1px bar of rgba(20,17,29,0.92), the
+       gradient at full strength cut off where the element ends, and the top
+       seats' cards sit ABOVE the felt, on the page rather than on the cloth,
+       so that bar lands on a near-white ground. It only ever worked on a dark
+       one, and a fan overflows it anyway. The plaque does the joining. */
 
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
     .replayer-seat.is-hero { --card-h: clamp(44px, 15cqw, 64px); }
@@ -5173,11 +5154,6 @@
       min-width: 92px;
       padding: var(--space-sm) var(--space-ml);
       border-color: rgba(242,166,59,0.5);
-    }
-    /* The hero's own border-colour is more specific than the splay rule, so
-       a splayed hero fan kept the tray the splay rule had just taken away. */
-    .replayer-seat.is-hero .replayer-seat-cards:not(:has(.card-row-splay)) {
-      border-color: rgba(242,166,59,0.35);
     }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: var(--fs-md); }
 
