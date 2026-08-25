@@ -285,6 +285,17 @@ export default function App() {
     };
   }, []);
 
+  /* The replayer is admin-only, and a shared #h/ link is the one way anybody
+     else gets to see a hand. But the replayer CONSUMES initialHand and calls
+     onClearInitialHand, which set sharedHandData back to null — and the tab is
+     gated on `isAdmin || sharedHandData`, so the table rendered, cleared
+     itself, and the visitor was left looking at "Coming Soon". Every share
+     link this feature has ever produced has been broken for its audience.
+
+     The gate needs to remember that a hand ARRIVED, which is not the same
+     question as whether it is still waiting to be handed over. */
+  const [sharedHandArrived, setSharedHandArrived] = useState(!!HAND_SHORTHAND);
+
   // If a shared hand was decoded, switch to hands tab on mount
   useEffect(() => {
     if (sharedHandData) setCurrentView('hands');
@@ -300,6 +311,7 @@ export default function App() {
           const decoded = decodeHand(shorthand);
           if (decoded) {
             setSharedHandData(decoded);
+            setSharedHandArrived(true);   // the gate has to open for this one too
             setCurrentView('hands');
             if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname + window.location.search);
           }
@@ -1439,7 +1451,7 @@ export default function App() {
 
         <div className={'tab-panel' + (currentView === 'hands' ? ' tab-active' : '')} data-tab="hands" style={{display: currentView === 'hands' ? undefined : 'none', height: currentView === 'hands' ? '100%' : undefined}}>
         {visitedTabs.has('hands') && (
-          isAdmin || sharedHandData
+          isAdmin || sharedHandArrived
             ? <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
                 {isAdmin && (
                   <div style={{display:'flex',gap:6,padding:'8px 14px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",flexWrap:'wrap'}}>

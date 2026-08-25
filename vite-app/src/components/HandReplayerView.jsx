@@ -4137,6 +4137,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     });
   }, [hand, streetIdx, category, replayHeroIdx]);
 
+  /* 71: the animation guards correctly suppress the deal, the muck and the
+     board slide when stepping BACK — which left going backwards a series of
+     instant state swaps while going forwards was choreographed, so the two
+     directions felt like different applications. Scrubbing is how people
+     actually study a hand; it was the least finished way to move through one.
+     A short cross-fade on the whole table says "rewinding" without replaying
+     a single piece of forward choreography. */
+  const [rewinding, setRewinding] = useState(false);
+  const rewindTimer = useRef(0);
+  const markRewind = useCallback(() => {
+    setRewinding(true);
+    clearTimeout(rewindTimer.current);
+    rewindTimer.current = setTimeout(() => setRewinding(false), 260);
+  }, []);
+  useEffect(() => () => clearTimeout(rewindTimer.current), []);
+
   // Pot and stacks
   const { stacks, pot, folded } = useMemo(() => calcPotsAndStacks(hand, streetIdx, actionIdx), [hand, streetIdx, actionIdx]);
   const displayPot = useMemo(() => calcPotsAndStacks(hand, streetIdx, -1).pot, [hand, streetIdx]);
@@ -4331,21 +4347,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Update inline so the export loop always gets the latest closure
   stepForwardRef.current = stepForward;
 
-  /* 71: the animation guards correctly suppress the deal, the muck and the
-     board slide when stepping BACK — which left going backwards a series of
-     instant state swaps while going forwards was choreographed, so the two
-     directions felt like different applications. Scrubbing is how people
-     actually study a hand; it was the least finished way to move through one.
-     A short cross-fade on the whole table says "rewinding" without replaying
-     a single piece of forward choreography. */
-  const [rewinding, setRewinding] = useState(false);
-  const rewindTimer = useRef(0);
-  const markRewind = useCallback(() => {
-    setRewinding(true);
-    clearTimeout(rewindTimer.current);
-    rewindTimer.current = setTimeout(() => setRewinding(false), 260);
-  }, []);
-  useEffect(() => () => clearTimeout(rewindTimer.current), []);
 
   const stepBack = useCallback(() => {
     markRewind();
@@ -5048,13 +5049,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {/* Table */}
       {/* data-cardback is what makes the six-option Card Back setting real;
           --back-custom feeds the custom colour through to the gradient stops. */}
-      /* 97: the camera was fixed — the whole table, the same framing, every
-         frame of every hand — while a broadcast cuts to the player who is
-         acting and to the board as it lands. Even a few percent is enough to
-         direct attention, and it costs one transform on a container that
-         already exists. The push is suppressed during capture: a transform on
-         the captured root is not reliably reproduced by the renderer, and a
-         clip that drifts between frames is worse than one that does not. */
+      {/* 97: the camera was fixed — the whole table, the same framing, every
+          frame of every hand — while a broadcast cuts to the player who is
+          acting and to the board as it lands. Even a few percent is enough to
+          direct attention, and it costs one transform on a container that
+          already exists. The push is suppressed during capture: a transform on
+          the captured root is not reliably reproduced by the renderer, and a
+          clip that drifts between frames is worse than one that does not.
+
+          This block was a bare block comment sitting in JSX CHILDREN
+          position, which is text rather than a comment — React rendered the
+          whole paragraph above the table, and the build had nothing to say
+          about it, because it is valid JSX. */}
       <div ref={tableRef} className={'replayer-table' + themeClass}
         style={pushStyle}
         data-cardback={rSettings.cardBack || 'default'}
@@ -5513,9 +5519,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const AR = 4.5 / 3;
           const dx = 50 - pos[0], dy = (50 - pos[1]) * AR;
           const len = Math.hypot(dx, dy) || 1;
-          const TRAVEL = 7; // % of table width, identical for every seat
-          const chipX = pos[0] + (dx / len) * TRAVEL;
-          const chipY = pos[1] + (dy / len) * TRAVEL / AR;
+          /* Rendered: every seat's cards sit ABOVE its plaque, so for a seat in
+             the BOTTOM half of the table the cards lie directly between the
+             seat and the pot — and walking the wager toward the pot put it on
+             top of that player's own hand. Walking further only pushed it into
+             the board. Those seats put their wager BESIDE the cards instead,
+             which is also where it sits at a real table; every other seat
+             keeps the straight walk toward the middle. */
+          const TRAVEL = 8;
+          let chipX, chipY;
+          if (pos[1] > 50) {
+            chipX = pos[0] + (pos[0] <= 50 ? 12 : -12);
+            chipY = pos[1] - 6;
+          } else {
+            chipX = pos[0] + (dx / len) * TRAVEL;
+            chipY = pos[1] + (dy / len) * TRAVEL / AR;
+          }
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
           if (rSettings.animateChips) {
             chipStyle['--chip-start-dx'] = ((pos[0] - chipX) * 3) + 'px';
