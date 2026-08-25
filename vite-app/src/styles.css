@@ -4290,6 +4290,49 @@
       .replayer-pot-display.anim-collect { animation: none; }
     }
 
+
+    /* ── Export capture state ──────────────────────────────────────────
+       Set by beginCapture() in replay-capture.js for the duration of a GIF or
+       video export, and removed afterwards. Nothing here is ever visible to a
+       user in normal use; it only shapes what the renderer sees. */
+
+    /* 88: both exporters advanced a step, waited 80ms and captured — while
+       chips were mid-flight, board cards were still sliding, and the neon
+       theme was running an infinite three-second pulse that every frame
+       therefore sampled at a random phase. Frozen animations mean each frame
+       is the settled state of that step, which is what a replay frame is
+       supposed to be. */
+    .replayer-table[data-capturing="1"],
+    .replayer-table[data-capturing="1"] *,
+    .replayer-table[data-capturing="1"] *::before,
+    .replayer-table[data-capturing="1"] *::after {
+      animation-play-state: paused !important;
+      animation-delay: 0s !important;
+      transition: none !important;
+    }
+
+    /* 90: the light and cloudy themes swap the felt to a paler purple and the
+       chrome reads live accent tokens, so the four app themes produced four
+       different-looking exports of one hand — the export is a shareable
+       artefact, not a screenshot of somebody's preferences. Pinned to the
+       dark felt for the capture. */
+    :is([data-theme="light"],[data-theme="cloudy"]) .replayer-table[data-capturing="1"] .replayer-table-felt {
+      background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--felt-light, #6b5b8a), var(--felt-dark, #2a2340));
+      border-color: var(--felt-light, #6b5b8a);
+    }
+
+    /* 91: the only mark inside the captured element was the felt watermark at
+       10% opacity in overlay blend — about eight levels of contrast, which the
+       GIF's dithering largely dissolves and a chroma key removes entirely
+       wherever it crosses the background. The PNG share path already drew a
+       proper one at 30%; the captured one matches it now. */
+    .replayer-table[data-capturing="1"] .replayer-watermark {
+      mix-blend-mode: normal !important;
+      opacity: 0.32 !important;
+      color: #fff !important;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+    }
+
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }
     .replayer-table-felt.shape-octagon {

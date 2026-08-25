@@ -6,7 +6,7 @@ import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic } from '../utils
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
          bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES } from '../utils/hand-shorthand.js';
-import { loadCardImages } from '../utils/export.js';
+import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -329,6 +329,20 @@ function checkCardText(text) {
     seen.add(key);
   }
   return null;
+}
+
+/* 59: /api/replayer/hands spreads the entire hand_data into each list row, so
+   the hero's cards and who won are already here — the list simply never looked
+   at them and rendered a title, a game chip and a Delete button instead. */
+function heroCardsOf(h) {
+  return (h.streets && h.streets[0] && h.streets[0].cards && h.streets[0].cards.hero) || '';
+}
+function outcomeOf(h) {
+  const winners = (h.result && h.result.winners) || [];
+  if (!winners.length) return null;
+  const heroIdx = h.heroIdx != null ? h.heroIdx : 0;
+  const mine = winners.find(w => w.playerIdx === heroIdx);
+  return mine ? (mine.split ? 'split' : 'win') : 'loss';
 }
 
 // ── Formatting helpers ──
@@ -977,10 +991,10 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               <div className="replayer-settings-sublabel">Lifts the suits off the felt</div>
             </div>
             <button
-              className={'replayer-settings-toggle' + (settings.fourColorDeck ? ' on' : '')}
-              aria-pressed={!!settings.fourColorDeck}
+              className={'replayer-settings-toggle' + (settings.highContrastDeck ? ' on' : '')}
+              aria-pressed={!!settings.highContrastDeck}
               aria-label="High-contrast deck"
-              onClick={() => onUpdate('fourColorDeck', !settings.fourColorDeck)} />
+              onClick={() => onUpdate('highContrastDeck', !settings.highContrastDeck)} />
           </div>
           {/* 70: only the high-contrast toggle three rows up had aria-pressed
               and a label. Every other switch in this panel — Splay, Rail
@@ -3366,9 +3380,39 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     );
   }
 
-  // ── Loading ──
+  /* 100: the loading branch was one line of text with no shape, so the picker
+     rendered a sentence and then snapped the whole screen in when the fetch
+     landed — while this app ships a full skeleton kit that the schedule,
+     dashboard and admin screens all use. The placeholder is the shape of what
+     is coming: the new-hand panel, then rows with a card slot at the left. */
   if (loading) {
-    return <div className="replayer-loading">Loading hand replayer...</div>;
+    return (
+      <div className="replayer-view">
+        <div className="replayer-header"><h2>Hand Replayer</h2></div>
+        <div className="replayer-section" style={{marginBottom:'12px'}}>
+          <div className="skeleton skeleton-text" style={{width: 96, height: 13, marginBottom: 12}} />
+          <div style={{display:'flex', gap: 6, flexWrap:'wrap'}}>
+            {[64, 78, 58, 70].map((w, i) => (
+              <div key={i} className="skeleton" style={{width: w, height: 28, borderRadius: 'var(--radius-sm)'}} />
+            ))}
+          </div>
+        </div>
+        <div className="skeleton skeleton-text" style={{width: 86, height: 13, marginBottom: 10}} />
+        <div className="replayer-hand-list">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="replayer-hand-card is-row">
+              <div className="replayer-hand-card-cards">
+                <div className="skeleton" style={{width: 30, height: 30, borderRadius: 'var(--radius-xs)'}} />
+              </div>
+              <div className="replayer-hand-card-body">
+                <div className="skeleton skeleton-text" style={{width: i === 1 ? 150 : 116, height: 12}} />
+                <div className="skeleton skeleton-text" style={{width: 74, height: 10}} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   // ── List mode ──
@@ -3557,11 +3601,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                result, no date — in an app about cards, while the stylesheet
                shipped -meta and -actions classes this list never used. Nobody
                looks for "Hand 14"; they look for that AA hand they lost. */
-            <div key={h.id} className={'replayer-hand-card is-row' + (h.outcome ? ' outcome-' + h.outcome : '')}
+            <div key={h.id} className={'replayer-hand-card is-row' + (outcomeOf(h) ? ' outcome-' + outcomeOf(h) : '')}
               onClick={() => loadHand(h.id)}
             >
               <div className="replayer-hand-card-cards" aria-hidden="true">
-                <CardRow text={h.hero_cards || ''} max={2} splay={12} />
+                <CardRow text={heroCardsOf(h)} max={2} splay={12} />
               </div>
               <div className="replayer-hand-card-body">
                 <span className="replayer-hand-card-title">{h.title || 'Untitled'}</span>
@@ -3641,7 +3685,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _tableShape = useReplayerSetting('TableShape', 'oval');
   const _cardBack = useReplayerSetting('CardBack', 'default');
   const _cardBackColor = useReplayerSetting('CardBackColor', '#1a3a6e');
-  const _fourColor = useReplayerSetting('FourColorDeck', false);
+  /* 99: the control reads "High-Contrast Deck" and applies .hc-deck, while
+     the state key, the persisted preference and every update call still said
+     fourColorDeck — a leftover from repurposing the dead four-colour toggle.
+     Anyone reading the state, or a stored preference, was told this app has a
+     four-colour deck setting that it does not have. Renamed, with a one-time
+     read of the old value so nobody's stored choice is lost. */
+  const _hcDeck = useReplayerSetting('HighContrastDeck', (() => {
+    const legacy = localStorage.getItem('replayerFourColorDeck');
+    return legacy === null ? false : legacy === 'true';
+  })());
   const _showChipStacks = useReplayerSetting('ShowChipStacks', false);
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
   const _showPotOdds = useReplayerSetting('ShowPotOdds', false);
@@ -3665,7 +3718,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
   const rSettings = {
     theme: _theme[0], tableShape: _tableShape[0], feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
-    fourColorDeck: _fourColor[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
+    highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
     showPotOdds: _showPotOdds[0], showCommentary: _showCommentary[0], showTimeline: _showTimeline[0],
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
@@ -3677,7 +3730,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   };
   const rSetters = {
     theme: _theme[1], tableShape: _tableShape[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
-    cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], fourColorDeck: _fourColor[1],
+    cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], highContrastDeck: _hcDeck[1],
     showChipStacks: _showChipStacks[1], showHandStrength: _showHandStrength[1], showPotOdds: _showPotOdds[1],
     showCommentary: _showCommentary[1], showTimeline: _showTimeline[1], showPlayerStats: _showPlayerStats[1],
     showNutsHighlight: _showNuts[1],
@@ -4067,6 +4120,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   }, [streetIdx, actionIdx]);
 
   const [showExportMenu, setShowExportMenu] = useState(false);
+  /* 94: the overlays described one outcome and the code produced another. Ask
+     the platform once, and say what will happen. */
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function';
+  const [canInstagram, setCanInstagram] = useState(false);
+  useEffect(() => {
+    let live = true;
+    import('../utils/instagram-stories.js')
+      .then(m => { if (live) setCanInstagram(!!m.canShareToInstagram?.()); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
   const [tabHidden, setTabHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -4204,7 +4268,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const shapeClass = rSettings.tableShape !== 'oval' ? ' shape-' + rSettings.tableShape : '';
   // Was ' four-color-deck', a class with zero rules in the stylesheet - a dead
   // switch. The deck is already four-colour; what it needs is value separation.
-  const fourColorClass = rSettings.fourColorDeck ? ' hc-deck' : '';
+  const hcDeckClass = rSettings.highContrastDeck ? ' hc-deck' : '';
   const boardAnimClass = getBoardAnimClass();
 
   // Share as image
@@ -4212,6 +4276,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const allCardNotations = [heroCards, boardCards, ...opponentCards].filter(Boolean);
     const allCards = allCardNotations.flatMap(n => parseCardNotation(n));
     try {
+      /* 92: ensureExportFonts exists precisely because a canvas does not
+         trigger webfont loading, and the share menu and the wrap-up viewer
+         both await it — this path drew its titles, pot and hand names
+         straight onto the canvas with no call, so the one export that is a
+         still image was also the one that could silently come out in the
+         fallback face. */
+      await ensureExportFonts();
       const images = await loadCardImages(allCards);
       const outW = 1080, outH = 1080;
       const canvas = document.createElement('canvas');
@@ -4354,7 +4425,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   };
 
   // ── Video export ──
-  const handleExportVideo = useCallback(async () => {
+  /* 81: the exporter has supported a greenscreen mode with its own chroma
+     fill and an MP4 codec ladder for CapCut since it was written, and the only
+     caller hardcoded 'transparent' behind a single button with no choice — a
+     whole pipeline no user could reach. 98 adds the vertical framing the GIF
+     had and the video did not. */
+  const handleExportVideo = useCallback(async (mode = 'transparent') => {
     if (videoExporting) return;
     if (!tableRef.current) return;
 
@@ -4380,15 +4456,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       tableEl: tableRef.current,
       stepForward: () => stepForwardRef.current?.(),
       canGoForwardRef,
-      mode: 'transparent',
+      mode,
+      speed,
+      feltColor,
       onProgress: (pct, step, total) => {
         setVideoProgress(pct);
         setVideoStep(step);
         setVideoTotal(total);
       },
-      onDone: () => {
+      /* 94: the video flow finished with no confirmation at all, unlike the
+         GIF's three — so a successful export and a silently failed one looked
+         identical from the outside. */
+      onDone: (info) => {
         setVideoExporting(false);
         setVideoProgress(0);
+        if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
+        else toast?.success?.('Video saved');
       },
       onError: (err) => {
         console.error('Video export error:', err);
@@ -4396,7 +4479,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         setVideoProgress(0);
       },
     });
-  }, [videoExporting, hand]);
+  }, [videoExporting, hand, speed, feltColor, toast]);
 
   const handleExportGif = useCallback(async () => {
     if (gifExporting || videoExporting) return;
@@ -4412,6 +4495,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       tableEl: tableRef.current,
       stepForward: () => stepForwardRef.current?.(),
       canGoForwardRef,
+      speed,
+      feltColor,
       onProgress: (pct, step, total) => { setGifProgress(pct); setGifStep(step); setGifTotal(total); },
       onDone: (info) => {
         setGifExporting(false); setGifProgress(0);
@@ -4520,7 +4605,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        fullscreen CSS (fixed inset, modal layer, app chrome hidden through a
        :has() rule) could never fire, and turning the phone sideways just
        letterboxed the table. */
-    <div className={'replayer-replay' + fourColorClass + (isLandscape ? ' replayer-landscape' : '')}>
+    <div className={'replayer-replay' + hcDeckClass + (isLandscape ? ' replayer-landscape' : '')}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table */}
@@ -5133,10 +5218,25 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   <span className="share-desc">A still of the hand at this point</span>
                 </div>
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
-                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo(); setShowExportMenu(false); } }}>
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('transparent'); setShowExportMenu(false); } }}>
                   <span className="share-icon">{'\uD83C\uDFAC'}</span>
-                  <span className="share-label">WebM</span>
-                  <span className="share-desc">Transparent overlay for editing</span>
+                  <span className="share-label">Overlay</span>
+                  <span className="share-desc">Transparent WebM for streaming</span>
+                </div>
+                {/* 81: the greenscreen branch and its MP4 codec ladder were
+                    written for CapCut and had no way in. */}
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('greenscreen'); setShowExportMenu(false); } }}>
+                  <span className="share-icon">{'\uD83D\uDFE9'}</span>
+                  <span className="share-label">Greenscreen</span>
+                  <span className="share-desc">MP4 to key out in an editor</span>
+                </div>
+                {/* 98 */}
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('story'); setShowExportMenu(false); } }}>
+                  <span className="share-icon">{'\uD83D\uDCF1'}</span>
+                  <span className="share-label">Story</span>
+                  <span className="share-desc">9:16 video, ready to post</span>
                 </div>
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
                   onClick={() => { if (!videoExporting && !gifExporting) { handleExportGif(); setShowExportMenu(false); } }}>
@@ -5169,8 +5269,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {videoStep} of {videoTotal}
           </div>
+          {/* 94: this said "will download automatically" on a platform where
+              the outcome is usually a share sheet. */}
           <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
-            Export will download automatically when complete
+            {canNativeShare ? 'The share sheet will open when it is ready' : 'It will download when complete'}
           </div>
         </div>,
         document.body
@@ -5183,7 +5285,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             Building GIF…
           </div>
           <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
-            Transparent · upload to GIPHY for Instagram sticker
+            {/* 94: this said "upload to GIPHY" while the code auto-opens
+                Instagram wherever it can. */}
+            {canInstagram ? 'Transparent \u00b7 opens in Instagram Stories' : 'Transparent \u00b7 upload to GIPHY for an Instagram sticker'}
           </div>
           <div style={{width:'220px',height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',marginBottom:'10px',overflow:'hidden'}}>
             <div style={{width:gifProgress+'%',height:'100%',background:'var(--accent, #a78bfa)',borderRadius:'3px',transition:'width 0.3s ease'}} />
@@ -5192,7 +5296,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             Step {gifStep} of {gifTotal}
           </div>
           <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
-            Export will download automatically when complete
+            {canInstagram ? 'Instagram will open when it is ready'
+              : canNativeShare ? 'The share sheet will open when it is ready'
+              : 'It will download when complete'}
           </div>
         </div>,
         document.body

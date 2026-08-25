@@ -1,3 +1,5 @@
+import { beginCapture, exportScale, feltBackdrop, stepDelay } from './replay-capture.js';
+
 // ── Replay GIF Export ──
 // Drives HandReplayerReplayView through all steps, capturing pixel-perfect
 // screenshots via modern-screenshot (SVG foreignObject + inlined styles)
@@ -71,14 +73,17 @@ export async function exportReplayGif({
   tableEl,
   stepForward,
   canGoForwardRef,
-  frameDelay = 900,
+  speed,
+  feltColor,
   scale,
   onProgress,
   onDone,
   onError,
 }) {
-  const origPadTop = tableEl.style.paddingTop;
-  const origMarginTop = tableEl.style.marginTop;
+  // 89: frameDelay was hardcoded at 900ms by the caller while the replayer's
+  // own speed control offers 0.5x to 4x and affected neither exporter.
+  const frameDelay = stepDelay(speed);
+  let restore = () => {};
   try {
     const [{ domToCanvas }, gifenc] = await Promise.all([
       import('modern-screenshot'),
@@ -90,15 +95,18 @@ export async function exportReplayGif({
       (sum, s) => sum + 1 + (s.actions?.length || 0), 0
     ) + 1;
 
-    // Add padding so overflowing cards at the top seat aren't clipped
-    tableEl.style.paddingTop = '50px';
-    tableEl.style.marginTop = '0px';
-    await new Promise(r => setTimeout(r, 30));
+    // 83 / 88 / 90 / 91: padding for the top seat's overflowing cards, plus
+    // the paused animations, pinned theme and raised watermark the video path
+    // now shares.
+    restore = beginCapture(tableEl);
+    await new Promise(r => setTimeout(r, 60));
 
     const elW = tableEl.offsetWidth;
     const elH = tableEl.offsetHeight;
-    const dpr = window.devicePixelRatio || 2;
-    const s = scale || dpr;
+    // 82: this was `scale || devicePixelRatio`, so the same ~380px table came
+    // out at about 380px from a desktop monitor and about 1100px from an
+    // iPhone — one hand, three resolutions, decided by the capturing device.
+    const s = scale || exportScale(tableEl);
 
     // Capture all frames first
     const frames = [];
@@ -118,61 +126,93 @@ export async function exportReplayGif({
       frames.push(ctx.getImageData(0, 0, cw, ch).data);
       delays.push(isLast ? 2000 : frameDelay);
       step++;
-      onProgress(Math.round((step / totalSteps) * 100), step, totalSteps);
+      onProgress(Math.round((step / totalSteps) * 60), step, totalSteps);
     };
 
     await captureFrame(false);
     while (canGoForwardRef.current) {
       stepForward();
-      await new Promise(r => setTimeout(r, 80));
+      // The animations are frozen for the export's duration, so this only has
+      // to cover React's commit, not an in-flight chip.
+      await new Promise(r => setTimeout(r, 120));
       await captureFrame(!canGoForwardRef.current);
     }
 
-    // Restore table styles
-    tableEl.style.paddingTop = origPadTop;
-    tableEl.style.marginTop = origMarginTop;
+    restore();
+    restore = () => {};
 
-    // Encode GIF with per-frame dithering
-    const encoder = GIFEncoder();
+    const pixelCount = frameW * frameH;
+    const bg = feltBackdrop(feltColor);
+    const bgRGB = (() => {
+      const m = bg.bottom.match(/#(..)(..)(..)/);
+      return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [12, 9, 18];
+    })();
 
+    /* 87: every pixel below half alpha became fully transparent and everything
+       above it stayed fully OPAQUE carrying its straight-alpha colour — so
+       every feathered shadow, plaque glow and winner ring kept a hard dark
+       rind exactly where it was supposed to fade out. Semi-transparent pixels
+       are composited over the backdrop first, and only the near-invisible ones
+       are cut, which is what the alpha was describing in the first place. */
+    const masks = [];
     for (let f = 0; f < frames.length; f++) {
       const rgba = frames[f];
-      const pixelCount = frameW * frameH;
-
-      // Mark transparent pixels with magenta sentinel
-      const transparentMask = new Uint8Array(pixelCount);
+      const mask = new Uint8Array(pixelCount);
       for (let i = 0; i < pixelCount; i++) {
-        if (rgba[i * 4 + 3] < 128) {
-          transparentMask[i] = 1;
-          rgba[i * 4]     = 255;
-          rgba[i * 4 + 1] = 0;
-          rgba[i * 4 + 2] = 255;
+        const a = rgba[i * 4 + 3];
+        if (a < 16) {
+          mask[i] = 1;
+          rgba[i * 4] = 255; rgba[i * 4 + 1] = 0; rgba[i * 4 + 2] = 255; rgba[i * 4 + 3] = 255;
+        } else if (a < 255) {
+          const k = a / 255, inv = 1 - k;
+          rgba[i * 4]     = Math.round(rgba[i * 4]     * k + bgRGB[0] * inv);
+          rgba[i * 4 + 1] = Math.round(rgba[i * 4 + 1] * k + bgRGB[1] * inv);
+          rgba[i * 4 + 2] = Math.round(rgba[i * 4 + 2] * k + bgRGB[2] * inv);
           rgba[i * 4 + 3] = 255;
         }
       }
+      masks.push(mask);
+      // 86: progress used to reach 100% at the end of CAPTURE and then sit
+      // there while the encode ran, so the overlay read "done" through the
+      // part that actually takes the time. Capture is the first 60%.
+      onProgress(60 + Math.round((f / frames.length) * 10), totalSteps, totalSteps);
+      if (f % 4 === 3) await new Promise(r => setTimeout(r, 0));
+    }
 
-      // rgb565 quantization — uses RGBA input, ignores alpha for color
-      // matching. 5/6/5-bit precision = much better gradients than rgba4444.
-      const palette = quantize(rgba, 256, { format: 'rgb565' });
+    /* 85: quantisation ran INSIDE the per-frame loop, so pixels that never
+       changed — the felt gradient, the rail, every plaque — were re-dithered
+       against a slightly different 256-colour palette on every frame, and the
+       whole sticker sparkled between frames on areas that were literally
+       identical. One palette, built from a sample across all frames, and only
+       the dither stays per-frame. */
+    const sampleStride = Math.max(1, Math.floor(frames.length / 6));
+    const sampleFrames = frames.filter((_, i) => i % sampleStride === 0);
+    const union = new Uint8ClampedArray(sampleFrames.length * pixelCount * 4);
+    sampleFrames.forEach((fr, i) => union.set(fr, i * pixelCount * 4));
+    const palette = quantize(union, 256, { format: 'rgb565' });
 
-      // Find magenta sentinel in palette for transparency
-      let tIdx = 0, bestDist = Infinity;
-      for (let p = 0; p < palette.length; p++) {
-        const c = palette[p];
-        const dr = c[0] - 255, dg = c[1], db = c[2] - 255;
-        const d = dr * dr + dg * dg + db * db;
-        if (d < bestDist) { bestDist = d; tIdx = p; }
-      }
+    // The magenta sentinel's slot in that one palette.
+    let tIdx = 0, bestDist = Infinity;
+    for (let p = 0; p < palette.length; p++) {
+      const c = palette[p];
+      const dr = c[0] - 255, dg = c[1], db = c[2] - 255;
+      const d = dr * dr + dg * dg + db * db;
+      if (d < bestDist) { bestDist = d; tIdx = p; }
+    }
 
-      // Floyd-Steinberg dithering for smooth gradients
-      const indices = ditherFrame(rgba, frameW, frameH, palette, transparentMask, tIdx);
-
+    const encoder = GIFEncoder();
+    for (let f = 0; f < frames.length; f++) {
+      const indices = ditherFrame(frames[f], frameW, frameH, palette, masks[f], tIdx);
       encoder.writeFrame(indices, frameW, frameH, {
         palette,
         delay: delays[f],
         transparent: true,
         transparentIndex: tIdx,
       });
+      // 86: yield between frames so the overlay can actually repaint instead
+      // of freezing at 100% for what reads as a hang.
+      onProgress(70 + Math.round(((f + 1) / frames.length) * 30), totalSteps, totalSteps);
+      await new Promise(r => setTimeout(r, 0));
     }
 
     encoder.finish();
@@ -193,10 +233,11 @@ export async function exportReplayGif({
     const { canShareToInstagram, shareGifToInstagramStories } = await import('./instagram-stories.js');
     if (canShareToInstagram()) {
       try {
-        // Brand-matched gradient behind the sticker.
+        // 95: this was a slate gradient that appears nowhere in this app,
+        // sitting behind a table that is purple. It comes from the felt now.
         await shareGifToInstagramStories(blob, {
-          backgroundTopColor: '#0f172a',
-          backgroundBottomColor: '#1e293b',
+          backgroundTopColor: bg.top,
+          backgroundBottomColor: bg.bottom,
         });
         shareMethod = 'instagram';
       } catch (e) {
@@ -233,8 +274,7 @@ export async function exportReplayGif({
 
     onDone({ shareMethod, shareError, blob });
   } catch (err) {
-    tableEl.style.paddingTop = origPadTop;
-    tableEl.style.marginTop = origMarginTop;
+    restore();
     console.error('GIF export error:', err);
     onError(err);
   }
