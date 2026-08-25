@@ -30,4 +30,7 @@
   <g id="_x3C_Layer_x3E_">
     <text class="cls-3" transform="translate(17.3 72)"><tspan x="0" y="0">8</tspan></text>
   </g>
+  <g data-corner-pip="1" transform="translate(14.0,84.0) scale(1.5)">
+    <path class="cls-1" d="M12 21.2c-.5-.4-7.6-5-9.7-9.5C.5 7.7 2.6 3.9 6.4 3.9c2.3 0 4 1.4 5.6 3.4 1.6-2 3.3-3.4 5.6-3.4 3.8 0 5.9 3.8 4.1 7.8-2.1 4.5-9.2 9.1-9.7 9.5z"/>
+  </g>
 </svg>

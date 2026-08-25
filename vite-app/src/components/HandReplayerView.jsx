@@ -309,12 +309,25 @@ function buildSolverSpot({ hand, game, streetIdx, heroCards, opponentCards, repl
 }
 
 // ── Formatting helpers ──
-function formatChipAmount(val) {
+/* 44: this was a hand-rolled divide-and-suffix with a hardcoded '.' decimal
+   point and a mixed-case suffix — '1.5k' but '1.5M' — and there was no Intl
+   anywhere in the file, so a French or German reader got the wrong separator
+   on every number on the felt. Intl compact notation is locale-correct, has
+   one suffix case, and drops the trailing .0 by itself. */
+const CHIP_COMPACT = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
+const CHIP_PLAIN = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+function formatChipAmount(val, bigBlind) {
   if (!val && val !== 0) return '';
   const n = Number(val);
-  if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k';
-  return String(n);
+  /* 44: 'stacks in BB' is how tournament players actually talk about depth —
+     'he had 14 big blinds' carries information '112,000' does not unless you
+     also remember the level. */
+  if (bigBlind > 0) {
+    const bb = n / bigBlind;
+    return (bb >= 100 ? Math.round(bb) : Math.round(bb * 10) / 10) + ' BB';
+  }
+  if (n >= 1000) return CHIP_COMPACT.format(n);
+  return CHIP_PLAIN.format(n);
 }
 
 // ── Chip visuals ──
@@ -952,6 +965,13 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'showTimeline', label:'Action Timeline', sub:'Clickable dots showing all actions' },
             { key:'showPlayerStats', label:'Player Stats', sub:'VPIP/PFR overlay on seats' },
             { key:'showNutsHighlight', label:'Highlight the Nuts', sub:'Glow when holding the best hand' },
+            /* Every one of these had a persisted setting, a styled surface and
+               finished maths behind it, and no way to turn any of them on. */
+            { key:'showSPR', label:'Stack-to-Pot Ratio', sub:'SPR under the pot from the flop on' },
+            { key:'showBetSizing', label:'Bet Sizing', sub:'Pot-relative label on each wager' },
+            { key:'showRanges', label:'Range Read', sub:'Estimated strength tier per opponent' },
+            { key:'showEquity', label:'Showdown Equity', sub:'Who is ahead when the cards are up' },
+            { key:'stacksInBB', label:'Stacks in Big Blinds', sub:'Read the table in BB instead of chips' },
           ].map(opt => (
             <div key={opt.key} className="replayer-settings-row">
               <div>
@@ -3473,6 +3493,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const [animStreetTransition, setAnimStreetTransition] = useState(false);
   const [animStreetLabel, setAnimStreetLabel] = useState(false);
   const [animShowdown, setAnimShowdown] = useState(false);
+  /* 11: @keyframes cinematicDeal is complete — cards fly in from a
+     dealer-relative offset with a per-seat delay — and nothing ever added
+     .animate-deal or set --deal-dx/--deal-dy/--deal-seat-delay, so hands
+     simply opened with the cards already present. The animateDeal setting was
+     meanwhile gating folds, discards and the showdown, none of which is a
+     deal. This runs it on mount and on any return to the start of the hand. */
+  const [animDealing, setAnimDealing] = useState(false);
   const [flyingChips, setFlyingChips] = useState([]);
   const [animPotCollect, setAnimPotCollect] = useState(false);
   const [drawDiscardAnims, setDrawDiscardAnims] = useState([]);
@@ -3495,6 +3522,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _showRanges = useReplayerSetting('ShowRanges', false);
   const _showChipDelta = useReplayerSetting('ShowChipDelta', false);
   const _showEquity = useReplayerSetting('ShowEquity', false);
+  const _stacksInBB = useReplayerSetting('StacksInBB', false);
   const _cardSplay = useReplayerSetting('CardSplay', true);
   const _lightStrip = useReplayerSetting('LightStrip', false);
   const _animDeal = useReplayerSetting('AnimateDeal', true);
@@ -3509,7 +3537,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
-    showEquity: _showEquity[0],
+    showEquity: _showEquity[0], stacksInBB: _stacksInBB[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
     cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0],
   };
@@ -3521,12 +3549,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     showNutsHighlight: _showNuts[1],
     showSPR: _showSPR[1], showBetSizing: _showBetSizing[1],
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
-    showEquity: _showEquity[1],
+    showEquity: _showEquity[1], stacksInBB: _stacksInBB[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
     cardSplay: _cardSplay[1], lightStrip: _lightStrip[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
+
+  /* 44: the display surfaces where depth is the point — stacks, pot, wagers —
+     go through this; commentary and exports keep chip counts, because prose
+     that says 'he shoved 14 BB' reads oddly next to a hand history. */
+  const _bb = (hand.blinds || {}).bb || 0;
+  const fmtChips = (v) => formatChipAmount(v, rSettings.stacksInBB ? _bb : 0);
 
   // Guard against old/incomplete hand records with no streets
   if (!hand.streets || hand.streets.length === 0) {
@@ -3589,6 +3623,26 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     }
     prevShowResultRef.current = showResult;
   }, [showResult, rSettings.animateDeal]);
+
+  useEffect(() => {
+    if (!rSettings.animateDeal) { setAnimDealing(false); return; }
+    if (streetIdx !== 0 || actionIdx >= 0 || showResult) return;
+    setAnimDealing(true);
+    // 400ms animation + the longest per-seat delay.
+    const t = setTimeout(() => setAnimDealing(false), 400 + hand.players.length * 80);
+    return () => clearTimeout(t);
+    // Deliberately keyed on the hand and the return-to-start, not on every render.
+  }, [hand, streetIdx, actionIdx, showResult, rSettings.animateDeal]);
+
+  /* Deal order is a poker fact, not a render order: the first card goes to the
+     seat left of the button and it proceeds clockwise. Falling back to seat
+     order when there is no button keeps the stagger from collapsing to zero. */
+  const dealOrder = useMemo(() => {
+    const n = hand.players.length;
+    let btn = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
+    if (btn < 0) btn = n - 1;
+    return Array.from({ length: n }, (_, k) => (btn + 1 + k) % n);
+  }, [hand]);
 
   // Flying chip helper
   const spawnFlyingChips = useCallback((fromPct, toPct, count, toWinner, amount) => {
@@ -3691,7 +3745,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const playerLastAction = useMemo(() => {
     const result = {};
     for (let ai = 0; ai <= actionIdx && ai < currentActions.length; ai++) {
-      result[currentActions[ai].player] = currentActions[ai];
+      /* 42: the sizing classifier needs the pot BEFORE this action, which
+         means it needs the action's index, which this map threw away. */
+      result[currentActions[ai].player] = { ...currentActions[ai], _ai: ai };
     }
     return result;
   }, [currentActions, actionIdx]);
@@ -3750,6 +3806,33 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     }
     return results.length ? results : null;
   }, [showResult, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx, category]);
+
+  /* 26: calcShowdownEquity and a finished bar-plus-percentage style were
+     both dead code, so at an all-in showdown the felt said nothing about who
+     was ahead — the single question a viewer has at that moment. */
+  const showdownEquity = useMemo(() => {
+    if (!rSettings.showEquity || !showResult || !gameEval) return null;
+    try {
+      return calcShowdownEquity(hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx);
+    } catch { return null; }
+  }, [rSettings.showEquity, showResult, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx]);
+
+  /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
+     nudged 8px up together, which communicates nothing — and the down-shifting
+     .replayer-hilo-low existed in the stylesheet with no code path that could
+     ever apply it, so the animation built to dramatise the split never split.
+     The Hi:/Lo: label matching was already written for the split circles. */
+  const hiloSide = useMemo(() => {
+    const out = {};
+    if (!isHiLo || !showResult) return out;
+    (hand.result?.winners || []).forEach(w => {
+      const label = w.label || '';
+      const hi = /Hi:/.test(label), lo = /Lo:/.test(label);
+      // A scoop wins both halves, so it rises with the highs.
+      out[w.playerIdx] = (hi || !lo) ? 'high' : 'low';
+    });
+    return out;
+  }, [isHiLo, showResult, hand]);
 
   // Navigation
   const canGoForward = streetIdx < totalStreets - 1 || actionIdx < currentActions.length - 1 || !showResult;
@@ -4281,9 +4364,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                       if (hiMatch) shortLabel = 'Hi';
                       if (loMatch) shortLabel = shortLabel ? 'Hi+Lo' : 'Lo';
                     }
-                    return <div key={i} className="replayer-split-circle" style={{ marginLeft: i > 0 ? '-8px' : 0, zIndex: splitCount - i }} title={w.label || ''}>
-                      {shortLabel && <span style={{fontSize:'0.45rem',display:'block',lineHeight:1}}>{shortLabel}</span>}
-                      {formatChipAmount(splitAmt)}
+                    /* 30: this crammed a 7.2px Hi/Lo tag above the amount
+                       inside the disc and overlapped the discs by an inline
+                       -8px, which clipped every gold ring after the first —
+                       at the one moment the point is that the pot SPLIT. The
+                       tag becomes a caption and the discs stop overlapping. */
+                    return <div key={i} className="replayer-split-winner">
+                      <div className="replayer-split-circle" title={w.label || ''}>
+                        {fmtChips(splitAmt)}
+                      </div>
+                      {shortLabel && <div className="replayer-split-tag">{shortLabel}</div>}
                     </div>;
                   })}
                 </div>
@@ -4294,7 +4384,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             <div className="replayer-pot-display">
               <div className="replayer-pot-label">Pot</div>
               {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={displayPot} />}
-              {formatChipAmount(displayPot)}
+              {fmtChips(displayPot)}
             </div>
           );
         })()}
@@ -4305,6 +4395,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           if (parsed.length === 0) return null;
           return (
             <div className={'replayer-board-area' + boardAnimClass}>
+              {/* 24: .replayer-street-label, its pop keyframe and three theme
+                  overrides all existed, an effect set and cleared animStreetLabel
+                  on a 450ms timer — and no JSX ever emitted the element, so the
+                  animation ran against a DOM node that was never there and the
+                  only street context during replay was the prose below the
+                  table. It renders under the board rather than at the CSS's
+                  top:28%, where it would have sat on the pot eyebrow. */}
               <div className="card-row replayer-board-spaced">
                 {parsed.map((c, i) => {
                   const key = c.rank + c.suit + '_' + i;
@@ -4330,8 +4427,23 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   return gap ? [gap, card] : card;
                 })}
               </div>
+              {streetIdx > 0 && currentStreet.name && (
+                <div className={'replayer-street-label' + (animStreetLabel ? ' anim-pop' : '')}>
+                  {currentStreet.name}
+                </div>
+              )}
             </div>
           );
+        })()}
+
+        {/* 25: calcSPR, a persisted ShowSPR setting and a positioned badge
+            style were all written; nothing rendered the badge and the panel
+            never offered the toggle, so the one number that says whether a
+            pot is commit-or-fold was computed and discarded. The CSS put it
+            at top:29%, on the pot eyebrow — it sits under the plaque now. */}
+        {rSettings.showSPR && (() => {
+          const spr = calcSPR(hand, streetIdx);
+          return spr ? <div className="replayer-spr-badge">SPR {spr}</div> : null;
         })()}
 
         {/* Watermark */}
@@ -4361,7 +4473,28 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`}
               style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle}}>
-              <div className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) ? 'replayer-hilo-high' + (hiloAnimate ? ' animate' : '') : ''}`}>
+              {/* 12: opponent cards were hidden until showResult and then
+                  appeared in a single frame — the only card event in the
+                  replayer with no motion, at the moment the whole replay has
+                  been building toward. The stylesheet's own comment says the
+                  flip was disabled because it fought the splay transforms, and
+                  the 600ms animShowdown effect kept ticking for an animation
+                  nothing read. The ROW wrapper carries no splay transform, so
+                  fading and lifting it costs the fan nothing. */}
+              <div className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) ? ('replayer-hilo-' + (hiloSide[pi] || 'high')) + (hiloAnimate ? ' animate' : '') : ''}${animDealing ? ' animate-deal' : ''}${animShowdown && pi !== replayHeroIdx && !folded.has(pi) ? ' animate-showdown' : ''}`}
+                style={(() => {
+                  const st = {};
+                  if (animDealing) {
+                    // The inverse of the muck vector already written below: cards
+                    // arrive FROM the dealer rather than leaving toward the centre.
+                    st['--deal-dx'] = ((50 - pos[0]) * 1.6) + 'px';
+                    st['--deal-dy'] = ((50 - pos[1]) * 0.9 - 40) + 'px';
+                    st['--deal-seat-delay'] = (dealOrder.indexOf(pi) * 80) + 'ms';
+                  }
+                  // 12: opponents reveal clockwise from the hero, not all at once.
+                  if (animShowdown) st['--showdown-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
+                  return st;
+                })()}>
                 <CardRow text={cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
                   placeholderCount={!cards && !folded.has(pi) ? gameCfg.heroCards : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
@@ -4387,7 +4520,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   )}
                   {p.name}
                 </div>
-                <div className="replayer-seat-stack">{formatChipAmount(stacks[pi])}</div>
+                <div className="replayer-seat-stack">{fmtChips(stacks[pi])}</div>
+                {/* 43: estimateRange returns a label AND a CSS class per
+                    opponent, four styled tiers exist and the setting was
+                    merged into the settings object — and no seat ever wore
+                    one. Hero is excluded: you can see your own cards. */}
+                {rSettings.showRanges && pi !== replayHeroIdx && !folded.has(pi) && !showResult && (() => {
+                  const r = estimateRange(hand, pi, streetIdx, actionIdx);
+                  return r ? <div className={'replayer-range-label ' + r.cls}>{r.label}</div> : null;
+                })()}
                 {/* 39: the delta styles were written, colour-coded and even
                     added to the tabular-figures group, and nothing ever drew
                     them — so "who finished up" could only be answered by
@@ -4405,7 +4546,27 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   );
                 })()}
               </div>
-              {lastAct && (() => {
+              {/* 26: filled by leader, below the plaque so it does not fight
+                  the hand name. */}
+              {showdownEquity && showdownEquity[pi] != null && !folded.has(pi) && (() => {
+                const pct = showdownEquity[pi];
+                const best = Math.max(...Object.values(showdownEquity));
+                const col = pct >= best ? 'var(--ok)' : 'rgba(255,255,255,0.45)';
+                return (
+                  <div className="replayer-equity-bar-wrap">
+                    <div className="replayer-equity-bar"><div className="replayer-equity-fill" style={{width: pct + '%', background: col}} /></div>
+                    <div className="replayer-equity-pct" style={{color: col}}>{pct}%</div>
+                  </div>
+                );
+              })()}
+              {/* 29: both of these are absolutely positioned directly under the
+                  plaque — the badge at calc(100% + 2px), the name at 100% plus
+                  a margin — and at showdown BOTH render, because lastAct
+                  persists from the river while handName arrives with the
+                  result. So "CALL 12k" landed on top of "Two Pair, A & K".
+                  The name is the newer and more important fact; the badge
+                  stands down for it. */}
+              {lastAct && !handName && (() => {
                 const actText = lastAct.action;
                 if (!actText) return null;
                 let label = actText;
@@ -4430,13 +4591,24 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const lastAct = playerLastAction[pi];
           if (!lastAct || !lastAct.amount) return null;
           const pos = seats[pi] || [50, 50];
-          const isBottom = pos[1] >= 70, isTop = pos[1] <= 15, isLeft = pos[0] <= 20, isRight = pos[0] >= 80;
-          let chipX, chipY;
-          if (isBottom) { chipX = pos[0]; chipY = pos[1] - 14; }
-          else if (isTop) { chipX = pos[0]; chipY = pos[1] + 10; }
-          else if (isLeft) { chipX = pos[0] + 25; chipY = pos[1] - 7; }
-          else if (isRight) { chipX = pos[0] - 25; chipY = pos[1] - 7; }
-          else { chipX = pos[0] + (50-pos[0])*0.35; chipY = pos[1] + (50-pos[1])*0.35; }
+          /* 23: these were five branches of raw percentage constants along
+             different axes of a 3:4.5 table — a top seat's chip sat 10% of
+             HEIGHT from its plaque, a side seat's 25% of WIDTH, and the sides
+             also drifted up 7% for no stated reason. In pixels that is roughly
+             15, 26 and 45, so the wagers formed a lumpy, non-concentric ring
+             around a pot they are all supposedly travelling to.
+
+             One rule instead: walk a fixed pixel distance from the seat
+             straight toward the table centre. The aspect correction is what
+             makes it a distance rather than a percentage — 1% of height is 1.5
+             times the pixels of 1% of width on this table, so the vector has
+             to be built in pixel space and converted back. */
+          const AR = 4.5 / 3;
+          const dx = 50 - pos[0], dy = (50 - pos[1]) * AR;
+          const len = Math.hypot(dx, dy) || 1;
+          const TRAVEL = 9; // % of table width, identical for every seat
+          const chipX = pos[0] + (dx / len) * TRAVEL;
+          const chipY = pos[1] + (dy / len) * TRAVEL / AR;
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
           if (rSettings.animateChips) {
             chipStyle['--chip-start-dx'] = ((pos[0] - chipX) * 3) + 'px';
@@ -4445,7 +4617,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div key={'bet-' + pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
               <ChipStack amount={lastAct.amount} />
-              {formatChipAmount(lastAct.amount)}
+              {fmtChips(lastAct.amount)}
+              {/* 42: a ten-step classifier from min through overbet was written
+                  and never called, so '13k' arrived with no pot-relative
+                  context — and pot-relative size is what makes a bet readable
+                  as a bluff or a value bet at a glance. */}
+              {rSettings.showBetSizing && (lastAct.action === 'bet' || lastAct.action === 'raise') && (() => {
+                const before = calcPotBeforeAction(hand, streetIdx, lastAct._ai ?? actionIdx);
+                const sizing = getBetSizingLabel(lastAct.amount, before);
+                return sizing ? <div className="replayer-bet-sizing">{sizing}</div> : null;
+              })()}
             </div>
           );
         }).filter(Boolean)}
@@ -4506,6 +4687,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           });
         })}
       </div>
+
+      {/* 40: on screen a solo winner got a gold border and a shimmer, and
+          nothing anywhere said "Hero wins 24.5k, Two Pair". The string was
+          composed — and painted only into the share image, so the export knew
+          the result and the app did not. Three .replayer-result classes and a
+          winner-star keyframe were sitting unused for exactly this. */}
+      {showResult && evalResult && evalResult.length > 0 && (
+        <div className="replayer-result-banner">
+          {evalResult.map((r, i) => (
+            <div key={i} className={'replayer-result replayer-result-' + (r.result?.outcome === 'hero' ? 'hero' : r.result?.outcome === 'split' ? 'split' : 'opponent')}>
+              <span className="replayer-winner-star" aria-hidden="true">{'\u2605'}</span>
+              {r.result?.text || ''}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Draw info bar */}
       {(category === 'draw_triple' || category === 'draw_single') && currentStreet.draws?.length > 0 && (
