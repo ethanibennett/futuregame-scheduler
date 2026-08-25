@@ -1937,6 +1937,8 @@
        barber-pole cards next to the replayer's weave. */
     .card-row .card-unknown,
     .card-row .card-placeholder,
+    .replayer-deck > span,
+    .replayer-muck > span,
     .card-back {
       --back-1: #243b5c;
       --back-2: #1a2744;
@@ -3080,8 +3082,8 @@
          foreshortening looks like, and it hands the extra height to the seats
          above and below, where the cards live. The seat coordinates in
          HandReplayerView are derived from these two numbers. */
-      --felt-y: 24%;
-      --felt-x: 10%;
+      --felt-y: 28%;
+      --felt-x: 7%;
       --rail-w: 5.6cqw;
 
       /* 44px at a ~350px table, which is where it has been, but now it holds
@@ -3253,7 +3255,9 @@
        and shared; a dark lozenge also gives it a ground independent of the
        user's chosen felt colour, where white text was nearly invisible. */
     .replayer-pot-display {
-      position:absolute; left:50%; top:35%; transform:translate(-50%,-50%);
+      /* Rendered: 35% is hard against the top edge of a felt that now spans
+         28-72%, and a top seat's wager lands within a few percent of it. */
+      position:absolute; left:50%; top:40%; transform:translate(-50%,-50%);
       /* 40: --fs-sm put the pot ONE step above a nine-character player name,
          on the number the whole composition is arranged around — smaller than
          the app's own body text, where every broadcast makes it the largest
@@ -3294,7 +3298,8 @@
     }
 
     .replayer-board-area {
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      --card-h: clamp(28px, 9.2cqw, 44px);
+      position:absolute; left:50%; top:54%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
@@ -3342,6 +3347,15 @@
     }
     .replayer-seat.seat-left { transform: translate(0%, -50%); }
     .replayer-seat.seat-right { transform: translate(-100%, -50%); }
+    /* Rendered: the board ran under the two mid-height side plaques. That
+       predates this pass — at the old 18% inset the clear middle was about
+       66px against a 181px board — and widening the felt improved it without
+       closing it. A side plaque reaches inward toward the board, so it is the
+       one that should not be reserving 72px it is not using. */
+    .replayer-seat.seat-left .replayer-seat-info,
+    .replayer-seat.seat-right .replayer-seat-info { min-width: 0; }
+    .replayer-seat.seat-left .replayer-seat-name,
+    .replayer-seat.seat-right .replayer-seat-name { max-width: 56px; }
     /* Folded/mucked. opacity:0.5 faded the NAME AND STACK along with the plaque, losing the
        information at the moment you are scanning who is left. Desaturating and stepping the plaque
        back says "out of the hand" while keeping it readable. */
@@ -3749,11 +3763,11 @@
       background: var(--act-allin) !important;
       color: #fff;
       border-color: var(--act-allin);
-      font-size: var(--fs-md);
+      font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
-      padding: var(--space-2xs) var(--space-lg);
+      padding: var(--nudge-1) var(--space-ml);
       letter-spacing: var(--track-caps);
-      box-shadow: 0 0 14px 2px rgba(168,85,247,0.45);
+      box-shadow: 0 0 10px 1px rgba(168,85,247,0.4);
     }
     .replayer-action-badge-outer.action-bet,
     .replayer-action-badge-outer.action-raise,
@@ -3767,7 +3781,8 @@
     .replayer-action-badge.action-call, .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
     .replayer-action-badge.action-bet, .replayer-action-badge-outer.action-bet { background: rgba(245,158,11,0.2); color: var(--act-bet); }
     .replayer-action-badge.action-raise, .replayer-action-badge-outer.action-raise { background: rgba(239,68,68,0.2); color: var(--act-raise); }
-    .replayer-action-badge.action-allin, .replayer-action-badge-outer.action-allin { background: rgba(168,85,247,0.22); color: var(--act-allin); }
+    .replayer-action-badge.action-allin { background: rgba(168,85,247,0.22); color: var(--act-allin); }
+    .replayer-action-badge-outer.action-allin { color: #fff; }
 
     /* Winner trophy star */
     .replayer-winner-star {
@@ -4903,6 +4918,8 @@
        single export. */
     .replayer-watermark {
       z-index: var(--z-mark);
+      /* Rendered: at 57% it sat behind the board's street labels once the
+         board moved to 54%. It lives in the clear band below them. */
       mix-blend-mode: overlay;
       opacity: 0.22;
       font-family: var(--font-display);
@@ -5208,7 +5225,11 @@
       padding: var(--space-sm) var(--space-ml);
       border-color: rgba(242,166,59,0.5);
     }
-    .replayer-seat.is-hero .replayer-seat-cards { border-color: rgba(242,166,59,0.35); }
+    /* The hero's own border-colour is more specific than the splay rule, so
+       a splayed hero fan kept the tray the splay rule had just taken away. */
+    .replayer-seat.is-hero .replayer-seat-cards:not(:has(.card-row-splay)) {
+      border-color: rgba(242,166,59,0.35);
+    }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: var(--fs-md); }
 
     /* 91: committed, and it shows for the rest of the hand. */

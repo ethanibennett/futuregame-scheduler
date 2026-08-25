@@ -4903,7 +4903,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      --felt-y / --felt-x block in styles.css) and hands the recovered height
      to the top and bottom seats, whose cards extend a card's height above
      the marker and used to sit close to the export's clipping edge. */
-  const FY = 24, FX = 10;                 // must match --felt-y / --felt-x
+  const FY = 28, FX = 7;                  // must match --felt-y / --felt-x
   const T = FY, B = 100 - FY;             // the top and bottom edges of the felt
   const L = FX, R = 100 - FX;             // the left and right edges
   const my = (t) => Math.round(T + (B - T) * t);   // a fraction down the felt
@@ -4929,13 +4929,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      the deck. Both are pulled toward the table centre so they land on cloth
      rather than on the rail. */
   const btnSeat = seats[hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D')] || seats[0] || [50, 50];
-  const dealerSpot = [
-    Math.round(btnSeat[0] + (50 - btnSeat[0]) * 0.22),
-    Math.round(btnSeat[1] + (50 - btnSeat[1]) * 0.22),
-  ];
+  const dealerSpot = (() => {
+    const vx = 50 - btnSeat[0], vy = 54 - btnSeat[1];
+    const len = Math.hypot(vx, vy) || 1;
+    const ux = vx / len, uy = vy / len;      // toward the middle of the felt
+    const px = -uy, py = ux;                 // and round the rail from there
+    return [
+      Math.round(btnSeat[0] + ux * 7 + px * 15),
+      Math.round(btnSeat[1] + uy * 7 + py * 10),
+    ];
+  })();
   const muckTarget = [
-    Math.round(dealerSpot[0] + (50 - dealerSpot[0]) * 0.30),
-    Math.round(dealerSpot[1] + (50 - dealerSpot[1]) * 0.30),
+    Math.round(dealerSpot[0] + (50 - dealerSpot[0]) * 0.26),
+    Math.round(dealerSpot[1] + (54 - dealerSpot[1]) * 0.26),
   ];
   const muckCount = folded.size;
 
@@ -5310,7 +5316,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
         {/* Watermark */}
         <div className="replayer-watermark"
-          style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
+          style={{position:'absolute',left:'50%',top:'66%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
 
         {/* Player seats */}
         {hand.players.map((p, pi) => {
@@ -5529,7 +5535,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const AR = 4.5 / 3;
           const dx = 50 - pos[0], dy = (50 - pos[1]) * AR;
           const len = Math.hypot(dx, dy) || 1;
-          const TRAVEL = 9; // % of table width, identical for every seat
+          const TRAVEL = 7; // % of table width, identical for every seat
           const chipX = pos[0] + (dx / len) * TRAVEL;
           const chipY = pos[1] + (dy / len) * TRAVEL / AR;
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
