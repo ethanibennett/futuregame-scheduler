@@ -1965,7 +1965,29 @@
     .replayer-hand-card-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); color:var(--text); }
     .replayer-hand-card-game { font-size: var(--fs-2xs); color:var(--accent2); background:var(--surface2); padding: var(--space-2xs) var(--space-sm); border-radius:var(--radius-xs); }
     .replayer-hand-card-meta { font-size: var(--fs-2xs); color:var(--text-muted); margin-top: var(--space-xs); }
-    .replayer-hand-card-actions { display:flex; gap: var(--space-sm); margin-top: var(--space-sm); }
+    .replayer-hand-card-actions { display:flex; gap: var(--space-sm); }
+    /* 59: the row layout the -meta and -actions classes were written for. */
+    .replayer-hand-card.is-row {
+      display:flex; align-items:center; gap: var(--space-ml);
+      padding: var(--space-sm) var(--space-ml);
+      border-left: 3px solid transparent;
+    }
+    .replayer-hand-card.outcome-win   { border-left-color: var(--ok); }
+    .replayer-hand-card.outcome-loss  { border-left-color: var(--danger); }
+    .replayer-hand-card.outcome-split { border-left-color: var(--warn); }
+    .replayer-hand-card-cards {
+      flex-shrink:0; width:40px; display:flex; align-items:center;
+    }
+    .replayer-hand-card-cards .card-row img,
+    .replayer-hand-card-cards .card-row .card-unknown,
+    .replayer-hand-card-cards .card-row .card-placeholder { height:30px; width:auto; }
+    .replayer-hand-card-body {
+      flex:1; min-width:0; display:flex; flex-direction:column; gap: var(--nudge-1);
+    }
+    .replayer-hand-card.is-row .replayer-hand-card-title {
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .replayer-hand-card.is-row .replayer-hand-card-meta { margin-top:0; }
     .replayer-empty { text-align:center; color:var(--text-muted); font-size: var(--fs-sm); padding: var(--space-3xl) 0; }
 
     /* Entry mode */
@@ -3168,8 +3190,43 @@
       display:flex; align-items:center; justify-content:center; gap:0;
       line-height:1; flex-shrink:0; padding:0;
     }
-    /* Play/pause button is slightly larger */
-    .replayer-controls button:nth-child(3) { width:38px; height:38px; border-color:var(--accent2); }
+    /* 52: these were 32px circles (play 38px) with 14px glyphs, packed
+       directly above the bottom nav, on the platform whose own guidance sets
+       44px as the floor — for a rapid-repeat gesture. The circle stays the
+       size the design wants; the TARGET grows behind it, the same trick the
+       dashboard's carousel dots use. */
+    .replayer-controls button::after {
+      content: '';
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 44px; height: 44px;
+      transform: translate(-50%, -50%);
+    }
+    .replayer-controls button { position: relative; }
+    /* The 44px targets would otherwise overlap at the old --space-md gap. */
+    .replayer-controls { gap: var(--space-ml); }
+
+    .replayer-controls .replayer-play-btn { width:38px; height:38px; border-color:var(--accent2); }
+    /* 53 */
+    .replayer-controls .replayer-play-btn.is-playing {
+      background: var(--accent2);
+      color: var(--on-brand, #fff);
+      border-color: var(--accent2);
+    }
+    /* 54: the speed control is a sibling of the transport circles, not a form
+       field parked at the end of the row. */
+    .replayer-speed-btn {
+      width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
+      background:transparent; cursor:pointer; display:flex; align-items:center;
+      justify-content:center; padding:0; flex-shrink:0; position:relative;
+    }
+    .replayer-speed-btn::after {
+      content:''; position:absolute; left:50%; top:50%;
+      width:44px; height:44px; transform:translate(-50%,-50%);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-speed-btn:hover { background:var(--surface2); border-color:var(--accent); }
+    }
     @media (hover: hover) and (pointer: fine) {
       .replayer-controls button:hover { background:var(--surface2); border-color:var(--accent); }
     }
@@ -3177,7 +3234,10 @@
     @media (hover: hover) and (pointer: fine) {
       .replayer-controls button:disabled:hover { background:transparent; border-color:var(--border); }
     }
-    .replayer-speed-label { font-size: var(--fs-2xs); line-height:1; color:var(--text-muted); font-family: var(--font-condensed); }
+    .replayer-speed-label {
+      font-size: var(--fs-2xs); line-height:1; color:var(--text-muted);
+      font-family: var(--font-condensed); font-variant-numeric: var(--num-tabular);
+    }
 
     .replayer-street-indicator {
       display:flex; gap: var(--space-xs); justify-content:center; margin-bottom: var(--space-sm);
@@ -3663,7 +3723,17 @@
       100% { transform:scale(1); }
     }
     .replayer-seat.winner .replayer-seat-cards { animation:winnerBounce 0.7s var(--ease-emphatic); }
-    .replayer-seat.winner .replayer-seat-info { animation:winnerShimmer 1.8s ease-in-out 2; }
+    /* 55: this ran the 1.8s shimmer TWICE — 3.6 seconds of a plaque pulsing
+       to a 32px gold bloom and back, long after the result has been read, and
+       then dropping to nothing. The border and glow in .replayer-seat.winner
+       are already the steady state; the shimmer only has to arrive at it. */
+    .replayer-seat.winner .replayer-seat-info { animation:winnerShimmer 1.8s ease-in-out 1 both; }
+    /* 57: the panel promised "Winner Effects" and animateWinner was read by
+       nothing at all — the bounce, the shimmer and the star ran unconditionally.
+       The steady gold border stays either way; it is result, not celebration. */
+    .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-seat-cards,
+    .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-seat-info,
+    .replayer-table[data-anim-winner="0"] .replayer-seat.winner .replayer-winner-star { animation: none; }
     @keyframes winnerStarSpin {
       0% { transform:scale(0) rotate(0deg); opacity:0; }
       50% { transform:scale(1.3) rotate(180deg); opacity:1; }
@@ -3702,19 +3772,28 @@
       border: var(--bw-1) solid rgba(255,255,255,0.5);
       box-shadow:0 1px 3px rgba(0,0,0,0.4);
       z-index:10; pointer-events:none;
+      /* 56: both keyframes interpolated LEFT and TOP — layout-affecting
+         properties, relayout and repaint every frame, on up to five elements
+         at once, on a phone. They are positioned once at the origin now and
+         only transform moves, which the compositor can do on its own thread.
+         The path was also dead straight: real chips are pushed, so they arc.
+         --fly-dx/--fly-dy are the delta the JS already had both ends of. */
+      left: var(--fly-x0); top: var(--fly-y0);
       animation:flyChipToPot var(--fly-duration,0.4s) var(--ease-emphatic) forwards;
     }
     @keyframes flyChipToPot {
-      0% { left:var(--fly-x0); top:var(--fly-y0); opacity:1; transform:scale(0.6); }
-      100% { left:var(--fly-x1); top:var(--fly-y1); opacity:0.8; transform:scale(1); }
+      0%   { opacity:1; transform:translate(0,0) scale(0.6); }
+      55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - 14px)) scale(0.9); }
+      100% { opacity:0.8; transform:translate(var(--fly-dx), var(--fly-dy)) scale(1); }
     }
     .replayer-flying-chip.to-winner {
       background:radial-gradient(ellipse, #ffd700 0%, #e8b800 60%, #c4980a 100%);
       animation:flyChipToWinner var(--fly-duration,0.5s) var(--ease-emphatic) forwards;
     }
     @keyframes flyChipToWinner {
-      0% { left:var(--fly-x0); top:var(--fly-y0); opacity:1; transform:scale(1); }
-      100% { left:var(--fly-x1); top:var(--fly-y1); opacity:0; transform:scale(0.4); }
+      0%   { opacity:1; transform:translate(0,0) scale(1); }
+      55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - 16px)) scale(0.8); }
+      100% { opacity:0; transform:translate(var(--fly-dx), var(--fly-dy)) scale(0.4); }
     }
 
     /* ── Draw discard card animation ── */
@@ -3997,6 +4076,35 @@
       color: rgba(255,255,255,0.68);
     }
     .replayer-split-circles { gap: var(--space-xs); }
+
+
+    /* 48: animPotCollect was declared, never set and never read, and the
+       potCollect keyframe — a slide toward the winner with a shrink and a
+       fade — never ran, so at showdown the pot pill just sat there while the
+       winner shimmered. It leaves the felt now, which is what a pot does. */
+    @keyframes potCollect {
+      0%   { opacity:1; transform:translate(-50%,-50%) scale(1); }
+      100% { opacity:0; transform:translate(-50%,-50%) scale(0.55); }
+    }
+    .replayer-pot-display.anim-collect {
+      animation: potCollect 0.6s var(--ease-emphatic) 0.15s both;
+    }
+
+    /* 58: the badge under each seat is the densest thing on the felt that
+       changes on every single step, and it had no animation or transition at
+       all — it blinked into existence, or its text swapped in place, which is
+       the difference between a replay and a slideshow. Keyed on street and
+       action so a re-raise by the same player re-pops. */
+    @keyframes actionBadgeIn {
+      0%   { opacity:0; transform:translateY(-4px) scale(0.88); }
+      70%  { opacity:1; transform:translateY(0) scale(1.05); }
+      100% { opacity:1; transform:translateY(0) scale(1); }
+    }
+    .replayer-action-badge-outer { animation: actionBadgeIn var(--dur-base) var(--ease-emphatic) both; }
+    @media (prefers-reduced-motion: reduce) {
+      .replayer-action-badge-outer,
+      .replayer-pot-display.anim-collect { animation: none; }
+    }
 
     /* ── Table shapes ── */
     .replayer-table-felt.shape-round { border-radius:50% !important; inset:12% 22% !important; }

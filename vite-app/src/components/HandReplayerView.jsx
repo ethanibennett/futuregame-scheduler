@@ -986,7 +986,14 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Animation</div>
           {[
-            { key:'animateDeal', label:'Deal Animation', sub:'Cards slide in when dealt' },
+            /* 57: the panel promised Winner Effects and animateWinner was
+               never read anywhere — the glow applied unconditionally — while
+               animateDeal, whose sub-line said "cards slide in when dealt",
+               was actually gating the FOLD animation, the showdown reveal and
+               draw discards, and the deal animation did not exist. Each switch
+               now controls the thing it names. */
+            { key:'animateDeal', label:'Deal Animation', sub:'Cards fly in at the top of a hand' },
+            { key:'animateFold', label:'Fold & Muck', sub:'Folded cards slide away to the muck' },
             { key:'animateChips', label:'Chip Animation', sub:'Chips slide from player to pot' },
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
             { key:'animateWinner', label:'Winner Effects', sub:'Bounce and glow on winning hand' },
@@ -3431,14 +3438,25 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       ) : (
         <div className="replayer-hand-list">
           {hands.map(h => (
-            <div key={h.id} className="replayer-hand-card"
-              style={{display:'flex',alignItems:'center',gap:'8px',padding:'7px 10px'}}
+            /* 59: a title, a game chip and a Delete button — no cards, no
+               result, no date — in an app about cards, while the stylesheet
+               shipped -meta and -actions classes this list never used. Nobody
+               looks for "Hand 14"; they look for that AA hand they lost. */
+            <div key={h.id} className={'replayer-hand-card is-row' + (h.outcome ? ' outcome-' + h.outcome : '')}
               onClick={() => loadHand(h.id)}
             >
-              <span className="replayer-hand-card-title" style={{flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.title || 'Untitled'}</span>
-              <span className="replayer-hand-card-game" style={{flexShrink:0}}>{h.game_type}</span>
-              <div onClick={e => e.stopPropagation()} style={{flexShrink:0}}>
-                <button className="btn btn-ghost btn-sm" style={{padding:'2px 7px',fontSize:'0.62rem'}} onClick={() => deleteHand(h.id)}>Delete</button>
+              <div className="replayer-hand-card-cards" aria-hidden="true">
+                <CardRow text={h.hero_cards || ''} max={2} splay={12} />
+              </div>
+              <div className="replayer-hand-card-body">
+                <span className="replayer-hand-card-title">{h.title || 'Untitled'}</span>
+                <span className="replayer-hand-card-meta">
+                  {h.game_type}
+                  {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
+                </span>
+              </div>
+              <div className="replayer-hand-card-actions" onClick={e => e.stopPropagation()}>
+                <button className="btn btn-ghost btn-sm" onClick={() => deleteHand(h.id)}>Delete</button>
               </div>
             </div>
           ))}
@@ -3468,7 +3486,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const [showSettings, setShowSettings] = useState(false);
   const [feltColor, setFeltColor] = useState(() => localStorage.getItem('replayerFeltColor') || '#6b5b8a');
   const [cardTheme, setCardTheme] = useState(() => localStorage.getItem('replayerCardTheme') || 'default');
-  const playTimerRef = useRef(null);
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
   const prevActionIdxRef = useRef(-1);
@@ -3529,6 +3546,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _animChips = useReplayerSetting('AnimateChips', true);
   const _animBoard = useReplayerSetting('AnimateBoard', true);
   const _animWinner = useReplayerSetting('AnimateWinner', true);
+  const _animFold = useReplayerSetting('AnimateFold', true);
 
   const rSettings = {
     theme: _theme[0], tableShape: _tableShape[0], feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
@@ -3539,6 +3557,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
     showEquity: _showEquity[0], stacksInBB: _stacksInBB[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
+    animateFold: _animFold[0],
     cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0],
   };
   const rSetters = {
@@ -3551,6 +3570,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
     showEquity: _showEquity[1], stacksInBB: _stacksInBB[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
+    animateFold: _animFold[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
     cardSplay: _cardSplay[1], lightStrip: _lightStrip[1],
   };
@@ -3606,13 +3626,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const movedForward = actionIdx > prevActionIdxRef.current;
     if (movedForward && actionIdx >= 0 && actionIdx < currentActions.length) {
       const act = currentActions[actionIdx];
-      if (act && act.action === 'fold' && rSettings.animateDeal) {
+      if (act && act.action === 'fold' && rSettings.animateFold) {
         setAnimFolded(prev => { const n = new Set(prev); n.add(act.player); return n; });
         setTimeout(() => { setAnimFolded(prev => { const n = new Set(prev); n.delete(act.player); return n; }); }, 450);
       }
     }
     prevActionIdxRef.current = actionIdx;
-  }, [actionIdx, currentActions, rSettings.animateDeal]);
+  }, [actionIdx, currentActions, rSettings.animateFold]);
   useEffect(() => { setAnimFolded(new Set()); }, [streetIdx]);
 
   // Showdown animation
@@ -3669,6 +3689,45 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     setFlyingChips(prev => prev.concat(chips));
     setTimeout(() => { setFlyingChips([]); }, 700);
   }, []);
+
+  /* 47: spawnFlyingChips computes the denomination colour, staggers up to
+     five chips and has a live render block and a denominated variant — and
+     nothing in the file ever called it, so flyingChips was permanently empty
+     and the whole system was decoration on an unreachable code path. The step
+     effect is where a wager actually happens, so that is where it belongs. */
+  const prevChipStepRef = useRef('');
+  useEffect(() => {
+    if (!rSettings.animateChips) return;
+    const key = streetIdx + ':' + actionIdx + ':' + (showResult ? 'r' : '');
+    const prev = prevChipStepRef.current;
+    prevChipStepRef.current = key;
+    if (!prev || prev === key) return;
+    // Scrubbing backwards should not re-throw chips that are already in the pot.
+    const [pS, pA] = prev.split(':').map(Number);
+    if (streetIdx < pS || (streetIdx === pS && actionIdx < pA)) return;
+
+    if (showResult) {
+      /* 48: the pot travelling to the winner is the payoff shot of a poker
+         broadcast, and animPotCollect was declared, never set and never read
+         while potCollect sat unused — so at showdown the pot pill simply sat
+         there. One burst per winner, from the pot toward the seat. */
+      const winners = hand.result?.winners || [];
+      winners.forEach(w => {
+        const seat = seats[w.playerIdx];
+        if (seat) spawnFlyingChips([50, 42], seat, 5, true, pot);
+      });
+      if (winners.length) {
+        setAnimPotCollect(true);
+        setTimeout(() => setAnimPotCollect(false), 700);
+      }
+      return;
+    }
+    const act = currentActions[actionIdx];
+    if (!act || !act.amount) return;
+    if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
+    const seat = seats[act.player];
+    if (seat) spawnFlyingChips(seat, [50, 42], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
+  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips]);
 
   // Determine board animation class based on which street just appeared
   const getBoardAnimClass = () => {
@@ -3858,22 +3917,76 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   }, [actionIdx, streetIdx, showResult, hand]);
 
   const goToStart = () => { setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
-  const goToEnd = () => { const lastStreet = hand.streets.length - 1; setStreetIdx(lastStreet); setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1); };
+  /* 51: this set the last street and the last action and stopped one step
+     short of the showdown, so "End" landed on the river's final bet with the
+     opponents' cards still face down. stepForward's final branch is what
+     actually ends a hand; End does the same thing now. */
+  const goToEnd = () => {
+    const lastStreet = hand.streets.length - 1;
+    setStreetIdx(lastStreet);
+    setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1);
+    setShowResult(true);
+    if (isHiLo) setTimeout(() => setHiloAnimate(true), 100);
+  };
 
-  // Auto-play
+  /* 50: at the result an effect forces playing false and stepForward's last
+     branch pauses, so pressing play set playing true, ticked once, and paused
+     again — a flicker and a no-op, under a glyph still showing a play
+     triangle. From the end, play means replay. */
+  const handlePlayPause = () => {
+    if (!playing && !canGoForward) { goToStart(); setPlaying(true); return; }
+    setPlaying(p => !p);
+  };
+
+  /* 60: the interval ran regardless of document visibility, so backgrounding
+     the app played the hand out unseen and handed you back the result — and a
+     throttled background timer gets the pacing wrong anyway. */
+  /* 46: at 4x on a 30-action hand the strip scrolls past the viewport, so the
+     one dot that matters has to be pulled back into it. */
+  const timelineRef = useRef(null);
   useEffect(() => {
-    if (playing) {
-      const animExtra = rSettings.animateDeal ? Math.max(200, speed * 0.3) : 0;
-      playTimerRef.current = setInterval(stepForward, speed + animExtra);
-    }
-    return () => { if (playTimerRef.current) clearInterval(playTimerRef.current); };
-  }, [playing, speed, stepForward, rSettings.animateDeal]);
+    const el = timelineRef.current;
+    if (!el) return;
+    const dot = el.querySelector('.replayer-timeline-dot.current');
+    if (dot && dot.scrollIntoView) dot.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [streetIdx, actionIdx]);
+
+  const [tabHidden, setTabHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVis = () => setTabHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
+  /* 49: one fixed interval with a single flat animation allowance gave a
+     check, a flop whose stagger runs 640ms, and the showdown the identical
+     delay — so at 4x the next action fired while the flop was still sliding,
+     and at 1x a street opening got no more room than a check. A hand does not
+     have a constant tempo; street boundaries and the showdown are the beats.
+
+     Self-scheduling rather than an interval: each step changes the indices,
+     which re-runs this effect, which picks the NEXT delay from where the
+     replay now stands. The allowances scale with the speed setting so 4x
+     stays 4x rather than becoming 4x-with-long-pauses. */
+  useEffect(() => {
+    if (!playing || tabHidden) return;
+    const scale = speed / 1000;
+    const atLastAction = actionIdx >= currentActions.length - 1;
+    const streetBreak = atLastAction && streetIdx < totalStreets - 1;
+    const resultBreak = atLastAction && streetIdx >= totalStreets - 1 && !showResult;
+    const allowance = rSettings.animateDeal
+      ? (resultBreak ? 700 : streetBreak ? 650 : 0)
+      : 0;
+    const t = setTimeout(() => stepForwardRef.current?.(), speed + allowance * scale);
+    return () => clearTimeout(t);
+  }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
   useEffect(() => { if (showResult && playing) setPlaying(false); }, [showResult, playing]);
 
   // Trigger draw discard animation when entering a draw street
   useEffect(() => {
-    if (!isDrawGame || !rSettings.animateDeal) return;
+    if (!isDrawGame || !rSettings.animateFold) return;
     const st = hand.streets[streetIdx];
     if (!st || !st.draws || st.draws.length === 0) return;
     if (actionIdx !== -1) return;
@@ -3887,7 +4000,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     }, 600);
     const t2 = setTimeout(() => { setDrawDiscardAnims([]); }, 1000);
     return () => { clearTimeout(t1); clearTimeout(t2); setDrawDiscardAnims([]); };
-  }, [streetIdx, actionIdx, isDrawGame, hand, rSettings.animateDeal]);
+  }, [streetIdx, actionIdx, isDrawGame, hand, rSettings.animateFold]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -4294,6 +4407,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           --back-custom feeds the custom colour through to the gradient stops. */}
       <div ref={tableRef} className={'replayer-table' + themeClass}
         data-cardback={rSettings.cardBack || 'default'}
+      data-anim-winner={rSettings.animateWinner ? '1' : '0'}
         style={rSettings.cardBack === 'custom' ? (() => {
           // Same derivation as the felt below, and for the same reason.
           const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
@@ -4381,7 +4495,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             );
           }
           return (
-            <div className="replayer-pot-display">
+            <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')}>
               <div className="replayer-pot-label">Pot</div>
               {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={displayPot} />}
               {fmtChips(displayPot)}
@@ -4574,7 +4688,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   if (actText === 'raise') label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, actionIdx, pi));
                   else label += ' ' + formatChipAmount(lastAct.amount);
                 }
-                return <div className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
+                // 58: re-keying is what makes the entrance replay when the
+                // same player acts twice in one street.
+                return <div key={streetIdx + '-' + actionIdx} className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
               })()}
               {handName && <div className="replayer-seat-hand-name">{handName}</div>}
               {isDrawGame && currentStreet.draws?.length > 0 && (() => {
@@ -4661,8 +4777,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         {flyingChips.map(fc => (
           <div key={fc.id} className={'replayer-flying-chip' + (fc.toWinner ? ' to-winner' : '') + (fc.color && !fc.toWinner ? ' denom' : '')}
             style={{
+              // 56: the origin is set once; the animation only translates.
               '--fly-x0': fc.x0 + 'px', '--fly-y0': fc.y0 + 'px',
-              '--fly-x1': fc.x1 + 'px', '--fly-y1': fc.y1 + 'px',
+              '--fly-dx': (fc.x1 - fc.x0) + 'px', '--fly-dy': (fc.y1 - fc.y0) + 'px',
               '--fly-duration': '0.4s',
               ...(fc.color ? { '--fly-color': fc.color } : null),
               animationDelay: fc.delay + 'ms',
@@ -4725,6 +4842,35 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         </div>
       )}
 
+      {/* 46: the dot strip, its hover and current states, six action classes,
+          the street markers and the street label are all finished CSS, the
+          setting DEFAULTS TO TRUE, and the settings panel advertises
+          "clickable dots showing all actions" — for markup no component ever
+          emitted. The toggle toggled nothing. */}
+      {rSettings.showTimeline && (
+        <div className="replayer-timeline" ref={timelineRef}>
+          {hand.streets.map((st, si) => (
+            <React.Fragment key={'tl-' + si}>
+              {si > 0 && <div className="replayer-timeline-dot street-marker" aria-hidden="true" />}
+              <div className="replayer-timeline-street-label">{st.name || ('St' + si)}</div>
+              {(st.actions || []).map((act, ai) => {
+                const isCurrent = si === streetIdx && ai === actionIdx;
+                const who = hand.players[act.player]?.name || 'Player';
+                const amt = act.amount ? ' ' + fmtChips(act.amount) : '';
+                return (
+                  <button key={'tl-' + si + '-' + ai}
+                    className={'replayer-timeline-dot action-' + (act.action === 'all-in' ? 'allin' : act.action) + (isCurrent ? ' current' : '')}
+                    onClick={() => { setPlaying(false); setShowResult(false); setStreetIdx(si); setActionIdx(ai); }}
+                    title={who + ' ' + act.action + amt}
+                    aria-label={who + ' ' + act.action + amt}
+                    aria-current={isCurrent ? 'step' : undefined} />
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+
       {/* Commentary */}
       {rSettings.showCommentary && (
         <div className="replayer-commentary">{generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}</div>
@@ -4776,28 +4922,45 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           <button onClick={stepBack} disabled={!canGoBack} title="Back">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <button onClick={() => setPlaying(p => !p)} title={playing ? 'Pause' : 'Play'}>
+          {/* 53: the play triangle was STROKED, while every media player on
+              the platform draws a solid one — and during playback the only
+              change was the icon swap, so a running replayer and a paused one
+              wore identical transparent buttons. */}
+          <button className={'replayer-play-btn' + (playing ? ' is-playing' : '')}
+            onClick={handlePlayPause}
+            title={playing ? 'Pause' : (canGoForward ? 'Play' : 'Replay')}>
             {playing ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            ) : canGoForward ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21"/></svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              /* 50: at the result the button restarts, so it says restart. */
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             )}
           </button>
           <button onClick={stepForward} disabled={!canGoForward} title="Forward">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
-          <button onClick={goToEnd} title="End">
+          <button onClick={goToEnd} disabled={!canGoForward} title="End">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
           </button>
-          <select value={speed} onChange={e => setSpeed(Number(e.target.value))} style={{
-            fontSize:'0.65rem',padding:'3px 6px',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',
-            borderRadius:'4px',fontFamily:"'Univers Condensed','Univers',sans-serif"
-          }}>
-            <option value={2000}>0.5x</option>
-            <option value={1000}>1x</option>
-            <option value={500}>2x</option>
-            <option value={250}>4x</option>
-          </select>
+          {/* 54: a raw <select> with five inline literals — the only rectangle
+              in a row of circles, and on iOS it opened the OS picker wheel for
+              a four-value choice. A four-value choice is a tap-to-cycle. The
+              orphaned .replayer-speed-label finally has something to label. */}
+          {(() => {
+            const SPEEDS = [2000, 1000, 500, 250];
+            const idx = Math.max(0, SPEEDS.indexOf(speed));
+            const label = ['0.5x', '1x', '2x', '4x'][idx];
+            return (
+              <button className="replayer-speed-btn"
+                onClick={() => setSpeed(SPEEDS[(idx + 1) % SPEEDS.length])}
+                title={'Playback speed: ' + label + ' (tap to change)'}
+                aria-label={'Playback speed ' + label}>
+                <span className="replayer-speed-label">{label}</span>
+              </button>
+            );
+          })()}
         </div>
         <div style={{display:'flex',gap:'6px',justifyContent:'center'}}>
           <button className="btn btn-ghost btn-sm" onClick={onBack}>Back</button>

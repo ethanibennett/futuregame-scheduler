@@ -7167,15 +7167,34 @@ app.get('/api/staking/backers/summary', authenticateToken, (req, res) => {
 
 app.get('/api/hands', authenticateToken, (req, res) => {
   try {
+    // The list needs two facts out of hand_data - the hero's hole cards and
+    // whether the hero won - because that is how a player finds a hand again.
+    // The blob itself stays server-side; sending every saved hand's full
+    // history to render a list would be a payload for a payload's sake.
     const stmt = db.prepare(`
-      SELECT id, game_type, title, notes, is_public, created_at
+      SELECT id, game_type, title, notes, is_public, created_at, hand_data
       FROM saved_hands
       WHERE user_id = ?
       ORDER BY created_at DESC
     `);
     stmt.bind([req.user.id]);
     const hands = [];
-    while (stmt.step()) hands.push(stmt.getAsObject());
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const { hand_data, ...rest } = row;
+      let heroCards = '', outcome = null;
+      try {
+        const h = JSON.parse(hand_data || '{}');
+        heroCards = (h.streets && h.streets[0] && h.streets[0].cards && h.streets[0].cards.hero) || '';
+        const heroIdx = h.heroIdx != null ? h.heroIdx : 0;
+        const winners = (h.result && h.result.winners) || [];
+        if (winners.length) {
+          const mine = winners.find(w => w.playerIdx === heroIdx);
+          outcome = mine ? (mine.split ? 'split' : 'win') : 'loss';
+        }
+      } catch { /* a malformed blob just means no preview, not a broken list */ }
+      hands.push({ ...rest, hero_cards: heroCards, outcome });
+    }
     stmt.free();
     res.json(hands);
   } catch (error) {
