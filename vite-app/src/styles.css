@@ -847,12 +847,15 @@
        between them, so the tight overlap is back. */
     .chip-disc {
       --chip: currentColor;
-      background: linear-gradient(90deg,
-        var(--chip) 0 18%,
-        rgba(255,255,255,0.55) 18% 26%,
-        var(--chip) 26% 74%,
-        rgba(255,255,255,0.55) 74% 82%,
-        var(--chip) 82% 100%);
+      /* A repeating edge so --pip-shift can rotate the chip and still wrap.
+         The period is 52% of the width, which puts two spots on the face of
+         the disc at any phase — which is what you see of a real chip's six. */
+      background:
+        repeating-linear-gradient(90deg,
+          var(--chip) 0 22%,
+          rgba(255,255,255,0.55) 22% 30%,
+          var(--chip) 30% 52%);
+      background-position: var(--pip-shift, 0%) 0;
       border-top: 1px solid rgba(255,255,255,0.45);
       border-bottom: 1px solid rgba(0,0,0,0.5);
       box-shadow: 0 1px 1px rgba(0,0,0,0.3);
@@ -1913,8 +1916,6 @@
        barber-pole cards next to the replayer's weave. */
     .card-row .card-unknown,
     .card-row .card-placeholder,
-    .replayer-deck > span,
-    .replayer-muck > span,
     .card-back {
       --back-1: #243b5c;
       --back-2: #1a2744;
@@ -2885,6 +2886,9 @@
        the felt) near the middle of the screen instead of pinned to the
        bar, leaving room for action chips/badges to render without
        crowding. */
+    /* overflow:hidden below is what keeps the felt's overhang — badges under
+       seats, card trays above them, wagers between — from changing the height
+       of the page as a hand plays. */
     .replayer-replay {
       display: flex;
       flex-direction: column;
@@ -3047,19 +3051,19 @@
       /* The felt's inset, named once and read by the rail, the light strip,
          the felt and the outer shadow — they used to hold four copies of the
          same two numbers, and the rail's copy had a 20px literal in it. */
-      /* 3/4.5 gave a felt of 1:1.59 — a PORTRAIT oval, which is a shape no
-         poker table has. Even from a steep overhead-front camera a table is
-         wider than it is deep; the old proportion was what fits a phone, and
-         it was the silhouette every other decision on this table sat inside.
+      /* A landscape playing surface is a truer picture of a real table and
+         the wrong shape for the box it has to live in. Pushed to 28%/7% the
+         side seats sit hard against the left and right edges, and at 6-max in
+         a five-card draw game their fans run clean off a phone screen — so
+         the shape that is more correct in the abstract is the one that loses
+         the cards. On a portrait screen the table is portrait.
 
-         The box stays portrait, because that is the space a phone has. The
-         PLAYING SURFACE inside it becomes wide and shallow — 0.80 x 0.52 of
-         the box, so the felt itself is now landscape — which is exactly what
-         foreshortening looks like, and it hands the extra height to the seats
-         above and below, where the cards live. The seat coordinates in
-         HandReplayerView are derived from these two numbers. */
-      --felt-y: 28%;
-      --felt-x: 7%;
+         These two numbers are the felt's inset, read by the rail, the light
+         strip, the felt, the outer shadow AND the seat coordinates in
+         HandReplayerView — which used to hold their own hand-written copy.
+         Landscape orientation overrides them further down. */
+      --felt-y: 16%;
+      --felt-x: 18%;
       --rail-w: 5.6cqw;
 
       /* 44px at a ~350px table, which is where it has been, but now it holds
@@ -3274,8 +3278,10 @@
     }
 
     .replayer-board-area {
-      --card-h: clamp(32px, 10.4cqw, 48px);
-      position:absolute; left:50%; top:54%; transform:translate(-50%,-50%);
+      /* Narrower felt means less room across, so the board keeps a card a
+         step down from the ones in front of the players. */
+      --card-h: clamp(28px, 9.4cqw, 44px);
+      position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
@@ -3531,14 +3537,9 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       max-width: 88px;
     }
-    .replayer-seat-pos {
-      display: inline-block;
-      font-size: var(--fs-2xs);
-      font-family: var(--font-condensed);
-      letter-spacing: var(--track-caps);
-      color: #c9b6ff;
-      margin-right: var(--space-xs);
-    }
+    /* The position badge is gone: the dealer button is on the table, and
+       every other position is derived from it — so the badge was repeating
+       what the button already says, in the tightest space on the felt. */
     .replayer-seat-stack {
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
@@ -4453,14 +4454,14 @@
       100% { opacity:1; transform:none; }
     }
     .replayer-seat-cards.animate-deal {
-      animation:cinematicDeal var(--dur-base) var(--ease-object) both;
+      animation:cinematicDeal var(--dur-base) var(--ease-object) backwards;
     }
     /* 63: the delay was per SEAT, so a player's whole hand arrived as one
        block. Each card in the row waits its own round of the table on top of
        its seat's place in the order, which is how a deal actually goes. */
     .replayer-seat-cards.animate-deal { animation-delay: var(--deal-seat-delay, 0ms); }
     .replayer-seat-cards.animate-deal .card-row > * {
-      animation: cinematicDeal var(--dur-base) var(--ease-object) both;
+      animation: cinematicDeal var(--dur-base) var(--ease-object) backwards;
       animation-delay: calc(var(--deal-seat-delay, 0ms) + var(--deal-round, 0) * 1ms * var(--ci, 0));
     }
 
@@ -4711,12 +4712,15 @@
     .replayer-pot-chip-disc {
       width:14px; height:7px; border-radius:50%;
       --chip: currentColor;
-      background: linear-gradient(90deg,
-        var(--chip) 0 18%,
-        rgba(255,255,255,0.55) 18% 26%,
-        var(--chip) 26% 74%,
-        rgba(255,255,255,0.55) 74% 82%,
-        var(--chip) 82% 100%);
+      /* A repeating edge so --pip-shift can rotate the chip and still wrap.
+         The period is 52% of the width, which puts two spots on the face of
+         the disc at any phase — which is what you see of a real chip's six. */
+      background:
+        repeating-linear-gradient(90deg,
+          var(--chip) 0 22%,
+          rgba(255,255,255,0.55) 22% 30%,
+          var(--chip) 30% 52%);
+      background-position: var(--pip-shift, 0%) 0;
       border: 0;
       border-top: 1px solid rgba(255,255,255,0.45);
       border-bottom: 1px solid rgba(0,0,0,0.5);
@@ -4919,11 +4923,7 @@
        reading it, including a --accent2 grey for the position badge that had
        been dead since the day it was written. The three originals up at 3271
        now carry everything; only the states are left down here. */
-    .replayer-seat-pos.is-blind {
-      background: rgba(59,130,246,0.18);
-      border-radius: var(--radius-xs);
-      padding: 0 3px;
-    }
+
     .replayer-chip-delta.positive { color: var(--ok); }
     .replayer-chip-delta.negative { color: var(--danger); }
 
@@ -5111,33 +5111,6 @@
     }
 
 
-    /* 38: the deck and the muck. Both are drawn from the same stops as every
-       other face-down card, so a change to the card back reaches them too. */
-    .replayer-deck, .replayer-muck {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      z-index: var(--z-board);
-      pointer-events: none;
-      width: calc(var(--card-w) * 0.78);
-      height: calc(var(--card-h) * 0.78);
-    }
-    .replayer-deck > span, .replayer-muck > span {
-      position: absolute;
-      inset: 0;
-      border-radius: 7.1%;
-      background:
-        repeating-linear-gradient(45deg, transparent, transparent 1.2px, rgba(255,255,255,0.045) 1.2px, rgba(255,255,255,0.045) 1.7px),
-        linear-gradient(180deg, var(--back-1) 0%, var(--back-2) 40%, var(--back-3) 100%);
-      border: var(--bw-hair) solid var(--back-border);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    }
-    /* A deck is a squared stack; a muck is not. */
-    .replayer-deck > span:nth-child(2) { transform: translateY(-1.5px); }
-    .replayer-deck > span:nth-child(3) { transform: translateY(-3px); }
-    .replayer-muck { opacity: 0.62; }
-    .replayer-muck > span {
-      transform: rotate(calc((var(--mi) - 1.5) * 11deg)) translate(calc(var(--mi) * 1.5px), 0);
-    }
 
 
     /* 87: the title and the level, inside the captured element. */
@@ -5173,6 +5146,7 @@
        The cards get a tray in the plaque's own material and the plaque loses
        its top corners, so the two read as a single graphic without moving
        either of them. */
+    .replayer-seat-cards:empty { display: none; }
     .replayer-seat-cards {
       padding: var(--space-2xs) var(--space-2xs) calc(var(--space-2xs) + 4px);
       background: linear-gradient(180deg, rgba(30,26,42,0.90), rgba(20,17,29,0.94));
@@ -5307,12 +5281,13 @@
     /* 97: the push. Suppressed while capturing — a transform on the captured
        root is not reliably reproduced, and a clip that drifts between frames
        is worse than one that holds still. */
-    @media (prefers-reduced-motion: no-preference) {
-      .replayer-table:not([data-capturing="1"]) {
-        transform: translate(var(--push-x, 0), var(--push-y, 0)) scale(1.02);
-        transition: transform var(--dur-slow) var(--ease-label);
-      }
-    }
+    /* Polish 97 pushed the whole table a few percent toward the acting seat
+       on every step. In a still frame that reads as a camera move; in use it is
+       the table sliding under you while you are trying to read it, and a
+       transformed box no longer matches its own layout, so the page gained and
+       lost scroll as the hand played. A replay is something you study — it
+       holds still, and the frame around it does not move either. */
+    .replayer-table { transform: none; }
 
     /* 100: a player's line through the hand, from the history already indexed
        by player. */

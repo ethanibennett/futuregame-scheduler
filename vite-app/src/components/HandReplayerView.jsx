@@ -442,6 +442,15 @@ function formatChipAmount(val, bigBlind) {
   return CHIP_PLAIN.format(n);
 }
 
+/* How far round its own axis a chip in a stack has been turned. Derived from
+   the amount and the chip's place in the pile rather than drawn at random, so
+   a 24,000 wager looks the same every time it is on screen and scrubbing back
+   and forth through a hand does not reshuffle the chips in front of a player. */
+function pipShift(seed, index) {
+  const h = Math.abs(Math.imul(seed | 0, 2654435761) + index * 40503) % 52;
+  return h + '%';
+}
+
 // ── Chip visuals ──
 const CHIP_DENOMS = [
   { value: 25000, color: '#14b8a6' },
@@ -480,6 +489,7 @@ function ChipStack({ amount }) {
           // 18x6 rather than 12x4: at the old size the denomination colour was
           // a 4px sliver, so the one thing the stack encodes was unreadable.
           width: '18px', height: '6px', borderRadius: '50%', '--chip': color,
+          '--pip-shift': pipShift(amount, i),
           marginTop: i === 0 ? 0 : '-4px',
           position: 'relative', zIndex: chips.length - i,
         }} />
@@ -872,7 +882,8 @@ function PotChipVisual({ amount }) {
       {stacks.slice(0, 5).map((stack, i) => (
         <div key={i} className="replayer-pot-chip-stack">
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
-            <div key={j} className="replayer-pot-chip-disc" style={{ '--chip': stack.color }} />
+            <div key={j} className="replayer-pot-chip-disc"
+              style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j) }} />
           ))}
         </div>
       ))}
@@ -4028,7 +4039,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
   useEffect(() => {
     if (!rSettings.animateDeal) { setAnimDealing(false); return; }
-    if (streetIdx !== 0 || actionIdx >= 0 || showResult) return;
+    /* This used to return without clearing the flag — and because the previous
+       run's cleanup had already cancelled the timer that clears it, stepping
+       forward while the deal was still running left .animate-deal on the seat
+       for the rest of the hand. */
+    if (streetIdx !== 0 || actionIdx >= 0 || showResult) { setAnimDealing(false); return; }
     setAnimDealing(true);
     // 99: one hiss per card, on the same stagger the animation uses.
     const cards = gameCfg.heroCards || 2;
@@ -4897,9 +4912,14 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      --felt-y / --felt-x block in styles.css) and hands the recovered height
      to the top and bottom seats, whose cards extend a card's height above
      the marker and used to sit close to the export's clipping edge. */
-  const FY = 28, FX = 7;                  // must match --felt-y / --felt-x
-  const T = FY, B = 100 - FY;             // the top and bottom edges of the felt
-  const L = FX, R = 100 - FX;             // the left and right edges
+  const FY = 16, FX = 18;                 // must match --felt-y / --felt-x
+  /* Seats used to sit exactly ON the felt's edge, which is where a player
+     sits — but a plaque is centred on its seat point and the hero's is taller
+     than the rest, so the bottom one hung past the table's own box and had its
+     stack clipped off. They step inside the edge, and the bottom row steps
+     further because that is the row that carries the hero. */
+  const T = FY + 3, B = 100 - FY - 5;
+  const L = FX, R = 100 - FX;
   const my = (t) => Math.round(T + (B - T) * t);   // a fraction down the felt
   const layouts = {
     2:  [[50,T],[50,B]],
@@ -4923,14 +4943,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      the deck. Both are pulled toward the table centre so they land on cloth
      rather than on the rail. */
   const btnSeat = seats[hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D')] || seats[0] || [50, 50];
+  /* Rendered: a 15% step round the rail from the button's seat put the deck
+     squarely on the NEXT player's fan. There is no gap at the rail on a full
+     table, so the deck comes IN off the rail rather than along it — a third
+     of the way to the middle, with only a small step to the side. */
   const dealerSpot = (() => {
     const vx = 50 - btnSeat[0], vy = 54 - btnSeat[1];
     const len = Math.hypot(vx, vy) || 1;
     const ux = vx / len, uy = vy / len;      // toward the middle of the felt
-    const px = -uy, py = ux;                 // and round the rail from there
+    const px = -uy, py = ux;                 // and a small step to one side
     return [
-      Math.round(btnSeat[0] + ux * 7 + px * 15),
-      Math.round(btnSeat[1] + uy * 7 + py * 10),
+      Math.round(btnSeat[0] + (50 - btnSeat[0]) * 0.34 + px * 7),
+      Math.round(btnSeat[1] + (54 - btnSeat[1]) * 0.34 + py * 5),
     ];
   })();
   const muckTarget = [
@@ -4939,17 +4963,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   ];
   const muckCount = folded.size;
 
-  /* Where the attention is: the acting seat, or the board on a new street. */
-  const pushStyle = useMemo(() => {
-    if (!rSettings.animateChips) return undefined;
-    let target = null;
-    if (actionIdx < 0 && streetIdx > 0) target = [50, 44];          // the board
-    else if (currentActions[actionIdx]) target = seats[currentActions[actionIdx].player];
-    if (!target) return undefined;
-    const dx = (50 - target[0]) * 0.06;
-    const dy = (44 - target[1]) * 0.06;
-    return { '--push-x': dx.toFixed(2) + '%', '--push-y': dy.toFixed(2) + '%' };
-  }, [rSettings.animateChips, actionIdx, streetIdx, currentActions, seats]);
 
   /* This effect has to live BELOW seats, folded and markPotLanding: a
      dependency array is evaluated on every render, not when the effect
@@ -5049,20 +5062,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {/* Table */}
       {/* data-cardback is what makes the six-option Card Back setting real;
           --back-custom feeds the custom colour through to the gradient stops. */}
-      {/* 97: the camera was fixed — the whole table, the same framing, every
-          frame of every hand — while a broadcast cuts to the player who is
-          acting and to the board as it lands. Even a few percent is enough to
-          direct attention, and it costs one transform on a container that
-          already exists. The push is suppressed during capture: a transform on
-          the captured root is not reliably reproduced by the renderer, and a
-          clip that drifts between frames is worse than one that does not.
-
-          This block was a bare block comment sitting in JSX CHILDREN
-          position, which is text rather than a comment — React rendered the
-          whole paragraph above the table, and the build had nothing to say
-          about it, because it is valid JSX. */}
+      {/* Polish 97 pushed the table toward the acting seat on every step. In a
+          still frame that reads as a camera move; in use it is the table
+          sliding under you while you are trying to read it, and a transformed
+          box no longer matches its own layout, so the page gained and lost
+          scroll as the hand played. Reverted — a replay is something you
+          study, and it holds still. */}
       <div ref={tableRef} className={'replayer-table' + themeClass}
-        style={pushStyle}
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
         style={rSettings.cardBack === 'custom' ? (() => {
@@ -5218,29 +5224,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return spr ? <div className="replayer-spr-badge">SPR {spr}</div> : null;
         })()}
 
-        {/* 38: the deal animation brought cards in from a computed offset and
-            the muck sent them to a coordinate, because there was no deck and
-            no muck pile anywhere on the felt — so cards came from a point in
-            space and vanished into another one. Both are always present at a
-            real table, both are two elements, and both give the choreography
-            somewhere to come from and go to. */}
-        {(() => {
-          const [dx, dy] = dealerSpot;
-          return (
-            <>
-              <div className="replayer-deck" style={{left: dx + '%', top: dy + '%'}} aria-hidden="true">
-                <span /><span /><span />
-              </div>
-              {muckCount > 0 && (
-                <div className="replayer-muck" style={{left: muckTarget[0] + '%', top: muckTarget[1] + '%'}} aria-hidden="true">
-                  {Array.from({length: Math.min(muckCount, 4)}, (_, i) => (
-                    <span key={i} style={{'--mi': i}} />
-                  ))}
-                </div>
-              )}
-            </>
-          );
-        })()}
+        {/* Polish 38 drew a deck and a muck pile on the felt, so the deal
+            and the muck had somewhere to come from and go to. At the table
+            sizes this app actually records there is no room for them: a full
+            ring has no gap at the rail, so wherever they went they landed on
+            a neighbour's fan. Removed after seeing it. dealerSpot survives as
+            the point the deal animation flies FROM, which was the useful
+            half of the idea. */}
 
         {/* 87: the hand's title and its stakes lived in .replayer-header,
             ABOVE the table and outside the captured element — so every export,
@@ -5399,12 +5389,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     was defined and never used, so blinds and everyone but the
                     button were anonymous — and position is the single most
                     important context for judging any action in a replay. */}
-                <div className="replayer-seat-name" title={p.name}>
-                  {p.position && (
-                    <span className={'replayer-seat-pos' + (p.position === 'SB' || p.position === 'BB' ? ' is-blind' : '')}>{p.position}</span>
-                  )}
-                  {shortenName(p.name)}
-                </div>
+                {/* No position marker: the dealer button is on the table and
+                    every other position follows from it, so the badge was
+                    repeating the button in the tightest space on the felt. */}
+                <div className="replayer-seat-name" title={p.name}>{shortenName(p.name)}</div>
                 {/* 67: the stack dropped the instant the bet was recorded,
                     while the chips were still in flight toward a pot that had
                     already been paid. It counts down over the same duration
@@ -5511,30 +5499,21 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
              15, 26 and 45, so the wagers formed a lumpy, non-concentric ring
              around a pot they are all supposedly travelling to.
 
-             One rule instead: walk a fixed pixel distance from the seat
-             straight toward the table centre. The aspect correction is what
-             makes it a distance rather than a percentage — 1% of height is 1.5
-             times the pixels of 1% of width on this table, so the vector has
-             to be built in pixel space and converted back. */
-          const AR = 4.5 / 3;
-          const dx = 50 - pos[0], dy = (50 - pos[1]) * AR;
-          const len = Math.hypot(dx, dy) || 1;
-          /* Rendered: every seat's cards sit ABOVE its plaque, so for a seat in
-             the BOTTOM half of the table the cards lie directly between the
-             seat and the pot — and walking the wager toward the pot put it on
-             top of that player's own hand. Walking further only pushed it into
-             the board. Those seats put their wager BESIDE the cards instead,
-             which is also where it sits at a real table; every other seat
-             keeps the straight walk toward the middle. */
-          const TRAVEL = 8;
-          let chipX, chipY;
-          if (pos[1] > 50) {
-            chipX = pos[0] + (pos[0] <= 50 ? 12 : -12);
-            chipY = pos[1] - 6;
-          } else {
-            chipX = pos[0] + (dx / len) * TRAVEL;
-            chipY = pos[1] + (dy / len) * TRAVEL / AR;
-          }
+             Walking a fixed distance toward the middle fixed the ring and
+             created two new collisions instead: from a bottom seat that walk
+             lands on the player's own cards, and from a top seat it lands on
+             their own action badge, because both hang on the same side of the
+             plaque as the pot.
+
+             A wager is not a fixed distance from its owner — it is a fixed
+             fraction of the way to the POT, which is how it looks at a table
+             and which clears whatever that seat has hanging toward the middle,
+             because the badge and the cards are much nearer the plaque than
+             the pot is. */
+          const POT_AT = [50, 40];
+          const t = 0.42;
+          const chipX = pos[0] + (POT_AT[0] - pos[0]) * t;
+          const chipY = pos[1] + (POT_AT[1] - pos[1]) * t;
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
           if (rSettings.animateChips) {
             chipStyle['--chip-start-dx'] = ((pos[0] - chipX) * 3) + 'px';
@@ -5565,9 +5544,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const isBottom = btnPos[1] >= 70;
           let dealerStyle;
           if (isBottom) {
-            const dx = (50 - btnPos[0]) * 0.12;
-            const dy = (50 - btnPos[1]) * 0.12;
-            dealerStyle = {left: (btnPos[0]+dx) + '%', top: (btnPos[1]+dy) + '%', transform:'translate(-50%,-50%)'};
+            /* This moved the button 12% of the way toward the table centre,
+               which from a bottom seat is straight UP — onto the plaque, over
+               the player's own name. A dealer button sits beside a player, not
+               on them. Out to whichever side has more room. */
+            const ox = btnPos[0] <= 50 ? 11 : -11;
+            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]-2) + '%', transform:'translate(-50%,-50%)'};
           } else {
             const isTop = btnPos[1] <= 15;
             const isLeft = btnPos[0] <= 20;
