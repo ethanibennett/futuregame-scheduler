@@ -2013,6 +2013,19 @@
 
     /* ── Hand Replayer ── */
     .replayer-view { max-width: 600px; margin: 0 auto; }
+    /* Replay mode is a full-height column: header, then the table taking
+       whatever is left, then the bar. Without this the height chain is broken
+       here — .replayer-view is a block with auto height, so the `height:100%`
+       on .replayer-replay resolved against nothing and the table had no space
+       to measure itself against. That gap is exactly why the table's size used
+       to be guessed from 100vh and a pile of constants instead. */
+    .replayer-view.is-replay {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .replayer-view.is-replay > .replayer-replay { flex: 1 1 auto; min-height: 0; height: auto; }
     .replayer-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-lg); }
     .replayer-header h2 { font-family: var(--font-condensed); font-size: var(--fs-lg); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); }
     .replayer-header-actions { display:flex; gap: var(--space-sm); }
@@ -2845,13 +2858,18 @@
     .replayer-draw-info-bar {
       text-align: center; padding: var(--space-sm) var(--space-ml); background: var(--surface2); border-radius: var(--radius-sm);
       font-family: var(--font-condensed);
+      /* Fixed, and it scrolls: the items grow when they carry the discarded and
+         the new cards, and the table above is sized from what is left of the
+         column, so a growing bar is a shrinking table. */
+      height: 62px; overflow: auto; scrollbar-width: none;
     }
+    .replayer-draw-info-bar::-webkit-scrollbar { display: none; }
     .replayer-draw-info-label {
       font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps);
       color: var(--text-muted); margin-bottom: var(--space-xs); font-weight: var(--fw-bold);
     }
     .replayer-draw-info-players {
-      display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center;
+      display: flex; flex-wrap: nowrap; gap: var(--space-md); justify-content: center;
     }
     .replayer-draw-info-item {
       display: flex; align-items: center; gap: var(--space-xs); font-size: var(--fs-xs);
@@ -2934,13 +2952,21 @@
       aspect-ratio: 4.5 / 3;
       --felt-y: 12%;
       --felt-x: 16%;
-      width: 116%;
+      /* Polish 16 made this deliberately wider than the frame so the rail ran
+         off both edges — a cropped table reads as a camera pointed at one,
+         where a contained table reads as a diagram of one. In use it just
+         comes out too big: the 16% overhang has to come from somewhere, and
+         what it takes is the top and bottom of the table. It fits. */
+      height: min(100cqh, calc(100cqw / 1.5));
+      width: auto;
       max-width: none;
-      margin: 0 -8% ;
-      flex: 1;
-      min-height: 0;
-      max-height: calc(100vh - 60px);
+      margin: 0;
     }
+    .replayer-landscape .replayer-table-slot { align-items: center; }
+    /* One declaration of how tall the transport is, read by the overlay above
+       so the two cannot drift apart. */
+    .replayer-landscape { --transport-h: 58px; }
+    .replayer-landscape .replayer-bottom-fixed { height: var(--transport-h); }
     .replayer-landscape { overflow: hidden; }
     .replayer-landscape .replayer-bottom-fixed {
       position: relative;
@@ -2967,18 +2993,71 @@
     body:has(.replayer-landscape) .replayer-header {
       display: none !important;
     }
+    /* The slot the table lives in: whatever height the column has left after
+       its siblings. Marked as a size container so the table can ask how big
+       that is, which is the question the old viewport formula was guessing
+       the answer to. */
+    .replayer-table-slot {
+      flex: 1 1 auto;
+      min-height: 0;
+      container-type: size;
+      display: flex;
+      justify-content: center;
+      /* Hug the top: leftover slack sits below the table, between the hero
+         seat and the bar, rather than being split top and bottom. */
+      align-items: flex-start;
+      overflow: hidden;
+    }
+    /* The strips below the table — result, draw bar, timeline, commentary,
+       hand strength, pot odds — in one region of declared height. Fixed, not
+       max-height: a region that shrank when a strip went away would hand the
+       space to the table and resize it mid-hand, which is the whole complaint.
+       The table gets the remaining ~64%, so it stays the subject. */
+    .replayer-under {
+      flex: none;
+      /* A share of the column, capped: the strips need about 180px and no
+         more, so on a tall screen the surplus goes to the table rather than to
+         a taller scroll region that would never be scrolled. */
+      height: min(34%, 180px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+    }
+    .replayer-under::-webkit-scrollbar { display: none; }
+    /* Landscape is the cinema view: the table is the screen, and the strips
+       float over the bottom of the felt on a scrim rather than taking a share
+       of the column. Absolutely positioned, so — like the fixed share in
+       portrait — nothing they do can change the table's size. */
+    .replayer-landscape .replayer-under {
+      position: absolute;
+      left: 0; right: 0; bottom: var(--transport-h);
+      height: auto; max-height: 40%;
+      padding: var(--space-lg) var(--space-md) var(--space-xs);
+      background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
+      z-index: var(--z-flight, 60);
+    }
+
     .replayer-table {
       position: relative;
-      /* Scale width so the table (at 3:4.5 aspect ratio) fits the viewport.
-         Chrome below the table = bar (~100) + gap (8) + nav (max(44, tab-h
-         + safe-bottom)). 140 covers the constant portion; safe-areas are
-         subtracted separately to handle iPhone home-indicator devices. */
-      width: min(100%, calc((100vh - var(--header-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 140px) * 0.6667));
+      /* Was a guess at the surrounding chrome:
+           min(100%, (100vh - --header-h - safe-top - safe-bottom - 140px) * 0.6667)
+         It did not know about the admin tool rail (two rows of pills, ~110px,
+         and only rendered for admins) or the hand title row, so the table came
+         out too big for exactly the people who use it — and 100vh in a
+         standalone iOS webview is the full window including the status bar and
+         home indicator areas, while Chrome's device emulation reports the
+         content box and applies no safe-area insets, so the same "iPhone 16
+         Pro" resolved the same expression two different ways.
+
+         The browser already knows how much room is left. Fit a 3:4.5 box into
+         it: as tall as the slot unless that would make it wider than the slot,
+         in which case the width decides. No viewport units, nothing to keep in
+         sync with the chrome above or below. */
+      height: min(100cqh, calc(100cqw * 1.5));
+      width: auto;
+      max-width: 100%;
       aspect-ratio: 3 / 4.5;
-      /* Hug the top: horizontal auto centers, top margin is small so
-         any leftover slack sits below the table (between hero seat and
-         the bar) instead of being split top/bottom. */
-      margin: 4px auto 0;
+      margin: 4px 0 0;
 
       /* Everything on this table now measures itself against the TABLE, not
          against the viewport. Before this the felt inset was a percentage,
@@ -3954,9 +4033,16 @@
 
     /* 40 */
     .replayer-result-banner {
-      display:flex; flex-direction:column; gap: var(--space-2xs);
+      /* A row, not a column: a two-way split has to occupy exactly the height
+         a single winner does, or the table above changes size at showdown. */
+      display:flex; flex-direction:row; gap: var(--space-2xs); justify-content: center;
       margin: var(--space-sm) auto 0; max-width: 420px;
+      overflow-x: auto; scrollbar-width: none;
     }
+    .replayer-result-banner::-webkit-scrollbar { display: none; }
+    .replayer-result-banner > .replayer-result { flex: none; white-space: nowrap; }
+    /* Holding a place, with nothing to say yet. */
+    .is-reserved { visibility: hidden; }
 
     /* Result display */
     .replayer-result {
@@ -4285,6 +4371,11 @@
       font-size: var(--fs-xs); color: #d8d2e4;
       font-family: var(--font-condensed); font-style: normal;
       line-height: 1.4; min-height: 28px;
+      min-width: 0;
+    }
+    .replayer-commentary-line {
+      display: block;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .replayer-commentary-street {
       display: block;

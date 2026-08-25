@@ -3454,7 +3454,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // ── Replay mode ──
   if (mode === 'replay' && currentHand) {
     return (
-      <div className="replayer-view">
+      <div className="replayer-view is-replay">
         <div className="replayer-header">
           <h2>{title || currentHand.gameType + ' Hand'}</h2>
           <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds ? ' ' + formatChipAmount(currentHand.blinds.sb) + '/' + formatChipAmount(currentHand.blinds.bb) + (currentHand.blinds.ante ? '/' + formatChipAmount(currentHand.blinds.ante) : '') : '')}</span>
@@ -3843,9 +3843,14 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const [speed, setSpeed] = useState(1000);
   const [showResult, setShowResult] = useState(false);
   const [hiloAnimate, setHiloAnimate] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(() => window.matchMedia('(orientation: landscape)').matches);
+  /* A landscape screen gets a landscape table, on a phone held sideways and on
+     a desktop alike — the shape of the screen is the whole question. What the
+     mode must not do is come out bigger than the space it has, which is
+     handled where the table is sized rather than by refusing to enter here. */
+  const LANDSCAPE_Q = '(orientation: landscape)';
+  const [isLandscape, setIsLandscape] = useState(() => window.matchMedia(LANDSCAPE_Q).matches);
   useEffect(() => {
-    const mql = window.matchMedia('(orientation: landscape)');
+    const mql = window.matchMedia(LANDSCAPE_Q);
     const handler = (e) => { setIsLandscape(e.matches); };
     mql.addEventListener('change', handler);
     return () => { mql.removeEventListener('change', handler); };
@@ -5079,6 +5084,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           box no longer matches its own layout, so the page gained and lost
           scroll as the hand played. Reverted — a replay is something you
           study, and it holds still. */}
+      <div className="replayer-table-slot">
       <div ref={tableRef} className={'replayer-table' + themeClass}
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
@@ -5607,13 +5613,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           });
         })}
       </div>
+      </div>
+
+      {/* Everything below the table shares one region of fixed height and
+          scrolls inside it, so no strip can take height from the table. */}
+      <div className="replayer-under">
 
       {/* 40: on screen a solo winner got a gold border and a shimmer, and
           nothing anywhere said "Hero wins 24.5k, Two Pair". The string was
           composed — and painted only into the share image, so the export knew
           the result and the app did not. Three .replayer-result classes and a
           winner-star keyframe were sitting unused for exactly this. */}
-      {showResult && evalResult && evalResult.length > 0 && (
+      {(showResult && evalResult && evalResult.length > 0) ? (
         <div className="replayer-result-banner">
           {evalResult.map((r, i) => (
             <div key={i} className={'replayer-result replayer-result-' + (r.result?.outcome === 'hero' ? 'hero' : r.result?.outcome === 'split' ? 'split' : 'opponent')}>
@@ -5622,14 +5633,29 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             </div>
           ))}
         </div>
+      ) : (
+        /* The same banner, hidden. The table above is sized from what the
+           column has left, so a strip that appears at showdown would resize it
+           at showdown — it keeps its box for the whole hand instead. Reserved
+           with the real markup rather than a pixel constant, so the space and
+           the thing it is holding cannot drift apart. */
+        <div className="replayer-result-banner is-reserved" aria-hidden="true">
+          <div className="replayer-result replayer-result-hero">
+            <span className="replayer-winner-star">{'\u2605'}</span>{'\u00a0'}
+          </div>
+        </div>
       )}
 
-      {/* Draw info bar */}
-      {(category === 'draw_triple' || category === 'draw_single') && currentStreet.draws?.length > 0 && (
-        <div className="replayer-draw-info-bar">
+      {/* Draw info bar — rendered for every step of a draw game, empty on the
+          steps with no draws to report, so it does not resize the table when a
+          draw round starts. Fixed height (see styles.css) because its items
+          grow when they carry the discarded and the new cards. */}
+      {(category === 'draw_triple' || category === 'draw_single') && (
+        <div className={'replayer-draw-info-bar' + (currentStreet.draws?.length > 0 ? '' : ' is-reserved')}
+             aria-hidden={currentStreet.draws?.length > 0 ? undefined : true}>
           <div className="replayer-draw-info-label">{currentStreet.name || 'Draw'}</div>
           <div className="replayer-draw-info-players">
-            {currentStreet.draws.map(d => {
+            {(currentStreet.draws || []).map(d => {
               const pName = hand.players[d.player]?.name || '?';
               const isPat = d.discarded === 0;
               return (
@@ -5683,7 +5709,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         <div className="replayer-commentary">
           <div className="replayer-commentary-body">
             <span className="replayer-commentary-street">{currentStreet.name || 'Preflop'}</span>
-            {generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}
+            {/* One line, ellipsised. A lower third on a broadcast is one line;
+                a wrapping one would also change the table's size whenever a
+                call ran long. */}
+            <span className="replayer-commentary-line">
+              {generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}
+            </span>
           </div>
         </div>
       )}
@@ -5691,7 +5722,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {/* Hand strength */}
       {rSettings.showHandStrength && category === 'community' && (() => {
         const strength = calcHandStrength(heroCards, boardCards, hand.gameType);
-        if (strength === null) return null;
+        /* Preflop there is nothing to measure, but the strip still holds its
+           place — otherwise the table shrinks the moment the flop lands. */
+        if (strength === null) return (
+          <div className="replayer-hand-strength is-reserved" aria-hidden="true">
+            <div className="replayer-hand-strength-label">Strength</div>
+            <div className="replayer-hand-strength-bar"><div className="replayer-hand-strength-fill" style={{width: 0}} /></div>
+            <div className="replayer-hand-strength-pct">0%</div>
+          </div>
+        );
         const col = getStrengthColor(strength);
         return (
           <div className="replayer-hand-strength">
@@ -5703,12 +5742,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       })()}
 
       {/* Pot odds */}
-      {rSettings.showPotOdds && actionIdx >= 0 && (() => {
+      {rSettings.showPotOdds && (() => {
+        /* This one toggled on nearly every action — there are no pot odds to
+           quote against a check or a fold — so of all the strips it is the one
+           that would have made the table twitch continuously. */
+        const reserved = (
+          <div className="replayer-pot-odds is-reserved" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="12"/></svg>
+            Pot Odds
+          </div>
+        );
+        if (actionIdx < 0) return reserved;
         const curAct = currentActions[actionIdx];
-        if (!curAct || !curAct.amount || curAct.action === 'fold') return null;
+        if (!curAct || !curAct.amount || curAct.action === 'fold') return reserved;
         const callAmt = curAct.amount;
         const potBefore = pot - callAmt;
-        if (potBefore <= 0) return null;
+        if (potBefore <= 0) return reserved;
         const odds = (callAmt / (potBefore + callAmt) * 100).toFixed(1);
         const ratio = (potBefore / callAmt).toFixed(1);
         return (
@@ -5718,6 +5767,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           </div>
         );
       })()}
+
+      </div>
 
       {/* Controls — portaled into #above-nav-slot in App so the bar is
           a real sibling of <BottomNav> in the app-shell flex column. The
@@ -5860,7 +5911,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         )}
       </div>
         );
-        return slot ? createPortal(controls, slot) : controls;
+        /* In fullscreen landscape the table is position:fixed at --z-modal
+           (500), and the bar portals out to #above-nav-slot where it sits at
+           400 — so the transport was rendered, visible and reported at the
+           right coordinates, and drawn behind an opaque felt. There was no way
+           to advance a hand in landscape at all.
+
+           .replayer-landscape .replayer-bottom-fixed already restyles the bar
+           as `position: relative` for exactly this case; it just never got the
+           chance, because the bar was never inside the landscape container.
+           In landscape it stays in flow, which is also what makes the slot
+           above it leave room. */
+        return (slot && !isLandscape) ? createPortal(controls, slot) : controls;
       })()}
 
       {/* Video export progress overlay */}
