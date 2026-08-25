@@ -27,7 +27,7 @@ const STORY_W = 1080, STORY_H = 1920;
 export async function exportReplayVideo({
   hand, tableEl, stepForward, canGoForwardRef,
   mode = 'transparent', speed, feltColor,
-  onProgress, onDone, onError,
+  onFrame, onProgress, onDone, onError,
 }) {
   let restore = () => {};
   try {
@@ -164,6 +164,8 @@ export async function exportReplayVideo({
       }
       await emit(holdFrames);
       step++;
+      // 85: the same frame the recorder just took, for the overlay.
+      if (onFrame) { try { onFrame(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ } }
       onProgress(Math.round((step / totalSteps) * 100), step, totalSteps);
     };
 

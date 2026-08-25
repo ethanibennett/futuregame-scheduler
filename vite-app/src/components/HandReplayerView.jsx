@@ -1003,13 +1003,15 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
 // ── Replayer settings ──
 /* 69: `swatch` is that theme's felt, lifted from the gradient the theme rule
    already paints, so the pill shows what it does instead of only naming it. */
+/* `lit` and `shade` are the theme's own two felt stops, so the panel's
+   thumbnail is the felt rather than a colour that stands for it. */
 const REPLAYER_THEMES = [
-  { id: 'default', label: 'Default', swatch: null },
-  { id: 'casino-royale', label: 'Casino Royale', swatch: '#123a5c' },
-  { id: 'neon-vegas', label: 'Neon Vegas', swatch: '#12021f' },
-  { id: 'vintage', label: 'Vintage', swatch: '#6b5432' },
-  { id: 'minimalist', label: 'Minimalist', swatch: '#f0f0f0' },
-  { id: 'high-stakes', label: 'High Stakes', swatch: '#1d1d1d' },
+  { id: 'default', label: 'Default', lit: null, shade: '#2c2e50' },
+  { id: 'casino-royale', label: 'Casino Royale', lit: '#2a5c8f', shade: '#0b1a2e' },
+  { id: 'neon-vegas', label: 'Neon Vegas', lit: '#5b1a7a', shade: '#0b0416' },
+  { id: 'vintage', label: 'Vintage', lit: '#9a7c4a', shade: '#2c2113' },
+  { id: 'minimalist', label: 'Minimalist', lit: '#f4f4f6', shade: '#d8d8de' },
+  { id: 'high-stakes', label: 'High Stakes', lit: '#3a3a3a', shade: '#101010' },
 ];
 const REPLAYER_CARD_BACKS = [
   { id: 'default', label: 'Default' }, { id: 'classic', label: 'Classic Blue' },
@@ -1048,12 +1050,21 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             <div className="replayer-settings-label">Theme</div>
             <div className="replayer-settings-pills">
               {REPLAYER_THEMES.map(t => (
-                <button key={t.id} className={'replayer-settings-pill' + (settings.theme === t.id ? ' active' : '')}
+                /* 79: five of the six choices in this group are purely
+                   visual and four of them were text pills — Casino Royale and
+                   Vintage differed only in the words. Choosing how something
+                   LOOKS from a list of words is the clearest place in the
+                   feature where it is described rather than shown. The
+                   gradients already existed; the thumbnail is the felt with
+                   its rail and two cards on it. */
+                <button key={t.id} className={'replayer-settings-thumb' + (settings.theme === t.id ? ' active' : '')}
                   aria-pressed={settings.theme === t.id}
                   onClick={() => onUpdate('theme', t.id)}>
-                  <span className="pill-swatch" aria-hidden="true"
-                    style={{ '--pill-swatch': t.swatch || settings.feltColor }} />
-                  {t.label}
+                  <span className="thumb-felt" aria-hidden="true"
+                    style={{ '--thumb-lit': t.lit || settings.feltColor, '--thumb-shade': t.shade || '#2c2e50' }}>
+                    <i /><i />
+                  </span>
+                  <span className="thumb-label">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -1094,9 +1105,18 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
           <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Card Back Design</div>
             <div className="replayer-settings-pills">
+              {/* 79: same argument. A card back is a picture. */}
               {REPLAYER_CARD_BACKS.map(cb => (
-                <button key={cb.id} className={'replayer-settings-pill' + (settings.cardBack === cb.id ? ' active' : '')}
-                  onClick={() => onUpdate('cardBack', cb.id)}>{cb.label}</button>
+                <button key={cb.id} className={'replayer-settings-thumb' + (settings.cardBack === cb.id ? ' active' : '')}
+                  aria-pressed={settings.cardBack === cb.id}
+                  onClick={() => onUpdate('cardBack', cb.id)}>
+                  <span className="thumb-back" aria-hidden="true">
+                    <span className={'replayer-table'} data-cardback={cb.id}>
+                      <span className="card-row"><span className="card-unknown" /></span>
+                    </span>
+                  </span>
+                  <span className="thumb-label">{cb.label}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -1150,20 +1170,14 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Display</div>
+          {/* 80: twelve switches in one undifferentiated column is a
+              preferences pane. Two groups is a set of decisions — what is on
+              the felt, and what is analysis laid over it. */}
           {[
-            { key:'showChipStacks', label:'Pot Chip Stacks', sub:'Visual chip stacks in pot area' },
-            { key:'showHandStrength', label:'Hand Strength Meter', sub:'Gauge showing relative hand strength' },
-            { key:'showPotOdds', label:'Pot Odds', sub:'Show pot odds when facing a bet' },
-            { key:'showCommentary', label:'Commentator Mode', sub:'Auto-generated play-by-play text' },
-            { key:'showTimeline', label:'Action Timeline', sub:'Clickable dots showing all actions' },
-            { key:'showPlayerStats', label:'Player Stats', sub:'VPIP/PFR overlay on seats' },
-            { key:'showNutsHighlight', label:'Highlight the Nuts', sub:'Glow when holding the best hand' },
-            /* Every one of these had a persisted setting, a styled surface and
-               finished maths behind it, and no way to turn any of them on. */
-            { key:'showSPR', label:'Stack-to-Pot Ratio', sub:'SPR under the pot from the flop on' },
-            { key:'showBetSizing', label:'Bet Sizing', sub:'Pot-relative label on each wager' },
-            { key:'showRanges', label:'Range Read', sub:'Estimated strength tier per opponent' },
-            { key:'showEquity', label:'Showdown Equity', sub:'Who is ahead when the cards are up' },
+            { key:'showChipStacks', label:'Pot Chip Stacks', sub:'Chips in the pot, by denomination' },
+            { key:'showCommentary', label:'Commentator Mode', sub:'A play-by-play line under the table' },
+            { key:'showTimeline', label:'Action Timeline', sub:'A scrubbable dot per action' },
+            { key:'showPlayerStats', label:'Player Stats', sub:'A stats chip on each seat' },
             { key:'stacksInBB', label:'Stacks in Big Blinds', sub:'Read the table in BB instead of chips' },
           ].map(opt => (
             <div key={opt.key} className="replayer-settings-row">
@@ -1177,6 +1191,31 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             </div>
           ))}
         </div>
+        {/* 80: the analysis overlays are a different kind of decision from
+            "what is on the felt", and there are seven of them. Closed by
+            default, because a first-time reader is not looking for SPR. */}
+        <details className="replayer-settings-group replayer-settings-fold">
+          <summary className="replayer-settings-group-title">Analysis overlays</summary>
+          {[
+            { key:'showHandStrength', label:'Hand Strength Meter', sub:'A gauge of relative hand strength' },
+            { key:'showPotOdds', label:'Pot Odds', sub:'The price you are being laid, when facing a bet' },
+            { key:'showNutsHighlight', label:'Highlight the Nuts', sub:'A glow when you hold the best hand' },
+            { key:'showSPR', label:'Stack-to-Pot Ratio', sub:'SPR under the pot, from the flop on' },
+            { key:'showBetSizing', label:'Bet Sizing', sub:'A pot-relative label on each wager' },
+            { key:'showRanges', label:'Range Read', sub:'An estimated strength tier per opponent' },
+            { key:'showEquity', label:'Showdown Equity', sub:'Who is ahead once the cards are up' },
+          ].map(opt => (
+            <div key={opt.key} className="replayer-settings-row">
+              <div>
+                <div className="replayer-settings-label">{opt.label}</div>
+                <div className="replayer-settings-sublabel">{opt.sub}</div>
+              </div>
+              <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
+                onClick={() => onUpdate(opt.key, !settings[opt.key])} />
+            </div>
+          ))}
+        </details>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Animation</div>
           {[
@@ -3717,15 +3756,26 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       {/* 78: a single grey sentence — "Create one above" — pointing at a picker
           the user may well have scrolled past, on the screen whose entire job
           is to get a first hand recorded. */}
+      {/* 81: the skeleton drew a new-hand panel plus three list rows and
+           the empty state drew two card backs, a line and a button — so
+           whichever one resolved, the layout moved. Same outer structure, so
+          the change between them is a cross-fade rather than a reflow. */}
       {hands.length === 0 ? (
-        <div className="replayer-empty">
-          <div className="replayer-empty-cards" aria-hidden="true">
-            <span className="card-unknown" /><span className="card-unknown" />
+        <div className="replayer-hand-list">
+          <div className="replayer-hand-card is-row is-empty">
+            <div className="replayer-hand-card-cards" aria-hidden="true">
+              <span className="card-unknown" /><span className="card-unknown" />
+            </div>
+            <div className="replayer-hand-card-body">
+              <span className="replayer-hand-card-title">No saved hands yet</span>
+              <span className="replayer-hand-card-meta">Record one and it will replay here</span>
+            </div>
+            <div className="replayer-hand-card-actions">
+              <button className="btn btn-primary btn-sm" onClick={startNewHand}>
+                Create {variantDisplayName} Hand
+              </button>
+            </div>
           </div>
-          <div className="replayer-empty-line">No saved hands yet.</div>
-          <button className="btn btn-primary btn-sm" onClick={startNewHand}>
-            Create {variantDisplayName} Hand
-          </button>
         </div>
       ) : (
         <div className="replayer-hand-list">
@@ -3742,8 +3792,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
               </div>
               <div className="replayer-hand-card-body">
                 <span className="replayer-hand-card-title">{h.title || 'Untitled'}</span>
+                {/* 82: two hands with the same cards are told apart by their
+                    STAKES, and hand.blinds is already in this payload — the
+                    list endpoint spreads the whole hand blob into every row. */}
                 <span className="replayer-hand-card-meta">
                   {h.game_type}
+                  {h.blinds?.bb ? ' ' + formatChipAmount(h.blinds.sb) + '/' + formatChipAmount(h.blinds.bb) : ''}
                   {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
                 </span>
               </div>
@@ -4295,6 +4349,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* 46: at 4x on a 30-action hand the strip scrolls past the viewport, so the
      one dot that matters has to be pulled back into it. */
   const timelineRef = useRef(null);
+  // 78: past about twenty actions the strip scrolls further than it reads.
+  const totalActionCount = hand.streets.reduce((n, st) => n + (st.actions?.length || 0), 0);
   useEffect(() => {
     const el = timelineRef.current;
     if (!el) return;
@@ -4316,6 +4372,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   }, []);
   useEffect(() => () => clearTimeout(potLandTimer.current), []);
 
+  /* 85: the overlay was a 75%-black scrim with an uppercase title, a 220px
+     bar and a step counter, all inline literals — and it completely hid the
+     table it was capturing. Both exporters already produce a canvas per step;
+     showing them is better feedback AND a far better advertisement for the
+     feature than a bar. */
+  const [exportPreview, setExportPreview] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   /* 94: the overlays described one outcome and the code produced another. Ask
      the platform once, and say what will happen. */
@@ -4656,6 +4718,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       mode,
       speed,
       feltColor,
+      onFrame: setExportPreview,
       onProgress: (pct, step, total) => {
         setVideoProgress(pct);
         setVideoStep(step);
@@ -4667,6 +4730,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       onDone: (info) => {
         setVideoExporting(false);
         setVideoProgress(0);
+        setExportPreview(null);
         if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
         else toast?.success?.('Video saved');
       },
@@ -4674,6 +4738,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         console.error('Video export error:', err);
         setVideoExporting(false);
         setVideoProgress(0);
+        setExportPreview(null);
       },
     });
   }, [videoExporting, hand, speed, feltColor, toast]);
@@ -4694,9 +4759,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       canGoForwardRef,
       speed,
       feltColor,
+      onFrame: setExportPreview,
       onProgress: (pct, step, total) => { setGifProgress(pct); setGifStep(step); setGifTotal(total); },
       onDone: (info) => {
-        setGifExporting(false); setGifProgress(0);
+        setGifExporting(false); setGifProgress(0); setExportPreview(null);
         // Surface which path the share took so the user knows where the GIF went.
         if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
         else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
@@ -4704,7 +4770,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       },
       onError: (err) => {
         console.error('GIF export error:', err);
-        setGifExporting(false); setGifProgress(0);
+        setGifExporting(false); setGifProgress(0); setExportPreview(null);
         toast?.error?.('GIF export failed: ' + (err?.message || 'unknown'));
       },
     });
@@ -5029,6 +5095,24 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           );
         })()}
 
+        {/* 87: the hand's title and its stakes lived in .replayer-header,
+            ABOVE the table and outside the captured element — so every export,
+            every screenshot and every share was a table with no context at all
+            beyond a 10%-opacity wordmark. The exports are the version of this
+            most people will ever see. */}
+        {(() => {
+          const b = hand.blinds || {};
+          const level = b.bb ? formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb)
+            + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '') : null;
+          if (!level && !hand.title) return null;
+          return (
+            <div className="replayer-table-title">
+              {hand.title && <span className="replayer-table-title-name">{hand.title}</span>}
+              {level && <span className="replayer-table-title-level">{level}</span>}
+            </div>
+          );
+        })()}
+
         {/* Watermark */}
         <div className="replayer-watermark"
           style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
@@ -5340,11 +5424,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           setting DEFAULTS TO TRUE, and the settings panel advertises
           "clickable dots showing all actions" — for markup no component ever
           emitted. The toggle toggled nothing. */}
+      {/* 78: the dots were floating on the page with a grey bar between
+          streets. Each street is a shaded span on a recessed track now, so the
+          groups read as groups and there is something to scrub along. A hand of
+          more than about twenty actions collapses to a denser strip rather than
+          scrolling further and further. */}
       {rSettings.showTimeline && (
-        <div className="replayer-timeline" ref={timelineRef}>
+        <div className={'replayer-timeline' + (totalActionCount > 20 ? ' is-dense' : '')} ref={timelineRef}>
           {hand.streets.map((st, si) => (
-            <React.Fragment key={'tl-' + si}>
-              {si > 0 && <div className="replayer-timeline-dot street-marker" aria-hidden="true" />}
+            <div className="replayer-timeline-street" key={'tl-' + si}>
               <div className="replayer-timeline-street-label">{st.name || ('St' + si)}</div>
               {(st.actions || []).map((act, ai) => {
                 const isCurrent = si === streetIdx && ai === actionIdx;
@@ -5359,14 +5447,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     aria-current={isCurrent ? 'step' : undefined} />
                 );
               })}
-            </React.Fragment>
+            </div>
           ))}
         </div>
       )}
 
       {/* Commentary */}
       {rSettings.showCommentary && (
-        <div className="replayer-commentary">{generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}</div>
+        <div className="replayer-commentary">
+          <div className="replayer-commentary-body">
+            <span className="replayer-commentary-street">{currentStreet.name || 'Preflop'}</span>
+            {generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}
+          </div>
+        </div>
       )}
 
       {/* Hand strength */}
@@ -5494,19 +5587,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             <div className="share-menu-panel">
               <h3>Share this hand</h3>
               <div className="share-menu-grid">
+                {/* 84: every one of these four options is a PICTURE, and they
+                    were described with emoji — the same problem the theme
+                    pills had. The preview is the shape of what comes out. */}
                 <div className="share-menu-item" onClick={() => { copyShareLink(); setShowExportMenu(false); }}>
-                  <span className="share-icon">{'\uD83D\uDD17'}</span>
+                  <span className="export-preview is-link" aria-hidden="true" />
                   <span className="share-label">{shareLinkCopied ? 'Copied' : 'Copy link'}</span>
                   <span className="share-desc">A public link to this replay</span>
                 </div>
                 <div className="share-menu-item" onClick={() => { shareReplayImage(); setShowExportMenu(false); }}>
-                  <span className="share-icon">{'\uD83D\uDDBC'}</span>
+                  <span className="export-preview is-image" aria-hidden="true" />
                   <span className="share-label">Image</span>
                   <span className="share-desc">A still of the hand at this point</span>
                 </div>
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
                   onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('transparent'); setShowExportMenu(false); } }}>
-                  <span className="share-icon">{'\uD83C\uDFAC'}</span>
+                  <span className="export-preview is-overlay" aria-hidden="true" />
                   <span className="share-label">Overlay</span>
                   <span className="share-desc">Transparent WebM for streaming</span>
                 </div>
@@ -5514,20 +5610,20 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     written for CapCut and had no way in. */}
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
                   onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('greenscreen'); setShowExportMenu(false); } }}>
-                  <span className="share-icon">{'\uD83D\uDFE9'}</span>
+                  <span className="export-preview is-green" aria-hidden="true" />
                   <span className="share-label">Greenscreen</span>
                   <span className="share-desc">MP4 to key out in an editor</span>
                 </div>
                 {/* 98 */}
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
                   onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('story'); setShowExportMenu(false); } }}>
-                  <span className="share-icon">{'\uD83D\uDCF1'}</span>
+                  <span className="export-preview is-story" aria-hidden="true" />
                   <span className="share-label">Story</span>
                   <span className="share-desc">9:16 video, ready to post</span>
                 </div>
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
                   onClick={() => { if (!videoExporting && !gifExporting) { handleExportGif(); setShowExportMenu(false); } }}>
-                  <span className="share-icon">{'\u2728'}</span>
+                  <span className="export-preview is-gif" aria-hidden="true" />
                   <span className="share-label">GIF</span>
                   <span className="share-desc">Instagram sticker</span>
                 </div>
@@ -5543,15 +5639,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
       {/* Video export progress overlay */}
       {videoExporting && createPortal(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999}}>
+        <div className="replayer-export-overlay">
           <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             Recording Overlay…
           </div>
           <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
             WebM VP9 · transparent background
           </div>
-          <div style={{width:'220px',height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',marginBottom:'10px',overflow:'hidden'}}>
-            <div style={{width:videoProgress+'%',height:'100%',background:'var(--accent, #a78bfa)',borderRadius:'3px',transition:'width 0.3s ease'}} />
+          {/* 85: the frames, as they are captured. */}
+          <div className="replayer-export-frame">
+            {exportPreview && <img src={exportPreview} alt="" />}
+          </div>
+          <div className="replayer-export-bar">
+            <div style={{width:videoProgress+'%'}} />
           </div>
           <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {videoStep} of {videoTotal}
@@ -5567,7 +5667,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
       {/* GIF export progress overlay */}
       {gifExporting && createPortal(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999}}>
+        <div className="replayer-export-overlay">
           <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             Building GIF…
           </div>
@@ -5576,8 +5676,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                 Instagram wherever it can. */}
             {canInstagram ? 'Transparent \u00b7 opens in Instagram Stories' : 'Transparent \u00b7 upload to GIPHY for an Instagram sticker'}
           </div>
-          <div style={{width:'220px',height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',marginBottom:'10px',overflow:'hidden'}}>
-            <div style={{width:gifProgress+'%',height:'100%',background:'var(--accent, #a78bfa)',borderRadius:'3px',transition:'width 0.3s ease'}} />
+          <div className="replayer-export-frame">
+            {exportPreview && <img src={exportPreview} alt="" />}
+          </div>
+          <div className="replayer-export-bar">
+            <div style={{width:gifProgress+'%'}} />
           </div>
           <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {gifStep} of {gifTotal}

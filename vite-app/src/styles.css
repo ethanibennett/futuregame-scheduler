@@ -2102,6 +2102,118 @@
       font-family: var(--font-condensed);
     }
 
+
+    /* 79: a visual choice, shown. The thumbnail is the felt with its rail and
+       a card on it, built from the same stops the table itself uses. */
+    .replayer-settings-thumb {
+      display: inline-flex; flex-direction: column; align-items: center; gap: var(--space-2xs);
+      background: none; border: none; padding: 0; cursor: pointer;
+      width: 66px;
+    }
+    .replayer-settings-thumb .thumb-felt {
+      width: 60px; height: 38px; border-radius: var(--radius-pill);
+      display: flex; align-items: center; justify-content: center; gap: 2px;
+      background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--thumb-lit), var(--thumb-shade));
+      box-shadow:
+        0 0 0 3px rgba(107,91,138,0.55),
+        inset 0 2px 6px rgba(0,0,0,0.45);
+      transition: box-shadow var(--dur-fast) var(--ease-out);
+    }
+    .replayer-settings-thumb .thumb-felt i {
+      width: 7px; height: 10px; border-radius: 1.5px; display: block;
+      background: linear-gradient(180deg,#fdfcf9,#f2efe7);
+      box-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    }
+    .replayer-settings-thumb .thumb-back {
+      width: 60px; height: 38px; border-radius: var(--r-object, 6px);
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.35);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .replayer-settings-thumb .thumb-back .card-unknown { width: 20px; height: 28px; --back-mark: 9px; }
+    .replayer-settings-thumb .thumb-label {
+      font-family: var(--font-condensed); font-size: var(--fs-2xs);
+      color: var(--text-muted); text-align: center; line-height: 1.2;
+    }
+    .replayer-settings-thumb.active .thumb-felt,
+    .replayer-settings-thumb.active .thumb-back {
+      box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--brand), inset 0 2px 6px rgba(0,0,0,0.45);
+    }
+    .replayer-settings-thumb.active .thumb-label { color: var(--text); }
+    .replayer-settings-thumb:focus-visible .thumb-felt,
+    .replayer-settings-thumb:focus-visible .thumb-back {
+      outline: 2px solid var(--brand); outline-offset: 3px;
+    }
+
+    /* 80 */
+    .replayer-settings-fold > summary {
+      cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: var(--space-xs);
+    }
+    .replayer-settings-fold > summary::-webkit-details-marker { display: none; }
+    .replayer-settings-fold > summary::after {
+      content: '';
+      width: 6px; height: 6px; flex: none;
+      border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg) translate(-1px, -1px);
+      transition: transform var(--dur-fast) var(--ease-out);
+    }
+    .replayer-settings-fold[open] > summary::after { transform: rotate(-135deg) translate(-1px, -1px); }
+
+    /* 81: the empty state IS a list row, so nothing moves when it resolves. */
+    .replayer-hand-card.is-empty {
+      cursor: default; border-left-color: transparent;
+    }
+    .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown {
+      width: 22px; height: 30px; --back-mark: 9px;
+    }
+    .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown:last-child {
+      margin-left: -10px; transform: rotate(8deg);
+    }
+
+    /* 84: what each export actually produces, at a glance. */
+    .export-preview {
+      width: 42px; height: 28px; display: block; margin: 0 auto var(--space-2xs);
+      border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .export-preview.is-link { background: var(--surface2); border: 1px solid var(--border); }
+    .export-preview.is-image { background: radial-gradient(ellipse at 50% 40%, #9478b4, #2c2e50); }
+    .export-preview.is-overlay {
+      background: repeating-conic-gradient(#3a3450 0 25%, #2b2740 0 50%) 0 0 / 8px 8px;
+    }
+    .export-preview.is-green { background: #00b140; }
+    .export-preview.is-gif { background: radial-gradient(ellipse at 50% 40%, #9478b4, #2c2e50); border-radius: 12px; }
+    .export-preview.is-story {
+      width: 20px; height: 34px;
+      background: linear-gradient(180deg, #3a2f5c, #171226);
+    }
+
+
+    /* 85: the export overlay. It shows the capture rather than hiding it. */
+    .replayer-export-overlay {
+      position: fixed; inset: 0; z-index: var(--z-splash, 9999);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(6,4,10,0.86);
+      padding: var(--space-xl);
+    }
+    .replayer-export-frame {
+      width: min(70vw, 240px); aspect-ratio: 3 / 4.5;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: var(--space-ml);
+      border-radius: var(--r-object, 6px);
+      background: repeating-conic-gradient(rgba(255,255,255,0.05) 0 25%, transparent 0 50%) 0 0 / 12px 12px;
+      overflow: hidden;
+    }
+    .replayer-export-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .replayer-export-bar {
+      width: 220px; height: 4px; border-radius: 3px; overflow: hidden;
+      background: rgba(255,255,255,0.15); margin-bottom: var(--space-sm);
+    }
+    .replayer-export-bar > div {
+      height: 100%; background: var(--brand); border-radius: 3px;
+      transition: width var(--dur-base) var(--ease-out);
+    }
+
     /* Entry mode */
     .replayer-entry { display:flex; flex-direction:column; gap: var(--space-ml); }
     .replayer-step-label { font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-2xs); }
@@ -3740,16 +3852,39 @@
       margin: 0 auto;
       width: 100%;
     }
+    /* 75: above the line, a lit felt with nameplates and chips. Below it,
+       --surface buttons on --border hairlines in the app's generic chrome,
+       separated by a 1px rule — so the transport read as a settings panel
+       that happened to sit under a photograph. It was the most visible seam
+       in the feature: everything above it looked considered and everything
+       below it looked default. The bar takes the table's own materials.
+
+       76: and the buttons were five identical transparent rings, which is
+       the resting state of an unstyled control, directly beneath the most
+       designed thing in the app. They are raised objects on a ground now. */
     .replayer-controls {
-      display:flex; justify-content:center; align-items:center; gap: var(--space-md); padding: var(--space-sm) 0 var(--space-xs);
-      border-top:1px solid var(--border);
+      display:flex; justify-content:center; align-items:center;
+      gap: var(--space-ml);
+      padding: var(--space-sm) var(--space-ml);
+      margin: var(--space-xs) auto 0;
+      max-width: max-content;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: linear-gradient(180deg, rgba(34,28,51,0.96), rgba(21,17,31,0.96));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        0 2px 8px rgba(0,0,0,0.5);
     }
     .replayer-controls button {
-      width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
-      background:transparent; color:var(--text); font-family: var(--font-condensed);
-      font-size: var(--fs-xs); cursor:pointer; transition:background var(--dur-fast),border-color var(--dur-fast);
+      width:32px; height:32px; border-radius:50%;
+      border:1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+      color: #ece7f5; font-family: var(--font-condensed);
+      font-size: var(--fs-xs); cursor:pointer;
+      transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
       display:flex; align-items:center; justify-content:center; gap:0;
       line-height:1; flex-shrink:0; padding:0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10);
     }
     /* 52: these were 32px circles (play 38px) with 14px glyphs, packed
        directly above the bottom nav, on the platform whose own guidance sets
@@ -3767,20 +3902,33 @@
     /* The 44px targets would otherwise overlap at the old --space-md gap. */
     .replayer-controls { gap: var(--space-ml); }
 
-    .replayer-controls .replayer-play-btn { width:38px; height:38px; border-color:var(--accent2); }
-    /* 53 */
+    /* 76: the play button was distinguished only by being 6px larger. */
+    .replayer-controls .replayer-play-btn {
+      width:38px; height:38px;
+      background: var(--brand);
+      border-color: var(--brand);
+      color: var(--on-brand);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+    }
     .replayer-controls .replayer-play-btn.is-playing {
-      background: var(--accent2);
-      color: var(--on-brand, #fff);
-      border-color: var(--accent2);
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      color: var(--brand);
+      border-color: var(--brand-line);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-controls .replayer-play-btn:hover { background: var(--brand); }
     }
     /* 54: the speed control is a sibling of the transport circles, not a form
        field parked at the end of the row. */
     .replayer-speed-btn {
-      width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
-      background:transparent; cursor:pointer; display:flex; align-items:center;
+      width:32px; height:32px; border-radius:50%;
+      border:1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+      cursor:pointer; display:flex; align-items:center;
       justify-content:center; padding:0; flex-shrink:0; position:relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10);
     }
+    .replayer-speed-btn .replayer-speed-label { color: #ece7f5; }
     .replayer-speed-btn::after {
       content:''; position:absolute; left:50%; top:50%;
       width:44px; height:44px; transform:translate(-50%,-50%);
@@ -3789,7 +3937,10 @@
       .replayer-speed-btn:hover { background:var(--surface2); border-color:var(--accent); }
     }
     @media (hover: hover) and (pointer: fine) {
-      .replayer-controls button:hover { background:var(--surface2); border-color:var(--accent); }
+      .replayer-controls button:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+        border-color: var(--brand-line);
+      }
     }
     .replayer-controls button:disabled { opacity: var(--state-disabled); cursor:default; }
     @media (hover: hover) and (pointer: fine) {
@@ -3800,15 +3951,12 @@
       font-family: var(--font-condensed); font-variant-numeric: var(--num-tabular);
     }
 
-    .replayer-street-indicator {
-      display:flex; gap: var(--space-xs); justify-content:center; margin-bottom: var(--space-sm);
-    }
-    .replayer-street-dot {
-      width:8px; height:8px; border-radius:50%; background:var(--border);
-      transition: background var(--dur-snap);
-    }
-    .replayer-street-dot.active { background:var(--accent); }
-    .replayer-street-dot.completed { background:var(--text-muted); }
+    /* 77: .replayer-street-indicator and its dots described a second progress
+       strip for the same sequence the action timeline already draws — one dot
+       per street, a strict subset of one dot per action with the street
+       markers between them. No component emits either class; the timeline is
+       the one that survives, and it collapses to street granularity when the
+       hand is long enough to overflow (see .replayer-timeline.is-dense). */
 
 
     /* 40 */
@@ -3977,10 +4125,19 @@
     .replayer-settings-row.is-disabled { opacity: var(--state-disabled); }
     .replayer-settings-toggle:disabled { cursor: default; }
 
+    /* 83: a 6px-radius square in --surface on --border with a hardcoded
+       z-index of 10, sitting in a row of pill buttons — the only rectangle
+       among them, which is exactly the shape of something bolted on. */
     .replayer-gear-btn {
-      background:var(--surface); border:1px solid var(--border); color:var(--text-muted); cursor:pointer;
-      padding: var(--space-sm); display:flex; align-items:center; transition:color var(--dur-fast), background var(--dur-fast);
-      border-radius:6px; position:relative; z-index:10;
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+      cursor: pointer; padding: 0; width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-circle);
+      transition: color var(--dur-fast), border-color var(--dur-fast);
+      position: relative;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-gear-btn:hover { color: var(--text); border-color: var(--brand-line); }
     }
     @media (hover: hover) and (pointer: fine) {
       .replayer-gear-btn:hover { color:var(--text); background:var(--surface2); }
@@ -4112,18 +4269,69 @@
     .replayer-table.theme-high-stakes .replayer-dealer-btn { background:#b91c1c; color:#fff; }
 
     /* ── Commentator Mode ── */
+    /* 86: generateCommentary emitted a sentence in the app's default prose
+       treatment, directly under a broadcast graphic — the one piece of prose
+       in the feature, looking like a caption somebody forgot to style. On a
+       broadcast this is a lower third: a shaped bar with a rule, an accent,
+       and a fixed place in the frame. */
     .replayer-commentary {
-      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
-      padding: var(--space-md) var(--space-lg); margin-top: var(--space-sm); font-size: var(--fs-xs); color:var(--text);
-      font-family: var(--serif); font-style:italic;
-      min-height:28px; line-height:1.5; border-left: var(--bw-2) solid var(--accent);
+      display: flex; align-items: stretch; overflow: hidden;
+      max-width: 420px; margin-left: auto; margin-right: auto;
+      background: linear-gradient(180deg, rgba(24,21,32,0.96), rgba(12,10,17,0.96));
+      border: none;
+      border-radius: var(--r-object, 6px);
+      box-shadow: var(--plate-bevel, 0 1px 2px rgba(0,0,0,0.55));
+    }
+    .replayer-commentary::before {
+      content: '';
+      width: 4px; flex: none;
+      background: var(--brand);
+    }
+    .replayer-commentary > .replayer-commentary-body {
+      padding: var(--space-sm) var(--space-ml);
+      font-size: var(--fs-xs); color: #d8d2e4;
+      font-family: var(--font-condensed); font-style: normal;
+      line-height: 1.4; min-height: 28px;
+    }
+    .replayer-commentary-street {
+      display: block;
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: var(--brand); margin-bottom: 1px;
     }
 
     /* ── Action Timeline ── */
+    /* 78: 10px circles in the action colours, floating on the page
+       background with a 2px grey bar between streets — so the dots had
+       nothing to sit along and the street groupings were legible only from
+       the gaps. A timeline is a spatial object; without a track there is
+       nothing to scrub, which is what the control is for. */
     .replayer-timeline {
-      display:flex; align-items:center; gap: var(--space-2xs); padding: var(--space-xs) 0; margin-top: var(--space-xs);
+      display:flex; align-items:center; gap: var(--space-2xs);
+      padding: var(--space-xs) var(--space-md);
+      margin: var(--space-sm) auto 0;
+      max-width: max-content;
+      border-radius: var(--radius-pill);
+      background: rgba(255,255,255,0.045);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
       overflow-x:auto; -webkit-overflow-scrolling:touch;
+      scrollbar-width: none;
     }
+    .replayer-timeline::-webkit-scrollbar { display: none; }
+    /* Each street's span is shaded a step differently, so the groups read
+       without needing the markers to do all the work. */
+    .replayer-timeline-street {
+      display: flex; align-items: center; gap: var(--space-2xs);
+      padding: 2px var(--space-xs);
+      border-radius: var(--radius-pill);
+      background: rgba(255,255,255,0.05);
+    }
+    .replayer-timeline-street:nth-child(2n) { background: rgba(255,255,255,0.09); }
+    /* A hand long enough to overflow collapses to one dot per street. */
+    .replayer-timeline.is-dense .replayer-timeline-dot:not(.current):not(.street-marker) {
+      width: 6px; height: 6px;
+    }
+    .replayer-timeline.is-dense .replayer-timeline-street-label { display: none; }
     .replayer-timeline-dot {
       width:10px; height:10px; border-radius:50%; flex-shrink:0; cursor:pointer;
       transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); border: var(--bw-1) solid transparent;
@@ -4946,6 +5154,32 @@
     .replayer-muck { opacity: 0.62; }
     .replayer-muck > span {
       transform: rotate(calc((var(--mi) - 1.5) * 11deg)) translate(calc(var(--mi) * 1.5px), 0);
+    }
+
+
+    /* 87: the title and the level, inside the captured element. */
+    .replayer-table-title {
+      position: absolute; left: 2.5%; top: 1.5%;
+      z-index: var(--z-pot);
+      display: flex; flex-direction: column; gap: 1px;
+      padding: var(--space-2xs) var(--space-sm);
+      border-radius: var(--r-object);
+      background: linear-gradient(180deg, rgba(24,21,32,0.82), rgba(12,10,17,0.82));
+      box-shadow: var(--plate-bevel);
+      pointer-events: none; max-width: 46%;
+    }
+    .replayer-table-title-name {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: var(--brand);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .replayer-table-title-level {
+      font-family: var(--font-display);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      font-variant-numeric: var(--num-tabular);
+      color: #f2efe6; white-space: nowrap;
     }
 
     /* ── Table shapes ── */

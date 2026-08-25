@@ -76,6 +76,7 @@ export async function exportReplayGif({
   speed,
   feltColor,
   scale,
+  onFrame,
   onProgress,
   onDone,
   onError,
@@ -126,6 +127,9 @@ export async function exportReplayGif({
       frames.push(ctx.getImageData(0, 0, cw, ch).data);
       delays.push(isLast ? 2000 : frameDelay);
       step++;
+      // 85: hand the caller the frame, so the overlay can show the capture
+      // rather than covering it with a progress bar.
+      if (onFrame) { try { onFrame(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ } }
       onProgress(Math.round((step / totalSteps) * 60), step, totalSteps);
     };
 
