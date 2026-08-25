@@ -267,3 +267,85 @@ was readable.
 **Do not start a second server on :3001.** pm2 runs `futuregame-scheduler` from
 this checkout. Test on a scratch port with a `DB_PATH` copy, and stop the
 watcher's collector before running any migration against `mtt-series.db`.
+
+## 2026-08-24 — Replayer: catalogue one implemented, catalogue two published
+
+**Shipped (PR #104, branch `feat/replayer-cards`, 8 commits)** — all 100 items of
+the first replayer catalogue. Grouped by surface: cards 1-14, table and seats
+15-45, motion 46-60, chrome 61-80, exports 81-100. The dominant pattern was
+finished work that was never connected: the action timeline (fully styled CSS,
+setting defaulting to **true**, a panel row advertising it, no markup),
+`spawnFlyingChips` (no callers), `calcSPR` / `estimateRange` /
+`calcShowdownEquity` / `.replayer-seat-pos` / `.replayer-chip-delta` (all
+complete, none rendered), landscape fullscreen (computed, listened for by a live
+matchMedia listener, applied to nothing).
+
+**Not merged.** Build is clean, `node --check server.js` passes, both chunks
+parse, and a cross-component scope audit ran — but nothing has been rendered in
+a browser. Worth eyeballing the felt, the settings sheet and one export first.
+
+**Found in passing, both pre-existing:**
+- `toast` was referenced throughout `HandReplayerReplayView` but declared only in
+  the outer `HandReplayerView`. Optional chaining does not save an *undeclared*
+  identifier, so every GIF export's completion toast has thrown a ReferenceError
+  since f701013 (2026-05-19). Fixed in this branch.
+- The whole saved-hands API block is registered **twice** in `server.js` (~7168
+  and ~7292). Express serves the first; the second is dead. Spawned as its own
+  task, not fixed here.
+- `/api/hands` is not the endpoint the replayer calls — it uses
+  `/api/replayer/hands`, which spreads the entire `hand_data` blob into every
+  list row. Anything the picker needs is already client-side.
+- esbuild reports one `Unexpected "@media"` CSS warning in `styles.css`. It
+  predates this work (reproduced against `fd45213`) and is still unexplained.
+
+**Catalogue two — published:** https://claude.ai/code/artifact/2ab02148-2c58-4adc-a456-7c6c09f70545
+100 craft items with 100 live before/after specimens built from the replayer's
+own materials. Nothing in it is a bug; it is about agreement — the rail is lit
+from two directions and the felt from one, four objects within 40px cast four
+different shadows, nine corner radii, eleven kinds of information at one type
+size. Three items are consequences of the first pass and say so.
+
+Build systems for both catalogues are in the session scratchpad
+(`scratchpad/replayer/` and `scratchpad/polish/`), not the repo.
+
+## 2026-08-25 — Replayer polish catalogue implemented (99 of 100)
+
+All of catalogue two is in on `feat/replayer-cards` ([PR #104](https://github.com/ethanibennett/futuregame-scheduler/pull/104)),
+eight more commits. **22 was skipped** (felt wear and history) and **26-29 were
+reverted** after review — the white-stock deck, the edge band, the mirrored
+index and the twelve court panels are out, and everything retuned for white
+stock went back with them (the warm rim light is load-bearing again, because
+all four suit fills are darker than the felt's dark stop).
+
+**The big ones:** the rail was lit from two opposite corners while everything
+else described one source. The table is a container now, so the rail, the cards
+and the weave scale with it instead of being three fixed sizes on a fluid box.
+The felt went from a 1:1.59 portrait oval — a shape no poker table has — to
+1.30:1, and the seat coordinates are derived from the inset rather than being
+ten hand-written tables holding a copy of it. Eleven kinds of information at
+one type size became three tiers. Four shadow directions became one. The
+transport bar joined the table's world. The four "Coming Soon" sounds are built
+(Web Audio, synthesised, no assets).
+
+**Verification changed this session.** The build cannot see a runtime error, and
+the previous pass shipped two: `toast` referenced out of scope, and the
+chip-flight effect's dependency array naming three consts declared further down
+the component — a dep array evaluates on every render, so the render sat in
+their temporal dead zone and the replay view threw into its error boundary.
+There is now a scan for that pattern (`dep arrays naming a later const`), and a
+render harness: `scratchpad/harness/` inlines the built stylesheet and the real
+card SVGs into a static page and screenshots it with headless Edge
+(`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --headless=new
+--screenshot=...`). Rebuild it with `python refresh.py` after any build.
+
+That harness caught four things reading could not: **ALL-IN rendered as a solid
+purple slab with no text**, because the generic per-action colour rule sets
+`color: var(--act-allin)` over the badge's own purple ground; the deck landed
+on the button player's cards; the board ran under the mid-height side plaques
+(pre-existing, and worse before this pass); and the pot sat hard against the
+top edge of the shallower felt.
+
+**Still unrendered:** the React logic. The harness is static markup, so autoplay
+pacing, the count-ups, the rewind cross-fade, the bookends and the exports have
+not been exercised. The Chrome extension's PreToolUse hook times out on this
+box, which is what forced the harness route.

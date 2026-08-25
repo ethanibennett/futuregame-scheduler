@@ -32,4 +32,7 @@
   <g id="Isolation_Mode">
     <path class="cls-1" d="M78.92,180.1l53.95-72.1,54.05,72.1-54.05,71.9-53.95-71.9Z"/>
   </g>
+  <g data-corner-pip="1" transform="translate(14.0,84.0) scale(1.5)">
+    <path class="cls-1" d="M12 2.2 21.4 12 12 21.8 2.6 12z"/>
+  </g>
 </svg>

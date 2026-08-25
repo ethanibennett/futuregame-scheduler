@@ -6,7 +6,8 @@ import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic } from '../utils
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
          bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES } from '../utils/hand-shorthand.js';
-import { loadCardImages } from '../utils/export.js';
+import { loadCardImages, ensureExportFonts } from '../utils/export.js';
+import { playTableSound } from '../utils/replay-sound.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -308,13 +309,137 @@ function buildSolverSpot({ hand, game, streetIdx, heroCards, opponentCards, repl
   };
 }
 
+/* 73: parseCardNotation silently DROPS any character it does not recognise
+   and pairs whatever ranks and suits survive, so "Ahh" parses as one card,
+   "AhAh" as two identical ones, and a bare "A" as an unknown-suit card - all
+   of which render as a shorter card row than the player typed, with nothing
+   anywhere saying why. This reports what the parser threw away. */
+function checkCardText(text) {
+  if (!text) return null;
+  const stripped = String(text).replace(/\s/g, '');
+  if (!stripped) return null;
+  const bad = [...new Set(stripped.split('').filter(ch =>
+    !'AKQJT98765432'.includes(ch.toUpperCase()) && !'hdcsx'.includes(ch.toLowerCase())))];
+  if (bad.length) return 'Not card notation: ' + bad.join(' ');
+  const cards = parseCardNotation(stripped);
+  const seen = new Set();
+  for (const c of cards) {
+    if (c.suit === 'x') continue;
+    const key = c.rank + c.suit;
+    if (seen.has(key)) return 'Duplicate card: ' + key;
+    seen.add(key);
+  }
+  return null;
+}
+
+/* 59: /api/replayer/hands spreads the entire hand_data into each list row, so
+   the hero's cards and who won are already here — the list simply never looked
+   at them and rendered a title, a game chip and a Delete button instead. */
+function heroCardsOf(h) {
+  return (h.streets && h.streets[0] && h.streets[0].cards && h.streets[0].cards.hero) || '';
+}
+function outcomeOf(h) {
+  const winners = (h.result && h.result.winners) || [];
+  if (!winners.length) return null;
+  const heroIdx = h.heroIdx != null ? h.heroIdx : 0;
+  const mine = winners.find(w => w.playerIdx === heroIdx);
+  return mine ? (mine.split ? 'split' : 'win') : 'loss';
+}
+
+/* The felt's two stops.
+
+   7: these used to be the same hue at two lightnesses — the lit centre and the
+   shaded edge were literally the same colour, which no lit surface ever is.
+   Every real material shifts hue between its highlight and its shade, and that
+   shift is most of what separates a render from a fill. The highlight warms
+   toward the lamp; the shadow cools toward the room.
+
+   11: and the derivation could destroy the lighting model outright. It was
+   `light = c*0.9 + white*0.1` and `dark = c*0.6`, so picking near-black gave
+   two stops that were both nearly black and the radial gradient vanished, and
+   picking white gave a blown-out table with no card contrast — one tap from a
+   colour input that is always on screen. The chosen colour is pulled into a
+   band that always leaves room for a highlight above it and a shade below. */
+function feltStops(hex) {
+  const m = String(hex || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+  if (!m) return null;
+  let r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  const lum = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 255;
+  if (lum > 0.004) {
+    const k = Math.min(0.62, Math.max(0.16, lum)) / lum;
+    r *= k; g *= k; b *= k;
+  } else {
+    r = g = b = 42;
+  }
+  const mix = (c, t, w) => Math.round(Math.min(255, Math.max(0, c * (1 - w) + t * w)));
+  return {
+    lit: `rgb(${mix(r * 1.18, 255, 0.10)},${mix(g * 1.13, 246, 0.10)},${mix(b * 1.04, 214, 0.10)})`,
+    shade: `rgb(${mix(r * 0.52, 12, 0.18)},${mix(g * 0.52, 16, 0.18)},${mix(b * 0.58, 52, 0.18)})`,
+  };
+}
+
+/* 66 + 67: the pot swapped three digits in a single frame and a player's
+   stack dropped the instant they bet — while their chips were still animating
+   toward a pot that had already been paid. The money left the stack before it
+   arrived, and neither event was connected to the other. Conservation is the
+   whole point of animating chips: watching the same quantity leave one place
+   and arrive at another.
+
+   This tweens a displayed value toward its target over the flight's duration.
+   A counting number is one of the few places where motion carries information
+   rather than decoration — it shows the SIZE of the change, not just the
+   result. Scrubbing (a jump of more than one step, or backwards) snaps. */
+function useCountUp(target, enabled) {
+  const [shown, setShown] = useState(target);
+  const fromRef = useRef(target);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    cancelAnimationFrame(rafRef.current);
+    const from = fromRef.current;
+    if (!enabled || from === target) { fromRef.current = target; setShown(target); return; }
+    const t0 = performance.now();
+    const DUR = 420;
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / DUR);
+      // ease-out: the count decelerates into its landing, like the chips do.
+      const e = 1 - Math.pow(1 - p, 3);
+      setShown(Math.round(from + (target - from) * e));
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
+      else fromRef.current = target;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, enabled]);
+  return shown;
+}
+
 // ── Formatting helpers ──
-function formatChipAmount(val) {
+/* 44: this was a hand-rolled divide-and-suffix with a hardcoded '.' decimal
+   point and a mixed-case suffix — '1.5k' but '1.5M' — and there was no Intl
+   anywhere in the file, so a French or German reader got the wrong separator
+   on every number on the felt. Intl compact notation is locale-correct, has
+   one suffix case, and drops the trailing .0 by itself. */
+const CHIP_COMPACT = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
+const CHIP_PLAIN = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+function formatChipAmount(val, bigBlind) {
   if (!val && val !== 0) return '';
   const n = Number(val);
-  if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k';
-  return String(n);
+  /* 44: 'stacks in BB' is how tournament players actually talk about depth —
+     'he had 14 big blinds' carries information '112,000' does not unless you
+     also remember the level. */
+  if (bigBlind > 0) {
+    const bb = n / bigBlind;
+    return (bb >= 100 ? Math.round(bb) : Math.round(bb * 10) / 10) + ' BB';
+  }
+  /* 42: everything at or above 1,000 went through compact notation, so a
+     2,400 pot rendered as '2.4K'. At live-tournament stakes almost every
+     number on this table is in that band, which made the felt mostly
+     one-decimal approximations of numbers the player knows exactly — and
+     '2,400' is both more precise and more recognisable than '2.4K' to the
+     person whose hand it is. Compact starts where a tournament clock's own
+     shorthand starts. */
+  if (n >= 100000) return CHIP_COMPACT.format(n);
+  return CHIP_PLAIN.format(n);
 }
 
 // ── Chip visuals ──
@@ -344,6 +469,11 @@ function ChipStack({ amount }) {
     // top of the pile. Negative margin-top on each subsequent chip slides it
     // up beneath the bigger one; higher z-index on the bigger chip keeps it
     // drawn on top, so the biggest-denom chip is the visible face.
+    //
+    // Polish 17/18 broke this into one column per denomination with 17x7 rim
+    // discs advancing 5px apiece. On the felt that read as coins with daylight
+    // between them rather than as a stack, so both are reverted: one column,
+    // 18x6, overlapped to a 2px advance.
     <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'3px', verticalAlign:'middle' }}>
       {chips.map((color, i) => (
         <div key={i} className="chip-disc" style={{
@@ -356,6 +486,31 @@ function ChipStack({ amount }) {
       ))}
     </div>
   );
+}
+
+/* 45: the plaque truncates at 88px with an ellipsis, which in a condensed
+   face at 10px is about fifteen characters — and the cut fell mid-word with
+   nothing carrying the rest, so the one string on the plaque the reader
+   supplied was the one that could be silently lost. A name shortens the way
+   people shorten names. */
+function shortenName(name) {
+  const t = String(name || '').trim();
+  if (t.length <= 15) return t;
+  const parts = t.split(/\s+/);
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1];
+    const initials = parts.slice(0, -1).map(p => p[0].toUpperCase() + '.').join(' ');
+    const short = initials + ' ' + last;
+    if (short.length <= 15) return short;
+    return parts[0][0].toUpperCase() + '. ' + last.slice(0, 12);
+  }
+  return t.slice(0, 14);
+}
+
+/* One counter per seat: a hook cannot be called inside the seat map, so the
+   count lives in a leaf component that gets remounted with the seat. */
+function CountedChips({ value, fmt, live }) {
+  return fmt(useCountUp(value, live));
 }
 
 // ── Player name helpers ──
@@ -727,34 +882,58 @@ function PotChipVisual({ amount }) {
 
 // ── Card Row component ──
 // Trig-based card splay: shared pivot point for natural fan.
-// reverseZ flips the z-index ordering — used for opponent seats so the
-// leftmost card sits on top of the fan instead of the rightmost (which
-// is how a real player would hold cards facing away from the viewer).
+// reverseZ flips the z-index ordering so the LEFTMOST card sits on top,
+// which is how a player holds cards facing away from the viewer.
+//
+// That rationale only holds for face-DOWN backs. At showdown the revealed fan
+// stacked leftmost-on-top, and the card faces carry their rank index ONLY at
+// top-left — there is no bottom-right mirror — so every buried card showed
+// nothing but a blank right edge and the opponent's hand was unreadable.
+// Face-up cards therefore always fan rightmost-on-top; see faceUp below.
+/* 35: the pivot was at 50% 120% — a point directly below the CENTRE of the
+   hand, so the fan opened around a hinge under the middle of it and came out
+   perfectly symmetrical. A hand pivots around the bottom corner nearest the
+   thumb, which is why every real fan is lopsided. Symmetry is the tell.
+
+   34: and the fan was a pure 2D rotation, which is cards printed on a page.
+   A real fan also lifts each successive card slightly out of the plane, so it
+   grows a little and throws a longer shadow toward the top of the arc. */
 function getSplayStyle(index, total, angle, yOffset, reverseZ) {
   if (total <= 1) return {};
   const step = (2 * angle) / (total - 1);
   const rot = -angle + step * index;
   const extraY = yOffset || 0;
   const z = reverseZ ? (total - 1 - index) : index;
+  // The lift runs along the arc, not with the z-order, so a reversed fan still
+  // lifts in the direction the hand is held.
+  const lift = index / Math.max(1, total - 1);
+  const scale = 1 + lift * 0.05;
+  const shadow = 'drop-shadow(' + (-1 - lift * 2).toFixed(1) + 'px '
+    + (1 + lift * 2).toFixed(1) + 'px ' + (2 + lift * 3).toFixed(1) + 'px rgba(0,0,0,0.5))';
   if (total <= 2) {
     return {
-      transform: 'rotate(' + rot + 'deg)',
-      transformOrigin: '50% 120%',
+      transform: 'rotate(' + rot + 'deg) scale(' + scale.toFixed(3) + ')',
+      transformOrigin: '18% 118%',
       marginLeft: index === 0 ? 0 : -22,
       marginTop: extraY || undefined,
+      filter: shadow,
       zIndex: z,
     };
   }
-  // 3+ cards: arc from a true shared pivot point using trig
+  // 3+ cards: arc from a true shared pivot point using trig. The pivot sits
+  // left of centre, so the arc opens the way a thumb opens it.
   const rad = rot * Math.PI / 180;
   const radius = total <= 5 ? 85 : 110;
-  const x = Math.sin(rad) * radius;
+  const x = Math.sin(rad) * radius - 9;
   const y = -Math.cos(rad) * radius + radius + extraY;
   return {
     position: 'absolute',
     left: '50%',
     bottom: 0,
-    transform: 'translate(calc(-50% + ' + x.toFixed(1) + 'px), ' + y.toFixed(1) + 'px) rotate(' + rot + 'deg)',
+    transform: 'translate(calc(-50% + ' + x.toFixed(1) + 'px), ' + y.toFixed(1) + 'px) rotate('
+      + rot + 'deg) scale(' + scale.toFixed(3) + ')',
+    transformOrigin: '18% 118%',
+    filter: shadow,
     zIndex: z,
   };
 }
@@ -766,7 +945,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
     return (
       <div className={"card-row" + (splay ? " card-row-splay" : "")}>
         {Array.from({ length: placeholderCount }, (_, i) => {
-          const style = splay ? getSplayStyle(i, placeholderCount, splay, 0, reverseZ) : undefined;
+          const style = { '--ci': i, ...(splay ? getSplayStyle(i, placeholderCount, splay, 0, reverseZ) : null) };
           return <div key={'ph' + i} className="card-placeholder" style={style} />;
         })}
       </div>
@@ -782,14 +961,24 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         const isDown = downIdx && downIdx.has(i);
         const isStudUp = stud && !isDown && i >= 2 && i <= 5;
         const studYOffset = isStudUp ? -5 : isDown ? 5 : 0;
-        const splayStyle = splay ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ) : undefined;
+        // A revealed face never reverses: the rank index lives at top-left only,
+        // so leftmost-on-top buries every rank but the first.
+        const faceUp = c.suit !== 'x' && !isDown;
+        // 63: --ci is the card's place in the hand. The per-card deal
+        // stagger multiplies it by one round of the table, so a hand is dealt
+        // one card at a time round the seats rather than arriving as a block.
+        const splayStyle = { '--ci': i, ...(splay
+          ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ && !faceUp)
+          : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
         }
         if (cardTheme === 'classic') {
-          const isRed = c.suit === 'h' || c.suit === 'd';
+          // One class per suit. The old red/dark binary made Ah and Ad — and
+          // As and Ac — pixel-identical apart from a ~9px glyph, which is not
+          // a suit signal at the speed a replay runs.
           return (
-            <div key={k} className={'card-classic' + (isRed ? ' card-classic-red' : ' card-classic-dark')}
+            <div key={k} className={'card-classic card-classic-' + c.suit}
               style={splayStyle}>
               <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
               <span className="card-classic-suit">{SUIT_SYMBOLS[c.suit] || ''}</span>
@@ -806,10 +995,17 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
 }
 
 // ── Replayer settings ──
+/* 69: `swatch` is that theme's felt, lifted from the gradient the theme rule
+   already paints, so the pill shows what it does instead of only naming it. */
+/* `lit` and `shade` are the theme's own two felt stops, so the panel's
+   thumbnail is the felt rather than a colour that stands for it. */
 const REPLAYER_THEMES = [
-  { id: 'default', label: 'Default' }, { id: 'casino-royale', label: 'Casino Royale' },
-  { id: 'neon-vegas', label: 'Neon Vegas' }, { id: 'vintage', label: 'Vintage' },
-  { id: 'minimalist', label: 'Minimalist' }, { id: 'high-stakes', label: 'High Stakes' },
+  { id: 'default', label: 'Default', lit: null, shade: '#2c2e50' },
+  { id: 'casino-royale', label: 'Casino Royale', lit: '#2a5c8f', shade: '#0b1a2e' },
+  { id: 'neon-vegas', label: 'Neon Vegas', lit: '#5b1a7a', shade: '#0b0416' },
+  { id: 'vintage', label: 'Vintage', lit: '#9a7c4a', shade: '#2c2113' },
+  { id: 'minimalist', label: 'Minimalist', lit: '#f4f4f6', shade: '#d8d8de' },
+  { id: 'high-stakes', label: 'High Stakes', lit: '#3a3a3a', shade: '#101010' },
 ];
 const REPLAYER_CARD_BACKS = [
   { id: 'default', label: 'Default' }, { id: 'classic', label: 'Classic Blue' },
@@ -844,16 +1040,30 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Table</div>
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Theme</div>
             <div className="replayer-settings-pills">
               {REPLAYER_THEMES.map(t => (
-                <button key={t.id} className={'replayer-settings-pill' + (settings.theme === t.id ? ' active' : '')}
-                  onClick={() => onUpdate('theme', t.id)}>{t.label}</button>
+                /* 79: five of the six choices in this group are purely
+                   visual and four of them were text pills — Casino Royale and
+                   Vintage differed only in the words. Choosing how something
+                   LOOKS from a list of words is the clearest place in the
+                   feature where it is described rather than shown. The
+                   gradients already existed; the thumbnail is the felt with
+                   its rail and two cards on it. */
+                <button key={t.id} className={'replayer-settings-thumb' + (settings.theme === t.id ? ' active' : '')}
+                  aria-pressed={settings.theme === t.id}
+                  onClick={() => onUpdate('theme', t.id)}>
+                  <span className="thumb-felt" aria-hidden="true"
+                    style={{ '--thumb-lit': t.lit || settings.feltColor, '--thumb-shade': t.shade || '#2c2e50' }}>
+                    <i /><i />
+                  </span>
+                  <span className="thumb-label">{t.label}</span>
+                </button>
               ))}
             </div>
           </div>
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px', marginTop:'8px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Table Shape</div>
             <div className="replayer-settings-pills">
               {REPLAYER_TABLE_SHAPES.map(s => (
@@ -863,9 +1073,9 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             </div>
           </div>
           {settings.theme === 'default' && (
-            <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px', marginTop:'8px' }}>
+            <div className="replayer-settings-row is-stacked">
               <div className="replayer-settings-label">Felt Color</div>
-              <div style={{ display:'flex', gap:'4px', alignItems:'center', flexWrap:'wrap' }}>
+              <div className="replayer-settings-swatches">
                 {[
                   { name:'Lavender', color:'#6b5b8a' }, { name:'Classic Green', color:'#2d5a27' },
                   { name:'Blue', color:'#1a3a5c' }, { name:'Red', color:'#5a1a1a' },
@@ -875,31 +1085,45 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                     style={{ background: fc.color }} title={fc.name}
                     onClick={() => onUpdate('feltColor', fc.color)} />
                 ))}
-                <input type="color" value={settings.feltColor} onChange={e => onUpdate('feltColor', e.target.value)}
-                  style={{ width:'24px', height:'24px', border:'none', cursor:'pointer', borderRadius:'4px', marginLeft:'4px' }} title="Custom color" />
+                {/* 68: this was a 24px rectangle sitting in a row of circles. */}
+                <span className="felt-color-custom" title="Custom color">
+                  <input type="color" value={settings.feltColor} aria-label="Custom felt color"
+                    onChange={e => onUpdate('feltColor', e.target.value)} />
+                </span>
               </div>
             </div>
           )}
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Cards</div>
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Card Back Design</div>
             <div className="replayer-settings-pills">
+              {/* 79: same argument. A card back is a picture. */}
               {REPLAYER_CARD_BACKS.map(cb => (
-                <button key={cb.id} className={'replayer-settings-pill' + (settings.cardBack === cb.id ? ' active' : '')}
-                  onClick={() => onUpdate('cardBack', cb.id)}>{cb.label}</button>
+                <button key={cb.id} className={'replayer-settings-thumb' + (settings.cardBack === cb.id ? ' active' : '')}
+                  aria-pressed={settings.cardBack === cb.id}
+                  onClick={() => onUpdate('cardBack', cb.id)}>
+                  <span className="thumb-back" aria-hidden="true">
+                    <span className={'replayer-table'} data-cardback={cb.id}>
+                      <span className="card-row"><span className="card-unknown" /></span>
+                    </span>
+                  </span>
+                  <span className="thumb-label">{cb.label}</span>
+                </button>
               ))}
             </div>
           </div>
           {settings.cardBack === 'custom' && (
-            <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
+            <div className="replayer-settings-row">
               <div className="replayer-settings-label">Custom Card Back Color</div>
-              <input type="color" value={settings.cardBackColor} onChange={e => onUpdate('cardBackColor', e.target.value)}
-                style={{ width:'32px', height:'24px', border:'none', cursor:'pointer', borderRadius:'4px' }} />
+              <span className="felt-color-custom" title="Custom card back color">
+                <input type="color" value={settings.cardBackColor} aria-label="Custom card back color"
+                  onChange={e => onUpdate('cardBackColor', e.target.value)} />
+              </span>
             </div>
           )}
-          <div className="replayer-settings-row" style={{ flexDirection:'column', alignItems:'flex-start', gap:'6px', marginTop:'8px' }}>
+          <div className="replayer-settings-row is-stacked">
             <div className="replayer-settings-label">Card Front Style</div>
             <div className="replayer-settings-pills">
               {[{ id: 'default', label: 'Standard' }, { id: 'classic', label: 'Classic' }].map(ct => (
@@ -908,38 +1132,47 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               ))}
             </div>
           </div>
-          <div className="replayer-settings-row" style={{ marginTop:'6px' }}>
+          <div className="replayer-settings-row">
             <div>
               <div className="replayer-settings-label">High-Contrast Deck</div>
               <div className="replayer-settings-sublabel">Lifts the suits off the felt</div>
             </div>
             <button
-              className={'replayer-settings-toggle' + (settings.fourColorDeck ? ' on' : '')}
-              aria-pressed={!!settings.fourColorDeck}
+              className={'replayer-settings-toggle' + (settings.highContrastDeck ? ' on' : '')}
+              aria-pressed={!!settings.highContrastDeck}
               aria-label="High-contrast deck"
-              onClick={() => onUpdate('fourColorDeck', !settings.fourColorDeck)} />
+              onClick={() => onUpdate('highContrastDeck', !settings.highContrastDeck)} />
           </div>
-          <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
+          {/* 70: only the high-contrast toggle three rows up had aria-pressed
+              and a label. Every other switch in this panel — Splay, Rail
+              Light, seven Display rows and five Animation rows — was a bare
+              <button> with no text inside, which is an unnamed, stateless
+              control to a screen reader: thirteen buttons all announcing
+              "button". The pattern was already written; it just stopped. */}
+          <div className="replayer-settings-row">
             <div className="replayer-settings-label">Splay Hole Cards</div>
             <button className={'replayer-settings-toggle' + (settings.cardSplay ? ' on' : '')}
+              aria-pressed={!!settings.cardSplay} aria-label="Splay hole cards"
               onClick={() => onUpdate('cardSplay', !settings.cardSplay)} />
           </div>
-          <div className="replayer-settings-row" style={{ marginTop:'8px' }}>
+          <div className="replayer-settings-row">
             <div className="replayer-settings-label">Rail Light Strip</div>
             <button className={'replayer-settings-toggle' + (settings.lightStrip ? ' on' : '')}
+              aria-pressed={!!settings.lightStrip} aria-label="Rail light strip"
               onClick={() => onUpdate('lightStrip', !settings.lightStrip)} />
           </div>
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Display</div>
+          {/* 80: twelve switches in one undifferentiated column is a
+              preferences pane. Two groups is a set of decisions — what is on
+              the felt, and what is analysis laid over it. */}
           {[
-            { key:'showChipStacks', label:'Pot Chip Stacks', sub:'Visual chip stacks in pot area' },
-            { key:'showHandStrength', label:'Hand Strength Meter', sub:'Gauge showing relative hand strength' },
-            { key:'showPotOdds', label:'Pot Odds', sub:'Show pot odds when facing a bet' },
-            { key:'showCommentary', label:'Commentator Mode', sub:'Auto-generated play-by-play text' },
-            { key:'showTimeline', label:'Action Timeline', sub:'Clickable dots showing all actions' },
-            { key:'showPlayerStats', label:'Player Stats', sub:'VPIP/PFR overlay on seats' },
-            { key:'showNutsHighlight', label:'Highlight the Nuts', sub:'Glow when holding the best hand' },
+            { key:'showChipStacks', label:'Pot Chip Stacks', sub:'Chips in the pot, by denomination' },
+            { key:'showCommentary', label:'Commentator Mode', sub:'A play-by-play line under the table' },
+            { key:'showTimeline', label:'Action Timeline', sub:'A scrubbable dot per action' },
+            { key:'showPlayerStats', label:'Player Stats', sub:'A stats chip on each seat' },
+            { key:'stacksInBB', label:'Stacks in Big Blinds', sub:'Read the table in BB instead of chips' },
           ].map(opt => (
             <div key={opt.key} className="replayer-settings-row">
               <div>
@@ -947,14 +1180,47 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 <div className="replayer-settings-sublabel">{opt.sub}</div>
               </div>
               <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
                 onClick={() => onUpdate(opt.key, !settings[opt.key])} />
             </div>
           ))}
         </div>
+        {/* 80: the analysis overlays are a different kind of decision from
+            "what is on the felt", and there are seven of them. Closed by
+            default, because a first-time reader is not looking for SPR. */}
+        <details className="replayer-settings-group replayer-settings-fold">
+          <summary className="replayer-settings-group-title">Analysis overlays</summary>
+          {[
+            { key:'showHandStrength', label:'Hand Strength Meter', sub:'A gauge of relative hand strength' },
+            { key:'showPotOdds', label:'Pot Odds', sub:'The price you are being laid, when facing a bet' },
+            { key:'showNutsHighlight', label:'Highlight the Nuts', sub:'A glow when you hold the best hand' },
+            { key:'showSPR', label:'Stack-to-Pot Ratio', sub:'SPR under the pot, from the flop on' },
+            { key:'showBetSizing', label:'Bet Sizing', sub:'A pot-relative label on each wager' },
+            { key:'showRanges', label:'Range Read', sub:'An estimated strength tier per opponent' },
+            { key:'showEquity', label:'Showdown Equity', sub:'Who is ahead once the cards are up' },
+          ].map(opt => (
+            <div key={opt.key} className="replayer-settings-row">
+              <div>
+                <div className="replayer-settings-label">{opt.label}</div>
+                <div className="replayer-settings-sublabel">{opt.sub}</div>
+              </div>
+              <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
+                onClick={() => onUpdate(opt.key, !settings[opt.key])} />
+            </div>
+          ))}
+        </details>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Animation</div>
           {[
-            { key:'animateDeal', label:'Deal Animation', sub:'Cards slide in when dealt' },
+            /* 57: the panel promised Winner Effects and animateWinner was
+               never read anywhere — the glow applied unconditionally — while
+               animateDeal, whose sub-line said "cards slide in when dealt",
+               was actually gating the FOLD animation, the showdown reveal and
+               draw discards, and the deal animation did not exist. Each switch
+               now controls the thing it names. */
+            { key:'animateDeal', label:'Deal Animation', sub:'Cards fly in at the top of a hand' },
+            { key:'animateFold', label:'Fold & Muck', sub:'Folded cards slide away to the muck' },
             { key:'animateChips', label:'Chip Animation', sub:'Chips slide from player to pot' },
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
             { key:'animateWinner', label:'Winner Effects', sub:'Bounce and glow on winning hand' },
@@ -965,21 +1231,32 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 <div className="replayer-settings-sublabel">{opt.sub}</div>
               </div>
               <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
                 onClick={() => onUpdate(opt.key, !settings[opt.key])} />
             </div>
           ))}
         </div>
+        {/* 99: four disabled rows labelled "Coming Soon", on screen long
+            enough to have accumulated their own accessibility treatment — a
+            promise the interface kept making and never kept. The four are
+            synthesised rather than sampled: no asset, no licence, nothing
+            added to the bundle, and no cold start on the first card. */}
         <div className="replayer-settings-group">
-          <div className="replayer-settings-group-title">Sound (Coming Soon)</div>
+          <div className="replayer-settings-group-title">Sound</div>
           {[
-            { key:'soundDeal', label:'Card Deal Sound' },
-            { key:'soundChips', label:'Chip Sound' },
-            { key:'soundFold', label:'Fold Sound' },
-            { key:'soundAllIn', label:'All-In Sound' },
+            { key:'soundDeal', label:'Card Deal', sub:'A short hiss as each card lands' },
+            { key:'soundChips', label:'Chips', sub:'Clay on clay, when a wager moves' },
+            { key:'soundFold', label:'Fold', sub:'Cards pushed away' },
+            { key:'soundAllIn', label:'All-In', sub:'The one moment that earns a pitch' },
           ].map(opt => (
-            <div key={opt.key} className="replayer-settings-row" style={{ opacity: 0.4 }}>
-              <div className="replayer-settings-label">{opt.label}</div>
-              <button className="replayer-settings-toggle" disabled />
+            <div key={opt.key} className="replayer-settings-row">
+              <div>
+                <div className="replayer-settings-label">{opt.label}</div>
+                <div className="replayer-settings-sublabel">{opt.sub}</div>
+              </div>
+              <button className={'replayer-settings-toggle' + (settings[opt.key] ? ' on' : '')}
+                aria-pressed={!!settings[opt.key]} aria-label={opt.label}
+                onClick={() => onUpdate(opt.key, !settings[opt.key])} />
             </div>
           ))}
         </div>
@@ -1152,22 +1429,33 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
           <span className="replayer-street-name">{currentStreet.name}</span>
           <span className="replayer-street-pot">Pot: {formatChipAmount(currentPot)}</span>
         </div>
+        {/* 73: a focused border was the ONLY state these fields had, so
+            "Ahh", a repeated card or a bare "A" simply produced no card row
+            and no message — the input looked accepted and the saved hand was
+            quietly wrong. checkCardText reports what the parser could not
+            use, which is information the parser already has. */}
         <div className="replayer-field" style={{marginBottom:'6px'}}>
           <label>Hero Cards</label>
-          <input type="text" placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
+          <input type="text" className={checkCardText(currentStreet.cards.hero) ? 'is-invalid' : undefined}
+            placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
+          {checkCardText(currentStreet.cards.hero) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.hero)}</div>}
           <CardRow text={currentStreet.cards.hero} stud={gameCfg.isStud} max={gameCfg.heroCards} />
         </div>
         {category === 'community' && currentStreetIdx > 0 && (
           <div className="replayer-field" style={{marginBottom:'6px'}}>
             <label>Board ({currentStreet.name})</label>
-            <input type="text" placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
+            <input type="text" className={checkCardText(currentStreet.cards.board) ? 'is-invalid' : undefined}
+              placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
+            {checkCardText(currentStreet.cards.board) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.board)}</div>}
             <CardRow text={currentStreet.cards.board} max={streetDef.boardCards[currentStreetIdx]} />
           </div>
         )}
         {hand.players.slice(1).map((p, oi) => (
           <div key={oi} className="replayer-field" style={{marginBottom:'4px'}}>
             <label>{p.name} Cards</label>
-            <input type="text" placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
+            <input type="text" className={checkCardText((currentStreet.cards.opponents || [])[oi] || '') ? 'is-invalid' : undefined}
+              placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
+            {checkCardText((currentStreet.cards.opponents || [])[oi] || '') && <div className="replayer-field-error">{checkCardText((currentStreet.cards.opponents || [])[oi] || '')}</div>}
             <CardRow text={(currentStreet.cards.opponents || [])[oi] || ''} stud={gameCfg.isStud} max={gameCfg.heroCards} placeholderCount={!(currentStreet.cards.opponents || [])[oi] ? gameCfg.heroCards : 0} />
           </div>
         ))}
@@ -1190,12 +1478,14 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
                   {discardCount > 0 && (
                     <div className="replayer-row" style={{marginTop:'2px',gap:'4px'}}>
                       <div className="replayer-field" style={{flex:1}}>
-                        <label style={{fontSize:'0.55rem'}}>Discarded Cards</label>
+                        {/* 74: an 8.8px label overriding a field-label rule that
+                            is already tokenised at a readable size. */}
+                        <label>Discarded Cards</label>
                         <input type="text" placeholder={'e.g. 7h3c'} value={(draw && draw.discardedCards) || ''} onChange={e => updateDrawField(currentStreetIdx, pi, 'discardedCards', e.target.value)} />
                         {draw?.discardedCards && <CardRow text={draw.discardedCards} max={discardCount} />}
                       </div>
                       <div className="replayer-field" style={{flex:1}}>
-                        <label style={{fontSize:'0.55rem'}}>New Cards</label>
+                        <label>New Cards</label>
                         <input type="text" placeholder={'e.g. Ah5s'} value={(draw && draw.newCards) || ''} onChange={e => updateDrawField(currentStreetIdx, pi, 'newCards', e.target.value)} />
                         {draw?.newCards && <CardRow text={draw.newCards} max={discardCount} />}
                       </div>
@@ -1222,7 +1512,12 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
               <input type="text" inputMode="decimal" placeholder={bettingContext.betting === 'pl' ? (bettingContext.facingBet ? 'Raise to (max ' + formatChipAmount(bettingContext.potRaiseAmount) + ')' : 'Bet (max ' + formatChipAmount(bettingContext.betAmount) + ')') : 'Amount'} value={actionAmount} onChange={e => setActionAmount(e.target.value)} />
             </div>
             {bettingContext.betting === 'pl' && (
-              <button style={{fontSize:'0.6rem',padding:'2px 6px',borderRadius:'4px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer'}} onClick={() => setActionAmount(String(bettingContext.facingBet ? bettingContext.potRaiseAmount : bettingContext.betAmount))}>{bettingContext.facingBet ? 'Pot Raise' : 'Pot Bet'}</button>
+              /* 74: a 0.6rem button with five inline literals sitting beside
+                 the amount field. It is an action helper; it looks like one. */
+              <button className="replayer-pot-helper"
+                onClick={() => setActionAmount(String(bettingContext.facingBet ? bettingContext.potRaiseAmount : bettingContext.betAmount))}>
+                {bettingContext.facingBet ? 'Pot Raise' : 'Pot Bet'}
+              </button>
             )}
           </div>
         )}
@@ -1249,13 +1544,15 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
             const isWinner = winners.some(w => w.playerIdx === pi && !w.split);
             const isSplit = winners.some(w => w.playerIdx === pi && w.split);
             return (
-              <button key={pi} style={{
-                padding:'4px 10px',borderRadius:'6px',border:'1px solid',cursor:'pointer',
-                fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.68rem',transition:'all 0.15s',
-                background: isWinner ? 'rgba(74,222,128,0.15)' : isSplit ? 'rgba(250,204,21,0.15)' : 'transparent',
-                borderColor: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--border)',
-                color: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--text-muted)',
-              }} onClick={() => {
+              /* 72: this was padding, a font-family STRING, a size, a
+                 transition:all and a hardcoded green/amber pair inline —
+                 exactly the literals the status ramps were declared to
+                 retire — and transition:all meant hovering also animated
+                 border-radius, for free, forever. */
+              <button key={pi}
+                className={'replayer-winner-btn' + (isWinner ? ' is-win' : isSplit ? ' is-split' : '')}
+                aria-pressed={isWinner || isSplit}
+                onClick={() => {
                 setHand(prev => {
                   const prevWinners = prev.result?.winners || [];
                   const existing = prevWinners.find(w => w.playerIdx === pi);
@@ -1271,7 +1568,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
             );
           })}
         </div>
-        <div style={{fontSize:'0.55rem',color:'var(--text-muted)',marginTop:'4px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}</div>
+        <div className="replayer-field-hint">{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}</div>
       </div>
       <div style={{display:'flex',gap:'6px',justifyContent:'flex-end'}}>
         <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
@@ -2323,7 +2620,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                         <input type="text" placeholder="e.g. 7h3c" value={de.discardedCards || ''} onChange={e => updateDrawCardsFn(pi, 'discardedCards', e.target.value)} />
                       </div>
                       <div className="replayer-field" style={{flex:1,minWidth:'80px'}}>
-                        <label style={{fontSize:'0.55rem'}}>New Cards</label>
+                        <label>New Cards</label>
                         <input type="text" placeholder="e.g. Ah5s" value={de.newCards || ''} onChange={e => updateDrawCardsFn(pi, 'newCards', e.target.value)} />
                         {de.newCards && <CardRow text={de.newCards} max={de.discarded} />}
                       </div>
@@ -3151,7 +3448,17 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           <h2>{title || currentHand.gameType + ' Hand'}</h2>
           <span className="replayer-hand-card-game">{currentHand.gameType + (currentHand.blinds ? ' ' + formatChipAmount(currentHand.blinds.sb) + '/' + formatChipAmount(currentHand.blinds.bb) + (currentHand.blinds.ante ? '/' + formatChipAmount(currentHand.blinds.ante) : '') : '')}</span>
         </div>
-        {notes && <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginBottom:'8px'}}>{notes}</div>}
+        {/* 76: .replayer-notes-area — label, textarea, focus ring, all
+            tokenised — had zero JSX consumers, so notes were write-only from
+            the API's point of view and read back through an inline 0.7rem
+            div. The isPublic flag was in the save payload with no control
+            anywhere that could set it. */}
+        {notes && (
+          <div className="replayer-notes-area">
+            <label>Notes</label>
+            <div className="replayer-notes-read">{notes}</div>
+          </div>
+        )}
         <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
           <HandReplayerReplayView
             hand={currentHand}
@@ -3180,12 +3487,29 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             <button className={entryMode === 'gto' ? 'active' : ''} onClick={() => setEntryMode('gto')}>GTO Style</button>
             <button className={entryMode === 'classic' ? 'active' : ''} onClick={() => setEntryMode('classic')}>Classic</button>
           </div>}
-          {entryTab === 'form' && <div className="replayer-row" style={{marginBottom:'8px'}}>
-            <div className="replayer-field">
-              <label>Title</label>
-              <input type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
+          {entryTab === 'form' && <>
+            <div className="replayer-row" style={{marginBottom:'8px'}}>
+              <div className="replayer-field">
+                <label>Title</label>
+                <input type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
             </div>
-          </div>}
+            {/* 76: .replayer-notes-area was fully styled — label, textarea,
+                focus ring, all tokenised — with no JSX consumer anywhere, and
+                isPublic went into the save payload with no control that could
+                ever set it. Both were saved and neither was editable. */}
+            <div className="replayer-notes-area">
+              <label htmlFor="replayer-notes">Notes</label>
+              <textarea id="replayer-notes" value={notes} placeholder="What were you thinking here?"
+                onChange={e => setNotes(e.target.value)} />
+              <div className="replayer-settings-row" style={{marginBottom:0}}>
+                <div className="replayer-settings-label">Share publicly</div>
+                <button className={'replayer-settings-toggle' + (isPublic ? ' on' : '')}
+                  aria-pressed={isPublic} aria-label="Share this hand publicly"
+                  onClick={() => setIsPublic(v => !v)} />
+              </div>
+            </div>
+          </>}
           <div id="gto-sticky-slot"></div>
         </div>
         {entryTab === 'text' ? (
@@ -3198,8 +3522,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
               value={shorthandText}
               onChange={e => setShorthandText(e.target.value)}
             />
+            {/* 73: --text-warning is defined nowhere in the stylesheet, so this
+                always fell through to the literal after the comma — a
+                token-shaped string that was never a token. --warn is the one
+                the ramp actually declares. */}
             {shorthandErrors.length > 0 && (
-              <div style={{color:'var(--text-warning, #f59e0b)', fontSize:'0.72rem', marginTop:6}}>
+              <div className="replayer-field-error" style={{color:'var(--warn)'}}>
                 {shorthandErrors.map((e,i) => <div key={i}>&#9888; {e}</div>)}
               </div>
             )}
@@ -3228,16 +3556,51 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     );
   }
 
-  // ── Loading ──
+  /* 100: the loading branch was one line of text with no shape, so the picker
+     rendered a sentence and then snapped the whole screen in when the fetch
+     landed — while this app ships a full skeleton kit that the schedule,
+     dashboard and admin screens all use. The placeholder is the shape of what
+     is coming: the new-hand panel, then rows with a card slot at the left. */
   if (loading) {
-    return <div className="replayer-loading">Loading hand replayer...</div>;
+    return (
+      <div className="replayer-view">
+        <div className="replayer-header"><h2>Hand Replayer</h2></div>
+        <div className="replayer-section" style={{marginBottom:'12px'}}>
+          <div className="skeleton skeleton-text" style={{width: 96, height: 13, marginBottom: 12}} />
+          <div style={{display:'flex', gap: 6, flexWrap:'wrap'}}>
+            {[64, 78, 58, 70].map((w, i) => (
+              <div key={i} className="skeleton" style={{width: w, height: 28, borderRadius: 'var(--radius-sm)'}} />
+            ))}
+          </div>
+        </div>
+        <div className="skeleton skeleton-text" style={{width: 86, height: 13, marginBottom: 10}} />
+        <div className="replayer-hand-list">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="replayer-hand-card is-row">
+              <div className="replayer-hand-card-cards">
+                <div className="skeleton" style={{width: 30, height: 30, borderRadius: 'var(--radius-xs)'}} />
+              </div>
+              <div className="replayer-hand-card-body">
+                <div className="skeleton skeleton-text" style={{width: i === 1 ? 150 : 116, height: 12}} />
+                <div className="skeleton skeleton-text" style={{width: 74, height: 10}} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   // ── List mode ──
   return (
     <div className="replayer-view">
       <div className="replayer-header">
-        <h2 style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.85rem',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-muted)'}}>Hand Replayer</h2>
+        {/* 75: replay mode used the stylesheet's heading, list mode
+            inline-overrode the SAME element to a smaller muted size with a
+            literal tracking and a font-family string, and entry mode rendered
+            it unstyled — so the page title shrank and greyed as you navigated
+            between three screens of one feature. */}
+        <h2>Hand Replayer</h2>
       </div>
 
       {/* New hand creation */}
@@ -3394,19 +3757,56 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
       {/* Saved hands list */}
       <div className="replayer-section-title" style={{marginBottom:'6px'}}>Saved Hands</div>
+      {/* 78: a single grey sentence — "Create one above" — pointing at a picker
+          the user may well have scrolled past, on the screen whose entire job
+          is to get a first hand recorded. */}
+      {/* 81: the skeleton drew a new-hand panel plus three list rows and
+           the empty state drew two card backs, a line and a button — so
+           whichever one resolved, the layout moved. Same outer structure, so
+          the change between them is a cross-fade rather than a reflow. */}
       {hands.length === 0 ? (
-        <div className="replayer-empty">No saved hands yet. Create one above.</div>
+        <div className="replayer-hand-list">
+          <div className="replayer-hand-card is-row is-empty">
+            <div className="replayer-hand-card-cards" aria-hidden="true">
+              <span className="card-unknown" /><span className="card-unknown" />
+            </div>
+            <div className="replayer-hand-card-body">
+              <span className="replayer-hand-card-title">No saved hands yet</span>
+              <span className="replayer-hand-card-meta">Record one and it will replay here</span>
+            </div>
+            <div className="replayer-hand-card-actions">
+              <button className="btn btn-primary btn-sm" onClick={startNewHand}>
+                Create {variantDisplayName} Hand
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="replayer-hand-list">
           {hands.map(h => (
-            <div key={h.id} className="replayer-hand-card"
-              style={{display:'flex',alignItems:'center',gap:'8px',padding:'7px 10px'}}
+            /* 59: a title, a game chip and a Delete button — no cards, no
+               result, no date — in an app about cards, while the stylesheet
+               shipped -meta and -actions classes this list never used. Nobody
+               looks for "Hand 14"; they look for that AA hand they lost. */
+            <div key={h.id} className={'replayer-hand-card is-row' + (outcomeOf(h) ? ' outcome-' + outcomeOf(h) : '')}
               onClick={() => loadHand(h.id)}
             >
-              <span className="replayer-hand-card-title" style={{flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.title || 'Untitled'}</span>
-              <span className="replayer-hand-card-game" style={{flexShrink:0}}>{h.game_type}</span>
-              <div onClick={e => e.stopPropagation()} style={{flexShrink:0}}>
-                <button className="btn btn-ghost btn-sm" style={{padding:'2px 7px',fontSize:'0.62rem'}} onClick={() => deleteHand(h.id)}>Delete</button>
+              <div className="replayer-hand-card-cards" aria-hidden="true">
+                <CardRow text={heroCardsOf(h)} max={2} splay={12} />
+              </div>
+              <div className="replayer-hand-card-body">
+                <span className="replayer-hand-card-title">{h.title || 'Untitled'}</span>
+                {/* 82: two hands with the same cards are told apart by their
+                    STAKES, and hand.blinds is already in this payload — the
+                    list endpoint spreads the whole hand blob into every row. */}
+                <span className="replayer-hand-card-meta">
+                  {h.game_type}
+                  {h.blinds?.bb ? ' ' + formatChipAmount(h.blinds.sb) + '/' + formatChipAmount(h.blinds.bb) : ''}
+                  {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
+                </span>
+              </div>
+              <div className="replayer-hand-card-actions" onClick={e => e.stopPropagation()}>
+                <button className="btn btn-ghost btn-sm" onClick={() => deleteHand(h.id)}>Delete</button>
               </div>
             </div>
           ))}
@@ -3420,6 +3820,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
 function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }) {
+  /* The GIF export's completion toasts referenced `toast` from inside this
+     component, where it was never declared - the outer HandReplayerView owns
+     the one call to useToast(). Optional chaining does not save an UNDECLARED
+     identifier, so every successful GIF export ended in a ReferenceError
+     inside onDone, which is why it never announced where the file went. */
+  const toast = useToast();
   const [streetIdx, setStreetIdx] = useState(0);
   const [actionIdx, setActionIdx] = useState(-1);
   const [playing, setPlaying] = useState(false);
@@ -3436,7 +3842,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const [showSettings, setShowSettings] = useState(false);
   const [feltColor, setFeltColor] = useState(() => localStorage.getItem('replayerFeltColor') || '#6b5b8a');
   const [cardTheme, setCardTheme] = useState(() => localStorage.getItem('replayerCardTheme') || 'default');
-  const playTimerRef = useRef(null);
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
   const prevActionIdxRef = useRef(-1);
@@ -3461,6 +3866,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const [animStreetTransition, setAnimStreetTransition] = useState(false);
   const [animStreetLabel, setAnimStreetLabel] = useState(false);
   const [animShowdown, setAnimShowdown] = useState(false);
+  /* 11: @keyframes cinematicDeal is complete — cards fly in from a
+     dealer-relative offset with a per-seat delay — and nothing ever added
+     .animate-deal or set --deal-dx/--deal-dy/--deal-seat-delay, so hands
+     simply opened with the cards already present. The animateDeal setting was
+     meanwhile gating folds, discards and the showdown, none of which is a
+     deal. This runs it on mount and on any return to the start of the hand. */
+  const [animDealing, setAnimDealing] = useState(false);
   const [flyingChips, setFlyingChips] = useState([]);
   const [animPotCollect, setAnimPotCollect] = useState(false);
   const [drawDiscardAnims, setDrawDiscardAnims] = useState([]);
@@ -3470,7 +3882,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _tableShape = useReplayerSetting('TableShape', 'oval');
   const _cardBack = useReplayerSetting('CardBack', 'default');
   const _cardBackColor = useReplayerSetting('CardBackColor', '#1a3a6e');
-  const _fourColor = useReplayerSetting('FourColorDeck', false);
+  /* 99: the control reads "High-Contrast Deck" and applies .hc-deck, while
+     the state key, the persisted preference and every update call still said
+     fourColorDeck — a leftover from repurposing the dead four-colour toggle.
+     Anyone reading the state, or a stored preference, was told this app has a
+     four-colour deck setting that it does not have. Renamed, with a one-time
+     read of the old value so nobody's stored choice is lost. */
+  const _hcDeck = useReplayerSetting('HighContrastDeck', (() => {
+    const legacy = localStorage.getItem('replayerFourColorDeck');
+    return legacy === null ? false : legacy === 'true';
+  })());
   const _showChipStacks = useReplayerSetting('ShowChipStacks', false);
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
   const _showPotOdds = useReplayerSetting('ShowPotOdds', false);
@@ -3483,38 +3904,63 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _showRanges = useReplayerSetting('ShowRanges', false);
   const _showChipDelta = useReplayerSetting('ShowChipDelta', false);
   const _showEquity = useReplayerSetting('ShowEquity', false);
+  const _stacksInBB = useReplayerSetting('StacksInBB', false);
+  // 99: off by default. Sound that starts without being asked for is worse
+  // than no sound, and this is a screen people open in card rooms.
+  const _soundDeal = useReplayerSetting('SoundDeal', false);
+  const _soundChips = useReplayerSetting('SoundChips', false);
+  const _soundFold = useReplayerSetting('SoundFold', false);
+  const _soundAllIn = useReplayerSetting('SoundAllIn', false);
   const _cardSplay = useReplayerSetting('CardSplay', true);
   const _lightStrip = useReplayerSetting('LightStrip', false);
   const _animDeal = useReplayerSetting('AnimateDeal', true);
   const _animChips = useReplayerSetting('AnimateChips', true);
   const _animBoard = useReplayerSetting('AnimateBoard', true);
   const _animWinner = useReplayerSetting('AnimateWinner', true);
+  const _animFold = useReplayerSetting('AnimateFold', true);
 
   const rSettings = {
     theme: _theme[0], tableShape: _tableShape[0], feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
-    fourColorDeck: _fourColor[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
+    highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
     showPotOdds: _showPotOdds[0], showCommentary: _showCommentary[0], showTimeline: _showTimeline[0],
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
-    showEquity: _showEquity[0],
+    showEquity: _showEquity[0], stacksInBB: _stacksInBB[0],
+    soundDeal: _soundDeal[0], soundChips: _soundChips[0],
+    soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
+    animateFold: _animFold[0],
     cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0],
   };
   const rSetters = {
     theme: _theme[1], tableShape: _tableShape[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
-    cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], fourColorDeck: _fourColor[1],
+    cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], highContrastDeck: _hcDeck[1],
     showChipStacks: _showChipStacks[1], showHandStrength: _showHandStrength[1], showPotOdds: _showPotOdds[1],
     showCommentary: _showCommentary[1], showTimeline: _showTimeline[1], showPlayerStats: _showPlayerStats[1],
     showNutsHighlight: _showNuts[1],
     showSPR: _showSPR[1], showBetSizing: _showBetSizing[1],
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
-    showEquity: _showEquity[1],
+    showEquity: _showEquity[1], stacksInBB: _stacksInBB[1],
+    soundDeal: _soundDeal[1], soundChips: _soundChips[1],
+    soundFold: _soundFold[1], soundAllIn: _soundAllIn[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
+    animateFold: _animFold[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
     cardSplay: _cardSplay[1], lightStrip: _lightStrip[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
+  /* The sound calls live inside effects whose dependency arrays deliberately
+     do not name the settings object — re-running a deal because a toggle moved
+     would re-deal the hand. A ref keeps them reading the current settings. */
+  const rSettingsRef = useRef(rSettings);
+  rSettingsRef.current = rSettings;
+
+  /* 44: the display surfaces where depth is the point — stacks, pot, wagers —
+     go through this; commentary and exports keep chip counts, because prose
+     that says 'he shoved 14 BB' reads oddly next to a hand history. */
+  const _bb = (hand.blinds || {}).bb || 0;
+  const fmtChips = (v) => formatChipAmount(v, rSettings.stacksInBB ? _bb : 0);
 
   // Guard against old/incomplete hand records with no streets
   if (!hand.streets || hand.streets.length === 0) {
@@ -3552,15 +3998,23 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Fold animation
   useEffect(() => {
     if (actionIdx < 0) { prevActionIdxRef.current = actionIdx; return; }
-    if (actionIdx >= 0 && actionIdx < currentActions.length) {
+    // Direction guard. prevActionIdxRef was already being tracked and never
+    // compared, so stepping BACK onto a fold — or landing on one via a street
+    // rewind — re-threw the muck on cards the .folded class had already hidden,
+    // making ghost cards flash and re-muck. Rewinding reconstructs state; only
+    // forward motion performs it.
+    const movedForward = actionIdx > prevActionIdxRef.current;
+    if (movedForward && actionIdx >= 0 && actionIdx < currentActions.length) {
       const act = currentActions[actionIdx];
-      if (act && act.action === 'fold' && rSettings.animateDeal) {
+      if (act && act.action === 'fold') playTableSound('fold', rSettingsRef.current);
+      if (act && act.action === 'all-in') playTableSound('allIn', rSettingsRef.current);
+      if (act && act.action === 'fold' && rSettings.animateFold) {
         setAnimFolded(prev => { const n = new Set(prev); n.add(act.player); return n; });
         setTimeout(() => { setAnimFolded(prev => { const n = new Set(prev); n.delete(act.player); return n; }); }, 450);
       }
     }
     prevActionIdxRef.current = actionIdx;
-  }, [actionIdx, currentActions, rSettings.animateDeal]);
+  }, [actionIdx, currentActions, rSettings.animateFold]);
   useEffect(() => { setAnimFolded(new Set()); }, [streetIdx]);
 
   // Showdown animation
@@ -3571,6 +4025,35 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     }
     prevShowResultRef.current = showResult;
   }, [showResult, rSettings.animateDeal]);
+
+  useEffect(() => {
+    if (!rSettings.animateDeal) { setAnimDealing(false); return; }
+    if (streetIdx !== 0 || actionIdx >= 0 || showResult) return;
+    setAnimDealing(true);
+    // 99: one hiss per card, on the same stagger the animation uses.
+    const cards = gameCfg.heroCards || 2;
+    const shots = [];
+    for (let c = 0; c < cards; c++) {
+      for (let i = 0; i < hand.players.length; i++) {
+        shots.push(setTimeout(() => playTableSound('deal', rSettingsRef.current),
+          c * hand.players.length * 70 + i * 70));
+      }
+    }
+    // 400ms animation + the longest per-seat delay.
+    const t = setTimeout(() => setAnimDealing(false), 400 + hand.players.length * 80);
+    return () => { clearTimeout(t); shots.forEach(clearTimeout); };
+    // Deliberately keyed on the hand and the return-to-start, not on every render.
+  }, [hand, streetIdx, actionIdx, showResult, rSettings.animateDeal]);
+
+  /* Deal order is a poker fact, not a render order: the first card goes to the
+     seat left of the button and it proceeds clockwise. Falling back to seat
+     order when there is no button keeps the stagger from collapsing to zero. */
+  const dealOrder = useMemo(() => {
+    const n = hand.players.length;
+    let btn = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
+    if (btn < 0) btn = n - 1;
+    return Array.from({ length: n }, (_, k) => (btn + 1 + k) % n);
+  }, [hand]);
 
   // Flying chip helper
   const spawnFlyingChips = useCallback((fromPct, toPct, count, toWinner, amount) => {
@@ -3598,9 +4081,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     setTimeout(() => { setFlyingChips([]); }, 700);
   }, []);
 
+
   // Determine board animation class based on which street just appeared
   const getBoardAnimClass = () => {
-    if (!rSettings.animateBoard || prevStreetRef.current === streetIdx) return '';
+    // >= not !==: the deal animation means "a new card arrives", so playing it
+    // for a card already on the felt breaks the metaphor. Backing turn -> flop
+    // used to replay the full three-card stagger.
+    if (!rSettings.animateBoard || prevStreetRef.current >= streetIdx) return '';
     let boardLen = 0;
     for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
       if (hand.streets[si].cards.board) boardLen += parseCardNotation(hand.streets[si].cards.board).length;
@@ -3650,9 +4137,87 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     });
   }, [hand, streetIdx, category, replayHeroIdx]);
 
+  /* 71: the animation guards correctly suppress the deal, the muck and the
+     board slide when stepping BACK — which left going backwards a series of
+     instant state swaps while going forwards was choreographed, so the two
+     directions felt like different applications. Scrubbing is how people
+     actually study a hand; it was the least finished way to move through one.
+     A short cross-fade on the whole table says "rewinding" without replaying
+     a single piece of forward choreography. */
+  const [rewinding, setRewinding] = useState(false);
+  const rewindTimer = useRef(0);
+  const markRewind = useCallback(() => {
+    setRewinding(true);
+    clearTimeout(rewindTimer.current);
+    rewindTimer.current = setTimeout(() => setRewinding(false), 260);
+  }, []);
+  useEffect(() => () => clearTimeout(rewindTimer.current), []);
+
   // Pot and stacks
   const { stacks, pot, folded } = useMemo(() => calcPotsAndStacks(hand, streetIdx, actionIdx), [hand, streetIdx, actionIdx]);
   const displayPot = useMemo(() => calcPotsAndStacks(hand, streetIdx, -1).pot, [hand, streetIdx]);
+
+  /* 91: a player who moved all-in got an ALL-IN badge for exactly one step and
+     then reverted to an ordinary seat with a zero stack. All-in is the state
+     that changes what every SUBSEQUENT action means — it is the reason the
+     rest of the hand plays out the way it does — and it lasted one frame.
+     Committed once, committed for the hand. */
+  const allIn = useMemo(() => {
+    const out = new Set();
+    for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
+      const acts = hand.streets[si].actions || [];
+      const upTo = si === streetIdx ? actionIdx : acts.length - 1;
+      for (let ai = 0; ai <= upTo && ai < acts.length; ai++) {
+        if (acts[ai].action === 'all-in') out.add(acts[ai].player);
+      }
+    }
+    // A stack that has reached zero without folding is all-in whether or not
+    // the action was recorded with that word.
+    hand.players.forEach((_, pi) => {
+      if (!folded.has(pi) && stacks[pi] <= 0) out.add(pi);
+    });
+    return out;
+  }, [hand, streetIdx, actionIdx, folded, stacks]);
+
+  /* 92: one pot number. In any multi-way all-in there is a main pot and one
+     or more side pots with different eligible players, and the split display
+     only appeared at the RESULT — so the hands people actually save and share
+     were the ones this table could not describe. Built from each player's
+     total contribution: everyone matches the shortest stack into the main
+     pot, the rest match the next, and so on. */
+  const potLayers = useMemo(() => {
+    const contrib = hand.players.map((_, pi) => {
+      let total = 0;
+      for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
+        const acts = hand.streets[si].actions || [];
+        const upTo = si === streetIdx ? actionIdx : acts.length - 1;
+        let street = 0;
+        for (let ai = 0; ai <= upTo && ai < acts.length; ai++) {
+          const a = acts[ai];
+          if (a.player !== pi || !a.amount) continue;
+          street = a.action === 'raise' || a.action === 'all-in' ? Math.max(street, a.amount) : street + a.amount;
+        }
+        total += street;
+      }
+      return total;
+    });
+    const live = hand.players.map((_, pi) => pi).filter(pi => contrib[pi] > 0);
+    if (!live.length) return [];
+    const caps = [...new Set(live.filter(pi => allIn.has(pi)).map(pi => contrib[pi]))].sort((a, b) => a - b);
+    const layers = [];
+    let floor = 0;
+    [...caps, Infinity].forEach(cap => {
+      const eligible = live.filter(pi => contrib[pi] > floor && !folded.has(pi));
+      const amount = live.reduce((sum, pi) => sum + Math.max(0, Math.min(contrib[pi], cap) - floor), 0);
+      if (amount > 0 && eligible.length) layers.push({ amount, eligible: eligible.length });
+      if (cap === Infinity) return;
+      floor = cap;
+    });
+    return layers.length > 1 ? layers : [];
+  }, [hand, streetIdx, actionIdx, allIn, folded]);
+  /* 66: the pot counts toward its new value over the chips' flight. It snaps
+     while scrubbing, because a rewind is not a payment. */
+  const countedPot = useCountUp(displayPot, rSettings.animateChips && !rewinding);
 
   // "Solve this spot" → Solver handoff. Enabled only when the hand's
   // game maps to a solver-supported stud game (Stud 8 / Razz).
@@ -3670,7 +4235,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const playerLastAction = useMemo(() => {
     const result = {};
     for (let ai = 0; ai <= actionIdx && ai < currentActions.length; ai++) {
-      result[currentActions[ai].player] = currentActions[ai];
+      /* 42: the sizing classifier needs the pot BEFORE this action, which
+         means it needs the action's index, which this map threw away. */
+      result[currentActions[ai].player] = { ...currentActions[ai], _ai: ai };
     }
     return result;
   }, [currentActions, actionIdx]);
@@ -3730,6 +4297,39 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     return results.length ? results : null;
   }, [showResult, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx, category]);
 
+  /* 26: calcShowdownEquity and a finished bar-plus-percentage style were
+     both dead code, so at an all-in showdown the felt said nothing about who
+     was ahead — the single question a viewer has at that moment. */
+  /* 90: the bar rendered when showResult was true, which is after the hand
+     has been decided — a scoreboard shown after the whistle. The moment a
+     viewer wants a percentage is when the money goes IN, and then again as
+     each card lands. It runs from the point the last live player is committed. */
+  const runout = allIn.size > 0 && (hand.players.length - folded.size - allIn.size) <= 0;
+  const showdownEquity = useMemo(() => {
+    if (!rSettings.showEquity || !gameEval) return null;
+    if (!showResult && !runout) return null;
+    try {
+      return calcShowdownEquity(hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx);
+    } catch { return null; }
+  }, [rSettings.showEquity, showResult, runout, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx]);
+
+  /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
+     nudged 8px up together, which communicates nothing — and the down-shifting
+     .replayer-hilo-low existed in the stylesheet with no code path that could
+     ever apply it, so the animation built to dramatise the split never split.
+     The Hi:/Lo: label matching was already written for the split circles. */
+  const hiloSide = useMemo(() => {
+    const out = {};
+    if (!isHiLo || !showResult) return out;
+    (hand.result?.winners || []).forEach(w => {
+      const label = w.label || '';
+      const hi = /Hi:/.test(label), lo = /Lo:/.test(label);
+      // A scoop wins both halves, so it rises with the highs.
+      out[w.playerIdx] = (hi || !lo) ? 'high' : 'low';
+    });
+    return out;
+  }, [isHiLo, showResult, hand]);
+
   // Navigation
   const canGoForward = streetIdx < totalStreets - 1 || actionIdx < currentActions.length - 1 || !showResult;
   const canGoBack = streetIdx > 0 || actionIdx >= 0 || showResult;
@@ -3747,29 +4347,129 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   // Update inline so the export loop always gets the latest closure
   stepForwardRef.current = stepForward;
 
+
   const stepBack = useCallback(() => {
+    markRewind();
     if (showResult) { setShowResult(false); setHiloAnimate(false); }
     else if (actionIdx >= 0) setActionIdx(a => a - 1);
     else if (streetIdx > 0) { const prevStreet = hand.streets[streetIdx - 1]; setStreetIdx(s => s - 1); setActionIdx((prevStreet?.actions?.length || 0) - 1); }
-  }, [actionIdx, streetIdx, showResult, hand]);
+  }, [actionIdx, streetIdx, showResult, hand, markRewind]);
 
   const goToStart = () => { setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
-  const goToEnd = () => { const lastStreet = hand.streets.length - 1; setStreetIdx(lastStreet); setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1); };
+  /* 51: this set the last street and the last action and stopped one step
+     short of the showdown, so "End" landed on the river's final bet with the
+     opponents' cards still face down. stepForward's final branch is what
+     actually ends a hand; End does the same thing now. */
+  const goToEnd = () => {
+    const lastStreet = hand.streets.length - 1;
+    setStreetIdx(lastStreet);
+    setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1);
+    setShowResult(true);
+    if (isHiLo) setTimeout(() => setHiloAnimate(true), 100);
+  };
 
-  // Auto-play
+  /* 50: at the result an effect forces playing false and stepForward's last
+     branch pauses, so pressing play set playing true, ticked once, and paused
+     again — a flicker and a no-op, under a glyph still showing a play
+     triangle. From the end, play means replay. */
+  const handlePlayPause = () => {
+    if (!playing && !canGoForward) { goToStart(); setPlaying(true); return; }
+    setPlaying(p => !p);
+  };
+
+  /* 60: the interval ran regardless of document visibility, so backgrounding
+     the app played the hand out unseen and handed you back the result — and a
+     throttled background timer gets the pacing wrong anyway. */
+  /* 46: at 4x on a 30-action hand the strip scrolls past the viewport, so the
+     one dot that matters has to be pulled back into it. */
+  const timelineRef = useRef(null);
+  // 78: past about twenty actions the strip scrolls further than it reads.
+  const totalActionCount = hand.streets.reduce((n, st) => n + (st.actions?.length || 0), 0);
   useEffect(() => {
-    if (playing) {
-      const animExtra = rSettings.animateDeal ? Math.max(200, speed * 0.3) : 0;
-      playTimerRef.current = setInterval(stepForward, speed + animExtra);
-    }
-    return () => { if (playTimerRef.current) clearInterval(playTimerRef.current); };
-  }, [playing, speed, stepForward, rSettings.animateDeal]);
+    const el = timelineRef.current;
+    if (!el) return;
+    const dot = el.querySelector('.replayer-timeline-dot.current');
+    if (dot && dot.scrollIntoView) dot.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [streetIdx, actionIdx]);
+
+  /* 65: the flying chips landed at 50%/42% and disappeared while the pot's
+     number swapped on the same render — so they arrived at a coordinate
+     rather than at the pot. The pot now takes the impact. */
+  const [potLanding, setPotLanding] = useState(false);
+  const potLandTimer = useRef(0);
+  const markPotLanding = useCallback(() => {
+    clearTimeout(potLandTimer.current);
+    potLandTimer.current = setTimeout(() => {
+      setPotLanding(true);
+      setTimeout(() => setPotLanding(false), 320);
+    }, 300);
+  }, []);
+  useEffect(() => () => clearTimeout(potLandTimer.current), []);
+
+  /* 85: the overlay was a 75%-black scrim with an uppercase title, a 220px
+     bar and a step counter, all inline literals — and it completely hid the
+     table it was capturing. Both exporters already produce a canvas per step;
+     showing them is better feedback AND a far better advertisement for the
+     feature than a bar. */
+  const [exportPreview, setExportPreview] = useState(null);
+  const [inspecting, setInspecting] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  /* 94: the overlays described one outcome and the code produced another. Ask
+     the platform once, and say what will happen. */
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function';
+  const [canInstagram, setCanInstagram] = useState(false);
+  useEffect(() => {
+    let live = true;
+    import('../utils/instagram-stories.js')
+      .then(m => { if (live) setCanInstagram(!!m.canShareToInstagram?.()); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+  const [tabHidden, setTabHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVis = () => setTabHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
+  /* 49: one fixed interval with a single flat animation allowance gave a
+     check, a flop whose stagger runs 640ms, and the showdown the identical
+     delay — so at 4x the next action fired while the flop was still sliding,
+     and at 1x a street opening got no more room than a check. A hand does not
+     have a constant tempo; street boundaries and the showdown are the beats.
+
+     Self-scheduling rather than an interval: each step changes the indices,
+     which re-runs this effect, which picks the NEXT delay from where the
+     replay now stands. The allowances scale with the speed setting so 4x
+     stays 4x rather than becoming 4x-with-long-pauses. */
+  useEffect(() => {
+    if (!playing || tabHidden) return;
+    const scale = speed / 1000;
+    const atLastAction = actionIdx >= currentActions.length - 1;
+    const streetBreak = atLastAction && streetIdx < totalStreets - 1;
+    const resultBreak = atLastAction && streetIdx >= totalStreets - 1 && !showResult;
+    /* 98: the pacing already varied by street boundary and by the result,
+       which is the right shape — but a fold and a three-bet still got the
+       same beat and an all-in got no more room than a check. The pacing IS
+       the edit; weighting it by significance is what turns a sequence of
+       steps into a story. */
+    const next = currentActions[actionIdx + 1];
+    const weight = { fold: -0.35, check: -0.3, call: 0, bet: 0.35, raise: 0.5, 'all-in': 1 };
+    const actBeat = next ? (weight[next.action] ?? 0) * speed : 0;
+    const allowance = rSettings.animateDeal
+      ? (resultBreak ? 700 : streetBreak ? 650 : 0)
+      : 0;
+    const t = setTimeout(() => stepForwardRef.current?.(),
+      Math.max(120, speed + actBeat + allowance * scale));
+    return () => clearTimeout(t);
+  }, [playing, tabHidden, speed, streetIdx, actionIdx, showResult, currentActions.length, totalStreets, rSettings.animateDeal]);
 
   useEffect(() => { if (showResult && playing) setPlaying(false); }, [showResult, playing]);
 
   // Trigger draw discard animation when entering a draw street
   useEffect(() => {
-    if (!isDrawGame || !rSettings.animateDeal) return;
+    if (!isDrawGame || !rSettings.animateFold) return;
     const st = hand.streets[streetIdx];
     if (!st || !st.draws || st.draws.length === 0) return;
     if (actionIdx !== -1) return;
@@ -3783,7 +4483,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     }, 600);
     const t2 = setTimeout(() => { setDrawDiscardAnims([]); }, 1000);
     return () => { clearTimeout(t1); clearTimeout(t2); setDrawDiscardAnims([]); };
-  }, [streetIdx, actionIdx, isDrawGame, hand, rSettings.animateDeal]);
+  }, [streetIdx, actionIdx, isDrawGame, hand, rSettings.animateFold]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -3871,7 +4571,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const shapeClass = rSettings.tableShape !== 'oval' ? ' shape-' + rSettings.tableShape : '';
   // Was ' four-color-deck', a class with zero rules in the stylesheet - a dead
   // switch. The deck is already four-colour; what it needs is value separation.
-  const fourColorClass = rSettings.fourColorDeck ? ' hc-deck' : '';
+  const hcDeckClass = rSettings.highContrastDeck ? ' hc-deck' : '';
   const boardAnimClass = getBoardAnimClass();
 
   // Share as image
@@ -3879,6 +4579,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const allCardNotations = [heroCards, boardCards, ...opponentCards].filter(Boolean);
     const allCards = allCardNotations.flatMap(n => parseCardNotation(n));
     try {
+      /* 92: ensureExportFonts exists precisely because a canvas does not
+         trigger webfont loading, and the share menu and the wrap-up viewer
+         both await it — this path drew its titles, pot and hand names
+         straight onto the canvas with no call, so the one export that is a
+         still image was also the one that could silently come out in the
+         fallback face. */
+      await ensureExportFonts();
       const images = await loadCardImages(allCards);
       const outW = 1080, outH = 1080;
       const canvas = document.createElement('canvas');
@@ -4021,7 +4728,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   };
 
   // ── Video export ──
-  const handleExportVideo = useCallback(async () => {
+  /* 81: the exporter has supported a greenscreen mode with its own chroma
+     fill and an MP4 codec ladder for CapCut since it was written, and the only
+     caller hardcoded 'transparent' behind a single button with no choice — a
+     whole pipeline no user could reach. 98 adds the vertical framing the GIF
+     had and the video did not. */
+  const handleExportVideo = useCallback(async (mode = 'transparent') => {
     if (videoExporting) return;
     if (!tableRef.current) return;
 
@@ -4047,23 +4759,33 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       tableEl: tableRef.current,
       stepForward: () => stepForwardRef.current?.(),
       canGoForwardRef,
-      mode: 'transparent',
+      mode,
+      speed,
+      feltColor,
+      onFrame: setExportPreview,
       onProgress: (pct, step, total) => {
         setVideoProgress(pct);
         setVideoStep(step);
         setVideoTotal(total);
       },
-      onDone: () => {
+      /* 94: the video flow finished with no confirmation at all, unlike the
+         GIF's three — so a successful export and a silently failed one looked
+         identical from the outside. */
+      onDone: (info) => {
         setVideoExporting(false);
         setVideoProgress(0);
+        setExportPreview(null);
+        if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
+        else toast?.success?.('Video saved');
       },
       onError: (err) => {
         console.error('Video export error:', err);
         setVideoExporting(false);
         setVideoProgress(0);
+        setExportPreview(null);
       },
     });
-  }, [videoExporting, hand]);
+  }, [videoExporting, hand, speed, feltColor, toast]);
 
   const handleExportGif = useCallback(async () => {
     if (gifExporting || videoExporting) return;
@@ -4079,9 +4801,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       tableEl: tableRef.current,
       stepForward: () => stepForwardRef.current?.(),
       canGoForwardRef,
+      speed,
+      feltColor,
+      onFrame: setExportPreview,
       onProgress: (pct, step, total) => { setGifProgress(pct); setGifStep(step); setGifTotal(total); },
       onDone: (info) => {
-        setGifExporting(false); setGifProgress(0);
+        setGifExporting(false); setGifProgress(0); setExportPreview(null);
         // Surface which path the share took so the user knows where the GIF went.
         if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
         else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
@@ -4089,7 +4814,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       },
       onError: (err) => {
         console.error('GIF export error:', err);
-        setGifExporting(false); setGifProgress(0);
+        setGifExporting(false); setGifProgress(0); setExportPreview(null);
         toast?.error?.('GIF export failed: ' + (err?.message || 'unknown'));
       },
     });
@@ -4162,17 +4887,30 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     );
   }
 
-  // ── Table layout ──
-  // Top/bottom seats sit at y=16/84 instead of y=6/94 so their cards (which
-  // extend above the seat marker by ~44px) fit fully inside the table's
-  // bounding box — html2canvas only captures the box, anything overflowing
-  // is clipped from the GIF/video exports.
+  /* ── Table layout ──
+     These were ten hand-written coordinate tables holding two numbers each —
+     x in [18,82] and y in [16,84] — which are exactly the felt's old inset,
+     copied by hand. They are derived from it now, so changing the table's
+     shape moves the seats with it instead of leaving them floating over the
+     new felt. The felt is currently inset 24% vertically and 10%
+     horizontally, which makes the playing surface wide and shallow (see the
+     --felt-y / --felt-x block in styles.css) and hands the recovered height
+     to the top and bottom seats, whose cards extend a card's height above
+     the marker and used to sit close to the export's clipping edge. */
+  const FY = 28, FX = 7;                  // must match --felt-y / --felt-x
+  const T = FY, B = 100 - FY;             // the top and bottom edges of the felt
+  const L = FX, R = 100 - FX;             // the left and right edges
+  const my = (t) => Math.round(T + (B - T) * t);   // a fraction down the felt
   const layouts = {
-    2:[[50,16],[50,84]], 3:[[35,16],[50,84],[65,16]], 4:[[50,16],[82,50],[50,84],[18,50]],
-    5:[[35,16],[82,50],[50,84],[18,50],[65,16]], 6:[[50,16],[82,34],[82,66],[50,84],[18,66],[18,34]],
-    7:[[35,16],[82,34],[82,66],[50,84],[18,66],[18,34],[65,16]], 8:[[50,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28]],
-    9:[[35,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28],[65,16]],
-    10:[[30,16],[50,16],[82,28],[82,50],[82,72],[50,84],[18,72],[18,50],[18,28],[70,16]],
+    2:  [[50,T],[50,B]],
+    3:  [[35,T],[50,B],[65,T]],
+    4:  [[50,T],[R,50],[50,B],[L,50]],
+    5:  [[35,T],[R,50],[50,B],[L,50],[65,T]],
+    6:  [[50,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)]],
+    7:  [[35,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)],[65,T]],
+    8:  [[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)]],
+    9:  [[35,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)],[65,T]],
+    10: [[30,T],[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)],[70,T]],
   };
 
   const n = hand.players.length;
@@ -4181,36 +4919,198 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const rotation = (bottomIdx - replayHeroIdx + n) % n;
   const seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
 
+  /* The dealer stands just outside the button's seat, and the muck sits beside
+     the deck. Both are pulled toward the table centre so they land on cloth
+     rather than on the rail. */
+  const btnSeat = seats[hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D')] || seats[0] || [50, 50];
+  const dealerSpot = (() => {
+    const vx = 50 - btnSeat[0], vy = 54 - btnSeat[1];
+    const len = Math.hypot(vx, vy) || 1;
+    const ux = vx / len, uy = vy / len;      // toward the middle of the felt
+    const px = -uy, py = ux;                 // and round the rail from there
+    return [
+      Math.round(btnSeat[0] + ux * 7 + px * 15),
+      Math.round(btnSeat[1] + uy * 7 + py * 10),
+    ];
+  })();
+  const muckTarget = [
+    Math.round(dealerSpot[0] + (50 - dealerSpot[0]) * 0.26),
+    Math.round(dealerSpot[1] + (54 - dealerSpot[1]) * 0.26),
+  ];
+  const muckCount = folded.size;
+
+  /* Where the attention is: the acting seat, or the board on a new street. */
+  const pushStyle = useMemo(() => {
+    if (!rSettings.animateChips) return undefined;
+    let target = null;
+    if (actionIdx < 0 && streetIdx > 0) target = [50, 44];          // the board
+    else if (currentActions[actionIdx]) target = seats[currentActions[actionIdx].player];
+    if (!target) return undefined;
+    const dx = (50 - target[0]) * 0.06;
+    const dy = (44 - target[1]) * 0.06;
+    return { '--push-x': dx.toFixed(2) + '%', '--push-y': dy.toFixed(2) + '%' };
+  }, [rSettings.animateChips, actionIdx, streetIdx, currentActions, seats]);
+
+  /* This effect has to live BELOW seats, folded and markPotLanding: a
+     dependency array is evaluated on every render, not when the effect
+     runs, so naming a const that is declared further down the component
+     puts the render itself in that const’s temporal dead zone. */
+  /* 70: nothing moved at a street boundary — animStreetTransition drove the
+     board's own classes and the rest of the table was static, so the wagers
+     standing in front of the players simply vanished as the next street
+     began. Collecting the bets is the physical event that SEPARATES two
+     streets; without it the streets run together. The chip-flight system was
+     right there.
+
+     47: spawnFlyingChips computes the denomination colour, staggers up to
+     five chips and has a live render block and a denominated variant — and
+     nothing in the file ever called it, so flyingChips was permanently empty
+     and the whole system was decoration on an unreachable code path. The step
+     effect is where a wager actually happens, so that is where it belongs. */
+  const prevChipStepRef = useRef('');
+  useEffect(() => {
+    if (!rSettings.animateChips) return;
+    const key = streetIdx + ':' + actionIdx + ':' + (showResult ? 'r' : '');
+    const prev = prevChipStepRef.current;
+    prevChipStepRef.current = key;
+    if (!prev || prev === key) return;
+    // Scrubbing backwards should not re-throw chips that are already in the pot.
+    const [pS, pA] = prev.split(':').map(Number);
+    if (streetIdx < pS || (streetIdx === pS && actionIdx < pA)) return;
+
+    if (showResult) {
+      /* 48: the pot travelling to the winner is the payoff shot of a poker
+         broadcast, and animPotCollect was declared, never set and never read
+         while potCollect sat unused — so at showdown the pot pill simply sat
+         there. One burst per winner, from the pot toward the seat. */
+      const winners = hand.result?.winners || [];
+      winners.forEach(w => {
+        const seat = seats[w.playerIdx];
+        if (seat) spawnFlyingChips([50, 37], seat, 5, true, pot);
+      });
+      if (winners.length) {
+        setAnimPotCollect(true);
+        setTimeout(() => setAnimPotCollect(false), 700);
+      }
+      return;
+    }
+    // 70: a new street means the previous street's bets are swept in.
+    if (streetIdx > pS && actionIdx < 0) {
+      const sweeping = hand.streets[pS]?.actions || [];
+      const seen = new Set();
+      sweeping.forEach(a => {
+        if (!a.amount || seen.has(a.player) || folded.has(a.player)) return;
+        seen.add(a.player);
+        const seat = seats[a.player];
+        if (seat) spawnFlyingChips(seat, [50, 37], 3, false, a.amount);
+      });
+      if (seen.size) markPotLanding();
+      return;
+    }
+
+    const act = currentActions[actionIdx];
+    if (!act || !act.amount) return;
+    if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
+    const seat = seats[act.player];
+    if (seat) {
+      spawnFlyingChips(seat, [50, 37], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
+      markPotLanding();
+      playTableSound('chips', rSettingsRef.current);
+    }
+  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips, folded, markPotLanding]);
+
+
+  /* The light sits at the felt's specular pool. A shadow points away from it,
+     and grows with the distance — the aspect correction is the same one the
+     bet chips use, because a percentage of height is not a percentage of
+     width on a 3:4.5 box. */
+  const castStyle = (pos) => {
+    const AR = 4.5 / 3;
+    const dx = pos[0] - 50, dy = (pos[1] - 44) * AR;
+    const len = Math.hypot(dx, dy) || 1;
+    const reach = Math.min(1, len / 46);
+    return {
+      '--cast-x': (dx / len * reach * 3.2).toFixed(1) + 'px',
+      '--cast-y': (1.2 + Math.max(-0.4, dy / len) * reach * 3.4).toFixed(1) + 'px',
+      '--cast-blur': (3 + reach * 4).toFixed(1) + 'px',
+    };
+  };
+
   return (
-    <div className={'replayer-replay' + fourColorClass}>
+    /* 77: isLandscape was computed at mount and kept current by a live
+       matchMedia listener, and then referenced nowhere — so forty lines of
+       fullscreen CSS (fixed inset, modal layer, app chrome hidden through a
+       :has() rule) could never fire, and turning the phone sideways just
+       letterboxed the table. */
+    <div className={'replayer-replay' + hcDeckClass + (isLandscape ? ' replayer-landscape' : '')
+      + (rewinding ? ' is-rewinding' : '')}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
       {/* Table */}
-      <div ref={tableRef} className={'replayer-table' + themeClass}>
-        <div className="replayer-table-rail" style={{'--rail-color': feltColor}} />
+      {/* data-cardback is what makes the six-option Card Back setting real;
+          --back-custom feeds the custom colour through to the gradient stops. */}
+      {/* 97: the camera was fixed — the whole table, the same framing, every
+          frame of every hand — while a broadcast cuts to the player who is
+          acting and to the board as it lands. Even a few percent is enough to
+          direct attention, and it costs one transform on a container that
+          already exists. The push is suppressed during capture: a transform on
+          the captured root is not reliably reproduced by the renderer, and a
+          clip that drifts between frames is worse than one that does not.
+
+          This block was a bare block comment sitting in JSX CHILDREN
+          position, which is text rather than a comment — React rendered the
+          whole paragraph above the table, and the build had nothing to say
+          about it, because it is valid JSX. */}
+      <div ref={tableRef} className={'replayer-table' + themeClass}
+        style={pushStyle}
+        data-cardback={rSettings.cardBack || 'default'}
+      data-anim-winner={rSettings.animateWinner ? '1' : '0'}
+        style={rSettings.cardBack === 'custom' ? (() => {
+          // Same derivation as the felt below, and for the same reason.
+          const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+          if (!m) return undefined;
+          const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+          const mix = (f, w) => `rgb(${Math.round(r * f + 255 * w)},${Math.round(g * f + 255 * w)},${Math.round(b * f + 255 * w)})`;
+          return {
+            '--back-custom-1': mix(1, 0),
+            '--back-custom-2': mix(0.8, 0),
+            '--back-custom-3': mix(0.6, 0),
+            '--back-custom-border': mix(0.7, 0.3),
+          };
+        })() : undefined}>
+        {/* Only the default theme takes its rail from the felt picker; the
+            themes now bring their own, so handing feltColor in would override
+            them with whatever colour happened to be stored. */}
+        <div className="replayer-table-rail"
+          style={rSettings.theme === 'default' ? {'--rail-color': feltColor} : undefined} />
         {/* --strip-color was handed in and the rule never read it - a dead
             property alongside the dead four-color-deck class. The strip now
             takes its tint from the felt, which is what the prop intended. */}
-        {rSettings.lightStrip && <div className="replayer-light-strip" style={{'--strip-color': feltColor}} />}
+        {rSettings.lightStrip && (
+          <div className="replayer-light-strip"
+            style={rSettings.theme === 'default' ? {'--strip-color': feltColor} : undefined} />
+        )}
         {/* Felt — wrap in a <label> so a tap on the felt opens the native
             color picker directly (mirrors TableScanner). The hidden color
             input lives inside the label and receives the native picker
             event; no popup, no extra UI. */}
+        {/* The stops go through custom properties rather than a composed
+            background string, so the felt rule keeps its own gradient geometry
+            and the picker only supplies the two colours. */}
         <label className={'replayer-table-felt' + shapeClass} style={rSettings.theme === 'default' ? (() => {
-          // Compute color-mix equivalents inline (html2canvas can't parse color-mix)
-          const m = feltColor.match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
-          if (m) {
-            const [r,g,b] = [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)];
-            const light = `rgb(${Math.round(r*0.9+255*0.1)},${Math.round(g*0.9+255*0.1)},${Math.round(b*0.9+255*0.1)})`;
-            const dark = `rgb(${Math.round(r*0.6)},${Math.round(g*0.6)},${Math.round(b*0.6)})`;
-            return { background: `radial-gradient(ellipse 80% 70% at 50% 45%, ${light}, ${dark})`, borderColor: feltColor + 'cc' };
-          }
-          return { borderColor: feltColor + 'cc' };
+          const st = feltStops(feltColor);
+          if (!st) return { borderColor: feltColor + 'cc' };
+          return { '--felt-lit': st.lit, '--felt-shade': st.shade, borderColor: feltColor + 'cc' };
         })() : {}}
-          title="Tap to change felt color">
-          <input type="color" value={feltColor}
+          title={rSettings.theme === 'default' ? 'Tap to change felt color' : undefined}>
+          {/* The themed backgrounds carry !important, so on any non-default
+              theme picking a colour updated state and changed nothing — while
+              the felt kept its pointer cursor, its tooltip and its native
+              colour picker. An affordance that silently no-ops teaches people
+              the table is broken. */}
+          {rSettings.theme === 'default' && <input type="color" value={feltColor}
             onChange={e => rSetters.feltColor(e.target.value)}
-            style={{position:'absolute', inset:0, opacity:0, cursor:'pointer', border:'none', padding:0, background:'transparent', width:'100%', height:'100%'}} />
+            style={{position:'absolute', inset:0, opacity:0, cursor:'pointer', border:'none', padding:0, background:'transparent', width:'100%', height:'100%'}} />}
         </label>
 
         {/* Pot */}
@@ -4232,9 +5132,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                       if (hiMatch) shortLabel = 'Hi';
                       if (loMatch) shortLabel = shortLabel ? 'Hi+Lo' : 'Lo';
                     }
-                    return <div key={i} className="replayer-split-circle" style={{ marginLeft: i > 0 ? '-8px' : 0, zIndex: splitCount - i }} title={w.label || ''}>
-                      {shortLabel && <span style={{fontSize:'0.45rem',display:'block',lineHeight:1}}>{shortLabel}</span>}
-                      {formatChipAmount(splitAmt)}
+                    /* 30: this crammed a 7.2px Hi/Lo tag above the amount
+                       inside the disc and overlapped the discs by an inline
+                       -8px, which clipped every gold ring after the first —
+                       at the one moment the point is that the pot SPLIT. The
+                       tag becomes a caption and the discs stop overlapping. */
+                    return <div key={i} className="replayer-split-winner">
+                      <div className="replayer-split-circle" title={w.label || ''}>
+                        {fmtChips(splitAmt)}
+                      </div>
+                      {shortLabel && <div className="replayer-split-tag">{shortLabel}</div>}
                     </div>;
                   })}
                 </div>
@@ -4242,10 +5149,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             );
           }
           return (
-            <div className="replayer-pot-display">
-              <div className="replayer-pot-label">Pot</div>
-              {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={displayPot} />}
-              {formatChipAmount(displayPot)}
+            <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
+              + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
+              <div className="replayer-pot-label">{potLayers.length ? 'Main' : 'Pot'}</div>
+              {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+              {fmtChips(potLayers.length ? potLayers[0].amount : countedPot)}
+              {/* 92: who is playing for what. */}
+              {potLayers.length > 1 && (
+                <div className="replayer-side-pots">
+                  {potLayers.slice(1, 4).map((layer, i) => (
+                    <div key={i} className="replayer-side-pot">
+                      <span className="replayer-side-pot-label">Side {i + 1} &middot; {layer.eligible}-way</span>
+                      {fmtChips(layer.amount)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -4256,27 +5175,132 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           if (parsed.length === 0) return null;
           return (
             <div className={'replayer-board-area' + boardAnimClass}>
+              {/* 24: .replayer-street-label, its pop keyframe and three theme
+                  overrides all existed, an effect set and cleared animStreetLabel
+                  on a 450ms timer — and no JSX ever emitted the element, so the
+                  animation ran against a DOM node that was never there and the
+                  only street context during replay was the prose below the
+                  table. It renders under the board rather than at the CSS's
+                  top:28%, where it would have sat on the pot eyebrow. */}
               <div className="card-row replayer-board-spaced">
                 {parsed.map((c, i) => {
-                  if (c.suit === 'x') return <div key={c.rank+c.suit+'_'+i} className="card-unknown" />;
-                  if (cardTheme === 'classic') {
-                    const isRed = c.suit === 'h' || c.suit === 'd';
-                    return (
-                      <div key={c.rank+c.suit+'_'+i} className={'card-classic' + (isRed ? ' card-classic-red' : ' card-classic-dark')}>
+                  const key = c.rank + c.suit + '_' + i;
+                  // Flop | turn | river. Grouping is how every broadcast graphic
+                  // and every real table shows which street the hand is on; the
+                  // gap class existed for it and had never been rendered.
+                  let card;
+                  if (c.suit === 'x') {
+                    card = <div key={key} data-slot={i} className="card-unknown" />;
+                  } else if (cardTheme === 'classic') {
+                    card = (
+                      <div key={key} data-slot={i} className={'card-classic card-classic-' + c.suit}>
                         <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
                         <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
                       </div>
                     );
+                  } else {
+                    card = <img key={key} data-slot={i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
                   }
-                  return <img key={c.rank+c.suit+'_'+i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
+                  return card;
                 })}
               </div>
             </div>
           );
         })()}
 
+        {/* 25: calcSPR, a persisted ShowSPR setting and a positioned badge
+            style were all written; nothing rendered the badge and the panel
+            never offered the toggle, so the one number that says whether a
+            pot is commit-or-fold was computed and discarded. The CSS put it
+            at top:29%, on the pot eyebrow — it sits under the plaque now. */}
+        {rSettings.showSPR && (() => {
+          const spr = calcSPR(hand, streetIdx);
+          return spr ? <div className="replayer-spr-badge">SPR {spr}</div> : null;
+        })()}
+
+        {/* 38: the deal animation brought cards in from a computed offset and
+            the muck sent them to a coordinate, because there was no deck and
+            no muck pile anywhere on the felt — so cards came from a point in
+            space and vanished into another one. Both are always present at a
+            real table, both are two elements, and both give the choreography
+            somewhere to come from and go to. */}
+        {(() => {
+          const [dx, dy] = dealerSpot;
+          return (
+            <>
+              <div className="replayer-deck" style={{left: dx + '%', top: dy + '%'}} aria-hidden="true">
+                <span /><span /><span />
+              </div>
+              {muckCount > 0 && (
+                <div className="replayer-muck" style={{left: muckTarget[0] + '%', top: muckTarget[1] + '%'}} aria-hidden="true">
+                  {Array.from({length: Math.min(muckCount, 4)}, (_, i) => (
+                    <span key={i} style={{'--mi': i}} />
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
+
+        {/* 87: the hand's title and its stakes lived in .replayer-header,
+            ABOVE the table and outside the captured element — so every export,
+            every screenshot and every share was a table with no context at all
+            beyond a 10%-opacity wordmark. The exports are the version of this
+            most people will ever see. */}
+        {hand.title && (
+          <div className="replayer-table-title">
+            <span className="replayer-table-title-name">{hand.title}</span>
+          </div>
+        )}
+
+        {/* 94: hand.blinds carries sb, bb and ante and none of them appeared
+            anywhere on the felt — so a stack of 24,000 had no meaning without
+            opening the hand's title, which makes every stack number on the
+            table meaningless. It is one line of data that already exists.
+
+            95: and a saved hand from a tournament has a place IN one. The
+            difference between "a big pot" and "a big pot on the money bubble"
+            is the whole reason a hand is worth revisiting. */}
+        {(() => {
+          const b = hand.blinds || {};
+          const level = b.bb ? formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb)
+            + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '') : null;
+          const avg = stacks.length ? Math.round(stacks.reduce((a, v) => a + v, 0) / stacks.length) : 0;
+          if (!level && !hand.playersLeft) return null;
+          return (
+            <div className="replayer-level">
+              {level && <span className="replayer-level-blinds">{level}</span>}
+              {avg > 0 && <span className="replayer-level-avg">avg {formatChipAmount(avg)}</span>}
+              {hand.playersLeft && <span className="replayer-level-left">{hand.playersLeft} left</span>}
+              {hand.payoutNote && <span className="replayer-level-left">{hand.payoutNote}</span>}
+            </div>
+          );
+        })()}
+
+        {/* 96: the replay opened on the first street already dealt and ended
+            on the showdown frame, so an exported clip started mid-scene and
+            stopped dead. Every clip that gets shared needs a first frame that
+            explains itself and a last frame that resolves. These are gated on
+            [data-capturing] in CSS — on screen they would be in the way, and
+            in an export they land in exactly the first and last frames,
+            because that is where the exporter starts and stops. */}
+        <div className={'replayer-bookend is-open' + (streetIdx === 0 && actionIdx < 0 && !showResult ? ' is-live' : '')}>
+          <span className="replayer-bookend-eyebrow">{hand.gameType}{(hand.blinds || {}).bb ? ' \u00b7 ' + formatChipAmount(hand.blinds.sb) + '/' + formatChipAmount(hand.blinds.bb) : ''}</span>
+          <span className="replayer-bookend-title">{hand.title || 'Hand replay'}</span>
+          {heroCards && <span className="replayer-bookend-cards"><CardRow text={heroCards} max={gameCfg.heroCards} cardTheme={cardTheme} /></span>}
+          <span className="replayer-bookend-sub">{hand.players.length}-handed</span>
+        </div>
+        <div className={'replayer-bookend is-close' + (showResult ? ' is-live' : '')}>
+          <span className="replayer-bookend-eyebrow">Result</span>
+          <span className="replayer-bookend-title">
+            {(evalResult && evalResult[0]?.result?.text) || 'Hand complete'}
+          </span>
+          <span className="replayer-bookend-sub">{fmtChips(displayPot)} pot</span>
+        </div>
+
         {/* Watermark */}
-        <div style={{position:'absolute',left:'50%',top:'57%',transform:'translate(-50%,-50%)',zIndex:1,opacity:0.1,pointerEvents:'none',fontFamily:"'Libre Baskerville',Georgia,serif",fontWeight:700,color:'#fff',letterSpacing:'-0.05em',whiteSpace:'nowrap',fontSize:'1.06rem'}}>futurega.me</div>
+        <div className="replayer-watermark"
+          style={{position:'absolute',left:'50%',top:'66%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
 
         {/* Player seats */}
         {hand.players.map((p, pi) => {
@@ -4291,31 +5315,169 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
           const muckStyle = {};
           if (foldAnimClass) {
-            const mdx = (50 - pos[0]) * 1.5;
-            const mdy = (50 - pos[1]) * 0.8;
-            muckStyle['--muck-dx'] = mdx + 'px';
-            muckStyle['--muck-dy'] = mdy + 'px';
+            /* 37: this aimed at 50%/50% — the middle of the felt, which is
+               where the BOARD is, so every folded hand flew into the community
+               cards. That is the one place on a poker table cards never go.
+               They go to the dealer, whose position is derivable from the
+               button and already known. */
+            const mdx = (muckTarget[0] - pos[0]) * 1.4;
+            const mdy = (muckTarget[1] - pos[1]) * 1.1;
+            muckStyle['--muck-dx'] = mdx.toFixed(1) + 'px';
+            muckStyle['--muck-dy'] = mdy.toFixed(1) + 'px';
             muckStyle['--muck-rot'] = (mdx > 0 ? -12 : 12) + 'deg';
           }
 
           return (
-            <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`}
-              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle}}>
-              <div className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) ? 'replayer-hilo-high' + (hiloAnimate ? ' animate' : '') : ''}`}>
+            /* 21: cards, plaques and the dealer button all carried the same
+               generic downward blur regardless of where they sat, so an object
+               at the top of the table and one at the bottom cast identically —
+               which is what makes a composite read as layers rather than as a
+               scene. The light is above and in front (the felt's specular pool
+               is at 50% 44%); every seat now knows which way its own shadow
+               falls and how long it is. */
+            /* 88: the hero got the bottom seat and face-up cards, and was
+               otherwise identical to the eight opponents — same plaque, same
+               type, same card size. Every poker broadcast makes the featured
+               player unmistakable, and it is the seat the eye returns to
+               after every single action. */
+            <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
+              + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')}
+              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos)}}>
+              {/* 12: opponent cards were hidden until showResult and then
+                  appeared in a single frame — the only card event in the
+                  replayer with no motion, at the moment the whole replay has
+                  been building toward. The stylesheet's own comment says the
+                  flip was disabled because it fought the splay transforms, and
+                  the 600ms animShowdown effect kept ticking for an animation
+                  nothing read. The ROW wrapper carries no splay transform, so
+                  fading and lifting it costs the fan nothing. */}
+              <div className={`replayer-seat-cards ${isHiLo && showResult && !folded.has(pi) ? ('replayer-hilo-' + (hiloSide[pi] || 'high')) + (hiloAnimate ? ' animate' : '') : ''}${animDealing ? ' animate-deal' : ''}${animShowdown && pi !== replayHeroIdx && !folded.has(pi) ? ' animate-showdown' : ''}`}
+                style={(() => {
+                  const st = {};
+                  if (animDealing) {
+                    /* 64: the offset was computed from the table CENTRE with a
+                       flat -40px, so cards arrived from a point above the
+                       middle of the felt. They come from the deck, which is
+                       now an object on the table with a known position. */
+                    st['--deal-dx'] = ((dealerSpot[0] - pos[0]) * 1.9).toFixed(1) + 'px';
+                    st['--deal-dy'] = ((dealerSpot[1] - pos[1]) * 1.3).toFixed(1) + 'px';
+                    /* 63: the stagger was per SEAT, so each player's whole hand
+                       flew in as one block — the one thing a dealer never
+                       does. Per card as well as per seat, so the deal goes
+                       round the table once for each card. */
+                    st['--deal-seat-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
+                    st['--deal-round'] = String(hand.players.length * 70);
+                  }
+                  // 12: opponents reveal clockwise from the hero, not all at once.
+                  if (animShowdown) st['--showdown-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
+                  return st;
+                })()}>
                 <CardRow text={cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
                   placeholderCount={!cards && !folded.has(pi) ? gameCfg.heroCards : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx} />
               </div>
-              <div className="replayer-seat-info">
+              {/* 100: between steps the table was completely inert — no way to
+                  inspect a player, no response to anything but the transport,
+                  in a feature whose whole purpose is STUDYING hands. The only
+                  thing you could do to a hand was watch it go past. The
+                  action history is already indexed by player. */}
+              <div className="replayer-seat-info" role="button" tabIndex={0}
+                aria-expanded={inspecting === pi}
+                onClick={(e) => { e.stopPropagation(); setInspecting(inspecting === pi ? null : pi); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setInspecting(inspecting === pi ? null : pi); } }}>
                 {rSettings.showPlayerStats && (
-                  <div className="replayer-player-stats">{(() => { const st = getPlayerStats(p.name); return st.vpip + '/' + st.pfr + '/' + st.ag; })()}</div>
+                  /* 41: this rendered "23/15/2.1" — three fabricated numbers
+                     (a hash of the name) with no key to what they are. An
+                     unlabelled triplet styled as an engraving reads as
+                     authoritative, which is the worst combination. Prefixed
+                     until real stats exist. */
+                  <div className="replayer-player-stats">{(() => { const st = getPlayerStats(p.name); return 'V' + st.vpip + ' P' + st.pfr + ' A' + st.ag; })()}</div>
                 )}
-                <div className="replayer-seat-name">{p.name}</div>
-                <div className="replayer-seat-stack">{formatChipAmount(stacks[pi])}</div>
+                {/* 20: every player carries p.position and .replayer-seat-pos
+                    was defined and never used, so blinds and everyone but the
+                    button were anonymous — and position is the single most
+                    important context for judging any action in a replay. */}
+                <div className="replayer-seat-name" title={p.name}>
+                  {p.position && (
+                    <span className={'replayer-seat-pos' + (p.position === 'SB' || p.position === 'BB' ? ' is-blind' : '')}>{p.position}</span>
+                  )}
+                  {shortenName(p.name)}
+                </div>
+                {/* 67: the stack dropped the instant the bet was recorded,
+                    while the chips were still in flight toward a pot that had
+                    already been paid. It counts down over the same duration
+                    the pot counts up. */}
+                <div className="replayer-seat-stack">
+                  {allIn.has(pi) && stacks[pi] <= 0
+                    ? <span className="replayer-allin-mark">ALL-IN</span>
+                    : <CountedChips value={stacks[pi]} fmt={fmtChips} live={rSettings.animateChips && !rewinding} />}
+                </div>
+                {/* 43: estimateRange returns a label AND a CSS class per
+                    opponent, four styled tiers exist and the setting was
+                    merged into the settings object — and no seat ever wore
+                    one. Hero is excluded: you can see your own cards. */}
+                {rSettings.showRanges && pi !== replayHeroIdx && !folded.has(pi) && !showResult && (() => {
+                  const r = estimateRange(hand, pi, streetIdx, actionIdx);
+                  return r ? <div className={'replayer-range-label ' + r.cls}>{r.label}</div> : null;
+                })()}
+                {/* 39: the delta styles were written, colour-coded and even
+                    added to the tabular-figures group, and nothing ever drew
+                    them — so "who finished up" could only be answered by
+                    remembering the starting stack. */}
+                {showResult && (() => {
+                  const start = p.startingStack ?? p.stack ?? null;
+                  if (start == null) return null;
+                  const d = stacks[pi] - start;
+                  if (!d) return null;
+                  const cls = d > 0 ? 'positive' : 'negative';
+                  return (
+                    <div className={'replayer-chip-delta ' + cls}>
+                      {d > 0 ? '+' : '\u2212'}{formatChipAmount(Math.abs(d))}
+                    </div>
+                  );
+                })()}
               </div>
-              {lastAct && (() => {
+              {inspecting === pi && (
+                <div className="replayer-seat-line">
+                  {(() => {
+                    const line = [];
+                    hand.streets.forEach((st, si) => {
+                      const acts = (st.actions || []).filter(a => a.player === pi);
+                      if (!acts.length) return;
+                      line.push(
+                        <div key={si} className="replayer-seat-line-row">
+                          <span className="replayer-seat-line-street">{st.name || ('St' + si)}</span>
+                          <span>{acts.map(a => a.action + (a.amount ? ' ' + fmtChips(a.amount) : '')).join(' \u00b7 ')}</span>
+                        </div>
+                      );
+                    });
+                    return line.length ? line : <div className="replayer-seat-line-row">No action yet</div>;
+                  })()}
+                </div>
+              )}
+              {/* 26: filled by leader, below the plaque so it does not fight
+                  the hand name. */}
+              {showdownEquity && showdownEquity[pi] != null && !folded.has(pi) && (() => {
+                const pct = showdownEquity[pi];
+                const best = Math.max(...Object.values(showdownEquity));
+                const col = pct >= best ? 'var(--ok)' : 'rgba(255,255,255,0.45)';
+                return (
+                  <div className="replayer-equity-bar-wrap">
+                    <div className="replayer-equity-bar"><div className="replayer-equity-fill" style={{width: pct + '%', background: col}} /></div>
+                    <div className="replayer-equity-pct" style={{color: col}}>{pct}%</div>
+                  </div>
+                );
+              })()}
+              {/* 29: both of these are absolutely positioned directly under the
+                  plaque — the badge at calc(100% + 2px), the name at 100% plus
+                  a margin — and at showdown BOTH render, because lastAct
+                  persists from the river while handName arrives with the
+                  result. So "CALL 12k" landed on top of "Two Pair, A & K".
+                  The name is the newer and more important fact; the badge
+                  stands down for it. */}
+              {lastAct && !handName && (() => {
                 const actText = lastAct.action;
                 if (!actText) return null;
                 let label = actText;
@@ -4323,7 +5485,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   if (actText === 'raise') label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, actionIdx, pi));
                   else label += ' ' + formatChipAmount(lastAct.amount);
                 }
-                return <div className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
+                // 58: re-keying is what makes the entrance replay when the
+                // same player acts twice in one street.
+                return <div key={streetIdx + '-' + actionIdx} className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
               })()}
               {handName && <div className="replayer-seat-hand-name">{handName}</div>}
               {isDrawGame && currentStreet.draws?.length > 0 && (() => {
@@ -4340,13 +5504,37 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const lastAct = playerLastAction[pi];
           if (!lastAct || !lastAct.amount) return null;
           const pos = seats[pi] || [50, 50];
-          const isBottom = pos[1] >= 70, isTop = pos[1] <= 15, isLeft = pos[0] <= 20, isRight = pos[0] >= 80;
+          /* 23: these were five branches of raw percentage constants along
+             different axes of a 3:4.5 table — a top seat's chip sat 10% of
+             HEIGHT from its plaque, a side seat's 25% of WIDTH, and the sides
+             also drifted up 7% for no stated reason. In pixels that is roughly
+             15, 26 and 45, so the wagers formed a lumpy, non-concentric ring
+             around a pot they are all supposedly travelling to.
+
+             One rule instead: walk a fixed pixel distance from the seat
+             straight toward the table centre. The aspect correction is what
+             makes it a distance rather than a percentage — 1% of height is 1.5
+             times the pixels of 1% of width on this table, so the vector has
+             to be built in pixel space and converted back. */
+          const AR = 4.5 / 3;
+          const dx = 50 - pos[0], dy = (50 - pos[1]) * AR;
+          const len = Math.hypot(dx, dy) || 1;
+          /* Rendered: every seat's cards sit ABOVE its plaque, so for a seat in
+             the BOTTOM half of the table the cards lie directly between the
+             seat and the pot — and walking the wager toward the pot put it on
+             top of that player's own hand. Walking further only pushed it into
+             the board. Those seats put their wager BESIDE the cards instead,
+             which is also where it sits at a real table; every other seat
+             keeps the straight walk toward the middle. */
+          const TRAVEL = 8;
           let chipX, chipY;
-          if (isBottom) { chipX = pos[0]; chipY = pos[1] - 14; }
-          else if (isTop) { chipX = pos[0]; chipY = pos[1] + 10; }
-          else if (isLeft) { chipX = pos[0] + 25; chipY = pos[1] - 7; }
-          else if (isRight) { chipX = pos[0] - 25; chipY = pos[1] - 7; }
-          else { chipX = pos[0] + (50-pos[0])*0.35; chipY = pos[1] + (50-pos[1])*0.35; }
+          if (pos[1] > 50) {
+            chipX = pos[0] + (pos[0] <= 50 ? 12 : -12);
+            chipY = pos[1] - 6;
+          } else {
+            chipX = pos[0] + (dx / len) * TRAVEL;
+            chipY = pos[1] + (dy / len) * TRAVEL / AR;
+          }
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
           if (rSettings.animateChips) {
             chipStyle['--chip-start-dx'] = ((pos[0] - chipX) * 3) + 'px';
@@ -4355,7 +5543,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div key={'bet-' + pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
               <ChipStack amount={lastAct.amount} />
-              {formatChipAmount(lastAct.amount)}
+              {fmtChips(lastAct.amount)}
+              {/* 42: a ten-step classifier from min through overbet was written
+                  and never called, so '13k' arrived with no pot-relative
+                  context — and pot-relative size is what makes a bet readable
+                  as a bluff or a value bet at a glance. */}
+              {rSettings.showBetSizing && (lastAct.action === 'bet' || lastAct.action === 'raise') && (() => {
+                const before = calcPotBeforeAction(hand, streetIdx, lastAct._ai ?? actionIdx);
+                const sizing = getBetSizingLabel(lastAct.amount, before);
+                return sizing ? <div className="replayer-bet-sizing">{sizing}</div> : null;
+              })()}
             </div>
           );
         }).filter(Boolean)}
@@ -4383,15 +5580,16 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             else { ox = btnPos[0] < 50 ? 4 : -4; oy = 4; }
             dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+oy) + '%', transform:'translate(-50%,-50%)'};
           }
-          return <div className="replayer-dealer-btn" style={dealerStyle}>D</div>;
+          return <div className="replayer-dealer-btn" style={dealerStyle}><span>D</span></div>;
         })()}
 
         {/* Flying chip animations */}
         {flyingChips.map(fc => (
           <div key={fc.id} className={'replayer-flying-chip' + (fc.toWinner ? ' to-winner' : '') + (fc.color && !fc.toWinner ? ' denom' : '')}
             style={{
+              // 56: the origin is set once; the animation only translates.
               '--fly-x0': fc.x0 + 'px', '--fly-y0': fc.y0 + 'px',
-              '--fly-x1': fc.x1 + 'px', '--fly-y1': fc.y1 + 'px',
+              '--fly-dx': (fc.x1 - fc.x0) + 'px', '--fly-dy': (fc.y1 - fc.y0) + 'px',
               '--fly-duration': '0.4s',
               ...(fc.color ? { '--fly-color': fc.color } : null),
               animationDelay: fc.delay + 'ms',
@@ -4417,6 +5615,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         })}
       </div>
 
+      {/* 40: on screen a solo winner got a gold border and a shimmer, and
+          nothing anywhere said "Hero wins 24.5k, Two Pair". The string was
+          composed — and painted only into the share image, so the export knew
+          the result and the app did not. Three .replayer-result classes and a
+          winner-star keyframe were sitting unused for exactly this. */}
+      {showResult && evalResult && evalResult.length > 0 && (
+        <div className="replayer-result-banner">
+          {evalResult.map((r, i) => (
+            <div key={i} className={'replayer-result replayer-result-' + (r.result?.outcome === 'hero' ? 'hero' : r.result?.outcome === 'split' ? 'split' : 'opponent')}>
+              <span className="replayer-winner-star" aria-hidden="true">{'\u2605'}</span>
+              {r.result?.text || ''}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Draw info bar */}
       {(category === 'draw_triple' || category === 'draw_single') && currentStreet.draws?.length > 0 && (
         <div className="replayer-draw-info-bar">
@@ -4438,9 +5652,47 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         </div>
       )}
 
+      {/* 46: the dot strip, its hover and current states, six action classes,
+          the street markers and the street label are all finished CSS, the
+          setting DEFAULTS TO TRUE, and the settings panel advertises
+          "clickable dots showing all actions" — for markup no component ever
+          emitted. The toggle toggled nothing. */}
+      {/* 78: the dots were floating on the page with a grey bar between
+          streets. Each street is a shaded span on a recessed track now, so the
+          groups read as groups and there is something to scrub along. A hand of
+          more than about twenty actions collapses to a denser strip rather than
+          scrolling further and further. */}
+      {rSettings.showTimeline && (
+        <div className={'replayer-timeline' + (totalActionCount > 20 ? ' is-dense' : '')} ref={timelineRef}>
+          {hand.streets.map((st, si) => (
+            <div className="replayer-timeline-street" key={'tl-' + si}>
+              <div className="replayer-timeline-street-label">{st.name || ('St' + si)}</div>
+              {(st.actions || []).map((act, ai) => {
+                const isCurrent = si === streetIdx && ai === actionIdx;
+                const who = hand.players[act.player]?.name || 'Player';
+                const amt = act.amount ? ' ' + fmtChips(act.amount) : '';
+                return (
+                  <button key={'tl-' + si + '-' + ai}
+                    className={'replayer-timeline-dot action-' + (act.action === 'all-in' ? 'allin' : act.action) + (isCurrent ? ' current' : '')}
+                    onClick={() => { setPlaying(false); setShowResult(false); setStreetIdx(si); setActionIdx(ai); }}
+                    title={who + ' ' + act.action + amt}
+                    aria-label={who + ' ' + act.action + amt}
+                    aria-current={isCurrent ? 'step' : undefined} />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Commentary */}
       {rSettings.showCommentary && (
-        <div className="replayer-commentary">{generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}</div>
+        <div className="replayer-commentary">
+          <div className="replayer-commentary-body">
+            <span className="replayer-commentary-street">{currentStreet.name || 'Preflop'}</span>
+            {generateCommentary(hand, streetIdx, actionIdx, pot, stacks)}
+          </div>
+        </div>
       )}
 
       {/* Hand strength */}
@@ -4489,61 +5741,65 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           <button onClick={stepBack} disabled={!canGoBack} title="Back">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <button onClick={() => setPlaying(p => !p)} title={playing ? 'Pause' : 'Play'}>
+          {/* 53: the play triangle was STROKED, while every media player on
+              the platform draws a solid one — and during playback the only
+              change was the icon swap, so a running replayer and a paused one
+              wore identical transparent buttons. */}
+          <button className={'replayer-play-btn' + (playing ? ' is-playing' : '')}
+            onClick={handlePlayPause}
+            title={playing ? 'Pause' : (canGoForward ? 'Play' : 'Replay')}>
             {playing ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            ) : canGoForward ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21"/></svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              /* 50: at the result the button restarts, so it says restart. */
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             )}
           </button>
           <button onClick={stepForward} disabled={!canGoForward} title="Forward">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
-          <button onClick={goToEnd} title="End">
+          <button onClick={goToEnd} disabled={!canGoForward} title="End">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 4 15 12 5 20"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
           </button>
-          <select value={speed} onChange={e => setSpeed(Number(e.target.value))} style={{
-            fontSize:'0.65rem',padding:'3px 6px',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',
-            borderRadius:'4px',fontFamily:"'Univers Condensed','Univers',sans-serif"
-          }}>
-            <option value={2000}>0.5x</option>
-            <option value={1000}>1x</option>
-            <option value={500}>2x</option>
-            <option value={250}>4x</option>
-          </select>
+          {/* 54: a raw <select> with five inline literals — the only rectangle
+              in a row of circles, and on iOS it opened the OS picker wheel for
+              a four-value choice. A four-value choice is a tap-to-cycle. The
+              orphaned .replayer-speed-label finally has something to label. */}
+          {(() => {
+            const SPEEDS = [2000, 1000, 500, 250];
+            const idx = Math.max(0, SPEEDS.indexOf(speed));
+            const label = ['0.5x', '1x', '2x', '4x'][idx];
+            return (
+              <button className="replayer-speed-btn"
+                onClick={() => setSpeed(SPEEDS[(idx + 1) % SPEEDS.length])}
+                title={'Playback speed: ' + label + ' (tap to change)'}
+                aria-label={'Playback speed ' + label}>
+                <span className="replayer-speed-label">{label}</span>
+              </button>
+            );
+          })()}
         </div>
-        <div style={{display:'flex',gap:'6px',justifyContent:'center'}}>
+        {/* 79: Back, Edit, Solve, Link, image share, WebM, GIF and the gear
+            sat in ONE inline flex row with no wrap plan, so at 320px eight
+            controls either overflowed or crushed each other — and four of the
+            eight were exports, which is a task, not a navigation control. The
+            row is navigation now; the exports live behind one Share button in
+            the sheet the app already ships for exactly this. */}
+        <div className="replayer-actions-bar">
           <button className="btn btn-ghost btn-sm" onClick={onBack}>Back</button>
           <button className="btn btn-ghost btn-sm" onClick={onEdit}>Edit</button>
           {onSolveSpot && (
-            <button className="btn btn-sm" onClick={handleSolveSpot} disabled={!canSolveSpot}
-              title={canSolveSpot ? 'Open this spot in the Solver' : 'Solver supports stud8 / razz spots'}
-              style={canSolveSpot
-                ? { border: '1px solid var(--brand)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'inline-flex', alignItems: 'center', gap: '5px' }
-                : { border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <button className={'btn btn-sm ' + (canSolveSpot ? 'btn-primary' : 'btn-ghost')}
+              onClick={handleSolveSpot} disabled={!canSolveSpot}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               Solve this spot
             </button>
           )}
-          <button className="btn btn-ghost btn-sm" onClick={copyShareLink} title="Copy share link">
-            {shareLinkCopied ? 'Copied!' : 'Link'}
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={shareReplayImage} title="Share as image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" style={{width:'14px',height:'14px'}}>
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-          </button>
-          <button className="btn btn-ghost btn-sm" disabled={videoExporting || gifExporting}
-            title="Export WebM (transparent overlay)" onClick={handleExportVideo}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:'14px',height:'14px'}}>
-              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/>
-            </svg>
-          </button>
-          <button className="btn btn-ghost btn-sm" disabled={gifExporting || videoExporting}
-            title="Export GIF (Instagram sticker)" onClick={handleExportGif}
-            style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.04em',padding:'0 6px',lineHeight:'24px'}}>
-            GIF
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowExportMenu(true)}
+            disabled={videoExporting || gifExporting}>
+            Share
           </button>
           <button className="replayer-gear-btn" onClick={() => setShowSettings(true)} title="Replayer Settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4551,6 +5807,64 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             </svg>
           </button>
         </div>
+        {/* 80: the ONLY explanation of why Solve is dead was a title
+            attribute — invisible to every touch user, which is most of them
+            on this app. */}
+        {onSolveSpot && !canSolveSpot && (
+          <div className="replayer-bar-note">Solving is available for stud8 and razz spots.</div>
+        )}
+        {/* 79: the exports, in the sheet grammar the app already uses. */}
+        {showExportMenu && createPortal(
+          <>
+            <div className="share-menu-backdrop" onClick={() => setShowExportMenu(false)} />
+            <div className="share-menu-panel">
+              <h3>Share this hand</h3>
+              <div className="share-menu-grid">
+                {/* 84: every one of these four options is a PICTURE, and they
+                    were described with emoji — the same problem the theme
+                    pills had. The preview is the shape of what comes out. */}
+                <div className="share-menu-item" onClick={() => { copyShareLink(); setShowExportMenu(false); }}>
+                  <span className="export-preview is-link" aria-hidden="true" />
+                  <span className="share-label">{shareLinkCopied ? 'Copied' : 'Copy link'}</span>
+                  <span className="share-desc">A public link to this replay</span>
+                </div>
+                <div className="share-menu-item" onClick={() => { shareReplayImage(); setShowExportMenu(false); }}>
+                  <span className="export-preview is-image" aria-hidden="true" />
+                  <span className="share-label">Image</span>
+                  <span className="share-desc">A still of the hand at this point</span>
+                </div>
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('transparent'); setShowExportMenu(false); } }}>
+                  <span className="export-preview is-overlay" aria-hidden="true" />
+                  <span className="share-label">Overlay</span>
+                  <span className="share-desc">Transparent WebM for streaming</span>
+                </div>
+                {/* 81: the greenscreen branch and its MP4 codec ladder were
+                    written for CapCut and had no way in. */}
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('greenscreen'); setShowExportMenu(false); } }}>
+                  <span className="export-preview is-green" aria-hidden="true" />
+                  <span className="share-label">Greenscreen</span>
+                  <span className="share-desc">MP4 to key out in an editor</span>
+                </div>
+                {/* 98 */}
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportVideo('story'); setShowExportMenu(false); } }}>
+                  <span className="export-preview is-story" aria-hidden="true" />
+                  <span className="share-label">Story</span>
+                  <span className="share-desc">9:16 video, ready to post</span>
+                </div>
+                <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                  onClick={() => { if (!videoExporting && !gifExporting) { handleExportGif(); setShowExportMenu(false); } }}>
+                  <span className="export-preview is-gif" aria-hidden="true" />
+                  <span className="share-label">GIF</span>
+                  <span className="share-desc">Instagram sticker</span>
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
       </div>
         );
         return slot ? createPortal(controls, slot) : controls;
@@ -4558,21 +5872,27 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
       {/* Video export progress overlay */}
       {videoExporting && createPortal(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999}}>
+        <div className="replayer-export-overlay">
           <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             Recording Overlay…
           </div>
           <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
             WebM VP9 · transparent background
           </div>
-          <div style={{width:'220px',height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',marginBottom:'10px',overflow:'hidden'}}>
-            <div style={{width:videoProgress+'%',height:'100%',background:'var(--accent, #a78bfa)',borderRadius:'3px',transition:'width 0.3s ease'}} />
+          {/* 85: the frames, as they are captured. */}
+          <div className="replayer-export-frame">
+            {exportPreview && <img src={exportPreview} alt="" />}
+          </div>
+          <div className="replayer-export-bar">
+            <div style={{width:videoProgress+'%'}} />
           </div>
           <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {videoStep} of {videoTotal}
           </div>
+          {/* 94: this said "will download automatically" on a platform where
+              the outcome is usually a share sheet. */}
           <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
-            Export will download automatically when complete
+            {canNativeShare ? 'The share sheet will open when it is ready' : 'It will download when complete'}
           </div>
         </div>,
         document.body
@@ -4580,21 +5900,28 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
       {/* GIF export progress overlay */}
       {gifExporting && createPortal(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999}}>
+        <div className="replayer-export-overlay">
           <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             Building GIF…
           </div>
           <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
-            Transparent · upload to GIPHY for Instagram sticker
+            {/* 94: this said "upload to GIPHY" while the code auto-opens
+                Instagram wherever it can. */}
+            {canInstagram ? 'Transparent \u00b7 opens in Instagram Stories' : 'Transparent \u00b7 upload to GIPHY for an Instagram sticker'}
           </div>
-          <div style={{width:'220px',height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',marginBottom:'10px',overflow:'hidden'}}>
-            <div style={{width:gifProgress+'%',height:'100%',background:'var(--accent, #a78bfa)',borderRadius:'3px',transition:'width 0.3s ease'}} />
+          <div className="replayer-export-frame">
+            {exportPreview && <img src={exportPreview} alt="" />}
+          </div>
+          <div className="replayer-export-bar">
+            <div style={{width:gifProgress+'%'}} />
           </div>
           <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {gifStep} of {gifTotal}
           </div>
           <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
-            Export will download automatically when complete
+            {canInstagram ? 'Instagram will open when it is ready'
+              : canNativeShare ? 'The share sheet will open when it is ready'
+              : 'It will download when complete'}
           </div>
         </div>,
         document.body
