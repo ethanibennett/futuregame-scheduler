@@ -1195,9 +1195,20 @@
       display: flex;
       align-items: baseline;
       gap: var(--space-xs);
-      padding: var(--space-lg) var(--space-lg) var(--space-xl) var(--space-2xs);
+      /* The date belongs to the events under it, so it should sit closer to
+         them than to the day above. It was 12px above and 16px BELOW, against
+         6px between cards — so the biggest gap in the group fell between the
+         date and its own first event, and the date read as floating between
+         two days rather than heading one.
+
+         Below is now the same 6px that separates two cards. Above is 16px on
+         top of the previous card's own 6px margin, so a day boundary is a
+         22px break and everything inside a day is a 6px rhythm. */
+      padding: var(--space-xl) var(--space-lg) var(--space-sm) var(--space-2xs);
       color: var(--text);
-      background: linear-gradient(var(--bg) 0 calc(100% - 9px), rgba(0,0,0,0));
+      /* The scrim rows scroll under. Its fade has to match the bottom padding
+         or it eats into the date's own baseline. */
+      background: linear-gradient(var(--bg) 0 calc(100% - 6px), rgba(0,0,0,0));
       user-select: none;
     }
     .schedule-date-break[onclick],
