@@ -382,3 +382,43 @@ production. Two things to know if you rebuild it: navigating from `/` to
 `/#h/...` is a *hash* change and never remounts the app (use a different path),
 and Edge caches `index.html`, so disable the network cache or you will test the
 previous build.
+
+## 2026-08-25 — "the table moves" turned out to be three different bugs
+
+"The table should remain absolutely static and unscrollable" cost three
+separate fixes, and each one only became visible after the one before it:
+
+1. **It slid.** The timeline's `scrollIntoView` was scrolling every scrollable
+   ancestor, including `.replayer-replay`. Scroll the strip itself
+   (`el.scrollTo({left: dot.offsetLeft - el.clientWidth/2 + ...})`), never the
+   element.
+2. **It was sized by a guess.** `width: min(100%, (100vh - --header-h - insets
+   - 140px) * 0.6667)` was standing in for a layout the browser already knew,
+   and it did not know about the admin tool rail (two rows of pills, ~110px,
+   admins only) or the hand title row — and `100vh` in a standalone iOS webview
+   is the whole window, while Chrome's device emulation reports the content box
+   and applies no safe-area insets. That is the entire "Chrome iPhone 16 Pro vs
+   a real iPhone 16 Pro" divergence. Now: `.replayer-table-slot` is a size
+   container (`container-type: size`) and the table is
+   `height: min(100cqh, calc(100cqw * 1.5))`. No viewport units.
+3. **It resized.** Layout-derived sizing means anything that grows below the
+   table shrinks it, and the pot-odds line, hand-strength bar, draw bar and
+   result banner all appear and disappear mid-hand. Now the strips share one
+   `.replayer-under` region of declared height (`min(34%, 180px)`, scrolls
+   inside) and each keeps its own box for the whole hand with its contents
+   hidden — reserved with the real markup, not a pixel constant. In landscape
+   that region floats over the felt instead of taking a share of the column.
+
+**Trap for next time:** `.replayer-landscape` is `position: fixed; inset: 0`.
+Re-declaring `position` on it in a later rule silently un-fixes the whole
+landscape view and drops it back into the 600px content column — the table went
+from 1257px wide to 600.
+
+**Harness** (all in the session scratchpad, all CDP against the real app as a
+guest): `move.mjs` records the table's rect at every step and prints
+`DISTINCT left/top/width/height` — 1/1/1/1 is the pass condition;
+`fit.mjs` checks fit at a given viewport (`FIT_W/FIT_H/FIT_DPR/FIT_DESKTOP`,
+and `FIT_SIM` injects the admin rail and iOS safe areas that emulation omits);
+`prod.mjs` does the same against production, where the local guest token is not
+a credential, so it takes the door a visitor takes — Continue as Guest, then
+the `#h/` link.

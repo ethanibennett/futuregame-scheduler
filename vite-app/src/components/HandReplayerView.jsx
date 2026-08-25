@@ -5558,15 +5558,27 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
           if (btnIdx < 0) return null;
           const btnPos = seats[btnIdx] || [50, 50];
-          const isBottom = btnPos[1] >= 70;
+          /* Measured on the render: the seat that owns the button here sits at
+             [82,68], which is not "bottom" by a >= 70 test but is still in the
+             lower half — and the side branch moved it INWARD and down, onto
+             its own plaque. Everything below the middle uses the outward rule.
+             (Rendered: the button was sat on the 5 of Opp 4's 50,000.) */
+          const isBottom = btnPos[1] >= 55;
           let dealerStyle;
           if (isBottom) {
-            /* This moved the button 12% of the way toward the table centre,
-               which from a bottom seat is straight UP — onto the plaque, over
-               the player's own name. A dealer button sits beside a player, not
-               on them. Out to whichever side has more room. */
-            const ox = btnPos[0] <= 50 ? 11 : -11;
-            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]-2) + '%', transform:'translate(-50%,-50%)'};
+            /* Two wrong answers before this one: 12% toward the centre put it
+               on the player's own name, and 11% to the side put it on the
+               NEIGHBOUR's — a plaque is about 30% of the table wide, so a
+               sideways step of 11 does not clear one, it just picks a
+               different name to sit on.
+
+               Below, then. Everything a seat owns — its cards, its badge, its
+               wager — hangs toward the middle, and the neighbours sit along
+               the rail, so outside the plaque is the one direction with room.
+               It is also where the button sits when you are stood behind that
+               player, which is the view this table is drawn from. */
+            const ox = btnPos[0] <= 50 ? -6 : 6;
+            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+10) + '%', transform:'translate(-50%,-50%)'};
           } else {
             const isTop = btnPos[1] <= 15;
             const isLeft = btnPos[0] <= 20;
