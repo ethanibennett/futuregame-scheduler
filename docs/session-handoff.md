@@ -422,3 +422,30 @@ and `FIT_SIM` injects the admin rail and iOS safe areas that emulation omits);
 `prod.mjs` does the same against production, where the local guest token is not
 a credential, so it takes the door a visitor takes — Continue as Guest, then
 the `#h/` link.
+
+### The test data was hiding the bug
+
+"It's all wrong everywhere" on the phone, while every fit test passed. Both
+were true: the table was inside the viewport, and the furniture on it was on
+top of itself. The harness could not see it because the smoke hand's players
+are called **"Opp 1"** through **"Opp 5"** and the app's own
+`DEFAULT_OPP_NAMES` are **"Cristian Gutierrez"** and **"Keith McCormack"**. A
+plaque is as wide as its name.
+
+**Any harness for the replayer must use `DEFAULT_OPP_NAMES`, not the shorthand
+defaults.** `overlap.mjs` injects them at full length and reports every pair of
+table objects whose boxes intersect; zero is the pass condition.
+
+The instinct at that point was to detect the browser or the app. It would not
+have helped — a desktop browser renders the same collision with the same data,
+and the fix was four absolute sizes on a container-scaled object:
+`.replayer-seat-info { min-width: 72px }` (the one that mattered),
+`.replayer-seat-name { max-width: 88px }`, `--card-h`'s 38px floor and
+`.replayer-seat-stack`'s `--fs-sm`. Rule of thumb: **on the table, a px floor
+is a legibility limit and the design token is the ceiling** —
+`clamp(<floor>, <n>cqw, <token>)`. Anything else stops scaling before the table
+does and collides.
+
+Also: the harness guest **token expires**. A stale one lands on the login
+screen and every probe reads as "no table", which looks exactly like a
+rendering fault. All four harnesses click *Continue as Guest* now instead.
