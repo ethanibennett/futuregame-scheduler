@@ -503,18 +503,39 @@ function ChipStack({ amount }) {
    nothing carrying the rest, so the one string on the plaque the reader
    supplied was the one that could be silently lost. A name shortens the way
    people shorten names. */
-function shortenName(name) {
+function shortenName(name, budget = 15) {
   const t = String(name || '').trim();
-  if (t.length <= 15) return t;
-  const parts = t.split(/\s+/);
+  if (t.length <= budget) return t;
+  const parts = t.split(/\s+/).filter(Boolean);
   if (parts.length > 1) {
-    const last = parts[parts.length - 1];
-    const initials = parts.slice(0, -1).map(p => p[0].toUpperCase() + '.').join(' ');
-    const short = initials + ' ' + last;
-    if (short.length <= 15) return short;
-    return parts[0][0].toUpperCase() + '. ' + last.slice(0, 12);
+    const first = parts[0], last = parts[parts.length - 1];
+    /* The order a person would try, shortest acceptable form last. "Kevin D."
+       is how a broadcast labels a seat; "K. DiPasquale" is how a results page
+       does; a bare first name beats either with a word cut in half. */
+    const forms = [first + ' ' + last[0].toUpperCase() + '.',
+                   first[0].toUpperCase() + '. ' + last,
+                   first];
+    for (const f of forms) if (f.length <= budget) return f;
+    return cut(first, budget);
   }
-  return t.slice(0, 14);
+  /* One word has no boundary to shorten on, so it can only be cut — and a cut
+     with nothing marking it reads as a shorter name rather than a truncated
+     one ("Bartholomew" -> "Bartholom"). The full name is on the title. */
+  return cut(t, budget);
+}
+
+function cut(t, budget) {
+  const n = Math.max(3, budget);
+  return t.length <= n ? t : t.slice(0, n - 1) + '…';
+}
+
+/* How many characters actually fit on a plaque, from the table's measured
+   width — the name is capped at 21cqw and the condensed face at this size
+   runs about 5.9px a character. Everything else on this table scales with
+   cqw; text cannot, because the shortening has to happen in the markup. */
+function nameBudgetFor(tableW) {
+  if (!tableW) return 15;
+  return Math.max(6, Math.min(22, Math.round(tableW * 0.21 / 5.9)));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
@@ -3860,6 +3881,25 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const [cardTheme, setCardTheme] = useState(() => localStorage.getItem('replayerCardTheme') || 'default');
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
+  /* The one thing on the table that cannot be sized in cqw is the text, so
+     the component has to know how wide the table came out. Measured, not
+     derived from the viewport — that guess is what this whole pass was
+     unpicking. */
+  const [tableW, setTableW] = useState(0);
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(entries => {
+      const w = Math.round(entries[0].contentRect.width);
+      /* A 4px deadband: the table's width is a min() of two container
+         queries and settles a fraction of a pixel differently between
+         layouts, and a name budget that flickers would retype every plaque. */
+      setTableW(prev => (Math.abs(prev - w) >= 4 ? w : prev));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const nameBudget = nameBudgetFor(tableW);
   const prevActionIdxRef = useRef(-1);
   const prevShowResultRef = useRef(false);
 
@@ -5409,7 +5449,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                 {/* No position marker: the dealer button is on the table and
                     every other position follows from it, so the badge was
                     repeating the button in the tightest space on the felt. */}
-                <div className="replayer-seat-name" title={p.name}>{shortenName(p.name)}</div>
+                <div className="replayer-seat-name" title={p.name}>{shortenName(p.name, nameBudget)}</div>
                 {/* 67: the stack dropped the instant the bet was recorded,
                     while the chips were still in flight toward a pot that had
                     already been paid. It counts down over the same duration
