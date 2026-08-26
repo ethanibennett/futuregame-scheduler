@@ -3018,12 +3018,34 @@
       /* A share of the column, capped: the strips need about 180px and no
          more, so on a tall screen the surplus goes to the table rather than to
          a taller scroll region that would never be scrolled. */
-      height: min(34%, 180px);
+      /* 180 cut the timeline in half on a hand with everything switched on
+         (banner 31 + draw bar 62 + timeline 27 + commentary 43 + pot odds).
+         A row sliced through the middle reads as a rendering fault rather
+         than as something to scroll. */
+      height: min(38%, 196px);
+      /* The reserved-but-empty strips would otherwise stack at the TOP of the
+         region, putting ~120px of nothing between the table and the timeline
+         and reading as a void. Bottom-aligned, that space joins the table's
+         own slack as one margin instead. margin-top:auto rather than
+         justify-content:flex-end because the latter makes overflowing content
+         unreachable above the scroll origin; auto collapses to 0 exactly when
+         there is something to scroll. */
+      display: flex;
+      flex-direction: column;
       overflow-y: auto;
       overscroll-behavior: contain;
       scrollbar-width: none;
     }
     .replayer-under::-webkit-scrollbar { display: none; }
+    .replayer-under > *:first-child { margin-top: auto; }
+    /* A short screen has no column to share out. On a 667pt phone with the
+       admin rail the strips were taking a third of what was left, the slot
+       came down to 148px, and the furniture was back on top of itself — 24
+       overlapping pairs. The strips give way first: they scroll, the table
+       cannot. */
+    @media (max-height: 720px) {
+      .replayer-under { height: min(30%, 132px); }
+    }
     /* Landscape is the cinema view: the table is the screen, and the strips
        float over the bottom of the felt on a scrim rather than taking a share
        of the column. Absolutely positioned, so — like the fixed share in
@@ -3053,10 +3075,21 @@
          it: as tall as the slot unless that would make it wider than the slot,
          in which case the width decides. No viewport units, nothing to keep in
          sync with the chrome above or below. */
-      height: min(100cqh, calc(100cqw * 1.5));
-      width: auto;
+      /* 3:4.5 was costing a fifth of the table's width on a phone. After the
+         admin rail and the strip region the slot is about 402x300, and the
+         tallest 3:4.5 box that fits in that is 200 wide — with 100px of empty
+         column either side of it, while six plaques fought over the 200.
+
+         So the table takes the slot, and the RATIO is what gives: clamped
+         between 0.62 (the old shape, for a tall narrow slot) and 0.95 (still
+         taller than it is wide, still a table seen end-on). Both bounds are
+         written as one min() per axis, so whichever binds, the result stays
+         inside the range. */
+      --table-ar-min: 0.62;
+      --table-ar-max: 0.95;
+      width: min(100cqw, calc(100cqh * var(--table-ar-max)));
+      height: min(100cqh, calc(100cqw / var(--table-ar-min)));
       max-width: 100%;
-      aspect-ratio: 3 / 4.5;
       margin: 4px 0 0;
 
       /* Everything on this table now measures itself against the TABLE, not
@@ -3159,7 +3192,11 @@
       /* 44px at a ~350px table, which is where it has been, but now it holds
          its proportion instead of its pixel count. The clamp keeps a card
          legible on a small phone and stops it becoming a poster on a desktop. */
-      --card-h: clamp(38px, 12.6cqw, 54px);
+      /* The floor was 38px against a 12.6cqw intent — so below a 300px table
+         the cards stopped scaling and started overlapping the neighbours.
+         A floor is a legibility limit, not a layout: 24px is the smallest a
+         rank and suit stay readable at, and above that the table decides. */
+      --card-h: clamp(18px, 12.6cqw, 54px);
       --card-w: calc(var(--card-h) * 0.7143);   /* the artwork is 180:252 */
 
       /* The crosshatch was two perfectly regular gradients at +45 and -45,
@@ -3332,7 +3369,10 @@
          on the number the whole composition is arranged around — smaller than
          the app's own body text, where every broadcast makes it the largest
          number on screen. */
-      z-index: var(--z-pot); text-align:center; font-size: var(--fs-xl); font-weight: var(--fw-bold); color:#fff;
+      /* The token is the ceiling, held from about a 250px table upward. It
+         is the largest number on screen by design, which also makes it the
+         one most able to reach a top seat's plaque on a small table. */
+      z-index: var(--z-pot); text-align:center; font-size: clamp(15px, 9cqw, var(--fs-xl)); font-weight: var(--fw-bold); color:#fff;
       font-family: var(--font-display);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -3370,7 +3410,7 @@
     .replayer-board-area {
       /* Narrower felt means less room across, so the board keeps a card a
          step down from the ones in front of the players. */
-      --card-h: clamp(28px, 9.4cqw, 44px);
+      --card-h: clamp(18px, 9.4cqw, 44px);
       position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
@@ -3427,7 +3467,7 @@
     .replayer-seat.seat-left .replayer-seat-info,
     .replayer-seat.seat-right .replayer-seat-info { min-width: 0; }
     .replayer-seat.seat-left .replayer-seat-name,
-    .replayer-seat.seat-right .replayer-seat-name { max-width: 56px; }
+    .replayer-seat.seat-right .replayer-seat-name { max-width: min(56px, 15cqw); }
     /* Folded/mucked. opacity:0.5 faded the NAME AND STACK along with the plaque, losing the
        information at the moment you are scanning who is left. Desaturating and stepping the plaque
        back says "out of the hand" while keeping it readable. */
@@ -3551,8 +3591,11 @@
       background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: var(--r-object);
-      padding: var(--space-xs) var(--space-md);
-      min-width: 72px;
+      padding: var(--space-xs) min(var(--space-md), 4cqw);
+      /* A flat 72px is 45% of a 159px table, against seats spaced 32% apart —
+         so on a small screen the plaques collided no matter how short the
+         names were cut. It is a floor for legibility, not a layout. */
+      min-width: min(72px, 30cqw);
       box-shadow: var(--plate-bevel);
       transition: border-color var(--dur-snap), box-shadow var(--dur-base), transform var(--dur-snap);
     }
@@ -3614,7 +3657,7 @@
        row. One line-height on the plaque, inherited by all of them. */
     .replayer-seat-info { line-height: 1.34; }
     .replayer-seat-name {
-      font-size: var(--fs-2xs);
+      font-size: clamp(8px, 4.2cqw, var(--fs-2xs));
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
       font-family: var(--font-condensed);
@@ -3625,13 +3668,21 @@
          the one that could be lost. The JSX shortens on a word boundary and
          carries the full name in a title; this is the backstop. */
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      max-width: 88px;
+      /* 88px on a 200px table is a plaque nearly half the table wide, and the
+         seats are spaced 32% apart — which is why six of them ended up on top
+         of each other. A share of the table, capped where it stops being
+         worth more. The JSX shortens to fit this budget (see shortenName), so
+         the ellipsis stays a backstop rather than the mechanism. */
+      max-width: min(88px, 21cqw);
     }
     /* The position badge is gone: the dealer button is on the table, and
        every other position is derived from it — so the badge was repeating
        what the button already says, in the tightest space on the felt. */
     .replayer-seat-stack {
-      font-size: var(--fs-sm);
+      /* The token is the ceiling, reached at about a 240px table and held
+         above it; below that the number scales with the felt like everything
+         else on it, down to the smallest size a stack stays readable at. */
+      font-size: clamp(9px, 5.4cqw, var(--fs-sm));
       font-weight: var(--fw-bold);
       color: #ffd98a;
       font-family: var(--font-display);
@@ -3640,7 +3691,7 @@
     }
     .replayer-chip-delta {
       font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
+      font-size: clamp(7px, 3.6cqw, var(--fs-2xs));
       font-weight: var(--fw-regular);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -5251,7 +5302,7 @@
        one, and a fan overflows it anyway. The plaque does the joining. */
 
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
-    .replayer-seat.is-hero { --card-h: clamp(44px, 15cqw, 64px); }
+    .replayer-seat.is-hero { --card-h: clamp(20px, 15cqw, 64px); }
     .replayer-seat.is-hero .replayer-seat-info {
       min-width: 92px;
       padding: var(--space-sm) var(--space-ml);
