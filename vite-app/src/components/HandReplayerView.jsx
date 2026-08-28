@@ -541,7 +541,14 @@ function cut(t, budget) {
    cqw; text cannot, because the shortening has to happen in the markup. */
 function nameBudgetFor(tableW) {
   if (!tableW) return 15;
-  return Math.max(6, Math.min(22, Math.round(tableW * 0.1875 / 5.9)));   /* 3 cells */
+  /* Both halves have to match .replayer-seat-name, and the second one is why
+     this cannot be a single ratio: 5.9px per character is this condensed face
+     at 10px, and the face is 15px on a wide table. A budget that did not know
+     the font size handed out half as many characters as fit at one end and
+     twice as many at the other. */
+  const px = Math.min(15, Math.max(8, tableW * 0.042));        // its font-size
+  const box = Math.min(96, tableW * 0.21875);                  // its max-width
+  return Math.max(6, Math.min(22, Math.round(box / (px * 0.59))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
