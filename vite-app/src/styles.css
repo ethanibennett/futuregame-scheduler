@@ -2977,11 +2977,40 @@
        off the container so the table's own cqw units shrink with it. */
     .replayer-fullbleed .replayer-table-slot { padding: 2px 10px 0; }
 
+    /* In flow at the bottom, not pinned above a tab bar that is not there.
+       Its height is declared once and read by the strip overlay below, so the
+       two cannot drift apart. */
+    .replayer-fullbleed { --transport-h: 104px; }
     .replayer-fullbleed .replayer-bottom-fixed {
       position: relative;
       bottom: auto;
       flex: none;
+      height: var(--transport-h);
     }
+    /* The strips float over the foot of the cloth rather than taking a slice
+       of the column — the same move landscape has made for a while, and the
+       same guarantee: absolutely positioned, so nothing they do can resize the
+       table. That 96px was the last of the chrome standing between the table
+       and the bottom of the screen. */
+    .replayer-fullbleed .replayer-under {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: var(--transport-h);
+      /* A declared height again, but for a different reason than before: this
+         cannot resize the table any more, it just has to stay off the bottom
+         seat. Left to its content it grew to ~200px and sat on the hero. */
+      /* This out-specifies the short-screen media query below, so it carries
+         its own scaling: on a 667pt phone a flat 96px reaches up past the
+         bottom seat, because the table is shorter but the strip is not. */
+      height: min(96px, 9.4vh);
+      padding: var(--space-xl) var(--space-md) var(--space-2xs);
+      background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0));
+      z-index: var(--z-flight, 60);
+    }
+    /* Bottom-aligning the contents was for a fixed-height box with reserved
+       gaps at the top of it; an overlay that is only as tall as its content
+       does not need it, and it would push the strips off the scrim. */
+    .replayer-fullbleed .replayer-under > *:first-child { margin-top: 0; }
 
     .replayer-landscape {
       position: fixed;
@@ -3147,7 +3176,10 @@
          it is one seat at the top, three down each side and one at the
          bottom — so the seats that collide are stacked VERTICALLY and width
          was the wrong axis to buy. Tall, like the table it is a picture of. */
-      --table-ar-min: 0.50;
+      /* 0.50 caps a 373-wide table at 746px tall, which is what the column
+         becomes once the strips stop taking a slice of it — so the table would
+         have hit the cap in the same breath as being given the room. */
+      --table-ar-min: 0.46;
       --table-ar-max: 0.72;
       width: min(100cqw, calc(100cqh * var(--table-ar-max)));
       height: min(100cqh, calc(100cqw / var(--table-ar-min)));
