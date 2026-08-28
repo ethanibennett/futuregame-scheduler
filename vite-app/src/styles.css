@@ -3280,7 +3280,7 @@
          HandReplayerView — which used to hold their own hand-written copy.
          Landscape orientation overrides them further down. */
       --felt-y: 11%;
-      --felt-x: 18%;
+      --felt-x: 15%;
       --rail-w: 5.6cqw;
 
       /* 44px at a ~350px table, which is where it has been, but now it holds
@@ -3501,8 +3501,8 @@
       position:relative;
     }
 
-    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 11.5cqw, 52px); }
-    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 9.4cqw, 44px); }
+    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 13cqw, 56px); }
+    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 11.6cqw, 50px); }
     .replayer-board-area {
       /* Narrower felt means less room across, so the board keeps a card a
          step down from the ones in front of the players. */
@@ -3512,7 +3512,7 @@
          two mid-height side plaques, and that is only true when there are
          five. It steps down as the turn and the river land, so the five-card
          row is exactly what it has always been and a flop is not. */
-      --card-h: clamp(26px, 14cqw, 62px);
+      --card-h: clamp(26px, 16cqw, 66px);
       position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }

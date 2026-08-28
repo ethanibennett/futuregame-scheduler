@@ -168,15 +168,35 @@ export function decodeHand(str) {
   var actionsStr = parts[3];
   var resultStr = parts[4] || '';
 
+  /* The header is written as gameCode + numPlayers + heroIdx with no
+     separator, and several game codes are another code plus a digit — P8 is
+     PLO8, P5 is PLO5, P6 is PLO6, N8 is NL Stud 8, PT is PL 2-7 TD, LT is
+     L 2-7 TD. Taking the longest matching code therefore ate the PLAYER COUNT
+     of the shorter game: 8-handed PLO ("P84") decoded as PLO8 with 4 players
+     and hero 0, and so did 8-handed hold'em ("N84") as NL Stud 8. Six
+     game/size combinations were wrong, two of them the most common games
+     there are, on the one path by which anybody who is not an admin ever
+     sees a hand.
+
+     The header's LENGTH settles it: whatever the code, exactly two
+     characters follow it. A real PLO8 hand with four players is "P840". */
   var gameType = null;
   var codeLen = 0;
   var sortedCodes = Object.keys(GAME_CODES_REV).sort(function(a, b) { return b.length - a.length; });
+  var candidates = [];
   for (var ci = 0; ci < sortedCodes.length; ci++) {
-    if (headerStr.indexOf(sortedCodes[ci]) === 0) {
-      gameType = GAME_CODES_REV[sortedCodes[ci]];
-      codeLen = sortedCodes[ci].length;
-      break;
-    }
+    if (headerStr.indexOf(sortedCodes[ci]) === 0) candidates.push(sortedCodes[ci]);
+  }
+  var chosen = null;
+  for (var cj = 0; cj < candidates.length; cj++) {
+    if (headerStr.length === candidates[cj].length + 2) { chosen = candidates[cj]; break; }
+  }
+  /* No candidate leaves exactly two characters — a malformed or future header.
+     Fall back to the longest match, which is what this always did. */
+  if (!chosen && candidates.length) chosen = candidates[0];
+  if (chosen) {
+    gameType = GAME_CODES_REV[chosen];
+    codeLen = chosen.length;
   }
   if (!gameType) return null;
 
