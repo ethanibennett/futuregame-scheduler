@@ -2943,6 +2943,46 @@
        fresh by a live matchMedia listener that nothing read. In landscape the
        phone is held for exactly this and the app just letterboxed the table.
        The insets were missing too: a notch sits in the landscape long edge. */
+    /* Portrait replay is full screen for the same reason landscape is: the
+       table is the thing, and it was being handed a third of the phone after
+       the header, the guest banner, the title row, the tool rail, the strips,
+       the transport and the tab bar had taken theirs. The Back button in the
+       transport is the way out. */
+    .replayer-replay.replayer-fullbleed {
+      position: fixed;
+      inset: 0;
+      z-index: var(--z-modal);
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+               env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+      box-sizing: border-box;
+    }
+    /* Scoped to the ACTIVE tab panel. Tab panels stay mounted behind
+       display:none, and :has() matches the DOM rather than what is rendered —
+       so an unscoped selector here hides the app's own nav on every other tab
+       for the rest of the session, once a hand has been opened. */
+    body:has(.tab-panel.tab-active .replayer-fullbleed) .top-bar,
+    body:has(.tab-panel.tab-active .replayer-fullbleed) .bottom-nav,
+    body:has(.tab-panel.tab-active .replayer-fullbleed) .replayer-header,
+    body:has(.tab-panel.tab-active .replayer-fullbleed) .guest-banner,
+    body:has(.tab-panel.tab-active .replayer-fullbleed) .hands-tool-rail {
+      display: none !important;
+    }
+    /* In flow at the bottom, not pinned above a tab bar that is not there. */
+    /* The table is exactly as wide as the screen, so the side seats' card
+       fans sit flush against the glass and read as cut off. A margin, taken
+       off the container so the table's own cqw units shrink with it. */
+    .replayer-fullbleed .replayer-table-slot { padding: 2px 10px 0; }
+
+    .replayer-fullbleed .replayer-bottom-fixed {
+      position: relative;
+      bottom: auto;
+      flex: none;
+    }
+
     .replayer-landscape {
       position: fixed;
       inset: 0;
@@ -2998,9 +3038,12 @@
       margin-bottom: 0;
     }
     /* Hide app chrome in landscape replayer */
-    body:has(.replayer-landscape) .top-bar,
-    body:has(.replayer-landscape) .bottom-nav,
-    body:has(.replayer-landscape) .replayer-header {
+    /* Same scoping as the full-bleed rules above, and for the same reason —
+       this one has been able to hide the nav from the other tabs since
+       landscape mode was added. */
+    body:has(.tab-panel.tab-active .replayer-landscape) .top-bar,
+    body:has(.tab-panel.tab-active .replayer-landscape) .bottom-nav,
+    body:has(.tab-panel.tab-active .replayer-landscape) .replayer-header {
       display: none !important;
     }
     /* The slot the table lives in: whatever height the column has left after

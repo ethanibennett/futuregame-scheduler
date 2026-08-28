@@ -4990,8 +4990,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        so the corner seats overlapped whatever the table's size. The columns
        start lower and the top pair sits wider, which is the only pair of
        changes that buys clearance on both axes at once. */
-    9:  [[32,T],[R,my(.20)],[R,50],[R,my(.80)],[50,B],[L,my(.80)],[L,50],[L,my(.20)],[68,T]],
-    10: [[28,T],[50,T],[R,my(.20)],[R,50],[R,my(.80)],[50,B],[L,my(.80)],[L,50],[L,my(.20)],[72,T]],
+    9:  [[32,T],[R,my(.26)],[R,50],[R,my(.74)],[50,B],[L,my(.74)],[L,50],[L,my(.26)],[68,T]],
+    10: [[28,T],[50,T],[R,my(.26)],[R,50],[R,my(.74)],[50,B],[L,my(.74)],[L,50],[L,my(.26)],[72,T]],
   };
 
   const n = hand.players.length;
@@ -5116,7 +5116,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        fullscreen CSS (fixed inset, modal layer, app chrome hidden through a
        :has() rule) could never fire, and turning the phone sideways just
        letterboxed the table. */
-    <div className={'replayer-replay' + hcDeckClass + (isLandscape ? ' replayer-landscape' : '')
+    <div className={'replayer-replay' + hcDeckClass
+      + (isLandscape ? ' replayer-landscape' : ' replayer-fullbleed')
       + (rewinding ? ' is-rewinding' : '')}>
       {showSettings && <ReplayerSettingsPanel onClose={() => setShowSettings(false)} settings={rSettings} onUpdate={handleSettingsUpdate} />}
 
@@ -5622,7 +5623,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                the rail, so outside the plaque is the one direction with room.
                It is also where the button sits when you are stood behind that
                player, which is the view this table is drawn from. */
-            const ox = btnPos[0] <= 50 ? -6 : 6;
+            /* Outward is right for a seat near the middle of an edge, but a
+               seat at 18% is already ON the felt's edge, and stepping further
+               out puts the button in the black outside the cloth. The seats
+               at the extremes step IN; there is room now that the table is
+               not 237px wide. */
+            const ox = btnPos[0] < 25 ? 8 : btnPos[0] > 75 ? -8 : (btnPos[0] <= 50 ? -6 : 6);
             dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+10) + '%', transform:'translate(-50%,-50%)'};
           } else {
             const isTop = btnPos[1] <= 15;
@@ -5979,7 +5985,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
            chance, because the bar was never inside the landscape container.
            In landscape it stays in flow, which is also what makes the slot
            above it leave room. */
-        return (slot && !isLandscape) ? createPortal(controls, slot) : controls;
+        /* Both orientations are full screen now, so the bar is a real flex
+           item at the bottom of the replay view in both. It used to portal to
+           #above-nav-slot so it could sit above the tab bar — there is no tab
+           bar over a replay any more. `slot` is left resolved above because
+           the OFC replay still uses it. */
+        return controls;
       })()}
 
       {/* Video export progress overlay */}
