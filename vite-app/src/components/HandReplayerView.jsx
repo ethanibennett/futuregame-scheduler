@@ -4985,7 +4985,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      height below the bottom seat row doing nothing — the seats need room for a
      plaque and the fan standing above it, not for a fifth of the table. 11%
      spreads the seat ring over more of the box and grows the cloth with it. */
-  const FY = 11, FX = 18;                 // must match --felt-y / --felt-x
+  const FY = 11, FX = 15;                 // must match --felt-y / --felt-x
   /* Seats used to sit exactly ON the felt's edge, which is where a player
      sits — but a plaque is centred on its seat point and the hero's is taller
      than the rest, so the bottom one hung past the table's own box and had its
@@ -5015,9 +5015,14 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
          7-max has two seats along the top, so its corner run is 17% of the
          width rather than 32% -> d = 12.2 -> my(.33). */
-    6:  [[50,T],[R,my(.31)],[R,my(.69)],[50,B],[L,my(.69)],[L,my(.31)]],
+    /* Re-derived at --felt-x 15%: the run from a centre seat to a side seat
+       is 35% of the width now, which on a 0.50 table is ~17.6 height-percent
+       rather than 16.1. 8-max: 70d = 35^2 - 17.6^2 + ... -> d = 21.9 -> .19;
+       6-max: 3d^2 + 70d - 1535 = 0 -> d = 13.8 -> .30. 7-max is unmoved
+       because its corner run starts from a top seat at x=35, not x=50. */
+    6:  [[50,T],[R,my(.30)],[R,my(.70)],[50,B],[L,my(.70)],[L,my(.30)]],
     7:  [[35,T],[R,my(.33)],[R,my(.67)],[50,B],[L,my(.67)],[L,my(.33)],[65,T]],
-    8:  [[50,T],[R,my(.20)],[R,50],[R,my(.80)],[50,B],[L,my(.80)],[L,50],[L,my(.20)]],
+    8:  [[50,T],[R,my(.19)],[R,50],[R,my(.81)],[50,B],[L,my(.81)],[L,50],[L,my(.19)]],
     /* 9 and 10 put two (and three) seats along the top, and the side columns
        started at my(.12) — 7% below them, which is less than a plaque is tall,
        so the corner seats overlapped whatever the table's size. The columns
