@@ -1289,7 +1289,9 @@ export default function App() {
       </header>
 
       {isGuest && (
-        <div style={{background:'var(--accent)',color:'#000',padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'0.8rem',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+        /* Classed so the full-bleed replayer can hide it: a banner about
+           saving schedules has nothing to say over a hand replay. */
+        <div className="guest-banner" style={{background:'var(--accent)',color:'#000',padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'0.8rem',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
           <span>Guest mode -- your schedule won't be saved. Register to keep it!</span>
           <button onClick={() => { handleLogout(); setAuthView('register'); }}
             style={{background:'rgba(0,0,0,0.2)',color:'#000',border:'none',borderRadius:'4px',padding:'4px 12px',cursor:'pointer',fontSize:'0.75rem',fontWeight: 'var(--fw-bold)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
@@ -1454,7 +1456,7 @@ export default function App() {
           isAdmin || sharedHandArrived
             ? <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
                 {isAdmin && (
-                  <div style={{display:'flex',gap:6,padding:'8px 14px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",flexWrap:'wrap'}}>
+                  <div className="hands-tool-rail" style={{display:'flex',gap:6,padding:'8px 14px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",flexWrap:'wrap'}}>
                     {/* ids must match the handsTool render chain below; 'watch' (SolverPlayView)
                         was rendered there but had no button, so the self-play viewer was
                         unreachable — restored 2026-08-18. */}
