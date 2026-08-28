@@ -845,21 +845,43 @@
        Polish 17/18 rebuilt these as 17x7 rim discs in per-denomination columns
        advancing 5px apiece; on the felt that read as coins with daylight
        between them, so the tight overlap is back. */
-    .chip-disc {
+    /* ── One chip ────────────────────────────────────────────────────────
+       The pot's disc was 2:1 on a clamped width; the seat's was 18x6 (3:1)
+       with its size, radius and overlap written inline. The same object drawn
+       twice, differently — which shows the moment a bet sits next to the pot
+       it is travelling into. One rule; --disc-w is the only thing that varies.
+
+       The edge spots repeat on a 52%-of-width period, which puts two on the
+       face at any phase — what you see of a real chip's six. */
+    .chip-disc,
+    .replayer-pot-chip-disc {
+      --disc-w: 18px;
       --chip: currentColor;
-      /* A repeating edge so --pip-shift can rotate the chip and still wrap.
-         The period is 52% of the width, which puts two spots on the face of
-         the disc at any phase — which is what you see of a real chip's six. */
+      width: var(--disc-w);
+      height: calc(var(--disc-w) / 2);
+      border-radius: 50%;
+      position: relative;
       background:
         repeating-linear-gradient(90deg,
           var(--chip) 0 22%,
           rgba(255,255,255,0.55) 22% 30%,
           var(--chip) 30% 52%);
-      background-position: var(--pip-shift, 0%) 0;
+      /* A LENGTH. A percentage here resolves against (box - image) and a
+         gradient's image is the box, so every percentage shift was zero and
+         no chip was ever rotated. */
+      background-position-x: calc(var(--pip-shift, 0) * var(--disc-w));
       border-top: 1px solid rgba(255,255,255,0.45);
       border-bottom: 1px solid rgba(0,0,0,0.5);
       box-shadow: 0 1px 1px rgba(0,0,0,0.3);
     }
+    /* A third of a disc showing is what a real stack shows. */
+    .chip-disc:not(:first-child),
+    .replayer-pot-chip-disc:not(:first-child) {
+      margin-top: calc(var(--disc-w) * -0.34);
+    }
+    /* The pot's chips are the same chip, larger, and they scale with the
+       table like everything else on it. */
+    .replayer-pot-chip-disc { --disc-w: clamp(18px, 8cqw, 34px); }
 
     /* A denominated flying chip builds its sphere from inset shadows rather
        than a colour-mix gradient, so any flat denomination colour works - and
@@ -4986,40 +5008,14 @@
       min-height: calc(var(--disc-w, 16px) * 1.1);
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column-reverse; align-items:center; }
-    /* The seat-side ChipStack has overlapped its discs since it was written;
-       this one never did, so its chips sat with daylight between them and read
-       as a row of bars rather than a stack. A third of a disc showing is what
-       a real stack shows. */
-    .replayer-pot-chip-stack > .replayer-pot-chip-disc:not(:first-child) {
-      margin-top: calc(var(--disc-w) * -0.34);
-    }
+
     /* Chip stacks are the most poker-specific graphic in the product and
        rendered as flat coloured ellipses - a stack of Tic Tacs. Edge spots are
        the single detail that says "clay", they cost six gradient stops, and
        unlike a bevel they are hard edges that survive both the GIF's 256-colour
        quantisation and the video downscale. The old 0.5px border did neither:
        it does not exist at 1x. */
-    .replayer-pot-chip-disc {
-      /* Scales with the table like everything else on it; 14px was the size
-         at whatever the table happened to be when they were drawn. */
-      --disc-w: clamp(18px, 8cqw, 34px);
-      width: var(--disc-w); height: calc(var(--disc-w) / 2); border-radius:50%;
-      --chip: currentColor;
-      /* A repeating edge so --pip-shift can rotate the chip and still wrap.
-         The period is 52% of the width, which puts two spots on the face of
-         the disc at any phase — which is what you see of a real chip's six. */
-      background:
-        repeating-linear-gradient(90deg,
-          var(--chip) 0 22%,
-          rgba(255,255,255,0.55) 22% 30%,
-          var(--chip) 30% 52%);
-      background-position: var(--pip-shift, 0%) 0;
-      border: 0;
-      border-top: 1px solid rgba(255,255,255,0.45);
-      border-bottom: 1px solid rgba(0,0,0,0.5);
-      margin-top:-4px; box-shadow:0 1px 1px rgba(0,0,0,0.3);
-    }
-    .replayer-pot-chip-disc:first-child { margin-top:0; }
+    /* (drawn by the shared .chip-disc rule above) */
 
 
     /* The six options the settings panel has always offered. Custom feeds
