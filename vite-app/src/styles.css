@@ -3469,10 +3469,18 @@
       position:relative;
     }
 
+    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 11.5cqw, 52px); }
+    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 9.4cqw, 44px); }
     .replayer-board-area {
       /* Narrower felt means less room across, so the board keeps a card a
          step down from the ones in front of the players. */
-      --card-h: clamp(18px, 9.4cqw, 44px);
+      /* The board was a step SMALLER than the cards in front of the players,
+         which is backwards — it is the one thing everyone at the table is
+         looking at. It was sized down so that FIVE community cards clear the
+         two mid-height side plaques, and that is only true when there are
+         five. It steps down as the turn and the river land, so the five-card
+         row is exactly what it has always been and a flop is not. */
+      --card-h: clamp(26px, 14cqw, 62px);
       position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
@@ -4919,8 +4927,19 @@
     /* ── Pot chip stacks visual ── */
     .replayer-pot-chips {
       display:flex; gap: var(--space-xs); justify-content:center; align-items:flex-end;
+      /* Room to read as a row of stacks sitting on the cloth rather than a
+         glyph crammed between the label and the number. */
+      margin: 2px 0 3px;
+      min-height: calc(var(--disc-w, 16px) * 1.1);
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column-reverse; align-items:center; }
+    /* The seat-side ChipStack has overlapped its discs since it was written;
+       this one never did, so its chips sat with daylight between them and read
+       as a row of bars rather than a stack. A third of a disc showing is what
+       a real stack shows. */
+    .replayer-pot-chip-stack > .replayer-pot-chip-disc:not(:first-child) {
+      margin-top: calc(var(--disc-w) * -0.34);
+    }
     /* Chip stacks are the most poker-specific graphic in the product and
        rendered as flat coloured ellipses - a stack of Tic Tacs. Edge spots are
        the single detail that says "clay", they cost six gradient stops, and
@@ -4928,7 +4947,10 @@
        quantisation and the video downscale. The old 0.5px border did neither:
        it does not exist at 1x. */
     .replayer-pot-chip-disc {
-      width:14px; height:7px; border-radius:50%;
+      /* Scales with the table like everything else on it; 14px was the size
+         at whatever the table happened to be when they were drawn. */
+      --disc-w: clamp(18px, 8cqw, 34px);
+      width: var(--disc-w); height: calc(var(--disc-w) / 2); border-radius:50%;
       --chip: currentColor;
       /* A repeating edge so --pip-shift can rotate the chip and still wrap.
          The period is 52% of the width, which puts two spots on the face of
@@ -5332,28 +5354,26 @@
 
 
     /* 87: the title and the level, inside the captured element. */
-    .replayer-table-title {
-      position: absolute; left: 2.5%; top: 1.5%;
-      z-index: var(--z-pot);
-      display: flex; flex-direction: column; gap: 1px;
-      padding: var(--space-2xs) var(--space-sm);
-      border-radius: var(--r-object);
-      background: linear-gradient(180deg, rgba(24,21,32,0.82), rgba(12,10,17,0.82));
-      box-shadow: var(--plate-bevel);
-      pointer-events: none; max-width: 46%;
+    /* Under the board, in the clear column between the two side rows of
+       seats — the one part of the felt nothing is ever placed on. No plate:
+       this is printed on the cloth, the way a table's own name is. */
+    .replayer-table-info {
+      position: absolute; left: 50%; top: 66%;
+      transform: translate(-50%, -50%);
+      z-index: var(--z-felt);
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      width: 34%; text-align: center;
+      pointer-events: none;
+      font-family: var(--font-condensed);
+      line-height: 1.25;
     }
     .replayer-table-title-name {
       font-family: var(--font-condensed);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      font-size: clamp(8px, 3.4cqw, var(--fs-2xs)); font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--brand);
+      color: rgba(242,239,230,0.5);
+      max-width: 100%;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .replayer-table-title-level {
-      font-family: var(--font-display);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-      font-variant-numeric: var(--num-tabular);
-      color: #f2efe6; white-space: nowrap;
     }
 
 
@@ -5416,27 +5436,19 @@
     .replayer-pot-display.has-sides { padding-bottom: var(--space-xs); }
 
     /* 94 + 95: the level, and where this hand sits in the tournament. */
-    .replayer-level {
-      position: absolute; right: 2.5%; bottom: 1.5%;
-      z-index: var(--z-pot);
-      display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-      padding: var(--space-2xs) var(--space-sm);
-      border-radius: var(--r-object);
-      background: linear-gradient(180deg, rgba(24,21,32,0.82), rgba(12,10,17,0.82));
-      box-shadow: var(--plate-bevel);
-      pointer-events: none;
-    }
-    .replayer-level-blinds {
-      font-family: var(--font-display);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-      font-variant-numeric: var(--num-tabular);
-      color: #f2efe6; white-space: nowrap;
-    }
-    .replayer-level-avg, .replayer-level-left {
+    .replayer-table-info .replayer-level-blinds,
+    .replayer-table-info .replayer-level-meta {
       font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: rgba(242,239,230,0.55); white-space: nowrap;
+      font-size: clamp(7px, 3cqw, var(--fs-2xs));
+      font-weight: var(--fw-regular);
+      letter-spacing: var(--track-tight);
+      color: rgba(242,239,230,0.34);
+      white-space: nowrap;
+    }
+    .replayer-table-info .replayer-level-blinds {
+      font-family: var(--font-display);
+      font-variant-numeric: var(--num-tabular);
+      color: rgba(242,239,230,0.5);
     }
 
 
