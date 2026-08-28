@@ -446,9 +446,15 @@ function formatChipAmount(val, bigBlind) {
    the amount and the chip's place in the pile rather than drawn at random, so
    a 24,000 wager looks the same every time it is on screen and scrubbing back
    and forth through a hand does not reshuffle the chips in front of a player. */
+/* A fraction of the disc's width, not a percentage of it.
+   `background-position: 40% 0` on a gradient shifts by
+   (positioning area - image size) * 40%, and a gradient's image is exactly
+   the positioning area, so that is 40% of zero. Every chip has been drawn at
+   phase 0 for as long as the edge spots have existed. The CSS multiplies this
+   by --disc-w to get a length, which shifts the tiling origin and wraps. */
 function pipShift(seed, index) {
   const h = Math.abs(Math.imul(seed | 0, 2654435761) + index * 40503) % 52;
-  return h + '%';
+  return (h / 100).toFixed(3);
 }
 
 // ── Chip visuals ──
@@ -485,13 +491,13 @@ function ChipStack({ amount }) {
     // 18x6, overlapped to a 2px advance.
     <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'3px', verticalAlign:'middle' }}>
       {chips.map((color, i) => (
+        /* Size, radius and overlap all live in .chip-disc now, shared with
+           the pot's chips — these were two drawings of one object. Only the
+           colour, the phase and the stacking order are per-disc. */
         <div key={i} className="chip-disc" style={{
-          // 18x6 rather than 12x4: at the old size the denomination colour was
-          // a 4px sliver, so the one thing the stack encodes was unreadable.
-          width: '18px', height: '6px', borderRadius: '50%', '--chip': color,
+          '--chip': color,
           '--pip-shift': pipShift(amount, i),
-          marginTop: i === 0 ? 0 : '-4px',
-          position: 'relative', zIndex: chips.length - i,
+          zIndex: chips.length - i,
         }} />
       ))}
     </div>
