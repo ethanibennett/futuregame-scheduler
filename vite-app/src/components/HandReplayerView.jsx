@@ -535,7 +535,7 @@ function cut(t, budget) {
    cqw; text cannot, because the shortening has to happen in the markup. */
 function nameBudgetFor(tableW) {
   if (!tableW) return 15;
-  return Math.max(6, Math.min(22, Math.round(tableW * 0.21 / 5.9)));
+  return Math.max(6, Math.min(22, Math.round(tableW * 0.1875 / 5.9)));   /* 3 cells */
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
@@ -4985,55 +4985,44 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      height below the bottom seat row doing nothing — the seats need room for a
      plaque and the fan standing above it, not for a fifth of the table. 11%
      spreads the seat ring over more of the box and grows the cloth with it. */
-  const FY = 11, FX = 15;                 // must match --felt-y / --felt-x
-  /* Seats used to sit exactly ON the felt's edge, which is where a player
-     sits — but a plaque is centred on its seat point and the hero's is taller
-     than the rest, so the bottom one hung past the table's own box and had its
-     stack clipped off. They step inside the edge, and the bottom row steps
-     further because that is the row that carries the hero. */
-  const T = FY + 3, B = 100 - FY - 5;
-  const L = FX, R = 100 - FX;
-  const my = (t) => Math.round(T + (B - T) * t);   // a fraction down the felt
+  /* ── The grid ────────────────────────────────────────────────────────
+     16 columns by 32 rows. On a table that is about one-to-two those cells
+     are square — measured 23.3 x 23.2px at 393x852 — and a square cell is the
+     whole point: a step means the same thing on both axes, so placing things
+     evenly round the ring stops being trigonometry and becomes counting.
+
+     The 8-max spacing is the proof. Solved by hand it was
+        corner^2 = 17.6^2 + (35-d)^2 = d^2  ->  d = 21.9% of the height
+     and on the grid it is: the corner step goes 5.5 columns across and 4 rows
+     down, the middle step is e rows, so 5.5^2 + (11-e)^2 = e^2 and e = 6.875.
+     Seven cells. Three seats down a side, seven cells apart. */
+  const GX = 16, GY = 32;
+  const gx = (col) => +(col * 100 / GX).toFixed(3);   // column -> % of width
+  const gy = (row) => +(row * 100 / GY).toFixed(3);   // row    -> % of height
+
+  /* The felt is a grid rectangle: in to column 2 and row 3. FY/FX still have
+     to match --felt-y / --felt-x in styles.css. */
+  const FX = gx(2), FY = gy(3);
+  /* The seat ring runs half a cell inside the felt's edge, top row 5 and
+     bottom row 27 — which puts its midpoint on row 16, the table's middle. */
+  const CL = 2.5, CC = 8, CR = 13.5;      // seat columns
+  const RT = 5, RB = 27;                  // seat rows, top and bottom
+  const seat = (col, row) => [gx(col), gy(row)];
+
+  /* Steps of seven cells down each side for three-a-side, and of nine for
+     two-a-side (3f^2 + 22f - 151.25 = 0 -> f = 4.4, so 16 +/- 4.5). A pair of
+     seats along the top starts its corner step three columns out rather than
+     5.5, which is why 7 and 9-max sit a little wider than 6 and 8. */
   const layouts = {
-    2:  [[50,T],[50,B]],
-    3:  [[35,T],[50,B],[65,T]],
-    4:  [[50,T],[R,50],[50,B],[L,50]],
-    5:  [[35,T],[R,50],[50,B],[L,50],[65,T]],
-    /* The side seats sit closer to the middle than an even split of the
-       VERTICAL span would put them, because the step from a centre seat to a
-       side seat also travels sideways and the step between two side seats does
-       not. Working in height-percent (the table is about 0.50 wide to tall, so
-       the 32% horizontal run from x=50 to x=82 is ~16 of them):
-
-         8-max, 3 a side, 4 steps from top to bottom, sides at 49 +/- d
-           corner^2 = 16^2 + (35-d)^2   must equal   middle^2 = d^2
-           -> 70d = 1484  ->  d = 21.2  ->  my(.20)
-
-         6-max, 2 a side, 3 steps, middle step is 2d
-           16^2 + (35-d)^2 = (2d)^2  ->  3d^2 + 70d - 1484 = 0  ->  d = 13.5
-           -> my(.31)
-
-         7-max has two seats along the top, so its corner run is 17% of the
-         width rather than 32% -> d = 12.2 -> my(.33). */
-    /* Re-derived at --felt-x 15%: the run from a centre seat to a side seat
-       is 35% of the width now, which on a 0.50 table is ~17.6 height-percent
-       rather than 16.1. 8-max: 70d = 35^2 - 17.6^2 + ... -> d = 21.9 -> .19;
-       6-max: 3d^2 + 70d - 1535 = 0 -> d = 13.8 -> .30. 7-max is unmoved
-       because its corner run starts from a top seat at x=35, not x=50. */
-    6:  [[50,T],[R,my(.30)],[R,my(.70)],[50,B],[L,my(.70)],[L,my(.30)]],
-    7:  [[35,T],[R,my(.33)],[R,my(.67)],[50,B],[L,my(.67)],[L,my(.33)],[65,T]],
-    8:  [[50,T],[R,my(.19)],[R,50],[R,my(.81)],[50,B],[L,my(.81)],[L,50],[L,my(.19)]],
-    /* 9 and 10 put two (and three) seats along the top, and the side columns
-       started at my(.12) — 7% below them, which is less than a plaque is tall,
-       so the corner seats overlapped whatever the table's size. The columns
-       start lower and the top pair sits wider, which is the only pair of
-       changes that buys clearance on both axes at once. */
-    9:  [[32,T],[R,my(.26)],[R,50],[R,my(.74)],[50,B],[L,my(.74)],[L,50],[L,my(.26)],[68,T]],
-    /* A full ring is the tightest case there is: three plaques across the top
-       AND three down each side. The top trio spreads to the corners and the
-       columns start lower still, which is the only pair of moves that buys
-       clearance on both axes at once. */
-    10: [[22,T],[50,T],[R,my(.32)],[R,50],[R,my(.68)],[50,B],[L,my(.68)],[L,50],[L,my(.32)],[78,T]],
+    2:  [seat(CC,RT), seat(CC,RB)],
+    3:  [seat(5.5,RT), seat(CC,RB), seat(10.5,RT)],
+    4:  [seat(CC,RT), seat(CR,16), seat(CC,RB), seat(CL,16)],
+    5:  [seat(5.5,RT), seat(CR,16), seat(CC,RB), seat(CL,16), seat(10.5,RT)],
+    6:  [seat(CC,RT), seat(CR,11.5), seat(CR,20.5), seat(CC,RB), seat(CL,20.5), seat(CL,11.5)],
+    7:  [seat(5.5,RT), seat(CR,12), seat(CR,20), seat(CC,RB), seat(CL,20), seat(CL,12), seat(10.5,RT)],
+    8:  [seat(CC,RT), seat(CR,9), seat(CR,16), seat(CR,23), seat(CC,RB), seat(CL,23), seat(CL,16), seat(CL,9)],
+    9:  [seat(5.5,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(10.5,RT)],
+    10: [seat(4,RT), seat(CC,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(12,RT)],
   };
 
   const n = hand.players.length;
@@ -5683,8 +5672,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                out puts the button in the black outside the cloth. The seats
                at the extremes step IN; there is room now that the table is
                not 237px wide. */
-            const ox = btnPos[0] < 25 ? 8 : btnPos[0] > 75 ? -8 : (btnPos[0] <= 50 ? -6 : 6);
-            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+10) + '%', transform:'translate(-50%,-50%)'};
+            /* A cell and a half out, three rows down — the same step for
+               every seat, in the grid's units rather than in percentages of
+               two different axes. Seats at the extremes step inward, where
+               outward would be off the cloth. */
+            const ox = btnPos[0] < 25 ? gx(1.5) : btnPos[0] > 75 ? -gx(1.5) : (btnPos[0] <= 50 ? -gx(1) : gx(1));
+            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+gy(3)) + '%', transform:'translate(-50%,-50%)'};
           } else {
             const isTop = btnPos[1] <= 15;
             const isLeft = btnPos[0] <= 20;
