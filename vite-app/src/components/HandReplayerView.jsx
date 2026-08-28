@@ -5533,6 +5533,24 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     </div>
                   );
                 })()}
+                {/* Inside the plaque, not beside it. As a sibling its
+                    `left: 50%` resolved against .replayer-seat — the seat's
+                    whole footprint, cards and all — so the badge sat 28px
+                    right of the name it belongs to. The plaque is already
+                    position:relative, so in here 50% is the middle of the
+                    name and `bottom: 100%` is the fan above it. */}
+                {lastAct && !handName && (() => {
+                  const actText = lastAct.action;
+                  if (!actText) return null;
+                  let label = actText;
+                  if (lastAct.amount) {
+                    if (actText === 'raise') label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, actionIdx, pi));
+                    else label += ' ' + formatChipAmount(lastAct.amount);
+                  }
+                  // 58: re-keying is what makes the entrance replay when the
+                  // same player acts twice in one street.
+                  return <div key={streetIdx + '-' + actionIdx} className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
+                })()}
               </div>
               {inspecting === pi && (
                 <div className="replayer-seat-line">
@@ -5572,18 +5590,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   result. So "CALL 12k" landed on top of "Two Pair, A & K".
                   The name is the newer and more important fact; the badge
                   stands down for it. */}
-              {lastAct && !handName && (() => {
-                const actText = lastAct.action;
-                if (!actText) return null;
-                let label = actText;
-                if (lastAct.amount) {
-                  if (actText === 'raise') label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, actionIdx, pi));
-                  else label += ' ' + formatChipAmount(lastAct.amount);
-                }
-                // 58: re-keying is what makes the entrance replay when the
-                // same player acts twice in one street.
-                return <div key={streetIdx + '-' + actionIdx} className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
-              })()}
               {handName && <div className="replayer-seat-hand-name">{handName}</div>}
               {isDrawGame && currentStreet.draws?.length > 0 && (() => {
                 const d = currentStreet.draws.find(dr => dr.player === pi);
