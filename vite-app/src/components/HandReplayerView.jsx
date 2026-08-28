@@ -4999,9 +4999,25 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     3:  [[35,T],[50,B],[65,T]],
     4:  [[50,T],[R,50],[50,B],[L,50]],
     5:  [[35,T],[R,50],[50,B],[L,50],[65,T]],
-    6:  [[50,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)]],
-    7:  [[35,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)],[65,T]],
-    8:  [[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)]],
+    /* The side seats sit closer to the middle than an even split of the
+       VERTICAL span would put them, because the step from a centre seat to a
+       side seat also travels sideways and the step between two side seats does
+       not. Working in height-percent (the table is about 0.50 wide to tall, so
+       the 32% horizontal run from x=50 to x=82 is ~16 of them):
+
+         8-max, 3 a side, 4 steps from top to bottom, sides at 49 +/- d
+           corner^2 = 16^2 + (35-d)^2   must equal   middle^2 = d^2
+           -> 70d = 1484  ->  d = 21.2  ->  my(.20)
+
+         6-max, 2 a side, 3 steps, middle step is 2d
+           16^2 + (35-d)^2 = (2d)^2  ->  3d^2 + 70d - 1484 = 0  ->  d = 13.5
+           -> my(.31)
+
+         7-max has two seats along the top, so its corner run is 17% of the
+         width rather than 32% -> d = 12.2 -> my(.33). */
+    6:  [[50,T],[R,my(.31)],[R,my(.69)],[50,B],[L,my(.69)],[L,my(.31)]],
+    7:  [[35,T],[R,my(.33)],[R,my(.67)],[50,B],[L,my(.67)],[L,my(.33)],[65,T]],
+    8:  [[50,T],[R,my(.20)],[R,50],[R,my(.80)],[50,B],[L,my(.80)],[L,50],[L,my(.20)]],
     /* 9 and 10 put two (and three) seats along the top, and the side columns
        started at my(.12) — 7% below them, which is less than a plaque is tall,
        so the corner seats overlapped whatever the table's size. The columns
