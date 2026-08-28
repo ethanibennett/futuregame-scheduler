@@ -3039,7 +3039,7 @@
       /* This out-specifies the short-screen media query below, so it carries
          its own scaling: on a 667pt phone a flat 96px reaches up past the
          bottom seat, because the table is shorter but the strip is not. */
-      height: min(96px, 9.4vh);
+      height: min(96px, 8.1vh);
       padding: var(--space-xl) var(--space-md) var(--space-2xs);
       background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
@@ -3503,7 +3503,7 @@
       /* The token is the ceiling, held from about a 250px table upward. It
          is the largest number on screen by design, which also makes it the
          one most able to reach a top seat's plaque on a small table. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(15px, 9cqw, var(--fs-xl)); font-weight: var(--fw-bold); color:#fff;
+      z-index: var(--z-pot); text-align:center; font-size: clamp(15px, 9cqw, 36px); font-weight: var(--fw-bold); color:#fff;   /* ~1.5 cells */
       font-family: var(--font-display);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -3805,7 +3805,7 @@
        row. One line-height on the plaque, inherited by all of them. */
     .replayer-seat-info { line-height: 1.34; }
     .replayer-seat-name {
-      font-size: clamp(8px, 4.2cqw, var(--fs-2xs));
+      font-size: clamp(8px, 4.2cqw, 15px);   /* ~0.64 of a cell */
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
       font-family: var(--font-condensed);
@@ -3821,16 +3821,17 @@
          of each other. A share of the table, capped where it stops being
          worth more. The JSX shortens to fit this budget (see shortenName), so
          the ellipsis stays a backstop rather than the mechanism. */
-      max-width: min(88px, 18.75cqw);   /* 3 cells */
+      max-width: min(96px, 21.875cqw);   /* 3.5 cells */
     }
     /* The position badge is gone: the dealer button is on the table, and
        every other position is derived from it — so the badge was repeating
        what the button already says, in the tightest space on the felt. */
     .replayer-seat-stack {
-      /* The token is the ceiling, reached at about a 240px table and held
-         above it; below that the number scales with the felt like everything
-         else on it, down to the smallest size a stack stays readable at. */
-      font-size: clamp(9px, 5.4cqw, var(--fs-sm));
+      /* The ceiling was --fs-sm, reached at a 240px table and held above it
+         — and the table has since gone to 373, so the one number the whole
+         composition is arranged around had stopped growing with the cloth it
+         sits on. A stack is a bit under a cell tall. */
+      font-size: clamp(9px, 5.4cqw, 21px);   /* ~0.86 of a cell */
       font-weight: var(--fw-bold);
       color: #ffd98a;
       font-family: var(--font-display);
@@ -3839,7 +3840,7 @@
     }
     .replayer-chip-delta {
       font-family: var(--font-condensed);
-      font-size: clamp(7px, 3.6cqw, var(--fs-2xs));
+      font-size: clamp(7px, 3.6cqw, 13px);
       font-weight: var(--fw-regular);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -5465,7 +5466,7 @@
       padding: var(--space-sm) min(var(--space-ml), 4.5cqw);
       border-color: rgba(242,166,59,0.5);
     }
-    .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(11px, 6.6cqw, var(--fs-md)); }
+    .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(11px, 6.6cqw, 26px); }   /* the hero's, a cell */
 
     /* 91: committed, and it shows for the rest of the hand. */
     .replayer-seat.is-allin .replayer-seat-info {
