@@ -955,8 +955,18 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ) {
   // 3+ cards: arc from a true shared pivot point using trig. The pivot sits
   // left of centre, so the arc opens the way a thumb opens it.
   const rad = rot * Math.PI / 180;
-  const radius = total <= 5 ? 85 : 110;
-  const x = Math.sin(rad) * radius - 9;
+  /* An 85px arc spreads five cards over 121px of ink — wider than the plaque
+     they belong to, so at the bottom of the table the hero's hand reached into
+     both neighbours'. A tighter arc reads as a hand being held rather than a
+     hand being dealt out, and it is what lets three seats share a side. */
+  const radius = total <= 5 ? 66 : 88;
+  /* The -9 here shifted every fan nine pixels left of the seat it belongs
+     to. The comment above explains the PIVOT being left of centre, which is
+     about which way the arc opens and needs no translation at all: the arc is
+     symmetric about rot=0, so the only thing the constant did was take the
+     hand off its plaque. Measured: card ink sat 8px left of the plaque's
+     centre on every seat at every size. */
+  const x = Math.sin(rad) * radius;
   const y = -Math.cos(rad) * radius + radius + extraY;
   return {
     position: 'absolute',
@@ -4971,7 +4981,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      --felt-y / --felt-x block in styles.css) and hands the recovered height
      to the top and bottom seats, whose cards extend a card's height above
      the marker and used to sit close to the export's clipping edge. */
-  const FY = 16, FX = 18;                 // must match --felt-y / --felt-x
+  /* The felt was inset 16% top and bottom, which put a fifth of the table's
+     height below the bottom seat row doing nothing — the seats need room for a
+     plaque and the fan standing above it, not for a fifth of the table. 11%
+     spreads the seat ring over more of the box and grows the cloth with it. */
+  const FY = 11, FX = 18;                 // must match --felt-y / --felt-x
   /* Seats used to sit exactly ON the felt's edge, which is where a player
      sits — but a plaque is centred on its seat point and the hero's is taller
      than the rest, so the bottom one hung past the table's own box and had its
@@ -4994,7 +5008,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        start lower and the top pair sits wider, which is the only pair of
        changes that buys clearance on both axes at once. */
     9:  [[32,T],[R,my(.26)],[R,50],[R,my(.74)],[50,B],[L,my(.74)],[L,50],[L,my(.26)],[68,T]],
-    10: [[28,T],[50,T],[R,my(.26)],[R,50],[R,my(.74)],[50,B],[L,my(.74)],[L,50],[L,my(.26)],[72,T]],
+    /* A full ring is the tightest case there is: three plaques across the top
+       AND three down each side. The top trio spreads to the corners and the
+       columns start lower still, which is the only pair of moves that buys
+       clearance on both axes at once. */
+    10: [[22,T],[50,T],[R,my(.32)],[R,50],[R,my(.68)],[50,B],[L,my(.68)],[L,50],[L,my(.32)],[78,T]],
   };
 
   const n = hand.players.length;

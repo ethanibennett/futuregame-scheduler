@@ -3247,7 +3247,7 @@
          strip, the felt, the outer shadow AND the seat coordinates in
          HandReplayerView — which used to hold their own hand-written copy.
          Landscape orientation overrides them further down. */
-      --felt-y: 16%;
+      --felt-y: 11%;
       --felt-x: 18%;
       --rail-w: 5.6cqw;
 
