@@ -861,15 +861,30 @@
       height: calc(var(--disc-w) / 2);
       border-radius: 50%;
       position: relative;
-      background:
+      /* Edge spots, not stripes. The old gradient ran the full height of the
+         disc and repeated every 52% of its width, which is a barber pole — a
+         chip has a few short marks around its rim and you see about three of
+         them at once. The spot layer is sized to 44% of the height and centred,
+         so the marks sit ON the rim instead of crossing the face, and its
+         period is a third of the width.
+
+         Position is a LENGTH: a percentage resolves against (box - image) and
+         a gradient's image is the box, so every percentage shift was zero and
+         no chip was ever rotated. Multiplying the per-chip fraction by
+         --disc-w gives the phase, and repeat-x wraps it. */
+      background-color: var(--chip);
+      background-image:
         repeating-linear-gradient(90deg,
-          var(--chip) 0 22%,
-          rgba(255,255,255,0.55) 22% 30%,
-          var(--chip) 30% 52%);
-      /* A LENGTH. A percentage here resolves against (box - image) and a
-         gradient's image is the box, so every percentage shift was zero and
-         no chip was ever rotated. */
-      background-position-x: calc(var(--pip-shift, 0) * var(--disc-w));
+          transparent 0 11%,
+          rgba(255,255,255,0.7) 11% 22.3%,
+          transparent 22.3% 33.333%),
+        linear-gradient(180deg,
+          rgba(255,255,255,0.22) 0%,
+          rgba(255,255,255,0.05) 42%,
+          rgba(0,0,0,0.30) 100%);
+      background-size: 100% 44%, 100% 100%;
+      background-position: calc(var(--pip-shift, 0) * var(--disc-w)) 50%, 0 0;
+      background-repeat: repeat-x, no-repeat;
       border-top: 1px solid rgba(255,255,255,0.45);
       border-bottom: 1px solid rgba(0,0,0,0.5);
       box-shadow: 0 1px 1px rgba(0,0,0,0.3);
