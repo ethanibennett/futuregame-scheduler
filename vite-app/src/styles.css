@@ -3279,8 +3279,8 @@
          strip, the felt, the outer shadow AND the seat coordinates in
          HandReplayerView — which used to hold their own hand-written copy.
          Landscape orientation overrides them further down. */
-      --felt-y: 11%;
-      --felt-x: 15%;
+      --felt-y: 9.375%;  /* grid row 3 */
+      --felt-x: 12.5%;   /* grid column 2 */
       --rail-w: 5.6cqw;
 
       /* 44px at a ~350px table, which is where it has been, but now it holds
@@ -3290,7 +3290,7 @@
          the cards stopped scaling and started overlapping the neighbours.
          A floor is a legibility limit, not a layout: 24px is the smallest a
          rank and suit stay readable at, and above that the table decides. */
-      --card-h: clamp(18px, 12.6cqw, 54px);
+      --card-h: clamp(18px, 12.5cqw, 54px);   /* 2 cells */
       --card-w: calc(var(--card-h) * 0.7143);   /* the artwork is 180:252 */
 
       /* The crosshatch was two perfectly regular gradients at +45 and -45,
@@ -3458,7 +3458,7 @@
     .replayer-pot-display {
       /* Rendered: 35% is hard against the top edge of a felt that now spans
          28-72%, and a top seat's wager lands within a few percent of it. */
-      position:absolute; left:50%; top:40%; transform:translate(-50%,-50%);
+      position:absolute; left:50%; top:40.625%; transform:translate(-50%,-50%);   /* col 8, row 13 */
       /* 40: --fs-sm put the pot ONE step above a nine-character player name,
          on the number the whole composition is arranged around — smaller than
          the app's own body text, where every broadcast makes it the largest
@@ -3501,8 +3501,14 @@
       position:relative;
     }
 
-    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 13cqw, 56px); }
-    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 11.6cqw, 50px); }
+    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 12.5cqw, 56px); }   /* 2 cells */
+    /* A card is 0.714 as wide as it is tall, so on a square-cell grid a
+       two-cell card is 1.43 cells wide and five of them are 47% of the table —
+       and with three seats down each side there is a fan reaching in to 30%
+       on the row the board sits on. 1.75 cells makes a card 1.25 wide, five of
+       them 39%, which is what passes between them. The turn card still gets
+       two: four cards clear the fans at that size. */
+    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 10.9375cqw, 50px); }   /* 1.75 cells */
     .replayer-board-area {
       /* Narrower felt means less room across, so the board keeps a card a
          step down from the ones in front of the players. */
@@ -3512,7 +3518,7 @@
          two mid-height side plaques, and that is only true when there are
          five. It steps down as the turn and the river land, so the five-card
          row is exactly what it has always been and a flop is not. */
-      --card-h: clamp(26px, 16cqw, 66px);
+      --card-h: clamp(26px, 17.1875cqw, 66px);   /* 2.75 cells — a flop has room */
       position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
@@ -3700,7 +3706,7 @@
       /* A flat 72px is 45% of a 159px table, against seats spaced 32% apart —
          so on a small screen the plaques collided no matter how short the
          names were cut. It is a floor for legibility, not a layout. */
-      min-width: min(72px, 30cqw);
+      min-width: min(80px, 31.25cqw);   /* 5 cells */
       box-shadow: var(--plate-bevel);
       transition: border-color var(--dur-snap), box-shadow var(--dur-base), transform var(--dur-snap);
     }
@@ -3778,7 +3784,7 @@
          of each other. A share of the table, capped where it stops being
          worth more. The JSX shortens to fit this budget (see shortenName), so
          the ellipsis stays a backstop rather than the mechanism. */
-      max-width: min(88px, 21cqw);
+      max-width: min(88px, 18.75cqw);   /* 3 cells */
     }
     /* The position badge is gone: the dealer button is on the table, and
        every other position is derived from it — so the badge was repeating
@@ -5390,7 +5396,7 @@
        seats — the one part of the felt nothing is ever placed on. No plate:
        this is printed on the cloth, the way a table's own name is. */
     .replayer-table-info {
-      position: absolute; left: 50%; top: 66%;
+      position: absolute; left: 50%; top: 65.625%;   /* col 8, row 21 */
       transform: translate(-50%, -50%);
       z-index: var(--z-felt);
       display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -5419,7 +5425,7 @@
        one, and a fan overflows it anyway. The plaque does the joining. */
 
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
-    .replayer-seat.is-hero { --card-h: clamp(20px, 15cqw, 64px); }
+    .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqw, 64px); }  /* 2.5 cells */
     .replayer-seat.is-hero .replayer-seat-info {
       /* 92px is 39% of a 237px table, and the seats either side of the hero
          reach in to 33% — so the one plaque that is deliberately bigger was
