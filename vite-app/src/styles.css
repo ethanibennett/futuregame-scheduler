@@ -3945,9 +3945,15 @@
     }
     .replayer-action-badge-outer {
       position: absolute;
-      top: calc(100% + 2px);
+      /* Above the plaque rather than below it, which puts it over the fan —
+         an action bubble hovering on the cards, and it clears the chip delta
+         and the hand name that both hang off the bottom edge. */
+      bottom: calc(100% + 2px);
       left: 50%;
       transform: translateX(-50%);
+      /* Its parent plaque already paints over the tucked-in cards; this keeps
+         the badge above them too, since it hangs outside the plaque's box. */
+      z-index: 2;
       display: inline-flex; align-items: center; justify-content: center;
       font-size: var(--fs-2xs); font-family: var(--font-condensed);
       padding: var(--nudge-1) var(--space-sm); border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
@@ -4843,8 +4849,17 @@
        are already the steady state; the shimmer only has to arrive at it. */
     .replayer-seat.winner .replayer-seat-info { animation:winnerArrive var(--dur-beat) var(--ease-label) 0.30s both; }
     /* The last beat: the sentence the whole replay was building to. */
+    /* showdownReveal is shared with .replayer-seat-cards, which is NOT
+       centred by a transform — so the hand name needs its own copy that keeps
+       the translateX(-50%) rather than the shared one dropping it. Same fault
+       as the action badge: the winner's hand name has been off-centre by half
+       its width at the one moment the whole replay is building to. */
+    @keyframes showdownRevealCentred {
+      0%   { opacity:0; transform:translateX(-50%) translateY(6px); }
+      100% { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
     .replayer-seat.winner .replayer-seat-hand-name {
-      animation: showdownReveal var(--dur-slow) var(--ease-label) 0.80s both;
+      animation: showdownRevealCentred var(--dur-slow) var(--ease-label) 0.80s both;
     }
     /* 57: the panel promised "Winner Effects" and animateWinner was read by
        nothing at all — the bounce, the shimmer and the star ran unconditionally.
@@ -5270,10 +5285,15 @@
        all — it blinked into existence, or its text swapped in place, which is
        the difference between a replay and a slideshow. Keyed on street and
        action so a re-raise by the same player re-pops. */
+    /* Every frame carries the centring translate. A keyframe's transform
+       REPLACES the rule's, and this animation fills `both`, so without it the
+       badge's translateX(-50%) was gone from the first frame and never came
+       back — it has been sitting half its own width right of the name it
+       belongs to for as long as the animation has existed. */
     @keyframes actionBadgeIn {
-      0%   { opacity:0; transform:translateY(-4px) scale(0.88); }
-      70%  { opacity:1; transform:translateY(0) scale(1.05); }
-      100% { opacity:1; transform:translateY(0) scale(1); }
+      0%   { opacity:0; transform:translateX(-50%) translateY(-4px) scale(0.88); }
+      70%  { opacity:1; transform:translateX(-50%) translateY(0) scale(1.05); }
+      100% { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
     }
     .replayer-action-badge-outer { animation: actionBadgeIn var(--dur-snap) var(--ease-label) both; }
     @media (prefers-reduced-motion: reduce) {
