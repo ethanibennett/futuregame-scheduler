@@ -457,7 +457,7 @@ const CHIP_DENOMS = [
   { value: 5000,  color: '#f97316' },
   { value: 1000,  color: '#eab308' },
   { value: 500,   color: '#7c3aed' },
-  { value: 100,   color: '#1a1a2e' },
+  { value: 100,   color: '#39406b' },
   { value: 25,    color: '#22c55e' },
 ];
 function getChipBreakdown(amount) {
@@ -3948,7 +3948,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const legacy = localStorage.getItem('replayerFourColorDeck');
     return legacy === null ? false : legacy === 'true';
   })());
-  const _showChipStacks = useReplayerSetting('ShowChipStacks', false);
+  /* Defaulted off, which meant PotChipVisual, getChipBreakdown, the
+     denomination ladder and the edge pips had all been built and never seen.
+     A pot with no chips in it is a number floating on cloth. */
+  const _showChipStacks = useReplayerSetting('ShowChipStacks', true);
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
   const _showPotOdds = useReplayerSetting('ShowPotOdds', false);
   const _showCommentary = useReplayerSetting('ShowCommentary', false);
@@ -5220,8 +5223,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
               + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
-              <div className="replayer-pot-label">{potLayers.length ? 'Main' : 'Pot'}</div>
+              {/* Chips above the label, which is the order at a table and the
+                  order the reference uses: the physical thing, then what it is
+                  called, then what it counts to. */}
               {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+              <div className="replayer-pot-label">{potLayers.length ? 'Main' : 'Pot'}</div>
               {fmtChips(potLayers.length ? potLayers[0].amount : countedPot)}
               {/* 92: who is playing for what. */}
               {potLayers.length > 1 && (
@@ -5300,11 +5306,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             every screenshot and every share was a table with no context at all
             beyond a 10%-opacity wordmark. The exports are the version of this
             most people will ever see. */}
-        {hand.title && (
-          <div className="replayer-table-title">
-            <span className="replayer-table-title-name">{hand.title}</span>
-          </div>
-        )}
+
 
         {/* 94: hand.blinds carries sb, bb and ante and none of them appeared
             anywhere on the felt — so a stack of 24,000 had no meaning without
@@ -5314,18 +5316,29 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             95: and a saved hand from a tournament has a place IN one. The
             difference between "a big pot" and "a big pot on the money bubble"
             is the whole reason a hand is worth revisiting. */}
+        {/* 87 + 94 + 95, together and in one place. These were a plate in the
+            top-left corner and a plate in the bottom-right, which is where a
+            broadcast puts a bug — not where a poker client puts the state of
+            the tournament. One quiet block on the cloth under the board, no
+            plate behind it, so it reads as part of the table. It is still
+            inside the captured element, which is the whole reason 87 put the
+            title on the felt in the first place. */}
         {(() => {
           const b = hand.blinds || {};
           const level = b.bb ? formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb)
             + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '') : null;
           const avg = stacks.length ? Math.round(stacks.reduce((a, v) => a + v, 0) / stacks.length) : 0;
-          if (!level && !hand.playersLeft) return null;
+          const meta = [
+            hand.playersLeft ? hand.playersLeft + ' left' : null,
+            avg > 0 ? 'avg ' + formatChipAmount(avg) : null,
+            hand.payoutNote || null,
+          ].filter(Boolean).join(' \u00b7 ');
+          if (!hand.title && !level && !meta) return null;
           return (
-            <div className="replayer-level">
+            <div className="replayer-table-info">
+              {hand.title && <span className="replayer-table-title-name">{hand.title}</span>}
               {level && <span className="replayer-level-blinds">{level}</span>}
-              {avg > 0 && <span className="replayer-level-avg">avg {formatChipAmount(avg)}</span>}
-              {hand.playersLeft && <span className="replayer-level-left">{hand.playersLeft} left</span>}
-              {hand.payoutNote && <span className="replayer-level-left">{hand.payoutNote}</span>}
+              {meta && <span className="replayer-level-meta">{meta}</span>}
             </div>
           );
         })()}
@@ -5352,8 +5365,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         </div>
 
         {/* Watermark */}
+        {/* Moved off 66%: the tournament block is printed on the cloth there
+            now, and that is content where this is decoration. Under the pot,
+            where being partly behind the board is what a watermark is for. */}
         <div className="replayer-watermark"
-          style={{position:'absolute',left:'50%',top:'66%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
+          style={{position:'absolute',left:'50%',top:'56%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
 
         {/* Player seats */}
         {hand.players.map((p, pi) => {
