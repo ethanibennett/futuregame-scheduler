@@ -1911,7 +1911,17 @@
 
     /* ── Card row ── */
     .card-row { display:flex; gap: var(--space-2xs); align-items:center; min-height:32px; flex-wrap:wrap; }
-    .card-row.card-row-splay { gap:0; align-items:flex-end; position:relative; height:56px; min-width:60px; overflow:visible; }
+    /* 56px tall and 60px wide whatever the table was — which is why every
+       measurement of a fan came back exactly 60 regardless of size, and why
+       eight seats could not fit: a side of the table carries three of them,
+       each needing its plaque plus a fan standing above it, and the fan was
+       not shrinking with anything. Scales like the cards it holds, with the
+       old values as the ceiling. */
+    .card-row.card-row-splay {
+      gap:0; align-items:flex-end; position:relative; overflow:visible;
+      height: clamp(30px, 17cqw, 56px);
+      min-width: min(60px, 22cqw);
+    }
     /* 7.1% not 2px: the artwork's own corner is rx=18 on a 252-tall viewBox,
        so a percentage tracks it at every size (2px at 28px, 3.1px at 44px).
        A fixed 2px clipped a squarer corner than the card, and the rim light
@@ -3022,7 +3032,11 @@
          (banner 31 + draw bar 62 + timeline 27 + commentary 43 + pot odds).
          A row sliced through the middle reads as a rendering fault rather
          than as something to scroll. */
-      height: min(38%, 196px);
+      /* Was 196: enough to show every strip in full, taken from a table that
+         had a third of the screen. The strips annotate the table; they do not
+         outrank it. Still a declared height — nothing here can resize the
+         table — and what does not fit scrolls. */
+      height: min(24%, 96px);
       /* The reserved-but-empty strips would otherwise stack at the TOP of the
          region, putting ~120px of nothing between the table and the timeline
          and reading as a void. Bottom-aligned, that space joins the table's
@@ -3044,7 +3058,7 @@
        overlapping pairs. The strips give way first: they scroll, the table
        cannot. */
     @media (max-height: 720px) {
-      .replayer-under { height: min(30%, 132px); }
+      .replayer-under { height: min(22%, 76px); }
     }
     /* Landscape is the cinema view: the table is the screen, and the strips
        float over the bottom of the felt on a scrim rather than taking a share
@@ -3085,8 +3099,13 @@
          taller than it is wide, still a table seen end-on). Both bounds are
          written as one min() per axis, so whichever binds, the result stays
          inside the range. */
-      --table-ar-min: 0.62;
-      --table-ar-max: 0.95;
+      /* 0.95 was a workaround: three-across rows of plaques collide, so the
+         table got wider to separate them. The layout is not three-across —
+         it is one seat at the top, three down each side and one at the
+         bottom — so the seats that collide are stacked VERTICALLY and width
+         was the wrong axis to buy. Tall, like the table it is a picture of. */
+      --table-ar-min: 0.50;
+      --table-ar-max: 0.72;
       width: min(100cqw, calc(100cqh * var(--table-ar-max)));
       height: min(100cqh, calc(100cqw / var(--table-ar-min)));
       max-width: 100%;
@@ -3511,7 +3530,10 @@
        in it. A lit line on the leading edge is the stock of the card beneath
        showing through, which is what you actually see at a table. */
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
-      margin-left:-12px;
+      /* A share of a card rather than a flat 12px: the cards scale with the
+         table, so a fixed overlap spread the row wider exactly when the table
+         had least room for it. */
+      margin-left: calc(var(--card-w) * -0.52);
       box-shadow: -1px 0 0 rgba(255,255,255,0.62), 0 0 0 0.75px rgba(255,255,255,0.30);
     }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(1) { z-index:1; }
@@ -5304,11 +5326,14 @@
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
     .replayer-seat.is-hero { --card-h: clamp(20px, 15cqw, 64px); }
     .replayer-seat.is-hero .replayer-seat-info {
-      min-width: 92px;
-      padding: var(--space-sm) var(--space-ml);
+      /* 92px is 39% of a 237px table, and the seats either side of the hero
+         reach in to 33% — so the one plaque that is deliberately bigger was
+         the one still colliding after everything else had been scaled. */
+      min-width: min(92px, 32cqw);
+      padding: var(--space-sm) min(var(--space-ml), 4.5cqw);
       border-color: rgba(242,166,59,0.5);
     }
-    .replayer-seat.is-hero .replayer-seat-stack { font-size: var(--fs-md); }
+    .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(11px, 6.6cqw, var(--fs-md)); }
 
     /* 91: committed, and it shows for the rest of the hand. */
     .replayer-seat.is-allin .replayer-seat-info {

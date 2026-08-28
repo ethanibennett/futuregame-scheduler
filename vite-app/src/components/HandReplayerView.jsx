@@ -4985,8 +4985,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     6:  [[50,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)]],
     7:  [[35,T],[R,my(.19)],[R,my(.81)],[50,B],[L,my(.81)],[L,my(.19)],[65,T]],
     8:  [[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)]],
-    9:  [[35,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)],[65,T]],
-    10: [[30,T],[50,T],[R,my(.12)],[R,50],[R,my(.88)],[50,B],[L,my(.88)],[L,50],[L,my(.12)],[70,T]],
+    /* 9 and 10 put two (and three) seats along the top, and the side columns
+       started at my(.12) — 7% below them, which is less than a plaque is tall,
+       so the corner seats overlapped whatever the table's size. The columns
+       start lower and the top pair sits wider, which is the only pair of
+       changes that buys clearance on both axes at once. */
+    9:  [[32,T],[R,my(.20)],[R,50],[R,my(.80)],[50,B],[L,my(.80)],[L,50],[L,my(.20)],[68,T]],
+    10: [[28,T],[50,T],[R,my(.20)],[R,50],[R,my(.80)],[50,B],[L,my(.80)],[L,50],[L,my(.20)],[72,T]],
   };
 
   const n = hand.players.length;
