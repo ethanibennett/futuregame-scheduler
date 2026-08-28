@@ -453,8 +453,8 @@ function formatChipAmount(val, bigBlind) {
    phase 0 for as long as the edge spots have existed. The CSS multiplies this
    by --disc-w to get a length, which shifts the tiling origin and wraps. */
 function pipShift(seed, index) {
-  const h = Math.abs(Math.imul(seed | 0, 2654435761) + index * 40503) % 52;
-  return (h / 100).toFixed(3);
+  const h = Math.abs(Math.imul(seed | 0, 2654435761) + index * 40503) % 100;
+  return (h / 300).toFixed(4);
 }
 
 // ── Chip visuals ──
