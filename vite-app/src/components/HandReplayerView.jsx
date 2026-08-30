@@ -539,16 +539,27 @@ function cut(t, budget) {
    width — the name is capped at 21cqw and the condensed face at this size
    runs about 5.9px a character. Everything else on this table scales with
    cqw; text cannot, because the shortening has to happen in the markup. */
-function nameBudgetFor(tableW) {
+function nameBudgetFor(tableW, tableH, landscape) {
   if (!tableW) return 15;
-  /* Both halves have to match .replayer-seat-name, and the second one is why
-     this cannot be a single ratio: 5.9px per character is this condensed face
-     at 10px, and the face is 15px on a wide table. A budget that did not know
-     the font size handed out half as many characters as fit at one end and
-     twice as many at the other. */
-  const px = Math.min(15, Math.max(8, tableW * 0.042));        // its font-size
-  const box = Math.min(96, tableW * 0.21875);                  // its max-width
-  return Math.max(6, Math.min(22, Math.round(box / (px * 0.59))));
+  /* Three things have to match .replayer-seat-name, and each was got wrong in
+     turn:
+
+       the AXIS — the CSS sizes in cqmin, the shorter of the table's two. In
+         portrait that is the width, which is why deriving from tableW worked
+         until landscape inverted it and the budget started describing a box
+         that no longer existed;
+       the FONT SIZE — 5.9px per character is this condensed face at 10px, and
+         it is 30px on a desktop table, so a fixed ratio hands out five times
+         too many characters at one end;
+       the BOX — landscape gives the name more room and slightly smaller type,
+         so a full name fits rather than being cut.
+
+     Get any one of them wrong and the ellipsis finishes names mid-word, which
+     is the failure shortenName exists to prevent. */
+  const cq = Math.min(tableW, tableH || tableW);
+  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.034)));
+  const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.59))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
@@ -3909,6 +3920,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      derived from the viewport — that guess is what this whole pass was
      unpicking. */
   const [tableW, setTableW] = useState(0);
+  const [tableH, setTableH] = useState(0);
   /* The strip overlay is positioned --transport-h up from the bottom, and that
      was a hard-coded 104px — the height of the bar WITHOUT the admin row. With
      "Solve this spot" and its note the real bar is about 150px, so the strips
@@ -3920,15 +3932,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     if (!el || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(entries => {
       const w = Math.round(entries[0].contentRect.width);
-      /* A 4px deadband: the table's width is a min() of two container
-         queries and settles a fraction of a pixel differently between
-         layouts, and a name budget that flickers would retype every plaque. */
+      const h = Math.round(entries[0].contentRect.height);
+      /* A 4px deadband: the table's size is a min() of two container queries
+         and settles a fraction of a pixel differently between layouts, and a
+         name budget that flickers would retype every plaque. */
       setTableW(prev => (Math.abs(prev - w) >= 4 ? w : prev));
+      setTableH(prev => (Math.abs(prev - h) >= 4 ? h : prev));
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const nameBudget = nameBudgetFor(tableW);
+  const nameBudget = nameBudgetFor(tableW, tableH, isLandscape);
   useEffect(() => {
     const el = barRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -5071,8 +5085,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      per-seat-count algebra the portrait ring needed. The path starts at the
      top-centre and runs clockwise, which puts index n/2 at the bottom-centre,
      where the rotation seats the hero. */
-  const LGX = 32, LGY = 16;
-  const RING = { l: 2.5, r: 29.5, t: 2.5, b: 13.5 };
+  /* 24 x 16 is 3:2 — still square cells, but a narrower table for the same
+     height than the 2:1 that filled the window. At a 900px slot that is 1350
+     wide rather than 1600, which is the margin the reference table has. */
+  const LGX = 24, LGY = 16;
+  const RING = { l: 2.5, r: 21.5, t: 2.5, b: 13.5 };
   const landscapeSeats = (count) => {
     const rad = (RING.b - RING.t) / 2;        // 5.5 — a true stadium end
     const cy = (RING.t + RING.b) / 2;         // 8
