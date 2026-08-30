@@ -5109,7 +5109,23 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* The dealer stands just outside the button's seat, and the muck sits beside
      the deck. Both are pulled toward the table centre so they land on cloth
      rather than on the rail. */
-  const btnSeat = seats[hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D')] || seats[0] || [50, 50];
+  const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
+  const btnSeat = seats[btnIdx] || seats[0] || [50, 50];
+  /* The corner of the name box the button sits on, in the stated order:
+     closest to the table's centre first, furthest clockwise to break the tie.
+
+     Facing the centre answers it for every seat except those on a centre line,
+     where two corners are equidistant — and that is precisely where the
+     clockwise rule decides. The clockwise tangent at a point is (-dy, dx) on a
+     y-down screen, so its sign settles whichever axis came out level. */
+  const btnCorner = (() => {
+    const [bx, by] = btnSeat;
+    const dx = bx - 50, dy = by - 50;
+    const EPS = 3;                                   // "on the centre line"
+    const sx = Math.abs(dx) > EPS ? (dx < 0 ? 1 : -1) : (-dy < 0 ? -1 : 1);
+    const sy = Math.abs(dy) > EPS ? (dy < 0 ? 1 : -1) : (dx < 0 ? -1 : 1);
+    return (sy > 0 ? 'b' : 't') + (sx > 0 ? 'r' : 'l');
+  })();
   /* Rendered: a 15% step round the rail from the button's seat put the deck
      squarely on the NEXT player's fan. There is no gap at the rail on a full
      table, so the deck comes IN off the rail rather than along it — a third
@@ -5625,6 +5641,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   // same player acts twice in one street.
                   return <div key={streetIdx + '-' + actionIdx} className={'replayer-action-badge-outer action-' + actText}>{label}</div>;
                 })()}
+                {/* On a corner of the name box rather than at a percentage
+                    offset from the seat point — the plaque is sized by its
+                    text, so nothing outside it can know where its corner is.
+                    Three earlier attempts all landed on somebody's name. */}
+                {pi === btnIdx && (
+                  <div className={'replayer-dealer-btn corner-' + btnCorner}><span>D</span></div>
+                )}
               </div>
               {inspecting === pi && (
                 <div className="replayer-seat-line">
@@ -5722,56 +5745,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             </div>
           );
         }).filter(Boolean)}
-
-        {/* Dealer button */}
-        {(() => {
-          const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'D');
-          if (btnIdx < 0) return null;
-          const btnPos = seats[btnIdx] || [50, 50];
-          /* Measured on the render: the seat that owns the button here sits at
-             [82,68], which is not "bottom" by a >= 70 test but is still in the
-             lower half — and the side branch moved it INWARD and down, onto
-             its own plaque. Everything below the middle uses the outward rule.
-             (Rendered: the button was sat on the 5 of Opp 4's 50,000.) */
-          const isBottom = btnPos[1] >= 55;
-          let dealerStyle;
-          if (isBottom) {
-            /* Two wrong answers before this one: 12% toward the centre put it
-               on the player's own name, and 11% to the side put it on the
-               NEIGHBOUR's — a plaque is about 30% of the table wide, so a
-               sideways step of 11 does not clear one, it just picks a
-               different name to sit on.
-
-               Below, then. Everything a seat owns — its cards, its badge, its
-               wager — hangs toward the middle, and the neighbours sit along
-               the rail, so outside the plaque is the one direction with room.
-               It is also where the button sits when you are stood behind that
-               player, which is the view this table is drawn from. */
-            /* Outward is right for a seat near the middle of an edge, but a
-               seat at 18% is already ON the felt's edge, and stepping further
-               out puts the button in the black outside the cloth. The seats
-               at the extremes step IN; there is room now that the table is
-               not 237px wide. */
-            /* A cell and a half out, three rows down — the same step for
-               every seat, in the grid's units rather than in percentages of
-               two different axes. Seats at the extremes step inward, where
-               outward would be off the cloth. */
-            const ox = btnPos[0] < 25 ? gx(1.5) : btnPos[0] > 75 ? -gx(1.5) : (btnPos[0] <= 50 ? -gx(1) : gx(1));
-            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+gy(3)) + '%', transform:'translate(-50%,-50%)'};
-          } else {
-            const isTop = btnPos[1] <= 15;
-            const isLeft = btnPos[0] <= 20;
-            const isRight = btnPos[0] >= 80;
-            let ox = 0, oy = 0;
-            if (isTop && btnPos[0] < 50) { ox = 4; oy = 5; }
-            else if (isTop) { ox = -4; oy = 5; }
-            else if (isLeft) { ox = 5; oy = 4; }
-            else if (isRight) { ox = -5; oy = 4; }
-            else { ox = btnPos[0] < 50 ? 4 : -4; oy = 4; }
-            dealerStyle = {left: (btnPos[0]+ox) + '%', top: (btnPos[1]+oy) + '%', transform:'translate(-50%,-50%)'};
-          }
-          return <div className="replayer-dealer-btn" style={dealerStyle}><span>D</span></div>;
-        })()}
 
         {/* Flying chip animations */}
         {flyingChips.map(fc => (
