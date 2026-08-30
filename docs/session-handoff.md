@@ -449,3 +449,71 @@ does and collides.
 Also: the harness guest **token expires**. A stale one lands on the login
 screen and every probe reads as "no table", which looks exactly like a
 rendering fault. All four harnesses click *Continue as Guest* now instead.
+
+## 2026-08-30 — the replayer table, rebuilt around a grid
+
+The table is now **full-bleed** (portrait replay does what landscape always
+did: `position: fixed; inset: 0`, app chrome hidden, transport in flow at the
+bottom, Back is the way out) and laid out on a **16 × 32 grid**.
+
+16 × 32 is not arbitrary: the table is about one-to-two, so those cells come
+out **square** (23.3 × 23.2px at 393×852). A square cell means a step is the
+same distance on both axes, which turns the seat geometry into counting — the
+even-perimeter spacing I first solved as `corner² = 17.6² + (35−d)² = d²`
+(d = 21.9% of the height) is just **seven cells** on the grid. Layout lives in
+`gx(col)` / `gy(row)` helpers: felt inset to col 2 / row 3, seats on columns
+2.5 / 8 / 13.5, rows 5 and 27 (ring midpoint row 16).
+
+### The bug pattern that cost the most time
+
+**A value that looks like it scales but is pinned by something downstream.**
+Five instances this session, and every one read as "the design is wrong" until
+it was measured:
+
+- `clamp(9px, 5.4cqw, var(--fs-sm))` — the cqw term wanted 20px, the token
+  ceiling held it at 13. The comment said "the token is the ceiling, held from
+  about a 250px table upward", which was true when the table WAS 250px. It is
+  373 now. All the felt's type had stopped growing with the cloth.
+- `transform: translateX(-50%)` plus an animation whose keyframes set
+  `transform` — a keyframe REPLACES it, and with `fill: both` it never comes
+  back. The action badge and the winner's hand name were each off-centre by
+  half their own width, permanently. Grep for elements that are centred by a
+  transform AND animated; there should be none.
+- `background-position: <percentage>` on a gradient — percentages resolve
+  against (box − image) and a gradient's image IS the box, so the shift is
+  always exactly zero. No chip had ever been rotated.
+- Absolute px floors on container-scaled objects (`min-width: 72px`,
+  `max-width: 88px`, `height: 56px`, `radius = 85`). **On the table a px value
+  is a legibility floor and the design token is the ceiling** —
+  `clamp(<floor>, <n>cqw, <ceiling>)`. Anything else stops scaling before the
+  table does and then collides.
+- Two drawings of one object: the pot's chip and the seat's chip differed in
+  aspect, edge and overlap. One rule, `--disc-w` the only variable.
+
+### Harness (session scratchpad, all CDP against the real app as a guest)
+
+`overlap.mjs` is the one that matters. Zero overlapping pairs and zero clipped
+is the pass condition, and note two things it learned the hard way:
+
+- it measures the **union of the card elements**, not `.card-row` — a splayed
+  fan is absolutely-positioned children that overflow their row, so the row
+  box reads 60px where 121px of card is drawn. Every "0 overlaps" measured
+  against the row was measured against the wrong box.
+- it injects `DEFAULT_OPP_NAMES` at full length. See the earlier note: the
+  smoke hand's players are `Opp 1`–`Opp 5` and a plaque is as wide as its name.
+
+Env: `OV_SEATS` (2–9 or `T`) swaps the player-count character in the share
+link; `OV_HAND` supplies a whole hand (the smoke hand is triple draw and has
+no community board); `OV_STEP=end` or a number steps the transport;
+`OV_GRID=16x32` overlays the grid and reports how far object CENTRES sit from
+a grid line (median 0px, worst 3px currently). `move.mjs` still asserts
+`DISTINCT left=1 top=1 width=1 height=1`.
+
+### Trap: the share-link codec collided game codes with player counts
+
+`encodeHand` writes `gameCode + numPlayers + heroIdx` with no separator, and
+several codes ARE another code plus a digit (`P8`=PLO8, `N8`=NL Stud 8,
+`PT`/`LT`). Six game/size combinations decoded as the wrong game with the
+wrong player count and hero — including 8-handed NLH and 8-handed PLO. Fixed
+by picking the candidate code that leaves exactly two characters. **If you
+touch `GAME_CODES`, re-run a full round-trip over every game × every size.**
