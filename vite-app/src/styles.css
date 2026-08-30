@@ -3725,9 +3725,18 @@
        [data-serif="univers"] redefines to a sans stack. A reader who prefers
        sans body text was also changing the letterform on the dealer button.
        Nothing about a dealer button should follow a reading preference. */
+    /* Centred ON the chosen corner of the plaque it is a child of, so it needs
+       no knowledge of the table's geometry and cannot drift onto a name. */
+    .replayer-dealer-btn.corner-br { right: 0;  bottom: 0; transform: translate(50%, 50%); }
+    .replayer-dealer-btn.corner-bl { left: 0;   bottom: 0; transform: translate(-50%, 50%); }
+    .replayer-dealer-btn.corner-tr { right: 0;  top: 0;    transform: translate(50%, -50%); }
+    .replayer-dealer-btn.corner-tl { left: 0;   top: 0;    transform: translate(-50%, -50%); }
+
     .replayer-dealer-btn {
       position: absolute;
-      width: 24px; height: 24px;
+      z-index: 3;
+      width: clamp(16px, 4.6cqmin, 56px);
+      height: clamp(16px, 4.6cqmin, 56px);
       border-radius: var(--radius-circle);
       background: linear-gradient(145deg, #f3ead6 0%, #e6dabf 45%, #d8caab 100%);
       color: #3a3020;
