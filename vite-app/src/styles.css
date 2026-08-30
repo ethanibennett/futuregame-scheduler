@@ -3070,15 +3070,20 @@
        both edges — a contained table reads as a diagram of a table; a cropped
        one reads as a camera pointed at one. */
     .replayer-landscape .replayer-table {
-      aspect-ratio: 4.5 / 3;
-      --felt-y: 12%;
-      --felt-x: 16%;
+      /* 2:1, which is what makes the 32 x 16 cells square — the same trick as
+         portrait's 16 x 32 on a 1:2 table. 4.5/3 was a shape nothing was
+         derived from. The felt sits a cell outside the seat ring: the ring is
+         columns 2.5..29.5 and rows 2.5..13.5, so the cloth is at column 1.5
+         (4.7%) and row 1.5 (9.4%). */
+      aspect-ratio: 2 / 1;
+      --felt-y: 9.375%;
+      --felt-x: 4.6875%;
       /* Polish 16 made this deliberately wider than the frame so the rail ran
          off both edges — a cropped table reads as a camera pointed at one,
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(100cqh, calc(100cqw / 1.5));
+      height: min(100cqh, calc(100cqw / 2));
       width: auto;
       max-width: none;
       margin: 0;
@@ -3094,6 +3099,8 @@
     /* The hero's fan sits higher up a shorter box in landscape; the block
        steps up two rows to stay out of it. */
     .replayer-landscape .replayer-table-info { top: 59.375%; }   /* row 19 */
+    /* Decoration gives way to the block that carries the level. */
+    .replayer-landscape .replayer-watermark { top: 43%; }
     /* One declaration of how tall the transport is, read by the overlay above
        so the two cannot drift apart. */
     .replayer-landscape { --transport-h: 58px; }
@@ -3191,7 +3198,7 @@
     .replayer-landscape .replayer-under {
       position: absolute;
       left: 0; right: 0; bottom: var(--transport-h);
-      height: min(88px, 11vh);
+      height: min(88px, 9vh);
       padding: var(--space-lg) var(--space-md) var(--space-xs);
       background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
@@ -3861,7 +3868,6 @@
       font-size: clamp(9px, 3.6cqmin, 44px);
       font-weight: var(--fw-bold);
       color: #ffd98a;
-      font-family: var(--font-display);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
     }
@@ -5228,6 +5234,9 @@
        happened to appear in the JSX, on the one element that is in every
        single export. */
     .replayer-watermark {
+      /* Positioned here rather than inline: an inline style wins over a class
+         rule, so landscape could not move it off the tournament block. */
+      position: absolute; left: 50%; top: 56%; transform: translate(-50%,-50%);
       z-index: var(--z-mark);
       /* Rendered: at 57% it sat behind the board's street labels once the
          board moved to 54%. It lives in the clear band below them. */

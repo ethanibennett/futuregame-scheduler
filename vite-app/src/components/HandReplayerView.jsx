@@ -5056,8 +5056,52 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     10: [seat(4,RT), seat(CC,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(12,RT)],
   };
 
+  /* ── The landscape ring ──────────────────────────────────────────────
+     32 columns by 16 rows — the transpose, so the cells are square again on a
+     2:1 table. Landscape had been using the PORTRAIT ring, seats running down
+     long edges that a wide table does not have, which is why it read as the
+     portrait table stretched sideways.
+
+     The ring is a stadium: straight runs along the top and bottom, semicircular
+     ends. Even spacing on a stadium is closed-form —
+
+         per = 2 * straight + 2 * pi * r
+
+     — so the seats sit `per / n` apart along it for ANY n, with none of the
+     per-seat-count algebra the portrait ring needed. The path starts at the
+     top-centre and runs clockwise, which puts index n/2 at the bottom-centre,
+     where the rotation seats the hero. */
+  const LGX = 32, LGY = 16;
+  const RING = { l: 2.5, r: 29.5, t: 2.5, b: 13.5 };
+  const landscapeSeats = (count) => {
+    const rad = (RING.b - RING.t) / 2;        // 5.5 — a true stadium end
+    const cy = (RING.t + RING.b) / 2;         // 8
+    const xL = RING.l + rad, xR = RING.r - rad;
+    const straight = xR - xL;
+    const arc = Math.PI * rad;
+    const per = 2 * straight + 2 * arc;
+    const at = (d) => {
+      let k = ((d % per) + per) % per;
+      if (k < straight / 2) return [xL + straight / 2 + k, RING.t];       // top, centre -> right
+      k -= straight / 2;
+      if (k < arc) { const a = -Math.PI / 2 + k / rad; return [xR + rad * Math.cos(a), cy + rad * Math.sin(a)]; }
+      k -= arc;
+      if (k < straight) return [xR - k, RING.b];                          // bottom, right -> left
+      k -= straight;
+      if (k < arc) { const a = Math.PI / 2 + k / rad; return [xL + rad * Math.cos(a), cy + rad * Math.sin(a)]; }
+      k -= arc;
+      return [xL + k, RING.t];                                            // top, left -> centre
+    };
+    return Array.from({ length: count }, (_, i) => {
+      const [c, r] = at(per * i / count);
+      return [+(c * 100 / LGX).toFixed(3), +(r * 100 / LGY).toFixed(3)];
+    });
+  };
+
   const n = hand.players.length;
-  const rawSeats = layouts[Math.min(Math.max(n, 2), 10)] || layouts[6];
+  const rawSeats = isLandscape
+    ? landscapeSeats(Math.min(Math.max(n, 2), 10))
+    : (layouts[Math.min(Math.max(n, 2), 10)] || layouts[6]);
   const bottomIdx = Math.floor(n / 2);
   const rotation = (bottomIdx - replayHeroIdx + n) % n;
   const seats = rawSeats.map((_, i) => rawSeats[(i + rotation) % n]);
@@ -5427,8 +5471,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         {/* Moved off 66%: the tournament block is printed on the cloth there
             now, and that is content where this is decoration. Under the pot,
             where being partly behind the board is what a watermark is for. */}
-        <div className="replayer-watermark"
-          style={{position:'absolute',left:'50%',top:'56%',transform:'translate(-50%,-50%)'}}>futurega.me</div>
+        <div className="replayer-watermark">futurega.me</div>
 
         {/* Player seats */}
         {hand.players.map((p, pi) => {
