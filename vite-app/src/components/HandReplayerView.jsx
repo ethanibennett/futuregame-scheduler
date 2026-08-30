@@ -994,7 +994,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide) {
      about 2.4 card widths, an advance of 0.40 per card. The HERO has no
      neighbour to crowd; it sits at the bottom centre with the whole width to
      itself, so its hand opens properly. */
-  const radiusCards = wide ? (total <= 5 ? 3.4 : 4.3) : (total <= 5 ? 2.4 : 3.0);
+  const radiusCards = wide ? (total <= 5 ? 2.9 : 3.7) : (total <= 5 ? 2.4 : 3.0);
   /* The -9 here shifted every fan nine pixels left of the seat it belongs
      to. The comment above explains the PIVOT being left of centre, which is
      about which way the arc opens and needs no translation at all: the arc is
@@ -5100,8 +5100,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* 24 x 16 is 3:2 — still square cells, but a narrower table for the same
      height than the 2:1 that filled the window. At a 900px slot that is 1350
      wide rather than 1600, which is the margin the reference table has. */
-  const LGX = 24, LGY = 16;
-  const RING = { l: 2.5, r: 21.5, t: 2.5, b: 13.5 };
+  const LGX = 22, LGY = 16;
+  const RING = { l: 2.5, r: 19.5, t: 2.5, b: 13.5 };
   const landscapeSeats = (count) => {
     const rad = (RING.b - RING.t) / 2;        // 5.5 — a true stadium end
     const cy = (RING.t + RING.b) / 2;         // 8

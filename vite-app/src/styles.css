@@ -3077,15 +3077,15 @@
          down each side that the reference has. The felt sits a cell outside
          the seat ring — columns 2.5..21.5, rows 2.5..13.5, so the cloth is at
          column 1.5 (6.25%) and row 1.5 (9.4%). */
-      aspect-ratio: 3 / 2;
+      aspect-ratio: 22 / 16;
       --felt-y: 9.375%;
-      --felt-x: 6.25%;   /* column 1.5 of 24 */
+      --felt-x: 6.818%;   /* column 1.5 of 22 */
       /* Polish 16 made this deliberately wider than the frame so the rail ran
          off both edges — a cropped table reads as a camera pointed at one,
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(100cqh, calc(100cqw / 1.5));
+      height: min(88cqh, calc(80cqw / 1.375));
       width: auto;
       max-width: none;
       margin: 0;
@@ -5081,7 +5081,7 @@
       margin: 2px 0 3px;
       min-height: calc(var(--disc-w, 16px) * 1.1);
     }
-    .replayer-pot-chip-stack { display:flex; flex-direction:column-reverse; align-items:center; }
+    .replayer-pot-chip-stack { display:flex; flex-direction:column; align-items:center; }
 
     /* Chip stacks are the most poker-specific graphic in the product and
        rendered as flat coloured ellipses - a stack of Tic Tacs. Edge spots are
