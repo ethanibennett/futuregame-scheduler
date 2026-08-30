@@ -3072,18 +3072,20 @@
     .replayer-landscape .replayer-table {
       /* 2:1, which is what makes the 32 x 16 cells square — the same trick as
          portrait's 16 x 32 on a 1:2 table. 4.5/3 was a shape nothing was
-         derived from. The felt sits a cell outside the seat ring: the ring is
-         columns 2.5..29.5 and rows 2.5..13.5, so the cloth is at column 1.5
-         (4.7%) and row 1.5 (9.4%). */
-      aspect-ratio: 2 / 1;
+         derived from. 3:2 rather than 2:1: still square cells on a 24 x 16
+         grid, but a narrower table for the same height, which is the margin
+         down each side that the reference has. The felt sits a cell outside
+         the seat ring — columns 2.5..21.5, rows 2.5..13.5, so the cloth is at
+         column 1.5 (6.25%) and row 1.5 (9.4%). */
+      aspect-ratio: 3 / 2;
       --felt-y: 9.375%;
-      --felt-x: 4.6875%;
+      --felt-x: 6.25%;   /* column 1.5 of 24 */
       /* Polish 16 made this deliberately wider than the frame so the rail ran
          off both edges — a cropped table reads as a camera pointed at one,
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(100cqh, calc(100cqw / 2));
+      height: min(100cqh, calc(100cqw / 1.5));
       width: auto;
       max-width: none;
       margin: 0;
@@ -3099,6 +3101,14 @@
     /* The hero's fan sits higher up a shorter box in landscape; the block
        steps up two rows to stay out of it. */
     .replayer-landscape .replayer-table-info { top: 59.375%; }   /* row 19 */
+    /* There is room for a full name on a desktop table, so the box gets wider
+       and the type a step smaller — 18 characters, which covers the longest
+       name the app ships with. */
+    .replayer-landscape .replayer-seat-name,
+    .replayer-landscape .replayer-seat.seat-right .replayer-seat-name {
+      max-width: min(420px, 32cqmin);
+      font-size: clamp(8px, 2.8cqmin, 34px);
+    }
     /* Decoration gives way to the block that carries the level. */
     .replayer-landscape .replayer-watermark { top: 43%; }
     /* One declaration of how tall the transport is, read by the overlay above
