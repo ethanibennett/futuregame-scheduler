@@ -896,7 +896,7 @@
     }
     /* The pot's chips are the same chip, larger, and they scale with the
        table like everything else on it. */
-    .replayer-pot-chip-disc { --disc-w: clamp(18px, 8cqw, 34px); }
+    .replayer-pot-chip-disc { --disc-w: clamp(18px, 8cqmin, 96px); }
 
     /* A denominated flying chip builds its sphere from inset shadows rather
        than a colour-mix gradient, so any flat denomination colour works - and
@@ -1956,8 +1956,8 @@
        old values as the ceiling. */
     .card-row.card-row-splay {
       gap:0; align-items:flex-end; position:relative; overflow:visible;
-      height: clamp(30px, 17cqw, 56px);
-      min-width: min(60px, 22cqw);
+      height: clamp(30px, 17cqmin, 168px);
+      min-width: min(180px, 22cqmin);
     }
     /* 7.1% not 2px: the artwork's own corner is rx=18 on a 252-tall viewBox,
        so a percentage tracks it at every size (2px at 28px, 3.1px at 44px).
@@ -3011,18 +3011,16 @@
     /* In flow at the bottom, not pinned above a tab bar that is not there. */
     /* The table is exactly as wide as the screen, so the side seats' card
        fans sit flush against the glass and read as cut off. A margin, taken
-       off the container so the table's own cqw units shrink with it. */
+       off the container so the table's own cqmin units shrink with it. */
     .replayer-fullbleed .replayer-table-slot { padding: 2px 10px 0; }
 
     /* In flow at the bottom, not pinned above a tab bar that is not there.
        Its height is declared once and read by the strip overlay below, so the
        two cannot drift apart. */
-    .replayer-fullbleed { --transport-h: 104px; }
     .replayer-fullbleed .replayer-bottom-fixed {
       position: relative;
       bottom: auto;
       flex: none;
-      height: var(--transport-h);
     }
     /* The strips float over the foot of the cloth rather than taking a slice
        of the column — the same move landscape has made for a while, and the
@@ -3032,7 +3030,12 @@
     .replayer-fullbleed .replayer-under {
       position: absolute;
       left: 0; right: 0;
-      bottom: var(--transport-h);
+      /* Measured from the bar itself (see barRef). It was a flat 104px, which
+         is the bar WITHOUT the admin row — with "Solve this spot" and its note
+         the real bar is ~150px, so the strips sat behind it and were clipped.
+         --bar-h rather than --transport-h because landscape declares its own
+         --transport-h and the observer would overwrite it. */
+      bottom: var(--bar-h, 104px);
       /* A declared height again, but for a different reason than before: this
          cannot resize the table any more, it just has to stay off the bottom
          seat. Left to its content it grew to ~200px and sat on the hero. */
@@ -3040,14 +3043,16 @@
          its own scaling: on a 667pt phone a flat 96px reaches up past the
          bottom seat, because the table is shorter but the strip is not. */
       height: min(96px, 8.1vh);
-      padding: var(--space-xl) var(--space-md) var(--space-2xs);
+      padding: var(--space-sm) var(--space-md) var(--space-2xs);
       background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
     }
-    /* Bottom-aligning the contents was for a fixed-height box with reserved
-       gaps at the top of it; an overlay that is only as tall as its content
-       does not need it, and it would push the strips off the scrim. */
-    .replayer-fullbleed .replayer-under > *:first-child { margin-top: 0; }
+    /* Bottom-aligned, which the base rule already does. This overrode it back
+       when the overlay sized to its content — but it has a declared height
+       again, and the reserved-but-invisible strips (the result banner, and 62px
+       of draw bar on a draw hand) sit ABOVE the timeline in source order. Top
+       aligned, they ate the whole 71px and pushed the timeline out of sight
+       under the transport. */
 
     .replayer-landscape {
       position: fixed;
@@ -3077,8 +3082,18 @@
       width: auto;
       max-width: none;
       margin: 0;
+      /* The seat rows are the portrait ring (rows 5..27 of 32) on a box that
+         is half as tall for its width, so the vertical rhythm is tighter here
+         than the sizes assume — at full size a fan grazed the next plaque by
+         5px. The furniture takes a step down in landscape until the ring gets
+         a layout of its own. */
+      --card-h: clamp(18px, 10.5cqmin, 132px);
     }
+    .replayer-landscape .replayer-seat.is-hero { --card-h: clamp(20px, 13cqmin, 164px); }
     .replayer-landscape .replayer-table-slot { align-items: center; }
+    /* The hero's fan sits higher up a shorter box in landscape; the block
+       steps up two rows to stay out of it. */
+    .replayer-landscape .replayer-table-info { top: 59.375%; }   /* row 19 */
     /* One declaration of how tall the transport is, read by the overlay above
        so the two cannot drift apart. */
     .replayer-landscape { --transport-h: 58px; }
@@ -3176,7 +3191,7 @@
     .replayer-landscape .replayer-under {
       position: absolute;
       left: 0; right: 0; bottom: var(--transport-h);
-      height: auto; max-height: 40%;
+      height: min(88px, 11vh);
       padding: var(--space-lg) var(--space-md) var(--space-xs);
       background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
@@ -3229,8 +3244,14 @@
          table was three different pieces of furniture depending on the
          device: on a 320px phone the rail was proportionally 1.9x fatter than
          in the 600px column, and the cards were proportionally twice the
-         size. One container, one scale, one object. */
-      container-type: inline-size;
+         size. One container, one scale, one object.
+
+         `size` rather than `inline-size` so the furniture can be sized in
+         cqmin — the SHORTER of the two axes. In portrait the table is 1:2 and
+         cqmin is the width, so nothing changes; in landscape it becomes the
+         height, which is what actually constrains a wide table. Sized in cqw,
+         a desktop landscape table gave a 72px rail and postage-stamp cards. */
+      container-type: size;
 
       /* 49: the stacking order was nine hand-written integers — felt 1, seat
          1, rail light 2, board 2, pot 2, dealer 3, bet chip 4, flight 10,
@@ -3318,16 +3339,16 @@
          Landscape orientation overrides them further down. */
       --felt-y: 9.375%;  /* grid row 3 */
       --felt-x: 12.5%;   /* grid column 2 */
-      --rail-w: 5.6cqw;
+      --rail-w: 5.6cqmin;
 
       /* 44px at a ~350px table, which is where it has been, but now it holds
          its proportion instead of its pixel count. The clamp keeps a card
          legible on a small phone and stops it becoming a poster on a desktop. */
-      /* The floor was 38px against a 12.6cqw intent — so below a 300px table
+      /* The floor was 38px against a 12.6cqmin intent — so below a 300px table
          the cards stopped scaling and started overlapping the neighbours.
          A floor is a legibility limit, not a layout: 24px is the smallest a
          rank and suit stay readable at, and above that the table decides. */
-      --card-h: clamp(18px, 12.5cqw, 54px);   /* 2 cells */
+      --card-h: clamp(18px, 12.5cqmin, 160px);   /* 2 cells */
       --card-w: calc(var(--card-h) * 0.7143);   /* the artwork is 180:252 */
 
       /* The crosshatch was two perfectly regular gradients at +45 and -45,
@@ -3338,8 +3359,8 @@
          being the weave inside one. */
       --felt-weave:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E"),
-        repeating-linear-gradient(45deg, transparent, transparent 0.62cqw, rgba(255,255,255,0.018) 0.62cqw, rgba(255,255,255,0.018) 0.93cqw),
-        repeating-linear-gradient(-45deg, transparent, transparent 0.62cqw, rgba(0,0,0,0.020) 0.62cqw, rgba(0,0,0,0.020) 0.93cqw);
+        repeating-linear-gradient(45deg, transparent, transparent 0.62cqmin, rgba(255,255,255,0.018) 0.62cqmin, rgba(255,255,255,0.018) 0.93cqmin),
+        repeating-linear-gradient(-45deg, transparent, transparent 0.62cqmin, rgba(0,0,0,0.020) 0.62cqmin, rgba(0,0,0,0.020) 0.93cqmin);
     }
     /* The rail carried TWO specular gradients — 155deg with a 28% white
        highlight at top-left and 335deg with an 18% white highlight at
@@ -3503,8 +3524,8 @@
       /* The token is the ceiling, held from about a 250px table upward. It
          is the largest number on screen by design, which also makes it the
          one most able to reach a top seat's plaque on a small table. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(15px, 9cqw, 36px); font-weight: var(--fw-bold); color:#fff;   /* ~1.5 cells */
-      font-family: var(--font-display);
+      z-index: var(--z-pot); text-align:center; font-size: clamp(14px, 6.2cqmin, 76px); font-weight: var(--fw-bold); color:#fff;
+      font-family: var(--font-condensed);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
       /* backdrop-filter: blur(2px) was the only refraction anywhere on the
@@ -3538,14 +3559,14 @@
       position:relative;
     }
 
-    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 12.5cqw, 56px); }   /* 2 cells */
+    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 12.5cqmin, 160px); }   /* 2 cells */
     /* A card is 0.714 as wide as it is tall, so on a square-cell grid a
        two-cell card is 1.43 cells wide and five of them are 47% of the table —
        and with three seats down each side there is a fan reaching in to 30%
        on the row the board sits on. 1.75 cells makes a card 1.25 wide, five of
        them 39%, which is what passes between them. The turn card still gets
        two: four cards clear the fans at that size. */
-    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 10.9375cqw, 50px); }   /* 1.75 cells */
+    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 10.9375cqmin, 140px); }   /* 1.75 cells */
     .replayer-board-area {
       /* Narrower felt means less room across, so the board keeps a card a
          step down from the ones in front of the players. */
@@ -3555,7 +3576,7 @@
          two mid-height side plaques, and that is only true when there are
          five. It steps down as the turn and the river land, so the five-card
          row is exactly what it has always been and a flop is not. */
-      --card-h: clamp(26px, 17.1875cqw, 66px);   /* 2.75 cells — a flop has room */
+      --card-h: clamp(26px, 17.1875cqmin, 220px);   /* 2.75 cells — a flop has room */
       position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
@@ -3612,7 +3633,7 @@
     .replayer-seat.seat-left .replayer-seat-info,
     .replayer-seat.seat-right .replayer-seat-info { min-width: 0; }
     .replayer-seat.seat-left .replayer-seat-name,
-    .replayer-seat.seat-right .replayer-seat-name { max-width: min(56px, 15cqw); }
+    .replayer-seat.seat-right .replayer-seat-name { max-width: min(200px, 15cqmin); }
     /* Folded/mucked. opacity:0.5 faded the NAME AND STACK along with the plaque, losing the
        information at the moment you are scanning who is left. Desaturating and stepping the plaque
        back says "out of the hand" while keeping it readable. */
@@ -3736,15 +3757,19 @@
     .replayer-seat-info {
       position: relative;
       z-index: 1;
-      background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
-      border: 1px solid rgba(255,255,255,0.14);
+      /* Flat ground and a hairline. It was carrying a gradient, a border and
+         a bevel to sit on cloth that is itself a gradient — three treatments
+         doing one job. It stays opaque because it has to occlude the fan
+         tucked behind it. */
+      background: rgba(14,12,19,0.93);
+      border: 1px solid rgba(255,255,255,0.09);
       border-radius: var(--r-object);
-      padding: var(--space-xs) min(var(--space-md), 4cqw);
+      padding: var(--nudge-1) min(var(--space-sm), 3cqmin);
       /* A flat 72px is 45% of a 159px table, against seats spaced 32% apart —
          so on a small screen the plaques collided no matter how short the
          names were cut. It is a floor for legibility, not a layout. */
-      min-width: min(80px, 31.25cqw);   /* 5 cells */
-      box-shadow: var(--plate-bevel);
+      min-width: min(200px, 25cqmin);   /* 4 cells */
+      box-shadow: none;
       transition: border-color var(--dur-snap), box-shadow var(--dur-base), transform var(--dur-snap);
     }
     /* 55: the active-turn indicator was --accent, which is #a0a0a0 in the
@@ -3805,7 +3830,7 @@
        row. One line-height on the plaque, inherited by all of them. */
     .replayer-seat-info { line-height: 1.34; }
     .replayer-seat-name {
-      font-size: clamp(8px, 4.2cqw, 15px);   /* ~0.64 of a cell */
+      font-size: clamp(8px, 3.4cqmin, 42px);
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
       font-family: var(--font-condensed);
@@ -3821,17 +3846,19 @@
          of each other. A share of the table, capped where it stops being
          worth more. The JSX shortens to fit this budget (see shortenName), so
          the ellipsis stays a backstop rather than the mechanism. */
-      max-width: min(96px, 21.875cqw);   /* 3.5 cells */
+      max-width: min(300px, 21.875cqmin);   /* 3.5 cells */
     }
     /* The position badge is gone: the dealer button is on the table, and
        every other position is derived from it — so the badge was repeating
        what the button already says, in the tightest space on the felt. */
     .replayer-seat-stack {
-      /* The ceiling was --fs-sm, reached at a 240px table and held above it
-         — and the table has since gone to 373, so the one number the whole
-         composition is arranged around had stopped growing with the cloth it
-         sits on. A stack is a bit under a cell tall. */
-      font-size: clamp(9px, 5.4cqw, 21px);   /* ~0.86 of a cell */
+      /* Univers, not --font-display — that token resolves to --serif, so
+         every figure on the felt was set in Libre Baskerville. And smaller:
+         the previous pass corrected type that had stopped scaling and
+         overshot, making the plaque a slab that hid the hand behind it
+         (measured: 65% of each fan visible). Just over half a cell. */
+      font-family: var(--font-condensed);
+      font-size: clamp(9px, 3.6cqmin, 44px);
       font-weight: var(--fw-bold);
       color: #ffd98a;
       font-family: var(--font-display);
@@ -3840,7 +3867,7 @@
     }
     .replayer-chip-delta {
       font-family: var(--font-condensed);
-      font-size: clamp(7px, 3.6cqw, 13px);
+      font-size: clamp(7px, 2.8cqmin, 34px);
       font-weight: var(--fw-regular);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -5439,7 +5466,7 @@
     }
     .replayer-table-title-name {
       font-family: var(--font-condensed);
-      font-size: clamp(8px, 3.4cqw, var(--fs-2xs)); font-weight: var(--fw-bold);
+      font-size: clamp(8px, 3.4cqmin, var(--fs-2xs)); font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps); text-transform: uppercase;
       color: rgba(242,239,230,0.5);
       max-width: 100%;
@@ -5457,16 +5484,13 @@
        one, and a fan overflows it anyway. The plaque does the joining. */
 
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
-    .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqw, 64px); }  /* 2.5 cells */
+    .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqmin, 200px); }  /* 2.5 cells */
     .replayer-seat.is-hero .replayer-seat-info {
-      /* 92px is 39% of a 237px table, and the seats either side of the hero
-         reach in to 33% — so the one plaque that is deliberately bigger was
-         the one still colliding after everything else had been scaled. */
-      min-width: min(92px, 32cqw);
-      padding: var(--space-sm) min(var(--space-ml), 4.5cqw);
+      min-width: min(220px, 27cqmin);
+      padding: var(--nudge-1) min(var(--space-ml), 4cqmin);
       border-color: rgba(242,166,59,0.5);
     }
-    .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(11px, 6.6cqw, 26px); }   /* the hero's, a cell */
+    .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
 
     /* 91: committed, and it shows for the rest of the hand. */
     .replayer-seat.is-allin .replayer-seat-info {
@@ -5509,7 +5533,7 @@
     .replayer-table-info .replayer-level-blinds,
     .replayer-table-info .replayer-level-meta {
       font-family: var(--font-condensed);
-      font-size: clamp(7px, 3cqw, var(--fs-2xs));
+      font-size: clamp(7px, 3cqmin, var(--fs-2xs));
       font-weight: var(--fw-regular);
       letter-spacing: var(--track-tight);
       color: rgba(242,239,230,0.34);
