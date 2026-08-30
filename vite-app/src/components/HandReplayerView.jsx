@@ -954,7 +954,7 @@ function PotChipVisual({ amount }) {
    34: and the fan was a pure 2D rotation, which is cards printed on a page.
    A real fan also lifts each successive card slightly out of the plane, so it
    grows a little and throws a longer shadow toward the top of the arc. */
-function getSplayStyle(index, total, angle, yOffset, reverseZ) {
+function getSplayStyle(index, total, angle, yOffset, reverseZ, wide) {
   if (total <= 1) return {};
   const step = (2 * angle) / (total - 1);
   const rot = -angle + step * index;
@@ -970,7 +970,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ) {
     return {
       transform: 'rotate(' + rot + 'deg) scale(' + scale.toFixed(3) + ')',
       transformOrigin: '18% 118%',
-      marginLeft: index === 0 ? 0 : -22,
+      marginLeft: index === 0 ? 0 : 'calc(var(--card-w) * -0.65)',
       marginTop: extraY || undefined,
       filter: shadow,
       zIndex: z,
@@ -979,24 +979,36 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ) {
   // 3+ cards: arc from a true shared pivot point using trig. The pivot sits
   // left of centre, so the arc opens the way a thumb opens it.
   const rad = rot * Math.PI / 180;
-  /* An 85px arc spreads five cards over 121px of ink — wider than the plaque
-     they belong to, so at the bottom of the table the hero's hand reached into
-     both neighbours'. A tighter arc reads as a hand being held rather than a
-     hand being dealt out, and it is what lets three seats share a side. */
-  const radius = total <= 5 ? 66 : 88;
+  /* In CARD WIDTHS, not pixels. A fixed 66px arc holds its shape only at the
+     size the cards happened to be when it was chosen: at a phone's 34px card
+     it advances each card about 0.55 of a width, which reads as a hand, and at
+     a desktop's 82px card the same 66px advances 0.08 of a width, which reads
+     as a stack with the corners poking out. Same fault as the px floors on
+     --card-h, the plaque's min-width and the chip disc — an absolute length on
+     an object the table scales.
+
+     2.2 rather than the 1.94 that 66px worked out to on a phone: it was a
+     little tight there as well. */
+  /* Measured: a side seat sits 15.6% in from the table's edge, so half a fan
+     cannot exceed that without hanging off the cloth — which caps the arc at
+     about 2.4 card widths, an advance of 0.40 per card. The HERO has no
+     neighbour to crowd; it sits at the bottom centre with the whole width to
+     itself, so its hand opens properly. */
+  const radiusCards = wide ? (total <= 5 ? 3.4 : 4.3) : (total <= 5 ? 2.4 : 3.0);
   /* The -9 here shifted every fan nine pixels left of the seat it belongs
      to. The comment above explains the PIVOT being left of centre, which is
      about which way the arc opens and needs no translation at all: the arc is
      symmetric about rot=0, so the only thing the constant did was take the
      hand off its plaque. Measured: card ink sat 8px left of the plaque's
      centre on every seat at every size. */
-  const x = Math.sin(rad) * radius;
-  const y = -Math.cos(rad) * radius + radius + extraY;
+  const x = Math.sin(rad) * radiusCards;
+  const y = (1 - Math.cos(rad)) * radiusCards;
   return {
     position: 'absolute',
     left: '50%',
     bottom: 0,
-    transform: 'translate(calc(-50% + ' + x.toFixed(1) + 'px), ' + y.toFixed(1) + 'px) rotate('
+    transform: 'translate(calc(-50% + ' + x.toFixed(3) + ' * var(--card-w)), calc('
+      + y.toFixed(3) + ' * var(--card-w) + ' + extraY + 'px)) rotate('
       + rot + 'deg) scale(' + scale.toFixed(3) + ')',
     transformOrigin: '18% 118%',
     filter: shadow,
@@ -1004,7 +1016,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ) {
   };
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ }) {
+function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ, wideFan }) {
   const SUIT_SYMBOLS = {h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'};
   let cards = parseCardNotation(text);
   if (!cards.length && placeholderCount > 0) {
@@ -1034,7 +1046,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         // stagger multiplies it by one round of the table, so a hand is dealt
         // one card at a time round the seats rather than arriving as a block.
         const splayStyle = { '--ci': i, ...(splay
-          ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ && !faceUp)
+          ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ && !faceUp, wideFan)
           : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
@@ -5580,7 +5592,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   placeholderCount={!cards && !folded.has(pi) ? gameCfg.heroCards : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   cardTheme={cardTheme}
-                  reverseZ={pi !== replayHeroIdx} />
+                  reverseZ={pi !== replayHeroIdx}
+                  wideFan={pi === replayHeroIdx} />
               </div>
               {/* 100: between steps the table was completely inert — no way to
                   inspect a player, no response to anything but the transport,
@@ -5665,6 +5678,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                 {pi === btnIdx && (
                   <div className={'replayer-dealer-btn corner-' + btnCorner}><span>D</span></div>
                 )}
+                {/* Below the plaque, mirroring the action badge above it. As a
+                    sibling of the plaque it sat at the seat's bottom edge with
+                    no z-index, and .replayer-seat-info carries z-index 1 — so
+                    the plaque painted over it and all that showed was a sliver
+                    of blue. In a draw game "stand pat" and "drew two" are the
+                    whole story of the street. */}
+                {isDrawGame && currentStreet.draws?.length > 0 && (() => {
+                  const d = currentStreet.draws.find(dr => dr.player === pi);
+                  if (!d) return null;
+                  return <div className="replayer-seat-draw-badge">{d.discarded === 0 ? 'Pat' : 'Drew ' + d.discarded}</div>;
+                })()}
               </div>
               {inspecting === pi && (
                 <div className="replayer-seat-line">
@@ -5705,11 +5729,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   The name is the newer and more important fact; the badge
                   stands down for it. */}
               {handName && <div className="replayer-seat-hand-name">{handName}</div>}
-              {isDrawGame && currentStreet.draws?.length > 0 && (() => {
-                const d = currentStreet.draws.find(dr => dr.player === pi);
-                if (!d) return null;
-                return <div className="replayer-seat-draw-badge">{d.discarded === 0 ? 'Pat' : 'D' + d.discarded}</div>;
-              })()}
             </div>
           );
         })}

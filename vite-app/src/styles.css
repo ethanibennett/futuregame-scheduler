@@ -3569,7 +3569,7 @@
        with the circles overlapped by an inline -8px that clipped every gold
        ring after the first. The tag moves out to a caption below. */
     .replayer-split-circle {
-      width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      width: clamp(28px, 11cqmin, 96px); height: clamp(28px, 11cqmin, 96px); border-radius:50%; display:flex; align-items:center; justify-content:center;
       background: radial-gradient(ellipse, rgba(234,179,8,0.35) 0%, rgba(234,179,8,0.15) 100%);
       border: var(--bw-1) solid rgba(234,179,8,0.6);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); line-height:1; color:#facc15; font-family: var(--font-condensed);
@@ -3670,7 +3670,7 @@
 
     .replayer-seat-cards {
       position: absolute;
-      bottom: calc(100% - 10px);
+      bottom: calc(100% - var(--card-h) * 0.22);
       left: 0;
       right: 0;
       display: flex;
@@ -3965,7 +3965,7 @@
          here, so "Hi: Aces Up / Lo: 7-5-4-3-2" rendered as one 30-character
          strip across the felt at the exact moment the split is the result. */
       margin-top: var(--space-2xs);
-      max-width: 150px;
+      max-width: min(150px, 34cqmin);
       box-shadow: var(--elev-1);
     }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
@@ -3974,7 +3974,11 @@
     /* Draw discard badge on seat */
     .replayer-seat-draw-badge {
       position:absolute; left:50%; transform:translateX(-50%);
-      bottom:-2px;
+      /* Clear of the plaque it now hangs from, and above it in the stacking
+         order — .replayer-seat-info is z-index 1, which is what was covering
+         this when the badge was a sibling. */
+      top: calc(100% + 2px);
+      z-index: 2;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
       color:#60a5fa; background:rgba(30,58,138,0.85);
       border:1px solid rgba(96,165,250,0.4); border-radius:var(--radius-xs);
@@ -4152,8 +4156,10 @@
     .card-classic-s { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; }
     .card-classic-rank { font-size: var(--fs-xs); line-height: 1; }
     .card-classic-suit { font-size: var(--fs-2xs); line-height: 1; margin-top: -1px; }
-    .replayer-seat-cards .card-classic { width: 30px; height: 44px; }
-    .replayer-board-spaced .card-classic { width: 30px; height: 44px; }
+    /* The classic deck was a flat 30x44 — the one deck that ignored the
+       table's scale entirely, so it stayed phone-sized on a desktop. */
+    .replayer-seat-cards .card-classic { width: var(--card-w); height: var(--card-h); }
+    .replayer-board-spaced .card-classic { width: var(--card-w); height: var(--card-h); }
 
     /* Replay controls — portaled into #above-nav-slot in App.jsx so the
        bar is a real sibling of <BottomNav> in the app-shell flex column.
@@ -5294,14 +5300,16 @@
        physically overlap and their card fans interleave. Full ring is the
        common live-tournament format this app records; its densest row should
        not be the broken one. */
+    /* The densest tables get a tighter plaque, but in cells — a flat 56px
+       kept a 9-max desktop table's names at phone width. */
     .replayer-table[data-players="9"] .replayer-seat-info,
     .replayer-table[data-players="10"] .replayer-seat-info {
-      min-width: 56px;
-      padding: var(--space-xs) var(--space-sm);
+      min-width: min(56px, 20cqmin);
+      padding: var(--space-xs) min(var(--space-sm), 2.5cqmin);
     }
     .replayer-table[data-players="9"] .replayer-seat-name,
     .replayer-table[data-players="10"] .replayer-seat-name {
-      max-width: 56px;
+      max-width: min(56px, 17cqmin);
     }
 
     /* 45: the plaque is the densest object on the felt and had no hover or
@@ -9468,7 +9476,7 @@
     .leaderboard-rank {
       font-weight: var(--fw-bold);
       font-size: var(--fs-lg);
-      min-width: 32px;
+      min-width: min(32px, 9cqmin);
       text-align: center;
       color: var(--text-muted);
     }
