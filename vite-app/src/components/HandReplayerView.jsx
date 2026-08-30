@@ -3909,6 +3909,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      derived from the viewport — that guess is what this whole pass was
      unpicking. */
   const [tableW, setTableW] = useState(0);
+  /* The strip overlay is positioned --transport-h up from the bottom, and that
+     was a hard-coded 104px — the height of the bar WITHOUT the admin row. With
+     "Solve this spot" and its note the real bar is about 150px, so the strips
+     were sitting behind it and getting clipped. Measured instead: whatever the
+     bar ends up containing, the strips clear it. */
+  const barRef = useRef(null);
   useEffect(() => {
     const el = tableRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -3923,6 +3929,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     return () => ro.disconnect();
   }, []);
   const nameBudget = nameBudgetFor(tableW);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const apply = (h) => {
+      const root = el.closest('.replayer-replay');
+      if (root && h > 0) root.style.setProperty('--bar-h', Math.round(h) + 'px');
+    };
+    apply(el.getBoundingClientRect().height);
+    const ro = new ResizeObserver(() => apply(el.getBoundingClientRect().height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const prevActionIdxRef = useRef(-1);
   const prevShowResultRef = useRef(false);
 
@@ -5907,7 +5925,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       {(() => {
         const slot = typeof document !== 'undefined' && document.getElementById('above-nav-slot');
         const controls = (
-      <div className="replayer-bottom-fixed">
+      <div className="replayer-bottom-fixed" ref={barRef}>
         <div className="replayer-controls">
           <button onClick={goToStart} disabled={!canGoBack} title="Start">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
