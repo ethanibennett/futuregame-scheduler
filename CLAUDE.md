@@ -24,7 +24,8 @@ sessions opened here own scheduler work.
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting
 nightly at 05:00 (hygiene only now — the MTT feed re-ingests hourly in-process).
 `pm2 logs futuregame-scheduler`. Reboot persistence via Task Scheduler
-`futuregame-pm2-resurrect`. Don't start a second server on 3001 — test on a scratch
+`futuregame-pm2-resurrect` (and `futuregame-tmux-resurrect` for the tmux
+sessions — see "Working from the Mac" below). Don't start a second server on 3001 — test on a scratch
 port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 (`JWT_SECRET`, `SYNC_TOKEN`, `TESTFLIGHT_WATCHDOG`); after editing it, `pm2 restart ecosystem.config.cjs
 --update-env && pm2 save`.
@@ -106,15 +107,46 @@ pm2 service, the DB and all web deploys run here regardless of whether it is
 awake. The one thing that used to die with the connection was the interactive
 Claude Code process, because it was a child of the SSH session.
 
-Start long sessions inside tmux so a sleeping Mac only detaches the view:
-```bash
-# from the PowerShell prompt you land in over SSH
-C:\msys64\usr\bin\bash.exe -lc "tmux new -A -s scheduler"
-claude                       # inside tmux; reattach later with the same command
+**Every session must start inside tmux.** A session started outside it dies
+with the SSH connection, which is why a Remote Control session list is mostly
+`offline` — Remote Control can reach a session, it cannot keep one alive. The
+tmux server daemonizes (measured: PPID 1), so a sleeping Mac only detaches the
+view. Verified on this box: a session survived 37 hours of sleeps and lid
+closes.
+
+The Mac's `~/.ssh/config` does it, one block for every project, because
+`RemoteCommand` expands `%n` to the alias you typed and that becomes the tmux
+session name:
 ```
-`-A` attaches if the session exists and creates it otherwise, so one command
-covers both. A drop still loses whatever step was mid-flight — tmux keeps the
-process and scrollback, it does not replay an interrupted tool call.
+Host sched solver cash mtt dash
+    HostName ethanibennett-windows11.taileddf2e.ts.net
+    User ethan
+    IdentityFile ~/.ssh/id_ed25519_win
+    IdentitiesOnly yes
+    RequestTTY force
+    RemoteCommand C:\msys64\usr\bin\bash.exe -lc "tmux new -A -s %n"
+    ServerAliveInterval 30
+    ServerAliveCountMax 6
+    TCPKeepAlive yes
+```
+`ssh sched` creates or reattaches; `-A` covers both. Keep a plain `Host win`
+with neither `RequestTTY` nor `RemoteCommand`, because `RemoteCommand` breaks
+`scp` (or pass `-o RemoteCommand=none`).
+
+Day to day none of that is typed: the sessions stay up, so the Mac app, the
+phone and claude.ai reach them directly. SSH is only the bootstrap. A drop
+still loses whatever step was mid-flight — tmux keeps the process and
+scrollback, it does not replay an interrupted tool call.
+
+**Reboots** are the one thing tmux cannot survive, so `scripts/tmux-resurrect.sh`
+rebuilds the five sessions at logon via Task Scheduler
+`futuregame-tmux-resurrect` — the tmux half of what `futuregame-pm2-resurrect`
+does for pm2. It cd's each session to its project and starts `claude`
+(`START_CLAUDE=0` to get bare shells instead). The cd is sent as a KEYSTROKE
+rather than passed as `tmux new-session -c`, because MSYS2's login shell sources
+/etc/profile which cd's to $HOME a moment after the session starts and
+overwrites it — the symptom is Claude opening on `C:\Users\ethan` and stopping
+at a trust prompt.
 
 MSYS2 exists **solely** to host tmux; the session still drives Windows-native
 node, git, gh and pm2 (`/etc/profile.d/zz-windows-toolchain.sh` puts them on
