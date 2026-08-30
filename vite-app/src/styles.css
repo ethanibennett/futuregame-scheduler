@@ -3085,7 +3085,7 @@
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(88cqh, calc(80cqw / 1.375));
+      height: min(80cqh, calc(80cqw / 1.375));
       width: auto;
       max-width: none;
       margin: 0;
@@ -3208,7 +3208,7 @@
     .replayer-landscape .replayer-under {
       position: absolute;
       left: 0; right: 0; bottom: var(--transport-h);
-      height: min(88px, 9vh);
+      height: min(61px, 9vh);
       padding: var(--space-lg) var(--space-md) var(--space-xs);
       background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);

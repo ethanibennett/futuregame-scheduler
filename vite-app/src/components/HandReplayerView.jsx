@@ -5101,7 +5101,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      height than the 2:1 that filled the window. At a 900px slot that is 1350
      wide rather than 1600, which is the margin the reference table has. */
   const LGX = 22, LGY = 16;
-  const RING = { l: 2.5, r: 19.5, t: 2.5, b: 13.5 };
+  /* Derived, not chosen. Measured the slack between the outermost furniture
+     and the table's edge at each side and moved the ring by exactly that:
+     left was -31px and right -33px (overflowing, so in by 0.63 of a column),
+     top had 64px spare (out by 1.25 rows), bottom had none (stays put).
+     Re-measured after, which is the only way to know it landed. */
+  const RING = { l: 2.27, r: 19.73, t: 2.3, b: 15.1 };
   const landscapeSeats = (count) => {
     const rad = (RING.b - RING.t) / 2;        // 5.5 — a true stadium end
     const cy = (RING.t + RING.b) / 2;         // 8
