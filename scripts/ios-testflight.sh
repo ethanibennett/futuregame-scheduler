@@ -54,6 +54,17 @@ ASC_KEY_ID="${ASC_KEY_ID:-UCFMFW9636}"
 ASC_ISSUER_ID="${ASC_ISSUER_ID:-764173fa-5f16-4c11-a782-a2e8e153e929}"
 ASC_KEY_PATH="${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8}"
 
+# An Admin key delivered through the environment (CI secret) wins over the on-Mac key file:
+# cloud signing needs Admin to regenerate a provisioning profile after a capability change,
+# and the Mac's stored key is App Manager. Materialized to a private temp file for xcodebuild;
+# cleaned up with the rest of $TMPDIR by the OS.
+if [ -n "${ASC_ADMIN_KEY_B64:-}" ] && [ -n "${ASC_ADMIN_KEY_ID:-}" ]; then
+  ASC_KEY_ID="$ASC_ADMIN_KEY_ID"
+  ASC_KEY_PATH="$(mktemp -d)/AuthKey_${ASC_KEY_ID}.p8"
+  printf '%s' "$ASC_ADMIN_KEY_B64" | base64 -d > "$ASC_KEY_PATH"
+  chmod 600 "$ASC_KEY_PATH"
+fi
+
 IOS_PROJECT="$PROJECT_ROOT/ios/App/App.xcodeproj"
 IOS_SCHEME="${IOS_SCHEME:-futurega.me}"
 EXPORT_OPTIONS="$PROJECT_ROOT/ios/ExportOptions.plist"

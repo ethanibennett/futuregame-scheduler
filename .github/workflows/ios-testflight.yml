@@ -114,6 +114,18 @@ jobs:
         # reconciled against App Store Connect on every run, so the committed
         # value is a record, not the source of truth, and letting it go stale
         # costs nothing.
+        #
+        # ASC_ADMIN_* (optional secrets): an Admin-role App Store Connect key
+        # delivered via CI rather than a file on the Mac. Cloud signing can only
+        # REGENERATE a provisioning profile with an Admin credential — the
+        # on-Mac App Manager key can download profiles but not update them, so a
+        # capability change (aps-environment, 2026-08-31) fails export with
+        # "Cloud signing permission error" until these are set. Both unset means
+        # the script falls back to the Mac's key file, which still works for
+        # builds that don't change entitlements.
+        env:
+          ASC_ADMIN_KEY_ID: ${{ secrets.ASC_ADMIN_KEY_ID }}
+          ASC_ADMIN_KEY_B64: ${{ secrets.ASC_ADMIN_KEY_B64 }}
         run: ./scripts/ios-testflight.sh --no-pull
 
       - name: Restore keychain search list
