@@ -469,6 +469,83 @@ export const NON_BRACELET_KEYWORDS = ['satellite', 'mega sat', 'super sat', 'qua
 // worth entering, and the PDF export has always printed it - but it appeared
 // nowhere on the surface whose entire purpose is choosing tournaments, while
 // House Fee and Staff Fee each had a full cell in the detail grid.
+/* The stage of a multi-flight event — "Flight A", "Day 2B", "Round 3" — belongs
+   under the title rather than in it. CalendarEventRow and DashboardView each
+   carried their own formatEventName, whose regex required the token to be
+   dash-separated AND at the very end. That is true of only part of the feed:
+   measured across the 1,000 stored titles carrying a stage token, 259 did not
+   split. The shapes it missed, all real rows:
+
+     NLH Flight A Canada Circuit Championship        stage leads the title
+     NLH $150k Multi-day - Flight E (Turbo)          qualifier trails the stage
+     NLH Motherlode Flight - Flight A (WWOS)         bare "Flight" left behind
+     NLH Bullet Flight - Flight B (WWOS) Wyoming...  stage mid-title
+     NLH Mini Mega Millions XI - Day 2B              lettered day
+
+   One splitter, used by both views and mirrored by the server's normaliser.
+   Parenthesised text is masked before matching, because "(Final Table - if
+   necessary)" is a note about the event, not the stage of it. */
+const STAGE_TOKEN = /\b(Flight\s+[A-Z0-9]{1,2}|Day\s+\d+[A-Z]?|Round\s+\d+)\b/gi;
+const TRAILING_FINAL = /\s*[-–]?\s*\b(Quarter[-\s]?Final|Semi[-\s]?Final|Final(?:\s+Day)?)\s*$/i;
+/* A printable sentinel rather than a control character: the base is cleaned by
+   matching the holes the stage tokens leave behind, and anything that can occur
+   in a real title — a space above all — would match every gap in it. */
+const HOLE = '{{S}}';
+const HOLE_RE = /\{\{S\}\}/g;
+
+function tidyStage(t) {
+  return t.replace(/\s+/g, ' ').trim()
+    .replace(/^(flight|day|round)\b/i, w => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    // Only a STANDALONE trailing letter — "flight a" -> "Flight A". Matching any
+    // trailing lowercase turned "Final" into "FinaL".
+    .replace(/\s([a-z])$/, c => c.toUpperCase());
+}
+
+function cleanStageBase(b) {
+  return b
+    /* "Motherlode Flight - Flight A" leaves a bare "Flight" in the base, and
+       the dash between the word and the hole has to be allowed for or the word
+       survives — which it did, as "Motherlode Flight (WWOS)". */
+    .replace(/\bFlights?\s*[-–]?\s*\{\{S\}\}/gi, HOLE)
+    .replace(/\s*[-–]?\s*\{\{S\}\}\s*/g, ' ')
+    .replace(HOLE_RE, ' ')
+    .replace(/\s*[-–]\s*[-–]\s*/g, ' - ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*[-–]\s*$/, '')
+    .replace(/^\s*[-–]\s*/, '')
+    .trim();
+}
+
+export function splitEventStage(name) {
+  if (!name) return { base: name || '', stage: null };
+  const s = String(name);
+  const masked = s.replace(/\([^)]*\)/g, m => 'x'.repeat(m.length));
+  const hits = [];
+  STAGE_TOKEN.lastIndex = 0;
+  let m;
+  while ((m = STAGE_TOKEN.exec(masked)) !== null) hits.push([m.index, m.index + m[0].length]);
+  if (!hits.length) {
+    const f = masked.match(TRAILING_FINAL);
+    if (f && f.index > 0) {
+      return {
+        base: cleanStageBase(s.slice(0, f.index)),
+        stage: tidyStage(s.slice(f.index).replace(/^\s*[-–]\s*/, '')),
+      };
+    }
+    return { base: s, stage: null };
+  }
+  let base = s;
+  for (let i = hits.length - 1; i >= 0; i--) {
+    base = base.slice(0, hits[i][0]) + HOLE + base.slice(hits[i][1]);
+  }
+  base = cleanStageBase(base);
+  const stage = hits.map(h => tidyStage(s.slice(h[0], h[1]))).join(' - ');
+  /* A title that is nothing BUT a stage keeps it: "Flight E" alone is not
+     improved by being emptied out. */
+  if (!base) return { base: s, stage: null };
+  return { base, stage };
+}
+
 export function formatGuarantee(v, venue) {
   const n = Number(v);
   if (!n || !isFinite(n)) return '';
