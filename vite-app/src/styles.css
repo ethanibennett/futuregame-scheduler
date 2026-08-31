@@ -3081,7 +3081,13 @@
          1300 x 820, an aspect of 1.59. Mine was 1.31 — my earlier reading of
          1.37 came from misreading the bounds, and the proportion work since
          was built on it. 24 x 15 is 1.6 and keeps the cells square. */
-      aspect-ratio: 24 / 15;
+      /* MEASURED, not read off the picture. Three earlier readings of this
+         reference taken by eye gave three different aspects — 1.37, 1.59, 1.79
+         — so it was measured in pixels instead: outer edge left x=353 and
+         right x=1647 at mid-height, top y=128 and bottom y=869 at x=1250,
+         giving 1295 x 742 = 1.745. 28/16 is 1.75 and keeps the grid cells
+         square. */
+      aspect-ratio: 28 / 16;
       /* Measured off the reference: its felt is inset 4.6% of the table's width
          and 5.8% of its height (410-350 of 1300; 75-20 of 950). These were
          6.8 and 9.4 — a smaller, squarer cloth, aspect 1.46 against their
@@ -3095,7 +3101,7 @@
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(80cqh, calc(80cqw / 1.6));
+      height: min(80cqh, calc(80cqw / 1.75));
       width: auto;
       max-width: none;
       margin: 0;
@@ -3114,16 +3120,22 @@
        the top and bottom, and only the corners turning. cqmin is the shorter
        axis, which in landscape is the height. */
     .replayer-landscape .replayer-table {
-      /* Measured off the reference: its rail is 30px between the outer edge
-         (x 350..1650, y 85..905) and the felt (380..1620, 115..875) — 3.7% of
-         an 820-tall table, where ours was 5.6%. And its corner radius is about
-         21% of that height: the top run is straight from x 520 to 1480, so
-         only the corners turn. --radius-pill on a 1.6:1 box is an ellipse,
-         which is why this read as an oval where the reference reads as a
-         table. */
-      --rail-w: 3.7cqmin;
-      --felt-r: 21cqmin;
-      --rail-r: calc(21cqmin + var(--rail-w));
+      /* The cushion measures 45px in the reference at both the top edge
+         (x=1250: felt at L18 until y=127, cushion y=128..172) and the bottom
+         (felt until y=824, cushion y=825..869) — 6.07% of its 742px height. An
+         earlier by-eye reading called it 30px/3.7% and made it thinner when it
+         needed to be thicker; 5.6% before that was the closer number.
+
+         The corner radius is NOT set here, deliberately. The table is a
+         stadium — two half circles joined by straight lines — which is what
+         --radius-pill already gives: 999px is clamped by the browser to half
+         the shorter side, so each end stays exactly semicircular at any
+         aspect. A previous commit read that as an ellipse and pinned 21cqmin,
+         turning the stadium into a rounded rectangle. 50% would have been an
+         ellipse; a large LENGTH is not. The reference is a stadium and it
+         measures as one: its straight top run is 553px and w - h is
+         1295 - 742 = 553 exactly, which only holds for a stadium. */
+      --rail-w: 6.1cqmin;
     }
     /* The hero's fan sits higher up a shorter box in landscape; the block
        steps up two rows to stay out of it. */
