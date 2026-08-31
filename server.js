@@ -11818,7 +11818,7 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
   if (!expected || req.get('x-sync-token') !== expected) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { title, body, series, dryRun } = req.body || {};
+  const { title, body, series, dryRun, url } = req.body || {};
   if (!dryRun && (!title || !body)) {
     return res.status(400).json({ error: 'Expected { title, body }' });
   }
@@ -11868,7 +11868,10 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
   }
   try {
     const count = Array.isArray(series) ? series.length : 0;
-    const send = await sendPushToAdmin(String(title), String(body), '/');
+    // Deep link from the caller (the MTT watcher sends /?find=<series>). Relative paths only:
+    // this token-gated route must not become an open redirect to an arbitrary origin.
+    const link = typeof url === 'string' && /^\/[A-Za-z0-9_\-.~/?=&%+ ]*$/.test(url) ? url : '/';
+    const send = await sendPushToAdmin(String(title), String(body), link);
     const delivered = (send.results || []).filter((r) => r.ok).length;
     console.log(`[NewSeries] pushed "${title}" (${count} series → ${delivered}/${subscribers} accepted)`);
     res.json({ ok: true, seriesCount: count, subscribers, vapidConfigured, delivered, pruned: send.pruned, results: send.results });

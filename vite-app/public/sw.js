@@ -153,6 +153,11 @@ self.addEventListener('notificationclick', function(event) {
       for (var i = 0; i < windowClients.length; i++) {
         var client = windowClients[i];
         if (client.url.includes(self.location.origin) && 'focus' in client) {
+          // A deep link (anything beyond '/') must actually navigate — focusing alone would
+          // drop the /?find= query a new-series tap carries.
+          if (url !== '/' && 'navigate' in client) {
+            return client.navigate(url).then(function (c) { return c && c.focus ? c.focus() : c; });
+          }
           return client.focus();
         }
       }

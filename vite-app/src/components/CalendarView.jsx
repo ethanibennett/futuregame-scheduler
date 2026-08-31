@@ -47,7 +47,7 @@ function buildAllDates(tournaments) {
 }
 
 // ── Inline Filters component (matches original exactly) ──
-function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tournaments }) {
+function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tournaments, search, setSearch }) {
   const panelRef = useRef(null);
   const toggleRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -55,8 +55,6 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   const [howMuchOpen, setHowMuchOpen] = useState(false);
   const [whichOpen, setWhichOpen] = useState(false);
   const [specialOpen, setSpecialOpen] = useState(false);
-  const [search, setSearch] = useState('');
-
   const dateBounds = useMemo(() => {
     const today = getToday();
     let earliest = null, latestDay1 = null;
@@ -561,17 +559,51 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   );
 }
 
-export default function CalendarView({ allTournaments, mySchedule, onToggle, gameVariants, venues, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, buddyLiveUpdates, onOpenScheduleView }) {
+export default function CalendarView({ allTournaments, mySchedule, onToggle, gameVariants, venues, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, buddyLiveUpdates, onOpenScheduleView, initialSearch, onSearchConsumed }) {
+  // Search: owned here (not in the Filters sheet) because it drives what the calendar SHOWS —
+  // the per-day density counts and the day's event list — not just a sheet control. Matches the
+  // event name, the venue strip, the series name (which rides in notes), and the game.
+  const [search, setSearch] = useState('');
+  const searchNeedle = search.trim().toLowerCase();
+  const matchesSearch = useCallback((t) => {
+    if (!searchNeedle) return true;
+    return [t.event_name, t.venue, t.notes, t.game_variant]
+      .some(f => f && String(f).toLowerCase().includes(searchNeedle));
+  }, [searchNeedle]);
+  const searchedTournaments = useMemo(
+    () => (searchNeedle ? (allTournaments || []).filter(matchesSearch) : allTournaments),
+    [allTournaments, searchNeedle, matchesSearch]
+  );
+
+  // Deep link (notification tap → /?find=<series>): apply the query and jump to the first
+  // upcoming day that matches, so a "New series" alert lands on the series itself.
+  useEffect(() => {
+    if (initialSearch == null) return;
+    setSearch(initialSearch);
+    const q = initialSearch.trim().toLowerCase();
+    if (q) {
+      const today = getToday();
+      const dates = (allTournaments || [])
+        .filter(t => [t.event_name, t.venue, t.notes, t.game_variant]
+          .some(f => f && String(f).toLowerCase().includes(q)))
+        .map(t => normaliseDate(t.date))
+        .filter(d => d && d >= today)
+        .sort();
+      if (dates.length) setSelectedDate(dates[0]);
+    }
+    if (onSearchConsumed) onSearchConsumed();
+  }, [initialSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const allDates = useMemo(() => buildAllDates(allTournaments), [allTournaments]);
   // Per-day event counts for the strip's density mark.
   const dateCounts = React.useMemo(() => {
     const m = {};
-    for (const t of (allTournaments || [])) {
+    for (const t of (searchedTournaments || [])) {
       const d = normaliseDate(t.date);
       if (d) m[d] = (m[d] || 0) + 1;
     }
     return m;
-  }, [allTournaments]);
+  }, [searchedTournaments]);
   const maxDateCount = React.useMemo(
     () => Object.values(dateCounts).reduce((a, b) => Math.max(a, b), 0) || 1,
     [dateCounts]);
@@ -655,13 +687,13 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
   // Map normalised date -> all tournaments
   const byDate = useMemo(() => {
     const map = {};
-    for (const t of allTournaments) {
+    for (const t of (searchedTournaments || [])) {
       const key = normaliseDate(t.date);
       if (!map[key]) map[key] = [];
       map[key].push(t);
     }
     return map;
-  }, [allTournaments]);
+  }, [searchedTournaments]);
 
   const scheduleIds = useMemo(() => new Set(mySchedule.map(t => t.id)), [mySchedule]);
   const anchorSet = useMemo(() => new Set(mySchedule.filter(t => t.is_anchor).map(t => t.id)), [mySchedule]);
@@ -1036,7 +1068,7 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
             {sortedEvents.length} event{sortedEvents.length !== 1 ? 's' : ''}
             {myTodayCount > 0 && ` · ${myTodayCount} in my schedule`}
           </span>
-          <Filters filters={filters} setFilters={setFilters} gameVariants={gameVariants || []} venues={venues || []} buyinOptions={buyinOptions} tournaments={allTournaments} />
+          <Filters filters={filters} setFilters={setFilters} gameVariants={gameVariants || []} venues={venues || []} buyinOptions={buyinOptions} tournaments={allTournaments} search={search} setSearch={setSearch} />
         </div>
 
       </div>

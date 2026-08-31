@@ -59,6 +59,11 @@ const RESET_TOKEN = RESET_MATCH ? RESET_MATCH[1] : null;
 const HAND_MATCH = window.location.hash.match(/^#h\/(.+)$/);
 const HAND_SHORTHAND = HAND_MATCH ? decodeURIComponent(HAND_MATCH[1]) : null;
 
+// Detect notification deep link: /?find=<query> — a new-series push tap lands on the calendar
+// with this query applied (web push opens the URL; the native tap listener parses the same form).
+const FIND_MATCH = window.location.search.match(/[?&]find=([^&]*)/);
+const FIND_PARAM = FIND_MATCH ? decodeURIComponent(FIND_MATCH[1].replace(/\+/g, ' ')) : null;
+
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
@@ -70,6 +75,11 @@ export default function App() {
   // schedule does not re-focus the same event.
   const [scheduleFocusId, setScheduleFocusId] = useState(null);
   const clearScheduleFocus = useCallback(() => setScheduleFocusId(null), []);
+  // Set by a notification deep link (/?find=…); CalendarView consumes it to apply the search
+  // and jump to the first matching day, then clears it — same idiom as scheduleFocusId.
+  const [calendarFind, setCalendarFind] = useState(null);
+  const clearCalendarFind = useCallback(() => setCalendarFind(null), []);
+  const tapListenerArmed = useRef(false); // the push effect re-runs on token changes; arm once
   const [viewKey, setViewKey] = useState(0);
   const [visitedTabs, setVisitedTabs] = useState(new Set(['dashboard']));
   const scrollPositions = useRef({});
@@ -1132,6 +1142,19 @@ export default function App() {
   const [pushPerm, setPushPerm] = useState(() =>
     nativePush ? 'default' : (pushSupported ? Notification.permission : 'denied'));
 
+  // Web deep link: the SW opened /?find=… — apply it once a session exists, then strip the
+  // param so a reload doesn't re-apply it.
+  const applyFindLink = useCallback((q) => {
+    setCalendarFind(q);
+    setCurrentView('calendar');
+  }, [setCurrentView]);
+
+  useEffect(() => {
+    if (FIND_PARAM == null || !token) return;
+    applyFindLink(FIND_PARAM);
+    if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname);
+  }, [token, applyFindLink]);
+
   const nativePermState = (p) =>
     p.receive === 'granted' ? 'granted' : (p.receive === 'denied' ? 'denied' : 'default');
 
@@ -1146,8 +1169,12 @@ export default function App() {
         const state = nativePermState(perm);
         setPushPerm(state);
         if (state !== 'granted') return;
-        await PushNotifications.removeAllListeners();
+        const handles = [];
         await new Promise((resolve) => {
+          const done = () => {
+            for (const h of handles) { try { h.remove(); } catch { /* already gone */ } }
+            resolve();
+          };
           PushNotifications.addListener('registration', async (t) => {
             try {
               await fetch(`${API_URL}/apns-subscribe`, {
@@ -1156,9 +1183,9 @@ export default function App() {
                 body: JSON.stringify({ token: t.value, env: 'production' })
               });
             } catch { /* registered next launch */ }
-            resolve();
-          });
-          PushNotifications.addListener('registrationError', () => resolve());
+            done();
+          }).then(h => handles.push(h));
+          PushNotifications.addListener('registrationError', () => done()).then(h => handles.push(h));
           PushNotifications.register();
         });
         return;
@@ -1193,6 +1220,17 @@ export default function App() {
       if (nativePush) {
         try {
           const { PushNotifications } = await import('@capacitor/push-notifications');
+          // Tapping a delivered notification carries the push payload's url; a /?find=… link
+          // navigates the same way a web tap does. Registered before anything else so a tap
+          // that cold-starts the app is not missed.
+          if (!tapListenerArmed.current) {
+            tapListenerArmed.current = true;
+            PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+              const url = a && a.notification && a.notification.data && a.notification.data.url;
+              const m = typeof url === 'string' && url.match(/[?&]find=([^&]*)/);
+              if (m) applyFindLink(decodeURIComponent(m[1].replace(/\+/g, ' ')));
+            });
+          }
           const state = nativePermState(await PushNotifications.checkPermissions());
           setPushPerm(state);
           if (state === 'granted') void subscribeToPush(); // silent re-register: tokens rotate
@@ -1485,6 +1523,8 @@ export default function App() {
             buddyEvents={buddyEvents}
             buddyLiveUpdates={buddyLiveUpdates}
             onOpenScheduleView={() => setCurrentView('tournaments')}
+            initialSearch={calendarFind}
+            onSearchConsumed={clearCalendarFind}
           />
         )}
         </div>
