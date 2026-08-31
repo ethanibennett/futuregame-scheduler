@@ -5130,9 +5130,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       k -= arc;
       return [xL + k, RING.t];                                            // top, left -> centre
     };
+    /* The top run sits one cell above the ring's own top edge. Those seats
+       have the whole cushion above them and no neighbour behind, so the lift
+       costs nothing and puts their cards over the rail the way the reference's
+       top player's are. Applied to the seats ON the top run — for 8-max that
+       is the centre one at RING.t and the two just onto the arc at RING.t+0.34
+       — and to nothing else, so the side and bottom seats do not move. */
+    const TOP_LIFT = 1;
     return Array.from({ length: count }, (_, i) => {
       const [c, r] = at(per * i / count);
-      return [+(c * 100 / LGX).toFixed(3), +(r * 100 / LGY).toFixed(3)];
+      const y = r <= RING.t + 0.5 ? r - TOP_LIFT : r;
+      return [+(c * 100 / LGX).toFixed(3), +(y * 100 / LGY).toFixed(3)];
     });
   };
 
