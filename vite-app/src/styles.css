@@ -3078,8 +3078,14 @@
          the seat ring — columns 2.5..21.5, rows 2.5..13.5, so the cloth is at
          column 1.5 (6.25%) and row 1.5 (9.4%). */
       aspect-ratio: 22 / 16;
-      --felt-y: 9.375%;
-      --felt-x: 6.818%;   /* column 1.5 of 22 */
+      /* Measured off the reference: its felt is inset 4.6% of the table's width
+         and 5.8% of its height (410-350 of 1300; 75-20 of 950). These were
+         6.8 and 9.4 — a smaller, squarer cloth, aspect 1.46 against their
+         1.40, which is why the felt read wrong AND why the seats sat well
+         inside it: the ring is at its outermost, so growing the cloth is what
+         moves the seats toward its edge. */
+      --felt-y: 5.8%;
+      --felt-x: 4.6%;
       /* Polish 16 made this deliberately wider than the frame so the rail ran
          off both edges — a cropped table reads as a camera pointed at one,
          where a contained table reads as a diagram of one. In use it just

@@ -5106,7 +5106,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      left was -31px and right -33px (overflowing, so in by 0.63 of a column),
      top had 64px spare (out by 1.25 rows), bottom had none (stays put).
      Re-measured after, which is the only way to know it landed. */
-  const RING = { l: 2.27, r: 19.73, t: 2.3, b: 15.1 };
+  const RING = { l: 2.27, r: 19.73, t: 3.33, b: 15.1 };
   const landscapeSeats = (count) => {
     const rad = (RING.b - RING.t) / 2;        // 5.5 — a true stadium end
     const cy = (RING.t + RING.b) / 2;         // 8
@@ -5132,9 +5132,28 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     });
   };
 
+  /* 6-max landscape is taken straight off the reference rather than from the
+     even-perimeter walk, because the reference is NOT evenly spaced: measured
+     round its ring the steps are 575, 497, 540, 538, 492, 575 — the vertical
+     ones deliberately short, so the side seats sit at the very ends of the
+     cloth (2.7% and 97.4% of the felt's width). An even walk lands them at
+     about 90%, which is what read as huddling round the middle.
+
+     Its six plaque centres, in felt percentages, converted through this
+     table's felt inset (4.6% x, 5.8% y) to grid columns and rows. Clockwise
+     from the top so index 3 is the bottom centre, where the hero sits. */
+  const LANDSCAPE_6 = [
+    [50.0, 20.8],   // top centre        ref 50, 17
+    [93.0, 35.0],   // upper right       ref 97.4, 33
+    [91.4, 87.1],   // lower right       ref 95, 92
+    [50.0, 97.7],   // bottom centre     ref 50, 104
+    [9.3, 87.1],    // lower left        ref 5.2, 92
+    [7.05, 35.0],   // upper left        ref 2.7, 33
+  ];
+
   const n = hand.players.length;
   const rawSeats = isLandscape
-    ? landscapeSeats(Math.min(Math.max(n, 2), 10))
+    ? (n === 6 ? LANDSCAPE_6 : landscapeSeats(Math.min(Math.max(n, 2), 10)))
     : (layouts[Math.min(Math.max(n, 2), 10)] || layouts[6]);
   const bottomIdx = Math.floor(n / 2);
   const rotation = (bottomIdx - replayHeroIdx + n) % n;
