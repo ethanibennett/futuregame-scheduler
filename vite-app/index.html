@@ -43,10 +43,18 @@
   <style>
     /* Critical layout — inlined to bypass PWA cache */
     html, body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; margin: 0; padding: 0; background: var(--surface); }
-    #root { position: fixed; top: 0; left: 0; right: 0; bottom: calc(0px - env(safe-area-inset-bottom, 0px)); }
+    /* The bottom inset is reserved EXACTLY ONCE, inside .bottom-nav, which is
+       the only thing that sits against the home indicator. It used to be
+       reserved twice — .app-shell padded its bottom by the inset here, the nav
+       padded its own, and #root was pulled below the screen by the same amount
+       to cancel the first one out. On device that cancellation did not hold:
+       measured on an iPhone 16 Pro screenshot (1206x2622 at 3x), the nav's
+       gradient ended 34pt above the screen edge with the shell's padding
+       showing --surface beneath it, which is the gap that was reported.
+       #root ends at the screen edge and the shell pads only the top. */
+    #root { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
     .app-shell {
       padding-top: env(safe-area-inset-top, 0px) !important;
-      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
     }
     @media screen and (display-mode: standalone) {
       .app-shell { padding-top: max(env(safe-area-inset-top, 0px), 47px) !important; }
