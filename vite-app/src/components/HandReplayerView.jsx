@@ -5210,13 +5210,23 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      away from them rather than a correction to them — worth being able to see
      at a glance which is which. */
   const CELL_X = 100 / LGX, CELL_Y = 100 / LGY;
+  /* The four side seats share two vertical axes, one a side. They had four
+     different columns — 14.19 and 16.44 on the left, 85.86 and 84.26 on the
+     right — because each came from its own measured reference point, and four
+     columns for four seats that read as two pairs is just wobble.
+
+     The axis is the mean of their four distances from the nearer edge: 14.19,
+     16.44, 14.14 and 15.74 average to 15.13% of the width, which is 4.24 cells
+     and snaps to 4. Symmetric by construction, since the right axis is the
+     left one subtracted from the table. */
+  const SIDE_X = 4 * CELL_X;            // 14.286%
   const LANDSCAPE_6 = [
-    [50.0,            20.8 - CELL_Y],   // top centre        ref 50, 17
-    [93.0 - 2*CELL_X, 35.0 + CELL_Y],   // upper right       ref 97.4, 33
-    [91.4 - 2*CELL_X, 87.1 - CELL_Y],   // lower right       ref 95, 92
-    [50.0,            97.7],            // bottom centre     ref 50, 104
-    [9.3 + 2*CELL_X,  87.1 - CELL_Y],   // lower left        ref 5.2, 92
-    [7.05 + 2*CELL_X, 35.0 + CELL_Y],   // upper left        ref 2.7, 33
+    [50.0,          20.8 - CELL_Y],   // top centre        ref 50, 17
+    [100 - SIDE_X,  35.0 + CELL_Y],   // upper right       ref 97.4, 33
+    [100 - SIDE_X,  87.1 - CELL_Y],   // lower right       ref 95, 92
+    [50.0,          97.7],            // bottom centre     ref 50, 104
+    [SIDE_X,        87.1 - CELL_Y],   // lower left        ref 5.2, 92
+    [SIDE_X,        35.0 + CELL_Y],   // upper left        ref 2.7, 33
   ];
 
   /* Snap to the grid. A seat is CENTRED on its point rather than aligned to a
