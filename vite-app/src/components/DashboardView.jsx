@@ -411,7 +411,7 @@ export default function DashboardView({
     const bustedUpdate = bustedEventMap[event.id];
     const isBustedDone = bustedUpdate && (bustedUpdate.bust_count || 1) >= getMaxEntries(event.reentry);
 
-    const venueInfo = getVenueInfo(event.venue);
+    const venueInfo = getVenueInfo(event.venue, event.property);
     const venueColor = getVenueBrandColor(venueInfo.abbr);
     const venueStripText = venueInfo.abbr === 'WSOP' ? 'var(--bg)' : 'rgba(255,255,255,0.85)';
 
@@ -699,14 +699,14 @@ export default function DashboardView({
               lateRegEnd={event.late_reg_end}
               date={event.date}
               time={event.time}
-              venueAbbr={getVenueInfo(event.venue).abbr}
+              venueAbbr={getVenueInfo(event.venue, event.property).abbr}
             />
           ) : (
             <LateRegBar
               lateRegEnd={event.late_reg_end}
               date={event.date}
               time={event.time}
-              venueAbbr={getVenueInfo(event.venue).abbr}
+              venueAbbr={getVenueInfo(event.venue, event.property).abbr}
             />
           )
         )}
@@ -727,7 +727,7 @@ export default function DashboardView({
       const t = (tournaments || []).find(x => x.id === entry.tournament_id);
       const buyin = t ? t.buyin : 0;
       const venueRaw = t ? t.venue : '';
-      const venue = t ? getVenueInfo(t.venue).abbr : 'Other';
+      const venue = t ? getVenueInfo(t.venue, t.property).abbr : 'Other';
       const from = nativeCurrency(venueRaw);
       const to = dashCurrency === 'NATIVE' ? from : dashCurrency;
       const entryBuyin = convertAmount(buyin * (entry.num_entries || 1), from, to, dashRates);
@@ -1127,7 +1127,7 @@ export default function DashboardView({
                         <>
                           <div className="dash-conn-dropdown-label">{f.isPlaying ? 'Also Scheduled' : 'Scheduled Today'}</div>
                           {f.todayEvents.map((t, i) => {
-                            const v = getVenueInfo(t.venue);
+                            const v = getVenueInfo(t.venue, t.property);
                             return <div key={i} className="dash-conn-dropdown-event">{v.abbr} | {currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()} {t.event_name}</div>;
                           })}
                         </>

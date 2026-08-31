@@ -2864,6 +2864,16 @@ async function initDatabase() {
       }
     },
     {
+      // The feed's `venue` is a SERIES title; `property` is the hosting poker room's name
+      // (from the watcher's PokerAtlas directory data). The venue strip shows it for series
+      // with no curated VENUE_MAP entry, instead of abbreviating the series title.
+      name: 'tournaments-property-column-2026-08',
+      fn: () => {
+        db.run('ALTER TABLE tournaments ADD COLUMN property TEXT');
+        console.log('Added tournaments.property');
+      }
+    },
+    {
       // Native (Capacitor/TestFlight) devices can't use web push inside WKWebView; they
       // register an APNs device token instead. env is 'production' for TestFlight/App Store
       // builds (TestFlight uses PRODUCTION APNs) and 'sandbox' only for Xcode dev builds.
@@ -9815,6 +9825,7 @@ async function ingestMttFeed() {
              level_duration = ?, reentry = ?, late_reg = ?, late_reg_end = ?, game_variant = ?,
              notes = ?, category = ?, is_satellite = ?, is_restart = ?, prize_pool = ?,
              house_fee = ?, opt_add_on = ?, rake_pct = ?, rake_dollars = ?, is_deepstack = ?,
+             property = ?,
              source_pdf = ?, stable_id = COALESCE(stable_id, ?),
              -- COALESCE, not a plain overwrite: the feed only has a structure sheet for
              -- about a sixth of events, and a locally attached one (admin edit, or a PDF
@@ -9826,6 +9837,7 @@ async function ingestMttFeed() {
            t.level_duration, t.reentry, t.late_reg, t.late_reg_end, t.game_variant,
            t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
            t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
+           t.property || null,
            t.source_pdf || 'mtt-feed', feedStableId(t), t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
@@ -9835,14 +9847,14 @@ async function ingestMttFeed() {
            starting_chips, level_duration, reentry, late_reg, late_reg_end,
            game_variant, venue, notes, category, is_satellite, target_event,
            is_restart, parent_event, prize_pool, house_fee, opt_add_on,
-           rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, structure_sheet_path)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, structure_sheet_path, property)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
            t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
            t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
            t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
            t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t),
-           t.structure_sheet_path || null]
+           t.structure_sheet_path || null, t.property || null]
         );
         inserts++;
       }
@@ -11709,8 +11721,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
     sel.free();
 
     db.run(
-      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(stable_id) DO UPDATE SET
          event_number=excluded.event_number, event_name=excluded.event_name, date=excluded.date,
          time=excluded.time, buyin=excluded.buyin, starting_chips=excluded.starting_chips,
@@ -11720,7 +11732,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
          target_event=excluded.target_event, is_restart=excluded.is_restart, parent_event=excluded.parent_event,
          day_length=excluded.day_length, prize_pool=excluded.prize_pool, house_fee=excluded.house_fee,
          opt_add_on=excluded.opt_add_on, rake_pct=excluded.rake_pct, rake_dollars=excluded.rake_dollars,
-         is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path`,
+         is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path,
+         property=excluded.property`,
       [
         t.stable_id, t.event_number || '', t.event_name, t.date, t.time || '12:00 PM',
         t.buyin || 0, t.starting_chips || null, t.level_duration || null,
@@ -11730,7 +11743,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
         t.is_restart ? 1 : 0, t.parent_event || null, t.day_length || null,
         t.prize_pool || null, t.house_fee || null, t.opt_add_on || null,
         t.rake_pct || null, t.rake_dollars || null, t.is_deepstack ? 1 : 0,
-        t.source_pdf || null, t.structure_sheet_path || null
+        t.source_pdf || null, t.structure_sheet_path || null, t.property || null
       ]
     );
     if (existing) updated++; else inserted++;

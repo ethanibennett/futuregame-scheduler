@@ -365,7 +365,7 @@ function GroupDetailView({
                   <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{t.event_name}</div>
                   <div style={{fontSize:12,color:'var(--text-secondary)'}}>{t.date} \u00b7 {t.time} \u00b7 ${Number(t.buyin).toLocaleString()}</div>
                 </div>
-                <div style={{fontSize:11,color:'var(--text-secondary)'}}>{getVenueInfo(t.venue).abbr}</div>
+                <div style={{fontSize:11,color:'var(--text-secondary)'}}>{getVenueInfo(t.venue, t.property).abbr}</div>
               </div>
               <div className="group-schedule-members">
                 {t.members.map(m => (
@@ -920,7 +920,7 @@ export default function SocialView({
                         return (
                           <React.Fragment key={group.date}>
                             {group.events.map((t, i) => {
-                              const v = getVenueInfo(t.venue);
+                              const v = getVenueInfo(t.venue, t.property);
                               return (
                                 <React.Fragment key={t.id}>
                                   <span style={{fontSize:'0.72rem',fontWeight:700,color:'var(--text-muted)',fontFamily:"'Libre Baskerville', Georgia, serif",whiteSpace:'nowrap',padding:'4px 0'}}>{i === 0 ? dayAbbr : ''}</span>

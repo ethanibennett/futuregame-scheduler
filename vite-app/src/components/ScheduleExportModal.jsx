@@ -37,7 +37,7 @@ export default function ScheduleExportModal({ events, onClose }) {
   const venueList = useMemo(() => {
     const seen = new Map();
     upcomingEvents.forEach(e => {
-      const v = getVenueInfo(e.venue);
+      const v = getVenueInfo(e.venue, e.property);
       if (!seen.has(v.abbr)) seen.set(v.abbr, { longName: v.longName || v.abbr, color: v.color || '#808080' });
     });
     return [...seen.entries()];
@@ -53,7 +53,7 @@ export default function ScheduleExportModal({ events, onClose }) {
     if (!isVegas) return out;
     upcomingEvents.forEach(e => {
       const c = VENUE_COORDS[e.venue];
-      if (c && isVegas(c)) out.add(getVenueInfo(e.venue).abbr);
+      if (c && isVegas(c)) out.add(getVenueInfo(e.venue, e.property).abbr);
     });
     return out;
   }, [upcomingEvents]);
@@ -88,7 +88,7 @@ export default function ScheduleExportModal({ events, onClose }) {
 
   const filteredEvents = useMemo(() =>
     upcomingEvents.filter(e => {
-      if (!selectedVenues.has(getVenueInfo(e.venue).abbr)) return false;
+      if (!selectedVenues.has(getVenueInfo(e.venue, e.property).abbr)) return false;
       if (excludeSatellites && e.is_satellite) return false;
       if (groupByBuyin && buyinRanges.length > 0) {
         const b = Number(e.buyin) || 0;

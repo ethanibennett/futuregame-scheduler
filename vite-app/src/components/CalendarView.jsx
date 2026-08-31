@@ -1016,7 +1016,7 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
             const isSel = d === selectedDate;
             const myEvent = myScheduleByDate[d];
             const venueColor = myEvent
-              ? getVenueBrandColor(getVenueInfo(myEvent.venue).abbr)
+              ? getVenueBrandColor(getVenueInfo(myEvent.venue, myEvent.property).abbr)
               : null;
             // The user's-event signal moves off the border so the active
             // state's own border stays unambiguous - the two used to compete.

@@ -292,6 +292,9 @@ export const VENUE_MAP = {
 const DERIVE_STOPWORDS = new Set([
   'poker', 'the', 'of', 'at', 'and', 'a', 'an', 'gtd', 'guaranteed', 'series',
   'presents', 'event', 'events', 'tour', 'part',
+  // Generic room words: with `property` (the poker room's own name) feeding the strip,
+  // "Horseshoe Casino Tunica" should read HORSESHOE TUNICA, not HORSESHOE CASINO.
+  'casino', 'resort', 'hotel', 'room', 'club', 'cardroom',
 ]);
 function hashVenueName(s) {
   let h = 0;
@@ -384,10 +387,17 @@ export function getStripAbbr(abbr) {
 // Derived entries are cached by abbr so getVenueBrandColor() can resolve their
 // fallback color the same way it resolves a curated one.
 const DERIVED_BY_ABBR = new Map();
-export function getVenueInfo(v) {
+// venue string -> the hosting room's name, learned from feed rows that carry `property`.
+// Remembered so call sites WITHOUT the row in hand (filter lists, live updates) still render
+// the same strip identity for that series as the event rows do.
+const PROPERTY_BY_VENUE = new Map();
+export function getVenueInfo(v, property) {
   const mapped = VENUE_MAP[v];
   if (mapped) return mapped;
-  const derived = deriveVenueInfo(v);
+  // An uncurated series derives its strip from the ROOM when the feed names one — the venue
+  // string is the series title by contract, and abbreviating that shows tours and cities.
+  if (property) PROPERTY_BY_VENUE.set(v, property);
+  const derived = deriveVenueInfo(PROPERTY_BY_VENUE.get(v) || v);
   DERIVED_BY_ABBR.set(derived.abbr, derived);
   return derived;
 }
@@ -1428,5 +1438,6 @@ export const SERIF_ORDER = ['baskerville', 'univers'];
 export const SERIF_LABEL = { baskerville: 'Baskerville', univers: 'Univers' };
 export const SERIF_STACK = {
   baskerville: "'Libre Baskerville', Georgia, serif",
-  univers: "'Univers', sans-serif",
+  univers: "'Univers', sans-serif",
+
 };

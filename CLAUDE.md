@@ -42,8 +42,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 - **Venue strips**: the feed's `venue` is a SERIES title, but the UI shows the poker ROOM.
   `VENUE_MAP` in `vite-app/src/utils/utils.js` maps series → property; property names come
   from the watcher's `series_directory` table (PokerAtlas `venue_name`), never guessed.
-  Unmapped series fall back to `deriveVenueInfo()` (abbr from the title + a generated
-  color), so a new series is readable before anyone curates it.
+  Since 2026-08-31 the feed also carries `property` (the room name) per row, and
+  `getVenueInfo(venue, property)` derives an unmapped series' strip from THAT — the
+  title-derived fallback only fires when the directory named no room (~23% of events).
+  VENUE_MAP still wins where curated.
 - **Venue geo**: `PROPERTY_COORDS` (keyed by strip abbr) + `getVenueCoords(venue)` back the
   location filters; a series inherits its property's coordinate. Values were geocoded via
   Nominatim (the same service `/api/geocode` uses) from `venue_name` + `city_state`; lines

@@ -581,7 +581,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const timeLabel = (tournament.time || '\u2014') + (tzAbbr ? ' ' + tzAbbr : '');
   const bracelet = isBraceletEvent(tournament);
   const venueClass = getVenueClass(tournament);
-  const venue = getVenueInfo(tournament.venue);
+  const venue = getVenueInfo(tournament.venue, tournament.property);
   const isBounty = /bounty|mystery millions/i.test(tournament.event_name);
   const isSat = !!tournament.is_satellite;
   const isRestart = !!tournament.is_restart;
@@ -940,7 +940,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                         )}
                         {/* Venue strip color picker */}
                         {(() => {
-                          const venueInfo = getVenueInfo(tournament.venue);
+                          const venueInfo = getVenueInfo(tournament.venue, tournament.property);
                           const abbr = venueInfo.abbr;
                           const cssVar = VENUE_BRAND_VAR[abbr] || `--venue-${abbr.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')}`;
                           const computed = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
@@ -1094,7 +1094,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
 // haven't been expanded yet, swapping in the full CalendarEventRow on
 // first tap. Eliminates ~15 hook calls per row on initial mount.
 function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand }) {
-  const venue = getVenueInfo(tournament.venue);
+  const venue = getVenueInfo(tournament.venue, tournament.property);
   const venueClass = getVenueClass(tournament);
   const stripColor = getVenueBrandColor(venue.abbr);
   // Opaque, not 0.85. The venue palette is tuned so WHITE text clears 4.5:1
