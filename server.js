@@ -2863,6 +2863,23 @@ async function initDatabase() {
         console.log(`Stripped "Ring Event" from ${updated} tournament titles`);
       }
     },
+    {
+      // Native (Capacitor/TestFlight) devices can't use web push inside WKWebView; they
+      // register an APNs device token instead. env is 'production' for TestFlight/App Store
+      // builds (TestFlight uses PRODUCTION APNs) and 'sandbox' only for Xcode dev builds.
+      name: 'apns-tokens-table-2026-08',
+      fn: () => {
+        db.run(`CREATE TABLE IF NOT EXISTS apns_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          token TEXT NOT NULL UNIQUE,
+          env TEXT NOT NULL DEFAULT 'production',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )`);
+        console.log('Created apns_tokens table');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -9409,6 +9426,26 @@ app.post('/api/push-subscribe', authenticateToken, requireRegistered, async (req
   }
 });
 
+// Native devices (Capacitor TestFlight build) register an APNs device token here instead of a
+// web-push subscription — WKWebView has no PushManager. Upsert by token: re-registration after
+// reinstall or token rotation must not duplicate.
+app.post('/api/apns-subscribe', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const { token, env } = req.body || {};
+    if (!token || typeof token !== 'string' || !/^[a-f0-9]{32,200}$/i.test(token)) {
+      return res.status(400).json({ error: 'Invalid device token' });
+    }
+    const apnsEnv = env === 'sandbox' ? 'sandbox' : 'production';
+    db.run('DELETE FROM apns_tokens WHERE token = ?', [token]);
+    db.run('INSERT INTO apns_tokens (user_id, token, env) VALUES (?, ?, ?)', [req.user.id, token, apnsEnv]);
+    await saveDatabase();
+    res.json({ message: 'Subscribed', env: apnsEnv });
+  } catch (err) {
+    console.error('APNs subscribe error:', err);
+    res.status(500).json({ error: 'Failed to subscribe' });
+  }
+});
+
 // Remove push subscription
 app.post('/api/push-unsubscribe', authenticateToken, requireRegistered, async (req, res) => {
   try {
@@ -9425,6 +9462,88 @@ app.post('/api/push-unsubscribe', authenticateToken, requireRegistered, async (r
     res.status(500).json({ error: 'Failed to unsubscribe' });
   }
 });
+
+// ── APNs (native TestFlight/App Store builds) ──
+// Same JWT-over-HTTP/2 shape as the console's server/lib/push.js (which was itself ported from
+// here, so this is the pattern coming home). The signing key is TEAM-scoped (all topics), so the
+// one APNS_AUTH_KEY covers both apps; only the topic (bundle id) differs.
+let _apnsJwt = null, _apnsJwtAt = 0;
+function apnsAuthToken() {
+  const keyId = process.env.APNS_KEY_ID;
+  const teamId = process.env.APNS_TEAM_ID || '27TK6846H8';
+  const key = process.env.APNS_AUTH_KEY_BASE64
+    ? Buffer.from(process.env.APNS_AUTH_KEY_BASE64, 'base64').toString('utf8')
+    : process.env.APNS_AUTH_KEY;
+  if (!keyId || !key) return null; // not configured
+  const now = Date.now();
+  if (_apnsJwt && now - _apnsJwtAt < 40 * 60 * 1000) return _apnsJwt; // reuse (<60min APNs limit)
+  try {
+    _apnsJwt = jwt.sign({ iss: teamId, iat: Math.floor(now / 1000) }, key,
+      { algorithm: 'ES256', header: { alg: 'ES256', kid: keyId } });
+    _apnsJwtAt = now;
+    return _apnsJwt;
+  } catch (err) {
+    console.error('APNs JWT error:', err.message);
+    return null;
+  }
+}
+
+function sendApnsOne(token, env, payloadObj) {
+  return new Promise((resolve) => {
+    const auth = apnsAuthToken();
+    if (!auth) return resolve({ ok: false, reason: 'unconfigured' });
+    const http2 = require('http2');
+    const host = env === 'production' ? 'https://api.push.apple.com' : 'https://api.sandbox.push.apple.com';
+    const bundle = process.env.APNS_BUNDLE_ID || 'app.futurega.me.beta';
+    let client;
+    try { client = http2.connect(host); } catch (e) { return resolve({ ok: false, reason: e.message }); }
+    let done = false;
+    const finish = (r) => { if (done) return; done = true; try { client.close(); } catch (_) {} resolve(r); };
+    client.on('error', (e) => finish({ ok: false, reason: e.message }));
+    const bodyBuf = Buffer.from(JSON.stringify(payloadObj));
+    const req = client.request({
+      ':method': 'POST', ':path': `/3/device/${token}`,
+      authorization: `bearer ${auth}`, 'apns-topic': bundle,
+      'apns-push-type': 'alert', 'content-type': 'application/json',
+    });
+    let status = 0, data = '', apnsId = '';
+    req.setEncoding('utf8');
+    req.on('response', (h) => { status = h[':status']; apnsId = h['apns-id'] || ''; });
+    req.on('data', (d) => { data += d; });
+    req.on('end', () => finish({ ok: status === 200, status, data, apnsId }));
+    req.on('error', (e) => finish({ ok: false, reason: e.message }));
+    req.end(bodyBuf);
+  });
+}
+
+// Fan an admin alert to ham's registered native devices. Prunes tokens Apple reports dead
+// (410 Unregistered / 400 BadDeviceToken) the same way the web-push path prunes 410 endpoints.
+async function sendApnsToAdmin(title, body, url) {
+  if (!apnsAuthToken()) return { configured: false, results: [] };
+  const stmt = db.prepare(`
+    SELECT at.token, at.env FROM apns_tokens at
+    JOIN users u ON at.user_id = u.id
+    WHERE LOWER(u.username) = 'ham'
+  `);
+  const rows = [];
+  while (stmt.step()) rows.push(stmt.getAsObject());
+  stmt.free();
+  const payload = { aps: { alert: { title, body }, sound: 'default' }, url: url || '/', tag: 'admin' };
+  const results = [];
+  let pruned = 0;
+  for (const r of rows) {
+    const res = await sendApnsOne(r.token, r.env, payload);
+    results.push({ host: 'api.push.apple.com', status: res.status || null, ok: !!res.ok });
+    if (res.status === 410 || (res.status === 400 && /BadDeviceToken/i.test(res.data || ''))) {
+      db.run('DELETE FROM apns_tokens WHERE token = ?', [r.token]);
+      pruned++;
+    } else if (!res.ok) {
+      console.error('APNs send error:', res.status || res.reason, res.data || '');
+    }
+  }
+  if (pruned) await saveDatabase();
+  return { configured: true, results, pruned };
+}
 
 // Helper: send push notification to admin user(s)
 async function sendPushToAdmin(title, body, url) {
@@ -9467,6 +9586,15 @@ async function sendPushToAdmin(title, body, url) {
     // restart, so dead endpoints accumulate forever (13 stale Apple ones had piled up by
     // 2026-08-18). The console's copy of this function has always saved; this one never did.
     if (pruned) await saveDatabase();
+    // Native devices ride along on every admin push: same alert, delivered via APNs. Merged into
+    // the same results array so callers (and the response the MTT watcher logs) see both channels.
+    try {
+      const apns = await sendApnsToAdmin(title, body, url);
+      results.push(...apns.results);
+      pruned += apns.pruned || 0;
+    } catch (err) {
+      console.error('sendApnsToAdmin error:', err);
+    }
     return { configured: true, results, pruned };
   } catch (err) {
     console.error('sendPushToAdmin error:', err);

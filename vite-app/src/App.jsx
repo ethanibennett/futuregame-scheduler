@@ -1121,15 +1121,48 @@ export default function App() {
   // Permission is requested from a TAP (the bell panel's enable button), never from page load:
   // iOS silently drops a load-time Notification.requestPermission(), which left every iPhone
   // unsubscribed while desktops worked. On load we only renew an existing/granted subscription.
-  const pushSupported =
-    !(window.Capacitor && window.Capacitor.isNativePlatform()) &&
-    'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  //
+  // Two transports behind one flow: web push (browser / installed PWA) and APNs device tokens
+  // (the Capacitor TestFlight build, whose WKWebView has no PushManager). The server fans admin
+  // alerts to both.
+  const nativePush = !!(window.Capacitor && window.Capacitor.isNativePlatform());
+  const pushSupported = nativePush ||
+    ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
   const isPushAdmin = !!token && !isGuest && ['ham', 'ham5', 'claude'].includes((username || '').toLowerCase());
-  const [pushPerm, setPushPerm] = useState(pushSupported ? Notification.permission : 'denied');
+  const [pushPerm, setPushPerm] = useState(() =>
+    nativePush ? 'default' : (pushSupported ? Notification.permission : 'denied'));
+
+  const nativePermState = (p) =>
+    p.receive === 'granted' ? 'granted' : (p.receive === 'denied' ? 'denied' : 'default');
 
   const subscribeToPush = useCallback(async () => {
     if (!pushSupported) return;
     try {
+      if (nativePush) {
+        // TestFlight and App Store builds run against PRODUCTION APNs, which is what the server
+        // defaults to; only an Xcode dev build would need 'sandbox', and those aren't subscribed.
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+        const perm = await PushNotifications.requestPermissions();
+        const state = nativePermState(perm);
+        setPushPerm(state);
+        if (state !== 'granted') return;
+        await PushNotifications.removeAllListeners();
+        await new Promise((resolve) => {
+          PushNotifications.addListener('registration', async (t) => {
+            try {
+              await fetch(`${API_URL}/apns-subscribe`, {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: t.value, env: 'production' })
+              });
+            } catch { /* registered next launch */ }
+            resolve();
+          });
+          PushNotifications.addListener('registrationError', () => resolve());
+          PushNotifications.register();
+        });
+        return;
+      }
       const reg = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
@@ -1152,13 +1185,25 @@ export default function App() {
         body: JSON.stringify({ subscription: sub })
       });
     } catch (err) { /* Push setup failed silently */ }
-  }, [pushSupported, token]);
+  }, [pushSupported, nativePush, token]);
 
   useEffect(() => {
     if (!isPushAdmin || !pushSupported) return;
-    if (Notification.permission !== 'granted') return; // first-time enable comes from the bell panel tap
-    void subscribeToPush();
-  }, [isPushAdmin, pushSupported, subscribeToPush]);
+    (async () => {
+      if (nativePush) {
+        try {
+          const { PushNotifications } = await import('@capacitor/push-notifications');
+          const state = nativePermState(await PushNotifications.checkPermissions());
+          setPushPerm(state);
+          if (state === 'granted') void subscribeToPush(); // silent re-register: tokens rotate
+        } catch {
+          setPushPerm('denied'); // binary predates the plugin — hide the enable button, it can't work
+        }
+        return;
+      }
+      if (Notification.permission === 'granted') void subscribeToPush();
+    })();
+  }, [isPushAdmin, pushSupported, nativePush, subscribeToPush]);
 
   // isAdmin is a STAGED-ROLLOUT flag, not an authorisation one. It gates the Hands tab, the
   // solver/replayer panel and StakingView — none of whose endpoints are admin-gated server side —
