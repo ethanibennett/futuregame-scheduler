@@ -5436,23 +5436,36 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
               + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
-              {/* Chips above the label, which is the order at a table and the
-                  order the reference uses: the physical thing, then what it is
-                  called, then what it counts to. */}
+              {/* Chips above the row, which is the order at a table: the
+                  physical thing, then what it is called, then what it counts
+                  to. */}
               {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
-              <div className="replayer-pot-label">{potLayers.length ? 'Main' : 'Pot'}</div>
-              {fmtChips(potLayers.length ? potLayers[0].amount : countedPot)}
-              {/* 92: who is playing for what. */}
-              {potLayers.length > 1 && (
-                <div className="replayer-side-pots">
-                  {potLayers.slice(1, 4).map((layer, i) => (
-                    <div key={i} className="replayer-side-pot">
-                      <span className="replayer-side-pot-label">Side {i + 1} &middot; {layer.eligible}-way</span>
-                      {fmtChips(layer.amount)}
-                    </div>
-                  ))}
+              {/* MAIN | TOTAL | SIDE, across rather than stacked — the way the
+                  reference reads a split pot and the way a dealer says it. The
+                  side pots were a column of small print UNDER the main figure,
+                  which buried the one thing a side pot exists to tell you.
+                  With no side pots the row is a single cell and reads exactly
+                  as the pot always has. */}
+              <div className="replayer-pot-row">
+                {potLayers.length > 1 && (
+                  <div className="replayer-pot-pill">
+                    <span className="replayer-pot-cell-label">Main</span>
+                    {fmtChips(potLayers[0].amount)}
+                  </div>
+                )}
+                <div className="replayer-pot-total">
+                  <span className="replayer-pot-cell-label">{potLayers.length > 1 ? 'Total' : 'Pot'}</span>
+                  {fmtChips(countedPot)}
                 </div>
-              )}
+                {potLayers.slice(1, 4).map((layer, i) => (
+                  <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
+                    <span className="replayer-pot-cell-label">
+                      {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
+                    </span>
+                    {fmtChips(layer.amount)}
+                  </div>
+                ))}
+              </div>
             </div>
           );
         })()}
@@ -5743,16 +5756,21 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                 {pi === btnIdx && (
                   <div className={'replayer-dealer-btn corner-' + btnCorner}><span>D</span></div>
                 )}
-                {/* Below the plaque, mirroring the action badge above it. As a
-                    sibling of the plaque it sat at the seat's bottom edge with
-                    no z-index, and .replayer-seat-info carries z-index 1 — so
-                    the plaque painted over it and all that showed was a sliver
-                    of blue. In a draw game "stand pat" and "drew two" are the
-                    whole story of the street. */}
+                {/* On the plaque's top-right corner, straddling it, which is
+                    where the reference puts the draw count. It was a pill
+                    centred below the plaque, and hanging off the bottom edge
+                    on its own it read as a stray tab rather than as part of
+                    the seat — which is exactly how it got reported.
+
+                    The count alone at that size: "Drew 2" does not fit a
+                    corner, and among seats showing 1, 2 and P the digit is
+                    unambiguous. The full wording stays on the title. */}
                 {isDrawGame && currentStreet.draws?.length > 0 && (() => {
                   const d = currentStreet.draws.find(dr => dr.player === pi);
                   if (!d) return null;
-                  return <div className="replayer-seat-draw-badge">{d.discarded === 0 ? 'Pat' : 'Drew ' + d.discarded}</div>;
+                  return <div className="replayer-seat-draw-badge"
+                    title={d.discarded === 0 ? 'Stand pat' : 'Drew ' + d.discarded}>
+                    {d.discarded === 0 ? 'P' : d.discarded}</div>;
                 })()}
               </div>
               {inspecting === pi && (

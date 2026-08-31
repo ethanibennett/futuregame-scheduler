@@ -3593,12 +3593,53 @@
          behind it to blur, so it cost a compositor layer and showed nothing.
          It takes the plaque language instead, which is what the seats are
          made of and what the pot already argued for. */
+      white-space: nowrap;
+    }
+    /* The plaque belongs to the CELL now, not to the container: the row has to
+       be able to set a plaqued total beside unplaqued side pills, and a
+       background on the container would draw one slab behind all three. */
+    .replayer-pot-total,
+    .replayer-split-pot {
       background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
       border: 1px solid rgba(255,224,138,0.45);
       border-radius: var(--radius-pill);
       padding: var(--space-2xs) var(--space-xl);
       box-shadow: var(--plate-bevel);
+    }
+    /* MAIN | TOTAL | SIDE across, measured off the reference: each pill is
+       197px on its 1295px table — 15.2% of the width — and 39px on 742 of
+       height, the gaps between them are 27px (2.1% of the width), and the row
+       is centred with its middle at 35.6% of the table height. Ours keeps the
+       total at the pot's existing size rather than the reference's smaller
+       one, so the largest number on the table stays the largest. */
+    .replayer-pot-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 2.1cqw;
       white-space: nowrap;
+    }
+    .replayer-pot-total { display: inline-flex; align-items: baseline; }
+    .replayer-pot-pill {
+      display: inline-flex; align-items: baseline; justify-content: center;
+      min-width: 15.2cqw;
+      /* Derived: at 0.62em the pill measured 8.2% of the table height against
+         the reference's 5.3%. Everything but the 2px border scales with the
+         font, so the size that lands on 5.3 is 0.62 x (5.3-0.27)/(8.2-0.27). */
+      font-size: 0.39em;
+      padding: 0.28em 0.9em;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(180deg, rgba(150,110,200,0.94), rgba(108,76,153,0.94));
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: var(--plate-bevel);
+    }
+    /* Inline, ahead of the figure. The old .replayer-pot-label floats above
+       the plaque absolutely, which works for one pot and cannot work for
+       three cells side by side — it is left to the split-pot display, which
+       is still a single object. */
+    .replayer-pot-cell-label {
+      font-size: 0.42em; font-weight: var(--fw-bold);
+      color: rgba(255,255,255,0.72);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+      margin-right: 0.6em;
     }
     .replayer-pot-label {
       font-size: var(--fs-2xs); color:rgba(255,255,255,0.75);
@@ -4015,22 +4056,30 @@
 
     /* Draw discard badge on seat */
     .replayer-seat-draw-badge {
-      position:absolute; left:50%; transform:translateX(-50%);
-      /* Clear of the plaque it now hangs from, and above it in the stacking
-         order — .replayer-seat-info is z-index 1, which is what was covering
-         this when the badge was a sibling. */
-      top: calc(100% + 2px);
+      /* On the plaque's top-right corner, straddling it, the way the
+         reference carries the draw count. Centred BELOW the plaque it hung
+         off the bottom edge on its own and read as a stray blue tab — which
+         is how it got reported. Above the plaque in the stacking order still:
+         .replayer-seat-info carries z-index 1. */
+      position:absolute; top:0; right:0; left:auto;
+      transform: translate(38%, -38%);
       z-index: 2;
+      min-width: 1.6em; height: 1.6em;
+      display:flex; align-items:center; justify-content:center;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
-      color:#60a5fa; background:rgba(30,58,138,0.85);
-      border:1px solid rgba(96,165,250,0.4); border-radius:var(--radius-xs);
-      padding: var(--nudge-1) var(--space-sm); white-space:nowrap;
-      box-shadow:0 1px 3px rgba(0,0,0,0.3);
+      color:#bfdbfe; background:rgba(30,58,138,0.92);
+      border:1px solid rgba(96,165,250,0.55); border-radius:var(--radius-xs);
+      padding: 0 var(--nudge-1); white-space:nowrap;
+      box-shadow:0 1px 3px rgba(0,0,0,0.35);
       animation:drawBadgePop 0.3s ease-out;
     }
+    /* A keyframe transform REPLACES the rule's, so every frame has to carry
+       the corner offset or the badge animates from the middle of the plaque
+       and stays there — the same fault that moved the action badge and the
+       winning hand name off centre. */
     @keyframes drawBadgePop {
-      0% { opacity:0; transform:translateX(-50%) scale(0.7); }
-      100% { opacity:1; transform:translateX(-50%) scale(1); }
+      0% { opacity:0; transform:translate(38%, -38%) scale(0.7); }
+      100% { opacity:1; transform:translate(38%, -38%) scale(1); }
     }
 
     /* Felt color picker & card theme */
