@@ -515,14 +515,15 @@ function shortenName(name, budget = 15) {
   const parts = t.split(/\s+/).filter(Boolean);
   if (parts.length > 1) {
     const first = parts[0], last = parts[parts.length - 1];
-    /* The order a person would try, shortest acceptable form last. "Kevin D."
-       is how a broadcast labels a seat; "K. DiPasquale" is how a results page
-       does; a bare first name beats either with a word cut in half. */
-    const forms = [first + ' ' + last[0].toUpperCase() + '.',
-                   first[0].toUpperCase() + '. ' + last,
-                   first];
+    /* First initial, last name — "E. Bennett" — is the house form, always the
+       first thing tried. It was second before, behind "Kevin D.", which put
+       the initial on the half of the name that identifies someone.
+
+       Below it the last name survives alone rather than the first, for the
+       same reason, and only a last name with no room left is cut. */
+    const forms = [first[0].toUpperCase() + '. ' + last, last];
     for (const f of forms) if (f.length <= budget) return f;
-    return cut(first, budget);
+    return cut(last, budget);
   }
   /* One word has no boundary to shorten on, so it can only be cut — and a cut
      with nothing marking it reads as a shorter name rather than a truncated
@@ -559,7 +560,19 @@ function nameBudgetFor(tableW, tableH, landscape) {
   const cq = Math.min(tableW, tableH || tableW);
   const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.034)));
   const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.59))));
+  /* 0.52, measured. The box half of this formula was already right — it
+     predicts the plaque's max-width to a tenth of a pixel at both ends — but
+     the per-character cost was a guess of 0.59 that nothing ever checked.
+
+     Measured on the real face (Univers Condensed) with a Range over the text
+     node, which is the only way to get a natural width: a capital M costs
+     0.84 of the font size and an 'n' costs 0.51, while actual names land
+     between 0.40 and 0.50 ("K. McCormack" 78px across 12 characters at
+     12.99px type = 0.50). 0.59 therefore charged for type nobody sets, and
+     the budget refused forms that fit — "K. McCormack" is 78px in an 83.6px
+     box and was being rejected for being 12 characters against a budget of
+     11, which cost the initial the house form is built on. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.52))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
@@ -5163,9 +5176,25 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     [7.05, 35.0],   // upper left        ref 2.7, 33
   ];
 
+  /* Snap to the grid. A seat is CENTRED on its point rather than aligned to a
+     cell edge, so the unit is the half cell — 100/28/2 across and 100/16/2
+     down — which is what the overlay measures against. Landscape only: the
+     portrait ring already lands on it exactly (worst offset 0px), while the
+     landscape seats came from reference percentages and a perimeter walk that
+     never had the cell edges in view, and measured 9-11px off.
+
+     Applied last, after the walk and after the top-run lift, so it is the one
+     thing that decides the final position and nothing downstream reintroduces
+     a fraction of a cell. */
+  const halfX = 100 / LGX / 2, halfY = 100 / LGY / 2;
+  const snapSeat = ([x, y]) => [
+    +(Math.round(x / halfX) * halfX).toFixed(3),
+    +(Math.round(y / halfY) * halfY).toFixed(3),
+  ];
+
   const n = hand.players.length;
   const rawSeats = isLandscape
-    ? (n === 6 ? LANDSCAPE_6 : landscapeSeats(Math.min(Math.max(n, 2), 10)))
+    ? (n === 6 ? LANDSCAPE_6 : landscapeSeats(Math.min(Math.max(n, 2), 10))).map(snapSeat)
     : (layouts[Math.min(Math.max(n, 2), 10)] || layouts[6]);
   const bottomIdx = Math.floor(n / 2);
   const rotation = (bottomIdx - replayHeroIdx + n) % n;
