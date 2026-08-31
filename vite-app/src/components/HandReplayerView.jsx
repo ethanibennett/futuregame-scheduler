@@ -5436,10 +5436,6 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
               + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
-              {/* Chips above the row, which is the order at a table: the
-                  physical thing, then what it is called, then what it counts
-                  to. */}
-              {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
               {/* MAIN | TOTAL | SIDE, across rather than stacked — the way the
                   reference reads a split pot and the way a dealer says it. The
                   side pots were a column of small print UNDER the main figure,
@@ -5447,6 +5443,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   With no side pots the row is a single cell and reads exactly
                   as the pot always has. */}
               <div className="replayer-pot-row">
+                {/* Chips lead the row rather than sitting above it. Above, they
+                    were the only part of the pot with a vertical footprint, and
+                    once the row moved to the reference's height they were what
+                    reached the top seat's plaque — 121x12px of it at 6-max. The
+                    reference has no chips by the pot at all; in the row they
+                    cost no height, because the total cell is taller than they
+                    are. Left to right it still reads as the physical thing,
+                    then what it is called, then what it counts to. */}
+                {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
                 {potLayers.length > 1 && (
                   <div className="replayer-pot-pill">
                     <span className="replayer-pot-cell-label">Main</span>
