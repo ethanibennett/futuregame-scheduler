@@ -1405,7 +1405,7 @@
     .leaderboard-net-pos, .leaderboard-net-neg,
     .staking-pnl-pos, .staking-pnl-neg,
     .replayer-bet-chip, .replayer-hand-strength-pct, .replayer-equity-pct,
-    .replayer-split-circle,
+    .replayer-split-share,
     .replayer-seat-stack, .replayer-pot-display, .replayer-chip-delta,
     .late-reg-time, .mini-late-reg-time, .countdown-pill {
       font-variant-numeric: var(--num-tabular);
@@ -3642,8 +3642,7 @@
     /* The plaque belongs to the CELL now, not to the container: the row has to
        be able to set a plaqued total beside unplaqued side pills, and a
        background on the container would draw one slab behind all three. */
-    .replayer-pot-total,
-    .replayer-split-pot {
+    .replayer-pot-total {
       background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
       border: 1px solid rgba(255,224,138,0.45);
       border-radius: var(--radius-pill);
@@ -3687,32 +3686,65 @@
       border: 1px solid rgba(255,255,255,0.18);
       box-shadow: var(--plate-bevel);
     }
-    /* Inline, ahead of the figure. The old .replayer-pot-label floats above
-       the plaque absolutely, which works for one pot and cannot work for
-       three cells side by side — it is left to the split-pot display, which
-       is still a single object. */
+    /* Inline, ahead of the figure. A label floating above the plaque works for
+       one pot and cannot work for three cells side by side. The split display
+       used to keep the floating form (.replayer-pot-label) because it was its
+       own single object; it is the pot row now, so that rule went with it. */
     .replayer-pot-cell-label {
       font-size: 0.42em; font-weight: var(--fw-bold);
       color: rgba(255,255,255,0.72);
       text-transform: uppercase; letter-spacing: var(--track-caps);
       margin-right: 0.6em;
     }
-    .replayer-pot-label {
-      font-size: var(--fs-2xs); color:rgba(255,255,255,0.75);
-      text-transform:uppercase; letter-spacing: var(--track-caps);
-      position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%);
-      text-shadow: 0 1px 3px rgba(0,0,0,0.6); white-space: nowrap;
+    /* A split is the pot row with a second line under it, not a different
+       object: the total keeps its plaque and its label, and the shares hang
+       below in cells cut from the same pattern as the side pots. */
+    .replayer-split-pot {
+      display: flex; flex-direction: column; align-items: center;
+      gap: var(--space-2xs);
     }
-    .replayer-split-circles { display:flex; justify-content:center; align-items:center; }
-    /* 30: a 7.2px Hi/Lo label crammed above the amount inside a 36px disc,
-       with the circles overlapped by an inline -8px that clipped every gold
-       ring after the first. The tag moves out to a caption below. */
-    .replayer-split-circle {
-      width: clamp(28px, 11cqmin, 96px); height: clamp(28px, 11cqmin, 96px); border-radius:50%; display:flex; align-items:center; justify-content:center;
-      background: radial-gradient(ellipse, rgba(234,179,8,0.35) 0%, rgba(234,179,8,0.15) 100%);
-      border: var(--bw-1) solid rgba(234,179,8,0.6);
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold); line-height:1; color:#facc15; font-family: var(--font-condensed);
-      position:relative;
+    /* Measured at 6-max portrait (393x852, table 373x742): the clear band
+       between the innermost side furniture across the pot's own row is 162px,
+       and the three discs this replaces already measured 165 — 2px INTO the
+       seat on either side, with a fourth disc 49px further over still. The
+       max-width is that band less the 4px each side that the overlap harness
+       treats as clearance rather than contact: (162 - 8) / 373 = 41.3%. A row
+       that would outgrow it wraps instead of reaching a seat, which is what
+       the .slice(0, 3) was standing in for and costs nobody their share. */
+    .replayer-split-shares {
+      display: flex; justify-content: center; align-items: center;
+      gap: 2.1cqw; flex-wrap: wrap; max-width: 41cqw;
+      row-gap: var(--nudge-1);
+    }
+    /* The side-pot pill's cell, in the winner's gold. 2.42cqmin IS 0.39em of
+       the pot's own clamp(14px, 6.2cqmin, 76px) — the clamp only adds the two
+       ends the em form cannot express, because 0.39em of the pot's 14px floor
+       is 5.5px and nothing on the felt may go below the 9px legibility floor.
+       The discs it replaces held a flat var(--fs-2xs) instead: 10px of type
+       inside an 80px circle at 1600x1000, so the one number the split exists
+       to state was the smallest thing on the table and stopped growing with
+       it entirely. */
+    .replayer-split-share {
+      display: inline-flex; align-items: baseline; justify-content: center;
+      position: relative;
+      font-size: clamp(9px, 2.42cqmin, 30px);
+      font-weight: var(--fw-bold);
+      padding: 0.28em 0.9em;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(180deg, rgba(234,179,8,0.34), rgba(180,132,10,0.30));
+      border: var(--bw-1) solid rgba(255,224,138,0.55);
+      box-shadow: var(--plate-bevel);
+      color: #facc15;
+      white-space: nowrap;
+    }
+    /* "2x HI 1/4": how many players, which half, what fraction. At the cell's
+       own size and not 0.42em of it like the pot row's labels, which would be
+       3.8px on a phone — and inline in BOTH orientations, because the space a
+       portrait label floats into is occupied here by the total's plaque. */
+    .replayer-split-share-frac {
+      color: rgba(255,224,138,0.72);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+      margin-right: 0.6em;
     }
 
     .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 12.5cqmin, 160px); }   /* 2 cells */
@@ -4646,7 +4678,6 @@
       font-family:'Libre Baskerville',Georgia,serif !important; font-size: var(--fs-2xs);
     }
     .replayer-table.theme-casino-royale .replayer-pot-display { color:#ffd700; }
-    .replayer-table.theme-casino-royale .replayer-pot-label { color:rgba(255,215,0,0.6); }
 
     /* ── Theme: Neon Vegas ── */
     .replayer-table.theme-neon-vegas .replayer-table-felt {
@@ -4660,7 +4691,6 @@
     .replayer-table.theme-neon-vegas .replayer-pot-display {
       color:#00e5ff; text-shadow:0 0 10px rgba(0,229,255,0.6);
     }
-    .replayer-table.theme-neon-vegas .replayer-pot-label { color:rgba(255,0,128,0.8); }
     .replayer-table.theme-neon-vegas .replayer-street-label {
       color:rgba(0,229,255,0.7); text-shadow:0 0 6px rgba(0,229,255,0.4);
     }
@@ -4741,7 +4771,6 @@
     }
     .replayer-table.theme-minimalist .replayer-seat-stack { color:#666 !important; }
     .replayer-table.theme-minimalist .replayer-pot-display { color:#222; text-shadow:none; }
-    .replayer-table.theme-minimalist .replayer-pot-label { color:#999; }
     .replayer-table.theme-minimalist .replayer-street-label { color:#999; text-shadow:none; }
     .replayer-table.theme-minimalist .replayer-bet-chip { background:rgba(0,0,0,0.08); color:#222; }
     .replayer-table.theme-minimalist .replayer-dealer-btn { background:#222; color:#fff; }
@@ -5386,10 +5415,6 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       backdrop-filter: none;
     }
-    .replayer-table.theme-minimalist .replayer-pot-label {
-      color: #999;
-      text-shadow: none;
-    }
     .replayer-table.theme-minimalist .replayer-player-stats {
       background: #f5f5f5;
       color: #888;
@@ -5490,18 +5515,9 @@
     }
 
 
-    /* 30: the disc and its Hi/Lo caption, stacked rather than crammed. */
-    .replayer-split-winner {
-      display:flex; flex-direction:column; align-items:center; gap: var(--nudge-1);
-    }
-    .replayer-split-tag {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.68);
-    }
-    .replayer-split-circles { gap: var(--space-xs); }
+    /* The Hi/Lo caption used to be a row of its own under the discs
+       (.replayer-split-winner / .replayer-split-tag). It is part of the share
+       cell's own label now — "HI 1/2" — so the tag no longer costs a line. */
 
 
     /* 48: animPotCollect was declared, never set and never read, and the

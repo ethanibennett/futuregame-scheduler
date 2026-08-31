@@ -444,6 +444,27 @@ function formatChipAmount(val, bigBlind) {
   return CHIP_PLAIN.format(n);
 }
 
+/* Names a split share as the fraction of the pot it is. Deciding the share is
+   the evaluator's job — this only rationalises the number it is handed, which
+   is why it will print a percentage rather than guess when the share is not a
+   fraction anyone says out loud. Denominators stop at 9 because that is the
+   most seats there are, and "1/9" is already past the point where a fraction
+   reads faster than a percentage. ASCII rather than the vulgar-fraction
+   glyphs: 1/2 and 1/4 are in every font, 1/3 and 1/6 are not, and a split pot
+   is the wrong place to discover a tofu box. */
+function formatShareFraction(share) {
+  if (!(share > 0) || share >= 0.999) return '';
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  for (let d = 2; d <= 9; d++) {
+    const n = Math.round(share * d);
+    if (n < 1 || n >= d) continue;
+    if (Math.abs(share - n / d) > 0.004) continue;
+    const k = gcd(n, d);
+    return (n / k) + '/' + (d / k);
+  }
+  return Math.round(share * 100) + '%';
+}
+
 /* How far round its own axis a chip in a stack has been turned. Derived from
    the amount and the chip's place in the pile rather than drawn at random, so
    a 24,000 wager looks the same every time it is on screen and scrubbing back
@@ -5533,34 +5554,118 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         {/* Pot */}
         {(() => {
           const splitters = showResult ? flaggedWinners.filter(w => w.split) : [];
-          const isSplitResult = splitters.length > 0;
-          const splitCount = splitters.length;
-          if (isSplitResult && splitCount >= 2) {
-            const evenAmt = Math.floor(pot / splitCount);
-            const _isHiLo = isHiLo && flaggedWinners.some(w => w.hi || w.lo);
+          const isSplitResult = splitters.length >= 2;
+          const _isHiLo = isSplitResult && isHiLo && splitters.some(w => w.hi || w.lo);
+          /* The split display used to REPLACE the pot with a different object:
+             its own dark lozenge carrying gold discs, no total, no side pots,
+             a shape that appears nowhere else on the table — and it did that
+             at the one step where the pot is the whole point. The pot row is
+             the pot row at every step now; a split only relabels the total
+             cell and hangs the shares under it. */
+          const potRow = (
+            <div className="replayer-pot-row">
+              {/* Chips lead the row rather than sitting above it. Above, they
+                  were the only part of the pot with a vertical footprint, and
+                  once the row moved to the reference's height they were what
+                  reached the top seat's plaque — 121x12px of it at 6-max. The
+                  reference has no chips by the pot at all; in the row they
+                  cost no height, because the total cell is taller than they
+                  are. Left to right it still reads as the physical thing,
+                  then what it is called, then what it counts to. */}
+              {/* Not at a split. The shares row costs 41px of height at
+                  1600x1000 and the pot with its stacks already sits 24px off
+                  the board there — with both, the gap measured 4px. The chip
+                  cell is the half of the pot that is a picture of what the
+                  number already says, and this is the one step where the
+                  number has a second line to carry. */}
+              {rSettings.showChipStacks && displayPot > 0 && !isSplitResult && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+              {potLayers.length > 1 && (
+                <div className="replayer-pot-pill">
+                  <span className="replayer-pot-cell-label">Main</span>
+                  {fmtChips(potLayers[0].amount)}
+                </div>
+              )}
+              <div className="replayer-pot-total">
+                <span className="replayer-pot-cell-label">
+                  {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
+                </span>
+                {fmtChips(countedPot)}
+              </div>
+              {potLayers.slice(1, 4).map((layer, i) => (
+                <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
+                  <span className="replayer-pot-cell-label">
+                    {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
+                  </span>
+                  {fmtChips(layer.amount)}
+                </div>
+              ))}
+            </div>
+          );
+          if (isSplitResult) {
+            /* One cell per distinct SHARE, not one per winner. The old row was
+               one disc per winner capped at .slice(0, 3), so a four-way split
+               drew three discs and a nine-way split drew three — the graphic
+               stated the wrong number of winners. It could not simply draw all
+               of them either: measured at 6-max portrait (393x852, table
+               373x742) the clear band between the innermost side furniture
+               across the pot's own row is 162px and three discs already
+               measured 165, 2px INTO the seat on each side. Grouping is what
+               makes the row bounded: an even split is one cell however many
+               players are in it, and a hi/lo is two.
+
+               "Distinct" means a distinct AWARD, which is why quartering has
+               to reach this row rather than be flattened by it: 3/4 and 1/4
+               are two different amounts and so they are two different cells.
+               Grouping on the winner COUNT — the thing #94 removed from the
+               amount — would have drawn a quartered pot as one "2x 1/2". */
+            const evenAmt = Math.floor(pot / splitters.length);
+            const groups = [];
+            splitters.forEach(w => {
+              /* #94 recorded which half each winner took as flags, so the
+                 tag is read rather than parsed back out of the label text. */
+              let tag = '';
+              if (w.hi) tag = 'Hi';
+              if (w.lo) tag = tag ? 'Hi+Lo' : 'Lo';
+              /* potAwards is the authority on what anyone is paid: it settles
+                 each pot layer among its own eligible seats, halves a hi-lo
+                 layer before dividing either half, and places the odd chips.
+                 The graphic only NAMES that number and the fraction of the pot
+                 it is.
+
+                 It can be absent for a seat. `awards` is keyed only by seats
+                 that actually won a half of some layer, so a winner marked by
+                 hand who is eligible for no layer has no entry — and the memo
+                 itself returns null before the result is shown or with no
+                 winners recorded, neither of which can be true here. The
+                 fallback is the equal split the display assumed before #94,
+                 kept as Math.floor(pot / n) and never pot * (1 / n), which is
+                 a chip light wherever 1/n has no exact binary form. */
+              const amt = potAwards && potAwards[w.playerIdx] != null ? potAwards[w.playerIdx] : evenAmt;
+              const share = pot > 0 ? amt / pot : 1 / splitters.length;
+              const name = w.playerIdx === replayHeroIdx ? 'Hero' : (hand.players[w.playerIdx]?.name || 'Player');
+              const key = tag + '|' + amt;
+              const found = groups.find(g => g.key === key);
+              if (found) { found.n += 1; found.names.push(name); }
+              else groups.push({ key, tag, amt, share, n: 1, names: [name] });
+            });
             return (
               <div className="replayer-pot-display replayer-split-pot">
-                <div className="replayer-pot-label">{_isHiLo ? 'Hi/Lo Split' : 'Split Pot'}</div>
-                <div className="replayer-split-circles">
-                  {splitters.slice(0, 3).map((w, i) => {
-                    /* The disc shows what this player is PAID, which is only
-                       an even share when the halves happen to divide that way.
-                       A quartered opponent's disc reads a quarter. */
-                    const splitAmt = potAwards && potAwards[w.playerIdx] != null ? potAwards[w.playerIdx] : evenAmt;
-                    let shortLabel = '';
-                    if (w.hi) shortLabel = 'Hi';
-                    if (w.lo) shortLabel = shortLabel ? 'Hi+Lo' : 'Lo';
-                    /* 30: this crammed a 7.2px Hi/Lo tag above the amount
-                       inside the disc and overlapped the discs by an inline
-                       -8px, which clipped every gold ring after the first —
-                       at the one moment the point is that the pot SPLIT. The
-                       tag becomes a caption and the discs stop overlapping. */
-                    return <div key={i} className="replayer-split-winner">
-                      <div className="replayer-split-circle" title={w.label || ''}>
-                        {fmtChips(splitAmt)}
+                {potRow}
+                <div className="replayer-split-shares">
+                  {groups.map((g, i) => {
+                    /* "2x HI 1/4" — how many players, which half of a hi/lo,
+                       and what fraction of the pot each one took. A quarter
+                       and a three-quarter award look nothing alike here,
+                       where four discs reading the same number looked
+                       identical whatever anyone was actually paid. */
+                    const cap = [g.n > 1 ? g.n + '×' : '', g.tag, formatShareFraction(g.share)]
+                      .filter(Boolean).join(' ');
+                    return (
+                      <div key={i} className="replayer-split-share" title={g.names.join(', ')}>
+                        {cap && <span className="replayer-split-share-frac">{cap}</span>}
+                        {fmtChips(g.amt)}
                       </div>
-                      {shortLabel && <div className="replayer-split-tag">{shortLabel}</div>}
-                    </div>;
+                    );
                   })}
                 </div>
               </div>
@@ -5569,41 +5674,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           return (
             <div className={'replayer-pot-display' + (animPotCollect ? ' anim-collect' : '')
               + (potLanding ? ' is-landing' : '') + (potLayers.length ? ' has-sides' : '')}>
-              {/* MAIN | TOTAL | SIDE, across rather than stacked — the way the
-                  reference reads a split pot and the way a dealer says it. The
-                  side pots were a column of small print UNDER the main figure,
-                  which buried the one thing a side pot exists to tell you.
-                  With no side pots the row is a single cell and reads exactly
-                  as the pot always has. */}
-              <div className="replayer-pot-row">
-                {/* Chips lead the row rather than sitting above it. Above, they
-                    were the only part of the pot with a vertical footprint, and
-                    once the row moved to the reference's height they were what
-                    reached the top seat's plaque — 121x12px of it at 6-max. The
-                    reference has no chips by the pot at all; in the row they
-                    cost no height, because the total cell is taller than they
-                    are. Left to right it still reads as the physical thing,
-                    then what it is called, then what it counts to. */}
-                {rSettings.showChipStacks && displayPot > 0 && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
-                {potLayers.length > 1 && (
-                  <div className="replayer-pot-pill">
-                    <span className="replayer-pot-cell-label">Main</span>
-                    {fmtChips(potLayers[0].amount)}
-                  </div>
-                )}
-                <div className="replayer-pot-total">
-                  <span className="replayer-pot-cell-label">{potLayers.length > 1 ? 'Total' : 'Pot'}</span>
-                  {fmtChips(countedPot)}
-                </div>
-                {potLayers.slice(1, 4).map((layer, i) => (
-                  <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
-                    <span className="replayer-pot-cell-label">
-                      {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
-                    </span>
-                    {fmtChips(layer.amount)}
-                  </div>
-                ))}
-              </div>
+              {potRow}
             </div>
           );
         })()}
