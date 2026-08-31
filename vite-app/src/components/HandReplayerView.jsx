@@ -940,8 +940,13 @@ function PotChipVisual({ amount }) {
       {stacks.slice(0, 5).map((stack, i) => (
         <div key={i} className="replayer-pot-chip-stack">
           {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
+            /* The TOP chip paints last, over the ones beneath it — a stack
+               hides all but an edge of each chip below. The bet chips already
+               carried this; the pot's did not, and with flat ellipses it did
+               not show. With a cylinder it does. */
             <div key={j} className="replayer-pot-chip-disc"
-              style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j) }} />
+              style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j),
+                zIndex: Math.min(stack.count, 6) - j }} />
           ))}
         </div>
       ))}

@@ -857,42 +857,74 @@
     .replayer-pot-chip-disc {
       --disc-w: 18px;
       --chip: currentColor;
-      width: var(--disc-w);
-      height: calc(var(--disc-w) / 2);
-      border-radius: 50%;
-      position: relative;
-      /* Edge spots, not stripes. The old gradient ran the full height of the
-         disc and repeated every 52% of its width, which is a barber pole — a
-         chip has a few short marks around its rim and you see about three of
-         them at once. The spot layer is sized to 44% of the height and centred,
-         so the marks sit ON the rim instead of crossing the face, and its
-         period is a third of the width.
+      /* MEASURED off the reference stack. Its top face is 144px across a 199px
+         chip, so the ellipse's minor axis is 0.724 of its major — that ratio
+         IS the viewing angle — and each chip below the top shows 47px of edge,
+         0.236 of the width.
 
-         Position is a LENGTH: a percentage resolves against (box - image) and
-         a gradient's image is the box, so every percentage shift was zero and
-         no chip was ever rotated. Multiplying the per-chip fraction by
-         --disc-w gives the phase, and repeat-x wraps it. */
+         One element, one cylinder: width W, height E + h, with a vertical
+         corner radius of E/2. That makes the top and bottom elliptical arcs
+         and leaves exactly h of straight side between them. Before this it was
+         a flat 2:1 ellipse, so a stack was a pile of crescents with no side to
+         it at all — the thing the reference has and we did not. */
+      --chip-e: calc(var(--disc-w) * 0.724);
+      --chip-h: calc(var(--disc-w) * 0.236);
+      width: var(--disc-w);
+      height: calc(var(--chip-e) + var(--chip-h));
+      border-radius: 50% / calc(var(--chip-e) / 2);
+      position: relative;
       background-color: var(--chip);
       background-image:
+        /* Twelve notches around the chip is six across the face, each 7% of
+           the width — measured 14px on 199. Position is a LENGTH: a percentage
+           resolves against (box - image) and a gradient's image is the box, so
+           every percentage phase would be a zero shift and no chip would ever
+           be rotated. */
         repeating-linear-gradient(90deg,
-          transparent 0 11%,
-          rgba(255,255,255,0.7) 11% 22.3%,
-          transparent 22.3% 33.333%),
+          rgba(0,0,0,0.30) 0 7%,
+          transparent 7% 16.667%),
+        /* The last band is the groove where this chip meets the one below.
+           Without it the notches run uninterrupted from the face to the base
+           and the stack reads as a barber pole — in the reference they are cut
+           every 47px by exactly this line. */
         linear-gradient(180deg,
-          rgba(255,255,255,0.22) 0%,
-          rgba(255,255,255,0.05) 42%,
-          rgba(0,0,0,0.30) 100%);
-      background-size: 100% 44%, 100% 100%;
-      background-position: calc(var(--pip-shift, 0) * var(--disc-w)) 50%, 0 0;
+          rgba(255,255,255,0.16) 0%,
+          rgba(255,255,255,0.02) 45%,
+          rgba(0,0,0,0.30) 84%,
+          rgba(0,0,0,0.55) 100%);
+      background-position: calc(var(--pip-shift, 0) * var(--disc-w)) 0, 0 0;
       background-repeat: repeat-x, no-repeat;
-      border-top: 1px solid rgba(255,255,255,0.45);
-      border-bottom: 1px solid rgba(0,0,0,0.5);
-      box-shadow: 0 1px 1px rgba(0,0,0,0.3);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.35);
     }
-    /* A third of a disc showing is what a real stack shows. */
+    /* The top face, inset by the notch depth so the rim marks show around it
+       as a ring — the chip's most legible feature at the size these render.
+       EVERY chip carries one and only the top chip's is visible, because the
+       chip above covers all but the h of edge below it, which is what a stack
+       physically does. (No logo: the reference carries one and we have no mark
+       asset to put there.) */
+    .chip-disc::before,
+    .replayer-pot-chip-disc::before {
+      content: '';
+      position: absolute;
+      left: 8%; right: 8%;
+      /* The face ends exactly at the ellipse's front edge, so what shows
+         below it is h and nothing more. Stopping at 0.89 of the ellipse left
+         0.32 of the width as bare side where the reference shows 0.24, which
+         is what made the top chip look like a drum. */
+      top: calc(var(--chip-e) * 0.06);
+      height: calc(var(--chip-e) * 0.94);
+      border-radius: 50%;
+      background:
+        radial-gradient(ellipse at 50% 35%,
+          rgba(255,255,255,0.30), rgba(255,255,255,0.06) 60%, rgba(0,0,0,0.12) 100%),
+        var(--chip);
+      box-shadow: inset 0 0 0 max(1px, calc(var(--disc-w) * 0.03)) rgba(255,255,255,0.22);
+    }
+    /* One chip's edge showing. The element is E + h tall, so offsetting the
+       next by h means pulling it up by E. */
     .chip-disc:not(:first-child),
     .replayer-pot-chip-disc:not(:first-child) {
-      margin-top: calc(var(--disc-w) * -0.34);
+      margin-top: calc(var(--chip-e) * -1);
     }
     /* The pot's chips are the same chip, larger, and they scale with the
        table like everything else on it. */
