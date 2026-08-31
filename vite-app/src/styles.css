@@ -100,12 +100,26 @@
       --serif:     'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
       --radius:    12px;
       --radius-sm: 8px;
-      --tab-h:     30px;
+      /* The safe-area insets go through custom properties so the layout can be
+         MEASURED off a device. env() cannot be emulated in a desktop browser,
+         which is why a bottom-inset bug could only ever be seen on a phone and
+         had to be reasoned about instead of measured. Set --sa-b to 34px in
+         devtools and the whole bottom of the app lays out as it does on an
+         iPhone. The default keeps production behaviour identical. */
+      --sa-b:      env(safe-area-inset-bottom, 0px);
+      --sa-t:      env(safe-area-inset-top, 0px);
+      /* MEASURED, not chosen: a tab is a 20px icon, a --nudge-1 gap and a
+         --fs-2xs label, which needs 35px. At 30 the content overflowed its box
+         by exactly 5px (measured), and since the nav centres a taller child in
+         a shorter box the icons rode up against the top edge — 3px below it,
+         where the label below was being cut. 40 gives the 35 the content needs
+         plus symmetric breathing room. */
+      --tab-h:     40px;
       --header-h:  60px;
       /* Single source of truth for nav height — used by .bottom-nav for
          its own height AND by .replayer-bottom-fixed for `bottom` so the
          two positions can never drift relative to each other. */
-      --nav-h:     max(44px, calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)));
+      --nav-h:     max(44px, calc(var(--tab-h) + var(--sa-b)));
       /* Venue brand colors — muted for dark mode */
       --venue-wsop:          #a63030;
       --venue-wsop-cond:     #999;
@@ -1666,7 +1680,7 @@
       display: flex; flex-direction: column; overflow: hidden;
       flex: 1;
       /* Only pad top for safe area — bottom is handled inside .bottom-nav itself */
-      padding-top: env(safe-area-inset-top, 0px);
+      padding-top: var(--sa-t);
       /* Header gradient, painted HERE rather than on .top-bar so it starts at the true top of the
          screen: the shell's safe-area padding sits above the bar, and a gradient on the bar alone
          would leave a flat band across the notch. Height therefore spans inset + header, and
@@ -1674,7 +1688,7 @@
          the shell showing #root's --surface. */
       background:
         linear-gradient(to bottom, var(--surface2), var(--surface))
-        top / 100% calc(env(safe-area-inset-top, 0px) + var(--header-h)) no-repeat;
+        top / 100% calc(var(--sa-t) + var(--header-h)) no-repeat;
     }
 
     .top-bar {
@@ -2467,7 +2481,7 @@
     }
     .gto-sticky-footer {
       position: fixed;
-      bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+      bottom: calc(var(--tab-h) + var(--sa-b));
       left: 0;
       right: 0;
       z-index: 8;
@@ -3025,8 +3039,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
-               env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+      padding: var(--sa-t) env(safe-area-inset-right, 0px)
+               var(--sa-b) env(safe-area-inset-left, 0px);
       box-sizing: border-box;
     }
     /* Scoped to the ACTIVE tab panel. Tab panels stay mounted behind
@@ -4540,7 +4554,7 @@
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
       max-height:85vh; overflow-y:auto; overscroll-behavior: contain;
       padding: var(--space-xl) var(--space-xl)
-               calc(var(--space-4xl) + env(safe-area-inset-bottom, 0px));
+               calc(var(--space-4xl) + var(--sa-b));
       box-shadow: var(--elev-3);
       animation: settingsSlideUp 0.25s ease-out;
     }
@@ -5923,9 +5937,9 @@
        zone that starts at y=30. The iOS padding-top override existed only to
        compensate for that, and pushed them further down. */
     .bottom-nav {
-      height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+      height: calc(var(--tab-h) + var(--sa-b));
       min-height: 44px;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-bottom: var(--sa-b);
       /* Mirrors the header: deepest at the very bottom of the screen, settling to --surface where
          the content meets it. --nav-h already includes safe-area-inset-bottom, so unlike the
          header this one does reach the screen edge on its own. */
@@ -6020,8 +6034,8 @@
       min-height: 100dvh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      padding: max(var(--space-3xl), env(safe-area-inset-top, 0px)) var(--space-xl)
-               max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
+      padding: max(var(--space-3xl), var(--sa-t)) var(--space-xl)
+               max(var(--space-3xl), var(--sa-b));
       /* Something for the card to float over, echoing the app-shell header. */
       background: radial-gradient(120% 80% at 50% 0%, var(--surface2), var(--bg) 60%);
     }
@@ -7700,7 +7714,7 @@
          Mirror the nav's height formula exactly so Safari's max()
          parsing can't drop the safe-area term, then add a 22px gap
          (was 16px) and a final +6px hedge for iOS hairline rounding. */
-      bottom: calc(max(44px, calc(var(--tab-h) + env(safe-area-inset-bottom, 0px))) + 28px);
+      bottom: calc(max(44px, calc(var(--tab-h) + var(--sa-b))) + 28px);
       left: 50%;
       z-index: var(--z-fab);
       background: var(--accent);
@@ -9853,10 +9867,10 @@
        anchored to - and over-reported max-height by the same amount. */
     .notif-panel {
       position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + var(--header-h, 60px) + var(--space-xs));
+      top: calc(var(--sa-t) + var(--header-h, 60px) + var(--space-xs));
       right: max(var(--space-lg), env(safe-area-inset-right, 0px));
       width: min(360px, calc(100vw - 24px));
-      max-height: calc(100vh - env(safe-area-inset-top, 0px) - var(--header-h, 60px) - var(--nav-h) - var(--space-xl));
+      max-height: calc(100vh - var(--sa-t) - var(--header-h, 60px) - var(--nav-h) - var(--space-xl));
       overflow-y: auto;
       background: var(--surface);
       border: 1px solid var(--border);
