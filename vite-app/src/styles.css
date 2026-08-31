@@ -4141,7 +4141,13 @@
       background: linear-gradient(180deg, rgba(28,22,6,0.94), rgba(16,12,2,0.94));
       border: 1px solid rgba(234,179,8,0.55);
       border-radius: var(--radius-sm);
-      white-space: pre-line;
+      /* pre, not pre-line. Both honour the 
+ the JSX joins a hi-lo name with,
+         but pre-line ALSO wraps — so "7-6-5-4-2 low" broke across three lines
+         under the one plaque the winner shimmer is drawing the eye to. pre
+         gives exactly one line for a single hand and exactly two for a split,
+         which is the shape of the fact. */
+      white-space: pre;
       text-align: center;
       line-height: 1.3;
       padding: var(--space-2xs) var(--space-sm);
@@ -4150,7 +4156,14 @@
          here, so "Hi: Aces Up / Lo: 7-5-4-3-2" rendered as one 30-character
          strip across the felt at the exact moment the split is the result. */
       margin-top: var(--space-2xs);
+      /* Measured at showdown across every short name the engine emits: the
+         longest, "Two Pair, Kings & Nines", is 126px against this 130px cap on
+         a phone — four pixels of room. white-space: pre cannot wrap, so a
+         longer name would spill past its own background rather than reflow.
+         The ellipsis bounds that: still one line, just a truncated one. */
       max-width: min(150px, 34cqmin);
+      overflow: hidden;
+      text-overflow: ellipsis;
       box-shadow: var(--elev-1);
     }
     .replayer-seat.loser .replayer-seat-hand-name { color:#f87171; border-color:rgba(248,113,113,0.4); }
@@ -4163,10 +4176,13 @@
          off the bottom edge on its own and read as a stray blue tab — which
          is how it got reported. Above the plaque in the stacking order still:
          .replayer-seat-info carries z-index 1. */
+      /* Anchored to the corner, growing LEFTWARD: it holds one mark at the
+         first draw and a run like D2/D1/PAT by the third, so a square box was
+         only ever right for the first street. Right-anchored keeps the corner
+         the fixed point while the width changes under it. */
       position:absolute; top:0; right:0; left:auto;
-      transform: translate(38%, -38%);
+      transform: translate(22%, -42%);
       z-index: 2;
-      min-width: 1.6em; height: 1.6em;
       display:flex; align-items:center; justify-content:center;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
       color:#bfdbfe; background:rgba(30,58,138,0.92);
@@ -4180,8 +4196,8 @@
        and stays there — the same fault that moved the action badge and the
        winning hand name off centre. */
     @keyframes drawBadgePop {
-      0% { opacity:0; transform:translate(38%, -38%) scale(0.7); }
-      100% { opacity:1; transform:translate(38%, -38%) scale(1); }
+      0% { opacity:0; transform:translate(22%, -42%) scale(0.7); }
+      100% { opacity:1; transform:translate(22%, -42%) scale(1); }
     }
 
     /* Felt color picker & card theme */

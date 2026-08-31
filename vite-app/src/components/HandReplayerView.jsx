@@ -5974,12 +5974,22 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     The count alone at that size: "Drew 2" does not fit a
                     corner, and among seats showing 1, 2 and P the digit is
                     unambiguous. The full wording stays on the title. */}
-                {isDrawGame && currentStreet.draws?.length > 0 && (() => {
-                  const d = currentStreet.draws.find(dr => dr.player === pi);
-                  if (!d) return null;
+                {isDrawGame && (() => {
+                  /* Every draw so far, not just this street's: D2, then D2/D1,
+                     then D2/D1/PAT. A draw game is a sequence of decisions and
+                     only the sequence is readable — "D1" alone cannot tell you
+                     whether someone has been drawing one all the way down or
+                     has just broken a pat hand. getPlayerDrawsByStreet is keyed
+                     by street index, so the slice up to the current street is
+                     the history at this point in the replay. */
+                  const byStreet = getPlayerDrawsByStreet(hand, pi);
+                  const history = Object.keys(byStreet)
+                    .map(Number).filter(si => si <= streetIdx).sort((a, b) => a - b)
+                    .map(si => byStreet[si].discarded === 0 ? 'PAT' : 'D' + byStreet[si].discarded);
+                  if (!history.length) return null;
                   return <div className="replayer-seat-draw-badge"
-                    title={d.discarded === 0 ? 'Stand pat' : 'Drew ' + d.discarded}>
-                    {d.discarded === 0 ? 'P' : d.discarded}</div>;
+                    title={history.map(h => h === 'PAT' ? 'stood pat' : 'drew ' + h.slice(1)).join(', then ')}>
+                    {history.join('/')}</div>;
                 })()}
               </div>
               {inspecting === pi && (
