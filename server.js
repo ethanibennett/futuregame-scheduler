@@ -11619,7 +11619,7 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, ex
     sendPushToAdmin(
       'Schedule Uploaded',
       `${uploaderName} imported ${inserted} new + ${updated} updated events for ${venue}`,
-      '/'
+      `/?find=${encodeURIComponent(venue)}`
     ).catch(() => {});
 
     // Auto-sync to production in background
@@ -11748,7 +11748,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
     broadcastToAll('schedule-refetch', { source: 'tournaments-sync', inserted, updated });
   }
   if (inserted > 0) {
-    sendPushToAdmin('Events Synced', `${inserted} new events added via sync`).catch(() => {});
+    sendPushToAdmin('Events Synced', `${inserted} new events added via sync`, '/?view=calendar').catch(() => {});
   }
   return { inserted, updated, skipped };
 }

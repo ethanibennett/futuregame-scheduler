@@ -63,6 +63,10 @@ const HAND_SHORTHAND = HAND_MATCH ? decodeURIComponent(HAND_MATCH[1]) : null;
 // with this query applied (web push opens the URL; the native tap listener parses the same form).
 const FIND_MATCH = window.location.search.match(/[?&]find=([^&]*)/);
 const FIND_PARAM = FIND_MATCH ? decodeURIComponent(FIND_MATCH[1].replace(/\+/g, ' ')) : null;
+// /?view=calendar — a notification that concerns many events (feed sync) opens the calendar
+// without a search. Only 'calendar' is honored; anything else falls through to the default view.
+const VIEW_MATCH = window.location.search.match(/[?&]view=([a-z]+)/);
+const VIEW_PARAM = VIEW_MATCH ? VIEW_MATCH[1] : null;
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
@@ -1150,10 +1154,12 @@ export default function App() {
   }, [setCurrentView]);
 
   useEffect(() => {
-    if (FIND_PARAM == null || !token) return;
-    applyFindLink(FIND_PARAM);
+    if (!token) return;
+    if (FIND_PARAM != null) applyFindLink(FIND_PARAM);
+    else if (VIEW_PARAM === 'calendar') setCurrentView('calendar');
+    else return;
     if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname);
-  }, [token, applyFindLink]);
+  }, [token, applyFindLink, setCurrentView]);
 
   const nativePermState = (p) =>
     p.receive === 'granted' ? 'granted' : (p.receive === 'denied' ? 'denied' : 'default');
@@ -1227,8 +1233,10 @@ export default function App() {
             tapListenerArmed.current = true;
             PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
               const url = a && a.notification && a.notification.data && a.notification.data.url;
-              const m = typeof url === 'string' && url.match(/[?&]find=([^&]*)/);
+              if (typeof url !== 'string') return;
+              const m = url.match(/[?&]find=([^&]*)/);
               if (m) applyFindLink(decodeURIComponent(m[1].replace(/\+/g, ' ')));
+              else if (/[?&]view=calendar/.test(url)) setCurrentView('calendar');
             });
           }
           const state = nativePermState(await PushNotifications.checkPermissions());
