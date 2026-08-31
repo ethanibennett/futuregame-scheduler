@@ -625,7 +625,10 @@
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       letter-spacing: var(--track-tight);
-      margin-top: var(--space-2xs);
+      /* The guarantee sits directly under the buy-in and was 2px off it, which
+         read as one crowded block rather than a figure and its qualifier. One
+         step, and it only ever costs height on rows that carry a guarantee. */
+      margin-top: var(--space-xs);
     }
 
     /* Event number and game variants were grey pills, distinguishable from
@@ -7471,7 +7474,15 @@
       display: flex;
       flex-direction: column;
       gap: var(--space-xs);
-      padding: var(--space-ml) var(--space-lg);
+      /* One step up the scale for the vertical padding, 10 -> 12. Measured on
+         the feed: a row WITHOUT a guarantee is 40px of content, and 40 + 24 of
+         padding is exactly the 64px min-height below — so the extra padding is
+         absorbed there and those rows do not grow at all. A row WITH a
+         guarantee is 49px of content, which had already pushed past the
+         min-height and left the 10px padding as the only breathing room
+         (measured free space: zero). The cost of this lands entirely on the
+         rows that needed it. Horizontal padding is unchanged. */
+      padding: var(--space-lg);
       cursor: pointer;
       position: relative;
       user-select: none;
