@@ -132,7 +132,8 @@ the token is wrong or missing, and the roster pull is silently dead too.
 pages would keep rendering the frozen cutover roster and look entirely healthy.
 That is the same failure class that cost the dashboard 16 days of sleep data
 (`OURA_*` undeclared in its blueprint) and left its APNs alert seam inert for two
-weeks (`APNS_*`, still unset today). Three instances, one shape: an env var that is
+weeks (`APNS_*` — set 2026-08-31, after two weeks of silent 503s; a device still has
+to register before anything can be delivered). Three instances, one shape: an env var that is
 read but never declared, and a code path that treats absent as "off" rather than
 "broken".
 
