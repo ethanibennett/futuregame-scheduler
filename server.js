@@ -9664,7 +9664,11 @@ function backerRecordByToken(token) {
 // the MTT- prefix keeps these ids disjoint from the migration-era legacy ids.
 function feedStableId(t) {
   if (!t.event_number) return null;
-  const v = String(t.venue || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12).toUpperCase();
+  // 48, not 12: every "2026-27 WSOPC <stop>-<season>" series shares its first 12 alphanumerics
+  // (202627WSOPCT covers both Tulsa and Tunica), so the shorter slice made two series' rows
+  // collide on stable_id and the ingest died on the INSERT. Existing rows keep their old-format
+  // ids — the ingest only sets stable_id via COALESCE — so widening this only affects new rows.
+  const v = String(t.venue || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 48).toUpperCase();
   return `MTT-${v}-${t.event_number}`;
 }
 
@@ -9806,7 +9810,7 @@ async function ingestMttFeed() {
     const manifestPath = path.join(__dirname, 'mtt-feed', 'manifest.json');
     if (!fs.existsSync(manifestPath)) return;
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    let upserts = 0, inserts = 0, pruned = 0;
+    let upserts = 0, inserts = 0, pruned = 0, rowFailures = 0;
     // Prune feed-managed rows (source_pdf='mtt-feed') for series no longer in the manifest — i.e.
     // series that ended or dropped out of the watcher's forward window. Keeps the schedule in sync
     // with the feed (add/update/remove) without touching non-feed tournaments.
@@ -9817,6 +9821,7 @@ async function ingestMttFeed() {
       if (!fs.existsSync(filePath)) continue;
       const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       for (const t of rows) {
+        try {
         // COALESCE: backfill stable_id on rows that predate feedStableId without ever
         // overwriting a legacy id production may already key on.
         db.run(
@@ -9857,8 +9862,15 @@ async function ingestMttFeed() {
            t.structure_sheet_path || null, t.property || null]
         );
         inserts++;
+        } catch (rowErr) {
+          // One row must not cost the other five thousand: the 12-char stable_id collision
+          // aborted every hourly ingest from the first bad row onward (2026-08-31).
+          rowFailures++;
+          if (rowFailures <= 3) console.error(`[MTT feed] row failed (${t.venue} #${t.event_number}): ${rowErr.message}`);
+        }
       }
     }
+    if (rowFailures > 3) console.error(`[MTT feed] ${rowFailures} row(s) failed total`);
     if (upserts + inserts + pruned > 0) {
       // Overrides go on AFTER the upsert, which is the whole point: the upsert has just
       // overwritten every field the feed owns, including any admin correction.
