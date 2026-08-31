@@ -306,15 +306,15 @@ export function evaluateShowdown(gameType, playerHands, boardCards) {
       var hWin = vHi.filter(function(e) { return e.hi.score === bHi; });
       var vLo = evals.filter(function(e) { return e.lo && e.lo.qualified; });
       if (vLo.length === 0) {
-        return hWin.map(function(e) { return { playerIdx: e.idx, split: hWin.length > 1 }; });
+        return hWin.map(function(e) { return { playerIdx: e.idx, split: hWin.length > 1, hi: true, lo: false }; });
       }
-      hWin.forEach(function(e) { winners.push({ playerIdx: e.idx, split: true }); });
+      hWin.forEach(function(e) { winners.push({ playerIdx: e.idx, split: true, hi: true, lo: false }); });
       var bLo = Math.min.apply(null, vLo.map(function(e) { return e.lo.score; }));
       var lWin = vLo.filter(function(e) { return e.lo.score === bLo; });
       lWin.forEach(function(e) {
-        if (!winners.some(function(w) { return w.playerIdx === e.idx; })) {
-          winners.push({ playerIdx: e.idx, split: true });
-        }
+        var already = winners.filter(function(w) { return w.playerIdx === e.idx; })[0];
+        if (already) already.lo = true;
+        else winners.push({ playerIdx: e.idx, split: true, hi: false, lo: true });
       });
       if (winners.length === 1) winners[0].split = false;
     }
@@ -328,15 +328,15 @@ export function evaluateShowdown(gameType, playerHands, boardCards) {
     if (vBad2.length) {
       var bBad2 = Math.min.apply(null, vBad2.map(function(e) { return e.bad.score; }));
       vBad2.filter(function(e) { return e.bad.score === bBad2; }).forEach(function(e) {
-        sbWinners.push({ playerIdx: e.idx, split: true });
+        sbWinners.push({ playerIdx: e.idx, split: true, hi: true, lo: false });
       });
     }
     if (vLo2.length) {
       var bLo2 = Math.min.apply(null, vLo2.map(function(e) { return e.lo.score; }));
       vLo2.filter(function(e) { return e.lo.score === bLo2; }).forEach(function(e) {
-        if (!sbWinners.some(function(w) { return w.playerIdx === e.idx; })) {
-          sbWinners.push({ playerIdx: e.idx, split: true });
-        }
+        var already2 = sbWinners.filter(function(w) { return w.playerIdx === e.idx; })[0];
+        if (already2) already2.lo = true;
+        else sbWinners.push({ playerIdx: e.idx, split: true, hi: false, lo: true });
       });
     }
     if (sbWinners.length === 1) sbWinners[0].split = false;
@@ -344,6 +344,136 @@ export function evaluateShowdown(gameType, playerHands, boardCards) {
   }
 
   return [];
+}
+
+/* ── Awarding the pot ──────────────────────────────────────────────────────
+   A hi-lo pot is not divided by the NUMBER of winners, it is divided into
+   halves and each half is divided among the players tied for it. Those are
+   different numbers the moment one player wins a half outright and ties the
+   other: he takes a half plus a quarter, and his opponent is quartered. Three
+   split winners of a $600 pot are not $200 each — they are $300/$150/$150 when
+   two tie the low, or $300 and $100/$100/$100 when three do.
+
+   Conventions used here, both the standard house rules:
+   - The odd chip left by halving an unequal pot goes to the HIGH half.
+   - Odd chips left inside a half go one at a time to the tied players in
+     `options.order` — the seats clockwise from the button, so the first player
+     left of the button is paid first. With no order given (stud, or a hand
+     with no button recorded) the seats are paid in ascending seat number.
+   Nothing is rounded away: every chip in a layer is handed to somebody, and a
+   layer no winner is eligible for is reported as `unassigned` rather than
+   silently vanishing. */
+
+/* Seats clockwise from the button — the odd-chip payment order. */
+export function seatOrderFromButton(numPlayers, buttonIdx) {
+  var order = [];
+  for (var i = 0; i < numPlayers; i++) {
+    order.push(buttonIdx == null || buttonIdx < 0 ? i : (buttonIdx + 1 + i) % numPlayers);
+  }
+  return order;
+}
+
+function orderedPlayers(players, order) {
+  var rank = function(p) {
+    var i = (order || []).indexOf(p);
+    return i < 0 ? (order || []).length + p : i;
+  };
+  return players.slice().sort(function(a, b) { return rank(a) - rank(b); });
+}
+
+/* One half (or a whole scooped layer) split among the players tied for it. */
+function shareHalf(amount, players, order, awards) {
+  if (amount <= 0 || !players.length) return 0;
+  var seq = orderedPlayers(players, order);
+  var base = Math.floor(amount / seq.length);
+  var odd = amount - base * seq.length;
+  seq.forEach(function(p, i) {
+    awards[p] = (awards[p] || 0) + base + (i < odd ? 1 : 0);
+  });
+  return amount;
+}
+
+/* Who wins each half among a given set of players (one pot layer's eligible
+   seats). `evals` maps seat -> { hi: score|null, lo: score|null }, lo already
+   filtered to qualifying lows. Highs are best-high (max), lows best-low (min). */
+export function hiLoWinnersAmong(evals, players) {
+  var hiWinners = [], loWinners = [];
+  var bestHi = null, bestLo = null;
+  players.forEach(function(p) {
+    var e = evals[p];
+    if (!e) return;
+    if (e.hi != null && (bestHi == null || e.hi > bestHi)) bestHi = e.hi;
+    if (e.lo != null && (bestLo == null || e.lo < bestLo)) bestLo = e.lo;
+  });
+  players.forEach(function(p) {
+    var e = evals[p];
+    if (!e) return;
+    if (bestHi != null && e.hi === bestHi) hiWinners.push(p);
+    if (bestLo != null && e.lo === bestLo) loWinners.push(p);
+  });
+  return { hiWinners: hiWinners, loWinners: loWinners };
+}
+
+/* Turn stored winner entries into per-layer half winners. Used when the cards
+   are not available to re-evaluate (mucked hands, hand-marked winners): the
+   `hi`/`lo` flags evaluateShowdown writes decide the halves, and entries with
+   no flags at all (a plain marked split, a high-only game) share the layer. */
+export function potLayerWinners(layers, winners) {
+  return (layers || []).map(function(layer) {
+    var players = layer.players || null;
+    var elig = (winners || []).filter(function(w) {
+      return !players || players.indexOf(w.playerIdx) >= 0;
+    });
+    var flagged = elig.filter(function(w) { return w.hi || w.lo; });
+    if (!flagged.length) {
+      return { amount: layer.amount, hiWinners: elig.map(function(w) { return w.playerIdx; }), loWinners: [] };
+    }
+    return {
+      amount: layer.amount,
+      hiWinners: flagged.filter(function(w) { return w.hi; }).map(function(w) { return w.playerIdx; }),
+      loWinners: flagged.filter(function(w) { return w.lo; }).map(function(w) { return w.playerIdx; }),
+    };
+  });
+}
+
+/* Pot layers are built from the wagers, and antes and posted blinds are not
+   wagers — so the layers can sum to LESS than the pot they came out of. That
+   shortfall is dead money, and dead money rides in the main pot. If the layers
+   cannot be reconciled (they over-count the pot, which means the caller's two
+   numbers disagree about the hand), the whole pot is settled as one layer:
+   less informative, but the only division that provably conserves chips. */
+export function reconcileLayersToPot(layers, pot, players) {
+  var total = (layers || []).reduce(function(s, l) { return s + (l.amount || 0); }, 0);
+  if (!layers || layers.length < 2 || total <= 0 || total > pot) {
+    return [{ amount: pot, players: players }];
+  }
+  return layers.map(function(l, i) {
+    return i === 0 ? Object.assign({}, l, { amount: l.amount + (pot - total) }) : Object.assign({}, l);
+  });
+}
+
+/* layers: [{ amount, hiWinners: [seat], loWinners: [seat] }] — main pot first,
+   each layer settled on its own because its eligible players differ.
+   options: { order: [seat] } odd-chip priority, see the note above. */
+export function computePotAwards(layers, options) {
+  var order = (options && options.order) || [];
+  var awards = {};
+  var unassigned = 0;
+  (layers || []).forEach(function(layer) {
+    var amount = Math.max(0, Math.round(layer.amount || 0));
+    if (!amount) return;
+    var hi = (layer.hiWinners || []).slice();
+    var lo = (layer.loWinners || []).slice();
+    if (!hi.length && !lo.length) { unassigned += amount; return; }
+    // No qualifying low (or nobody eligible for that half in this layer):
+    // the other half's winners scoop the layer.
+    if (!lo.length) { shareHalf(amount, hi, order, awards); return; }
+    if (!hi.length) { shareHalf(amount, lo, order, awards); return; }
+    var hiHalf = amount - Math.floor(amount / 2); // odd chip to the high hand
+    shareHalf(hiHalf, hi, order, awards);
+    shareHalf(amount - hiHalf, lo, order, awards);
+  });
+  return { awards: awards, unassigned: unassigned };
 }
 
 export function evaluateHand(game, heroCards, opponentCards, boardCards) {

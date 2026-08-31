@@ -23,6 +23,7 @@
     "solve": "cd solver/neural && python3 solve_spot.py",
     "solve:range": "cd solver/neural && .venv/bin/python solve_range.py",
     "query": "node solver/query.js",
+    "test:hilo": "node test/hilo-split-awards.mjs",
     "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js"
   },
   "keywords": [],

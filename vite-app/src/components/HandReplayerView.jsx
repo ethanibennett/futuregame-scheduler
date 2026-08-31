@@ -4,7 +4,9 @@ import Icon from './Icon.jsx';
 import { API_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic } from '../utils/utils.js';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
-         bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand } from '../utils/poker-engine.js';
+         bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
+         computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
+         seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES } from '../utils/hand-shorthand.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import { playTableSound } from '../utils/replay-sound.js';
@@ -4333,7 +4335,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      were the ones this table could not describe. Built from each player's
      total contribution: everyone matches the shortest stack into the main
      pot, the rest match the next, and so on. */
-  const potLayers = useMemo(() => {
+  /* Every layer, including the single-layer case — the award maths needs the
+     pot broken up whether or not the display has anything extra to show, and
+     it needs WHICH seats are eligible for each, not just how many, because a
+     layer is settled among its own contestants. */
+  const allPotLayers = useMemo(() => {
     const contrib = hand.players.map((_, pi) => {
       let total = 0;
       for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
@@ -4357,12 +4363,14 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     [...caps, Infinity].forEach(cap => {
       const eligible = live.filter(pi => contrib[pi] > floor && !folded.has(pi));
       const amount = live.reduce((sum, pi) => sum + Math.max(0, Math.min(contrib[pi], cap) - floor), 0);
-      if (amount > 0 && eligible.length) layers.push({ amount, eligible: eligible.length });
+      if (amount > 0 && eligible.length) layers.push({ amount, eligible: eligible.length, players: eligible });
       if (cap === Infinity) return;
       floor = cap;
     });
-    return layers.length > 1 ? layers : [];
+    return layers;
   }, [hand, streetIdx, actionIdx, allIn, folded]);
+  // The pot row only has something to say when the pot actually split.
+  const potLayers = useMemo(() => (allPotLayers.length > 1 ? allPotLayers : []), [allPotLayers]);
   /* 66: the pot counts toward its new value over the chips' flight. It snaps
      while scrubbing, because a rewind is not a payment. */
   const countedPot = useCountUp(displayPot, rSettings.animateChips && !rewinding);
@@ -4461,6 +4469,76 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     } catch { return null; }
   }, [rSettings.showEquity, showResult, runout, hand, heroCards, opponentCards, boardCards, gameCfg, gameEval, folded, replayHeroIdx]);
 
+  /* Which half (or halves) each stored winner took. Hands saved before the
+     evaluator recorded hi/lo flags only carry it in the label text, which is
+     where the split display and the hi-lo animation were already reading it
+     from — so the flags win where they exist and the label still answers for
+     everything already in the database. */
+  const flaggedWinners = useMemo(() => (hand.result?.winners || []).map(w => {
+    if (typeof w.hi === 'boolean' || typeof w.lo === 'boolean') return { ...w, hi: !!w.hi, lo: !!w.lo };
+    const label = w.label || '';
+    if (/Hi:/.test(label) || /Lo:/.test(label)) return { ...w, hi: /Hi:/.test(label), lo: /Lo:/.test(label) };
+    return { ...w, hi: false, lo: false };
+  }), [hand]);
+
+  /* What each winner is actually PAID.
+
+     94: the split display divided the pot by the NUMBER of split winners. A
+     hi-lo pot does not divide by winners, it divides into halves and each half
+     divides among the players tied for it — so one high winner and two tied
+     lows showed three equal thirds where the table pays a half and two
+     quarters. Getting quartered is the hi-lo event people save a hand to show,
+     and it was the one the replayer could not draw.
+
+     Each pot layer is settled on its own, because a side pot's high can belong
+     to a player the main pot's winner is not even up against. The cards decide
+     it where they are known and agree with the stored result; a hand-marked
+     winner, or a mucked one, falls back to the stored entries' Hi/Lo flags. */
+  const potAwards = useMemo(() => {
+    if (!showResult) return null;
+    const winners = flaggedWinners;
+    if (!winners.length) return null;
+    const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
+    const layers = reconcileLayersToPot(allPotLayers, pot, contesting);
+    const cfg = GAME_EVAL[hand.gameType];
+
+    // Score every shown hand, so each layer can be re-decided among its own players.
+    let evals = null;
+    if (cfg && cfg.type === 'hilo') {
+      const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+      const map = {};
+      let readable = true;
+      contesting.forEach(pi => {
+        const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+        const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
+        if (parsed.length < (gameCfg.isStud ? 5 : (gameCfg.heroCards || 2))) { readable = false; return; }
+        const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
+        const lo = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(parsed.concat(board), true);
+        map[pi] = { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
+      });
+      if (readable && Object.keys(map).length) {
+        // Only trust the cards if they say what the saved result says; a
+        // hand-marked winner must stay the winner.
+        const full = hiLoWinnersAmong(map, contesting);
+        const fromCards = {};
+        full.hiWinners.forEach(pi => { fromCards[pi] = { hi: true, lo: false }; });
+        full.loWinners.forEach(pi => { fromCards[pi] = { hi: !!fromCards[pi]?.hi, lo: true }; });
+        const agrees = winners.length === Object.keys(fromCards).length
+          && winners.every(w => fromCards[w.playerIdx]
+            && fromCards[w.playerIdx].hi === w.hi && fromCards[w.playerIdx].lo === w.lo);
+        if (agrees) evals = map;
+      }
+    }
+
+    const shaped = evals
+      ? layers.map(l => ({ amount: l.amount, ...hiLoWinnersAmong(evals, l.players || contesting) }))
+      : potLayerWinners(layers, winners);
+    const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'BTN/SB');
+    const { awards } = computePotAwards(shaped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
+    return awards;
+  }, [showResult, flaggedWinners, hand, allPotLayers, pot, folded, category, boardCards,
+      heroCards, opponentCards, replayHeroIdx, gameCfg]);
+
   /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
      nudged 8px up together, which communicates nothing — and the down-shifting
      .replayer-hilo-low existed in the stylesheet with no code path that could
@@ -4469,14 +4547,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const hiloSide = useMemo(() => {
     const out = {};
     if (!isHiLo || !showResult) return out;
-    (hand.result?.winners || []).forEach(w => {
-      const label = w.label || '';
-      const hi = /Hi:/.test(label), lo = /Lo:/.test(label);
+    flaggedWinners.forEach(w => {
       // A scoop wins both halves, so it rises with the highs.
-      out[w.playerIdx] = (hi || !lo) ? 'high' : 'low';
+      out[w.playerIdx] = (w.hi || !w.lo) ? 'high' : 'low';
     });
     return out;
-  }, [isHiLo, showResult, hand]);
+  }, [isHiLo, showResult, flaggedWinners]);
 
   // Navigation
   const canGoForward = streetIdx < totalStreets - 1 || actionIdx < currentActions.length - 1 || !showResult;
@@ -5329,7 +5405,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       const winners = hand.result?.winners || [];
       winners.forEach(w => {
         const seat = seats[w.playerIdx];
-        if (seat) spawnFlyingChips([50, 37], seat, 5, true, pot);
+        // The denominations should be the ones this seat is actually paid —
+        // a quartered player is not shipped the whole pot.
+        const amt = (potAwards && potAwards[w.playerIdx]) || pot;
+        if (seat) spawnFlyingChips([50, 37], seat, 5, true, amt);
       });
       if (winners.length) {
         setAnimPotCollect(true);
@@ -5360,7 +5439,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       markPotLanding();
       playTableSound('chips', rSettingsRef.current);
     }
-  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, spawnFlyingChips, folded, markPotLanding]);
+  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, potAwards, spawnFlyingChips, folded, markPotLanding]);
 
 
   /* The light sits at the felt's specular pool. A shadow points away from it,
@@ -5453,23 +5532,24 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
         {/* Pot */}
         {(() => {
-          const isSplitResult = showResult && hand.result?.winners?.some(w => w.split);
-          const splitCount = isSplitResult ? hand.result.winners.filter(w => w.split).length : 0;
+          const splitters = showResult ? flaggedWinners.filter(w => w.split) : [];
+          const isSplitResult = splitters.length > 0;
+          const splitCount = splitters.length;
           if (isSplitResult && splitCount >= 2) {
-            const splitAmt = Math.floor(pot / splitCount);
-            const _isHiLo = isHiLo && hand.result.winners.some(w => w.label);
+            const evenAmt = Math.floor(pot / splitCount);
+            const _isHiLo = isHiLo && flaggedWinners.some(w => w.hi || w.lo);
             return (
               <div className="replayer-pot-display replayer-split-pot">
                 <div className="replayer-pot-label">{_isHiLo ? 'Hi/Lo Split' : 'Split Pot'}</div>
                 <div className="replayer-split-circles">
-                  {hand.result.winners.filter(w => w.split).slice(0, 3).map((w, i) => {
+                  {splitters.slice(0, 3).map((w, i) => {
+                    /* The disc shows what this player is PAID, which is only
+                       an even share when the halves happen to divide that way.
+                       A quartered opponent's disc reads a quarter. */
+                    const splitAmt = potAwards && potAwards[w.playerIdx] != null ? potAwards[w.playerIdx] : evenAmt;
                     let shortLabel = '';
-                    if (w.label) {
-                      const hiMatch = w.label.match(/Hi:\s*([^,]+)/);
-                      const loMatch = w.label.match(/Lo:\s*(.+)/);
-                      if (hiMatch) shortLabel = 'Hi';
-                      if (loMatch) shortLabel = shortLabel ? 'Hi+Lo' : 'Lo';
-                    }
+                    if (w.hi) shortLabel = 'Hi';
+                    if (w.lo) shortLabel = shortLabel ? 'Hi+Lo' : 'Lo';
                     /* 30: this crammed a 7.2px Hi/Lo tag above the amount
                        inside the disc and overlapped the discs by an inline
                        -8px, which clipped every gold ring after the first —
