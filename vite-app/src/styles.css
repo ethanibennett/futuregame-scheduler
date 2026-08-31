@@ -3126,7 +3126,15 @@
          1.40, which is why the felt read wrong AND why the seats sat well
          inside it: the ring is at its outermost, so growing the cloth is what
          moves the seats toward its edge. */
-      --felt-y: 5.8%;
+      /* One cell shorter at the top and one at the bottom. A cell is 1/16 of
+         the table height, 6.25%, so the inset goes 5.8 + 6.25 = 12.05%.
+
+         Only what is DRAWN moves. The seats and the pot are positioned against
+         the table BOX rather than the cloth, and cqmin resolves against the box
+         too, so nothing changes position or size — the cushion just comes in
+         to meet them. Shrinking the box instead would have rescaled every
+         cqmin on the table. */
+      --felt-y: 12.05%;
       --felt-x: 4.6%;
       /* Polish 16 made this deliberately wider than the frame so the rail ran
          off both edges — a cropped table reads as a camera pointed at one,
