@@ -5138,15 +5138,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const per = 2 * straight + 2 * arc;
     const at = (d) => {
       let k = ((d % per) + per) % per;
-      if (k < straight / 2) return [xL + straight / 2 + k, RING.t];       // top, centre -> right
+      if (k < straight / 2) return [xL + straight / 2 + k, RING.t, 'top'];   // top, centre -> right
       k -= straight / 2;
-      if (k < arc) { const a = -Math.PI / 2 + k / rad; return [xR + rad * Math.cos(a), cy + rad * Math.sin(a)]; }
+      if (k < arc) { const a = -Math.PI / 2 + k / rad; return [xR + rad * Math.cos(a), cy + rad * Math.sin(a), 'arc']; }
       k -= arc;
-      if (k < straight) return [xR - k, RING.b];                          // bottom, right -> left
+      if (k < straight) return [xR - k, RING.b, 'bottom'];                   // bottom, right -> left
       k -= straight;
-      if (k < arc) { const a = Math.PI / 2 + k / rad; return [xL + rad * Math.cos(a), cy + rad * Math.sin(a)]; }
+      if (k < arc) { const a = Math.PI / 2 + k / rad; return [xL + rad * Math.cos(a), cy + rad * Math.sin(a), 'arc']; }
       k -= arc;
-      return [xL + k, RING.t];                                            // top, left -> centre
+      return [xL + k, RING.t, 'top'];                                        // top, left -> centre
     };
     /* The top run sits one cell above the ring's own top edge. Those seats
        have the whole cushion above them and no neighbour behind, so the lift
@@ -5155,10 +5155,28 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        is the centre one at RING.t and the two just onto the arc at RING.t+0.34
        — and to nothing else, so the side and bottom seats do not move. */
     const TOP_LIFT = 1;
+    /* The four corner seats sit one cell further from the centre line and one
+       cell nearer it vertically — the upper pair down, the lower pair up.
+       Corners are the seats on the ARCS, which is where the ring turns, and
+       that is why at() reports its segment: no row threshold separates them,
+       since the two upper corners fall within half a cell of the top straight
+       and are lifted with it.
+
+       A seat within half a cell of the ring's left or right extreme is left
+       alone. It is already as far out as the cloth goes, and at 9 and 10-max
+       there is one on each side. */
+    const CORNER_OUT = 1, CORNER_IN = 1;
+    const cxRing = (RING.l + RING.r) / 2;
     return Array.from({ length: count }, (_, i) => {
-      const [c, r] = at(per * i / count);
-      const y = r <= RING.t + 0.5 ? r - TOP_LIFT : r;
-      return [+(c * 100 / LGX).toFixed(3), +(y * 100 / LGY).toFixed(3)];
+      const [c, r, seg] = at(per * i / count);
+      let x = c;
+      let y = r <= RING.t + 0.5 ? r - TOP_LIFT : r;
+      const atExtreme = Math.abs(c - RING.l) < 0.5 || Math.abs(c - RING.r) < 0.5;
+      if (seg === 'arc' && !atExtreme) {
+        x = c + (c < cxRing ? -CORNER_OUT : CORNER_OUT);
+        y = y + (r < cy ? CORNER_IN : -CORNER_IN);
+      }
+      return [+(x * 100 / LGX).toFixed(3), +(y * 100 / LGY).toFixed(3)];
     });
   };
 
