@@ -1118,41 +1118,47 @@ export default function App() {
   }, [token, tournaments.length, dataLoaded]);
 
   // ── Push notifications (admin only) ──
-  useEffect(() => {
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) return;
-    if (!token || isGuest || !['ham', 'ham5', 'claude'].includes((username || '').toLowerCase())) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  // Permission is requested from a TAP (the bell panel's enable button), never from page load:
+  // iOS silently drops a load-time Notification.requestPermission(), which left every iPhone
+  // unsubscribed while desktops worked. On load we only renew an existing/granted subscription.
+  const pushSupported =
+    !(window.Capacitor && window.Capacitor.isNativePlatform()) &&
+    'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isPushAdmin = !!token && !isGuest && ['ham', 'ham5', 'claude'].includes((username || '').toLowerCase());
+  const [pushPerm, setPushPerm] = useState(pushSupported ? Notification.permission : 'denied');
 
-    (async () => {
-      try {
-        const reg = await navigator.serviceWorker.register('/sw.js');
-        await navigator.serviceWorker.ready;
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          await fetch(`${API_URL}/push-subscribe`, {
-            method: 'POST',
-            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subscription: existing })
-          });
-          return;
-        }
+  const subscribeToPush = useCallback(async () => {
+    if (!pushSupported) return;
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
         const permission = await Notification.requestPermission();
+        setPushPerm(permission);
         if (permission !== 'granted') return;
         const keyRes = await fetch(`${API_URL}/push/vapid-key`);
         const { key } = await keyRes.json();
         if (!key) return;
-        const sub = await reg.pushManager.subscribe({
+        sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: key
         });
-        await fetch(`${API_URL}/push-subscribe`, {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscription: sub })
-        });
-      } catch (err) { /* Push setup failed silently */ }
-    })();
-  }, [token, username, isGuest]);
+      }
+      setPushPerm(Notification.permission);
+      await fetch(`${API_URL}/push-subscribe`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub })
+      });
+    } catch (err) { /* Push setup failed silently */ }
+  }, [pushSupported, token]);
+
+  useEffect(() => {
+    if (!isPushAdmin || !pushSupported) return;
+    if (Notification.permission !== 'granted') return; // first-time enable comes from the bell panel tap
+    void subscribeToPush();
+  }, [isPushAdmin, pushSupported, subscribeToPush]);
 
   // isAdmin is a STAGED-ROLLOUT flag, not an authorisation one. It gates the Hands tab, the
   // solver/replayer panel and StakingView — none of whose endpoints are admin-gated server side —
@@ -1316,6 +1322,7 @@ export default function App() {
           fetchNotifications={fetchNotifications}
           fetchShareBuddies={fetchShareBuddies}
           fetchMyGroups={fetchMyGroups}
+          onEnablePush={isPushAdmin && pushSupported && pushPerm === 'default' ? subscribeToPush : null}
         />
       )}
 

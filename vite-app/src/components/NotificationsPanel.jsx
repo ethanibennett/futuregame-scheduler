@@ -5,7 +5,7 @@ import Avatar from './Avatar.jsx';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
-export default function NotificationsPanel({ notifications, token, onClose, fetchNotifications, fetchShareBuddies, fetchMyGroups }) {
+export default function NotificationsPanel({ notifications, token, onClose, fetchNotifications, fetchShareBuddies, fetchMyGroups, onEnablePush }) {
   const displayName = useDisplayName();
   const { groupInvites = [], buddyRequests = [], acceptedBuddies = [], swapSuggestions = [] } = notifications || {};
   const isEmpty = groupInvites.length === 0 && buddyRequests.length === 0 && acceptedBuddies.length === 0 && swapSuggestions.length === 0;
@@ -96,6 +96,15 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
             style={{ padding: '2px 6px', fontSize: '1.1rem', lineHeight: 1 }}
           >{'\u00D7'}</button>
         </div>
+        {onEnablePush && (
+          // Push permission must be requested from a tap — iOS drops a load-time request — so
+          // this button, rendered only while permission is still undecided, IS the request path.
+          <div className="notif-section" style={{ padding: '10px 12px' }}>
+            <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={onEnablePush}>
+              Enable push notifications on this device
+            </button>
+          </div>
+        )}
         {isEmpty ? (
           <div className="notif-empty">
             <div style={{ width: 20, height: 20, margin: '0 auto 8px', color: 'var(--text-muted)' }}>
