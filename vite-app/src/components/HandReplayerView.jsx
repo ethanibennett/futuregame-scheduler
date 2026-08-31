@@ -5192,9 +5192,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      from the top so index 3 is the bottom centre, where the hero sits. */
   /* 6-max takes the same two adjustments the walk does, so the two layouts
      agree: the top-run seat is lifted one cell, and the four corner seats move
-     one cell further from the centre line and one cell nearer it vertically.
-     The bottom-centre seat is on the bottom straight and does not move, which
-     is the walk's rule too.
+     one cell nearer the horizontal centre line vertically. The bottom-centre
+     seat is on the bottom straight and does not move, which is the walk's rule
+     too.
+
+     Horizontally these four are the table's LEFT and RIGHT players, and they
+     come in. The walk's one-cell push outward put them at 3.48% and 96.57%,
+     overhanging the rail — three cells back in from there is two cells inside
+     the reference figure, which is the -2 below. The walk itself is not
+     changed: its left and right players are the middle side seats at 10.3% and
+     89.7%, and three cells in would land them at 21.0% and 79.0%, the same
+     column as its corners at 21.4% and 78.6%, stacking three seats in a
+     line.
 
      The reference figures stay written out beside each seat. They are what the
      positions were measured from, and the adjustment is deliberate movement
@@ -5202,12 +5211,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      at a glance which is which. */
   const CELL_X = 100 / LGX, CELL_Y = 100 / LGY;
   const LANDSCAPE_6 = [
-    [50.0,          20.8 - CELL_Y],   // top centre        ref 50, 17
-    [93.0 + CELL_X, 35.0 + CELL_Y],   // upper right       ref 97.4, 33
-    [91.4 + CELL_X, 87.1 - CELL_Y],   // lower right       ref 95, 92
-    [50.0,          97.7],            // bottom centre     ref 50, 104
-    [9.3 - CELL_X,  87.1 - CELL_Y],   // lower left        ref 5.2, 92
-    [7.05 - CELL_X, 35.0 + CELL_Y],   // upper left        ref 2.7, 33
+    [50.0,            20.8 - CELL_Y],   // top centre        ref 50, 17
+    [93.0 - 2*CELL_X, 35.0 + CELL_Y],   // upper right       ref 97.4, 33
+    [91.4 - 2*CELL_X, 87.1 - CELL_Y],   // lower right       ref 95, 92
+    [50.0,            97.7],            // bottom centre     ref 50, 104
+    [9.3 + 2*CELL_X,  87.1 - CELL_Y],   // lower left        ref 5.2, 92
+    [7.05 + 2*CELL_X, 35.0 + CELL_Y],   // upper left        ref 2.7, 33
   ];
 
   /* Snap to the grid. A seat is CENTRED on its point rather than aligned to a
