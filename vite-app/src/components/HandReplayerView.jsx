@@ -5190,13 +5190,24 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      Its six plaque centres, in felt percentages, converted through this
      table's felt inset (4.6% x, 5.8% y) to grid columns and rows. Clockwise
      from the top so index 3 is the bottom centre, where the hero sits. */
+  /* 6-max takes the same two adjustments the walk does, so the two layouts
+     agree: the top-run seat is lifted one cell, and the four corner seats move
+     one cell further from the centre line and one cell nearer it vertically.
+     The bottom-centre seat is on the bottom straight and does not move, which
+     is the walk's rule too.
+
+     The reference figures stay written out beside each seat. They are what the
+     positions were measured from, and the adjustment is deliberate movement
+     away from them rather than a correction to them — worth being able to see
+     at a glance which is which. */
+  const CELL_X = 100 / LGX, CELL_Y = 100 / LGY;
   const LANDSCAPE_6 = [
-    [50.0, 20.8],   // top centre        ref 50, 17
-    [93.0, 35.0],   // upper right       ref 97.4, 33
-    [91.4, 87.1],   // lower right       ref 95, 92
-    [50.0, 97.7],   // bottom centre     ref 50, 104
-    [9.3, 87.1],    // lower left        ref 5.2, 92
-    [7.05, 35.0],   // upper left        ref 2.7, 33
+    [50.0,          20.8 - CELL_Y],   // top centre        ref 50, 17
+    [93.0 + CELL_X, 35.0 + CELL_Y],   // upper right       ref 97.4, 33
+    [91.4 + CELL_X, 87.1 - CELL_Y],   // lower right       ref 95, 92
+    [50.0,          97.7],            // bottom centre     ref 50, 104
+    [9.3 - CELL_X,  87.1 - CELL_Y],   // lower left        ref 5.2, 92
+    [7.05 - CELL_X, 35.0 + CELL_Y],   // upper left        ref 2.7, 33
   ];
 
   /* Snap to the grid. A seat is CENTRED on its point rather than aligned to a
