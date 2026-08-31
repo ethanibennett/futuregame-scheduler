@@ -3114,6 +3114,10 @@
     }
     .replayer-landscape .replayer-seat.is-hero { --card-h: clamp(20px, 13cqmin, 164px); }
     .replayer-landscape .replayer-table-slot { align-items: center; }
+    /* Measured off the reference: its pot row's centre sits at 35.6% of the
+       table height (pill band y 373..411 of a table spanning 128..869).
+       Landscape only — portrait's pot is on the 16x32 grid at row 13. */
+    .replayer-landscape .replayer-pot-display { top: 35.6%; }
     /* --radius-pill on a 1.6:1 box is an ellipse, which is why this read as an
        oval where the reference reads as a table. Measured off the reference,
        its corner radius is about 15% of its height — long straight runs along
@@ -3618,6 +3622,18 @@
       white-space: nowrap;
     }
     .replayer-pot-total { display: inline-flex; align-items: baseline; }
+    .replayer-pot-total, .replayer-pot-pill { position: relative; }
+    /* Portrait lifts the label back above the figure. Inline it adds its own
+       width plus the gap — about 30px on a 382px table, 15 a side — and that
+       is what reached the side seats' cards: 18px in at 402x874 and 375x667,
+       with the chips already moved out of the way. Landscape has the width for
+       an inline label and portrait does not, which is the same trade the chip
+       cell makes just above. */
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-cell-label {
+      position: absolute; left: 50%; bottom: calc(100% + 3px);
+      transform: translateX(-50%);
+      margin-right: 0;
+    }
     .replayer-pot-pill {
       display: inline-flex; align-items: baseline; justify-content: center;
       min-width: 15.2cqw;
@@ -5173,6 +5189,30 @@
       min-height: calc(var(--disc-w, 16px) * 1.1);
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column; align-items:center; }
+    /* A cell of the row, not a block above it. Above the row the stacks were
+       the pot's whole vertical footprint — they are what put the row 3.6% of
+       the table height below where `top` said, and what reached the top seat's
+       plaque once the row rose to the reference's 35.6%. In the row they add
+       no height at all: the total cell is 10.1% of the table and the stacks
+       are under 6%. Scoped to the pot so nothing else that draws chips
+       changes. */
+    .replayer-pot-display .replayer-pot-chips { margin: 0; }
+    /* Portrait keeps the stacks on their own line above the cells. A chip cell
+       costs 6.7% of the table's WIDTH, which a 382px-wide table does not have:
+       it pushed the row 18px into the side seats' cards at 402x874 and 24px at
+       375x667. Landscape has the width and needed the height; portrait is the
+       other way round, so there the stacks go back to their own line and the
+       row below them is unchanged. */
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-chips {
+      /* Out of flow entirely, not merely wrapped onto its own line. A WRAPPING
+         flex container still sizes to max-content as though nothing wrapped,
+         so the stacks and the row gap kept widening the pot by about 6px a
+         side even once they were on a line of their own. Out of flow the row
+         is one cell wide — the figure and its plaque, which is exactly what
+         the pot was before it became a row. */
+      position: absolute; left: 50%; bottom: calc(100% + 3px);
+      transform: translateX(-50%);
+    }
 
     /* Chip stacks are the most poker-specific graphic in the product and
        rendered as flat coloured ellipses - a stack of Tic Tacs. Edge spots are
