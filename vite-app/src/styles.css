@@ -3077,7 +3077,11 @@
          down each side that the reference has. The felt sits a cell outside
          the seat ring — columns 2.5..21.5, rows 2.5..13.5, so the cloth is at
          column 1.5 (6.25%) and row 1.5 (9.4%). */
-      aspect-ratio: 22 / 16;
+      /* Re-measured off the reference's outer edge (x 350..1650, y 85..905):
+         1300 x 820, an aspect of 1.59. Mine was 1.31 — my earlier reading of
+         1.37 came from misreading the bounds, and the proportion work since
+         was built on it. 24 x 15 is 1.6 and keeps the cells square. */
+      aspect-ratio: 24 / 15;
       /* Measured off the reference: its felt is inset 4.6% of the table's width
          and 5.8% of its height (410-350 of 1300; 75-20 of 950). These were
          6.8 and 9.4 — a smaller, squarer cloth, aspect 1.46 against their
@@ -3091,7 +3095,7 @@
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(80cqh, calc(80cqw / 1.375));
+      height: min(80cqh, calc(80cqw / 1.6));
       width: auto;
       max-width: none;
       margin: 0;
@@ -3104,6 +3108,23 @@
     }
     .replayer-landscape .replayer-seat.is-hero { --card-h: clamp(20px, 13cqmin, 164px); }
     .replayer-landscape .replayer-table-slot { align-items: center; }
+    /* --radius-pill on a 1.6:1 box is an ellipse, which is why this read as an
+       oval where the reference reads as a table. Measured off the reference,
+       its corner radius is about 15% of its height — long straight runs along
+       the top and bottom, and only the corners turning. cqmin is the shorter
+       axis, which in landscape is the height. */
+    .replayer-landscape .replayer-table {
+      /* Measured off the reference: its rail is 30px between the outer edge
+         (x 350..1650, y 85..905) and the felt (380..1620, 115..875) — 3.7% of
+         an 820-tall table, where ours was 5.6%. And its corner radius is about
+         21% of that height: the top run is straight from x 520 to 1480, so
+         only the corners turn. --radius-pill on a 1.6:1 box is an ellipse,
+         which is why this read as an oval where the reference reads as a
+         table. */
+      --rail-w: 3.7cqmin;
+      --felt-r: 21cqmin;
+      --rail-r: calc(21cqmin + var(--rail-w));
+    }
     /* The hero's fan sits higher up a shorter box in landscape; the block
        steps up two rows to stay out of it. */
     .replayer-landscape .replayer-table-info { top: 59.375%; }   /* row 19 */
@@ -3400,7 +3421,7 @@
     .replayer-table-rail {
       position: absolute;
       inset: calc(var(--felt-y) - var(--rail-w)) calc(var(--felt-x) - var(--rail-w));
-      border-radius: var(--radius-pill);
+      border-radius: var(--rail-r, var(--radius-pill));
       background:
         linear-gradient(155deg,
           rgba(255,255,255,0.30) 0%,
@@ -3426,7 +3447,10 @@
       content: '';
       position: absolute;
       inset: calc(var(--felt-y) - var(--rail-w)) calc(var(--felt-x) - var(--rail-w));
-      border-radius: var(--radius-pill);
+      /* The shadow traces the rail, so it takes the rail's curve — on the pill
+         curve it painted an ellipse outside the rounded corners and read as a
+         second, wider table behind the first. */
+      border-radius: var(--rail-r, var(--radius-pill));
       pointer-events: none;
       /* Non-inset box-shadow paints entirely outside the border box, so
          this needs no negative layer to stay behind the rail — and a negative
@@ -3444,7 +3468,7 @@
     .replayer-light-strip {
       position: absolute;
       inset: var(--felt-y) var(--felt-x);
-      border-radius: var(--radius-pill);
+      border-radius: var(--felt-r, var(--radius-pill));
       border: var(--bw-1) solid transparent;
       background:
         linear-gradient(180deg,
@@ -3467,7 +3491,7 @@
       position: absolute;
       inset: var(--felt-y) var(--felt-x);
       background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--felt-lit, #9478b4), var(--felt-shade, #2c2e50));
-      border-radius: var(--radius-pill);
+      border-radius: var(--felt-r, var(--radius-pill));
       border: 1px solid rgba(0,0,0,0.15);
       box-shadow:
         /* The cushion overhangs the cloth, so the boundary between them is a
