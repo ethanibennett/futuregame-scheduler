@@ -10,25 +10,25 @@ import {
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
   getMaxEntries, getVenueTzAbbr,
   estimateBlindLevel, formatChips,
-  convertAmount, formatCurrencyAmount, CURRENCY_CONFIG,
+  convertAmount, formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
-// ── Format event name: split "Name - Flight A" into two lines ──
+// ── Format event name: the stage of a multi-flight event goes underneath ──
+// splitEventStage is shared with CalendarEventRow and mirrors the server's
+// normaliser; the regex that used to live here required the token to be
+// dash-separated and last, which 259 of 1,000 stored titles are not.
 function formatEventName(name) {
-  if (!name) return name;
-  const match = name.match(/^(.+?)\s*-\s*(Flight\s+\w+|Day\s+\d+|Final(?:\s+Day)?|Round\s+\d+|Quarter-?Final|Semi-?Final)$/i);
-  if (match) {
-    return (
-      <>
-        {match[1].trim()}
-        <br />
-        <span style={{ fontSize: '0.78em', opacity: 0.7 }}>{match[2]}</span>
-      </>
-    );
-  }
-  return name;
+  const { base, stage } = splitEventStage(name);
+  if (!stage) return name;
+  return (
+    <>
+      {base}
+      <br />
+      <span style={{ fontSize: '0.78em', opacity: 0.7 }}>{stage}</span>
+    </>
+  );
 }
 
 // ── Countdown Clock (collapsed card) ──
