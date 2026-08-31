@@ -5,7 +5,9 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-08-24.
+Last updated: 2026-08-30. The dated sections at the end run through 2026-08-30
+(the replayer rebuild); this pass added "Seams to the dashboard", which nothing
+in this doc covered, verified against both live services.
 
 ---
 
@@ -96,6 +98,57 @@ OS reads it at install time.
 
 All five suite repos are at **zero unpushed, zero modified**, and this repo has
 **no open PRs**.
+
+---
+
+## Seams to the dashboard (dashboard.futurega.me)
+
+The dashboard is a separate service and a separate repo (`wsop-console`), and
+three seams cross between them. This doc has never mentioned them, which is how a
+session ends up debugging one side of a two-sided problem. All three were verified
+live on 2026-08-30.
+
+1. **notify (in)** — `POST /console/api/backers/notify` (`server.js:485`), ham-Basic
+   gated. The dashboard client posts backer session results here because the backer
+   tables never left this repo.
+2. **departures (out)** — `GET /api/schedule/:token/upcoming` (`server.js:464`),
+   DASHBOARD_TOKEN-gated, 404 on mismatch. The dashboard has no `user_schedules` or
+   `tournaments` tables, so its departures board is our `computeDashboardEvents`.
+   Probed 2026-08-30: 200 with real events, and the dashboard payload showed the
+   same four upcoming — so this seam is working end to end, not merely reachable.
+3. **roster (in)** — `syncBackerRoster()` (`server.js:9772`) pulls
+   `DASHBOARD_BASE_URL/api/roster/:token` at boot and hourly at :35, then LWW-merges
+   into `console_records`. Our `backers` store froze at the 2026-08-09 cutover, so
+   without this pull `/b/:token` pages and the weekly digest miss every backer added
+   or renamed since. The dashboard end answered 200 on 2026-08-30.
+
+**One probe proves the whole configuration.** `GET /api/schedule/<DASHBOARD_TOKEN>/upcoming`
+returning 200 proves the token is set on this Render service AND matches the
+dashboard's copy — which is the same value `syncBackerRoster()` reads. A 404 means
+the token is wrong or missing, and the roster pull is silently dead too.
+
+**The trap in seam 3: it self-disables.** `syncBackerRoster()` opens with
+`if (!token) return;` — no warning, no log line, nothing in any payload. Backer
+pages would keep rendering the frozen cutover roster and look entirely healthy.
+That is the same failure class that cost the dashboard 16 days of sleep data
+(`OURA_*` undeclared in its blueprint) and left its APNs alert seam inert for two
+weeks (`APNS_*`, still unset today). Three instances, one shape: an env var that is
+read but never declared, and a code path that treats absent as "off" rather than
+"broken".
+
+**DASHBOARD_TOKEN's blast radius grew, and not on this side.** The same shared
+secret reads this schedule, reads the dashboard payload and roster, renders the
+Windows lock screen — and, since dashboard `bc75c1a`, **sends an APNs push to
+Ethan's phone** via the MTT watcher's new-series alert. Ours are read-only and keep
+the token in the path deliberately. The dashboard hardened its acting route in
+`cfb4efc` (header token, payload caps, retry dedupe) and the watcher moved to the
+header in `08449ca`. If a fourth consumer ever needs to *act*, give it its own
+token rather than widening this one.
+
+**Dashboard-side state, as of 2026-08-30** (its `docs/session-handoff.md` is the
+detail): `origin/main` at `e7b6417`; Oura ingest restored and one day old; Apple
+Watch activity 47 days stale, weight absent, and APNs delivering to nobody — all
+three waiting on one `native-ios` rebuild.
 
 ---
 
