@@ -5100,13 +5100,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* 24 x 16 is 3:2 — still square cells, but a narrower table for the same
      height than the 2:1 that filled the window. At a 900px slot that is 1350
      wide rather than 1600, which is the margin the reference table has. */
-  const LGX = 22, LGY = 16;
+  const LGX = 24, LGY = 15;                 // 1.6, the reference's aspect
   /* Derived, not chosen. Measured the slack between the outermost furniture
      and the table's edge at each side and moved the ring by exactly that:
      left was -31px and right -33px (overflowing, so in by 0.63 of a column),
      top had 64px spare (out by 1.25 rows), bottom had none (stays put).
      Re-measured after, which is the only way to know it landed. */
-  const RING = { l: 2.27, r: 19.73, t: 3.33, b: 15.1 };
+  /* Converted across the grid change (22x16 -> 24x15), which is arithmetic,
+     not a re-judgement: 2.27/22*24, 19.73/22*24, 3.33/16*15, 15.1/16*15. */
+  const RING = { l: 2.48, r: 21.52, t: 3.12, b: 14.16 };
   const landscapeSeats = (count) => {
     const rad = (RING.b - RING.t) / 2;        // 5.5 — a true stadium end
     const cy = (RING.t + RING.b) / 2;         // 8
