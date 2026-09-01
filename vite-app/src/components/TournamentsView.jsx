@@ -11,6 +11,8 @@ import {
   extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
   isSideEvent,
 } from '../utils/utils.js';
+import { readLocalLocation, writeLocalLocation, pushServerLocation,
+  fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
@@ -452,7 +454,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
-                setFilters({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',maxDistance:'',userLocation:null,locationRegion:null})
+                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
               }>Clear all filters</button>
             )}
             <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
@@ -904,11 +906,7 @@ export default function TournamentsView({
   const [filters, setFilters] = useState(() => {
     // Restore previously-chosen location from localStorage so users don't have
     // to re-enter distance/region on every launch.
-    let savedLoc = {};
-    try {
-      const raw = localStorage.getItem('savedLocation');
-      if (raw) savedLoc = JSON.parse(raw);
-    } catch(e) {}
+    const savedLoc = readLocalLocation() || {};
     return {
       ...DEFAULT_FILTERS,
       maxDistance: savedLoc.maxDistance || '',
@@ -923,17 +921,63 @@ export default function TournamentsView({
   // would make "clear filters" appear to do nothing.
   const clearAllFilters = () => {
     setSearch('');
-    setFilters({ ...DEFAULT_FILTERS });
+    /* Everything except the location, which is a standing choice about where
+       the user is rather than a filter on one look at the list. The old
+       comment here argued the opposite — that a distance radius is usually
+       what hides everything, so clearing had to include it — but that made the
+       choice disposable, and it is the one filter a user expects to outlive
+       the session. */
+    setFilters(f => ({
+      ...DEFAULT_FILTERS,
+      maxDistance: f.maxDistance,
+      userLocation: f.userLocation,
+      locationRegion: f.locationRegion,
+      locationLabel: f.locationLabel,
+    }));
   };
   // Persist location selection across sessions
   useEffect(() => {
     const { userLocation, locationRegion, maxDistance, locationLabel } = filters;
-    if (userLocation || locationRegion) {
-      localStorage.setItem('savedLocation', JSON.stringify({ userLocation, locationRegion, maxDistance, locationLabel }));
-    } else {
-      localStorage.removeItem('savedLocation');
-    }
+    const loc = { userLocation, locationRegion, maxDistance, locationLabel };
+    writeLocalLocation(loc);
+    // Follows the user: localStorage is per-browser, so without this a region
+    // picked on the desktop does not exist on the phone.
+    pushServerLocation(token, loc);
   }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel]);
+  /* The account's copy, once we have a token. localStorage has already painted
+     so there is no flash; this only corrects it when the choice was made on
+     another device.
+
+     Three cases, and the third is the one that matters. undefined means the
+     server has no opinion (guest, offline, failed) — leave the local value
+     alone. null means the account explicitly has none — adopt that, because
+     the user cleared it somewhere else. And a local value against an empty
+     account is the migration case: every existing user has a localStorage
+     choice and an empty column, so pushing local UP is right, where clearing
+     would throw away a setting they made. */
+  const locationSynced = useRef(false);
+  useEffect(() => {
+    if (locationSynced.current || !token) return;
+    locationSynced.current = true;
+    let cancelled = false;
+    fetchServerLocation(token).then(remote => {
+      if (cancelled || remote === undefined) return;
+      const local = readLocalLocation();
+      if (!remote && local && (local.userLocation || local.locationRegion)) {
+        pushServerLocation(token, local);
+        return;
+      }
+      setFilters(f => sameLocation(f, remote) ? f : ({
+        ...f,
+        userLocation: (remote && remote.userLocation) || null,
+        locationRegion: (remote && remote.locationRegion) || null,
+        maxDistance: (remote && remote.maxDistance) || '',
+        locationLabel: (remote && remote.locationLabel) || null,
+      }));
+    });
+    return () => { cancelled = true; };
+  }, [token]);
+
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const filterToggleRef = useRef(null);
   const [focusEventId, setFocusEventId] = useState(null);
