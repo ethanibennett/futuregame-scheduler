@@ -240,6 +240,7 @@
          and the 64px min-height is 16 of them. Every line box below is a whole
          number of cells, so a card's height is a sum of cells. */
       --cal-cell: 4px;
+      --cal-row: 10px;       /* 8 of them = the card's inner height */
       --cal-line: 20px;      /* 5 cells - the 13px primary line */
       --cal-line-sm: 16px;   /* 4 cells - the 10px secondary line */
       --space-2xs: 2px;
@@ -638,7 +639,8 @@
     .cal-event-gtd {
       /* Under the buy-in visually, but in the TITLE row's cell — so a
          guarantee no longer adds a line of height to the card. */
-      grid-area: title / money;
+      grid-column: 28 / -1;
+      grid-row: 3 / span 2;
       justify-self: end;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
@@ -7497,10 +7499,20 @@
        list's rhythm: every collapsed card is now the same two rows. */
     .cal-event-bar {
       display: grid;
-      grid-template-columns: [time] var(--cal-col-time) [main] 1fr [acc] auto [money] auto;
-      grid-template-rows: [meta] auto [title] auto;
-      column-gap: var(--space-md);
-      row-gap: var(--space-xs);
+      /* 32 columns x 8 rows, uniform — the replayer's grid, not a set of
+         named tracks sized to their contents. Every element is placed by
+         COUNTING cells, gutters are empty columns rather than a gap property,
+         and the row count is fixed, so every collapsed card is the same
+         height and the list has one rhythm instead of two.
+
+         Sized from the measured children at 402px wide: inner width 328 over
+         32 columns is 10.25px a column, and 8 rows of 10px covers the tallest
+         content there is — a 20px meta line, a 40px two-line title and the
+         15px late-reg strip. */
+      grid-template-columns: repeat(32, 1fr);
+      grid-template-rows: repeat(8, var(--cal-row));
+      column-gap: 0;
+      row-gap: 0;
       align-items: start;
       /* One step up the scale for the vertical padding, 10 -> 12. Measured on
          the feed: a row WITHOUT a guarantee is 40px of content, and 40 + 24 of
@@ -7554,12 +7566,21 @@
        an accolade is a property of the EVENT, --brand is the app talking, and
        two undeclared golds 20px apart is a system with no owner. */
     .cal-accolades {
-      grid-area: title / acc;
+      /* On the META row, in the 18 columns that sat empty between the time and
+         the buy-in. Reserving an accolade column on the title row cost every
+         card the width whether it had one or not, and a long title wrapped and
+         lost its stage line to it — measured: "NLH Canada Circuit Championship"
+         truncated where it had previously fitted. Up here it costs nothing and
+         sits beside the money, which is where a bracelet or ring reads anyway. */
+      grid-column: 23 / span 4;
+      grid-row: 1 / span 2;
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
       align-self: start;
-      margin-top: calc((var(--cal-title-line) - 18px) / 2);
+      /* Was margin-top: calc((--cal-title-line - 18px) / 2) — hand-centring
+         on the title line. The grid row places it now. */
+      align-self: center;
       pointer-events: none;
     }
 
@@ -7583,7 +7604,9 @@
     .cal-bar-row2 > .cal-bracelet-icon {
       margin-left: auto;
       align-self: flex-start;
-      margin-top: calc((var(--cal-title-line) - 18px) / 2);
+      /* Was margin-top: calc((--cal-title-line - 18px) / 2) — hand-centring
+         on the title line. The grid row places it now. */
+      align-self: center;
     }
 
     .cal-bar-row1 {
@@ -7603,7 +7626,9 @@
     }
 
     .cal-event-time {
-      grid-area: meta / time;
+      /* cols 1-9 (92px) clears the 84px widest label; rows 1-2. */
+      grid-column: 1 / span 9;
+      grid-row: 1 / span 2;
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--text-muted);
@@ -7611,7 +7636,12 @@
     }
 
     .cal-event-name {
-      grid-area: title / time / auto / acc;
+      /* cols 1-21, with col 22 left empty as the gutter; four rows so a
+         two-line title (name + stage) fits without changing the card. */
+      /* The title now owns its whole row: 27 columns, 276px at 402px wide,
+         which is the width it had before the grid. */
+      grid-column: 1 / span 27;
+      grid-row: 3 / span 4;
       font-family: var(--serif);
       font-size: var(--fs-sm);
       font-weight: var(--fw-regular);
@@ -7636,7 +7666,9 @@
     }
 
     .cal-event-buyin {
-      grid-area: meta / money;
+      /* cols 28-32 (51px) clears the 49px widest buy-in. */
+      grid-column: 28 / -1;
+      grid-row: 1 / span 2;
       justify-self: end;
       font-family: var(--serif);
       font-size: var(--fs-sm);
@@ -8182,13 +8214,15 @@
 
     /* ── Mini late-reg bar (collapsed calendar row) ── */
     .mini-late-reg {
+      /* The last band of the card: full width, rows 7-8. */
       grid-column: 1 / -1;
+      grid-row: 7 / span 2;
       display: flex;
       align-items: center;
       gap: var(--space-sm);
       padding: 0;
       justify-content: flex-start;
-      margin-top: -2px;
+      /* -2px removed: the strip sits in rows 7-8 of the card grid. */
     }
     /* DashboardView renders .mini-late-reg-label and the stylesheet defined
        .mini-late-reg, -time, -track and -fill - but never -label, and none of
