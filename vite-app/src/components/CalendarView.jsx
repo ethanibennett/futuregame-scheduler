@@ -10,6 +10,8 @@ import {
   VENUE_TO_SERIES, LOCATION_REGIONS,
   isSideEvent,
 } from '../utils/utils.js';
+import { readLocalLocation, writeLocalLocation, pushServerLocation,
+  fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
 
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -109,7 +111,11 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   }, [open]);
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
-    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo || filters.maxDistance || filters.locationRegion || filters.userLocation;
+    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo;
+  /* Location is deliberately NOT counted here. It survives "Clear all",
+     so counting it would show a Clear button that then appears to do
+     nothing when a location is the only thing set. TournamentsView's
+     equivalent already omits it. */
 
   return (
     <>
@@ -548,7 +554,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
-                setFilters({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',maxDistance:'',userLocation:null,locationRegion:null})
+                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
               }>Clear all filters</button>
             )}
             <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
@@ -654,11 +660,7 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
   const [filters, setFilters] = useState(() => {
     // Restore previously-chosen location from localStorage so users don't have
     // to re-enter distance/region on every launch.
-    let savedLoc = {};
-    try {
-      const raw = localStorage.getItem('savedLocation');
-      if (raw) savedLoc = JSON.parse(raw);
-    } catch(e) {}
+    const savedLoc = readLocalLocation() || {};
     return {
       minBuyin: '', maxBuyin: '', buyinRanges: [], rakeRanges: [], selectedGames: [],
       hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
@@ -673,12 +675,46 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
   // Persist location selection across sessions
   useEffect(() => {
     const { userLocation, locationRegion, maxDistance, locationLabel } = filters;
-    if (userLocation || locationRegion) {
-      localStorage.setItem('savedLocation', JSON.stringify({ userLocation, locationRegion, maxDistance, locationLabel }));
-    } else {
-      localStorage.removeItem('savedLocation');
-    }
+    const loc = { userLocation, locationRegion, maxDistance, locationLabel };
+    writeLocalLocation(loc);
+    // Follows the user: localStorage is per-browser, so without this a region
+    // picked on the desktop does not exist on the phone.
+    pushServerLocation(token, loc);
   }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel]);
+  /* The account's copy, once we have a token. localStorage has already painted
+     so there is no flash; this only corrects it when the choice was made on
+     another device.
+
+     Three cases, and the third is the one that matters. undefined means the
+     server has no opinion (guest, offline, failed) — leave the local value
+     alone. null means the account explicitly has none — adopt that, because
+     the user cleared it somewhere else. And a local value against an empty
+     account is the migration case: every existing user has a localStorage
+     choice and an empty column, so pushing local UP is right, where clearing
+     would throw away a setting they made. */
+  const locationSynced = useRef(false);
+  useEffect(() => {
+    if (locationSynced.current || !token) return;
+    locationSynced.current = true;
+    let cancelled = false;
+    fetchServerLocation(token).then(remote => {
+      if (cancelled || remote === undefined) return;
+      const local = readLocalLocation();
+      if (!remote && local && (local.userLocation || local.locationRegion)) {
+        pushServerLocation(token, local);
+        return;
+      }
+      setFilters(f => sameLocation(f, remote) ? f : ({
+        ...f,
+        userLocation: (remote && remote.userLocation) || null,
+        locationRegion: (remote && remote.locationRegion) || null,
+        maxDistance: (remote && remote.maxDistance) || '',
+        locationLabel: (remote && remote.locationLabel) || null,
+      }));
+    });
+    return () => { cancelled = true; };
+  }, [token]);
+
 
   const buyinOptions = useMemo(() =>
     [...new Set(allTournaments.map(t => parseInt(t.buyin, 10)).filter(n => n > 0 && !isNaN(n)))].sort((a, b) => a - b),

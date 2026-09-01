@@ -1158,6 +1158,17 @@ async function initDatabase() {
     // Column already exists — ignore
   }
 
+  /* Migrate: the chosen location follows the user, not the browser.
+     It lived only in localStorage, so a region picked on the desktop did not
+     exist on the phone. Stored as the same JSON blob the client already keeps
+     — userLocation, locationRegion, maxDistance, locationLabel — so the two
+     sides agree on shape and neither has to know the other's field list. */
+  try {
+    db.run('ALTER TABLE users ADD COLUMN saved_location TEXT');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+
   // Migrate: move schedule_permissions into share_requests
   try {
     const migChk = db.prepare("SELECT COUNT(*) as cnt FROM share_requests");
@@ -3990,6 +4001,39 @@ app.get('/api/avatar/:userId', (req, res) => {
 // ── Share Request Endpoints ───────────────────────────────────
 
 // Search users by username or real_name (prefix match)
+/* The user's chosen location, so it follows them between devices. localStorage
+   remains the immediate source on load — it paints without a round trip and is
+   the only store a guest has — and this is the copy that survives a new
+   browser. Last write wins; the client pushes on change. */
+app.get('/api/user/location', authenticateToken, (req, res) => {
+  try {
+    if (!req.user || !req.user.id) return res.json({ location: null });
+    const r = db.exec('SELECT saved_location FROM users WHERE id = ?', [req.user.id]);
+    const raw = r && r[0] && r[0].values[0] && r[0].values[0][0];
+    if (!raw) return res.json({ location: null });
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+    res.json({ location: parsed });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+app.put('/api/user/location', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const { location } = req.body;
+    // null clears it, which is what choosing "All Locations" means.
+    const blob = location ? JSON.stringify(location) : null;
+    db.run('UPDATE users SET saved_location = ? WHERE id = ?', [blob, req.user.id]);
+    await saveDatabase();
+    res.json({ message: 'Location saved' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
 app.get('/api/users/search', authenticateToken, requireRegistered, (req, res) => {
   try {
     const q = (req.query.q || '').trim();
