@@ -8,7 +8,8 @@ import { Filtered } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, findClosestFlight,
-  extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
+  extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
+  isSideEvent,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -1194,7 +1195,7 @@ export default function TournamentsView({
         }
         if (filters.hideSatellites && t.is_satellite) return false;
         if (filters.hideRestarts && t.is_restart) return false;
-        if (filters.hideSideEvents && t.category === 'side') return false;
+        if (filters.hideSideEvents && isSideEvent(t)) return false;
         if (filters.hiddenMonths && filters.hiddenMonths.length > 0) {
           const m = new Date(t.date).getMonth();
           if (filters.hiddenMonths.includes(m)) return false;

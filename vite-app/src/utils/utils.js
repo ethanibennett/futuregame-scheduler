@@ -568,6 +568,23 @@ export function shortEventNumber(v) {
   return t.length > 6 ? t.split('-')[0] : t;
 }
 
+/* Is this a side event?
+   The Side Events filter tested `category === 'side'` and appeared to do
+   nothing, because the MTT feed never sets category — measured on the live DB:
+   of 1,759 events dated today or later, 36 are literally titled "Side Event …"
+   and ALL 36 carry category null. The 270 rows that do carry 'side' are older
+   manual imports, every one of them dated March-July 2026 and therefore behind
+   the window the schedule shows. So the filter was correct and had nothing to
+   act on.
+   The title is the evidence the feed does give us, so it counts too. category
+   stays the primary test, since a row that declares itself is better than a
+   row we infer. */
+export function isSideEvent(t) {
+  if (!t) return false;
+  if ((t.category || '').toLowerCase() === 'side') return true;
+  return /\bside event\b/i.test(t.event_name || '');
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;

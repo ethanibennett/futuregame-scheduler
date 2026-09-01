@@ -8,6 +8,7 @@ import {
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
   haptic, VENUE_MAP, getVenueBrandColor, getVenueCoords, haversineDistance,
   VENUE_TO_SERIES, LOCATION_REGIONS,
+  isSideEvent,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 
@@ -824,7 +825,7 @@ export default function CalendarView({ allTournaments, mySchedule, onToggle, gam
         }
         if (filters.hideSatellites && t.is_satellite) return false;
         if (filters.hideRestarts && t.is_restart) return false;
-        if (filters.hideSideEvents && t.category === 'side') return false;
+        if (filters.hideSideEvents && isSideEvent(t)) return false;
         return true;
       })
       .sort((a, b) => {
