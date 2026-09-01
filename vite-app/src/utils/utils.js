@@ -982,9 +982,13 @@ export function normaliseDate(d) {
   return y + '-' + m + '-' + day;
 }
 
+/* Abbreviated: the season label sits under the wordmark in the header, where
+   "september-december 2026" is the longest string in a block that is otherwise
+   a logotype. Three letters each, so a two-month range is a fixed width no
+   matter which months it spans. Used only by formatSeasonLabel. */
 const MONTH_NAMES = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december',
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+  'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
 ];
 
 /**
