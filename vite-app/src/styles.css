@@ -224,6 +224,24 @@
          --space-ml (10px) exists because 10px was used 76 times off the
          scale, sitting exactly between md and lg - the scale had skipped
          a real step rather than the app being sloppy. */
+      /* The event-card grid's time track (see .cal-event-bar): one width for
+         every card so the columns line up down the list, sized to the widest
+         label the formatter emits ("12:00 PM" at --fs-sm bold). */
+      /* MEASURED: the widest label the formatter emits is "1:00 PM GMT+2" at
+         82px, and the track was 64 — so all 376 time labels on the schedule
+         wrapped to two lines, which is what made the card tall rather than the
+         type. 84px is 21 cells, the first multiple of the cell that clears it. */
+      --cal-col-time: 84px;
+      /* The card's vertical rhythm. The grid above organises COLUMNS; nothing
+         organised its rows, so every line box was whatever font-size times
+         line-height happened to produce — measured 0 of 11 elements on any
+         rhythm, worst offset 2.00px, card heights 92.9 and 109.8. 4px is the
+         cell the spacing scale already implies (--space-xs/md/lg are 4/8/12)
+         and the 64px min-height is 16 of them. Every line box below is a whole
+         number of cells, so a card's height is a sum of cells. */
+      --cal-cell: 4px;
+      --cal-line: 20px;      /* 5 cells - the 13px primary line */
+      --cal-line-sm: 16px;   /* 4 cells - the 10px secondary line */
       --space-2xs: 2px;
       --space-xs:  4px;
       --space-sm:  6px;
@@ -614,21 +632,19 @@
     /* The money column. The guarantee sits under the buy-in rather than in a
        badge, because it is a fact about the event and not a scored value. */
     .cal-event-money {
-      margin-left: auto;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      display: contents;
       line-height: var(--lh-tight);
     }
     .cal-event-gtd {
+      /* Under the buy-in visually, but in the TITLE row's cell — so a
+         guarantee no longer adds a line of height to the card. */
+      grid-area: title / money;
+      justify-self: end;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       letter-spacing: var(--track-tight);
-      /* The guarantee sits directly under the buy-in and was 2px off it, which
-         read as one crowded block rather than a figure and its qualifier. One
-         step, and it only ever costs height on rows that carry a guarantee. */
-      margin-top: var(--space-xs);
+      line-height: var(--cal-line-sm);
     }
 
     /* Event number and game variants were grey pills, distinguishable from
@@ -7470,10 +7486,22 @@
     .condition-search:focus {
       border-color: var(--brand-line);
     }
+    /* ── The event-card grid ─────────────────────────────────────────
+       The replayer's discipline applied to the card: fixed tracks, and a
+       field means the same cell in every card. Columns [time][name][acc]
+       [money]; rows [meta][title]. The wrappers the JSX renders
+       (.cal-bar-row1/.cal-bar-row2/.cal-event-money) become display:contents
+       so their children place directly into these tracks — which also pins
+       the guarantee to the title row instead of stacking it under the
+       buy-in, where it made guaranteed events a taller card and broke the
+       list's rhythm: every collapsed card is now the same two rows. */
     .cal-event-bar {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
+      display: grid;
+      grid-template-columns: [time] var(--cal-col-time) [main] 1fr [acc] auto [money] auto;
+      grid-template-rows: [meta] auto [title] auto;
+      column-gap: var(--space-md);
+      row-gap: var(--space-xs);
+      align-items: start;
       /* One step up the scale for the vertical padding, 10 -> 12. Measured on
          the feed: a row WITHOUT a guarantee is 40px of content, and 40 + 24 of
          padding is exactly the 64px min-height below — so the extra padding is
@@ -7496,7 +7524,7 @@
        the name, so max-height was only ever a second belt. */
     .cal-event-row:not(.open) .cal-event-bar {
       min-height: 64px;
-      justify-content: center;
+      align-content: center; /* grid: centers the two rows in the 64px cell */
     }
     .cal-event-row:not(.open) {
       overflow: hidden;
@@ -7526,12 +7554,11 @@
        an accolade is a property of the EVENT, --brand is the app talking, and
        two undeclared golds 20px apart is a system with no owner. */
     .cal-accolades {
+      grid-area: title / acc;
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
-      margin-left: auto;
-      flex-shrink: 0;
-      align-self: flex-start;
+      align-self: start;
       margin-top: calc((var(--cal-title-line) - 18px) / 2);
       pointer-events: none;
     }
@@ -7560,9 +7587,7 @@
     }
 
     .cal-bar-row1 {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
+      display: contents;
     }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
@@ -7570,27 +7595,31 @@
        drag centred icons down beside the flight. --cal-title-line is the first
        line's box (name font-size x line-height); each icon centres on it. */
     .cal-bar-row2 {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-md);
+      display: contents;
       --cal-title-line: calc(var(--fs-sm) * var(--lh-snug));
+      /* Personal rows keep an inline display:flex, which beats the
+         display:contents above — for THAT box this places it full-width. */
+      grid-column: 1 / -1;
     }
 
     .cal-event-time {
+      grid-area: meta / time;
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--text-muted);
-      flex-shrink: 0;
+      line-height: var(--cal-line);
     }
 
     .cal-event-name {
+      grid-area: title / time / auto / acc;
       font-family: var(--serif);
-      flex: 1;
       font-size: var(--fs-sm);
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      line-height: 1.3;
+      /* A whole number of cells, so the stage line splitEventStage puts
+         underneath makes the title box exactly two of them. */
+      line-height: var(--cal-line);
       overflow: hidden;
     }
     /* Truncate long names on one line, but allow Flight/Day sub-line via <br> */
@@ -7607,12 +7636,13 @@
     }
 
     .cal-event-buyin {
+      grid-area: meta / money;
+      justify-self: end;
       font-family: var(--serif);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--accent);
-      flex-shrink: 0;
-      margin-left: auto;
+      line-height: var(--cal-line);
     }
 
     .cal-venue-chip {
@@ -7724,16 +7754,17 @@
       justify-content: center;
       color: var(--text-muted);
       transition: transform var(--dur-snap);
-      margin-top: -3.5px;
-      margin-bottom: -3.5px;
+      /* Was -3.5px top, -3.5px bottom and top:-6px - three hand-set offsets
+         cancelling a 14px icon that fitted no rhythm. */
+      height: var(--cal-line-sm);
+      align-items: center;
       position: relative;
-      top: -6px;
       cursor: pointer;
     }
 
     /* mini-late-reg is now inside cal-event-bar, no adjacent chevron adjustment needed */
-    .cal-event-chevron.open { transform: rotate(180deg); margin-top: -0.5px; margin-bottom: -6.5px; padding-bottom: 0; top: -10px; }
-    .cal-event-chevron svg { width: 14px; height: 14px; }
+    .cal-event-chevron.open { transform: rotate(180deg); }
+    .cal-event-chevron svg { width: 12px; height: 12px; }
 
     .back-to-today-fab {
       position: fixed;
@@ -8151,6 +8182,7 @@
 
     /* ── Mini late-reg bar (collapsed calendar row) ── */
     .mini-late-reg {
+      grid-column: 1 / -1;
       display: flex;
       align-items: center;
       gap: var(--space-sm);
