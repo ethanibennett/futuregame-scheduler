@@ -9565,9 +9565,28 @@ async function sendPushToAdmin(title, body, url) {
       JOIN users u ON ps.user_id = u.id
       WHERE LOWER(u.username) = 'ham'
     `);
-    const subs = [];
+    let subs = [];
     while (stmt.step()) subs.push(stmt.getAsObject());
     stmt.free();
+
+    // A registered native device supersedes the same platform's web push: the installed PWA and
+    // the TestFlight app otherwise BOTH deliver every alert to the phone. Skip Apple web-push
+    // endpoints while ham has a live APNs token — not a stored preference, a live condition:
+    // deleting the row wouldn't stick (the PWA re-subscribes itself on open with granted
+    // permission), and if the native app is ever removed its token prunes on 410 and web push
+    // resumes on its own. Desktop browsers (FCM/Mozilla) are unaffected.
+    const apnsCheck = db.prepare(`
+      SELECT COUNT(*) AS n FROM apns_tokens at
+      JOIN users u ON at.user_id = u.id WHERE LOWER(u.username) = 'ham'
+    `);
+    apnsCheck.step();
+    const hasNative = (apnsCheck.getAsObject().n || 0) > 0;
+    apnsCheck.free();
+    if (hasNative) {
+      subs = subs.filter((s) => {
+        try { return new URL(s.endpoint).host !== 'web.push.apple.com'; } catch (_) { return true; }
+      });
+    }
 
     const payload = JSON.stringify({ title, body, url: url || '/', tag: 'admin' });
     const results = [];
