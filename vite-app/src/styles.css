@@ -224,25 +224,6 @@
          --space-ml (10px) exists because 10px was used 76 times off the
          scale, sitting exactly between md and lg - the scale had skipped
          a real step rather than the app being sloppy. */
-      /* The event-card grid's time track (see .cal-event-bar): one width for
-         every card so the columns line up down the list, sized to the widest
-         label the formatter emits ("12:00 PM" at --fs-sm bold). */
-      /* MEASURED: the widest label the formatter emits is "1:00 PM GMT+2" at
-         82px, and the track was 64 — so all 376 time labels on the schedule
-         wrapped to two lines, which is what made the card tall rather than the
-         type. 84px is 21 cells, the first multiple of the cell that clears it. */
-      --cal-col-time: 84px;
-      /* The card's vertical rhythm. The grid above organises COLUMNS; nothing
-         organised its rows, so every line box was whatever font-size times
-         line-height happened to produce — measured 0 of 11 elements on any
-         rhythm, worst offset 2.00px, card heights 92.9 and 109.8. 4px is the
-         cell the spacing scale already implies (--space-xs/md/lg are 4/8/12)
-         and the 64px min-height is 16 of them. Every line box below is a whole
-         number of cells, so a card's height is a sum of cells. */
-      --cal-cell: 4px;
-      --cal-row: 10px;       /* 8 of them = the card's inner height */
-      --cal-line: 20px;      /* 5 cells - the 13px primary line */
-      --cal-line-sm: 16px;   /* 4 cells - the 10px secondary line */
       --space-2xs: 2px;
       --space-xs:  4px;
       --space-sm:  6px;
@@ -633,20 +614,21 @@
     /* The money column. The guarantee sits under the buy-in rather than in a
        badge, because it is a fact about the event and not a scored value. */
     .cal-event-money {
-      display: contents;
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
       line-height: var(--lh-tight);
     }
     .cal-event-gtd {
-      /* Under the buy-in visually, but in the TITLE row's cell — so a
-         guarantee no longer adds a line of height to the card. */
-      grid-column: 28 / -1;
-      grid-row: 3 / span 2;
-      justify-self: end;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       letter-spacing: var(--track-tight);
-      line-height: var(--cal-line-sm);
+      /* The guarantee sits directly under the buy-in and was 2px off it, which
+         read as one crowded block rather than a figure and its qualifier. One
+         step, and it only ever costs height on rows that carry a guarantee. */
+      margin-top: var(--space-xs);
     }
 
     /* Event number and game variants were grey pills, distinguishable from
@@ -7488,32 +7470,10 @@
     .condition-search:focus {
       border-color: var(--brand-line);
     }
-    /* ── The event-card grid ─────────────────────────────────────────
-       The replayer's discipline applied to the card: fixed tracks, and a
-       field means the same cell in every card. Columns [time][name][acc]
-       [money]; rows [meta][title]. The wrappers the JSX renders
-       (.cal-bar-row1/.cal-bar-row2/.cal-event-money) become display:contents
-       so their children place directly into these tracks — which also pins
-       the guarantee to the title row instead of stacking it under the
-       buy-in, where it made guaranteed events a taller card and broke the
-       list's rhythm: every collapsed card is now the same two rows. */
     .cal-event-bar {
-      display: grid;
-      /* 32 columns x 8 rows, uniform — the replayer's grid, not a set of
-         named tracks sized to their contents. Every element is placed by
-         COUNTING cells, gutters are empty columns rather than a gap property,
-         and the row count is fixed, so every collapsed card is the same
-         height and the list has one rhythm instead of two.
-
-         Sized from the measured children at 402px wide: inner width 328 over
-         32 columns is 10.25px a column, and 8 rows of 10px covers the tallest
-         content there is — a 20px meta line, a 40px two-line title and the
-         15px late-reg strip. */
-      grid-template-columns: repeat(32, 1fr);
-      grid-template-rows: repeat(8, var(--cal-row));
-      column-gap: 0;
-      row-gap: 0;
-      align-items: start;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
       /* One step up the scale for the vertical padding, 10 -> 12. Measured on
          the feed: a row WITHOUT a guarantee is 40px of content, and 40 + 24 of
          padding is exactly the 64px min-height below — so the extra padding is
@@ -7536,7 +7496,7 @@
        the name, so max-height was only ever a second belt. */
     .cal-event-row:not(.open) .cal-event-bar {
       min-height: 64px;
-      align-content: center; /* grid: centers the two rows in the 64px cell */
+      justify-content: center;
     }
     .cal-event-row:not(.open) {
       overflow: hidden;
@@ -7566,21 +7526,13 @@
        an accolade is a property of the EVENT, --brand is the app talking, and
        two undeclared golds 20px apart is a system with no owner. */
     .cal-accolades {
-      /* On the META row, in the 18 columns that sat empty between the time and
-         the buy-in. Reserving an accolade column on the title row cost every
-         card the width whether it had one or not, and a long title wrapped and
-         lost its stage line to it — measured: "NLH Canada Circuit Championship"
-         truncated where it had previously fitted. Up here it costs nothing and
-         sits beside the money, which is where a bracelet or ring reads anyway. */
-      grid-column: 23 / span 4;
-      grid-row: 1 / span 2;
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
-      align-self: start;
-      /* Was margin-top: calc((--cal-title-line - 18px) / 2) — hand-centring
-         on the title line. The grid row places it now. */
-      align-self: center;
+      margin-left: auto;
+      flex-shrink: 0;
+      align-self: flex-start;
+      margin-top: calc((var(--cal-title-line) - 18px) / 2);
       pointer-events: none;
     }
 
@@ -7604,13 +7556,13 @@
     .cal-bar-row2 > .cal-bracelet-icon {
       margin-left: auto;
       align-self: flex-start;
-      /* Was margin-top: calc((--cal-title-line - 18px) / 2) — hand-centring
-         on the title line. The grid row places it now. */
-      align-self: center;
+      margin-top: calc((var(--cal-title-line) - 18px) / 2);
     }
 
     .cal-bar-row1 {
-      display: contents;
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
     }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
@@ -7618,38 +7570,27 @@
        drag centred icons down beside the flight. --cal-title-line is the first
        line's box (name font-size x line-height); each icon centres on it. */
     .cal-bar-row2 {
-      display: contents;
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-md);
       --cal-title-line: calc(var(--fs-sm) * var(--lh-snug));
-      /* Personal rows keep an inline display:flex, which beats the
-         display:contents above — for THAT box this places it full-width. */
-      grid-column: 1 / -1;
     }
 
     .cal-event-time {
-      /* cols 1-9 (92px) clears the 84px widest label; rows 1-2. */
-      grid-column: 1 / span 9;
-      grid-row: 1 / span 2;
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--text-muted);
-      line-height: var(--cal-line);
+      flex-shrink: 0;
     }
 
     .cal-event-name {
-      /* cols 1-21, with col 22 left empty as the gutter; four rows so a
-         two-line title (name + stage) fits without changing the card. */
-      /* The title now owns its whole row: 27 columns, 276px at 402px wide,
-         which is the width it had before the grid. */
-      grid-column: 1 / span 27;
-      grid-row: 3 / span 4;
       font-family: var(--serif);
+      flex: 1;
       font-size: var(--fs-sm);
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      /* A whole number of cells, so the stage line splitEventStage puts
-         underneath makes the title box exactly two of them. */
-      line-height: var(--cal-line);
+      line-height: 1.3;
       overflow: hidden;
     }
     /* Truncate long names on one line, but allow Flight/Day sub-line via <br> */
@@ -7666,15 +7607,12 @@
     }
 
     .cal-event-buyin {
-      /* cols 28-32 (51px) clears the 49px widest buy-in. */
-      grid-column: 28 / -1;
-      grid-row: 1 / span 2;
-      justify-self: end;
       font-family: var(--serif);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       color: var(--accent);
-      line-height: var(--cal-line);
+      flex-shrink: 0;
+      margin-left: auto;
     }
 
     .cal-venue-chip {
@@ -7786,17 +7724,16 @@
       justify-content: center;
       color: var(--text-muted);
       transition: transform var(--dur-snap);
-      /* Was -3.5px top, -3.5px bottom and top:-6px - three hand-set offsets
-         cancelling a 14px icon that fitted no rhythm. */
-      height: var(--cal-line-sm);
-      align-items: center;
+      margin-top: -3.5px;
+      margin-bottom: -3.5px;
       position: relative;
+      top: -6px;
       cursor: pointer;
     }
 
     /* mini-late-reg is now inside cal-event-bar, no adjacent chevron adjustment needed */
-    .cal-event-chevron.open { transform: rotate(180deg); }
-    .cal-event-chevron svg { width: 12px; height: 12px; }
+    .cal-event-chevron.open { transform: rotate(180deg); margin-top: -0.5px; margin-bottom: -6.5px; padding-bottom: 0; top: -10px; }
+    .cal-event-chevron svg { width: 14px; height: 14px; }
 
     .back-to-today-fab {
       position: fixed;
@@ -8214,15 +8151,12 @@
 
     /* ── Mini late-reg bar (collapsed calendar row) ── */
     .mini-late-reg {
-      /* The last band of the card: full width, rows 7-8. */
-      grid-column: 1 / -1;
-      grid-row: 7 / span 2;
       display: flex;
       align-items: center;
       gap: var(--space-sm);
       padding: 0;
       justify-content: flex-start;
-      /* -2px removed: the strip sits in rows 7-8 of the card grid. */
+      margin-top: -2px;
     }
     /* DashboardView renders .mini-late-reg-label and the stylesheet defined
        .mini-late-reg, -time, -track and -fill - but never -label, and none of
