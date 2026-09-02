@@ -42,7 +42,24 @@
   </script>
   <style>
     /* Critical layout — inlined to bypass PWA cache */
-    html, body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; margin: 0; padding: 0; background: var(--surface); }
+    /* html and body differ in ONE thing: their background.
+
+       An installed PWA on iOS does not always give the page a viewport that
+       covers the screen, and iOS paints whatever is left over with the ROOT
+       element's background. body is fixed to the viewport, so it can never
+       reach that strip — html is what shows there. Measured on a reported
+       screenshot (1206x2622): the nav ends at y=2435 and 186px, 62pt, of
+       #1a1a1a ran below it to the screen edge. #1a1a1a is --surface, which is
+       what html was set to.
+
+       --surface2 is the colour the nav's own gradient ends on, so the strip now
+       continues the nav instead of reading as a blank band under it. This makes
+       the gap invisible rather than absent: the viewport still does not cover
+       the screen, and that is not something CSS in here can change. Capacitor
+       gives a full-screen viewport, so html's background never shows there —
+       which is why TestFlight never had the strip. */
+    html { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; margin: 0; padding: 0; background: var(--surface2); }
+    body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; margin: 0; padding: 0; background: var(--surface); }
     /* The bottom inset is reserved EXACTLY ONCE, inside .bottom-nav, which is
        the only thing that sits against the home indicator. It used to be
        reserved twice — .app-shell padded its bottom by the inset here, the nav
