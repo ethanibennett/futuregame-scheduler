@@ -3226,7 +3226,7 @@
     /* Landscape is wide and SHORT, and 9-max puts TWO seats along the bottom
        rather than one, which is the tightest the band ever gets: the board ends
        at 57.9% and those hands start at 71.8%, leaving 38px for both marks. */
-    .replayer-landscape .replayer-watermark { top: 67%; font-size: clamp(13px, 4.2cqw, 30px); }
+    .replayer-landscape .replayer-watermark { top: 46.5%; font-size: clamp(13px, 4.2cqw, 30px); }
 
     /* One declaration of how tall the transport is, read by the overlay above
        so the two cannot drift apart. */
@@ -5526,7 +5526,7 @@
     .replayer-watermark {
       /* Positioned here rather than inline: an inline style wins over a class
          rule, so landscape could not move it off the tournament block. */
-      position: absolute; left: 50%; top: 70.5%; transform: translate(-50%,-50%);
+      position: absolute; left: 50%; top: 47%; transform: translate(-50%,-50%);
       z-index: var(--z-mark);
       /* Measured at showdown, which is when the cloth is fullest. At 56% the
          wordmark ran 54.5-57.5% against a board occupying 49.2-54.8%, so it was
@@ -5534,9 +5534,12 @@
          38.9-47.1% across a pot ending at 41.3% and a board starting at 46.1%,
          overlapping both. The one genuinely clear band is below the board and
          above the hero's hand: 54.8-73.7% in portrait, 57.9-74.9% in landscape.
-         It sits BELOW the table-info block — the game and the sizes, which is
-         content — rather than on it, which is what a bigger wordmark started
-         doing at 65%.
+         It sits directly below the POT. In a community game that band is
+         43.4-49.2% and it fits; in landscape the same band is only 13px and a
+         20px mark cannot, so there it passes behind the top of the board —
+         which is what a watermark is for, and it is on --z-mark, below
+         everything. Stud has no board at all, so the band is 43.4-63.3% and
+         nothing is behind it.
          Size scales with the table rather than sitting at a fixed --fs-md,
          which held 15px whether the table was 382px wide or 1400. */
       mix-blend-mode: overlay;
@@ -5761,7 +5764,7 @@
       transform: translate(-50%, -50%);
       z-index: var(--z-felt);
       display: flex; flex-direction: column; align-items: center; gap: 1px;
-      width: 34%; text-align: center;
+      width: 46%; text-align: center;
       pointer-events: none;
       font-family: var(--font-condensed);
       line-height: 1.25;
@@ -5841,10 +5844,23 @@
       color: rgba(242,239,230,0.34);
       white-space: nowrap;
     }
+    /* A pill. As felt printing at 50% white the game and the sizes read as part
+       of the cloth pattern; the point of naming the game is that it can be
+       picked out at a glance. */
     .replayer-table-info .replayer-level-blinds {
-      font-family: var(--font-display);
+      font-family: var(--font-condensed);
       font-variant-numeric: var(--num-tabular);
-      color: rgba(242,239,230,0.5);
+      font-size: clamp(8px, 3.2cqmin, var(--fs-2xs));
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: rgba(242,239,230,0.82);
+      background: rgba(20,17,29,0.42);
+      border: 1px solid rgba(242,239,230,0.16);
+      border-radius: var(--radius-pill);
+      padding: 0.3em 0.9em;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
 
