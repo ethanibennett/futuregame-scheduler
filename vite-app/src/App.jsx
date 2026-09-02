@@ -1519,6 +1519,7 @@ export default function App() {
         {visitedTabs.has('calendar') && (
           <CalendarView
             key={debugTimeKey}
+            token={token}
             allTournaments={tournaments}
             mySchedule={mySchedule}
             onToggle={toggleTournament}
