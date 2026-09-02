@@ -1734,6 +1734,8 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
 // ══════════════════════════════════════════════════════════
 function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const [phase, setPhase] = useState('setup');
+  // Which seat is under the finger, so the row it belongs to can show it.
+  const [dragSeat, setDragSeat] = useState(null);
   const [currentStreetIdx, setCurrentStreetIdx] = useState(0);
   const [showRaiseInput, setShowRaiseInput] = useState(false);
   const [betAmount, setBetAmount] = useState('');
@@ -1963,6 +1965,88 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     });
   };
 
+  /* Dragging a seat moves the PERSON, not the seat.
+     The labels are positional — Seat 1 stays Seat 1 — which is the same rule
+     setHeroSeat already follows. Everything else in a hand refers to a player
+     BY INDEX, so all of it has to travel with them or the hand quietly becomes
+     somebody else's: the hero, every action, the draws, the saved result, and
+     the opponent card slots, which are stored relative to the hero and so go
+     through absolute indices on the way across. */
+  const reorderSeats = (from, to) => {
+    setHand(prev => {
+      const n = prev.players.length;
+      if (from === to || from < 0 || to < 0 || from >= n || to >= n) return prev;
+      const order = prev.players.map((_, i) => i);
+      order.splice(to, 0, order.splice(from, 1)[0]);
+      const oldToNew = {};
+      order.forEach((oldIdx, newIdx) => { oldToNew[oldIdx] = newIdx; });
+
+      const posLabels = gameCfg.isStud ? getStudPositionLabels(n) : getPositionLabels(n);
+      const players = order.map((oldIdx, newIdx) => ({
+        ...prev.players[oldIdx],
+        position: posLabels[newIdx] || prev.players[oldIdx].position,
+      }));
+      const oldHero = prev.heroIdx != null ? prev.heroIdx : 0;
+      const heroIdx = oldToNew[oldHero];
+
+      const streets = (prev.streets || []).map(st => {
+        const cards = st.cards || {};
+        const byPlayer = {};
+        (cards.opponents || []).forEach((c, slot) => {
+          byPlayer[slot < oldHero ? slot : slot + 1] = c;
+        });
+        const opponents = [];
+        for (let newIdx = 0; newIdx < n; newIdx++) {
+          if (newIdx === heroIdx) continue;
+          opponents.push(byPlayer[order[newIdx]] || '');
+        }
+        return {
+          ...st,
+          cards: { ...cards, opponents },
+          actions: (st.actions || []).map(a => (a && a.player != null ? { ...a, player: oldToNew[a.player] } : a)),
+          draws: (st.draws || []).map(d => (d && d.player != null ? { ...d, player: oldToNew[d.player] } : d)),
+        };
+      });
+      const result = (prev.result && prev.result.winners)
+        ? { ...prev.result, winners: prev.result.winners.map(w => ({ ...w, playerIdx: oldToNew[w.playerIdx] })) }
+        : prev.result;
+      return { ...prev, players, heroIdx, streets, result };
+    });
+  };
+
+  /* The seat label is both the hero button and the drag handle, because the
+     row is otherwise all text inputs and has nowhere to put a grip. A press
+     that never travels 6px is still a tap, so selecting the hero is unchanged;
+     past that it becomes a drag and the tap is not fired. */
+  const seatDrag = useRef(null);
+  const beginSeatDrag = (e, idx) => {
+    seatDrag.current = { idx, startY: e.clientY, moved: false };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* no capture, still draggable */ }
+  };
+  const moveSeatDrag = (e) => {
+    const d = seatDrag.current;
+    if (!d) return;
+    if (!d.moved && Math.abs(e.clientY - d.startY) < 6) return;
+    if (!d.moved) { d.moved = true; setDragSeat(d.idx); }
+    const list = e.currentTarget.closest('.replayer-player-row');
+    const rows = list && list.parentElement
+      ? Array.from(list.parentElement.querySelectorAll('.replayer-player-row')) : [];
+    const target = rows.findIndex(r => {
+      const b = r.getBoundingClientRect();
+      return e.clientY >= b.top && e.clientY <= b.bottom;
+    });
+    if (target < 0 || target === d.idx) return;
+    reorderSeats(d.idx, target);
+    d.idx = target;
+    setDragSeat(target);
+  };
+  const endSeatDrag = () => {
+    const d = seatDrag.current;
+    seatDrag.current = null;
+    setDragSeat(null);
+    if (d && !d.moved) setHeroSeat(d.idx);
+  };
+
   const playerContrib = currentActor >= 0 ? streetBets.contrib[currentActor] : 0;
   const callAmount = currentActor >= 0 ? Math.min(streetBets.maxBet - playerContrib, currentStacks[currentActor]) : 0;
   const canCheck = callAmount === 0;
@@ -2105,8 +2189,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
             return (
-              <div key={i} className="replayer-player-row">
-                {!isOfc && <span className={'replayer-player-pos' + (isHero ? ' hero' : '')} style={{cursor:'pointer'}} onClick={() => setHeroSeat(i)}>{p.position}</span>}
+              <div key={i} className={'replayer-player-row' + (dragSeat === i ? ' is-dragging' : '')}>
+                {!isOfc && <span
+                  className={'replayer-player-pos' + (isHero ? ' hero' : '') + (dragSeat === i ? ' is-grabbed' : '')}
+                  title="Tap to make hero, drag to reorder"
+                  onPointerDown={e => beginSeatDrag(e, i)}
+                  onPointerMove={moveSeatDrag}
+                  onPointerUp={endSeatDrag}
+                  onPointerCancel={endSeatDrag}
+                >{p.position}</span>}
                 <div className="replayer-field" style={{flex:'1 1 80px'}}><input type="text" style={{textAlign:'left'}} value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
                 {!isOfc && <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" inputMode="decimal" style={{textAlign:'right'}} value={p.startingStack} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>}
               </div>

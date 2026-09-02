@@ -2329,6 +2329,18 @@
     .replayer-row .replayer-field { flex:1; }
 
     /* Player rows */
+    /* The seat label is the drag handle, so the browser must not treat a
+       press on it as the start of a scroll — without touch-action the page
+       moves and the drag never gets its pointermove events. */
+    .replayer-player-pos { touch-action: none; cursor: grab; user-select: none; }
+    .replayer-player-pos.is-grabbed { cursor: grabbing; }
+    .replayer-player-row.is-dragging {
+      position: relative; z-index: 1;
+      background: var(--surface2);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      border-radius: var(--radius-sm);
+    }
+
     .replayer-player-row {
       display:flex; gap: var(--space-sm); align-items:center; padding: var(--space-xs) 0;
       border-bottom:1px solid var(--border);
