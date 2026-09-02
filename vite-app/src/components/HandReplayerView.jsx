@@ -604,7 +604,7 @@ function nameBudgetFor(tableW, tableH, landscape) {
      Get any one of them wrong and the ellipsis finishes names mid-word, which
      is the failure shortenName exists to prevent. */
   const cq = Math.min(tableW, tableH || tableW);
-  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.034)));
+  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.031)));
   const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
   /* 0.52, measured. The box half of this formula was already right — it
      predicts the plaque's max-width to a tenth of a pixel at both ends — but
@@ -628,7 +628,23 @@ function nameBudgetFor(tableW, tableH, landscape) {
      the longest names now fall through the house form to the last name alone,
      which fits at 75.6px. Under-charging instead would not have kept the
      initial, it would have clipped it. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.569))));
+  /* 0.52 again. The plaque went to Libre Baskerville and back, and the
+     constant was re-measured on each face the same way — a Range over a
+     probe carrying the plaque's own resolved type. Univers ROMAN, which it
+     uses now, runs 0.465 to 0.575 across ten real names for a mean of 0.515:
+     inside the noise of the 0.52 that was already here, so the number stays
+     and only the evidence for it changed. Baskerville measured 0.569 and cost
+     the initial on the longest names at 8-max, which is why it is not here. */
+  /* 0.545, and a mean would have been the wrong statistic. The plaque went to
+     Libre Baskerville and back to Univers, and the constant was re-measured on
+     each face the same way — a Range over a probe carrying the plaque's own
+     resolved type. The ROMAN cut it uses now runs 0.465 to 0.575 across ten
+     real names for a mean of 0.515, but charging the mean admits a name that
+     does not fit: at 0.52 the budget came out at 14 and let in "Jason
+     Blodgett" at 85.3px against an 83.6px box. 0.545 puts the budget at 13,
+     the longest form that actually fits — measured, every real name and house
+     form then lands between 66.9px and 81.7px in that box. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.545))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
@@ -1074,7 +1090,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
      the fan ran from -5.3% to 36.7% and hung 21px off the table.
      0.78 leaves margin (0.85 hung 3px over, 0.8 by 1px) and still opens wider than the
      0.726 the fan had before it was given a constant step. */
-  const maxHalfSpan = wide ? 1.8 : 0.78;
+  const maxHalfSpan = wide ? 1.8 : 1.05;
   const halfSlots = (slots - 1) / 2;
   const baseStep = (2 * angle) / 3;
   const cappedStep = halfSlots > 0
