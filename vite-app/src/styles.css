@@ -4064,7 +4064,10 @@
       font-size: clamp(8px, 3.4cqmin, 42px);
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
-      font-family: var(--font-condensed);
+      /* Baskerville, through the token rather than by name, so the serif
+         setting still governs which one. A player's name is the one piece of
+         the plaque somebody wrote; the condensed face is for the numbers. */
+      font-family: var(--font-display);
       letter-spacing: var(--track-tight);
       /* 45: max-width:80px with an ellipsis, in a condensed face at 10px, is
          about 14 characters — and the cut fell mid-word with no title
