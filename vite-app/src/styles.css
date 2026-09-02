@@ -5987,7 +5987,7 @@
       box-sizing: border-box;
     }
     /* Platform-specific tweaks: iOS Capacitor */
-    html[data-platform="ios"] .bottom-nav {
+    html[data-platform^="ios"] .bottom-nav {
       /* Must repeat the gradient, not --surface: this rule is more specific than .bottom-nav and
          would otherwise flatten the nav back out on iOS only. */
       background: linear-gradient(to top, var(--surface2), var(--surface));
@@ -5996,11 +5996,25 @@
     /* iOS: spread top-bar action icons horizontally across the Dynamic Island's width.
        Absolutely-centered means the user chip (a separate sibling) keeps its normal
        far-right placement undisturbed. */
-    html[data-platform="ios"] .top-bar-actions {
+    /* ^="ios" matches BOTH values the detection can produce. index.html reads
+       window.Capacitor.getPlatform() when the bridge is there and falls back to
+       a user-agent check otherwise, which yields "ios-web" — and the fallback
+       is what an iPhone was getting, so this rule never applied on the device
+       it was written for. Measured off a device screenshot: the three buttons
+       centred at 672 of 1206, where the screen centre is 603 — 23pt right of
+       the island, which is the static-flow position and shifts with the length
+       of the username beside them. With the rule applied the centre is exactly
+       half the viewport whatever the name.
+
+       125px is the Dynamic Island's own width on the 15/16 Pro, so the group
+       spans it edge to edge. Vertical alignment is not possible: the island
+       occupies the top 48pt and content starts below the 59pt safe-area inset,
+       so "aligned" here can only mean horizontally. */
+    html[data-platform^="ios"] .top-bar-actions {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
-      width: 126px;
+      width: 125px;
       justify-content: space-between;
       gap: 0;
       margin-left: 0;
