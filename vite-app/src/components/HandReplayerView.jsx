@@ -2043,10 +2043,23 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 </select>
               )}
             </div>
-            {!isOfc && <div className="replayer-field"><label>SB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).sb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), sb:Number(e.target.value)||0}}))} /></div>}
-            {!isOfc && <div className="replayer-field"><label>BB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}}))} /></div>}
-            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
+            {/* Stud has no blinds. It has an ante from every player and a
+                bring-in, and the engine already knows that — calcPotsAndStacks
+                posts a small and big blind only when the category is not stud,
+                and antes everyone when it is. Only this form still asked for
+                them. What it calls BB is, in a fixed-limit game, the SMALL BET
+                (flSmallStreets take bb, later streets take bb*2), so for stud
+                that is the field's real name; SB does nothing there but set the
+                bring-in at half itself, which is the default anyway. */}
+            {!isOfc && category !== 'stud' && <div className="replayer-field"><label>SB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).sb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), sb:Number(e.target.value)||0}}))} /></div>}
+            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Small Bet' : 'BB'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}}))} /></div>}
+            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante (each)' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
           </div>
+          {category === 'stud' && (
+            <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
+              Every player antes. Big bet is {formatChipAmount(((hand.blinds||{}).bb || 0) * 2) || '2×'} from 5th street; bring-in {formatChipAmount(Math.floor((((hand.blinds||{}).sb || (hand.blinds||{}).bb || 0)) / 2))}.
+            </div>
+          )}
           {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
@@ -2061,7 +2074,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         </div></div>
         <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
           <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary btn-sm" onClick={() => setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'door_cards' : 'action')}>Next</button>
+          {/* Stud went straight to the door cards from here, which meant
+              nothing ever asked hero for 3rd street: the door-card phase
+              skips hero by design, the in-action picker is turned off for
+              stud, and setPhase('hero_cards') was called from nowhere at all
+              — the phase existed and was unreachable. Its own Next button
+              already reads "Enter Door Cards" for stud, so this is the order
+              it was built for. */}
+          <button className="btn btn-primary btn-sm" onClick={() => setPhase(category === 'ofc' ? 'ofc_entry' : gameCfg.isStud ? 'hero_cards' : 'action')}>Next</button>
         </div>
       </div>
     );
@@ -2197,28 +2217,44 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   // ── HERO CARDS PHASE ──
   if (phase === 'hero_cards') {
     const heroCardsVal = (hand.streets[0] && hand.streets[0].cards.hero) || '';
-    const heroMaxCards = gameCfg.heroCards || 2;
+    /* A stud hand is not dealt at once: three cards on 3rd street and one on
+       each street after, stored that way too — getStudHeroAllCards accumulates
+       cards.hero ACROSS streets. This phase writes streets[0], so it is asking
+       for 3rd street alone. gameCfg.heroCards is 7 for stud, the size of the
+       finished hand, and would invite all of it into the first street. */
+    const heroMaxCards = gameCfg.isStud ? 3 : (gameCfg.heroCards || 2);
+    const heroCardsLabel = gameCfg.isStud ? '3rd Street' : 'Hero Cards';
     const heroCurrentCards = parseCardNotation(heroCardsVal).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
     const heroCurrentSet = new Set(heroCurrentCards);
     const heroAllRanks = 'AKQJT98765432'.split('');
     const heroAllSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
+    /* Read the hand from `prev`, not from the closure. Both branches used
+       heroCurrentCards and heroCardsVal, which are this render's values, so
+       three taps landing before a re-render all built their answer from the
+       same empty string and the last one won — one card out of three. The
+       phase was unreachable when it was written, so nothing ever tapped it;
+       the other card picker in this file already does it this way. */
     const toggleHeroCard = (card) => {
-      if (heroCurrentSet.has(card)) {
-        const remaining = heroCurrentCards.filter(c => c !== card);
-        setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: remaining.join('') } } : s) }));
-      } else {
-        if (heroCurrentCards.length >= heroMaxCards) return;
-        setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: heroCardsVal + card } } : s) }));
-      }
+      setHand(prev => {
+        const base = (prev.streets[0] && prev.streets[0].cards.hero) || '';
+        const cur = parseCardNotation(base).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
+        let next;
+        if (cur.includes(card)) next = cur.filter(c => c !== card).join('');
+        else {
+          if (cur.length >= heroMaxCards) return prev;
+          next = cur.concat(card).join('');
+        }
+        return { ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: next } } : s) };
+      });
     };
     return (
       <div className="gto-entry">
         <div className="gto-phase-card">
           <div className="replayer-section">
-            <div className="replayer-section-title">Hero Cards</div>
+            <div className="replayer-section-title">{heroCardsLabel}</div>
             <div className="replayer-field">
-              <label>Your Cards</label>
-              <input type="text" placeholder={gameCfg.heroPlaceholder || 'AhKd'}
+              <label>{gameCfg.isStud ? 'Two down, one up' : 'Your Cards'}</label>
+              <input type="text" placeholder={gameCfg.isStud ? 'Ah7d2c' : (gameCfg.heroPlaceholder || 'AhKd')}
                 value={heroCardsVal}
                 onChange={e => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: e.target.value } } : s) }))} />
               <CardRow text={heroCardsVal} stud={gameCfg.isStud} max={heroMaxCards} />
@@ -2657,7 +2693,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         </div></div>
         <div className="gto-street-card">
           <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button>
+            {/* Back goes to the step before this one, which is now hero's own
+                3rd street. Only stud reaches the door cards at all. */}
+            <button className="btn btn-ghost btn-sm" onClick={() => setPhase('hero_cards')}>Back</button>
             <button className="btn btn-primary btn-sm" onClick={() => setPhase('action')}>Start Action</button>
           </div>
         </div>
