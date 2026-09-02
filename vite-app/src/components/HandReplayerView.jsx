@@ -6110,9 +6110,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           const limitGame = gameCfg.betting === 'fl';
           const bigB = b.bigBet || (b.bb || 0) * 2;
           const sizes = b.bb
-            ? (limitGame ? formatChipAmount(b.bb) + ' / ' + formatChipAmount(bigB)
-                         : formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb))
-              + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '')
+            ? (limitGame ? formatChipAmount(b.bb) + '/' + formatChipAmount(bigB)
+                         : formatChipAmount(b.sb) + '/' + formatChipAmount(b.bb))
+              + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
           const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
           const avg = stacks.length ? Math.round(stacks.reduce((a, v) => a + v, 0) / stacks.length) : 0;
@@ -6233,7 +6233,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx}
-                  wideFan={pi === replayHeroIdx} />
+                  /* The hero used to fan wider than everybody else — a bigger
+                     arc and a wider allowance, on the grounds that the bottom
+                     seat has no neighbour to crowd. It just made one hand at
+                     the table a different shape. */
+                  wideFan={false} />
               </div>
               {/* 100: between steps the table was completely inert — no way to
                   inspect a player, no response to anything but the transport,
@@ -6304,8 +6308,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   if (!actText) return null;
                   let label = actText;
                   if (lastAct.amount) {
-                    if (actText === 'raise') label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, actionIdx, pi));
-                    else label += ' ' + formatChipAmount(lastAct.amount);
+                    /* Was the player's street TOTAL for a raise and the amount
+                       for everything else, so a raise to 400 that put 160 more
+                       in read "raise 400" beside 160 in chips. Every action now
+                       names the chips that action moves. */
+                    label += ' ' + formatChipAmount(lastAct.amount);
                   }
                   // 58: re-keying is what makes the entrance replay when the
                   // same player acts twice in one street.
