@@ -618,7 +618,17 @@ function nameBudgetFor(tableW, tableH, landscape) {
      the budget refused forms that fit — "K. McCormack" is 78px in an 83.6px
      box and was being rejected for being 12 characters against a budget of
      11, which cost the initial the house form is built on. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.52))));
+  /* 0.569, re-measured after the plaque moved to Baskerville. The 0.52 above
+     is Univers Condensed and no longer describes this face: measured the same
+     way, with a Range over a probe carrying the plaque's own resolved type,
+     ten real names run 0.522 to 0.647 with a mean of 0.569 — about 9% more per
+     character than the condensed face charged.
+     The cost is real and worth naming: at 8-max on a phone the box is 81.1px,
+     and "K. McCormack" is 100.8px in Baskerville against 78px in Univers, so
+     the longest names now fall through the house form to the last name alone,
+     which fits at 75.6px. Under-charging instead would not have kept the
+     initial, it would have clipped it. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.569))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
@@ -1056,7 +1066,15 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
      version of itself. It narrows only when the finished hand would hang off
      the cloth; where the cap does not bind nothing changes, and a four-card
      hand at a side seat reaches 0.58 of the 1.2 it is allowed. */
-  const maxHalfSpan = wide ? 1.8 : 1.2;
+  /* The cap is on the outermost card's CENTRE, but what has to stay on the
+     cloth is its EDGE — so the footprint is 2*half + one card width, which is
+     what 1.2 forgot. Measured at 6-max portrait: a side seat sits 15.7% in
+     from the table's edge, 60px of a 382px table, against a 43px card; half a
+     card is 21.5px, leaving 38.5px = 0.9 card widths for the half-span. At 1.2
+     the fan ran from -5.3% to 36.7% and hung 21px off the table.
+     0.78 leaves margin (0.85 hung 3px over, 0.8 by 1px) and still opens wider than the
+     0.726 the fan had before it was given a constant step. */
+  const maxHalfSpan = wide ? 1.8 : 0.78;
   const halfSlots = (slots - 1) / 2;
   const baseStep = (2 * angle) / 3;
   const cappedStep = halfSlots > 0
@@ -1419,7 +1437,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                now controls the thing it names. */
             { key:'animateDeal', label:'Deal Animation', sub:'Cards fly in at the top of a hand' },
             { key:'animateFold', label:'Fold & Muck', sub:'Folded cards slide away to the muck' },
-            { key:'animateChips', label:'Chip Animation', sub:'Chips slide from player to pot' },
+            { key:'animateChips', label:'Chip Animation', sub:'The pot ships to the winner' },
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
             { key:'animateWinner', label:'Winner Effects', sub:'Bounce and glow on winning hand' },
           ].map(opt => (
@@ -5786,9 +5804,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       sweeping.forEach(a => {
         if (!a.amount || seen.has(a.player) || folded.has(a.player)) return;
         seen.add(a.player);
-        const seat = seats[a.player];
-        if (seat) spawnFlyingChips(seat, [50, 37], 3, false, a.amount);
       });
+      /* No chips fly in. What a player has bet is already sitting in front of
+         them, and the pot still reacts when it takes them. */
       if (seen.size) markPotLanding();
       return;
     }
@@ -5796,9 +5814,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     const act = currentActions[actionIdx];
     if (!act || !act.amount) return;
     if (act.action !== 'bet' && act.action !== 'raise' && act.action !== 'call' && act.action !== 'all-in') return;
-    const seat = seats[act.player];
-    if (seat) {
-      spawnFlyingChips(seat, [50, 37], Math.min(5, 2 + Math.floor(act.amount / Math.max(1, pot || 1))), false, act.amount);
+    if (seats[act.player]) {
       markPotLanding();
       playTableSound('chips', rSettingsRef.current);
     }
@@ -6115,10 +6131,8 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
               + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
           const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
-          const avg = stacks.length ? Math.round(stacks.reduce((a, v) => a + v, 0) / stacks.length) : 0;
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
-            avg > 0 ? 'avg ' + formatChipAmount(avg) : null,
             hand.payoutNote || null,
           ].filter(Boolean).join(' \u00b7 ');
           if (!hand.title && !level && !meta) return null;
