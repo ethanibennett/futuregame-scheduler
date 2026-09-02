@@ -6102,8 +6102,19 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             title on the felt in the first place. */}
         {(() => {
           const b = hand.blinds || {};
-          const level = b.bb ? formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb)
-            + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '') : null;
+          /* The game, named the way the room names it, in front of the sizes
+             that were already here. A fixed-limit game is called by its two BET
+             sizes — a 200/400 stud game — not by a small blind, which stud does
+             not even have: this line used to read "100 / 200" on a stud hand,
+             where 100 was an sb nothing posts. */
+          const limitGame = gameCfg.betting === 'fl';
+          const bigB = b.bigBet || (b.bb || 0) * 2;
+          const sizes = b.bb
+            ? (limitGame ? formatChipAmount(b.bb) + ' / ' + formatChipAmount(bigB)
+                         : formatChipAmount(b.sb) + ' / ' + formatChipAmount(b.bb))
+              + (b.ante ? ' / ' + formatChipAmount(b.ante) + 'a' : '')
+            : null;
+          const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
           const avg = stacks.length ? Math.round(stacks.reduce((a, v) => a + v, 0) / stacks.length) : 0;
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
