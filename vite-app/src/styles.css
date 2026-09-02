@@ -3223,7 +3223,11 @@
       font-size: clamp(8px, 2.8cqmin, 34px);
     }
     /* Decoration gives way to the block that carries the level. */
-    .replayer-landscape .replayer-watermark { top: 43%; }
+    /* Landscape is wide and SHORT, and 9-max puts TWO seats along the bottom
+       rather than one, which is the tightest the band ever gets: the board ends
+       at 57.9% and those hands start at 71.8%, leaving 38px for both marks. */
+    .replayer-landscape .replayer-watermark { top: 67%; font-size: clamp(13px, 4.2cqw, 30px); }
+
     /* One declaration of how tall the transport is, read by the overlay above
        so the two cannot drift apart. */
     .replayer-landscape { --transport-h: 58px; }
@@ -5522,14 +5526,24 @@
     .replayer-watermark {
       /* Positioned here rather than inline: an inline style wins over a class
          rule, so landscape could not move it off the tournament block. */
-      position: absolute; left: 50%; top: 56%; transform: translate(-50%,-50%);
+      position: absolute; left: 50%; top: 70.5%; transform: translate(-50%,-50%);
       z-index: var(--z-mark);
-      /* Rendered: at 57% it sat behind the board's street labels once the
-         board moved to 54%. It lives in the clear band below them. */
+      /* Measured at showdown, which is when the cloth is fullest. At 56% the
+         wordmark ran 54.5-57.5% against a board occupying 49.2-54.8%, so it was
+         already touching the board before it grew — and in landscape it ran
+         38.9-47.1% across a pot ending at 41.3% and a board starting at 46.1%,
+         overlapping both. The one genuinely clear band is below the board and
+         above the hero's hand: 54.8-73.7% in portrait, 57.9-74.9% in landscape.
+         It sits BELOW the table-info block — the game and the sizes, which is
+         content — rather than on it, which is what a bigger wordmark started
+         doing at 65%.
+         Size scales with the table rather than sitting at a fixed --fs-md,
+         which held 15px whether the table was 382px wide or 1400. */
       mix-blend-mode: overlay;
-      opacity: 0.22;
+      opacity: 0.26;
       font-family: var(--font-display);
-      font-size: var(--fs-md);
+      font-size: clamp(15px, 6.3cqw, 46px);
+      line-height: 1;
       letter-spacing: var(--track-wordmark);
       font-weight: var(--fw-bold);
       color: #fff;
