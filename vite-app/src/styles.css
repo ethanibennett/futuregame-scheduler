@@ -3855,15 +3855,20 @@
        already-computed --card-w and the cards do not actually change size.
        Measured: --card-h read the new clamp while --card-w still read
        calc(clamp(18px, 12.5cqmin, 160px) * .7143). */
-    .replayer-seat:has(.card-row > *:nth-child(6)) {
+    /* Keyed on the size the hand ENDS at, not on how many cards have been
+       dealt so far. :has(nth-child(6)) shrank the cards the moment the sixth
+       arrived, so a stud hand was one size on 3rd through 5th street and a
+       smaller one on 6th and 7th. The seat has to hold seven from the start. */
+    .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat {
       --card-h: clamp(14px, 9.375cqmin, 120px);
       --card-w: calc(var(--card-h) * 0.7143);
     }
-    .replayer-landscape .replayer-seat:has(.card-row > *:nth-child(6)) {
+    .replayer-landscape.replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat,
+    .replayer-landscape .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat {
       --card-h: clamp(14px, 7.875cqmin, 100px);
       --card-w: calc(var(--card-h) * 0.7143);
     }
-    .replayer-seat.is-hero:has(.card-row > *:nth-child(6)) {
+    .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat.is-hero {
       --card-h: clamp(16px, 11.7cqmin, 150px);
       --card-w: calc(var(--card-h) * 0.7143);
     }
@@ -4818,16 +4823,13 @@
       pointer-events: none;
       box-shadow: 0 0 30px rgba(0,229,255,0.25), 0 0 40px rgba(255,0,128,0.18);
     }
-    @media (prefers-reduced-motion: no-preference) {
-      .replayer-table.theme-neon-vegas .replayer-table-felt::before {
-        animation: neonGlowPulse 9s ease-in-out infinite;
-      }
-    }
-    /* 72: a 3-second infinite pulse on one theme, and every other table
-       completely still between steps — so the frame had no idle state, only
-       "dead" and "never settles". A very slow specular drift on every theme,
-       and the neon slowed to match: ambient motion should be the thing you
-       notice only when it stops. */
+    /* 72 argued for ambient motion — a slow drift on every table so the frame
+       had an idle state rather than only "dead" and "never settles". In use it
+       is the opposite: a replay is read a step at a time, and a felt that never
+       holds still competes with the thing being read. Both idle pulses are
+       gone; the table is still between steps and moves only when something
+       happens. The keyframes stay defined but unused, so restoring either is a
+       one-line change. */
     @keyframes neonGlowPulse {
       0%, 100% { opacity: 0.62; }
       50%      { opacity: 1; }
@@ -4836,9 +4838,7 @@
       0%, 100% { opacity: 1; }
       50%      { opacity: 0.93; }
     }
-    @media (prefers-reduced-motion: no-preference) {
-      .replayer-table-felt::after { animation: feltBreathe 14s ease-in-out infinite; }
-    }
+
 
     @keyframes neonPulse {
       0%,100% { box-shadow:0 0 0 2px rgba(0,229,255,0.3), 0 0 20px rgba(0,229,255,0.1); }
