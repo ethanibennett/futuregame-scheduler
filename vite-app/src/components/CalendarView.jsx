@@ -566,7 +566,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   );
 }
 
-export default function CalendarView({ allTournaments, mySchedule, onToggle, gameVariants, venues, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, buddyLiveUpdates, onOpenScheduleView, initialSearch, onSearchConsumed }) {
+export default function CalendarView({ token, allTournaments, mySchedule, onToggle, gameVariants, venues, onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries, buddyEvents, buddyLiveUpdates, onOpenScheduleView, initialSearch, onSearchConsumed }) {
   // Search: owned here (not in the Filters sheet) because it drives what the calendar SHOWS —
   // the per-day density counts and the day's event list — not just a sheet control. Matches the
   // event name, the venue strip, the series name (which rides in notes), and the game.
