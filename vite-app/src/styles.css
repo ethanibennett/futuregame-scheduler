@@ -1792,7 +1792,8 @@
     .live-update-panel {
       position: fixed;
       width: 300px;
-      z-index: var(--z-sticky);
+      /* Same pairing as .filter-panel above: it renders its own scrim. */
+      z-index: var(--z-panel);
       background: var(--surface);
       border: var(--bw-1) solid var(--border);
       border-radius: var(--radius-sm);
@@ -6522,7 +6523,15 @@
     .filter-chip-square svg { width: 16px; height: 16px; }
 
     .filter-panel {
-      position: fixed; z-index: var(--z-sticky);
+      /* --z-panel (400), not --z-sticky (100). The panel and .dropdown-backdrop
+         are BOTH portalled to document.body, so DOM order decides nothing and
+         the scrim's 300 sat on top of the panel it exists to sit behind. That
+         is why every control looked greyed out — the scrim's rgba(0,0,0,0.45)
+         was over them — and why tapping one closed the panel instead: the tap
+         landed on the backdrop, whose handler is onClose. The scale has a
+         layer for exactly this, and its own comment says a scrim and its panel
+         are always a pair. */
+      position: fixed; z-index: var(--z-panel);
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);

@@ -46,7 +46,10 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
   return (
     <div className="location-dropdown" style={{
       position:'fixed', top: rect.bottom + 4, left: rect.left,
-      zIndex:999, background:'var(--surface)', border:'1px solid var(--border)',
+      // var(--z-panel), not a 999 literal: an off-scale number is what the
+      // layer tokens were introduced to end, and this one only happened to be
+      // above the scrim.
+      zIndex:'var(--z-panel)', background:'var(--surface)', border:'1px solid var(--border)',
       borderRadius:'var(--radius)', padding:'6px 0', minWidth:'240px', maxWidth:'320px',
       boxShadow:'var(--elev-2)',
     }}>
