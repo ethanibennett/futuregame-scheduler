@@ -554,6 +554,24 @@ function shortenName(name, budget = 15) {
   return cut(t, budget);
 }
 
+/* The plaques have always abbreviated, because they are the thing with no
+   room; the showdown banner did not, so the same person was "J. Blodgett" on
+   the table and "John Blodgett" underneath it. This is the house form with no
+   budget attached — first initial, last name — for the places that want it for
+   consistency rather than because they are out of space. */
+function houseName(name) {
+  const t = String(name || '').trim();
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return t;
+  /* Only a name shaped like a person's gets the treatment. A shared #h/ link
+     carries no real names, so its opponents arrive as "Opp 1" — and the house
+     form turned that into "O. 1", which identifies nobody. A last part that is
+     not a word is a placeholder's number, and the label keeps it whole. */
+  const last = parts[parts.length - 1];
+  if (!/^[A-Za-z][A-Za-z'’-]*$/.test(last)) return t;
+  return parts[0][0].toUpperCase() + '. ' + last;
+}
+
 function cut(t, budget) {
   const n = Math.max(3, budget);
   return t.length <= n ? t : t.slice(0, n - 1) + '…';
@@ -2495,7 +2513,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   const lb = [];
                   if (_hs[w.playerIdx] && _hs[w.playerIdx].score === _bh) lb.push('Hi: ' + (_hs[w.playerIdx].shortName || _hs[w.playerIdx].name));
                   if (_ls[w.playerIdx] && _ls[w.playerIdx].score === _bl) lb.push('Lo: ' + _ls[w.playerIdx].name);
-                  if (lb.length) return { ...w, label: hand.players[w.playerIdx].name + ' wins ' + lb.join(', ') };
+                  if (lb.length) return { ...w, label: houseName(hand.players[w.playerIdx].name) + ' wins ' + lb.join(', ') };
                   return w;
                 });
               }
@@ -4326,7 +4344,27 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
   // Pot and stacks
   const { stacks, pot, folded } = useMemo(() => calcPotsAndStacks(hand, streetIdx, actionIdx), [hand, streetIdx, actionIdx]);
-  const displayPot = useMemo(() => calcPotsAndStacks(hand, streetIdx, -1).pot, [hand, streetIdx]);
+  /* Mid-street the pot shown deliberately EXCLUDES this street's betting,
+     because those chips are still sitting in front of the players who bet
+     them — counting both would show the same money twice.
+
+     At showdown there is no "in front" any more: the bets are collected and
+     the pot is paid out. Reported on a hi/lo hand where the pot read 104 BB
+     while the two awards under it read 233 BB and 77.6 BB. The awards were
+     right — they divide `pot`, the real total, and 233 + 77.6 = 310.6 BB is
+     what the stacks say (two players in for 30,800 each at bb=200 is 308 BB
+     before blinds and antes). It was the TOTAL that was short, by exactly the
+     river it had not counted yet, which is why it looked like the awards had
+     been multiplied.
+
+     The last action is read from the street rather than taken from actionIdx,
+     so this is the finished pot whatever step the replay is parked on. */
+  const displayPot = useMemo(() => {
+    if (!showResult) return calcPotsAndStacks(hand, streetIdx, -1).pot;
+    const st = hand.streets[streetIdx];
+    const lastAct = st && st.actions ? st.actions.length - 1 : -1;
+    return calcPotsAndStacks(hand, streetIdx, lastAct).pot;
+  }, [hand, streetIdx, showResult]);
 
   /* 91: a player who moved all-in got an ALL-IN badge for exactly one step and
      then reverted to an ordinary seat with a zero stack. All-in is the state
@@ -4423,7 +4461,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const evalResult = useMemo(() => {
     if (showResult && hand.result && hand.result.winners) {
       return hand.result.winners.map(w => {
-        const pName = w.playerIdx === replayHeroIdx ? 'Hero' : (hand.players[w.playerIdx]?.name || 'Player');
+        const pName = w.playerIdx === replayHeroIdx ? 'Hero' : houseName(hand.players[w.playerIdx]?.name || 'Player');
         let winHandName = '';
         const pCards = w.playerIdx === replayHeroIdx ? heroCards : (opponentCards[w.playerIdx] || '');
         if (pCards && pCards !== 'MUCK') {

@@ -4528,7 +4528,12 @@
          a single winner does, or the table above changes size at showdown. */
       display:flex; flex-direction:row; gap: var(--space-2xs); justify-content: center;
       margin: var(--space-sm) auto 0; max-width: 420px;
-      overflow-x: auto; scrollbar-width: none;
+      /* Wrap, do not scroll. Centred content that overflows a scroll container
+         is clipped on BOTH sides and the left half cannot be scrolled back to,
+         which is what a hi/lo showdown looked like: two banners, each cut off
+         at a screen edge. Wrapping puts the second winner on its own line —
+         one line for a hand, two for a split, which is the rule. */
+      flex-wrap: wrap;
     }
     .replayer-result-banner::-webkit-scrollbar { display: none; }
     .replayer-result-banner > .replayer-result { flex: none; white-space: nowrap; }
