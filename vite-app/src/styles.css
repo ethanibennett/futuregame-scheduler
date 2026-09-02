@@ -3839,6 +3839,35 @@
     }
 
     /* Player seats around the oval */
+    /* A seven-card hand has to fit the same seat a two-card hand does, and at
+       the two-card size it cannot: measured at 6-max portrait, a side seat's
+       fan centre sits 60px from the table's edge against a 45.3px card, so
+       after half a card there is 0.82 of a card width left for the half-span —
+       which spreads seven cards 0.27 of a width apart and stacks them nearly on
+       top of one another.
+       The board already solves it this way, taking 10.9375cqmin for five cards
+       where a flop takes 12.5. At three quarters the card is 34px, the seat's
+       room allows a half-span of 1.26, and the cards open 0.42 of a width
+       apart — about what the fan had before it was given a constant step. */
+    /* --card-w has to be restated. It is declared once on an ancestor as
+       calc(var(--card-h) * .7143), and a custom property substitutes where it
+       is DECLARED — so a seat overriding --card-h inherits the ancestor's
+       already-computed --card-w and the cards do not actually change size.
+       Measured: --card-h read the new clamp while --card-w still read
+       calc(clamp(18px, 12.5cqmin, 160px) * .7143). */
+    .replayer-seat:has(.card-row > *:nth-child(6)) {
+      --card-h: clamp(14px, 9.375cqmin, 120px);
+      --card-w: calc(var(--card-h) * 0.7143);
+    }
+    .replayer-landscape .replayer-seat:has(.card-row > *:nth-child(6)) {
+      --card-h: clamp(14px, 7.875cqmin, 100px);
+      --card-w: calc(var(--card-h) * 0.7143);
+    }
+    .replayer-seat.is-hero:has(.card-row > *:nth-child(6)) {
+      --card-h: clamp(16px, 11.7cqmin, 150px);
+      --card-w: calc(var(--card-h) * 0.7143);
+    }
+
     .replayer-seat {
       position: absolute;
       transform: translate(-50%, -50%);
@@ -4061,13 +4090,19 @@
        row. One line-height on the plaque, inherited by all of them. */
     .replayer-seat-info { line-height: 1.34; }
     .replayer-seat-name {
-      font-size: clamp(8px, 3.4cqmin, 42px);
+      /* 3.1 rather than 3.4. The roman cut is wider than the condensed one it
+         replaced — measured, "K. McCormack" is 89.6px against 78px — and the
+         plaque's box is 83.6px at 8-max on a phone, so at the old size the
+         house form no longer fit and would have ellipsised. A 9% smaller name
+         keeps the initial rather than losing it; nameBudgetFor's own size
+         estimate moves with it. */
+      font-size: clamp(8px, 3.1cqmin, 39px);
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
-      /* Baskerville, through the token rather than by name, so the serif
-         setting still governs which one. A player's name is the one piece of
-         the plaque somebody wrote; the condensed face is for the numbers. */
-      font-family: var(--font-display);
+      /* Univers, but the ROMAN cut rather than the condensed one. The
+         condensed face is drawn for fitting numbers into narrow columns, and a
+         name is not a number. */
+      font-family: var(--font-sans);
       letter-spacing: var(--track-tight);
       /* 45: max-width:80px with an ellipsis, in a condensed face at 10px, is
          about 14 characters — and the cut fell mid-word with no title
