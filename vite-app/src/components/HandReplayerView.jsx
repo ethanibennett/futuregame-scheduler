@@ -4578,6 +4578,38 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     return { ...w, hi: false, lo: false };
   }), [hand]);
 
+  /* Which halves each seat actually WON.
+     The plaque put "Hi:" in front of every shown player's best high hand, so a
+     wheel that lost to a 6-high straight was captioned exactly like the hand
+     that beat it — two winning highs on one table, when the 6-high straight is
+     the only winning high there is. The awards were right all along; it was the
+     caption claiming something the awards never said.
+     Read from the cards where they are all known, the same authority potAwards
+     prefers, and fall back to the stored Hi/Lo flags when somebody mucked. */
+  const hiLoHalves = useMemo(() => {
+    const cfg = GAME_EVAL[hand.gameType];
+    if (!showResult || !cfg || cfg.type !== 'hilo') return null;
+    const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
+    const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    const map = {};
+    let readable = true;
+    contesting.forEach(pi => {
+      const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
+      const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
+      if (parsed.length < (gameCfg.isStud ? 5 : (gameCfg.heroCards || 2))) { readable = false; return; }
+      const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
+      const lo = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(parsed.concat(board), true);
+      map[pi] = { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
+    });
+    if (readable && Object.keys(map).length) {
+      const w = hiLoWinnersAmong(map, contesting);
+      return { hi: new Set(w.hiWinners), lo: new Set(w.loWinners) };
+    }
+    const hiSet = new Set(), loSet = new Set();
+    flaggedWinners.forEach(w => { if (w.hi) hiSet.add(w.playerIdx); if (w.lo) loSet.add(w.playerIdx); });
+    return { hi: hiSet, lo: loSet };
+  }, [showResult, hand, folded, boardCards, heroCards, opponentCards, replayHeroIdx, category, gameCfg, flaggedWinners]);
+
   /* What each winner is actually PAID.
 
      94: the split display divided the pot by the NUMBER of split winners. A
@@ -4886,10 +4918,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     if (cfg.type === 'hilo') {
       const hiEv = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
       const loEv = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(parsed.concat(board), true);
+      /* Only a half this player won gets its label: "Hi:" is a claim, and it
+         belongs to whoever won the high. */
+      const wonHi = !hiLoHalves || hiLoHalves.hi.has(playerIdx);
+      const wonLo = !hiLoHalves || hiLoHalves.lo.has(playerIdx);
       const parts = [];
-      if (hiEv) parts.push('Hi: ' + (useShort ? (hiEv.shortName || hiEv.name) : hiEv.name));
-      if (loEv && loEv.qualified !== false && loEv.name) parts.push('Lo: ' + loEv.name);
-      return parts.length ? parts.join('\n') : null;
+      if (hiEv && wonHi) parts.push('Hi: ' + (useShort ? (hiEv.shortName || hiEv.name) : hiEv.name));
+      if (loEv && loEv.qualified !== false && loEv.name && wonLo) parts.push('Lo: ' + loEv.name);
+      if (parts.length) return parts.join('\n');
+      /* Won neither half. The hand is still worth showing at a showdown —
+         it just gets named, not captioned as a winning half. */
+      if (hiEv) return useShort ? (hiEv.shortName || hiEv.name) : hiEv.name;
+      return null;
     }
     let ev = null;
     if (cfg.type === 'high') ev = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
