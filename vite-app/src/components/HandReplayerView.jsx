@@ -5875,6 +5875,11 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           study, and it holds still. */}
       <div className="replayer-table-slot">
       <div ref={tableRef} className={'replayer-table' + themeClass}
+        /* How many cards a hand ENDS with, so the card size is a property of
+           the game rather than of how far the deal has got. Sizing off the
+           cards currently on the table shrank them when the 6th arrived, so a
+           stud hand changed size halfway through. */
+        data-hand-cards={gameCfg.heroCards || 2}
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
         style={rSettings.cardBack === 'custom' ? (() => {
