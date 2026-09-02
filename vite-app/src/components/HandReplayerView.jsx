@@ -686,6 +686,9 @@ function createEmptyHand(gameType, heroName) {
   const defaultAnte = gameCfg.isStud ? 25 : ((gameCfg.hasBoard && !gameCfg.isStud) ? 200 : 0);
   const defaultBigBet = gameCfg.isStud ? 400 : 0;
   const defaultBringIn = gameCfg.isStud ? 50 : 0;
+  /* A limit street runs a bet and four raises. gameCfg.raiseCap said four,
+     which is the other common house rule; hands saved without a cap keep it. */
+  const isLimit = gameCfg.betting === 'fl';
   const defaultStack = gameCfg.isStud ? defaultBigBet * STUD_STACK_BB : 50000;
   return {
     gameType,
@@ -693,8 +696,10 @@ function createEmptyHand(gameType, heroName) {
       name: getSeatName(i, 0, heroName), position: positions[i] || '', startingStack: defaultStack
     })),
     blinds: gameCfg.isStud
-      ? { sb: 100, bb: 200, ante: defaultAnte, bigBet: defaultBigBet, bringIn: defaultBringIn }
-      : { sb: 100, bb: 200, ante: defaultAnte },
+      ? { sb: 100, bb: 200, ante: defaultAnte, bigBet: defaultBigBet, bringIn: defaultBringIn, betCap: 5, uncapHeadsUp: true }
+      : (isLimit
+        ? { sb: 100, bb: 200, ante: defaultAnte, betCap: 5, uncapHeadsUp: true }
+        : { sb: 100, bb: 200, ante: defaultAnte }),
     streets: streetDef.streets.map(name => ({
       name, cards: { hero: '', opponents: Array.from({ length: numPlayers - 1 }, () => ''), board: '' }, actions: [], draws: [],
     })),
@@ -1487,7 +1492,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
     const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1 && studHasOpenPairOn4th(hand);
     const bigBet = (hand.blinds || {}).bigBet || (bb || 100) * 2;
     const fixedBet = betting === 'fl' ? ((isSmallBetStreet && !stud4thOpenPair) ? (bb || 100) : bigBet) : 0;
-    const raiseCap = gameCfg.raiseCap || 4;
+    const raiseCap = (hand.blinds || {}).betCap || gameCfg.raiseCap || 4;
     let maxBet = 0, raiseCount = 0;
     const isBBanteCtx = category !== 'stud' && ante > 0;
     let totalPot = isBBanteCtx ? 0 : ante * hand.players.length;
@@ -2101,7 +2106,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const isLimitGame = bettingType === 'fl';
   const isPotLimit = bettingType === 'pl';
   const flSmallStreets = gameCfg.flSmallStreets || [0, 1];
-  const flRaiseCap = gameCfg.raiseCap || 4;
+  const flRaiseCap = (hand.blinds || {}).betCap || gameCfg.raiseCap || 4;
   let streetBetRaiseCount = 0;
   (currentStreet.actions || []).forEach(a => { if (a.action === 'raise' || a.action === 'bet') streetBetRaiseCount++; });
   const activePlayerCount = hand.players.filter((_, i) => !foldedSet.has(i) && !allInSet.has(i)).length;
@@ -2113,7 +2118,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     : ((hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 100) * 2);
   const flRaiseToTotal = streetBets.maxBet + flBetSize;
   const flRaiseIncrement = flRaiseToTotal - playerContrib;
-  const flCanRaise = isHeadsUp || streetBetRaiseCount < flRaiseCap;
+  /* Heads-up used to lift the cap on every street, which is one house rule but
+     not the one being asked for: uncapped heads up on the LAST street only,
+     and only when the hand says so. Off, the cap holds everywhere. */
+  const isLastStreet = currentStreetIdx === hand.streets.length - 1;
+  const uncapHeadsUp = (hand.blinds || {}).uncapHeadsUp !== false;
+  const flCanRaise = (uncapHeadsUp && isHeadsUp && isLastStreet) || streetBetRaiseCount < flRaiseCap;
 
   // Pot-limit: ante does NOT count as part of the pot preflop, but DOES postflop
   const blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
@@ -2164,6 +2174,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
        the only one, and it is now stored rather than assumed. */
     const studBigBet = (hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 0) * 2;
     const studBringIn = (hand.blinds || {}).bringIn || Math.floor(((hand.blinds || {}).bb || 0) / 4);
+    /* The cap belongs to every fixed-limit game, not just stud — a limit hold'em
+       street is capped the same way — so it shows wherever the betting is fl. */
+    const isLimitGame = gameCfg.betting === 'fl';
+    const betCap = (hand.blinds || {}).betCap || gameCfg.raiseCap || 4;
+    const uncapHU = (hand.blinds || {}).uncapHeadsUp !== false;
+    const setBlind = (field, value) => setHand(prev => ({ ...prev, blinds: { ...(prev.blinds || {}), [field]: value } }));
     const setStudSized = (field, value) => {
       setHand(prev => {
         const b = prev.blinds || {};
@@ -2227,10 +2243,22 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             {!isOfc && category === 'stud' && <div className="replayer-field"><label>Big Bet</label><input type="text" inputMode="decimal" value={studBigBet||''} onChange={e => setStudSized('bigBet', Number(e.target.value)||0)} /></div>}
             {!isOfc && category === 'stud' && <div className="replayer-field"><label>Bring-in</label><input type="text" inputMode="decimal" value={studBringIn||''} onChange={e => setStudSized('bringIn', Number(e.target.value)||0)} /></div>}
             {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante (each)' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
+            {!isOfc && isLimitGame && <div className="replayer-field"><label>Cap</label><input type="text" inputMode="decimal" value={betCap||''} onChange={e => setBlind('betCap', Number(e.target.value)||0)} /></div>}
           </div>
+          {!isOfc && isLimitGame && (
+            <div className="replayer-settings-row" style={{padding:'6px 0'}}>
+              <div>
+                <div className="replayer-settings-label">Uncapped heads-up{category === 'stud' ? ' on 7th' : ' on the river'}</div>
+                <div className="replayer-settings-sublabel">Two players left on the last street keep raising past the cap</div>
+              </div>
+              <button type="button" className={'replayer-settings-toggle' + (uncapHU ? ' on' : '')}
+                aria-pressed={uncapHU} aria-label="Uncapped heads-up on the last street"
+                onClick={() => setBlind('uncapHeadsUp', !uncapHU)} />
+            </div>
+          )}
           {category === 'stud' && (
             <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
-              Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets.
+              Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
             </div>
           )}
           {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
