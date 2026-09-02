@@ -1018,7 +1018,8 @@ function PotChipVisual({ amount }) {
 // stacked leftmost-on-top, and the card faces carry their rank index ONLY at
 // top-left — there is no bottom-right mirror — so every buried card showed
 // nothing but a blank right edge and the opponent's hand was unreadable.
-// Face-up cards therefore always fan rightmost-on-top; see faceUp below.
+// Face-up cards therefore always fan rightmost-on-top, decided once for the
+// whole row rather than card by card.
 /* 35: the pivot was at 50% 120% — a point directly below the CENTRE of the
    hand, so the fan opened around a hinge under the middle of it and came out
    perfectly symmetrical. A hand pivots around the bottom corner nearest the
@@ -1027,10 +1028,37 @@ function PotChipVisual({ amount }) {
    34: and the fan was a pure 2D rotation, which is cards printed on a page.
    A real fan also lifts each successive card slightly out of the plane, so it
    grows a little and throws a longer shadow toward the top of the arc. */
-function getSplayStyle(index, total, angle, yOffset, reverseZ, wide) {
+function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
   if (total <= 1) return {};
-  const step = (2 * angle) / (total - 1);
-  const rot = -angle + step * index;
+  /* The step is per CARD and fixed by the size of the FINISHED hand, not by
+     how many cards have arrived. Dividing the whole arc among the cards on the
+     table meant three cards fanned as wide as seven would, and every card
+     dealt afterwards shuffled all of them inward — a hand that rearranged
+     itself on every street instead of growing.
+     Fixing the step and centring on (total-1)/2 puts any n cards exactly where
+     the middle n will sit when the hand is finished: 3rd street holds the
+     middle three of the seven, and 4th street adds one to each side without
+     moving them. */
+  const slots = Math.max(total, fanTotal || total);
+  /* Both the arc's radius and the step are sized on the FINISHED hand, so the
+     fan does not change curve or spacing as cards arrive. Measured: a side
+     seat sits 15.6% in from the table's edge, which caps a fan at about 2.4
+     card widths across — 1.2 out from centre. The hero sits at the bottom with
+     no neighbour and the whole width to itself. */
+  const radiusCards = wide ? (slots <= 5 ? 2.9 : 3.7) : (slots <= 5 ? 2.4 : 3.0);
+  /* The step is the FOUR-card step, the spacing a PLO hand has always had, so
+     a stud hand on 4th street is the same shape as one rather than a tighter
+     version of itself. It narrows only when the finished hand would hang off
+     the cloth; where the cap does not bind nothing changes, and a four-card
+     hand at a side seat reaches 0.58 of the 1.2 it is allowed. */
+  const maxHalfSpan = wide ? 1.8 : 1.2;
+  const halfSlots = (slots - 1) / 2;
+  const baseStep = (2 * angle) / 3;
+  const cappedStep = halfSlots > 0
+    ? Math.asin(Math.min(1, maxHalfSpan / radiusCards)) * (180 / Math.PI) / halfSlots
+    : baseStep;
+  const step = Math.min(baseStep, cappedStep);
+  const rot = (index - (total - 1) / 2) * step;
   const extraY = yOffset || 0;
   const z = reverseZ ? (total - 1 - index) : index;
   // The lift runs along the arc, not with the z-order, so a reversed fan still
@@ -1067,7 +1095,15 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide) {
      about 2.4 card widths, an advance of 0.40 per card. The HERO has no
      neighbour to crowd; it sits at the bottom centre with the whole width to
      itself, so its hand opens properly. */
-  const radiusCards = wide ? (total <= 5 ? 2.9 : 3.7) : (total <= 5 ? 2.4 : 3.0);
+  /* The step is the FOUR-card step — the spacing a PLO hand has always had —
+     so a stud hand on 4th street is the same shape as one rather than a
+     tighter version of itself.
+     It narrows only when the finished hand would hang off the cloth. The
+     existing measurement is that a side seat sits 15.6% in from the table's
+     edge, which caps a fan at about 2.4 card widths across, so 1.2 out from
+     centre; the hero sits at the bottom with no neighbour and the whole width
+     to itself. Where the cap does not bind nothing changes at all: a four-card
+     hand at a side seat reaches 0.58, less than half of it. */
   /* The -9 here shifted every fan nine pixels left of the seat it belongs
      to. The comment above explains the PIVOT being left of centre, which is
      about which way the arc opens and needs no translation at all: the arc is
@@ -1105,6 +1141,13 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
   if (!cards.length) return null;
   if (max && cards.length > max) cards = cards.slice(0, max);
   const downIdx = stud ? new Set([0, 1, 6]) : null;
+  /* One z-order for the whole row. reverseZ exists for a hand that is face
+     DOWN, where putting the leftmost card on top buries no rank because there
+     are none. Deciding it per CARD mixed the two orders inside one hand: a
+     stud hand's two down cards took the reversed order and sat on top of the
+     up cards beside them, burying exactly the ranks the fan exists to show.
+     So it reverses only when nothing in the row is face up. */
+  const rowReverseZ = reverseZ && !cards.some((c, i) => c.suit !== 'x' && !(downIdx && downIdx.has(i)));
   return (
     <div className={"card-row" + (splay ? " card-row-splay" : "")}>
       {cards.map((c, i) => {
@@ -1114,12 +1157,11 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         const studYOffset = isStudUp ? -5 : isDown ? 5 : 0;
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
-        const faceUp = c.suit !== 'x' && !isDown;
         // 63: --ci is the card's place in the hand. The per-card deal
         // stagger multiplies it by one round of the table, so a hand is dealt
         // one card at a time round the seats rather than arriving as a block.
         const splayStyle = { '--ci': i, ...(splay
-          ? getSplayStyle(i, cards.length, splay, studYOffset, reverseZ && !faceUp, wideFan)
+          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, wideFan, max)
           : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
@@ -3064,6 +3106,21 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       return (nextStreetData.cards.opponents || [])[oppSlot] || '';
     };
 
+    /* Every card already dealt anywhere else in this hand. The picker only ever
+       consulted the street it was dealing, so a card that came down on 3rd
+       street was still live on 5th and could be dealt to somebody a second
+       time. This street's own cards stay out of the set — they are already
+       handled as selections, and tapping one takes it back. */
+    const sdDead = new Set();
+    hand.streets.forEach((st, si) => {
+      if (si === nextStudStreet) return;
+      const cs = st.cards || {};
+      const eat = (str) => parseCardNotation(str || '').forEach(c => { if (c.suit !== 'x') sdDead.add(c.rank + c.suit); });
+      eat(cs.hero);
+      eat(cs.board);
+      (cs.opponents || []).forEach(eat);
+    });
+
     const enteredCount = sdActivePlayers.filter(pi => getStudCardForPlayer(pi)).length;
     const sdRanks = 'AKQJT98765432'.split('');
     const sdSuits = [{key:'h'},{key:'d'},{key:'c'},{key:'s'}];
@@ -3091,7 +3148,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   const card = rank + suit.key;
                   let selectedFor = -1;
                   sdActivePlayers.forEach(pi => { if (getStudCardForPlayer(pi) === card) selectedFor = pi; });
-                  return <button key={card} className={'card-picker-btn' + (selectedFor >= 0 ? ' selected' : '')} onClick={() => {
+                  const isDead = selectedFor < 0 && sdDead.has(card);
+                  return <button key={card} title={isDead ? 'Already dealt' : undefined}
+                    className={'card-picker-btn' + (selectedFor >= 0 ? ' selected' : '') + (isDead ? ' used' : '')}
+                    disabled={isDead} onClick={() => {
                     if (selectedFor >= 0) setStudCard(selectedFor, '');
                     else if (studDealTarget >= 0) {
                       setStudCard(studDealTarget, card);
