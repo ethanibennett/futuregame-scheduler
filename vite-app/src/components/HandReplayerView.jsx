@@ -685,6 +685,7 @@ function createEmptyHand(gameType, heroName) {
      counted an ante from everyone the moment there was one to count. */
   const defaultAnte = gameCfg.isStud ? 25 : ((gameCfg.hasBoard && !gameCfg.isStud) ? 200 : 0);
   const defaultBigBet = gameCfg.isStud ? 400 : 0;
+  const defaultBringIn = gameCfg.isStud ? 50 : 0;
   const defaultStack = gameCfg.isStud ? defaultBigBet * STUD_STACK_BB : 50000;
   return {
     gameType,
@@ -692,7 +693,7 @@ function createEmptyHand(gameType, heroName) {
       name: getSeatName(i, 0, heroName), position: positions[i] || '', startingStack: defaultStack
     })),
     blinds: gameCfg.isStud
-      ? { sb: 100, bb: 200, ante: defaultAnte, bigBet: defaultBigBet }
+      ? { sb: 100, bb: 200, ante: defaultAnte, bigBet: defaultBigBet, bringIn: defaultBringIn }
       : { sb: 100, bb: 200, ante: defaultAnte },
     streets: streetDef.streets.map(name => ({
       name, cards: { hero: '', opponents: Array.from({ length: numPlayers - 1 }, () => ''), board: '' }, actions: [], draws: [],
@@ -1793,7 +1794,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const seatOrder = useMemo(() => getActionOrder(hand.players, isPreflop, studInfo), [hand.players, isPreflop, studInfo]);
   const actionOrder = useMemo(() => seatOrder.filter(i => !foldedSet.has(i) && !allInSet.has(i)), [seatOrder, foldedSet, allInSet]);
 
-  const bringInAmount = gameCfg.isStud ? Math.floor(((hand.blinds || {}).bb || 200) / 4) : 0;
+  const bringInAmount = gameCfg.isStud
+    ? ((hand.blinds || {}).bringIn || Math.floor(((hand.blinds || {}).bb || 200) / 4))
+    : 0;
 
   const streetBets = useMemo(() => {
     const contrib = new Array(hand.players.length).fill(0);
@@ -2118,6 +2121,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
        was derived as twice the small one, which is the usual structure but not
        the only one, and it is now stored rather than assumed. */
     const studBigBet = (hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 0) * 2;
+    const studBringIn = (hand.blinds || {}).bringIn || Math.floor(((hand.blinds || {}).bb || 0) / 4);
     const setStudSized = (field, value) => {
       setHand(prev => {
         const b = prev.blinds || {};
@@ -2127,6 +2131,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
            twice it. Typing a big bet by hand ends that, so an unusual
            structure is not quietly corrected back on the next keystroke. */
         if (field === 'bb' && (b.bigBet == null || b.bigBet === (b.bb || 0) * 2)) next.bigBet = value * 2;
+        if (field === 'bb' && (b.bringIn == null || b.bringIn === Math.floor((b.bb || 0) / 4))) next.bringIn = Math.floor(value / 4);
         const nextBig = next.bigBet || (next.bb || 0) * 2;
         /* Stacks follow the big bet only while every one of them is still the
            default depth — the moment somebody types a stack, the sizes stop
@@ -2178,11 +2183,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             {!isOfc && category !== 'stud' && <div className="replayer-field"><label>SB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).sb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), sb:Number(e.target.value)||0}}))} /></div>}
             {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Small Bet' : 'BB'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => (category === 'stud' ? setStudSized('bb', Number(e.target.value)||0) : setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}})))} /></div>}
             {!isOfc && category === 'stud' && <div className="replayer-field"><label>Big Bet</label><input type="text" inputMode="decimal" value={studBigBet||''} onChange={e => setStudSized('bigBet', Number(e.target.value)||0)} /></div>}
+            {!isOfc && category === 'stud' && <div className="replayer-field"><label>Bring-in</label><input type="text" inputMode="decimal" value={studBringIn||''} onChange={e => setStudSized('bringIn', Number(e.target.value)||0)} /></div>}
             {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante (each)' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
           </div>
           {category === 'stud' && (
             <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
-              Every player antes. The big bet is bet from 5th street on; bring-in {formatChipAmount(Math.floor((((hand.blinds||{}).bb || 0)) / 4))}. Stacks default to {STUD_STACK_BB} big bets.
+              Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets.
             </div>
           )}
           {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
