@@ -532,6 +532,11 @@ function ChipStack({ amount }) {
    nothing carrying the rest, so the one string on the plaque the reader
    supplied was the one that could be silently lost. A name shortens the way
    people shorten names. */
+/* Stud stacks are quoted in big bets, not in chips, and 30 is the depth a
+   hand is normally discussed at. One number, used by the new-hand defaults and
+   by the setup form when the big bet changes. */
+const STUD_STACK_BB = 30;
+
 function shortenName(name, budget = 15) {
   const t = String(name || '').trim();
   if (t.length <= budget) return t;
@@ -674,13 +679,21 @@ function createEmptyHand(gameType, heroName) {
   const defaultNum = gameCfg.isStud ? 8 : 6;
   const numPlayers = scan ? Math.max(2, Math.min(10, scan.length)) : defaultNum;
   const positions = gameCfg.isStud ? getStudPositionLabels(numPlayers) : getPositionLabels(numPlayers);
-  const defaultAnte = (gameCfg.hasBoard && !gameCfg.isStud) ? 200 : 0;
+  /* Stud is a small-bet / big-bet / ante game and now says so: a 200/400
+     structure with a 25 ante, and stacks at 30 big bets. The ante was 0, which
+     is not a stud game at all — every player antes, and the pot maths already
+     counted an ante from everyone the moment there was one to count. */
+  const defaultAnte = gameCfg.isStud ? 25 : ((gameCfg.hasBoard && !gameCfg.isStud) ? 200 : 0);
+  const defaultBigBet = gameCfg.isStud ? 400 : 0;
+  const defaultStack = gameCfg.isStud ? defaultBigBet * STUD_STACK_BB : 50000;
   return {
     gameType,
     players: Array.from({ length: numPlayers }, (_, i) => ({
-      name: getSeatName(i, 0, heroName), position: positions[i] || '', startingStack: 50000
+      name: getSeatName(i, 0, heroName), position: positions[i] || '', startingStack: defaultStack
     })),
-    blinds: { sb: 100, bb: 200, ante: defaultAnte },
+    blinds: gameCfg.isStud
+      ? { sb: 100, bb: 200, ante: defaultAnte, bigBet: defaultBigBet }
+      : { sb: 100, bb: 200, ante: defaultAnte },
     streets: streetDef.streets.map(name => ({
       name, cards: { hero: '', opponents: Array.from({ length: numPlayers - 1 }, () => ''), board: '' }, actions: [], draws: [],
     })),
@@ -1429,7 +1442,8 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
     const ante = blinds.ante || 0;
     const isSmallBetStreet = (gameCfg.flSmallStreets || []).includes(currentStreetIdx);
     const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1 && studHasOpenPairOn4th(hand);
-    const fixedBet = betting === 'fl' ? ((isSmallBetStreet && !stud4thOpenPair) ? (bb || 100) : (bb || 100) * 2) : 0;
+    const bigBet = (hand.blinds || {}).bigBet || (bb || 100) * 2;
+    const fixedBet = betting === 'fl' ? ((isSmallBetStreet && !stud4thOpenPair) ? (bb || 100) : bigBet) : 0;
     const raiseCap = gameCfg.raiseCap || 4;
     let maxBet = 0, raiseCount = 0;
     const isBBanteCtx = category !== 'stud' && ante > 0;
@@ -1777,7 +1791,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const seatOrder = useMemo(() => getActionOrder(hand.players, isPreflop, studInfo), [hand.players, isPreflop, studInfo]);
   const actionOrder = useMemo(() => seatOrder.filter(i => !foldedSet.has(i) && !allInSet.has(i)), [seatOrder, foldedSet, allInSet]);
 
-  const bringInAmount = gameCfg.isStud ? Math.floor(((hand.blinds || {}).sb || (hand.blinds || {}).bb || 100) / 2) : 0;
+  const bringInAmount = gameCfg.isStud ? Math.floor(((hand.blinds || {}).bb || 200) / 4) : 0;
 
   const streetBets = useMemo(() => {
     const contrib = new Array(hand.players.length).fill(0);
@@ -1965,7 +1979,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const isHeadsUp = activePlayerCount <= 2;
   const flIsSmall = flSmallStreets.includes(currentStreetIdx);
   const stud4thOpenPair = gameCfg.isStud && currentStreetIdx === 1 && studHasOpenPairOn4th(hand);
-  const flBetSize = (flIsSmall && !stud4thOpenPair) ? ((hand.blinds || {}).bb || 100) : ((hand.blinds || {}).bb || 100) * 2;
+  const flBetSize = (flIsSmall && !stud4thOpenPair)
+    ? ((hand.blinds || {}).bb || 100)
+    : ((hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 100) * 2);
   const flRaiseToTotal = streetBets.maxBet + flBetSize;
   const flRaiseIncrement = flRaiseToTotal - playerContrib;
   const flCanRaise = isHeadsUp || streetBetRaiseCount < flRaiseCap;
@@ -2014,6 +2030,30 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   // ── SETUP PHASE ──
   if (phase === 'setup') {
     const isOfc = category === 'ofc';
+    /* Stud is priced in three numbers, so it takes three fields. The big bet
+       was derived as twice the small one, which is the usual structure but not
+       the only one, and it is now stored rather than assumed. */
+    const studBigBet = (hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 0) * 2;
+    const setStudSized = (field, value) => {
+      setHand(prev => {
+        const b = prev.blinds || {};
+        const prevBig = b.bigBet || (b.bb || 0) * 2;
+        const next = { ...b, [field]: value };
+        /* The big bet keeps following the small one for as long as it is still
+           twice it. Typing a big bet by hand ends that, so an unusual
+           structure is not quietly corrected back on the next keystroke. */
+        if (field === 'bb' && (b.bigBet == null || b.bigBet === (b.bb || 0) * 2)) next.bigBet = value * 2;
+        const nextBig = next.bigBet || (next.bb || 0) * 2;
+        /* Stacks follow the big bet only while every one of them is still the
+           default depth — the moment somebody types a stack, the sizes stop
+           overwriting it. */
+        const stacksUntouched = prevBig > 0 && prev.players.every(p => Number(p.startingStack) === prevBig * STUD_STACK_BB);
+        const players = (stacksUntouched && nextBig > 0)
+          ? prev.players.map(p => ({ ...p, startingStack: nextBig * STUD_STACK_BB }))
+          : prev.players;
+        return { ...prev, blinds: next, players };
+      });
+    };
     const setNumPlayersOfc = (n) => {
       setHand(prev => {
         const players = [];
@@ -2052,12 +2092,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 that is the field's real name; SB does nothing there but set the
                 bring-in at half itself, which is the default anyway. */}
             {!isOfc && category !== 'stud' && <div className="replayer-field"><label>SB</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).sb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), sb:Number(e.target.value)||0}}))} /></div>}
-            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Small Bet' : 'BB'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}}))} /></div>}
+            {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Small Bet' : 'BB'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).bb||''} onChange={e => (category === 'stud' ? setStudSized('bb', Number(e.target.value)||0) : setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), bb:Number(e.target.value)||0}})))} /></div>}
+            {!isOfc && category === 'stud' && <div className="replayer-field"><label>Big Bet</label><input type="text" inputMode="decimal" value={studBigBet||''} onChange={e => setStudSized('bigBet', Number(e.target.value)||0)} /></div>}
             {!isOfc && <div className="replayer-field"><label>{category === 'stud' ? 'Ante (each)' : 'BB Ante'}</label><input type="text" inputMode="decimal" value={(hand.blinds||{}).ante||''} onChange={e => setHand(prev => ({...prev, blinds:{...(prev.blinds||{}), ante:Number(e.target.value)||0}}))} /></div>}
           </div>
           {category === 'stud' && (
             <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
-              Every player antes. Big bet is {formatChipAmount(((hand.blinds||{}).bb || 0) * 2) || '2×'} from 5th street; bring-in {formatChipAmount(Math.floor((((hand.blinds||{}).sb || (hand.blinds||{}).bb || 0)) / 2))}.
+              Every player antes. The big bet is bet from 5th street on; bring-in {formatChipAmount(Math.floor((((hand.blinds||{}).bb || 0)) / 4))}. Stacks default to {STUD_STACK_BB} big bets.
             </div>
           )}
           {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
