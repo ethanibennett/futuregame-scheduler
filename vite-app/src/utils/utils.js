@@ -971,6 +971,29 @@ export function parseDateTimeInTz(date, time, venue) {
 }
 
 // ── Helpers ──────────────────────────────────────────────
+/* Does this event pass the chosen location?
+   One predicate, used both by the list's own filter and by the panel that
+   builds its option lists — so the options can never offer a venue, variant or
+   buy-in band that the list would then refuse to show. A venue with no
+   coordinates is excluded by both location modes, which is the existing
+   behaviour and is deliberate: an unknown position cannot be said to be near
+   anything. */
+export function matchesLocation(t, filters) {
+  if (!filters) return true;
+  if (filters.maxDistance && filters.userLocation) {
+    const coords = getVenueCoords(t.venue);
+    if (!coords) return false;
+    const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
+    if (dist > Number(filters.maxDistance)) return false;
+  }
+  if (filters.locationRegion) {
+    const coords = getVenueCoords(t.venue);
+    const regionDef = LOCATION_REGIONS[filters.locationRegion];
+    if (regionDef && (!coords || !regionDef.test(coords))) return false;
+  }
+  return true;
+}
+
 export function normaliseDate(d) {
   if (!d) return '';
   if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);

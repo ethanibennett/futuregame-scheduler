@@ -10,6 +10,7 @@ import {
   parseTournamentTime, parseDateTimeInTz, parseDateTime, findClosestFlight,
   extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
   isSideEvent,
+  matchesLocation,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
@@ -50,31 +51,59 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
     return { minDate, maxDate, totalDays };
   }, [tournaments]);
 
-  const availableVenues = useMemo(() => {
+  /* The events the chosen location actually leaves on the table. Every option
+     list below is built from THIS rather than from the whole feed, so the panel
+     can only ever offer a venue, variant or buy-in band that exists where the
+     user is — picking one and getting an empty list is the failure this
+     prevents. Date range scopes it too, for the same reason. */
+  const locationPool = useMemo(() => {
     const today = getToday();
-    const countMap = {};
-    (tournaments || []).forEach(t => {
+    return (tournaments || []).filter(t => {
       const d = normaliseDate(t.date);
-      if (d < today) return;
-      if (filters.dateFrom && d < filters.dateFrom) return;
-      if (filters.dateTo && d > filters.dateTo) return;
-      countMap[t.venue] = (countMap[t.venue] || 0) + 1;
+      if (!d || d < today) return false;
+      if (filters.dateFrom && d < filters.dateFrom) return false;
+      if (filters.dateTo && d > filters.dateTo) return false;
+      return matchesLocation(t, filters);
     });
+  }, [tournaments, filters.dateFrom, filters.dateTo,
+      filters.locationRegion, filters.userLocation, filters.maxDistance]);
+
+  const availableVenues = useMemo(() => {
+    const countMap = {};
+    locationPool.forEach(t => { countMap[t.venue] = (countMap[t.venue] || 0) + 1; });
     return Object.keys(countMap)
       .sort((a, b) => countMap[b] - countMap[a])
       .map(v => ({ venue: v, series: VENUE_TO_SERIES[v] || v, count: countMap[v] }));
-  }, [tournaments, filters.dateFrom, filters.dateTo]);
+  }, [locationPool]);
 
   const availableGameVariants = useMemo(() => {
     const variantSet = new Set();
-    (tournaments || []).forEach(t => {
-      const d = normaliseDate(t.date);
-      if (filters.dateFrom && d < filters.dateFrom) return;
-      if (filters.dateTo && d > filters.dateTo) return;
-      if (t.game_variant) variantSet.add(t.game_variant);
-    });
+    locationPool.forEach(t => { if (t.game_variant) variantSet.add(t.game_variant); });
     return variantSet;
-  }, [tournaments, filters.dateFrom, filters.dateTo]);
+  }, [locationPool]);
+
+  /* Which of the fixed buy-in bands and quick pills have anything behind them
+     here. A band with no events is not a choice, it is a dead end. */
+  const poolFacts = useMemo(() => {
+    const bands = new Set();
+    let ladies = false, seniors = false;
+    const games = new Set();
+    locationPool.forEach(t => {
+      const b = Number(t.buyin) || 0;
+      if (b < 500) bands.add('0-500');
+      else if (b < 1500) bands.add('500-1500');
+      else if (b < 5000) bands.add('1500-5000');
+      else if (b <= 10000) bands.add('5000-10000');
+      else bands.add('10000+');
+      const n = t.event_name || '';
+      if (/women|ladies/i.test(n)) ladies = true;
+      if (/senior/i.test(n)) seniors = true;
+      if (t.game_variant) games.add(t.game_variant);
+    });
+    // Same test the list itself uses: anything that is not NLH or PLO.
+    const mixed = [...games].some(g => g !== 'NLH' && g !== 'PLO');
+    return { bands, ladies, seniors, games, mixed };
+  }, [locationPool]);
 
   useEffect(() => {
     if (!open) return;
@@ -175,7 +204,18 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 toggle: () => setFilters(f => ({ ...f, ladiesOnly: !f.ladiesOnly })) },
               { label: 'Seniors', isActive: !!filters.seniorsOnly,
                 toggle: () => setFilters(f => ({ ...f, seniorsOnly: !f.seniorsOnly })) },
-            ];
+            ].filter(qf => {
+              /* A pill with nothing behind it here is not a choice. An ACTIVE
+                 one always stays, or turning it on would make the control that
+                 turns it off disappear. */
+              if (qf.isActive) return true;
+              if (qf.label === 'NLH') return poolFacts.games.has('NLH');
+              if (qf.label === 'PLO') return poolFacts.games.has('PLO');
+              if (qf.label === 'Mixed') return poolFacts.mixed;
+              if (qf.label === 'Ladies') return poolFacts.ladies;
+              if (qf.label === 'Seniors') return poolFacts.seniors;
+              return true;
+            });
             return (
               <div style={{display:'flex',gap:'6px',marginBottom:'10px',gridColumn:'1 / -1'}}>
                 {quickFilters.map(qf => (
@@ -297,13 +337,14 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {howMuchOpen && (() => {
+              /* Only bands that exist here — see poolFacts. */
               const buyinOpts = [
                 { key: '0-500', label: 'Under $500' },
                 { key: '500-1500', label: '$500 \u2013 $1.5K' },
                 { key: '1500-5000', label: '$1.5K \u2013 $5K' },
                 { key: '5000-10000', label: '$5K \u2013 $10K' },
                 { key: '10000+', label: '$10K+' },
-              ];
+              ].filter(o => poolFacts.bands.has(o.key) || (filters.buyinRanges || []).includes(o.key));
               const rakeOpts = [
                 { key: '0-5', label: 'Under 5%' },
                 { key: '5-8', label: '5% \u2013 8%' },
@@ -1211,18 +1252,9 @@ export default function TournamentsView({
           if (!matchesGame && !matchesMixed) return false;
         }
         if (filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.includes(t.venue)) return false;
-        // Unknown location excludes from both filters — see the note in CalendarView.
-        if (filters.maxDistance && filters.userLocation) {
-          const coords = getVenueCoords(t.venue);
-          if (!coords) return false;
-          const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
-          if (dist > Number(filters.maxDistance)) return false;
-        }
-        if (filters.locationRegion) {
-          const coords = getVenueCoords(t.venue);
-          const regionDef = LOCATION_REGIONS[filters.locationRegion];
-          if (regionDef) { if (!coords || !regionDef.test(coords)) return false; }
-        }
+        // One predicate, shared with the panel that builds the option lists, so
+        // the two cannot drift and offer an option the list would refuse.
+        if (!matchesLocation(t, filters)) return false;
         {
           const specialActive = filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || filters.ladiesOnly || filters.seniorsOnly;
           if (specialActive) {
