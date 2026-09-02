@@ -5986,6 +5986,29 @@
       z-index: var(--z-sticky);
       box-sizing: border-box;
     }
+    /* Anything left below the nav takes the nav's own bottom colour.
+       There are two ways the reported strip could be painted and they need
+       different fixes: if the standalone viewport does not cover the screen,
+       the leftover is canvas and html's background shows (handled in
+       index.html); if instead the viewport DOES cover the screen and the nav
+       simply stops short, the leftover is inside the page and body paints it,
+       which html can never reach. This covers the second case.
+
+       It is absolutely positioned BELOW the nav, so it can only ever paint
+       where the nav has stopped — it cannot appear above it, and where there is
+       no gap (Capacitor, the web) an ancestor's overflow clips it to nothing.
+       Measured on the report: the strip is rgb(18,31,51), the dusk theme's
+       --surface, while the nav's gradient ends on --surface2 at rgb(29,40,65) —
+       which is the join this closes. */
+    .bottom-nav::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; top: 100%;
+      height: 200px;
+      background: var(--surface2);
+      pointer-events: none;
+    }
+
     /* Platform-specific tweaks: iOS Capacitor */
     html[data-platform^="ios"] .bottom-nav {
       /* Must repeat the gradient, not --surface: this rule is more specific than .bottom-nav and
