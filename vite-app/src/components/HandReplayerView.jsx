@@ -6285,7 +6285,15 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   return st;
                 })()}>
                 <CardRow text={cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
-                  placeholderCount={!cards && !folded.has(pi) ? gameCfg.heroCards : 0}
+                  /* Everyone is dealt the same cards at the same time, so a
+                     face-down seat holds exactly what the hero holds right now.
+                     This was gameCfg.heroCards — the size of a FINISHED hand —
+                     which is right for a game dealt at once and wrong for stud,
+                     where it put seven backs in front of every opponent from
+                     3rd street while the hero had three. */
+                  placeholderCount={!cards && !folded.has(pi)
+                    ? (parseCardNotation(heroCards || '').length || gameCfg.heroCards)
+                    : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx}
