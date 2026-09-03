@@ -6378,8 +6378,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                      by street index, so the slice up to the current street is
                      the history at this point in the replay. */
                   const byStreet = getPlayerDrawsByStreet(hand, pi);
+                  /* A street's draw happens AFTER its betting, so si <= streetIdx
+                     announced it the moment the replay entered the street —
+                     everyone's discards were on the felt before anyone had
+                     acted. A street counts as drawn once its betting is done,
+                     which is also the moment the replay would show the new
+                     cards. */
+                  const streetActions = (hand.streets[streetIdx]?.actions || []).length;
+                  const thisStreetDrawn = actionIdx >= streetActions - 1;
                   const history = Object.keys(byStreet)
-                    .map(Number).filter(si => si <= streetIdx).sort((a, b) => a - b)
+                    .map(Number)
+                    .filter(si => si < streetIdx || (si === streetIdx && thisStreetDrawn))
+                    .sort((a, b) => a - b)
                     .map(si => byStreet[si].discarded === 0 ? 'PAT' : 'D' + byStreet[si].discarded);
                   if (!history.length) return null;
                   return <div className="replayer-seat-draw-badge"
