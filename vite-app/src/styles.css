@@ -1,41 +1,208 @@
 
+    /* Univers LT Std, the whole family — 27 faces, read out of their own name
+       and OS/2 tables rather than trusted from their filenames, and converted
+       to woff2 here (811KB of ttf became 333KB).
+
+       Widths are separate FAMILIES rather than one family with font-stretch,
+       because --font-condensed is already a family name used all over this
+       stylesheet and a stretch axis would mean rewriting every one of those
+       call sites to say the same thing a different way.
+
+       Only what a page actually renders is downloaded, so declaring the whole
+       family costs repo size and nothing at runtime.
+
+       Weight 800 is Black (usWeightClass 850) and 900 is XBlack (950): CSS
+       matches by NEAREST weight, so a page asking for 900 should land on
+       XBlack rather than on whichever the search order happened to reach.
+
+       woff2 only — no ttf fallback. It has been in every browser this app can
+       run in since iOS 10, and 27 second copies is 800KB for nobody. */
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-light.woff2') format('woff2'),
-           url('/fonts/univers-light.ttf') format('truetype');
+      src: url('/fonts/univers-light.woff2') format('woff2');
       font-weight: 300;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-regular.woff2') format('woff2'),
-           url('/fonts/univers-regular.ttf') format('truetype');
+      src: url('/fonts/univers-light-oblique.woff2') format('woff2');
+      font-weight: 300;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-regular.woff2') format('woff2');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-bold.woff2') format('woff2'),
-           url('/fonts/univers-bold.ttf') format('truetype');
+      src: url('/fonts/univers-regular-oblique.woff2') format('woff2');
+      font-weight: 400;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-bold.woff2') format('woff2');
       font-weight: 700;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-bold-oblique.woff2') format('woff2');
+      font-weight: 700;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-black.woff2') format('woff2');
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-black-oblique.woff2') format('woff2');
+      font-weight: 800;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-xblack.woff2') format('woff2');
+      font-weight: 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers';
+      src: url('/fonts/univers-xblack-oblique.woff2') format('woff2');
+      font-weight: 900;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-condensed.woff2') format('woff2'),
-           url('/fonts/univers-condensed.ttf') format('truetype');
+      src: url('/fonts/univers-light-condensed.woff2') format('woff2');
+      font-weight: 300;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Condensed';
+      src: url('/fonts/univers-light-condensed-oblique.woff2') format('woff2');
+      font-weight: 300;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Condensed';
+      src: url('/fonts/univers-regular-condensed.woff2') format('woff2');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-bold-condensed.woff2') format('woff2'),
-           url('/fonts/univers-bold-condensed.ttf') format('truetype');
+      src: url('/fonts/univers-regular-condensed-oblique.woff2') format('woff2');
+      font-weight: 400;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Condensed';
+      src: url('/fonts/univers-bold-condensed.woff2') format('woff2');
       font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Condensed';
+      src: url('/fonts/univers-bold-condensed-oblique.woff2') format('woff2');
+      font-weight: 700;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-regular-expanded.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-regular-expanded-oblique.woff2') format('woff2');
+      font-weight: 400;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-bold-expanded.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-bold-expanded-oblique.woff2') format('woff2');
+      font-weight: 700;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-black-expanded.woff2') format('woff2');
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-black-expanded-oblique.woff2') format('woff2');
+      font-weight: 800;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-xblack-expanded.woff2') format('woff2');
+      font-weight: 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers Expanded';
+      src: url('/fonts/univers-xblack-expanded-oblique.woff2') format('woff2');
+      font-weight: 900;
+      font-style: oblique;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers UltraCondensed';
+      src: url('/fonts/univers-thin-ultracondensed.woff2') format('woff2');
+      font-weight: 200;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers UltraCondensed';
+      src: url('/fonts/univers-light-ultracondensed.woff2') format('woff2');
+      font-weight: 300;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Univers UltraCondensed';
+      src: url('/fonts/univers-regular-ultracondensed.woff2') format('woff2');
+      font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
@@ -376,6 +543,10 @@
          keep working while callers migrate off the old name. */
       --font-sans:      'Univers', 'Helvetica Neue', Arial, sans-serif;
       --font-condensed: 'Univers Condensed', 'Univers', sans-serif;
+      /* The two widths the family gained. Nothing uses them yet — they are here
+         so a call site can reach for one without going back to the font files. */
+      --font-expanded:  'Univers Expanded', 'Univers', sans-serif;
+      --font-narrow:    'Univers UltraCondensed', 'Univers Condensed', sans-serif;
       --font-display:   var(--serif);
 
       /* --- Motion -------------------------------------------------------
