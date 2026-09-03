@@ -2147,9 +2147,33 @@
       padding: var(--space-sm) var(--space-ml);
       border-left: 3px solid transparent;
     }
-    .replayer-hand-card.outcome-win   { border-left-color: var(--ok); }
-    .replayer-hand-card.outcome-loss  { border-left-color: var(--danger); }
-    .replayer-hand-card.outcome-split { border-left-color: var(--warn); }
+    /* The variant strip now owns the left edge — the same 26px vertical bar the
+       schedule uses for venues — so the outcome moves to the right edge rather
+       than being dropped. Two things are being said and each gets a side. */
+    .replayer-hand-card.is-row { padding-left: 0; overflow: hidden; }
+    .replayer-hand-strip {
+      width: 26px;
+      flex-shrink: 0;
+      align-self: stretch;
+      display: grid;
+      place-items: center;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-3xs, 9px);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      margin-right: var(--space-ml);
+    }
+    .replayer-hand-card.is-row { border-right: 3px solid transparent; }
+    .replayer-hand-card.outcome-win   { border-right-color: var(--ok); }
+    .replayer-hand-card.outcome-loss  { border-right-color: var(--danger); }
+    .replayer-hand-card.outcome-split { border-right-color: var(--warn); }
     .replayer-hand-card-cards {
       flex-shrink:0; width:40px; display:flex; align-items:center;
     }

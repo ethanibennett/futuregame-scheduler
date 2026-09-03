@@ -56,6 +56,66 @@ export const VARIANT_COLORS = {
 };
 export function getVariantColor(v) { return VARIANT_COLORS[v] ?? '#808080'; }
 
+/* Variant strips, coloured by FAMILY so the colour carries information rather
+   than just being different: a glance sorts flop games from stud from draw
+   from mixed, and the shades separate variants inside a family. VARIANT_COLORS
+   above is a grey ramp and codes nothing, which is fine where the venue is
+   already doing the colouring — a saved hand has no venue.
+
+   The abbreviation is what fits a 26px vertical strip, so it is the shortest
+   form a player would actually say. */
+const VARIANT_FAMILIES = {
+  flop:  { hue: '#2E6F9E' },
+  stud:  { hue: '#B07D2B' },
+  draw:  { hue: '#3F8A5F' },
+  mixed: { hue: '#7A5AA8' },
+};
+const VARIANT_STRIPS = {
+  'NLH':                { abbr: 'NLH',    fam: 'flop',  shade: 1.00 },
+  'PLH':                { abbr: 'PLH',    fam: 'flop',  shade: 0.86 },
+  'LO Hi':              { abbr: 'LO',     fam: 'flop',  shade: 0.72 },
+  'PLO':                { abbr: 'PLO',    fam: 'flop',  shade: 1.14 },
+  'PLO8':               { abbr: 'PLO8',   fam: 'flop',  shade: 1.28 },
+  'O8':                 { abbr: 'O8',     fam: 'flop',  shade: 0.79 },
+  'Big O':              { abbr: 'BIG O',  fam: 'flop',  shade: 1.21 },
+  'Big Easy':           { abbr: 'BIG E',  fam: 'flop',  shade: 0.93 },
+  'Stud Hi':            { abbr: 'STUD',   fam: 'stud',  shade: 1.00 },
+  'Stud 8':             { abbr: 'STUD 8', fam: 'stud',  shade: 1.16 },
+  'Stud Hi-Lo':         { abbr: 'STUD 8', fam: 'stud',  shade: 1.16 },
+  'Razz':               { abbr: 'RAZZ',   fam: 'stud',  shade: 0.84 },
+  '2-7 Razz':           { abbr: 'RAZZ 7', fam: 'stud',  shade: 0.72 },
+  '2-7 TD':             { abbr: '2-7 TD', fam: 'draw',  shade: 1.00 },
+  'L 2-7 TD':           { abbr: '2-7 TD', fam: 'draw',  shade: 1.00 },
+  'PL 2-7 TD':          { abbr: '2-7 TD', fam: 'draw',  shade: 1.00 },
+  'NL 2-7 SD':          { abbr: '2-7 SD', fam: 'draw',  shade: 0.84 },
+  'Badugi':             { abbr: 'BADUGI', fam: 'draw',  shade: 1.18 },
+  'Badeucy':            { abbr: 'BADEUCY',fam: 'draw',  shade: 1.30 },
+  'Badacy':             { abbr: 'BADACY', fam: 'draw',  shade: 1.24 },
+  'PL 5CD Hi':          { abbr: '5CD',    fam: 'draw',  shade: 0.72 },
+  'HORSE':              { abbr: 'HORSE',  fam: 'mixed', shade: 1.00 },
+  'TORSE':              { abbr: 'TORSE',  fam: 'mixed', shade: 1.14 },
+  "Dealer's Choice":    { abbr: 'DC',     fam: 'mixed', shade: 0.86 },
+  'Mixed':              { abbr: 'MIX',    fam: 'mixed', shade: 0.93 },
+  'OFC':                { abbr: 'OFC',    fam: 'mixed', shade: 1.24 },
+  'OFC Pineapple':      { abbr: 'OFC P',  fam: 'mixed', shade: 1.30 },
+};
+/* Lighten or darken the family hue by the variant's shade, in sRGB. A shade of
+   1 is the family colour itself. */
+function shadeHex(hex, k) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return hex;
+  const ch = [1, 2, 3].map(i => {
+    const v = parseInt(m[i], 16) * k;
+    return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  });
+  return '#' + ch.join('');
+}
+export function getVariantStrip(gameType) {
+  const v = VARIANT_STRIPS[gameType];
+  if (!v) return { abbr: String(gameType || '').toUpperCase().slice(0, 7), color: '#6B7280', family: 'other' };
+  return { abbr: v.abbr, color: shadeHex(VARIANT_FAMILIES[v.fam].hue, v.shade), family: v.fam };
+}
+
 // ── Multi-game variant expansion ─────────────────────────
 export const MULTI_GAME_MAP = {
   'HORSE':            ['LHE', 'O8', 'Razz', 'Stud Hi', 'Stud 8'],
