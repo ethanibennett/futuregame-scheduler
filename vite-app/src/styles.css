@@ -2371,7 +2371,8 @@
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
     .replayer-hand-card.is-row .replayer-hand-card-meta { margin-top:0; }
-    .replayer-empty { text-align:center; color:var(--text-muted); font-size: var(--fs-sm); padding: var(--space-3xl) 0; }
+    .replayer-empty { text-align:center; color:var(--text-muted); font-size: var(--fs-sm); padding: var(--space-3xl) 0;
+      font-family: var(--font-sans); font-weight: 300; }
 
 
     /* 76: the read-only view uses the editor's own type, so notes look the
@@ -2539,10 +2540,10 @@
     .replayer-entry { display:flex; flex-direction:column; gap: var(--space-ml); }
     .replayer-step-label { font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-2xs); }
     .replayer-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding: var(--space-ml) var(--space-lg); }
-    .replayer-section-title { font-size: var(--fs-xs); font-weight: var(--fw-bold); color:var(--text); margin-bottom: var(--space-md); font-family: var(--font-condensed); }
+    .replayer-section-title { font-size: var(--fs-xs); font-weight: var(--fw-regular); color:var(--text); margin-bottom: var(--space-md); font-family: var(--font-sans); }
 
     .replayer-field { display:flex; flex-direction:column; gap: var(--space-2xs); flex:1; }
-    .replayer-field label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); }
+    .replayer-field label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-sans); font-weight: var(--fw-regular); text-transform:uppercase; letter-spacing: var(--track-caps); }
     .replayer-field input, .replayer-field select {
       padding: var(--space-sm) var(--space-md); border: var(--bw-1) solid var(--border); border-radius:var(--radius-sm);
       background:var(--bg); color:var(--text); font-family: var(--font-condensed); font-size: var(--fs-sm);
@@ -3898,8 +3899,10 @@
       /* The token is the ceiling, held from about a 250px table upward. It
          is the largest number on screen by design, which also makes it the
          one most able to reach a top seat's plaque on a small table. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(14px, 6.2cqmin, 76px); font-weight: var(--fw-bold); color:#fff;
-      font-family: var(--font-condensed);
+      /* 73 Black Extended. The pot got its presence from being bigger than
+         everything else; width gives it the same weight at the same size. */
+      z-index: var(--z-pot); text-align:center; font-size: clamp(14px, 6.2cqmin, 76px); font-weight: 800; color:#fff;
+      font-family: var(--font-expanded);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
       /* backdrop-filter: blur(2px) was the only refraction anywhere on the
@@ -4602,13 +4605,17 @@
        at --fs-2xs, the same size as a range chip reading 'Medium'. A flat
        scale makes every action equally important, which is the opposite of
        what a replay is for. The badge is sized by the weight of the action. */
+    /* 47 Light Condensed. The quietest action in the quietest cut — the size
+       hierarchy was already making this argument in px alone. */
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check {
+      font-weight: 300;
       font-size: clamp(6px, 1.2cqmin, var(--fs-2xs));
       padding: var(--nudge-1) var(--space-sm);
       opacity: 0.85;
     }
-    .replayer-action-badge-outer.action-call { font-size: clamp(6px, 1.2cqmin, var(--fs-2xs)); }
+    /* 57 Condensed for a call, 67 Bold Condensed for a bet or a raise. */
+    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(6px, 1.2cqmin, var(--fs-2xs)); }
     .replayer-action-badge-outer.action-bet,
     .replayer-action-badge-outer.action-raise { font-size: clamp(7px, 1.45cqmin, var(--fs-xs)); }
     /* 35: ALL-IN was visually interchangeable with a fold. It is the
@@ -4622,6 +4629,10 @@
       background: var(--act-allin) !important;
       color: #fff;
       border-color: var(--act-allin);
+      /* 85 Extra Black, and the roman width so it is not just a bigger version
+         of the others. The one action that should stop you. */
+      font-family: var(--font-sans);
+      font-weight: 900;
       font-size: clamp(8px, 1.9cqmin, var(--fs-sm));
       font-weight: var(--fw-bold);
       padding: var(--nudge-1) var(--space-ml);
@@ -4916,7 +4927,9 @@
     }
     .replayer-settings-group:last-child { border-bottom:none; }
     .replayer-settings-group-title {
-      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold); color:var(--accent2);
+      /* 55 Roman. A section eyebrow names the section; bold condensed capitals
+         at 10px shout it. Width carries function — this is language, not data. */
+      font-family: var(--font-sans); font-size: var(--fs-2xs); font-weight: var(--fw-regular); color:var(--accent2);
       text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-md);
     }
     /* 66: every pill row overrode this with an inline column layout at 6px,
@@ -4934,10 +4947,16 @@
       display:flex; gap: var(--space-xs); align-items:center; flex-wrap:wrap;
     }
     .replayer-settings-label {
-      font-size: var(--fs-xs); color:var(--text); font-family: var(--font-condensed);
+      /* 55 Roman: a setting's name has no column to fit. */
+      font-size: var(--fs-xs); color:var(--text); font-family: var(--font-sans); font-weight: var(--fw-regular);
     }
+    /* 46 Light Oblique. A gloss under a label should read as a gloss — and
+       until the family arrived there was no Univers oblique to reach for, so
+       the thirteen places in this app that ask for italic all got a browser's
+       slanted roman instead. */
     .replayer-settings-sublabel {
       font-size: var(--fs-2xs); color:var(--text-muted);
+      font-family: var(--font-sans); font-weight: 300; font-style: italic;
     }
     .replayer-settings-pills {
       display:flex; gap: var(--space-xs); flex-wrap:wrap;
