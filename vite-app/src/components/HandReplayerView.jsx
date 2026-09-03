@@ -1451,7 +1451,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                was actually gating the FOLD animation, the showdown reveal and
                draw discards, and the deal animation did not exist. Each switch
                now controls the thing it names. */
-            { key:'animateDeal', label:'Deal Animation', sub:'Cards fly in at the top of a hand' },
             { key:'animateFold', label:'Fold & Muck', sub:'Folded cards slide away to the muck' },
             { key:'animateChips', label:'Chip Animation', sub:'The pot ships to the winner' },
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
@@ -6227,9 +6226,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
              CardRow's stud layout looks for them (STUD_DOWN_IDX is {0,1,6}).
              Before this a stud opponent was a row of backs all the way to
              showdown, with public information on the table and not on screen. */
-          if (!cards && gameCfg.isStud && pi !== replayHeroIdx && rawCards && rawCards !== 'MUCK' && !folded.has(pi)) {
-            const dealt = parseCardNotation(heroCards || '').length;
-            const up = parseCardNotation(rawCards).filter(c => c.suit !== 'x').slice(0, 4);
+          if (gameCfg.isStud && pi !== replayHeroIdx && rawCards && rawCards !== 'MUCK' && !folded.has(pi)) {
+            /* At showdown a hand is seven cards whether or not anybody typed
+               the hidden ones. The showdown step prepends them to street 0, so
+               a hand that skipped it accumulates only the four up cards and the
+               seat showed four at the end. The missing ones are backs — a hand
+               was still held, it was just never recorded. */
+            const dealt = showResult
+              ? (gameCfg.heroCards || 7)
+              : parseCardNotation(heroCards || '').length;
+            const known = parseCardNotation(rawCards).filter(c => c.suit !== 'x');
+            const up = known.length >= dealt ? [] : known.slice(0, 4);
             const shown = up.slice(0, Math.max(0, dealt - 2));
             if (shown.length) {
               /* A face-down card in this notation is a RANK carrying the suit
