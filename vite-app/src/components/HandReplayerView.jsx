@@ -604,7 +604,7 @@ function nameBudgetFor(tableW, tableH, landscape) {
      Get any one of them wrong and the ellipsis finishes names mid-word, which
      is the failure shortenName exists to prevent. */
   const cq = Math.min(tableW, tableH || tableW);
-  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.031)));
+  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.027)));
   const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
   /* 0.52, measured. The box half of this formula was already right — it
      predicts the plaque's max-width to a tenth of a pixel at both ends — but
@@ -644,7 +644,7 @@ function nameBudgetFor(tableW, tableH, landscape) {
      Blodgett" at 85.3px against an 83.6px box. 0.545 puts the budget at 13,
      the longest form that actually fits — measured, every real name and house
      form then lands between 66.9px and 81.7px in that box. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.545))));
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.725))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
