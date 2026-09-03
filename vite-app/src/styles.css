@@ -3171,7 +3171,18 @@
          where a contained table reads as a diagram of one. In use it just
          comes out too big: the 16% overhang has to come from somewhere, and
          what it takes is the top and bottom of the table. It fits. */
-      height: min(80cqh, calc(80cqw / 1.75));
+      /* 80cqh left 68px of a 340px slot unused, and the width term never binds
+         — the table is only 54% of the slot's width. What stops it growing is
+         not the box but the INK: the top seats' fans hang 34px above the
+         table's own edge, so the footprint is about 1.12 times the table's
+         height, and at 80cqh that footprint was already flush with the top of
+         the slot while 36px sat spare at the bottom.
+         87cqh with the table pushed down by 6.6% of its own height centres the
+         footprint instead of the box, which is what makes the extra height
+         available. translateY takes a percentage of the element, so the nudge
+         scales with the table. */
+      height: min(87cqh, calc(87cqw / 1.75));
+      transform: translateY(7.6%);
       width: auto;
       max-width: none;
       margin: 0;
@@ -4335,8 +4346,15 @@
          the badge above them too, since it hangs outside the plaque's box. */
       z-index: 2;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: var(--fs-2xs); font-family: var(--font-condensed);
-      padding: var(--nudge-1) var(--space-sm); border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
+      /* Sized against the TABLE, not at a fixed token. At --fs-2xs the badge
+         came out 42px wide over a 26px card in landscape — 161% of the card it
+         is sitting on — because the cards scale with the table and it did not.
+         cqmin here resolves against a 548px container rather than the table, so
+         2.1cqmin measured 11.5px, LARGER than the token it replaced; 1.35
+         gives 7.4px and a badge about the width of the card under it.
+         Padding in em so it scales with the type rather than staying 8px. */
+      font-size: clamp(6px, 1.35cqmin, var(--fs-2xs)); font-family: var(--font-condensed);
+      padding: 0.25em 0.6em; border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
       font-weight: var(--fw-bold); line-height: 1; white-space: nowrap;
       pointer-events: none;
     }
@@ -4360,13 +4378,13 @@
        what a replay is for. The badge is sized by the weight of the action. */
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check {
-      font-size: var(--fs-2xs);
+      font-size: clamp(6px, 1.2cqmin, var(--fs-2xs));
       padding: var(--nudge-1) var(--space-sm);
       opacity: 0.85;
     }
-    .replayer-action-badge-outer.action-call { font-size: var(--fs-2xs); }
+    .replayer-action-badge-outer.action-call { font-size: clamp(6px, 1.2cqmin, var(--fs-2xs)); }
     .replayer-action-badge-outer.action-bet,
-    .replayer-action-badge-outer.action-raise { font-size: var(--fs-xs); }
+    .replayer-action-badge-outer.action-raise { font-size: clamp(7px, 1.45cqmin, var(--fs-xs)); }
     /* 35: ALL-IN was visually interchangeable with a fold. It is the
        stakes-defining action of a hand. */
     /* 46: caps were doing three jobs at once on one screen — the badges were
@@ -4378,7 +4396,7 @@
       background: var(--act-allin) !important;
       color: #fff;
       border-color: var(--act-allin);
-      font-size: var(--fs-sm);
+      font-size: clamp(8px, 1.9cqmin, var(--fs-sm));
       font-weight: var(--fw-bold);
       padding: var(--nudge-1) var(--space-ml);
       letter-spacing: var(--track-caps);
@@ -5798,7 +5816,17 @@
        seats — the one part of the felt nothing is ever placed on. No plate:
        this is printed on the cloth, the way a table's own name is. */
     .replayer-table-info {
-      position: absolute; left: 50%; top: 65.625%;   /* col 8, row 21 */
+      /* A bet sits 42% of the way from its seat to the pot, so the bottom
+         seat's chip lands in the centre column at 64.2-67.3% — which is where
+         this block was, and the chip covered the game and the sizes. Measured
+         free centre band in portrait: 48.6% (under the watermark) to 64.2%
+         (the hero's chip).
+         56% was still wrong. The pill is 28.6% of the table wide, and the SIDE
+         seats' chips reach x 37.3 and 62.7, so every chip band crosses it —
+         the gaps between bands are the only clear air. Measured, those gaps are
+         27.4-31.6, 34.6-37.9, 48.6-57.0 and 60.0-64.2; the third is the only
+         one tall enough. */
+      position: absolute; left: 50%; top: 52.8%;
       transform: translate(-50%, -50%);
       z-index: var(--z-felt);
       display: flex; flex-direction: column; align-items: center; gap: 1px;
