@@ -3049,7 +3049,9 @@
     }
     .replayer-draw-new-cards .card-img,
     .replayer-draw-new-cards .card-classic {
-      animation: draw-card-arrive 0.3s ease-out;
+      /* Cards taken in a draw appear rather than arriving, for the same reason
+         the deal does not animate. draw-card-arrive stays defined but unused. */
+      animation: none;
     }
     @keyframes draw-card-arrive {
       from { opacity: 0; transform: translateY(-6px) scale(0.85); }
@@ -5157,17 +5159,11 @@
       85% { transform:translate(0,0) scale(1.03); }
       100% { opacity:1; transform:none; }
     }
-    .replayer-seat-cards.animate-deal {
-      animation:cinematicDeal var(--dur-base) var(--ease-object) backwards;
-    }
-    /* 63: the delay was per SEAT, so a player's whole hand arrived as one
-       block. Each card in the row waits its own round of the table on top of
-       its seat's place in the order, which is how a deal actually goes. */
-    .replayer-seat-cards.animate-deal { animation-delay: var(--deal-seat-delay, 0ms); }
-    .replayer-seat-cards.animate-deal .card-row > * {
-      animation: cinematicDeal var(--dur-base) var(--ease-object) backwards;
-      animation-delay: calc(var(--deal-seat-delay, 0ms) + var(--deal-round, 0) * 1ms * var(--ci, 0));
-    }
+    /* No deal animation. 63 staggered each card by its seat's place in the
+       order so a hand arrived the way a deal actually goes, which is lovely
+       once and then in the way of every hand after it — a replay is opened to
+       read a spot, not to watch the cards land. cinematicDeal stays defined
+       but unused, so this is a one-rule restore. */
 
     /* 12: the reveal the flip was supposed to be. Opacity and a small lift on
        the ROW, which carries no per-card splay transform to fight, staggered
