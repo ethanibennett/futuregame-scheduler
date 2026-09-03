@@ -4349,20 +4349,17 @@
          house form no longer fit and would have ellipsised. A 9% smaller name
          keeps the initial rather than losing it; nameBudgetFor's own size
          estimate moves with it. */
-      /* 2.7 rather than 3.1. Each move to a wider cut costs the name box: the
-         condensed face charged 0.52 a character, the roman 0.515, and extended
-         0.635 — measured the same way each time, with a Range over a probe
-         carrying the plaque's own resolved type. "K. McCormack" is 103px in
-         extended against 78px condensed, in an 83.6px box, so the type comes
-         down until the house form fits rather than the initial coming off. */
-      font-size: clamp(8px, 2.7cqmin, 34px);
+      font-size: clamp(8px, 3.4cqmin, 42px);
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
-      /* 53 Extended — the pot's width, on the other thing on the felt carrying
-         a name. The condensed face is drawn for fitting numbers into narrow
-         columns and a name is not a number; extended goes further and gives the
-         letters air. It costs width, so nameBudgetFor was re-measured on it. */
-      font-family: var(--font-expanded);
+      /* 57 Condensed, at REGULAR weight — the cut the header sets a person's
+         name in, which is where a name in this app already reads best.
+         It went to roman and then to extended looking for air, and each move
+         cost the box: extended charges 0.635 a character against condensed's
+         0.52, so the longest surnames lost their initial to pay for it. The
+         width was never the problem. Bold was: the plaque was 67, and dropping
+         to 57 at the same width is what makes it a name rather than a number.*/
+      font-family: var(--font-condensed);
       letter-spacing: var(--track-tight);
       /* 45: max-width:80px with an ellipsis, in a condensed face at 10px, is
          about 14 characters — and the cut fell mid-word with no title

@@ -604,7 +604,7 @@ function nameBudgetFor(tableW, tableH, landscape) {
      Get any one of them wrong and the ellipsis finishes names mid-word, which
      is the failure shortenName exists to prevent. */
   const cq = Math.min(tableW, tableH || tableW);
-  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.027)));
+  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.034)));
   const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
   /* 0.52, measured. The box half of this formula was already right — it
      predicts the plaque's max-width to a tenth of a pixel at both ends — but
@@ -635,16 +635,14 @@ function nameBudgetFor(tableW, tableH, landscape) {
      inside the noise of the 0.52 that was already here, so the number stays
      and only the evidence for it changed. Baskerville measured 0.569 and cost
      the initial on the longest names at 8-max, which is why it is not here. */
-  /* 0.545, and a mean would have been the wrong statistic. The plaque went to
-     Libre Baskerville and back to Univers, and the constant was re-measured on
-     each face the same way — a Range over a probe carrying the plaque's own
-     resolved type. The ROMAN cut it uses now runs 0.465 to 0.575 across ten
-     real names for a mean of 0.515, but charging the mean admits a name that
-     does not fit: at 0.52 the budget came out at 14 and let in "Jason
-     Blodgett" at 85.3px against an 83.6px box. 0.545 puts the budget at 13,
-     the longest form that actually fits — measured, every real name and house
-     form then lands between 66.9px and 81.7px in that box. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.725))));
+  /* 0.52 — the condensed face's own figure, back where it started. The
+     plaque tried roman (0.515) and extended (0.635) and has returned to 57
+     Condensed, and each of those was measured the same way: a Range over a
+     probe carrying the plaque's resolved type, which is the only way to get a
+     natural width. Extended needed 0.725, the widest single character cost, to
+     stop the budget admitting names that did not fit; condensed at 0.52 admits
+     every house form with room, which is why it was right the first time. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.52))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the
