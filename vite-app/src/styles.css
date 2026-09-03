@@ -1043,7 +1043,10 @@
        face at any phase — what you see of a real chip's six. */
     .chip-disc,
     .replayer-pot-chip-disc {
-      --disc-w: 18px;
+      /* Scaled with the table. A flat 18px is a quarter of the pot pill's
+         height on a phone in landscape and a detail on a desktop — measured,
+         the pot's stack was 8.1% of the table's width in portrait. */
+      --disc-w: clamp(9px, 2.4cqmin, 20px);
       --chip: currentColor;
       /* MEASURED off the reference stack. Its top face is 144px across a 199px
          chip, so the ellipse's minor axis is 0.724 of its major — that ratio
@@ -1116,7 +1119,10 @@
     }
     /* The pot's chips are the same chip, larger, and they scale with the
        table like everything else on it. */
-    .replayer-pot-chip-disc { --disc-w: clamp(18px, 8cqmin, 96px); }
+    /* The pot's stack sits beside the pot pill, so it is sized against that
+       rather than on its own: at 8cqmin it measured 31px across on a 382px
+       table, 8% of the whole table for a decoration of the number next to it. */
+    .replayer-pot-chip-disc { --disc-w: clamp(12px, 5cqmin, 60px); }
 
     /* A denominated flying chip builds its sphere from inset shadows rather
        than a colour-mix gradient, so any flat denomination colour works - and
@@ -3901,7 +3907,7 @@
          one most able to reach a top seat's plaque on a small table. */
       /* 73 Black Extended. The pot got its presence from being bigger than
          everything else; width gives it the same weight at the same size. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(14px, 6.2cqmin, 76px); font-weight: 800; color:#fff;
+      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: 800; color:#fff;
       font-family: var(--font-expanded);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -3920,7 +3926,9 @@
       background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
       border: 1px solid rgba(255,224,138,0.45);
       border-radius: var(--radius-pill);
-      padding: var(--space-2xs) var(--space-xl);
+      /* Relative to the type it wraps, so the pill does not stay a fixed 16px
+         wide on a phone table and a fixed 16px on a desktop one. */
+      padding: 0.14em 0.62em;
       box-shadow: var(--plate-bevel);
     }
     /* MAIN | TOTAL | SIDE across, measured off the reference: each pill is
