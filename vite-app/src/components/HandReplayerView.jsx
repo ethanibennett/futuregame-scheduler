@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { API_URL } from '../utils/api.js';
-import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic } from '../utils/utils.js';
+import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip} from '../utils/utils.js';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
          bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
@@ -4226,6 +4226,21 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             <div key={h.id} className={'replayer-hand-card is-row' + (outcomeOf(h) ? ' outcome-' + outcomeOf(h) : '')}
               onClick={() => loadHand(h.id)}
             >
+              {/* The strip the schedule uses for venues, carrying the variant
+                  instead — a saved hand has no venue, and the game is the thing
+                  you scan this list for. Coloured by FAMILY so the colour says
+                  something: flop games blue, stud amber, draw green, mixed
+                  purple, with shades separating variants inside a family. */}
+              {(() => {
+                /* gameType, not game_type: the list endpoint spreads hand_data,
+                   which is camelCase. The meta line below asked for game_type
+                   and had been rendering nothing at all. */
+                const v = getVariantStrip(h.gameType);
+                return <div className={'replayer-hand-strip fam-' + v.family}
+                  style={{ background: v.color }} title={h.gameType}>
+                  <span className="replayer-hand-strip-abbr">{v.abbr}</span>
+                </div>;
+              })()}
               <div className="replayer-hand-card-cards" aria-hidden="true">
                 <CardRow text={heroCardsOf(h)} max={2} splay={12} />
               </div>
@@ -4235,8 +4250,14 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                     STAKES, and hand.blinds is already in this payload — the
                     list endpoint spreads the whole hand blob into every row. */}
                 <span className="replayer-hand-card-meta">
-                  {h.game_type}
-                  {h.blinds?.bb ? ' ' + formatChipAmount(h.blinds.sb) + '/' + formatChipAmount(h.blinds.bb) : ''}
+                  {/* The strip carries the game now, so this carries the money.
+                      A fixed-limit hand is quoted in its two BET sizes, the way
+                      the felt states it — a stud row read "100/40", a small
+                      blind stud does not have over a small bet. */}
+                  {h.blinds?.bb ? (HAND_CONFIG[h.gameType]?.betting === 'fl'
+                      ? formatChipAmount(h.blinds.bb) + '/' + formatChipAmount(h.blinds.bigBet || h.blinds.bb * 2)
+                      : formatChipAmount(h.blinds.sb) + '/' + formatChipAmount(h.blinds.bb))
+                    + (h.blinds.ante ? '/(' + formatChipAmount(h.blinds.ante) + ')' : '') : ''}
                   {h.created_at ? ' \u00b7 ' + new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : ''}
                 </span>
               </div>
