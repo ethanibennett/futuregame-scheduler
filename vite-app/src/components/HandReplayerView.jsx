@@ -6218,7 +6218,32 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         {hand.players.map((p, pi) => {
           const pos = seats[pi] || [50, 50];
           const rawCards = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
-          const cards = (pi === replayHeroIdx || showResult) ? (rawCards === 'MUCK' ? '' : rawCards) : '';
+          let cards = (pi === replayHeroIdx || showResult) ? (rawCards === 'MUCK' ? '' : rawCards) : '';
+          /* An opponent's up cards are public in stud — the door card and 4th
+             through 6th sit face up on the table — and the string entered for
+             an opponent IS those up cards, accumulated street by street. Only
+             the two hole cards and the river are down, so 'x' fills slots 0, 1
+             and 6 and the up cards take the middle, which is exactly where
+             CardRow's stud layout looks for them (STUD_DOWN_IDX is {0,1,6}).
+             Before this a stud opponent was a row of backs all the way to
+             showdown, with public information on the table and not on screen. */
+          if (!cards && gameCfg.isStud && pi !== replayHeroIdx && rawCards && rawCards !== 'MUCK' && !folded.has(pi)) {
+            const dealt = parseCardNotation(heroCards || '').length;
+            const up = parseCardNotation(rawCards).filter(c => c.suit !== 'x').slice(0, 4);
+            const shown = up.slice(0, Math.max(0, dealt - 2));
+            if (shown.length) {
+              /* A face-down card in this notation is a RANK carrying the suit
+                 'x' — parseCardNotation gathers ranks and suits separately and
+                 pairs them by position, so there is no rankless card and a bare
+                 'xx' parses as one card, not two. The rank on a down card is
+                 never drawn (CardRow returns .card-unknown for any suit 'x')
+                 and never counted (every evaluator filters suit 'x' out), so
+                 'Ax' here is a back, not an ace. */
+              const back = 'Ax';
+              cards = back + back + shown.map(c => c.rank + c.suit).join('')
+                + (dealt >= 7 ? back : '');
+            }
+          }
           const seatClass = getPlayerSeatClass(pi);
           const isMucked = showResult && rawCards === 'MUCK';
           const lastAct = playerLastAction[pi];
