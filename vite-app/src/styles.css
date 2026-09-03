@@ -2150,7 +2150,13 @@
     /* The variant strip now owns the left edge — the same 26px vertical bar the
        schedule uses for venues — so the outcome moves to the right edge rather
        than being dropped. Two things are being said and each gets a side. */
-    .replayer-hand-card.is-row { padding-left: 0; overflow: hidden; }
+    .replayer-hand-card.is-row { padding-left: 0; }
+    /* The same strip the schedule draws, property for property, including the
+       corner: border-radius is written mirrored because transform:rotate(180deg)
+       swaps the corners, so the element's RIGHT radii paint on the visual left.
+       Rounding the strip itself rather than leaning on the row's overflow is
+       what the calendar learned the hard way — a composited child is clipped by
+       the parent's rectangle but not by its border-radius. */
     .replayer-hand-strip {
       width: 26px;
       flex-shrink: 0;
@@ -2161,13 +2167,20 @@
       text-orientation: mixed;
       transform: rotate(180deg);
       font-family: var(--font-condensed);
-      font-size: var(--fs-3xs, 9px);
+      font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: #ffffff;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      position: relative;
+      user-select: none;
+      padding: 0 var(--space-2xs) 0 0;
       white-space: nowrap;
       overflow: hidden;
+      text-align: center;
+      line-height: 22px;
+      box-sizing: border-box;
       margin-right: var(--space-ml);
     }
     .replayer-hand-card.is-row { border-right: 3px solid transparent; }
