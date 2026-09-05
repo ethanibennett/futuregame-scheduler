@@ -44,7 +44,11 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
   };
 
   return (
-    <div className="location-dropdown" style={{
+    /* The panel that opens this is portalled to document.body, and so is this
+       — so a click in here is not inside the panel's DOM and its outside-click
+       handler read every tap as a tap outside. The mark is what tells it
+       otherwise. */
+    <div className="location-dropdown" data-filter-portal="" style={{
       position:'fixed', top: rect.bottom + 4, left: rect.left,
       // var(--z-panel), not a 999 literal: an off-scale number is what the
       // layer tokens were introduced to end, and this one only happened to be

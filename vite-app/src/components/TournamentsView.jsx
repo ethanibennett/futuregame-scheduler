@@ -8,7 +8,8 @@ import { Filtered } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, findClosestFlight,
-  extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
+  extractConditions, getVenueCoords, haversineDistance, VENUE_TO_SERIES, LOCATION_REGIONS,
+
   isSideEvent,
   matchesLocation,
 } from '../utils/utils.js';
@@ -110,6 +111,12 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
     const handler = (e) => {
       if (panelRef.current && panelRef.current.contains(e.target)) return;
       if (toggleRef.current && toggleRef.current.contains(e.target)) return;
+      /* Anything this panel portalled to document.body belongs to the panel
+         even though it is not inside it. The location dropdown is rendered
+         that way — to escape the stacking context, which is the convention
+         here — so contains() said every tap in it was a tap outside, and
+         choosing a location closed the filters. */
+      if (e.target.closest && e.target.closest('[data-filter-portal]')) return;
       setOpen(false);
     };
     document.addEventListener('mousedown', handler);
@@ -1484,7 +1491,7 @@ export default function TournamentsView({
         <ImportSchedulePanel isOpen={importDropdownOpen} onClose={() => setImportDropdownOpen(false)} token={token} onRefreshTournaments={onRefreshTournaments} />
 
         {locationDropdownOpen && createPortal(
-          <div style={{position:'fixed',inset:0,zIndex:998}} onClick={() => setLocationDropdownOpen(false)} />,
+          <div data-filter-portal="" style={{position:'fixed',inset:0,zIndex:998}} onClick={() => setLocationDropdownOpen(false)} />,
           document.body
         )}
         {locationDropdownOpen && (() => {
