@@ -3726,7 +3726,13 @@
          the cards stopped scaling and started overlapping the neighbours.
          A floor is a legibility limit, not a layout: 24px is the smallest a
          rank and suit stay readable at, and above that the table decides. */
-      --card-h: clamp(18px, 12.5cqmin, 160px);   /* 2 cells */
+      /* The plaque's own width, so the two cannot drift apart. */
+      --plaque-w: min(200px, 25cqmin);
+      /* Cards are a fraction of the plaque rather than of the table. They were
+         sized off cqmin independently, which is why the ratio came out at 0.85
+         of the plaque's height in landscape and 1.02 in portrait — the same
+         cards looking like two different decks. */
+      --card-h: calc(var(--plaque-w) * 0.56);
       --card-w: calc(var(--card-h) * 0.7143);   /* the artwork is 180:252 */
 
       /* The crosshatch was two perfectly regular gradients at +45 and -45,
@@ -4114,13 +4120,11 @@
        dealt so far. :has(nth-child(6)) shrank the cards the moment the sixth
        arrived, so a stud hand was one size on 3rd through 5th street and a
        smaller one on 6th and 7th. The seat has to hold seven from the start. */
+    /* Seven of them still have to fit one seat, so they take a smaller share
+       of the plaque — but the SAME share in both orientations, which the two
+       separate cqmin rules were not giving. */
     .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat {
-      --card-h: clamp(14px, 9.375cqmin, 120px);
-      --card-w: calc(var(--card-h) * 0.7143);
-    }
-    .replayer-landscape.replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat,
-    .replayer-landscape .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat {
-      --card-h: clamp(14px, 7.875cqmin, 100px);
+      --card-h: calc(var(--plaque-w) * 0.46);
       --card-w: calc(var(--card-h) * 0.7143);
     }
     /* No hero exception in a seven-card game. The hero's cards are a step up
@@ -4285,13 +4289,19 @@
          doing one job. It stays opaque because it has to occlude the fan
          tucked behind it. */
       background: rgba(14,12,19,0.93);
-      border: 1px solid rgba(255,255,255,0.09);
+      /* 9% white vanished against both grounds a plaque sits on — the felt it
+         is on and, for the seats above the table's edge, the page behind it. */
+      border: 1px solid rgba(255,255,255,0.22);
       border-radius: var(--r-object);
       padding: var(--nudge-1) min(var(--space-sm), 3cqmin);
       /* A flat 72px is 45% of a 159px table, against seats spaced 32% apart —
          so on a small screen the plaques collided no matter how short the
          names were cut. It is a floor for legibility, not a layout. */
-      min-width: min(200px, 25cqmin);   /* 4 cells */
+      /* The plaque is the middle link: the TABLE sizes it, and it sizes the
+         cards. Measured, it lands on this floor in both orientations — 74px on
+         a 296-tall landscape table, 96px on a 382-wide portrait one — so it is
+         a real dimension rather than a limit that never binds. */
+      min-width: var(--plaque-w, min(200px, 25cqmin));   /* 4 cells */
       box-shadow: none;
       transition: border-color var(--dur-snap), box-shadow var(--dur-base), transform var(--dur-snap);
     }
@@ -4396,7 +4406,7 @@
       font-family: var(--font-condensed);
       font-size: clamp(9px, 3.6cqmin, 44px);
       font-weight: var(--fw-bold);
-      color: #ffd98a;
+      color: #ffffff;
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
     }
