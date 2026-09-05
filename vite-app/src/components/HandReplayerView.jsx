@@ -1090,7 +1090,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
      the fan ran from -5.3% to 36.7% and hung 21px off the table.
      0.78 leaves margin (0.85 hung 3px over, 0.8 by 1px) and still opens wider than the
      0.726 the fan had before it was given a constant step. */
-  const maxHalfSpan = wide ? 1.8 : 1.05;
+  const maxHalfSpan = wide ? 1.8 : 0.85;
   const halfSlots = (slots - 1) / 2;
   const baseStep = (2 * angle) / 3;
   const cappedStep = halfSlots > 0
@@ -6389,22 +6389,10 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                   const r = estimateRange(hand, pi, streetIdx, actionIdx);
                   return r ? <div className={'replayer-range-label ' + r.cls}>{r.label}</div> : null;
                 })()}
-                {/* 39: the delta styles were written, colour-coded and even
-                    added to the tabular-figures group, and nothing ever drew
-                    them — so "who finished up" could only be answered by
-                    remembering the starting stack. */}
-                {showResult && (() => {
-                  const start = p.startingStack ?? p.stack ?? null;
-                  if (start == null) return null;
-                  const d = stacks[pi] - start;
-                  if (!d) return null;
-                  const cls = d > 0 ? 'positive' : 'negative';
-                  return (
-                    <div className={'replayer-chip-delta ' + cls}>
-                      {d > 0 ? '+' : '\u2212'}{formatChipAmount(Math.abs(d))}
-                    </div>
-                  );
-                })()}
+                {/* The running total above already says what a hand cost a
+                    seat. A red number under every loser repeated it and buried
+                    the one figure worth seeing, which is what the winners are
+                    PAID — that now sits in front of them instead. */}
                 {/* Inside the plaque, not beside it. As a sibling its
                     `left: 50%` resolved against .replayer-seat — the seat's
                     whole footprint, cards and all — so the badge sat 28px
@@ -6516,7 +6504,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         {/* Bet chips */}
         {hand.players.map((p, pi) => {
           const lastAct = playerLastAction[pi];
-          if (!lastAct || !lastAct.amount) return null;
+          /* At showdown this slot stops showing what a seat BET and starts
+             showing what it is PAID — in front of the player, where a dealer
+             pushes it. A seat that won nothing shows nothing: its chips are in
+             the pot, and the stack above already counts them. */
+          const wonHere = (showResult && potAwards) ? (potAwards[pi] || 0) : 0;
+          if (showResult ? !wonHere : (!lastAct || !lastAct.amount)) return null;
+          const chipAmount = showResult ? wonHere : lastAct.amount;
           const pos = seats[pi] || [50, 50];
           /* 23: these were five branches of raw percentage constants along
              different axes of a 3:4.5 table — a top seat's chip sat 10% of
@@ -6547,13 +6541,13 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           }
           return (
             <div key={'bet-' + pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
-              <ChipStack amount={lastAct.amount} />
-              {fmtChips(lastAct.amount)}
+              <ChipStack amount={chipAmount} />
+              {fmtChips(chipAmount)}
               {/* 42: a ten-step classifier from min through overbet was written
                   and never called, so '13k' arrived with no pot-relative
                   context — and pot-relative size is what makes a bet readable
                   as a bluff or a value bet at a glance. */}
-              {rSettings.showBetSizing && (lastAct.action === 'bet' || lastAct.action === 'raise') && (() => {
+              {!showResult && rSettings.showBetSizing && (lastAct.action === 'bet' || lastAct.action === 'raise') && (() => {
                 const before = calcPotBeforeAction(hand, streetIdx, lastAct._ai ?? actionIdx);
                 const sizing = getBetSizingLabel(lastAct.amount, before);
                 return sizing ? <div className="replayer-bet-sizing">{sizing}</div> : null;
