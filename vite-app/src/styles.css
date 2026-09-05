@@ -4123,10 +4123,13 @@
       --card-h: clamp(14px, 7.875cqmin, 100px);
       --card-w: calc(var(--card-h) * 0.7143);
     }
-    .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat.is-hero {
-      --card-h: clamp(16px, 11.7cqmin, 150px);
-      --card-w: calc(var(--card-h) * 0.7143);
-    }
+    /* No hero exception in a seven-card game. The hero's cards are a step up
+       everywhere else, which in stud made the hero's fan a different shape from
+       every other seat's — a wider arc on bigger cards beside six tighter ones.
+       Giving the hero its own size here got it wrong the other way: portrait
+       matched at 36.5px while landscape had the hero at 28.2 against 23.7,
+       because the landscape rule sets a smaller size for everyone else. With no
+       hero rule at all, the hero takes whatever the table is using. */
 
     .replayer-seat {
       position: absolute;
@@ -5725,12 +5728,12 @@
        purple put a navy oval inside a PURPLE padded rail with a purple light
        strip. The rail is the largest surface after the felt; a theme that
        restyles the felt and not its frame reads as half-applied. */
-    /* Casino Royale's rail, brought to the default table: the deep navy band
-       and the gold rim between it and the cloth. The felt keeps its own colour
-       — only the surround changes, which is what a rail is. Scoped with :not()
-       because the default theme is the absence of a theme class, and every
-       other theme sets its own rail below. */
-    .replayer-table:not([class*="theme-"]) .replayer-table-rail { background-color: #0d1526; }
+    /* Casino Royale's rail on the default table — but the RIM, not its colour.
+       The band itself stays matched to the cloth, because --rail-color is
+       derived from the felt the user picked and hard-coding navy severed that:
+       change the felt to green and the rail stayed blue. What is borrowed is
+       the gold line between rail and felt. Scoped with :not() because the
+       default theme is the absence of a theme class. */
     .replayer-table:not([class*="theme-"]) .replayer-table-felt {
       border-color: #c9a84c;
       border-width: 3px;
