@@ -6226,28 +6226,40 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
              CardRow's stud layout looks for them (STUD_DOWN_IDX is {0,1,6}).
              Before this a stud opponent was a row of backs all the way to
              showdown, with public information on the table and not on screen. */
-          if (gameCfg.isStud && pi !== replayHeroIdx && rawCards && rawCards !== 'MUCK' && !folded.has(pi)) {
-            /* At showdown a hand is seven cards whether or not anybody typed
-               the hidden ones. The showdown step prepends them to street 0, so
-               a hand that skipped it accumulates only the four up cards and the
-               seat showed four at the end. The missing ones are backs — a hand
-               was still held, it was just never recorded. */
+          if (gameCfg.isStud && pi !== replayHeroIdx && !folded.has(pi)) {
+            /* An opponent's up cards are public: the door card and 4th through
+               6th sit face up, only the two hole cards and the river are down.
+
+               Read per STREET rather than from the accumulated string. The
+               showdown step PREPENDS an opponent's hidden cards to street 0, so
+               once it has been used that string is [hidden...][door] and its
+               first card is not the door at all — and counting it against the
+               hero's card total made the whole branch bail, which put seven
+               backs in front of a seat whose up cards were all recorded. */
+            const oppSlot = pi > replayHeroIdx ? pi - 1 : pi;
+            const upCards = [];
+            for (let si = 0; si <= Math.min(streetIdx, 3); si++) {
+              const raw = (hand.streets[si]?.cards.opponents || [])[oppSlot] || '';
+              if (raw === 'MUCK') break;
+              const cs = parseCardNotation(raw).filter(c => c.suit !== 'x');
+              if (!cs.length) continue;
+              // 3rd street's LAST card is the door; anything before it was added
+              // at showdown. Every later street contributes its one up card.
+              upCards.push(si === 0 ? cs[cs.length - 1] : cs[0]);
+            }
             const dealt = showResult
               ? (gameCfg.heroCards || 7)
               : parseCardNotation(heroCards || '').length;
-            const known = parseCardNotation(rawCards).filter(c => c.suit !== 'x');
-            const up = known.length >= dealt ? [] : known.slice(0, 4);
-            const shown = up.slice(0, Math.max(0, dealt - 2));
-            if (shown.length) {
-              /* A face-down card in this notation is a RANK carrying the suit
-                 'x' — parseCardNotation gathers ranks and suits separately and
-                 pairs them by position, so there is no rankless card and a bare
-                 'xx' parses as one card, not two. The rank on a down card is
-                 never drawn (CardRow returns .card-unknown for any suit 'x')
-                 and never counted (every evaluator filters suit 'x' out), so
-                 'Ax' here is a back, not an ace. */
+            const knownAll = parseCardNotation(rawCards || '').filter(c => c.suit !== 'x').length;
+            // A finished showdown with every card recorded is left alone.
+            const complete = showResult && knownAll >= (gameCfg.heroCards || 7);
+            if (upCards.length && !complete) {
+              /* A face-down card here is a RANK carrying the suit 'x':
+                 parseCardNotation pairs ranks and suits by position, so a bare
+                 'xx' is one card rather than two. The rank is never drawn and
+                 never counted. */
               const back = 'Ax';
-              cards = back + back + shown.map(c => c.rank + c.suit).join('')
+              cards = back + back + upCards.map(c => c.rank + c.suit).join('')
                 + (dealt >= 7 ? back : '');
             }
           }
