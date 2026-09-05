@@ -604,7 +604,7 @@ function nameBudgetFor(tableW, tableH, landscape) {
      Get any one of them wrong and the ellipsis finishes names mid-word, which
      is the failure shortenName exists to prevent. */
   const cq = Math.min(tableW, tableH || tableW);
-  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.034)));
+  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.030)));
   const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
   /* 0.52, measured. The box half of this formula was already right — it
      predicts the plaque's max-width to a tenth of a pixel at both ends — but
@@ -635,14 +635,16 @@ function nameBudgetFor(tableW, tableH, landscape) {
      inside the noise of the 0.52 that was already here, so the number stays
      and only the evidence for it changed. Baskerville measured 0.569 and cost
      the initial on the longest names at 8-max, which is why it is not here. */
-  /* 0.52 — the condensed face's own figure, back where it started. The
-     plaque tried roman (0.515) and extended (0.635) and has returned to 57
-     Condensed, and each of those was measured the same way: a Range over a
-     probe carrying the plaque's resolved type, which is the only way to get a
-     natural width. Extended needed 0.725, the widest single character cost, to
-     stop the budget admitting names that did not fit; condensed at 0.52 admits
-     every house form with room, which is why it was right the first time. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.52))));
+  /* 0.647 — Baskerville's WIDEST character, not its average. The plaque has
+     now worn four cuts and each was measured the same way, with a Range over a
+     probe carrying its resolved type: condensed 0.52, roman 0.515, extended
+     0.635, Libre Baskerville 0.569 on average but 0.647 at its widest.
+     Charging the average is what admits a name that does not fit — the ten
+     real names happened to clear an 83.6px box by half a pixel, which is luck
+     rather than a rule. At the widest cost the budget is a guarantee, and the
+     size came down to 3.0cqmin so that guarantee still leaves eleven
+     characters, which is where the house form lives. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.647))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the

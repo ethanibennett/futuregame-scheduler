@@ -3756,20 +3756,27 @@
       position: absolute;
       inset: calc(var(--felt-y) - var(--rail-w)) calc(var(--felt-x) - var(--rail-w));
       border-radius: var(--rail-r, var(--radius-pill));
+      /* Lit from the upper left AND the lower right. One source ran the rail
+         from a highlight at the top to shadow at the bottom, which reads as a
+         moulding rather than as a padded ring — a real rail is in a room, and
+         a room has more than one lamp. Both ends catch light now and the belly
+         falls away between them, which is where the roundness comes from. */
       background:
         linear-gradient(155deg,
-          rgba(255,255,255,0.30) 0%,
-          rgba(255,255,255,0.11) 14%,
-          transparent 34%,
-          transparent 62%,
-          rgba(0,0,0,0.10) 84%,
-          rgba(0,0,0,0.22) 100%
+          rgba(255,255,255,0.32) 0%,
+          rgba(255,255,255,0.13) 15%,
+          rgba(0,0,0,0.10) 38%,
+          rgba(0,0,0,0.16) 55%,
+          rgba(0,0,0,0.06) 74%,
+          rgba(255,255,255,0.12) 90%,
+          rgba(255,255,255,0.26) 100%
         );
       background-color: var(--rail-color, #6b5b8a);
       border: none;
       box-shadow:
-        0 2px 0 rgba(255,255,255,0.11) inset,
-        0 -3px 6px rgba(0,0,0,0.25) inset,
+        0 2px 0 rgba(255,255,255,0.12) inset,
+        0 -2px 0 rgba(255,255,255,0.08) inset,
+        0 0 12px rgba(0,0,0,0.22) inset,
         0 1px 3px rgba(0,0,0,0.15);
     }
     /* The table's outer edge was a 1px/3px drop against a near-black page,
@@ -4349,17 +4356,17 @@
          house form no longer fit and would have ellipsised. A 9% smaller name
          keeps the initial rather than losing it; nameBudgetFor's own size
          estimate moves with it. */
-      font-size: clamp(8px, 3.4cqmin, 42px);
+      /* 3.0. Baskerville's widest character costs 0.647 of the size against
+         the condensed face's 0.52, so at 3.4 an eleven-character name could
+         reach 92px in an 83.6px box — the measured names happened to fit, which
+         is not the same as fitting. */
+      font-size: clamp(8px, 3.0cqmin, 37px);
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
-      /* 57 Condensed, at REGULAR weight — the cut the header sets a person's
-         name in, which is where a name in this app already reads best.
-         It went to roman and then to extended looking for air, and each move
-         cost the box: extended charges 0.635 a character against condensed's
-         0.52, so the longest surnames lost their initial to pay for it. The
-         width was never the problem. Bold was: the plaque was 67, and dropping
-         to 57 at the same width is what makes it a name rather than a number.*/
-      font-family: var(--font-condensed);
+      /* Baskerville at 400 — the wordmark's face, on the other thing the felt
+         carries that a person wrote. It is the widest cut the plaque has worn:
+         measured, 0.569 a character against the condensed face's 0.52. */
+      font-family: var(--font-display);
       letter-spacing: var(--track-tight);
       /* 45: max-width:80px with an ellipsis, in a condensed face at 10px, is
          about 14 characters — and the cut fell mid-word with no title
@@ -5718,6 +5725,20 @@
        purple put a navy oval inside a PURPLE padded rail with a purple light
        strip. The rail is the largest surface after the felt; a theme that
        restyles the felt and not its frame reads as half-applied. */
+    /* Casino Royale's rail, brought to the default table: the deep navy band
+       and the gold rim between it and the cloth. The felt keeps its own colour
+       — only the surround changes, which is what a rail is. Scoped with :not()
+       because the default theme is the absence of a theme class, and every
+       other theme sets its own rail below. */
+    .replayer-table:not([class*="theme-"]) .replayer-table-rail { background-color: #0d1526; }
+    .replayer-table:not([class*="theme-"]) .replayer-table-felt {
+      border-color: #c9a84c;
+      border-width: 3px;
+      box-shadow:
+        0 0 0 4px rgba(0,0,0,0.3),
+        inset 0 2px 12px rgba(0,0,0,0.4),
+        0 0 20px rgba(201,168,76,0.15);
+    }
     .replayer-table.theme-casino-royale .replayer-table-rail { background-color: #0d1526; }
     .replayer-table.theme-neon-vegas    .replayer-table-rail { background-color: #0a0a0a; }
     .replayer-table.theme-vintage       .replayer-table-rail { background-color: #4a3a26; }
