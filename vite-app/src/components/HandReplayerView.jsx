@@ -1413,7 +1413,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'showCommentary', label:'Commentator Mode', sub:'A play-by-play line under the table' },
             { key:'showTimeline', label:'Action Timeline', sub:'A scrubbable dot per action' },
             { key:'showPlayerStats', label:'Player Stats', sub:'A stats chip on each seat' },
-            { key:'stacksInBB', label:'Stacks in Big Blinds', sub:'Read the table in BB instead of chips' },
+            { key:'stacksInBB', label:'Stacks in BB', sub:'Big blinds — or big bets in a limit game. Tapping any stack on the table toggles this too' },
           ].map(opt => (
             <div key={opt.key} className="replayer-settings-row">
               <div>
@@ -4471,8 +4471,31 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* 44: the display surfaces where depth is the point — stacks, pot, wagers —
      go through this; commentary and exports keep chip counts, because prose
      that says 'he shoved 14 BB' reads oddly next to a hand history. */
-  const _bb = (hand.blinds || {}).bb || 0;
+  /* The unit is not always the big blind. In a fixed-limit game blinds.bb
+     holds the SMALL BET and blinds.bigBet the big one — the same distinction
+     the level line already makes when it prints a stud game as 40/80 rather
+     than as a small blind stud does not post. Dividing a stud stack by the
+     small bet would have doubled every depth on the felt. The printed unit
+     stays "BB" for both, because that is what it means in each game the label
+     appears in: big blinds where blinds are posted, big bets in a limit game,
+     which is how limit players say it ("thirty big bets deep"). */
+  const _limitGame = (HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT).betting === 'fl';
+  const _bb = _limitGame
+    ? ((hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 0) * 2)
+    : ((hand.blinds || {}).bb || 0);
   const fmtChips = (v) => formatChipAmount(v, rSettings.stacksInBB ? _bb : 0);
+  /* Tapping any stack flips the whole table, not just the one touched: depth
+     is only readable by comparison, so a felt showing one seat in BB and the
+     rest in chips would be worse than either mode. It writes the same setting
+     the panel does, so the two stay one state rather than two.
+     Guarded on a unit existing — with no blinds recorded, formatChipAmount
+     falls back to chips and the tap would be a control that does nothing. */
+  const stackUnitAvailable = _bb > 0;
+  const toggleStackUnit = (e) => {
+    if (!stackUnitAvailable) return;
+    e.stopPropagation();
+    rSetters.stacksInBB(!rSettings.stacksInBB);
+  };
 
   // Guard against old/incomplete hand records with no streets
   if (!hand.streets || hand.streets.length === 0) {
@@ -6385,7 +6408,23 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                     while the chips were still in flight toward a pot that had
                     already been paid. It counts down over the same duration
                     the pot counts up. */}
-                <div className="replayer-seat-stack">
+                <div className="replayer-seat-stack"
+                  {...(stackUnitAvailable ? {
+                    role: 'button', tabIndex: 0,
+                    'data-tappable': '1',
+                    title: rSettings.stacksInBB
+                      ? 'Show stacks in chips'
+                      : (_limitGame ? 'Show stacks in big bets' : 'Show stacks in big blinds'),
+                    onClick: toggleStackUnit,
+                    /* The plaque around this is itself a role="button" that opens
+                       the inspector, so both handlers stop propagation — a tap on
+                       the number must not also open a panel over the table. */
+                    onKeyDown: (e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      toggleStackUnit(e);
+                    },
+                  } : {})}>
                   {allIn.has(pi) && stacks[pi] <= 0
                     ? <span className="replayer-allin-mark">ALL-IN</span>
                     : <CountedChips value={stacks[pi]} fmt={fmtChips} live={rSettings.animateChips && !rewinding} />}
