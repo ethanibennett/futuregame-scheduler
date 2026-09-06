@@ -604,7 +604,11 @@ function nameBudgetFor(tableW, tableH, landscape) {
      Get any one of them wrong and the ellipsis finishes names mid-word, which
      is the failure shortenName exists to prevent. */
   const cq = Math.min(tableW, tableH || tableW);
-  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.028 : 0.030)));
+  /* 0.034 / 0.032. This factor is the CSS's cqmin coefficient over 100 and
+     has to move with it every time the size does — the plaque went to 3.4 /
+     3.0cqmin when it took the oblique condensed cut, so a stale 0.030 here
+     would estimate a name 13% narrower than the one being drawn. */
+  const px = Math.min(landscape ? 34 : 13, Math.max(8, cq * (landscape ? 0.030 : 0.034)));
   const box = Math.min(landscape ? 420 : 300, cq * (landscape ? 0.32 : 0.21875));
   /* 0.52, measured. The box half of this formula was already right — it
      predicts the plaque's max-width to a tenth of a pixel at both ends — but
@@ -644,7 +648,12 @@ function nameBudgetFor(tableW, tableH, landscape) {
      rather than a rule. At the widest cost the budget is a guarantee, and the
      size came down to 3.0cqmin so that guarantee still leaves eleven
      characters, which is where the house form lives. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.647))));
+  /* 0.501 — the fifth cut, Univers Condensed OBLIQUE, measured the same way:
+     ten real names run 0.396 to 0.501 with a mean of 0.442, the narrowest of
+     the five. It is charged at its widest for the same reason Baskerville
+     was, but here the guarantee is cheap: every house form clears the box by
+     a wide margin, which is what paid for the size going back up to 3.4. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.501))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the

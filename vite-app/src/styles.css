@@ -3464,7 +3464,12 @@
     .replayer-landscape .replayer-seat-name,
     .replayer-landscape .replayer-seat.seat-right .replayer-seat-name {
       max-width: min(420px, 32cqmin);
-      font-size: clamp(8px, 2.8cqmin, 34px);
+      /* 3.0, not the 3.2 that portrait's headroom suggested. Landscape's
+         plaque box is 57.9px where portrait's is 81.1, and at 3.2 the widest
+         house form measured 56.8px in it — a 1.1px margin, which is not a
+         margin. At 3.0 it is 53.3px, and the 4.6px left over is the number
+         this size comes from. */
+      font-size: clamp(8px, 3.0cqmin, 34px);
     }
     /* Decoration gives way to the block that carries the level. */
     /* Landscape is wide and SHORT, and 9-max puts TWO seats along the bottom
@@ -3837,7 +3842,16 @@
     .replayer-table-felt {
       position: absolute;
       inset: var(--felt-y) var(--felt-x);
-      background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--felt-lit, #9478b4), var(--felt-shade, #2c2e50));
+      /* The lit stop is mixed 82% toward the felt colour and 18% toward its
+         own shade rather than used neat. Measured across the table's waist,
+         the middle of the cloth was 141 against 90.5 at the sides — a 1.56x
+         hotspot, bright enough that the felt read as spotlit rather than
+         evenly lit. Mixing lands where it should: re-measured, the centre fell
+         15.3% to 119.4 while the sides fell 7.1% to 84.1, taking the hotspot
+         to 1.42x. The user's felt-colour setting still drives both stops. */
+      background: radial-gradient(ellipse 80% 70% at 50% 45%,
+        color-mix(in srgb, var(--felt-lit, #9478b4) 82%, var(--felt-shade, #2c2e50)),
+        var(--felt-shade, #2c2e50));
       border-radius: var(--felt-r, var(--radius-pill));
       border: 1px solid rgba(0,0,0,0.15);
       box-shadow:
@@ -3890,10 +3904,19 @@
            strip between the top seats and the pot, and the board sat on the
            shoulder of the falloff. Overhead light at a poker table points at
            the board. */
-        radial-gradient(ellipse 55% 40% at 50% 44%, rgba(255,244,220,0.14), transparent 70%),
+        /* 0.06 from 0.14, and a smaller pool. At 0.14 the specular alone put
+           ~17 luminance on top of a centre that was already the brightest part
+           of the ramp; halved and tightened it still says "there is a light
+           over the board" without being the light itself. */
+        radial-gradient(ellipse 45% 32% at 50% 44%, rgba(255,244,220,0.06), transparent 70%),
         /* The vignette was concentric at 50% 50% while the light was at 22%,
            so the highlight and the falloff came from two different places.
            Falloff comes from the light. */
+        /* Stays at 55%. Pulling it to 45% was tried and re-measured, and the
+           waist profile came back byte-identical: the base ellipse is 80% x
+           70%, so it spans past the waist and the vignette's inner stop never
+           reaches the band this is measured across. The peak is the only
+           lever that moves the middle; the vignette's job is the dish. */
         radial-gradient(ellipse 100% 100% at 50% 40%, transparent 55%, rgba(0,0,0,0.30) 100%),
         var(--felt-weave);
     }
@@ -4373,13 +4396,26 @@
          the condensed face's 0.52, so at 3.4 an eleven-character name could
          reach 92px in an 83.6px box — the measured names happened to fit, which
          is not the same as fitting. */
-      font-size: clamp(8px, 3.0cqmin, 37px);
+      /* 3.4, back where the condensed roman cut sat, because the oblique
+         condensed cut is measurably the narrowest face the plaque has worn:
+         its widest house form, "K. McCormack", is 68.9px at 3.0 in an 81.1px
+         box, so 17.7% of the box was going unused. At 3.4 that form is 78.1px
+         and still fits with 3px to spare, which is the number this size comes
+         from. */
+      font-size: clamp(8px, 3.4cqmin, 37px);
       font-weight: var(--fw-regular);
       color: rgba(242,239,230,0.74);
       /* Baskerville at 400 — the wordmark's face, on the other thing the felt
          carries that a person wrote. It is the widest cut the plaque has worn:
          measured, 0.569 a character against the condensed face's 0.52. */
-      font-family: var(--font-display);
+      /* Condensed oblique. The plaque has worn condensed roman, roman,
+         extended and Baskerville; this is the one cut that reads as a name
+         ENGRAVED rather than set — the slant is what a plaque's pantograph
+         leaves, and the condensed width is the reason the box can hold a
+         full name at all. Size and the budget constant below are re-measured
+         on it, as on every face before it. */
+      font-family: 'Univers Condensed', var(--font-condensed);
+      font-style: oblique;
       letter-spacing: var(--track-tight);
       /* 45: max-width:80px with an ellipsis, in a condensed face at 10px, is
          about 14 characters — and the cut fell mid-word with no title
@@ -5510,12 +5546,17 @@
       60% { transform:scale(0.99); }
       100% { transform:scale(1); }
     }
-    .replayer-seat.winner .replayer-seat-cards { animation:winnerBounce var(--dur-slow) var(--ease-object) 0.55s both; }
+    /* No bounce and no swelling glow on the winner. winnerArrive ran a gold
+       ring out to 26px at its midpoint and back, which is a pulse — and it was
+       caught RESTARTING: six separate samples in the seven seconds after a
+       showdown, because the stack's count-up re-renders the plaque and every
+       render replays it. The winner keeps its gold border, which says the same
+       thing and holds still. */
     /* 55: this ran the 1.8s shimmer TWICE — 3.6 seconds of a plaque pulsing
        to a 32px gold bloom and back, long after the result has been read, and
        then dropping to nothing. The border and glow in .replayer-seat.winner
        are already the steady state; the shimmer only has to arrive at it. */
-    .replayer-seat.winner .replayer-seat-info { animation:winnerArrive var(--dur-beat) var(--ease-label) 0.30s both; }
+    .replayer-seat.winner .replayer-seat-info { border-color: #ffd700; }
     /* The last beat: the sentence the whole replay was building to. */
     /* showdownReveal is shared with .replayer-seat-cards, which is NOT
        centred by a transform — so the hand name needs its own copy that keeps
