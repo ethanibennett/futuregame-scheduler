@@ -4224,11 +4224,20 @@
       margin-left: calc(var(--card-w) * -0.52);
       box-shadow: -1px 0 0 rgba(255,255,255,0.62), 0 0 0 0.75px rgba(255,255,255,0.30);
     }
+    /* Seven, because seven is what a stud hand holds. The ladder stopped at
+       five, so a stud row's sixth and seventh cards fell to `z-index:auto` and
+       painted beneath every card to their left — the last card's ink started
+       where the fifth card's ended, which reads as a gap the width of a whole
+       card rather than as a mis-stack. CardRow sets its own z-index inline and
+       does not need this; rows built by hand out of these classes, like the
+       solver's table seats, do. */
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(1) { z-index:1; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(2) { z-index:2; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(3) { z-index:3; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(4) { z-index:4; }
     .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(5) { z-index:5; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(6) { z-index:6; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(7) { z-index:7; }
     /* The faces are 180:252 = 1:1.400. Forcing 30x44 is 1:1.467 — a 4.6%
        horizontal squeeze on every hole card, while the BOARD imgs set height
        only and so rendered at their natural 31.4px. Two widths in one hand.

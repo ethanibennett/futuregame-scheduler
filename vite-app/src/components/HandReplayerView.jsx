@@ -1068,6 +1068,25 @@ function PotChipVisual({ amount }) {
    34: and the fan was a pure 2D rotation, which is cards printed on a page.
    A real fan also lifts each successive card slightly out of the plane, so it
    grows a little and throws a longer shadow toward the top of the arc. */
+/* The stud lift, as a share of the card's HEIGHT rather than a count of
+   pixels. It was 5px, and 5px is a different lift on every table: measured,
+   the card is 43.9px tall on a phone and 83.8px on a desktop, so the same
+   constant was an 11.4% lift in one place and a 6.0% lift in the other —
+   the up-card band all but closed on the size with the most room for it.
+   0.114 is that phone lift, where it was tuned, expressed so it holds. */
+const STUD_LIFT = 0.114;
+const STUD_LIFT_UP = 'calc(var(--card-h) * -' + STUD_LIFT + ')';
+const STUD_LIFT_DOWN = 'calc(var(--card-h) * ' + STUD_LIFT + ')';
+
+/* The flat row, for when the splay is switched off. It was getting nothing at
+   all — no z-order and no lift — and leaned entirely on a CSS ladder that
+   stopped at the fifth card. */
+function getFlatStyle(index, total, yOffset, reverseZ) {
+  const style = { zIndex: reverseZ ? (total - index) : (index + 1) };
+  if (yOffset) style.transform = 'translateY(' + yOffset + ')';
+  return style;
+}
+
 function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
   if (total <= 1) return {};
   /* The step is per CARD and fixed by the size of the FINISHED hand, not by
@@ -1107,7 +1126,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
     : baseStep;
   const step = Math.min(baseStep, cappedStep);
   const rot = (index - (total - 1) / 2) * step;
-  const extraY = yOffset || 0;
+  const extraY = yOffset || '';
   const z = reverseZ ? (total - 1 - index) : index;
   // The lift runs along the arc, not with the z-order, so a reversed fan still
   // lifts in the direction the hand is held.
@@ -1165,7 +1184,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
     left: '50%',
     bottom: 0,
     transform: 'translate(calc(-50% + ' + x.toFixed(3) + ' * var(--card-w)), calc('
-      + y.toFixed(3) + ' * var(--card-w) + ' + extraY + 'px)) rotate('
+      + y.toFixed(3) + ' * var(--card-w)' + (extraY ? ' + ' + extraY : '') + ')) rotate('
       + rot + 'deg) scale(' + scale.toFixed(3) + ')',
     transformOrigin: '18% 118%',
     filter: shadow,
@@ -1202,15 +1221,21 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         const k = c.rank + c.suit + '_' + i;
         const isDown = downIdx && downIdx.has(i);
         const isStudUp = stud && !isDown && i >= 2 && i <= 5;
-        const studYOffset = isStudUp ? -5 : isDown ? 5 : 0;
+        const studYOffset = isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : '';
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
         // 63: --ci is the card's place in the hand. The per-card deal
         // stagger multiplies it by one round of the table, so a hand is dealt
         // one card at a time round the seats rather than arriving as a block.
+        /* Both paths get the lift and the z-order now. Switching the splay off
+           used to drop both: measured on a seven-card stud row, the tops had a
+           0.0px spread and the sixth and seventh cards came out `z-index:auto`,
+           which paints them UNDER the ladder above — so the last card's ink
+           began where the fifth card's ended and the row read as though it had
+           a full card's gap in it. */
         const splayStyle = { '--ci': i, ...(splay
           ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, wideFan, max)
-          : null) };
+          : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
         }
