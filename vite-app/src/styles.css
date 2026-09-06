@@ -4446,6 +4446,21 @@
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
     }
+    /* The stack is a control: tapping it swaps every stack on the table
+       between chips and BB. Only the affordances a touch target needs — a
+       pointer, no grey flash on tap, and a press state, since the number
+       itself may not change enough to confirm the tap on a shallow stack. */
+    .replayer-seat-stack[data-tappable] {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity var(--dur-fast) var(--ease-label);
+    }
+    .replayer-seat-stack[data-tappable]:active { opacity: 0.55; }
+    .replayer-seat-stack[data-tappable]:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+      border-radius: var(--radius-xs);
+    }
     .replayer-chip-delta {
       font-family: var(--font-condensed);
       font-size: clamp(7px, 2.8cqmin, 34px);
