@@ -653,7 +653,17 @@ function nameBudgetFor(tableW, tableH, landscape) {
      the five. It is charged at its widest for the same reason Baskerville
      was, but here the guarantee is cheap: every house form clears the box by
      a wide margin, which is what paid for the size going back up to 3.4. */
-  return Math.max(6, Math.min(30, Math.round(box / (px * 0.501))));
+  /* 0.445 — the sixth cut, Univers Condensed LIGHT, and the narrowest yet:
+     ten real names run 0.359 to 0.445 against the oblique 400's 0.501. The
+     hero wears the oblique of the same weight, and it was measured separately
+     in case the slant cost width; it does not. Every string came back
+     identical to the tenth of a pixel, because Univers' obliques are drawn on
+     the roman's advance widths — so one constant covers both seats rather
+     than the felt needing a budget per seat.
+     Leaving 0.501 would have been safe but not free: it charges 13% more per
+     character than the face costs, so a name would shorten to its house form
+     while the full form still fit. */
+  return Math.max(6, Math.min(30, Math.round(box / (px * 0.445))));
 }
 
 /* One counter per seat: a hook cannot be called inside the seat map, so the

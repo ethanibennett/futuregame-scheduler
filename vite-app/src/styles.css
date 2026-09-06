@@ -3943,8 +3943,13 @@
          one most able to reach a top seat's plaque on a small table. */
       /* 73 Black Extended. The pot got its presence from being bigger than
          everything else; width gives it the same weight at the same size. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: 800; color:#fff;
-      font-family: var(--font-expanded);
+      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: var(--fw-bold); color:#fff;
+      /* Condensed Bold, not Expanded Black. Two weights means the pot cannot
+         have a weight of its own, so its presence has to come from size — and
+         4.4cqmin against the stack's 3.6 is the 1.22 ratio the scheme was
+         drawn at. It gets narrower, which is the trade: the widest object on
+         the cloth stops being the one in the middle of it. */
+      font-family: var(--font-condensed);
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
       /* backdrop-filter: blur(2px) was the only refraction anywhere on the
@@ -4119,6 +4124,10 @@
        community cards, which is where a broadcast graphic puts the street. */
     .replayer-street-label {
       font-size: var(--fs-2xs); color:rgba(255,255,255,0.6); font-family: var(--font-condensed);
+      /* It had no weight of its own and took whatever it inherited, which is
+         exactly how a third weight gets onto a two-weight felt without anyone
+         deciding to put it there. */
+      font-weight: var(--fw-light);
       text-transform:uppercase; letter-spacing: var(--track-caps); text-shadow: 0 1px 2px rgba(0,0,0,0.4);
     }
 
@@ -4412,7 +4421,12 @@
          and still fits with 3px to spare, which is the number this size comes
          from. */
       font-size: clamp(8px, 3.4cqmin, 37px);
-      font-weight: var(--fw-regular);
+      /* Light. The felt now runs on TWO weights and nothing between them —
+         300 for anything a person supplied or the room recorded, 700 for
+         every figure and every state. A binary reads faster than a ramp when
+         the eye is crossing six seats at once, and it is the one hierarchy
+         that cannot drift: there is no middle to drift into. */
+      font-weight: var(--fw-light);
       color: rgba(242,239,230,0.74);
       /* Baskerville at 400 — the wordmark's face, on the other thing the felt
          carries that a person wrote. It is the widest cut the plaque has worn:
@@ -4424,7 +4438,9 @@
          full name at all. Size and the budget constant below are re-measured
          on it, as on every face before it. */
       font-family: 'Univers Condensed', var(--font-condensed);
-      font-style: oblique;
+      /* Upright. The slant moved off the name and onto the HERO — see the
+         is-hero rule — where it says whose hand this is rather than that a
+         plaque was engraved. Every seat wearing it said nothing. */
       letter-spacing: var(--track-tight);
       /* 45: max-width:80px with an ellipsis, in a condensed face at 10px, is
          about 14 characters — and the cut fell mid-word with no title
@@ -4470,6 +4486,9 @@
       outline-offset: 2px;
       border-radius: var(--radius-xs);
     }
+    /* Was 400. Under two weights a delta is a figure the app derived rather
+       than one the room recorded, and it is the quietest thing on the felt,
+       so it goes light. */
     .replayer-chip-delta {
       font-family: var(--font-condensed);
       font-size: clamp(7px, 2.8cqmin, 34px);
@@ -6212,6 +6231,15 @@
       border-color: rgba(242,166,59,0.5);
     }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
+    /* The hero is the seat that is slanted, and it is slanted ENTIRELY: name,
+       stack, hand name, action, all of it. One declaration does the whole
+       seat because font-style inherits, and nothing inside the seat sets it
+       back — the name's own oblique was removed for exactly that reason.
+       Whose hand this is becomes a property of the type rather than a
+       highlight colour competing with the winner's gold. Univers Condensed
+       ships a DRAWN oblique at 300 and 700, so this is a real cut and not a
+       renderer's shear. */
+    .replayer-seat.is-hero { font-style: oblique; }
 
     /* 91: committed, and it shows for the rest of the hand. */
     .replayer-seat.is-allin .replayer-seat-info {
@@ -6243,7 +6271,7 @@
     }
     .replayer-side-pot-label {
       font-family: var(--font-condensed);
-      font-weight: var(--fw-regular);
+      font-weight: var(--fw-light);
       letter-spacing: var(--track-caps); text-transform: uppercase;
       color: rgba(255,255,255,0.5);
       margin-right: var(--space-xs);
@@ -6255,7 +6283,7 @@
     .replayer-table-info .replayer-level-meta {
       font-family: var(--font-condensed);
       font-size: clamp(7px, 3cqmin, var(--fs-2xs));
-      font-weight: var(--fw-regular);
+      font-weight: var(--fw-light);
       letter-spacing: var(--track-tight);
       color: rgba(242,239,230,0.34);
       white-space: nowrap;
