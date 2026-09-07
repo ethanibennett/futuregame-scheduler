@@ -5549,9 +5549,12 @@
       30% { opacity:1; }
       100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
     }
-    .replayer-bet-chip.animate-chips {
-      animation:chipSlideToPot var(--dur-base) var(--ease-object) both;
-    }
+    /* No animation on the bet. The chip flew in from the seat at scale 0.4 and
+       grew into place, so every action on the felt arrived with a pop — and a
+       wager is a fact, not an event: it is either in front of a player or it
+       is not. The keyframes stay for the POT-collection chips, which travel
+       for a reason. */
+    .replayer-bet-chip.animate-chips { animation: none; }
 
     /* ── Pot Collection Animation (chips slide to winner) ── */
     @keyframes potCollect {
@@ -6046,7 +6049,11 @@
       100% { transform: translate(-50%,-50%) scale(1); }
     }
     .replayer-pot-display.is-landing {
-      animation: potImpact var(--dur-base) var(--ease-object);
+      /* No impact bump either. It scaled the pot to 1.035 and back on every bet,
+         which is the same overshoot shape the action badge had — the pot is the
+         one object every eye is already on, so a pulse there is the most
+         visible one on the felt. The number changing is the feedback. */
+      animation: none;
     }
 
     /* 58: the badge under each seat is the densest thing on the felt that
@@ -6064,7 +6071,10 @@
       70%  { opacity:1; transform:translateX(-50%) translateY(0) scale(1.05); }
       100% { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
     }
-    .replayer-action-badge-outer { animation: actionBadgeIn var(--dur-snap) var(--ease-label) both; }
+    /* Nor on the action. actionBadgeIn ran 0.88 to 1.05 and back to 1 — an
+       overshoot, which is exactly the shape the eye reads as a pulse, on the
+       element that changes most often in a replay. */
+    .replayer-action-badge-outer { animation: none; }
     @media (prefers-reduced-motion: reduce) {
       .replayer-action-badge-outer,
       .replayer-pot-display.anim-collect { animation: none; }

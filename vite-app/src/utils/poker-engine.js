@@ -61,7 +61,12 @@ export function evalHigh5(cards) {
   if (isStraight && isFlush) {
     cat = 9; kickers = [straightHigh, 0, 0, 0, 0];
     name = straightHigh === 14 ? 'Royal Flush' : 'Straight Flush, ' + RANK_WORD[straightHigh] + '-high';
-    shortName = straightHigh === 14 ? 'Royal Flush' : 'Str. Flush, ' + RANK_SHORT[straightHigh] + '-high';
+    /* Not 'Str. Flush'. shortName exists because the plaque is the one place
+       on the felt with no room, and the label it feeds is now the ONLY place a
+       result appears — the banner that used to repeat it is gone. A hand's
+       name is the last thing to abbreviate when it is the only thing being
+       said. */
+    shortName = straightHigh === 14 ? 'Royal Flush' : 'Straight Flush, ' + RANK_SHORT[straightHigh] + '-high';
   } else if (groups[0][0] === 4) {
     cat = 8; kickers = [groups[0][1], groups[1][1], 0, 0, 0];
     name = 'Four of a Kind, ' + rankPlural(groups[0][1]);
@@ -110,7 +115,10 @@ export function evalLowA5(cards, eightOrBetter) {
   const P = 15;
   const score = vals[0] * Math.pow(P, 4) + vals[1] * Math.pow(P, 3) + vals[2] * Math.pow(P, 2) + vals[3] * P + vals[4];
   const dispRank = v => v === 1 ? 'A' : RANK_NAME[v];
-  const name = vals.map(dispRank).join('-') + ' low';
+  /* Spaces, not hyphens. Five ranks joined by hyphens read as one hyphenated
+     word rather than as five cards, and the string is already terminated by
+     the word "low" — nothing needs to bind it together. */
+  const name = vals.map(dispRank).join(' ') + ' low';
   return { score, name, qualified: true };
 }
 
@@ -127,7 +135,7 @@ export function evalLow27(cards) {
   }
   const P = 15;
   const score = vals[0] * Math.pow(P, 4) + vals[1] * Math.pow(P, 3) + vals[2] * Math.pow(P, 2) + vals[3] * P + vals[4];
-  const name = vals.map(v => RANK_NAME[v]).join('-') + ' low';
+  const name = vals.map(v => RANK_NAME[v]).join(' ') + ' low';
   return { score, name };
 }
 
@@ -146,7 +154,7 @@ export function evalBadugi(cards) {
         for (let i = 0; i < vals.length; i++) score += vals[i] * Math.pow(P, n - 1 - i);
         if (!best || score < best.score) {
           const dispRank = v => v === 1 ? 'A' : RANK_NAME[v];
-          best = { score, name: vals.map(dispRank).join('-') + (n === 4 ? ' Badugi' : ' (' + n + '-card)') };
+          best = { score, name: vals.map(dispRank).join(' ') + (n === 4 ? ' Badugi' : ' (' + n + '-card)') };
         }
       }
     }
