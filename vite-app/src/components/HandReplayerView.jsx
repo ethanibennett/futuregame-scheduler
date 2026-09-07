@@ -1114,7 +1114,11 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
      seat sits 15.6% in from the table's edge, which caps a fan at about 2.4
      card widths across — 1.2 out from centre. The hero sits at the bottom with
      no neighbour and the whole width to itself. */
-  const radiusCards = wide ? (slots <= 5 ? 2.9 : 3.7) : (slots <= 5 ? 2.4 : 3.0);
+  /* One radius for both seats. `wide` used to change the arc's curve as well
+     as its span, which made the hero's hand a different SHAPE from everyone
+     else's rather than the same shape opened further. It now changes the span
+     only. */
+  const radiusCards = slots <= 5 ? 2.4 : 3.0;
   /* The step is the FOUR-card step, the spacing a PLO hand has always had, so
      a stud hand on 4th street is the same shape as one rather than a tighter
      version of itself. It narrows only when the finished hand would hang off
@@ -1128,7 +1132,17 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
      the fan ran from -5.3% to 36.7% and hung 21px off the table.
      0.78 leaves margin (0.85 hung 3px over, 0.8 by 1px) and still opens wider than the
      0.726 the fan had before it was given a constant step. */
-  const maxHalfSpan = wide ? 1.8 : 0.85;
+  /* 0.85 is the cap for a SIDE seat and it is at its limit: measured at 6-max
+     portrait with a seven-card stud hand, those fans clear the table's edge by
+     1.7px. So the cap cannot rise for everyone.
+     The hero is not that seat. It sits at the bottom with no neighbour and
+     133px of clearance to the same edge, which is what the `wide` flag was
+     added for and then never switched on. 1.05 opens its footprint from 2.7
+     card widths to 3.1 — a sixth wider, and still 120px short of anything.
+     Not the 1.8 that was sitting here unused: that is more than double the
+     side seats' fan and would have made the hero's hand a different object,
+     rather than the same one with room to breathe. */
+  const maxHalfSpan = wide ? 1.05 : 0.85;
   const halfSlots = (slots - 1) / 2;
   const baseStep = (2 * angle) / 3;
   const cappedStep = halfSlots > 0
@@ -5015,6 +5029,23 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   }, [showResult, flaggedWinners, hand, allPotLayers, pot, folded, category, boardCards,
       heroCards, opponentCards, replayHeroIdx, gameCfg]);
 
+  /* The plaque shows what a player HAS, and calcPotsAndStacks only ever
+     subtracts: it takes every wager out and never puts a pot back, so at
+     showdown the winner's plaque read the stack they were left with after
+     paying IN — the one moment in the hand when that is the wrong number.
+     The chips in front of them said 48,540 and the plaque above said what
+     they had before winning it.
+     Display only. `stacks` stays the betting truth that potAwards, the
+     commentary and the export are all computed from; this is the same array
+     with the award added, and it is what the seat renders. An all-in player
+     who wins is no longer marked ALL-IN either, because they are not: the
+     mark reads this array too. useCountUp then counts the stack UP to its new
+     total, which is the one piece of motion at showdown that is showing
+     something rather than decorating it. */
+  const shownStacks = useMemo(() => (
+    (showResult && potAwards) ? stacks.map((v, i) => v + (potAwards[i] || 0)) : stacks
+  ), [showResult, potAwards, stacks]);
+
   /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
      nudged 8px up together, which communicates nothing — and the down-shifting
      .replayer-hilo-low existed in the stylesheet with no code path that could
@@ -6412,7 +6443,12 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                      arc and a wider allowance, on the grounds that the bottom
                      seat has no neighbour to crowd. It just made one hand at
                      the table a different shape. */
-                  wideFan={false} />
+                  /* The hero, and only the hero. Not because it is the only
+                     seat with room — measured, the top-centre seat has the
+                     same 133px — but because it is the hand the replay is
+                     about, and a side seat cannot have this at any seat count:
+                     those fans clear the table's edge by 1.7px already. */
+                  wideFan={pi === replayHeroIdx} />
               </div>
               {/* 100: between steps the table was completely inert — no way to
                   inspect a player, no response to anything but the transport,
@@ -6460,9 +6496,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                       toggleStackUnit(e);
                     },
                   } : {})}>
-                  {allIn.has(pi) && stacks[pi] <= 0
+                  {allIn.has(pi) && shownStacks[pi] <= 0
                     ? <span className="replayer-allin-mark">ALL-IN</span>
-                    : <CountedChips value={stacks[pi]} fmt={fmtChips} live={rSettings.animateChips && !rewinding} />}
+                    : <CountedChips value={shownStacks[pi]} fmt={fmtChips} live={rSettings.animateChips && !rewinding} />}
                 </div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
@@ -6676,32 +6712,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
           scrolls inside it, so no strip can take height from the table. */}
       <div className="replayer-under">
 
-      {/* 40: on screen a solo winner got a gold border and a shimmer, and
-          nothing anywhere said "Hero wins 24.5k, Two Pair". The string was
-          composed — and painted only into the share image, so the export knew
-          the result and the app did not. Three .replayer-result classes and a
-          winner-star keyframe were sitting unused for exactly this. */}
-      {(showResult && evalResult && evalResult.length > 0) ? (
-        <div className="replayer-result-banner">
-          {evalResult.map((r, i) => (
-            <div key={i} className={'replayer-result replayer-result-' + (r.result?.outcome === 'hero' ? 'hero' : r.result?.outcome === 'split' ? 'split' : 'opponent')}>
-              <span className="replayer-winner-star" aria-hidden="true">{'\u2605'}</span>
-              {r.result?.text || ''}
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* The same banner, hidden. The table above is sized from what the
-           column has left, so a strip that appears at showdown would resize it
-           at showdown — it keeps its box for the whole hand instead. Reserved
-           with the real markup rather than a pixel constant, so the space and
-           the thing it is holding cannot drift apart. */
-        <div className="replayer-result-banner is-reserved" aria-hidden="true">
-          <div className="replayer-result replayer-result-hero">
-            <span className="replayer-winner-star">{'\u2605'}</span>{'\u00a0'}
-          </div>
-        </div>
-      )}
+      {/* The green result banner is gone. It said "Hero wins, Straight Flush,
+          Nine-high" directly under a seat whose own label already read
+          "Hi: Straight Flush, 9-high", beside a plaque already bordered gold,
+          starred, and holding the chips it had just been awarded - four
+          statements of one fact. The label under the seat is the one that
+          names WHOSE hand it is by where it sits, so it is the one that stays,
+          and it is why the abbreviation came out of the hand names: that label
+          is now the only place a result is written.
+          Its reserved twin goes with it. That existed so the table would not
+          resize when the banner appeared at showdown; with nothing to reserve,
+          the height it was holding goes back to the table. evalResult itself
+          stays - the bookend, the export image and the seat labels read it. */}
 
       {/* Draw info bar — rendered for every step of a draw game, empty on the
           steps with no draws to report, so it does not resize the table when a
