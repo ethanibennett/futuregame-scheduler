@@ -1491,7 +1491,18 @@ export default function TournamentsView({
         <ImportSchedulePanel isOpen={importDropdownOpen} onClose={() => setImportDropdownOpen(false)} token={token} onRefreshTournaments={onRefreshTournaments} />
 
         {locationDropdownOpen && createPortal(
-          <div data-filter-portal="" style={{position:'fixed',inset:0,zIndex:998}} onClick={() => setLocationDropdownOpen(false)} />,
+          /* var(--z-scrim), not 998. The PANEL was moved off a 999 literal onto
+             var(--z-panel) — which is 400 — and this backdrop was left behind at
+             998, so the thing whose only job is to catch taps OUTSIDE the panel
+             was sitting on top of it. Every tap inside the dropdown hit this
+             div and closed it, which is not an outside-click bug at all: the
+             handler never ran, because the tap never reached the panel.
+             The two now sit on the token scale in the order they are meant to:
+             scrim 300 under panel 400. The target check is belt and braces — it
+             closes only for a tap on the backdrop itself, never one that
+             reached it from something drawn above. */
+          <div data-filter-portal="" style={{position:'fixed',inset:0,zIndex:'var(--z-scrim)'}}
+            onClick={(e) => { if (e.target === e.currentTarget) setLocationDropdownOpen(false); }} />,
           document.body
         )}
         {locationDropdownOpen && (() => {
