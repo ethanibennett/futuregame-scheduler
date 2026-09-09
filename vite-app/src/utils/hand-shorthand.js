@@ -73,6 +73,28 @@ export function encodeHand(hand) {
   var blinds = hand.blinds || { sb: 0, bb: 0, ante: 0 };
   var blindStr = blinds.sb + '-' + blinds.bb;
   if (blinds.ante) blindStr += '-' + blinds.ante;
+  /* Straddles ride in the blind field after a '!'. They belong in the link
+     rather than only in the saved hand, because a straddle changes the pot
+     and the preflop order — a shared hand without them replays as a
+     different hand, not as the same hand missing a detail.
+     '!' is used nowhere else in this format and is a legal sub-delimiter in a
+     URI fragment, so it needs no escaping. One letter per type, and a seat
+     number only where the type does not name its own seat. */
+  var strTypes = ['utg', 'button', 'rock', 'mississippi'];
+  if (blinds.straddle) {
+    var strCodes = [];
+    for (var sti = 0; sti < strTypes.length; sti++) {
+      var stt = strTypes[sti];
+      if (!blinds['straddle_' + stt]) continue;
+      var code = stt.charAt(0);
+      if (stt === 'rock' || stt === 'mississippi') {
+        var seat = ((blinds.straddleSeats || {})[stt]);
+        code += (seat == null ? 0 : seat);
+      }
+      strCodes.push(code);
+    }
+    if (strCodes.length) blindStr += '!' + strCodes.join('');
+  }
   var stacks = hand.players.map(function(p) { return p.startingStack || 50000; });
   var allSame = stacks.every(function(s) { return s === stacks[0]; });
   if (allSame && stacks[0] !== 50000) {
@@ -206,6 +228,10 @@ export function decodeHand(str) {
 
   var heroIdx = parseInt(headerStr.charAt(codeLen + 1), 16);
   if (isNaN(heroIdx)) heroIdx = 0;
+
+  var straddleCode = '';
+  var bangAt = blindsStr.indexOf('!');
+  if (bangAt >= 0) { straddleCode = blindsStr.slice(bangAt + 1); blindsStr = blindsStr.slice(0, bangAt); }
 
   var blindsParts = blindsStr.split('~');
   var blindNums = blindsParts[0].split('-').map(Number);
@@ -356,7 +382,23 @@ export function decodeHand(str) {
   return {
     gameType: gameType,
     players: players,
-    blinds: { sb: sb, bb: bb, ante: ante },
+    blinds: (function() {
+      var b = { sb: sb, bb: bb, ante: ante };
+      if (!straddleCode) return b;
+      var byLetter = { u: 'utg', b: 'button', r: 'rock', m: 'mississippi' };
+      var m, re = /([ubrm])(\d*)/g;
+      while ((m = re.exec(straddleCode))) {
+        var t = byLetter[m[1]];
+        if (!t) continue;
+        b.straddle = true;
+        b['straddle_' + t] = true;
+        if (m[2] !== '') {
+          b.straddleSeats = b.straddleSeats || {};
+          b.straddleSeats[t] = Number(m[2]);
+        }
+      }
+      return b;
+    })(),
     streets: streets,
     heroIdx: heroIdx,
     result: result

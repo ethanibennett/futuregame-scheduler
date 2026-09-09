@@ -104,8 +104,83 @@ function getStudPositionLabels(numPlayers) {
   return Array.from({ length: numPlayers }, (_, i) => 'Seat ' + (i + 1));
 }
 
+/* ── Straddles ────────────────────────────────────────────────────────────
+   A straddle is a blind raise posted before the deal, from a seat that is not
+   already posting a blind. Two things follow, and the second is the one that
+   gets forgotten: the money is in the pot before anyone acts, AND the last
+   straddler has the option — so preflop action begins to their LEFT rather
+   than at UTG, and they close the betting.
+
+   Seats here are laid out so index 0 is UTG and the last three are BTN, SB,
+   BB (see getPositionLabels), which makes posting order simply ascending
+   index: UTG straddles first, the button last. Each straddle doubles the one
+   before it starting at twice the big blind, which is how every room that
+   spreads them prices it.
+
+   UTG and BUTTON name their own seat, so those are derived and cannot go
+   stale when the table size changes. ROCK and MISSISSIPPI cannot be derived —
+   the rock is a token that travels to whoever won the last pot, and a
+   Mississippi straddle may come from anywhere — so those carry a seat, and it
+   is clamped to a seat that is actually able to straddle.
+
+   Under four players there is no such seat: BTN, SB and BB account for
+   everyone, and a blind cannot straddle itself. */
+const STRADDLE_TYPES = ['utg', 'button', 'rock', 'mississippi'];
+const STRADDLE_LABELS = { utg: 'UTG', button: 'Button', rock: 'Rock', mississippi: 'Mississippi' };
+/* These name ROLES, not position labels. getPositionLabels hands out a
+   different set at every table size — six-handed starts at LJ, not UTG — so a
+   note that said "action starts at UTG+1" would be describing a seat that does
+   not exist most of the time. The hint under the list names the real seats,
+   because it can read them. */
+const STRADDLE_NOTES = {
+  utg: 'The first seat to act posts it blind, and then closes the round.',
+  button: 'The button posts it. Action starts at the small blind.',
+  rock: 'Whoever holds the rock must post. It travels, so name the seat.',
+  mississippi: 'A straddle from any seat. Action starts to its left.',
+};
+
+/* The seats that can straddle: everyone in front of the blinds. */
+function straddleEligibleSeats(n) {
+  return n < 4 ? [] : Array.from({ length: n - 2 }, (_, i) => i);
+}
+
+function straddleSeatFor(type, n, stored) {
+  if (n < 4) return -1;
+  if (type === 'utg') return 0;
+  if (type === 'button') return n - 3;
+  const s = Number(stored);
+  return Number.isInteger(s) && s >= 0 && s <= n - 3 ? s : 0;
+}
+
+/* Ordered by posting, with the amount each one is. */
+function getStraddles(players, blinds) {
+  const b = blinds || {};
+  const n = (players || []).length;
+  const bb = b.bb || 0;
+  if (!b.straddle || !bb || n < 4) return [];
+  const seats = b.straddleSeats || {};
+  const taken = new Set();
+  const picked = [];
+  STRADDLE_TYPES.forEach(type => {
+    if (!b['straddle_' + type]) return;
+    const seat = straddleSeatFor(type, n, seats[type]);
+    /* Two types can land on one seat — a rock held by the button, say. It is
+       one straddle, and it is posted once. */
+    if (seat < 0 || taken.has(seat)) return;
+    taken.add(seat);
+    picked.push({ type, seat });
+  });
+  picked.sort((a, c) => a.seat - c.seat);
+  return picked.map((st, i) => ({ ...st, amount: bb * Math.pow(2, i + 1) }));
+}
+
+/* The seat that closes the preflop betting, or -1 for none. */
+function lastStraddleSeat(list) {
+  return list.length ? list[list.length - 1].seat : -1;
+}
+
 // ── Action order ──
-function getActionOrder(players, isPreflop, studInfo) {
+function getActionOrder(players, isPreflop, studInfo, straddleSeat) {
   const n = players.length;
   if (n <= 0) return [];
   const indices = [];
@@ -124,7 +199,12 @@ function getActionOrder(players, isPreflop, studInfo) {
   if (n === 2) {
     return isPreflop ? [0, 1] : [1, 0];
   } else if (isPreflop) {
-    for (let i = 0; i < n; i++) indices.push(i);
+    /* Normally 0..n-1, which is UTG first and the big blind closing. A
+       straddle moves the close: the last straddler has the option, so the
+       round starts at the seat on their left and wraps round to them. With no
+       straddle, start is 0 and this is the loop it always was. */
+    const start = (straddleSeat >= 0 && straddleSeat < n) ? (straddleSeat + 1) % n : 0;
+    for (let i = 0; i < n; i++) indices.push((start + i) % n);
   } else {
     indices.push(sbIdx);
     indices.push(bbIdx);
@@ -769,6 +849,10 @@ function calcPotsAndStacks(hand, upToStreet, upToAction) {
         stacks[bbIdx] -= (blinds.bb || 0); pot += (blinds.bb || 0);
         if (isBBante) { stacks[bbIdx] -= (blinds.ante || 0); pot += (blinds.ante || 0); }
       }
+      /* Straddles post with the blinds, before a card is dealt. */
+      getStraddles(hand.players, blinds).forEach(st => {
+        stacks[st.seat] -= st.amount; pot += st.amount;
+      });
     }
   }
   const folded = new Set();
@@ -792,6 +876,11 @@ function computePlayerContrib(hand, streetIdx, actions, upToIdx, playerIdx) {
     const pos = hand.players[playerIdx] && hand.players[playerIdx].position;
     if (pos === 'SB' || pos === 'BTN/SB') total = (hand.blinds || {}).sb || 0;
     else if (pos === 'BB') total = (hand.blinds || {}).bb || 0;
+    /* A straddler is already in for their straddle before acting, which is
+       what stops the app charging them the full amount again to call. No seat
+       can be both, so this never doubles a blind. */
+    const st = getStraddles(hand.players, hand.blinds).find(x => x.seat === playerIdx);
+    if (st) total = st.amount;
   }
   for (let i = 0; i <= upToIdx && i < actions.length; i++) {
     if (actions[i].player === playerIdx) {
@@ -838,7 +927,19 @@ function generateCommentary(hand, streetIdx, actionIdx, pot, stacks) {
       if (streetIdx === 4) return '7th Street: a final card is dealt face down to each remaining player. The pot stands at ' + formatChipAmount(pot) + '.';
       return streetName + ': a card is dealt face up to each remaining player. The pot stands at ' + formatChipAmount(pot) + '.';
     }
-    if (streetIdx === 0) return 'Cards are dealt. ' + hand.players.length + ' players at the table. Blinds are ' + formatChipAmount((hand.blinds||{}).sb||0) + '/' + formatChipAmount((hand.blinds||{}).bb||0) + '.';
+    if (streetIdx === 0) {
+      /* The straddle belongs in the opening line: it changes what it costs to
+         play and who acts first, so a commentary that named only the blinds
+         would be describing a different hand. */
+      const stl = getStraddles(hand.players, hand.blinds);
+      const straddleStr = stl.length
+        ? ' ' + stl.map(st => (hand.players[st.seat]?.position || 'Seat ' + (st.seat + 1))
+            + ' straddles ' + formatChipAmount(st.amount)).join(', ') + '.'
+          + ' Action starts on ' + (hand.players[(lastStraddleSeat(stl) + 1) % hand.players.length]?.position
+            || 'the next seat') + '.'
+        : '';
+      return 'Cards are dealt. ' + hand.players.length + ' players at the table. Blinds are ' + formatChipAmount((hand.blinds||{}).sb||0) + '/' + formatChipAmount((hand.blinds||{}).bb||0) + '.' + straddleStr;
+    }
     if (isDrawStreet && street.draws && street.draws.length > 0) {
       const drawParts = street.draws.map(d => {
         const pName = hand.players[d.player] ? hand.players[d.player].name : '?';
@@ -1596,6 +1697,14 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
       maxBet = bb;
       totalPot += sb + bb;
       if (isBBanteCtx) totalPot += ante;
+      /* The straddle is the live bet preflop, not the big blind — without
+         this the app offers a call of one big blind into a pot that is
+         already two or four. */
+      getStraddles(hand.players, blinds).forEach(st => {
+        playerContrib[st.seat] = st.amount;
+        totalPot += st.amount;
+        if (st.amount > maxBet) maxBet = st.amount;
+      });
     }
     for (let i = 0; i < actions.length; i++) {
       const act = actions[i];
@@ -1614,7 +1723,15 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
       }
     }
     const foldedPlayers = new Set(actions.filter(a => a.action === 'fold').map(a => a.player));
-    const activePlayers = hand.players.map((_, i) => i).filter(i => !foldedPlayers.has(i));
+    /* Seat order IS the preflop order until someone straddles, and then it is
+       not: the round starts on the last straddler's left. Same rotation
+       getActionOrder applies, so the two cannot disagree about who is up. */
+    const ctxStraddleSeat = currentStreetIdx === 0
+      ? lastStraddleSeat(getStraddles(hand.players, blinds)) : -1;
+    const ctxOrder = ctxStraddleSeat >= 0
+      ? Array.from({ length: hand.players.length }, (_, i) => (ctxStraddleSeat + 1 + i) % hand.players.length)
+      : hand.players.map((_, i) => i);
+    const activePlayers = ctxOrder.filter(i => !foldedPlayers.has(i));
     const nextPlayer = activePlayers[actions.length % activePlayers.length] || 0;
     const nextPlayerInvested = playerContrib[nextPlayer] || 0;
     const facingBet = maxBet > nextPlayerInvested;
@@ -1929,7 +2046,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     return { isStud: true, is3rdStreet, bringInIdx, bestBoardIdx };
   }, [gameCfg.isStud, currentStreetIdx, hand, isStudLow, priorStreetFoldedSet]);
 
-  const seatOrder = useMemo(() => getActionOrder(hand.players, isPreflop, studInfo), [hand.players, isPreflop, studInfo]);
+  const preflopStraddleSeat = useMemo(
+    () => (isPreflop ? lastStraddleSeat(getStraddles(hand.players, hand.blinds)) : -1),
+    [isPreflop, hand.players, hand.blinds]);
+  const seatOrder = useMemo(
+    () => getActionOrder(hand.players, isPreflop, studInfo, preflopStraddleSeat),
+    [hand.players, isPreflop, studInfo, preflopStraddleSeat]);
   const actionOrder = useMemo(() => seatOrder.filter(i => !foldedSet.has(i) && !allInSet.has(i)), [seatOrder, foldedSet, allInSet]);
 
   const bringInAmount = gameCfg.isStud
@@ -2347,6 +2469,81 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 onClick={() => setBlind('uncapHeadsUp', !uncapHU)} />
             </div>
           )}
+          {/* Straddles. Offered wherever blinds are posted — stud has none to
+              raise, and OFC has no betting round at all. */}
+          {!isOfc && category !== 'stud' && (() => {
+            const b = hand.blinds || {};
+            const on = !!b.straddle;
+            const nSeats = hand.players.length;
+            const eligible = straddleEligibleSeats(nSeats);
+            const live = getStraddles(hand.players, b);
+            const closer = lastStraddleSeat(live);
+            const setSeat = (type, seat) => setHand(prev => ({ ...prev, blinds: {
+              ...(prev.blinds || {}),
+              straddleSeats: { ...((prev.blinds || {}).straddleSeats || {}), [type]: seat },
+            }}));
+            return (
+              <>
+                <div className="replayer-settings-row" style={{padding:'6px 0'}}>
+                  <div>
+                    <div className="replayer-settings-label">Straddle</div>
+                    <div className="replayer-settings-sublabel">
+                      A blind raise posted before the deal. The last straddler has the option, so preflop action starts on their left.
+                    </div>
+                  </div>
+                  <button type="button" className={'replayer-settings-toggle' + (on ? ' on' : '')}
+                    aria-pressed={on} aria-label="Straddle"
+                    onClick={() => setBlind('straddle', !on)} />
+                </div>
+                {on && nSeats < 4 && (
+                  <div className="replayer-field-hint" style={{marginBottom:'6px'}}>
+                    Nobody can straddle {nSeats}-handed &mdash; the button, small blind and big blind account for every seat, and a blind cannot straddle itself.
+                  </div>
+                )}
+                {on && nSeats >= 4 && (
+                  <div className="replayer-straddle-types">
+                    {STRADDLE_TYPES.map(type => {
+                      const checked = !!b['straddle_' + type];
+                      const needsSeat = type === 'rock' || type === 'mississippi';
+                      const seat = straddleSeatFor(type, nSeats, (b.straddleSeats || {})[type]);
+                      const posted = live.find(x => x.type === type);
+                      return (
+                        <div key={type} className={'replayer-straddle-row' + (checked ? ' is-on' : '')}>
+                          <button type="button" role="checkbox" aria-checked={checked}
+                            className={'replayer-straddle-check' + (checked ? ' is-checked' : '')}
+                            onClick={() => setBlind('straddle_' + type, !checked)}>
+                            <span className="replayer-straddle-box" aria-hidden="true" />
+                            <span className="replayer-straddle-name">{STRADDLE_LABELS[type]}</span>
+                          </button>
+                          {checked && needsSeat && (
+                            <select className="replayer-straddle-seat" value={seat}
+                              aria-label={STRADDLE_LABELS[type] + ' seat'}
+                              onChange={e => setSeat(type, Number(e.target.value))}>
+                              {eligible.map(i => (
+                                <option key={i} value={i}>{hand.players[i]?.position || 'Seat ' + (i + 1)}</option>
+                              ))}
+                            </select>
+                          )}
+                          <span className="replayer-straddle-amt">
+                            {checked
+                              ? (posted ? formatChipAmount(posted.amount) : 'covered')
+                              : STRADDLE_NOTES[type]}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {on && live.length > 0 && (
+                  <div className="replayer-field-hint" style={{marginBottom:'6px'}}>
+                    {live.length > 1 ? 'Each straddle doubles the one before it. ' : ''}
+                    Preflop action starts on {hand.players[(closer + 1) % nSeats]?.position || 'the next seat'} and
+                    {' '}{hand.players[closer]?.position || 'the straddler'} closes.
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {category === 'stud' && (
             <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
               Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
