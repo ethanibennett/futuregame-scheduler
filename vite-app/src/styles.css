@@ -5131,6 +5131,61 @@
        spelling of the app's one disabled state — and its dead toggles kept
        cursor:pointer from the class, so they invited a tap that did nothing. */
     .replayer-settings-row.is-disabled { opacity: var(--state-disabled); }
+
+    /* ── Straddle options ──────────────────────────────────────────────
+       Four checkboxes under one switch. They are checkboxes and not a radio
+       group because straddles stack in real games: UTG posts, the button
+       re-straddles over it, and the rock may be held by either. */
+    .replayer-straddle-types {
+      display: flex; flex-direction: column; gap: var(--space-2xs);
+      margin: 0 0 var(--space-sm); padding: var(--space-xs) var(--space-sm);
+      background: var(--surface2); border-radius: var(--radius-xs);
+    }
+    .replayer-straddle-row {
+      display: flex; align-items: center; gap: var(--space-sm); min-width: 0;
+    }
+    .replayer-straddle-check {
+      display: inline-flex; align-items: center; gap: var(--space-xs);
+      background: none; border: 0; padding: var(--nudge-1) 0; cursor: pointer;
+      color: var(--text-muted); font-family: var(--font-condensed);
+      font-size: var(--fs-xs); font-weight: var(--fw-light); flex: none;
+    }
+    .replayer-straddle-check.is-checked { color: var(--text); font-weight: var(--fw-bold); }
+    .replayer-straddle-box {
+      width: 15px; height: 15px; border-radius: var(--radius-xs); flex: none;
+      border: 1px solid var(--border); background: var(--bg);
+      display: inline-block; position: relative;
+    }
+    .replayer-straddle-check.is-checked .replayer-straddle-box {
+      background: var(--brand); border-color: var(--brand);
+    }
+    /* The tick is drawn rather than set, so it needs no glyph and cannot pick
+       up a fallback face. */
+    .replayer-straddle-check.is-checked .replayer-straddle-box::after {
+      content: ''; position: absolute; left: 4.5px; top: 1px;
+      width: 4px; height: 8px; border: solid #fff;
+      border-width: 0 2px 2px 0; transform: rotate(45deg);
+    }
+    .replayer-straddle-check:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+    .replayer-straddle-name { white-space: nowrap; }
+    .replayer-straddle-seat {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); padding: var(--nudge-1) var(--space-2xs);
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); flex: none;
+    }
+    /* The note, or once it is on, what it costs. Truncates rather than wraps:
+       the row is a control, and a control that changes height as it is read
+       moves the ones under it. */
+    .replayer-straddle-amt {
+      margin-left: auto; min-width: 0; text-align: right;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs);
+      font-weight: var(--fw-light); color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .replayer-straddle-row.is-on .replayer-straddle-amt {
+      color: var(--accent2); font-weight: var(--fw-bold);
+      font-variant-numeric: var(--num-tabular);
+    }
     .replayer-settings-toggle:disabled { cursor: default; }
 
     /* 83: a 6px-radius square in --surface on --border with a hardcoded
