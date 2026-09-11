@@ -5898,10 +5898,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   /* The felt is a grid rectangle: in to column 2 and row 3. FY/FX still have
      to match --felt-y / --felt-x in styles.css. */
   const FX = gx(2), FY = gy(3);
-  /* The seat ring runs half a cell inside the felt's edge, top row 5 and
-     bottom row 27 — which puts its midpoint on row 16, the table's middle. */
+  /* The seat ring runs half a cell inside the felt's edge at the top, row 5.
+     The bottom row is 28 rather than 27, so the ring is NOT symmetric about
+     row 16 any more — deliberately, because the seat on it is not a seat like
+     the others. RB appears exactly once in every layout below and the rotation
+     always lands the hero on it, so this row is the hero's alone, and the
+     hero is the only seat carrying a hand-name label under its plaque.
+     Measured at showdown before the move: that label's underside sat 0.13 of
+     a cell above the felt's edge and 3.13 above the table's — out of cloth,
+     but with three cells of cushion still under it. One of them is now
+     spent. */
   const CL = 2.5, CC = 8, CR = 13.5;      // seat columns
-  const RT = 5, RB = 27;                  // seat rows, top and bottom
+  const RT = 5, RB = 28;                  // seat rows, top and hero
   const seat = (col, row) => [gx(col), gy(row)];
 
   /* Steps of seven cells down each side for three-a-side, and of nine for
