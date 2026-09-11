@@ -5907,9 +5907,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      Measured at showdown before the move: that label's underside sat 0.13 of
      a cell above the felt's edge and 3.13 above the table's — out of cloth,
      but with three cells of cushion still under it. One of them is now
-     spent. */
+     spent.
+
+     The TOP row moves the other way, 5 to 4, for the reason landscape already
+     lifts its own top run: those seats have the whole cushion above them and
+     no neighbour behind. Measured before the move, every seat on this row had
+     its highest ink 2.11 cells from the table's top edge and 0.89 ABOVE the
+     felt's — already on the rail, with two cells spare. One is spent; 1.11
+     remain. Unlike RB this row is shared — one seat at 4, 6 and 8-max, two at
+     3, 5, 7 and 9, three at 10 — and they all lift together, which is what it
+     means for a run to be a run. */
   const CL = 2.5, CC = 8, CR = 13.5;      // seat columns
-  const RT = 5, RB = 28;                  // seat rows, top and hero
+  const RT = 4, RB = 28;                  // seat rows, top run and hero
   const seat = (col, row) => [gx(col), gy(row)];
 
   /* Steps of seven cells down each side for three-a-side, and of nine for
