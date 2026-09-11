@@ -479,7 +479,16 @@ function feltStops(hex) {
        down 8% and the shade stop goes up 21%, which is exactly those two
        deltas. */
     lit: `rgb(${mix(r * 1.09, 255, 0.04)},${mix(g * 1.04, 246, 0.04)},${mix(b * 0.96, 214, 0.04)})`,
-    shade: `rgb(${mix(r * 0.63, 12, 0.10)},${mix(g * 0.63, 16, 0.10)},${mix(b * 0.70, 52, 0.10)})`,
+    /* The shade stop owns the whole off-centre field, and it took two passes
+       to find that out. The vignette looked like the lever for the felt's
+       edges and is not: it is an `ellipse 100% 100%` centred at 50% 40% with a
+       transparent core out to 48%, and the table's WAIST sits at a normalised
+       distance of about 0.45 — inside that core. It shapes the top and bottom
+       of the cloth, not the sides, and changing its depth from 0.42 to 0.38 to
+       0.36 moved the waist profile by nothing at any sample.
+       So the sides are this stop, and after the gradient was reshaped they sat
+       a uniform 6% under Casino Royale's. 0.745 and 0.832 are that 6%. */
+    shade: `rgb(${mix(r * 0.745, 12, 0.10)},${mix(g * 0.745, 16, 0.10)},${mix(b * 0.832, 52, 0.10)})`,
   };
 }
 
