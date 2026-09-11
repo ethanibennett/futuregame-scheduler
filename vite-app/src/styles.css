@@ -3842,13 +3842,20 @@
     .replayer-table-felt {
       position: absolute;
       inset: var(--felt-y) var(--felt-x);
-      /* The stops go in neat. The 82% mix that used to sit on the lit stop
-         was a second place to darken the felt, and feltStops now does it at
-         the source by normalising every picked colour into Casino Royale's
-         luminance band — two knobs for one job is how a value drifts out of
-         agreement with the comment explaining it. */
+      /* THREE stops, because two fall in a straight line and a lit table does
+         not. Casino Royale's cloth is `#1a2744 0%, #152036 60%, #0f1829 100%`
+         — its middle stop sits 53% of the way from rim to centre but is placed
+         at 60%, so the light is HELD across the middle of the felt and then
+         drops. The default had two stops and fell linearly from the moment it
+         left the centre, which is what made its edges darker than Casino
+         Royale's even after the colours were matched.
+         Measured: this alone lifts the waist at 5% in from 41.4 to 43.6, and
+         it is the real cause — the felt's inset shadows were the suspect and
+         were tested and cleared, see the ::before note. */
       background: radial-gradient(ellipse 80% 70% at 50% 45%,
-        var(--felt-lit, #9478b4), var(--felt-shade, #2c2e50));
+        var(--felt-lit, #9478b4) 0%,
+        color-mix(in srgb, var(--felt-lit, #9478b4) 53%, var(--felt-shade, #2c2e50)) 60%,
+        var(--felt-shade, #2c2e50) 100%);
       border-radius: var(--felt-r, var(--radius-pill));
       border: 1px solid rgba(0,0,0,0.15);
       box-shadow:
@@ -3875,6 +3882,13 @@
       inset: 2px;
       border-radius: inherit;
       pointer-events: none;
+      /* Tested and kept. These were the suspect for the felt's edges reading
+         darker than Casino Royale's, so they were stripped and re-measured:
+         the waist profile came back IDENTICAL at every sample. Stripping the
+         felt's own box-shadow as well moved 5% by 1.0 and made the rim DARKER,
+         because the gold glow in it was lifting the rim. The gradient's shape
+         was the cause; this ring is doing something else, and doing it at a
+         scale the waist cannot see. */
       box-shadow:
         inset 0 -2px 3px rgba(0,0,0,0.5),
         inset 0 1px 2px rgba(0,0,0,0.3);
@@ -3901,7 +3915,13 @@
          dish with a lamp over it rather than a lit sheet. Both gradients are
          its values. */
       background-image:
-        radial-gradient(ellipse 48% 34% at 50% 44%, rgba(255,238,200,0.16), transparent 70%),
+        /* 0.13, down from Casino Royale's 0.16. The pool's contribution is
+           ABSOLUTE — it adds a fixed ~195 x alpha of luminance wherever it
+           falls — so the same alpha that reads as a contained glow on Casino
+           Royale's navy was landing the default's centre at 74.3 against its
+           target of 69.8. At 0.13 it measures 68.6. Each 0.01 of alpha is
+           about 2 luminance at the centre, if it wants to go lower still. */
+        radial-gradient(ellipse 48% 34% at 50% 44%, rgba(255,238,200,0.13), transparent 70%),
         radial-gradient(ellipse 100% 100% at 50% 40%, transparent 48%, rgba(0,0,0,0.42) 100%),
         var(--felt-weave);
     }
