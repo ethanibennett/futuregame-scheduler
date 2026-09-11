@@ -4466,7 +4466,13 @@
          (measured: 65% of each fan visible). Just over half a cell. */
       font-family: var(--font-condensed);
       font-size: clamp(9px, 3.6cqmin, 44px);
-      font-weight: var(--fw-bold);
+      /* Light. The stack is the figure the felt repeats most — once per seat,
+         changing on nearly every action — and at 700 six of them read as six
+         headlines. It keeps its size and its white, which is what separates it
+         from the name above it; the weight was doing the same job a second
+         time. Under the felt's two weights there is no middle to fall back to,
+         so unbold means 300. */
+      font-weight: var(--fw-light);
       color: #ffffff;
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -6296,15 +6302,11 @@
       border-color: rgba(242,166,59,0.5);
     }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
-    /* The hero is the seat that is slanted, and it is slanted ENTIRELY: name,
-       stack, hand name, action, all of it. One declaration does the whole
-       seat because font-style inherits, and nothing inside the seat sets it
-       back — the name's own oblique was removed for exactly that reason.
-       Whose hand this is becomes a property of the type rather than a
-       highlight colour competing with the winner's gold. Univers Condensed
-       ships a DRAWN oblique at 300 and 700, so this is a real cut and not a
-       renderer's shear. */
-    .replayer-seat.is-hero { font-style: oblique; }
+    /* The hero's slant is gone. It marked whose hand this is, but the hero is
+       already the seat at the bottom of the table, a size larger than the
+       others, and the one whose cards are face up — the slant was a fourth
+       answer to a question that had three. The felt is upright throughout now;
+       no rule anywhere sets font-style, so nothing has to be set back. */
 
     /* 91: committed, and it shows for the rest of the hand. */
     .replayer-seat.is-allin .replayer-seat-info {
