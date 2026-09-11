@@ -4563,8 +4563,14 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 {(() => {
                   const cfg = HAND_CONFIG[h.gameType] || HAND_CONFIG_DEFAULT;
                   const n = cfg.isStud ? 3 : (cfg.heroCards || 2);
-                  const angle = n <= 2 ? 12.5 : n <= 4 ? 15 : n <= 5 ? 18 : 22;
-                  return <CardRow text={heroCardsOf(h)} stud={cfg.isStud} max={n} splay={angle} />;
+                  /* splay={0} — the FLAT row, not a fan. getSplayStyle scales
+                     each card by 1 + index*0.05 and rotates it, and at a 30px
+                     preview that made the cards in one row differ in height by
+                     4 to 7px, measured. It is the same fault as "the cards are
+                     smaller on 6th and 7th" on the felt, at a size where the
+                     arc buys nothing: five cards across 84px read as a hand
+                     either way, and flat they are all exactly 30px. */
+                  return <CardRow text={heroCardsOf(h)} stud={cfg.isStud} max={n} splay={0} />;
                 })()}
               </div>
               <div className="replayer-hand-card-body">
