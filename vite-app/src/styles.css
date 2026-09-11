@@ -3898,26 +3898,14 @@
       inset: 0;
       border-radius: inherit;
       pointer-events: none;
+      /* Casino Royale's lighting, on the default cloth. What makes that table
+         read better is not its navy, it is the RELATIONSHIP: a small, contained
+         pool with a vignette that starts early and goes deep, so the felt is a
+         dish with a lamp over it rather than a lit sheet. Both gradients are
+         its values. */
       background-image:
-        /* The specular pool sat at 50% 22% while the pot plaque is at 35% and
-           the board at 50%, so the brightest part of the cloth was the empty
-           strip between the top seats and the pot, and the board sat on the
-           shoulder of the falloff. Overhead light at a poker table points at
-           the board. */
-        /* 0.06 from 0.14, and a smaller pool. At 0.14 the specular alone put
-           ~17 luminance on top of a centre that was already the brightest part
-           of the ramp; halved and tightened it still says "there is a light
-           over the board" without being the light itself. */
-        radial-gradient(ellipse 45% 32% at 50% 44%, rgba(255,244,220,0.06), transparent 70%),
-        /* The vignette was concentric at 50% 50% while the light was at 22%,
-           so the highlight and the falloff came from two different places.
-           Falloff comes from the light. */
-        /* Stays at 55%. Pulling it to 45% was tried and re-measured, and the
-           waist profile came back byte-identical: the base ellipse is 80% x
-           70%, so it spans past the waist and the vignette's inner stop never
-           reaches the band this is measured across. The peak is the only
-           lever that moves the middle; the vignette's job is the dish. */
-        radial-gradient(ellipse 100% 100% at 50% 40%, transparent 55%, rgba(0,0,0,0.30) 100%),
+        radial-gradient(ellipse 48% 34% at 50% 44%, rgba(255,238,200,0.16), transparent 70%),
+        radial-gradient(ellipse 100% 100% at 50% 40%, transparent 48%, rgba(0,0,0,0.42) 100%),
         var(--felt-weave);
     }
     :is([data-theme="light"],[data-theme="cloudy"]) .replayer-table-felt {
