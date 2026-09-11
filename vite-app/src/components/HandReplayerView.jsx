@@ -4541,7 +4541,21 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 </div>;
               })()}
               <div className="replayer-hand-card-cards" aria-hidden="true">
-                <CardRow text={heroCardsOf(h)} max={2} splay={12} />
+                {/* max came from the GAME, not from a 2 typed here. Every row
+                    in this list showed two cards whatever the hero actually
+                    held — a stud hand holds three on 3rd street, PLO and
+                    badugi four, 2-7 triple draw five — so the preview was
+                    wrong for every game the app supports except hold'em, and
+                    silently: it truncated rather than failing.
+                    The splay widens with the count on the same steps the felt
+                    uses, because a five-card fan at a two-card angle is a
+                    stack with corners showing. */}
+                {(() => {
+                  const cfg = HAND_CONFIG[h.gameType] || HAND_CONFIG_DEFAULT;
+                  const n = cfg.isStud ? 3 : (cfg.heroCards || 2);
+                  const angle = n <= 2 ? 12.5 : n <= 4 ? 15 : n <= 5 ? 18 : 22;
+                  return <CardRow text={heroCardsOf(h)} stud={cfg.isStud} max={n} splay={angle} />;
+                })()}
               </div>
               <div className="replayer-hand-card-body">
                 <span className="replayer-hand-card-title">{h.title || 'Untitled'}</span>
