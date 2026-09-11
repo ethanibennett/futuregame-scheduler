@@ -5982,9 +5982,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
        since the two upper corners fall within half a cell of the top straight
        and are lifted with it.
 
-       A seat within half a cell of the ring's left or right extreme is left
-       alone. It is already as far out as the cloth goes, and at 9 and 10-max
-       there is one on each side. */
+       A seat within half a cell of the ring's left or right extreme takes the
+       outward cell but NOT the vertical one. It was taking neither, on the
+       grounds that it is already as far out as the cloth goes — which is true
+       of the cloth and not of the table. Measured at 8-max landscape, those
+       two seats' outermost ink sits 0.29 of a cell PAST the felt's edge and a
+       full cell short of the table's, while the four corner seats have 2.7 to
+       4 cells of room. One cell was sitting there unused on the only two seats
+       that looked crowded.
+       The vertical half is withheld because it has no meaning here: a seat at
+       the horizontal extreme sits ON the centre line, so `r < cy` is false and
+       the seat would be lifted a cell toward a centre it is already level
+       with. At 9 and 10-max there is one such seat on each side. */
     const CORNER_OUT = 1, CORNER_IN = 1;
     const cxRing = (RING.l + RING.r) / 2;
     return Array.from({ length: count }, (_, i) => {
@@ -5992,9 +6001,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       let x = c;
       let y = r <= RING.t + 0.5 ? r - TOP_LIFT : r;
       const atExtreme = Math.abs(c - RING.l) < 0.5 || Math.abs(c - RING.r) < 0.5;
-      if (seg === 'arc' && !atExtreme) {
+      if (seg === 'arc') {
         x = c + (c < cxRing ? -CORNER_OUT : CORNER_OUT);
-        y = y + (r < cy ? CORNER_IN : -CORNER_IN);
+        if (!atExtreme) y = y + (r < cy ? CORNER_IN : -CORNER_IN);
       }
       return [+(x * 100 / LGX).toFixed(3), +(y * 100 / LGY).toFixed(3)];
     });
