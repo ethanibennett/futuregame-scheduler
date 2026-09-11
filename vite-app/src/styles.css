@@ -3414,8 +3414,19 @@
          footprint instead of the box, which is what makes the extra height
          available. translateY takes a percentage of the element, so the nudge
          scales with the table. */
+      /* The push is UP now, not down, and it costs no size at all. The table
+         was moved down 7.6% of its own height to centre the visible footprint
+         inside the box — but measured at showdown, that put the hero's plaque
+         18px over the timeline and its hand-name label 41px over, while 53px
+         of the band above the table sat empty. It was not centred; it was
+         pushed into the strip.
+         Measured with the ink rather than the box: the seats and their labels
+         span 34px less than the band between the container's top and the
+         timeline, so centring them is -12% of the table's height. That lands
+         18px of air above the top seats and 17px below the hero's label —
+         balanced, and the table keeps all 87cqh of its height. */
       height: min(87cqh, calc(87cqw / 1.75));
-      transform: translateY(7.6%);
+      transform: translateY(-12%);
       width: auto;
       max-width: none;
       margin: 0;
@@ -3616,8 +3627,21 @@
          have hit the cap in the same breath as being given the room. */
       --table-ar-min: 0.46;
       --table-ar-max: 0.72;
+      /* A fixed 32px off the height, not a percentage, because the thing it
+         has to clear is fixed. Portrait cannot solve this the way landscape
+         does — its apparent slack above the table is the seat ring's own inset
+         from row 0 to row 4, not empty band, so moving the box up only pushes
+         it out of its container.
+
+         What hangs below the hero's plaque is the hand-name label, and that
+         label is 11.50px on EVERY screen while the table's cqmin basis runs
+         296 to 382 — the one thing on the felt still sized in an absolute
+         token. So it eats a larger share of a small table, and a percentage
+         that clears a 402x874 phone leaves a 375x667 one 14px inside the
+         timeline. Measured at -32px: 375x667 clears by 6, 402x874 by 27 and
+         430x932 by 31. The small phone is the case that sets the number. */
       width: min(100cqw, calc(100cqh * var(--table-ar-max)));
-      height: min(100cqh, calc(100cqw / var(--table-ar-min)));
+      height: min(calc(100cqh - 32px), calc(100cqw / var(--table-ar-min)));
       max-width: 100%;
       margin: 4px 0 0;
 
