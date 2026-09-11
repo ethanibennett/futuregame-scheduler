@@ -1230,7 +1230,7 @@ function getFlatStyle(index, total, yOffset, reverseZ) {
   return style;
 }
 
-function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
+function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
   if (total <= 1) return {};
   /* The step is per CARD and fixed by the size of the FINISHED hand, not by
      how many cards have arrived. Dividing the whole arc among the cards on the
@@ -1275,7 +1275,20 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
      Not the 1.8 that was sitting here unused: that is more than double the
      side seats' fan and would have made the hero's hand a different object,
      rather than the same one with room to breathe. */
-  const maxHalfSpan = wide ? 1.05 : 0.85;
+  /* ONE span for every seat, so every hand on the table covers itself by the
+     same fraction of a card. Measured on seven-card hands, the hero was
+     showing 0.642 of each card covered against an opponent's 0.700 — the
+     hero's fan was the loose one and every other hand read as a tighter
+     object.
+     It matches DOWNWARD, and that direction is forced. Opening the opponents
+     to the hero's 1.05 was built and measured: with every seat carrying seven
+     cards, all six portrait side seats hang 6.7 to 7.6px off the table, and
+     landscape is worse — the extreme side seats, which gained a cell outward,
+     overflow by 14.5 to 15.1px at 8-max and 5.9px at 10-max. The largest
+     uniform span that fits is about 0.89, which is inside the noise of the
+     0.85 the side seats already ran at, so 0.85 is the value and the hero
+     gives up the cell of spread it had alone. */
+  const maxHalfSpan = 0.85;
   const halfSlots = (slots - 1) / 2;
   const baseStep = (2 * angle) / 3;
   const cappedStep = halfSlots > 0
@@ -1349,7 +1362,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, wide, fanTotal) {
   };
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ, wideFan }) {
+function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ }) {
   const SUIT_SYMBOLS = {h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'};
   let cards = parseCardNotation(text);
   if (!cards.length && placeholderCount > 0) {
@@ -1391,7 +1404,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
            began where the fifth card's ended and the row read as though it had
            a full card's gap in it. */
         const splayStyle = { '--ci': i, ...(splay
-          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, wideFan, max)
+          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max)
           : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
@@ -6727,12 +6740,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
                      arc and a wider allowance, on the grounds that the bottom
                      seat has no neighbour to crowd. It just made one hand at
                      the table a different shape. */
-                  /* The hero, and only the hero. Not because it is the only
-                     seat with room — measured, the top-centre seat has the
-                     same 133px — but because it is the hand the replay is
-                     about, and a side seat cannot have this at any seat count:
-                     those fans clear the table's edge by 1.7px already. */
-                  wideFan={pi === replayHeroIdx} />
+                  />
               </div>
               {/* 100: between steps the table was completely inert — no way to
                   inspect a player, no response to anything but the transport,
