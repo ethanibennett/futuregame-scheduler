@@ -5934,7 +5934,26 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     7:  [seat(5.5,RT), seat(CR,12), seat(CR,20), seat(CC,RB), seat(CL,20), seat(CL,12), seat(10.5,RT)],
     8:  [seat(CC,RT), seat(CR,9), seat(CR,16), seat(CR,23), seat(CC,RB), seat(CL,23), seat(CL,16), seat(CL,9)],
     9:  [seat(5.5,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(10.5,RT)],
-    10: [seat(4,RT), seat(CC,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(12,RT)],
+    /* FOUR a side, not three across the top. Every other even count already
+       runs one seat on the top row, one on the bottom and the rest split
+       evenly down the two sides — 8-max is 1/3/1/3, 6-max is 1/2/1/2, 4-max
+       is 1/1/1/1 — and 10-max was the only one that broke it with a row of
+       three. A portrait table is 16 x 32: the long sides are where seats go.
+
+       It also fixes an ORDERING fault that the three-seat top row carried.
+       A layout is a ring — consecutive players must be adjacent seats — and
+       measured round the old one, Opp 3 to Opp 4 was a jump of 10 cells and
+       Opp 4 to Opp 5 a jump of 8, because the three top seats sat at indices
+       0, 1 and 9 in the order left, centre, right. One seat on that row cannot
+       be out of sequence with itself.
+
+       The rows come from the derivation the three-a-side row already uses:
+       the corner step goes 5.5 columns across and (12 - 1.5e) rows down, the
+       middle step is e rows, so 5.5^2 + (12 - 1.5e)^2 = e^2 and e = 6.156.
+       Rounded to 6 it lands on whole rows 7, 13, 19 and 25, symmetric about
+       16, with the corner step at 6.27 against the middle's 6.00 — a 4%
+       difference, against rows that would otherwise read 6.77 and 25.23. */
+    10: [seat(CC,RT), seat(CR,7), seat(CR,13), seat(CR,19), seat(CR,25), seat(CC,RB), seat(CL,25), seat(CL,19), seat(CL,13), seat(CL,7)],
   };
 
   /* ── The landscape ring ──────────────────────────────────────────────
