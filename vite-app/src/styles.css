@@ -4314,7 +4314,8 @@
        of the time — the join between two cards was a seam with no material
        in it. A lit line on the leading edge is the stock of the card beneath
        showing through, which is what you actually see at a table. */
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:not(:first-child),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
       /* A share of a card rather than a flat 12px: the cards scale with the
          table, so a fixed overlap spread the row wider exactly when the table
          had least room for it. */
@@ -4328,13 +4329,20 @@
        card rather than as a mis-stack. CardRow sets its own z-index inline and
        does not need this; rows built by hand out of these classes, like the
        solver's table seats, do. */
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(1) { z-index:1; }
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(2) { z-index:2; }
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(3) { z-index:3; }
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(4) { z-index:4; }
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(5) { z-index:5; }
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(6) { z-index:6; }
-    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(7) { z-index:7; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(1),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(1) { z-index:1; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(2),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(2) { z-index:2; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(3),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(3) { z-index:3; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(4),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(4) { z-index:4; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(5),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(5) { z-index:5; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(6),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(6) { z-index:6; }
+    .replayer-seat-cards .card-row:not(.card-row-splay) > *:nth-child(7),
+    .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:nth-child(7) { z-index:7; }
     /* The faces are 180:252 = 1:1.400. Forcing 30x44 is 1:1.467 — a 4.6%
        horizontal squeeze on every hole card, while the BOARD imgs set height
        only and so rendered at their natural 31.4px. Two widths in one hand.
