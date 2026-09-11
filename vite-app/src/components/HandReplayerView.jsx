@@ -5919,8 +5919,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      hero is the only seat carrying a hand-name label under its plaque.
      Measured at showdown before the move: that label's underside sat 0.13 of
      a cell above the felt's edge and 3.13 above the table's — out of cloth,
-     but with three cells of cushion still under it. One of them is now
-     spent.
+     but with three cells of cushion still under it. Two of them are now
+     spent — 27 to 28, then 28 to 29 — leaving 1.13 cells of cushion under the
+     label.
 
      The TOP row moves the other way, 5 to 4, for the reason landscape already
      lifts its own top run: those seats have the whole cushion above them and
@@ -5931,7 +5932,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
      3, 5, 7 and 9, three at 10 — and they all lift together, which is what it
      means for a run to be a run. */
   const CL = 2.5, CC = 8, CR = 13.5;      // seat columns
-  const RT = 4, RB = 28;                  // seat rows, top run and hero
+  const RT = 4, RB = 29;                  // seat rows, top run and hero
   const seat = (col, row) => [gx(col), gy(row)];
 
   /* Steps of seven cells down each side for three-a-side, and of nine for
