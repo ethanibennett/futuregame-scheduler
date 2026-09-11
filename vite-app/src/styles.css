@@ -2401,7 +2401,30 @@
     .replayer-hand-card.outcome-loss  .replayer-hand-card-content { border-right-color: var(--danger); }
     .replayer-hand-card.outcome-split .replayer-hand-card-content { border-right-color: var(--warn); }
     .replayer-hand-card-cards {
-      flex-shrink:0; width:40px; display:flex; align-items:center;
+      flex-shrink:0;
+      /* 64x40, and POSITIONED, both for the same reason: a fan of three or
+         more is absolutely positioned. getSplayStyle only uses margins on its
+         `total <= 2` branch — which is why a two-card preview always looked
+         right and nothing else did. An absolute card anchors to the nearest
+         positioned ancestor, so with the row now position:relative the whole
+         fan centred on the ROW and landed across the title and the date.
+         Anchoring here puts it back in its own box.
+         84px holds the widest fan the list draws. Measured: a five-card fan
+         spans 51px between its outer cards, plus a 21.4px card, is 72px.
+*/
+      width:84px; height:44px; position:relative;
+      display:flex; align-items:center; justify-content:center;
+      /* --card-w, or the fan does not fan. getSplayStyle translates each card
+         by a multiple of var(--card-w), and that property is declared on
+         .replayer-seat — nothing here is inside one, so the calc resolved to
+         nothing and all three, four or five cards stacked on the same x. The
+         previews look like a single card in the list screenshots for exactly
+         this reason.
+         21.4px is the 30px card height these previews use times the artwork's
+         0.7143 ratio, which is the same relationship --card-w has to
+         --card-h everywhere else. */
+      --card-h: 30px;
+      --card-w: 21.4px;
     }
     .replayer-hand-card-cards .card-row img,
     .replayer-hand-card-cards .card-row .card-unknown,
