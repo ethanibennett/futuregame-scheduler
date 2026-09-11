@@ -4311,12 +4311,14 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         <div className="replayer-hand-list">
           {[0, 1, 2].map(i => (
             <div key={i} className="replayer-hand-card is-row">
-              <div className="replayer-hand-card-cards">
-                <div className="skeleton" style={{width: 30, height: 30, borderRadius: 'var(--radius-xs)'}} />
-              </div>
-              <div className="replayer-hand-card-body">
-                <div className="skeleton skeleton-text" style={{width: i === 1 ? 150 : 116, height: 12}} />
-                <div className="skeleton skeleton-text" style={{width: 74, height: 10}} />
+              <div className="replayer-hand-card-content">
+                <div className="replayer-hand-card-cards">
+                  <div className="skeleton" style={{width: 30, height: 30, borderRadius: 'var(--radius-xs)'}} />
+                </div>
+                <div className="replayer-hand-card-body">
+                  <div className="skeleton skeleton-text" style={{width: i === 1 ? 150 : 116, height: 12}} />
+                  <div className="skeleton skeleton-text" style={{width: 74, height: 10}} />
+                </div>
               </div>
             </div>
           ))}
@@ -4501,17 +4503,19 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       {hands.length === 0 ? (
         <div className="replayer-hand-list">
           <div className="replayer-hand-card is-row is-empty">
-            <div className="replayer-hand-card-cards" aria-hidden="true">
-              <span className="card-unknown" /><span className="card-unknown" />
-            </div>
-            <div className="replayer-hand-card-body">
-              <span className="replayer-hand-card-title">No saved hands yet</span>
-              <span className="replayer-hand-card-meta">Record one and it will replay here</span>
-            </div>
-            <div className="replayer-hand-card-actions">
-              <button className="btn btn-primary btn-sm" onClick={startNewHand}>
-                Create {variantDisplayName} Hand
-              </button>
+            <div className="replayer-hand-card-content">
+              <div className="replayer-hand-card-cards" aria-hidden="true">
+                <span className="card-unknown" /><span className="card-unknown" />
+              </div>
+              <div className="replayer-hand-card-body">
+                <span className="replayer-hand-card-title">No saved hands yet</span>
+                <span className="replayer-hand-card-meta">Record one and it will replay here</span>
+              </div>
+              <div className="replayer-hand-card-actions">
+                <button className="btn btn-primary btn-sm" onClick={startNewHand}>
+                  Create {variantDisplayName} Hand
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -4540,6 +4544,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                   <span className="replayer-hand-strip-abbr">{v.abbr}</span>
                 </div>;
               })()}
+                {/* The content, bordered and rounded on its own — which is how
+                    .cal-event-row does it. The border belongs HERE and not on
+                    the row, because the row has to stay borderless for the
+                    strip to form its left edge; putting it on the row is what
+                    made this card an outlined box with a tab floating in it. */}
+                <div className="replayer-hand-card-content">
               <div className="replayer-hand-card-cards" aria-hidden="true">
                 {/* max came from the GAME, not from a 2 typed here. Every row
                     in this list showed two cards whatever the hero actually
@@ -4578,6 +4588,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 <button className="btn btn-ghost btn-sm" onClick={() => deleteHand(h.id)}>Delete</button>
               </div>
             </div>
+                </div>
           ))}
         </div>
       )}
