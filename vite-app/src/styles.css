@@ -2321,8 +2321,42 @@
     /* 59: the row layout the -meta and -actions classes were written for. */
     .replayer-hand-card.is-row {
       display:flex; align-items:center; gap: var(--space-ml);
+      /* NO padding on the row, which is the whole reason a venue strip runs
+         edge to edge on the schedule and this one did not. padding-left was
+         already zeroed below, so the strip was flush on its left and floating
+         a --space-sm gap off the top and bottom — a rounded tab sitting inside
+         the card instead of a bar forming its edge. The padding moves to the
+         body, exactly where .cal-event-row keeps it. */
+      /* Copied from .cal-event-row, which is the card this one is supposed to
+         look like: borderless, raised, clipped to its own radius, no padding.
+         The row was outlined and flat — 1px --border all round, no elevation —
+         so two cards in the same app were built out of different materials. */
+      padding: 0;
+      gap: 0;
+      align-items: stretch;
+      background: var(--surface);
+      border: none;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--elev-1);
+      overflow: hidden;
+      position: relative;
+    }
+    /* .cal-event-row-content, for hands. The border lives here and not on the
+       row, and that is the whole trick: the row stays borderless so the strip
+       forms its left edge, while the content keeps the outline and the two
+       right corners. Without it the strip is a rounded tab floating inside a
+       box. */
+    .replayer-hand-card-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--space-ml);
       padding: var(--space-sm) var(--space-ml);
-      border-left: 3px solid transparent;
+      border: var(--bw-1) solid var(--border);
+      border-left: none;
+      border-right: 3px solid transparent;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
     /* The variant strip now owns the left edge — the same 26px vertical bar the
        schedule uses for venues — so the outcome moves to the right edge rather
@@ -2358,12 +2392,14 @@
       text-align: center;
       line-height: 22px;
       box-sizing: border-box;
-      margin-right: var(--space-ml);
+      /* No margin: the row's own gap already spaces the strip from the cards,
+         and the calendar's strip carries none either. With both, the gap was
+         double the schedule's. */
     }
-    .replayer-hand-card.is-row { border-right: 3px solid transparent; }
-    .replayer-hand-card.outcome-win   { border-right-color: var(--ok); }
-    .replayer-hand-card.outcome-loss  { border-right-color: var(--danger); }
-    .replayer-hand-card.outcome-split { border-right-color: var(--warn); }
+    /* On the content, because that is where the border is now. */
+    .replayer-hand-card.outcome-win   .replayer-hand-card-content { border-right-color: var(--ok); }
+    .replayer-hand-card.outcome-loss  .replayer-hand-card-content { border-right-color: var(--danger); }
+    .replayer-hand-card.outcome-split .replayer-hand-card-content { border-right-color: var(--warn); }
     .replayer-hand-card-cards {
       flex-shrink:0; width:40px; display:flex; align-items:center;
     }
