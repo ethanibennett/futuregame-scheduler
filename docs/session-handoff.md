@@ -5,9 +5,9 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-08-30. The dated sections at the end run through 2026-08-30
-(the replayer rebuild); this pass added "Seams to the dashboard", which nothing
-in this doc covered, verified against both live services.
+Last updated: 2026-09-11. The dated sections at the end run through 2026-08-30;
+"Seams to the dashboard" and "The build pipeline" below were added from the
+wsop-console side and verified against both live services.
 
 ---
 
@@ -150,6 +150,43 @@ token rather than widening this one.
 detail): `origin/main` at `e7b6417`; Oura ingest restored and one day old; Apple
 Watch activity 47 days stale, weight absent, and APNs delivering to nobody — all
 three waiting on one `native-ios` rebuild.
+
+---
+
+## The build pipeline was dead for four days, and nothing said so
+
+Between **2026-09-07 and 2026-09-11** every iOS TestFlight run on this repo failed —
+five consecutive runs — and it went unnoticed because nothing watches this workflow.
+It surfaced only when someone pushed a native change to `wsop-console` and started
+pulling the thread.
+
+**The cause was machine-level, not repo-level.** `build.keychain-db` on the Mac held
+**zero** signing identities; both were in `login.keychain`, which CI cannot see
+because the job narrows the search list to the build keychain. Every archive died
+with *"No iOS Development signing certificate ... with a private key was found"*.
+Fixed 2026-09-11; **build 130 shipped** on a re-run of the newest failure.
+
+**Three things here are worth knowing before the next time:**
+
+- **The tooling lives in the other repo**, because that is where the incident was
+  driven from: `wsop-console/scripts/diagnose-signing.sh` reports which keychain case
+  you are in, and `repair-build-keychain.sh` fixes it. Both are read-first, and the
+  repair has a `--recreate` path for when the keychain password is lost — GitHub
+  cannot show a secret back, so a forgotten `BUILD_KEYCHAIN_PASSWORD` is unrecoverable
+  unless the keychain is empty, which it was.
+- **`docs/mac-build.md` is now partly wrong.** Its `run.sh`-not-`svc.sh` instruction
+  was the interim workaround from before the dedicated build keychain existed. Both
+  runners on the Mac are `svc.sh` services today, which is what makes them survive a
+  reboot. Issue #79 repeated that advice and has been closed with a note.
+- **A runner serves one repo.** `mac-build-node` is this repo's; `wsop-console` got
+  its own second registration (`mac-build-node-wsop`) on the same Mac, because a
+  personal account has no org-level runners. Its jobs had been queuing 24h and dying.
+
+**Something watches now.** `build-watcher` runs under pm2 on the Windows box, polls
+all five repos every 15 minutes, and pushes to Ethan's phone on a failed or stuck
+run — "stuck" meaning queued or running far longer than the work takes, which is the
+shape that has no natural end. It is the reason this section should not need writing
+again. If builds break and no push arrives, check `pm2 list` first.
 
 ---
 
