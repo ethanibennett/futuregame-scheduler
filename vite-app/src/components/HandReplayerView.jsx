@@ -447,16 +447,39 @@ function feltStops(hex) {
   if (!m) return null;
   let r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
   const lum = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 255;
+  /* [0.036, 0.10], down from [0.16, 0.62]. Every picked colour is normalised
+     into this band, so the band IS the table's darkness — and it is now set
+     to Casino Royale's, which is the whole point: measured across the waist,
+     that felt runs a centre of 69.8 against 46.3 a twentieth in and 18.7 at
+     the rim, while the default ran 131.8 / 84.1 / 60.6. Its lighting was
+     already copied; the light was landing on cloth nearly twice as bright,
+     which is why it did not read the same. */
   if (lum > 0.004) {
-    const k = Math.min(0.62, Math.max(0.16, lum)) / lum;
+    const k = Math.min(0.10, Math.max(0.036, lum)) / lum;
     r *= k; g *= k; b *= k;
   } else {
-    r = g = b = 42;
+    /* 9, which is 0.036 x 255 — the same relationship the old 42 had to the
+       old floor of 0.16. A pick this dark has no hue left to carry, so it
+       lands on the band's own floor rather than on a number of its own. */
+    r = g = b = 9;
   }
   const mix = (c, t, w) => Math.round(Math.min(255, Math.max(0, c * (1 - w) + t * w)));
   return {
-    lit: `rgb(${mix(r * 1.18, 255, 0.10)},${mix(g * 1.13, 246, 0.10)},${mix(b * 1.04, 214, 0.10)})`,
-    shade: `rgb(${mix(r * 0.52, 12, 0.18)},${mix(g * 0.52, 16, 0.18)},${mix(b * 0.58, 52, 0.18)})`,
+    /* The mixes toward warm white and toward dark blue drop from 0.10 and
+       0.18 to 0.04 and 0.10. They exist to keep an extreme pick sane, and at
+       the old weights they were a tenth of a BRIGHT colour; against a band
+       this dark they were most of it, and every felt came out the same muddy
+       near-grey. Measured at the new band, purple, green, red and teal keep
+       saturations of 0.18 to 0.59 — the hue is what the picker is for, and it
+       is the one thing darkening must not take. */
+    /* The multipliers close the last of the gap, measured rather than guessed.
+       At the band alone the felt came out centre 75.6 / rim 15.5 against
+       Casino Royale's 69.8 / 18.7 — the right shape, but reaching further at
+       both ends, a 4.88x dish where the target is 3.73x. The lit stop comes
+       down 8% and the shade stop goes up 21%, which is exactly those two
+       deltas. */
+    lit: `rgb(${mix(r * 1.09, 255, 0.04)},${mix(g * 1.04, 246, 0.04)},${mix(b * 0.96, 214, 0.04)})`,
+    shade: `rgb(${mix(r * 0.63, 12, 0.10)},${mix(g * 0.63, 16, 0.10)},${mix(b * 0.70, 52, 0.10)})`,
   };
 }
 
@@ -6214,7 +6237,17 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             themes now bring their own, so handing feltColor in would override
             them with whatever colour happened to be stored. */}
         <div className="replayer-table-rail"
-          style={rSettings.theme === 'default' ? {'--rail-color': feltColor} : undefined} />
+          /* The rail takes the felt's SHADE stop, not the raw picked colour.
+             It used to take the colour at full value, which was fine while the
+             cloth was bright — but against a dark felt that is a lit ring
+             around a dark table, the reverse of what it should be. Casino
+             Royale's rail measures 20.5 against its felt's rim of 18.7: the
+             frame is the cloth's own darkest tone, and the only thing making
+             it read as padding is the lighting already on it. Still derived
+             from the felt, so the picker still moves both. */
+          style={rSettings.theme === 'default'
+            ? {'--rail-color': (feltStops(feltColor) || {}).shade || feltColor}
+            : undefined} />
         {/* --strip-color was handed in and the rule never read it - a dead
             property alongside the dead four-color-deck class. The strip now
             takes its tint from the felt, which is what the prop intended. */}

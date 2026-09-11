@@ -3842,16 +3842,13 @@
     .replayer-table-felt {
       position: absolute;
       inset: var(--felt-y) var(--felt-x);
-      /* The lit stop is mixed 82% toward the felt colour and 18% toward its
-         own shade rather than used neat. Measured across the table's waist,
-         the middle of the cloth was 141 against 90.5 at the sides — a 1.56x
-         hotspot, bright enough that the felt read as spotlit rather than
-         evenly lit. Mixing lands where it should: re-measured, the centre fell
-         15.3% to 119.4 while the sides fell 7.1% to 84.1, taking the hotspot
-         to 1.42x. The user's felt-colour setting still drives both stops. */
+      /* The stops go in neat. The 82% mix that used to sit on the lit stop
+         was a second place to darken the felt, and feltStops now does it at
+         the source by normalising every picked colour into Casino Royale's
+         luminance band — two knobs for one job is how a value drifts out of
+         agreement with the comment explaining it. */
       background: radial-gradient(ellipse 80% 70% at 50% 45%,
-        color-mix(in srgb, var(--felt-lit, #9478b4) 82%, var(--felt-shade, #2c2e50)),
-        var(--felt-shade, #2c2e50));
+        var(--felt-lit, #9478b4), var(--felt-shade, #2c2e50));
       border-radius: var(--felt-r, var(--radius-pill));
       border: 1px solid rgba(0,0,0,0.15);
       box-shadow:
