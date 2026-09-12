@@ -4325,7 +4325,18 @@
          table, so a fixed overlap spread the row wider exactly when the table
          had least room for it. */
       margin-left: calc(var(--card-w) * -0.52);
-      box-shadow: -1px 0 0 rgba(255,255,255,0.62), 0 0 0 0.75px rgba(255,255,255,0.30);
+      /* 0.26, down from 0.62. The lit line is the stock of the card beneath
+         showing through, and it was reading as a white stroke drawn between
+         two cards instead. Measured across the hero's flat row: the seams sat
+         at L=116 against card faces of 25.9 — 4.5x the thing they separate.
+         The two shadows were separated before picking a number. Removing the
+         leading edge entirely leaves 1.86x, which is the outline every card
+         already carries and the floor this cannot go below; the edge was
+         responsible for everything above that. At 0.26 the seam is about 2.8x
+         — still clearly stock rather than a join, with most of the excess
+         gone. The outline stays at 0.30 because it is shared with the splayed
+         fan and the board, and neither was the complaint. */
+      box-shadow: -1px 0 0 rgba(255,255,255,0.26), 0 0 0 0.75px rgba(255,255,255,0.30);
     }
     /* Seven, because seven is what a stud hand holds. The ladder stopped at
        five, so a stud row's sixth and seventh cards fell to `z-index:auto` and
