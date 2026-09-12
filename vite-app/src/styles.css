@@ -3686,21 +3686,26 @@
          have hit the cap in the same breath as being given the room. */
       --table-ar-min: 0.46;
       --table-ar-max: 0.72;
-      /* A fixed 32px off the height, not a percentage, because the thing it
-         has to clear is fixed. Portrait cannot solve this the way landscape
-         does — its apparent slack above the table is the seat ring's own inset
-         from row 0 to row 4, not empty band, so moving the box up only pushes
-         it out of its container.
+      /* A fixed 28px off the height, not a percentage, because what it has to
+         clear is fixed. Portrait cannot solve this the way landscape does —
+         its apparent slack above the table is the seat ring's own inset from
+         row 0 to row 4, not empty band, so moving the box up only pushes it
+         out of its container.
 
-         What hangs below the hero's plaque is the hand-name label, and that
-         label is 11.50px on EVERY screen while the table's cqmin basis runs
-         296 to 382 — the one thing on the felt still sized in an absolute
-         token. So it eats a larger share of a small table, and a percentage
-         that clears a 402x874 phone leaves a 375x667 one 14px inside the
-         timeline. Measured at -32px: 375x667 clears by 6, 402x874 by 27 and
-         430x932 by 31. The small phone is the case that sets the number. */
+         It was 32px when the hand-name label was 11.50px on every screen
+         regardless of table size. The label is on cqmin now and scales, which
+         bought 4px back — and no more than that, which is worth writing down
+         so nobody goes looking for the rest.
+
+         THE REMAINING CONSTRAINT IS NOT THE TABLE. .replayer-under is
+         `min(22%, 76px)`, so it is 76px on a 667-tall screen and 76px on an
+         874-tall one: 11.4% of the short phone against 8.7% of the tall one.
+         Fixed chrome takes a bigger bite out of a small screen, which is why
+         375x667 needs an allowance at all while 430x932 would clear without
+         one. Measured at -28px: 375x667 clears by 4, 402x874 by 24, 430x932 by
+         26. The small phone sets the number, as it did before. */
       width: min(100cqw, calc(100cqh * var(--table-ar-max)));
-      height: min(calc(100cqh - 32px), calc(100cqw / var(--table-ar-min)));
+      height: min(calc(100cqh - 28px), calc(100cqw / var(--table-ar-min)));
       max-width: 100%;
       margin: 4px 0 0;
 
@@ -4647,7 +4652,16 @@
       /* 48: the sentence the entire replay is building to was set at
          --fs-2xs — smaller than the app's smallest body text — under the one
          plaque the winner shimmer is drawing the eye to. */
-      font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      /* cqmin, not --fs-xs. This was the last thing on the felt sized in an
+         absolute token, and that has been the same bug five times now — after
+         --card-h, the plaque's min-width, the chip disc and the stud lift.
+         Measured, it rendered at 11.50px on EVERY screen while the table's
+         cqmin basis ran 296 to 382, so it ate a larger share of a small table
+         than a large one: the hero's label pushed into the timeline on a
+         375x667 phone while clearing it on a 402x874.
+         3.0cqmin is that same 11.50px at the 402x874 reference the rest of the
+         felt is calibrated against. */
+      font-size: clamp(8px, 3.0cqmin, 24px); font-weight: var(--fw-bold);
       color:#eab308; font-family: var(--font-condensed);
       /* The hand name at showdown is the payoff moment, and it was rendered in
          event-card chrome - so in the light theme the winner's hand was a
@@ -4666,12 +4680,15 @@
       white-space: pre;
       text-align: center;
       line-height: 1.3;
-      padding: var(--space-2xs) var(--space-sm);
+      /* em, so the box scales with the type inside it instead of staying 2px
+         and 6px while the type shrinks. 0.17 and 0.52 are those two values
+         over the 11.5px the label used to be. */
+      padding: 0.17em 0.52em;
       /* 28: this rule declares white-space: pre-line five lines above, because
          the JSX builds hi-lo names as parts.join('\n') — and then cancelled it
          here, so "Hi: Aces Up / Lo: 7-5-4-3-2" rendered as one 30-character
          strip across the felt at the exact moment the split is the result. */
-      margin-top: var(--space-2xs);
+      margin-top: 0.17em;
       /* Measured at showdown across every short name the engine emits: the
          longest, "Two Pair, Kings & Nines", is 126px against this 130px cap on
          a phone — four pixels of room. white-space: pre cannot wrap, so a
