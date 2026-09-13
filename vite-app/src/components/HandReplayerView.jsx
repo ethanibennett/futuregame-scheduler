@@ -442,7 +442,19 @@ function outcomeOf(h) {
    picking white gave a blown-out table with no card contrast — one tap from a
    colour input that is always on screen. The chosen colour is pulled into a
    band that always leaves room for a highlight above it and a shade below. */
-function feltStops(hex) {
+/* Two bands, and the band IS the table's brightness.
+   Every picked colour is normalised into one of them, so the felt's darkness
+   stops depending on which colour was chosen and becomes a property of the
+   MODE — which is what lets one picker serve a dark table and a bright one.
+   DARK is Casino Royale's, measured off that theme's own cloth.
+   BRIGHT is where this table sat before it was darkened: a lit cloth in the
+   user's own hue, which is what most rooms actually look like. */
+const FELT_BANDS = {
+  dark:   { lo: 0.036, hi: 0.10, litMix: 0.04, shadeMix: 0.10, lit: [1.09, 1.04, 0.96], shade: [0.745, 0.745, 0.832], black: 9 },
+  bright: { lo: 0.170, hi: 0.52, litMix: 0.09, shadeMix: 0.16, lit: [1.18, 1.13, 1.04], shade: [0.560, 0.560, 0.620], black: 43 },
+};
+
+function feltStops(hex, bright) {
   const m = String(hex || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
   if (!m) return null;
   let r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
@@ -454,14 +466,15 @@ function feltStops(hex) {
      the rim, while the default ran 131.8 / 84.1 / 60.6. Its lighting was
      already copied; the light was landing on cloth nearly twice as bright,
      which is why it did not read the same. */
+  const B = FELT_BANDS[bright ? 'bright' : 'dark'];
   if (lum > 0.004) {
-    const k = Math.min(0.10, Math.max(0.036, lum)) / lum;
+    const k = Math.min(B.hi, Math.max(B.lo, lum)) / lum;
     r *= k; g *= k; b *= k;
   } else {
     /* 9, which is 0.036 x 255 — the same relationship the old 42 had to the
        old floor of 0.16. A pick this dark has no hue left to carry, so it
        lands on the band's own floor rather than on a number of its own. */
-    r = g = b = 9;
+    r = g = b = B.black;
   }
   const mix = (c, t, w) => Math.round(Math.min(255, Math.max(0, c * (1 - w) + t * w)));
   return {
@@ -478,7 +491,7 @@ function feltStops(hex) {
        both ends, a 4.88x dish where the target is 3.73x. The lit stop comes
        down 8% and the shade stop goes up 21%, which is exactly those two
        deltas. */
-    lit: `rgb(${mix(r * 1.09, 255, 0.04)},${mix(g * 1.04, 246, 0.04)},${mix(b * 0.96, 214, 0.04)})`,
+    lit: `rgb(${mix(r * B.lit[0], 255, B.litMix)},${mix(g * B.lit[1], 246, B.litMix)},${mix(b * B.lit[2], 214, B.litMix)})`,
     /* The shade stop owns the whole off-centre field, and it took two passes
        to find that out. The vignette looked like the lever for the felt's
        edges and is not: it is an `ellipse 100% 100%` centred at 50% 40% with a
@@ -488,7 +501,7 @@ function feltStops(hex) {
        0.36 moved the waist profile by nothing at any sample.
        So the sides are this stop, and after the gradient was reshaped they sat
        a uniform 6% under Casino Royale's. 0.745 and 0.832 are that 6%. */
-    shade: `rgb(${mix(r * 0.745, 12, 0.10)},${mix(g * 0.745, 16, 0.10)},${mix(b * 0.832, 52, 0.10)})`,
+    shade: `rgb(${mix(r * B.shade[0], 12, B.shadeMix)},${mix(g * B.shade[1], 16, B.shadeMix)},${mix(b * B.shade[2], 52, B.shadeMix)})`,
   };
 }
 
@@ -1590,6 +1603,20 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             <button className={'replayer-settings-toggle' + (settings.cardSplay ? ' on' : '')}
               aria-pressed={!!settings.cardSplay} aria-label="Splay hole cards"
               onClick={() => onUpdate('cardSplay', !settings.cardSplay)} />
+          </div>
+          {/* Above the felt-colour picker it would have nothing to act on yet;
+              below it, it reads as what it is — the same colour, lit two
+              different ways. */}
+          <div className="replayer-settings-row is-stacked">
+            <div>
+              <div className="replayer-settings-label">Bright Felt</div>
+              <div className="replayer-settings-sublabel">
+                A lit cloth instead of the dark one. The felt colour drives both &mdash; this is how brightly it is lit, not which colour it is.
+              </div>
+            </div>
+            <button className={'replayer-settings-toggle' + (settings.feltBright ? ' on' : '')}
+              aria-pressed={!!settings.feltBright} aria-label="Bright felt"
+              onClick={() => onUpdate('feltBright', !settings.feltBright)} />
           </div>
           <div className="replayer-settings-row">
             <div className="replayer-settings-label">Rail Light Strip</div>
@@ -4746,6 +4773,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
   const _soundFold = useReplayerSetting('SoundFold', false);
   const _soundAllIn = useReplayerSetting('SoundAllIn', false);
   const _cardSplay = useReplayerSetting('CardSplay', true);
+  /* Off by default: the dark cloth is what the table looks like today, and a
+     setting that changes the first thing you see should be opt-in. */
+  const _feltBright = useReplayerSetting('FeltBright', false);
   const _lightStrip = useReplayerSetting('LightStrip', false);
   const _animDeal = useReplayerSetting('AnimateDeal', true);
   const _animChips = useReplayerSetting('AnimateChips', true);
@@ -4765,7 +4795,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
     animateFold: _animFold[0],
-    cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0],
+    cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
   };
   const rSetters = {
     theme: _theme[1], tableShape: _tableShape[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
@@ -4781,7 +4811,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     animateFold: _animFold[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
-    cardSplay: _cardSplay[1], lightStrip: _lightStrip[1],
+    cardSplay: _cardSplay[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
   /* The sound calls live inside effects whose dependency arrays deliberately
@@ -6319,6 +6349,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
         data-hand-cards={gameCfg.heroCards || 2}
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
+      data-felt={rSettings.feltBright ? 'bright' : 'dark'}
         style={rSettings.cardBack === 'custom' ? (() => {
           // Same derivation as the felt below, and for the same reason.
           const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
@@ -6345,7 +6376,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
              it read as padding is the lighting already on it. Still derived
              from the felt, so the picker still moves both. */
           style={rSettings.theme === 'default'
-            ? {'--rail-color': (feltStops(feltColor) || {}).shade || feltColor}
+            ? {'--rail-color': (feltStops(feltColor, rSettings.feltBright) || {}).shade || feltColor}
             : undefined} />
         {/* --strip-color was handed in and the rule never read it - a dead
             property alongside the dead four-color-deck class. The strip now
@@ -6362,7 +6393,7 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
             background string, so the felt rule keeps its own gradient geometry
             and the picker only supplies the two colours. */}
         <label className={'replayer-table-felt' + shapeClass} style={rSettings.theme === 'default' ? (() => {
-          const st = feltStops(feltColor);
+          const st = feltStops(feltColor, rSettings.feltBright);
           if (!st) return { borderColor: feltColor + 'cc' };
           return { '--felt-lit': st.lit, '--felt-shade': st.shade, borderColor: feltColor + 'cc' };
         })() : {}}

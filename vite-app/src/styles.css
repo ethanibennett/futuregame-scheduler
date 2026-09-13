@@ -4013,6 +4013,21 @@
         radial-gradient(ellipse 100% 100% at 50% 40%, transparent 48%, rgba(0,0,0,0.42) 100%),
         var(--felt-weave);
     }
+    /* Bright felt. The stops already carry the colour and its brightness —
+       what has to change here is the LIGHT on it, because a pool and a
+       vignette tuned for a dark cloth are wrong on a lit one.
+       The pool's contribution is absolute, about 195 x alpha of luminance
+       wherever it lands, so the same 0.13 that reads as a lamp over dark navy
+       is a washed patch on a bright cloth: it comes down. The vignette is the
+       opposite — it multiplies, so on a bright cloth 0.42 digs a hole rather
+       than dishing the felt, and it lifts. */
+    .replayer-table[data-felt="bright"] .replayer-table-felt::after {
+      background-image:
+        radial-gradient(ellipse 48% 34% at 50% 44%, rgba(255,244,220,0.07), transparent 70%),
+        radial-gradient(ellipse 100% 100% at 50% 40%, transparent 52%, rgba(0,0,0,0.26) 100%),
+        var(--felt-weave);
+    }
+
     :is([data-theme="light"],[data-theme="cloudy"]) .replayer-table-felt {
       background: radial-gradient(ellipse 80% 70% at 50% 45%, #9b8dc0, #423a5b);
       border-color: #a595cf;
