@@ -1243,6 +1243,9 @@ function getFlatStyle(index, total, yOffset, reverseZ) {
   return style;
 }
 
+/* The largest hand the replayer deals: two down, four up, one down. */
+const FAN_SLOTS = 7;
+
 function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
   if (total <= 1) return {};
   /* The step is per CARD and fixed by the size of the FINISHED hand, not by
@@ -1254,7 +1257,18 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
      the middle n will sit when the hand is finished: 3rd street holds the
      middle three of the seven, and 4th street adds one to each side without
      moving them. */
-  const slots = Math.max(total, fanTotal || total);
+  /* ONE reservation for every game, not each game's own finished size.
+     The step was derived from how many cards the GAME ends with, so the same
+     number of cards on the table produced a different fan depending on which
+     game dealt them. Measured at five cards: 2-7 triple draw stepped 10.37
+     degrees against stud's 5.49 on fifth street — 1.9x — and its five-card fan
+     spanned 4.13 card widths against 3.66 for a COMPLETE seven-card stud hand.
+     A draw hand was wider than a finished stud hand.
+     Seven is the largest hand the replayer deals, so reserving it everywhere
+     means the spacing is identical at every count in every game, and no fan
+     ever has to re-tighten as cards arrive — which is the property the stud
+     layout was built around, now generalised rather than special-cased. */
+  const slots = FAN_SLOTS;
   /* Both the arc's radius and the step are sized on the FINISHED hand, so the
      fan does not change curve or spacing as cards arrive. Measured: a side
      seat sits 15.6% in from the table's edge, which caps a fan at about 2.4
