@@ -55,6 +55,36 @@ echo "==> Verifying"
 codesign -dv --verbose=2 "${BUNDLE}" 2>&1 | sed 's/^/    /'
 lipo -info "${BUNDLE}/Contents/MacOS/${PRODUCT}" | sed 's/^/    /'
 
+# The principal class is the one thing that fails completely silently: if Info.plist names a
+# class the Objective-C runtime does not have, the bundle still links, still passes codesign,
+# and still installs -- principalClass() just returns nil, the engine instantiates nothing,
+# and the screensaver is black with not a single line logged anywhere. That cost a long
+# debugging session once. Check it here, where the answer is cheap.
+#
+# NSBundle looks the class up by its OBJECTIVE-C runtime name. A bare Swift class registers
+# as "Module.Class" and is emitted under the mangled symbol _TtC<n><module><n><class>; an
+# explicit @objc(Name) overrides that and emits a plain _OBJC_CLASS_$_<Name>. Accept either,
+# so renaming the class or dropping the attribute is caught rather than shipped.
+echo "==> Verifying principal class"
+DECLARED="$(/usr/libexec/PlistBuddy -c 'Print :NSPrincipalClass' "${BUNDLE}/Contents/Info.plist")"
+if [[ "${DECLARED}" == *.* ]]; then
+  MODULE="${DECLARED%%.*}"
+  CLASS="${DECLARED#*.}"
+  EXPECTED="_OBJC_CLASS_\$__TtC${#MODULE}${MODULE}${#CLASS}${CLASS}"
+else
+  EXPECTED="_OBJC_CLASS_\$_${DECLARED}"
+fi
+if nm -gU "${BUNDLE}/Contents/MacOS/${PRODUCT}" | grep -qF -- "${EXPECTED}"; then
+  echo "    ${DECLARED} -> ${EXPECTED}"
+else
+  echo "" >&2
+  echo "ERROR: Info.plist declares NSPrincipalClass '${DECLARED}', which is not a class in" >&2
+  echo "       the built binary. Expected the symbol ${EXPECTED}." >&2
+  echo "       Objective-C classes actually present:" >&2
+  nm -gU "${BUNDLE}/Contents/MacOS/${PRODUCT}"     | sed -n 's/.*_OBJC_CLASS_\$_//p' | sort -u | sed 's/^/         /' >&2
+  exit 1
+fi
+
 echo ""
 echo "Built ${BUNDLE}"
 echo "Install:  cp -R \"${BUNDLE}\" ~/Library/Screen\\ Savers/"
