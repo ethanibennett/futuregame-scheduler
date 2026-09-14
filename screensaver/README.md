@@ -55,9 +55,14 @@ the `DASHBOARD_TOKEN` value from the server environment.
 
 The URL is on the **dashboard**, not on this server:
 
+```json
+{ "url": "https://dashboard.futurega.me", "token": "<DASHBOARD_TOKEN>" }
 ```
-https://dashboard.futurega.me/d/<DASHBOARD_TOKEN>
-```
+
+`url` is the **origin only**. `render.sh` composes the page URL itself --
+`d['url'].rstrip('/') + '/d/' + d['token']` -- so putting the full page URL in
+there yields `.../d/<token>/d/<token>`, a 404, and the silent-stale failure
+described below.
 
 This repo's own history says otherwise and will mislead you: `a5e2450 Cockpit
 screensaver: serve the flight-deck at /d/:token` added that route HERE, and the
