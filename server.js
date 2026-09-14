@@ -12448,6 +12448,23 @@ initDatabase().then(() => {
     } catch (err) {
       console.error('[testflight] watchdog setup error:', err.message);
     }
+    // Render deploy-failure watchdog: a failed build leaves the PREVIOUS deploy
+    // serving, so the site stays up and nothing shipped — on 2026-09-14 that ran
+    // for sixteen hours and twelve builds before anyone noticed. Ticks at :10/:40,
+    // clear of mtt-emit :15, feed ingest :20, roster :35 and testflight :05/:25/:45.
+    // Opt-in, and box-only on purpose: a watchdog inside the deploy cannot report
+    // its own failure to deploy.
+    try {
+      if (process.env.RENDER_DEPLOY_WATCHDOG === '1') {
+        const { runWatchdog: runRenderWatchdog } = require('./scripts/render-deploy-watchdog');
+        cron.schedule('10,40 * * * *', () => {
+          runRenderWatchdog().catch((err) => console.error('[render] watchdog error:', err.message));
+        }, { timezone: CONSOLE_TZ });
+        console.log('[render] deploy-failure watchdog armed (:10, :40)');
+      }
+    } catch (err) {
+      console.error('[render] watchdog setup error:', err.message);
+    }
   });
 
   const shutdown = () => {

@@ -645,15 +645,26 @@ export function isSideEvent(t) {
   return /\bside event\b/i.test(t.event_name || '');
 }
 
+/* Is this event played online?
+   The column is authoritative; the venue-name test is the fallback for rows that
+   predate it (WSOP Online was the only online venue that ever existed here, and
+   the string compare below is what used to answer this question everywhere). */
+export function isOnline(t) {
+  if (!t) return false;
+  if (t.is_online) return true;
+  const v = (t.venue || '').toLowerCase();
+  return v === 'wsop online' || v === 'wsop.com';
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;
   if ((t.category || '').toLowerCase() === 'side') return false;
   const v = (t.venue || '').toLowerCase();
-  const isOnline = v === 'wsop online' || v === 'wsop.com';
-  if (!v.includes('horseshoe') && !v.includes('paris') && v !== 'wsop europe' && !isOnline) return false;
+  const online = isOnline(t);
+  if (!v.includes('horseshoe') && !v.includes('paris') && v !== 'wsop europe' && !online) return false;
   const name = (t.event_name || '').toLowerCase();
-  if (name.includes('circuit') && v !== 'wsop europe' && !isOnline) return false;
+  if (name.includes('circuit') && v !== 'wsop europe' && !online) return false;
   const info = getVenueInfo(t.venue);
   if (/^WSOPC/.test(info.longName)) return false;
   return !NON_BRACELET_KEYWORDS.some(kw => name.includes(kw));
@@ -1037,9 +1048,16 @@ export function parseDateTimeInTz(date, time, venue) {
    buy-in band that the list would then refuse to show. A venue with no
    coordinates is excluded by both location modes, which is the existing
    behaviour and is deliberate: an unknown position cannot be said to be near
-   anything. */
+   anything.
+
+   An ONLINE event is the one case where that rule is wrong rather than strict.
+   It has no coordinates because it has no place, not because we failed to look
+   one up — so every location filter would hide all of it, with nothing on screen
+   to say why. Online is answered by its own predicate (matchesOnline) instead,
+   and location abstains here. */
 export function matchesLocation(t, filters) {
   if (!filters) return true;
+  if (isOnline(t)) return true;
   if (filters.maxDistance && filters.userLocation) {
     const coords = getVenueCoords(t.venue);
     if (!coords) return false;
@@ -1051,6 +1069,17 @@ export function matchesLocation(t, filters) {
     const regionDef = LOCATION_REGIONS[filters.locationRegion];
     if (regionDef && (!coords || !regionDef.test(coords))) return false;
   }
+  return true;
+}
+
+/* Should this event show, given the Online toggle?
+   Separate from matchesLocation on purpose: one answers "is it near you", the
+   other "do you want to see online play at all", and an online event has to pass
+   the second whatever the first says. Defaults to showing — an absent filters
+   object, or a filter set saved before this existed, must not hide events. */
+export function matchesOnline(t, filters) {
+  if (!filters) return true;
+  if (filters.showOnline === false && isOnline(t)) return false;
   return true;
 }
 

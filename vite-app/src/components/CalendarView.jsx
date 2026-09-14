@@ -8,7 +8,7 @@ import {
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
   haptic, VENUE_MAP, getVenueBrandColor, getVenueCoords, haversineDistance,
   VENUE_TO_SERIES, LOCATION_REGIONS,
-  isSideEvent,
+  isSideEvent, isOnline,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
@@ -111,7 +111,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   }, [open]);
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
-    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo;
+    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
+    filters.showOnline === false;
   /* Location is deliberately NOT counted here. It survives "Clear all",
      so counting it would show a Clear button that then appears to do
      nothing when a location is the only thing set. TournamentsView's
@@ -666,6 +667,10 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
       tagTeamOnly: false, employeesOnly: false, hideSatellites: true, hideRestarts: true,
       hideSideEvents: false,
+      // Must match TournamentsView's DEFAULT_FILTERS: the two views filter the same
+      // tournaments from the same array, and a field present in one and absent in the
+      // other produces two different lists from identical data.
+      showOnline: true,
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
@@ -834,13 +839,16 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
         // Both location filters treat an unknown location the same way: it can't be shown
         // to match, so it's excluded. Previously distance kept un-located events (listing
         // events nationwide under "within 50 miles") while region dropped them.
-        if (filters.maxDistance && filters.userLocation) {
+        // Online events have no place, so the location tests below cannot speak for them;
+        // they are governed by the Online switch instead. Same rule as matchesLocation().
+        if (filters.showOnline === false && isOnline(t)) return false;
+        if (!isOnline(t) && filters.maxDistance && filters.userLocation) {
           const coords = getVenueCoords(t.venue);
           if (!coords) return false;
           const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
           if (dist > Number(filters.maxDistance)) return false;
         }
-        if (filters.locationRegion) {
+        if (!isOnline(t) && filters.locationRegion) {
           const coords = getVenueCoords(t.venue);
           const regionDef = typeof LOCATION_REGIONS !== 'undefined' && LOCATION_REGIONS[filters.locationRegion];
           if (regionDef) { if (!coords || !regionDef.test(coords)) return false; }
