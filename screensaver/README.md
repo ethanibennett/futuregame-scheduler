@@ -110,11 +110,35 @@ each change in what it draws:
 log show --last 10m --predicate 'subsystem == "me.futurega.DashboardSaver"' --style compact
 ```
 
-Read it against the three things black can mean:
+**Check the signature first.** A screensaver must be signed by a real
+certificate chain. `legacyScreenSaver` loads the bundle through AMFI, which
+refuses an ad-hoc signature outright:
+
+```
+amfid: .../DashboardSaver not valid: AppleMobileFileIntegrityError Code=-423
+       "The file is adhoc signed or signed by an unknown certificate chain"
+```
+
+Nothing else reports it. The bundle links, `codesign` verifies it, System
+Settings lists and selects it, and the log even says `Setting module
+"DashboardSaver"` — then the principal class is never instantiated, so the
+screen is black and the saver's own logging never runs to say so. `build.sh`
+now picks a real identity automatically and fails if it cannot, but if you see
+black with no log lines at all, read amfid before anything else:
+
+```bash
+log show --last 10m --predicate 'process == "amfid"' --style compact | grep -i dashboard
+```
+
+Notarization is not needed — that gates Gatekeeper on quarantined downloads,
+and this bundle is built locally.
+
+Once the signature is good, read the saver's own log against the three things
+black can mean:
 
 | what the log says | what is wrong |
 |---|---|
-| nothing at all | the bundle never loaded — check `codesign -dv` and the `NSPrincipalClass` in `Info.plist` |
+| nothing at all | the bundle never loaded — check amfid above, then `NSPrincipalClass` in `Info.plist` |
 | `init` but no `draw ->` | the view exists and is never asked to draw |
 | `draw -> placeholder` | drawing fine, no frame — the `no frame:` line above it says whether the PNG is missing or unreadable |
 | `draw -> frame` | the saver is working; you are looking at something else |
