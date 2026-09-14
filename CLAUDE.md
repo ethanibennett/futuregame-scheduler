@@ -69,6 +69,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   newest build), capped at 3 attempts per SHA, then opens a handoff issue for the Mac.
   Opt-in via `TESTFLIGHT_WATCHDOG=1` so only this box runs it; Render has no `gh` and no
   business dispatching builds. Mitigation only — the cure for the dark wake is on the Mac.
+- **Online feed (in)**: `online-poker-watcher` emits into `./online-feed/`, ingested by
+  `ingestOnlineFeed()` at boot and hourly at :20, alongside the MTT feed. **Each feed owns
+  its rows through `source_pdf`** (`'mtt-feed'` / `'online-feed'`) and every operation is
+  scoped by that tag — `pruneFeedVenues(keep, label, tag)`, `ingestFeed(dir, tag, label,
+  idPrefix)`, and the push's `source_pdf IN (...)`. This is not tidiness: prune deletes every
+  feed row whose venue is absent from the list it is handed, so an unscoped prune from one
+  feed empties the other (it would have taken 1,798 live rows). `feedStableId` takes a prefix
+  per feed (`MTT-` / `ONL-`) because `stable_id` is UNIQUE and two feeds can carry a series
+  whose sanitised name and event_number coincide.
 - **Backer surface stays here**: `/b/:token` public pages, Sunday weekly digest, backer
   web-push (`backer_push_subs`), `console_records` store='backers' (fed by seam #3).
 
@@ -97,6 +106,7 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 | cash watcher | `D:\projects\cash-game-watcher` | cash-game-watcher |
 | mtt watcher | `D:\projects\mtt-series-watcher` | mtt-series-watcher |
 | dashboard | `D:\projects\wsop-console` (prod on Render + WSL standby) | wsop-console |
+| online watcher | `D:\projects\online-poker-watcher` | not yet on GitHub |
 
 The Mac is the Xcode build node (iOS/Watch/screensaver) — see `docs/mac-build.md`.
 Ship the app with `./scripts/ios-testflight.sh` there (NOT `deploy.sh --ios`, which
