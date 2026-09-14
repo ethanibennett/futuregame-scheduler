@@ -59,8 +59,17 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).
   - #3 roster: `syncBackerRoster()` pulls `dashboard.futurega.me/api/roster/:token`
-    hourly at :35 + at boot (self-disables without `DASHBOARD_TOKEN`; the local pm2
-    instance has no token, so local roster sync is off by design).
+    hourly at :35 + at boot (self-disables without `DASHBOARD_TOKEN`).
+    ⚠ **The local pm2 instance DOES have a token and DOES sync.** This file used
+    to say the opposite — "no token, so local roster sync is off by design" — and
+    that was wrong, measurably: the local DB mirrors the live backer roster,
+    including each backer's TOKEN, which is the whole of the authentication on
+    their `/b/:token` page. So `poker-tournaments.db` on this box holds live
+    credentials, and any copy of it does too. A scratch copy was committed to
+    this PUBLIC repo on 2026-09-14 for exactly that reason. Treat the local DB
+    and every copy as production-sensitive.
+    A rotation done in the dashboard propagates through this seam and re-keys the
+    backer's data automatically — see `rotateBackerToken()`.
 - **TestFlight watchdog (out)**: `scripts/testflight-watchdog.js`, scheduled in-process at
   :05/:25/:45. GitHub force-fails a build at exactly 600s when the Mac takes a queued job
   during a brief "dark wake" and then sleeps again, and nothing retries it — #91 sat
