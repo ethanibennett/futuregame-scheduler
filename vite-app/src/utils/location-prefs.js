@@ -7,8 +7,14 @@ import { API_URL } from './api.js';
  * choice follow the user — a region picked on the desktop did not exist on the
  * phone, because localStorage is per-browser by definition.
  *
- * Both hold the same four fields the filter state already uses, so neither side
- * has to know the other's shape.
+ * Both hold the same location fields the filter state already uses, so neither
+ * side has to know the other's shape.
+ *
+ * `jurisdiction` rides along because it is the same kind of fact — a standing
+ * answer about where the user is, not a filter they set for one look at the
+ * list — and because it is the one field that can be set with no location at
+ * all: a player who never picks a radius can still say "I am in Nevada", and
+ * the emptiness test below has to count that as something worth saving.
  */
 const KEY = 'savedLocation';
 
@@ -23,7 +29,7 @@ export function readLocalLocation() {
 
 export function writeLocalLocation(loc) {
   try {
-    if (loc && (loc.userLocation || loc.locationRegion)) {
+    if (loc && (loc.userLocation || loc.locationRegion || loc.jurisdiction)) {
       localStorage.setItem(KEY, JSON.stringify(loc));
     } else {
       localStorage.removeItem(KEY);
@@ -59,7 +65,7 @@ export async function fetchServerLocation(token) {
  */
 export function pushServerLocation(token, loc) {
   if (!token) return;
-  const body = (loc && (loc.userLocation || loc.locationRegion)) ? loc : null;
+  const body = (loc && (loc.userLocation || loc.locationRegion || loc.jurisdiction)) ? loc : null;
   fetch(`${API_URL}/api/user/location`, {
     method: 'PUT',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -73,6 +79,8 @@ export function sameLocation(a, b) {
     locationRegion: (l && l.locationRegion) || null,
     maxDistance: (l && l.maxDistance) || '',
     locationLabel: (l && l.locationLabel) || null,
+    jurisdiction: (l && l.jurisdiction) || null,
+    jurisdictionManual: !!(l && l.jurisdictionManual),
   });
   return norm(a) === norm(b);
 }

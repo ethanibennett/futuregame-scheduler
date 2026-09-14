@@ -9552,11 +9552,53 @@ app.get('/api/geocode', authenticateToken, async (req, res) => {
       lng: parseFloat(r.lon),
       display: r.display_name,
       short: [r.address?.city || r.address?.town || r.address?.village || r.address?.county, r.address?.state, r.address?.country_code?.toUpperCase()].filter(Boolean).join(', '),
+      /* The state, which addressdetails=1 has always returned and this route has
+         always thrown away after building `short`. Online availability is decided
+         state by state, so a location that knows its town but not its state
+         cannot answer the only question the online filter asks. Full name as
+         Nominatim gives it; the client maps it to a postal code, because that
+         mapping is a list of 51 strings and belongs next to the lists that use
+         it, not here. */
+      region: r.address?.state || null,
+      country: r.address?.country_code?.toUpperCase() || null,
     }));
     res.json({ results });
   } catch (err) {
     console.error('[Geocode] Error:', err.message);
     res.status(500).json({ error: 'Geocoding failed' });
+  }
+});
+
+/* The same answer from the other direction: browser geolocation yields a lat/lng
+   and nothing else, so "Current Location" knew where the user was standing but
+   not which state it was in. Nominatim's /reverse closes that gap.
+   zoom=8 asks for the administrative level that actually carries `state` —
+   a finer zoom returns a building and a coarser one a country. */
+app.get('/api/geocode/reverse', authenticateToken, async (req, res) => {
+  const lat = parseFloat(req.query.lat);
+  const lng = parseFloat(req.query.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({ error: 'Missing or invalid lat/lng' });
+  }
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?` +
+      `lat=${lat}&lon=${lng}&format=json&zoom=8&addressdetails=1`;
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'FutureGame-PokerScheduler/1.0' }
+    });
+    const r = await resp.json();
+    const a = r && r.address ? r.address : {};
+    res.json({
+      region: a.state || null,
+      country: a.country_code ? a.country_code.toUpperCase() : null,
+      short: [a.city || a.town || a.village || a.county, a.state].filter(Boolean).join(', ') || null,
+    });
+  } catch (err) {
+    /* Never fatal: the caller already has coordinates and a working radius
+       filter. A failed reverse lookup costs the availability toggle, not the
+       location. */
+    console.error('[Geocode] Reverse error:', err.message);
+    res.json({ region: null, country: null, short: null });
   }
 });
 

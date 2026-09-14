@@ -10,6 +10,7 @@ import {
   VENUE_TO_SERIES, LOCATION_REGIONS,
   isSideEvent, isOnline,
 } from '../utils/utils.js';
+import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
@@ -112,7 +113,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
     filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
-    filters.showOnline === false;
+    filters.showOnline === false || filters.onlyAvailableOnline === true;
   /* Location is deliberately NOT counted here. It survives "Clear all",
      so counting it would show a Clear button that then appears to do
      nothing when a location is the only thing set. TournamentsView's
@@ -671,21 +672,24 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       // tournaments from the same array, and a field present in one and absent in the
       // other produces two different lists from identical data.
       showOnline: true,
+      onlyAvailableOnline: false,
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
       locationLabel: savedLoc.locationLabel || null,
+      jurisdiction: savedLoc.jurisdiction || null,
+      jurisdictionManual: !!savedLoc.jurisdictionManual,
     };
   });
   // Persist location selection across sessions
   useEffect(() => {
-    const { userLocation, locationRegion, maxDistance, locationLabel } = filters;
-    const loc = { userLocation, locationRegion, maxDistance, locationLabel };
+    const { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual } = filters;
+    const loc = { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual };
     writeLocalLocation(loc);
     // Follows the user: localStorage is per-browser, so without this a region
     // picked on the desktop does not exist on the phone.
     pushServerLocation(token, loc);
-  }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel]);
+  }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel, filters.jurisdiction, filters.jurisdictionManual]);
   /* The account's copy, once we have a token. localStorage has already painted
      so there is no flash; this only corrects it when the choice was made on
      another device.
@@ -705,7 +709,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
     fetchServerLocation(token).then(remote => {
       if (cancelled || remote === undefined) return;
       const local = readLocalLocation();
-      if (!remote && local && (local.userLocation || local.locationRegion)) {
+      if (!remote && local && (local.userLocation || local.locationRegion || local.jurisdiction)) {
         pushServerLocation(token, local);
         return;
       }
@@ -715,6 +719,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
         locationRegion: (remote && remote.locationRegion) || null,
         maxDistance: (remote && remote.maxDistance) || '',
         locationLabel: (remote && remote.locationLabel) || null,
+        jurisdiction: (remote && remote.jurisdiction) || null,
+        jurisdictionManual: !!(remote && remote.jurisdictionManual),
       }));
     });
     return () => { cancelled = true; };
@@ -841,7 +847,14 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
         // events nationwide under "within 50 miles") while region dropped them.
         // Online events have no place, so the location tests below cannot speak for them;
         // they are governed by the Online switch instead. Same rule as matchesLocation().
-        if (filters.showOnline === false && isOnline(t)) return false;
+        if (isOnline(t)) {
+          if (filters.showOnline === false) return false;
+          /* Same predicate as matchesOnline()'s availability arm. Open-coded
+             here only because the rest of this block is; the two views must
+             agree or the same data produces two lists. */
+          if (filters.onlyAvailableOnline && filters.jurisdiction
+              && !isSiteAvailable(t.site, filters.jurisdiction)) return false;
+        }
         if (!isOnline(t) && filters.maxDistance && filters.userLocation) {
           const coords = getVenueCoords(t.venue);
           if (!coords) return false;

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { LOCATION_REGIONS } from '../utils/utils.js';
+import { US_STATES, stateCodeFrom } from '../utils/online-sites.js';
 import { API_URL } from '../utils/api.js';
 import Icon from './Icon.jsx';
 
@@ -32,15 +33,40 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
     searchTimerRef.current = setTimeout(() => doGeoSearch(val), 400);
   };
 
+  /* Where the user IS decides which online rooms they can enter, so a location
+     the user sets by hand also answers the jurisdiction question — unless they
+     have answered it themselves. A manual pick outranks a derived one in both
+     directions: someone registered in Nevada and sitting in an airport in Ohio
+     wants the Nevada answer, and a lookup must not quietly take it away. */
+  const learnJurisdiction = (f, code) => (
+    !code || f.jurisdictionManual ? f : { ...f, jurisdiction: code }
+  );
+
   const selectGeoResult = (r) => {
-    setFilters(f => ({
+    setFilters(f => learnJurisdiction({
       ...f,
       userLocation: { lat: r.lat, lng: r.lng },
       maxDistance: radius || '100',
       locationRegion: null,
       locationLabel: r.short || r.display,
-    }));
+    }, r.country === 'US' ? stateCodeFrom(r.region) : null));
     onClose();
+  };
+
+  /* Browser geolocation gives coordinates and nothing else. One reverse lookup
+     turns them into a state. It runs after the location is already set and
+     never blocks it: if it fails, the radius filter still works and the
+     availability toggle is simply left without an answer. */
+  const reverseLookup = (lat, lng) => {
+    fetch(`${API_URL}/geocode/reverse?lat=${lat}&lng=${lng}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(d => {
+        const code = d && d.country === 'US' ? stateCodeFrom(d.region) : null;
+        if (code) setFilters(f => learnJurisdiction(f, code));
+      })
+      .catch(() => { /* the location stands; only the state is unknown */ });
   };
 
   return (
@@ -97,6 +123,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
             navigator.geolocation.getCurrentPosition(
               (pos) => {
                 setFilters(f => ({...f, userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }, maxDistance: radius || '100', locationRegion: null, locationLabel: 'Current Location'}));
+                reverseLookup(pos.coords.latitude, pos.coords.longitude);
                 onClose();
               },
               () => { toast.error('Could not get your location'); },
@@ -134,6 +161,40 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           {filters.locationRegion === key && <span style={{marginLeft:'auto',fontSize:'0.75rem'}}>{'✓'}</span>}
         </button>
       ))}
+      {/* Jurisdiction. Physically separate from the region buttons above it
+          because it answers a different question: those filter which VENUES to
+          show, this one says which state's rules apply to the user. The two are
+          usually the same place and occasionally not, which is exactly why the
+          override exists. */}
+      <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
+      <div style={{padding:'var(--space-lg) var(--space-xl)'}}>
+        <label htmlFor="jurisdiction-select" style={{
+          display:'block',fontSize:'0.7rem',letterSpacing:'0.06em',textTransform:'uppercase',
+          color:'var(--text-muted)',marginBottom:'6px',
+        }}>
+          Your state {filters.jurisdiction && !filters.jurisdictionManual && (
+            <span style={{textTransform:'none',letterSpacing:0}}>· from location</span>
+          )}
+        </label>
+        <select id="jurisdiction-select" value={filters.jurisdiction || ''}
+          onChange={e => {
+            const v = e.target.value || null;
+            setFilters(f => ({ ...f, jurisdiction: v, jurisdictionManual: !!v }));
+          }}
+          style={{
+            width:'100%',padding:'6px 8px',fontSize:'0.82rem',background:'var(--bg)',
+            color:'var(--text)',border:'1px solid var(--border)',
+            borderRadius:'var(--radius)',outline:'none',
+          }}>
+          <option value="">Not set</option>
+          {US_STATES.map(([code, name]) => (
+            <option key={code} value={code}>{name}</option>
+          ))}
+        </select>
+        <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginTop:'6px',lineHeight:1.4}}>
+          Decides which online rooms are marked available to you.
+        </div>
+      </div>
       {(filters.locationRegion || filters.userLocation) && (
         <>
           <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
