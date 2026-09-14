@@ -19,6 +19,25 @@ ts() { date '+%Y-%m-%d %H:%M:%S'; }
 URL=$(/usr/bin/python3 -c "import json;d=json.load(open('$CFG'));print(d['url'].rstrip('/')+'/d/'+d['token'])" 2>>"$LOG")
 [ -n "$URL" ] || { echo "$(ts) ERROR bad config.json" >>"$LOG"; exit 1; }
 
+# Pre-flight the URL before spending a render on it.
+#
+# Chrome screenshots an error page as happily as a good one, so the render
+# itself cannot tell us the page was wrong: a bad or rotated token produced a
+# 26 KB picture of the word "Not found" and this script logged "wrote frame"
+# every minute while the saver showed it. That is the silent-stale failure the
+# README warns about, reached with every step reporting success.
+#
+# Asking for the status is exact, where judging the PNG by its size would be a
+# guess with a threshold in it -- 26 KB against 806 KB is obvious, a redesign
+# that halves the page is not. A non-200 keeps the previous frame rather than
+# overwriting it: a stale dashboard is worth more than a picture of an error,
+# and the log says which one you are looking at.
+STATUS=$(/usr/bin/curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$URL" 2>>"$LOG")
+if [ "${STATUS:-000}" != "200" ]; then
+  echo "$(ts) ERROR dashboard returned HTTP ${STATUS:-000} - keeping the previous frame" >>"$LOG"
+  exit 1
+fi
+
 TMP="$SUPPORT/.render.$$.png"
 rm -f "$TMP"
 # TZ pins the page's displayed clock/dateline to Eastern regardless of the laptop's
