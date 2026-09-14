@@ -71,6 +71,24 @@ jobs:
         # only git calls below work fine at depth 1.
         uses: actions/checkout@v4
 
+      - name: Deepen history for the build-number floor
+        # Commits only — no blobs, no trees. The build number is floored by the
+        # commit count, and `git rev-list --count HEAD` reads 1 on the shallow
+        # checkout above, which would make that floor silently do nothing.
+        #
+        # NOT fetch-depth: 0 on the checkout. That was tried and reverted: this
+        # repo is ~218 MB across 57 branches, and refetching all of it before
+        # every build failed repeatedly mid-fetch ("RPC failed ... early EOF")
+        # and surfaced as "self-hosted runner lost communication". --filter=tree:0
+        # pulls commit objects and nothing else, which is a few hundred KB for
+        # ~1,250 commits.
+        #
+        # continue-on-error because this must not be able to fail a build: if
+        # the fetch does not happen the count stays 1, the floor never binds,
+        # and the number comes from App Store Connect exactly as before.
+        continue-on-error: true
+        run: git fetch --filter=tree:0 --unshallow origin HEAD 2>/dev/null || git fetch --filter=tree:0 --deepen=5000 origin HEAD
+
       - name: Show what triggered this
         run: |
           echo "event:  ${{ github.event_name }}"
