@@ -1535,7 +1535,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               ))}
             </div>
           </div>
-          {settings.theme === 'default' && (<>
+          {settings.theme === 'default' && (
             <div className="replayer-settings-row is-stacked">
               <div className="replayer-settings-label">Felt Color</div>
               <div className="replayer-settings-swatches">
@@ -1555,23 +1555,31 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 </span>
               </div>
             </div>
-            {/* Bright Felt lives with the colour it lights: it sets how brightly
-                the cloth is lit, not which colour it is, and only the default
-                theme's felt is driven by this picker — so it sits inside the same
-                theme gate rather than as a standalone row that also showed (inert)
-                under the custom themes. */}
-            <div className="replayer-settings-row is-stacked">
-              <div>
-                <div className="replayer-settings-label">Bright Felt</div>
-                <div className="replayer-settings-sublabel">
-                  A lit cloth instead of the dark one &mdash; the same felt colour, lit brighter.
-                </div>
+          )}
+          {/* The two felt-lighting switches sit with the colour they light —
+              directly under the swatches. Kept OUTSIDE the default-theme gate
+              above, unlike the swatches themselves: the rail strip is themed on
+              every table (each theme sets its own strip colour, styles.css:6048+),
+              so gating it to default would hide a working control on five themes.
+              Bright Felt is grouped here with it rather than off among the card
+              switches. */}
+          <div className="replayer-settings-row is-stacked">
+            <div>
+              <div className="replayer-settings-label">Bright Felt</div>
+              <div className="replayer-settings-sublabel">
+                A lit cloth instead of the dark one &mdash; the same felt colour, lit brighter.
               </div>
-              <button className={'replayer-settings-toggle' + (settings.feltBright ? ' on' : '')}
-                aria-pressed={!!settings.feltBright} aria-label="Bright felt"
-                onClick={() => onUpdate('feltBright', !settings.feltBright)} />
             </div>
-          </>)}
+            <button className={'replayer-settings-toggle' + (settings.feltBright ? ' on' : '')}
+              aria-pressed={!!settings.feltBright} aria-label="Bright felt"
+              onClick={() => onUpdate('feltBright', !settings.feltBright)} />
+          </div>
+          <div className="replayer-settings-row">
+            <div className="replayer-settings-label">Rail Light Strip</div>
+            <button className={'replayer-settings-toggle' + (settings.lightStrip ? ' on' : '')}
+              aria-pressed={!!settings.lightStrip} aria-label="Rail light strip"
+              onClick={() => onUpdate('lightStrip', !settings.lightStrip)} />
+          </div>
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Cards</div>
@@ -1633,12 +1641,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             <button className={'replayer-settings-toggle' + (settings.cardSplay ? ' on' : '')}
               aria-pressed={!!settings.cardSplay} aria-label="Splay hole cards"
               onClick={() => onUpdate('cardSplay', !settings.cardSplay)} />
-          </div>
-          <div className="replayer-settings-row">
-            <div className="replayer-settings-label">Rail Light Strip</div>
-            <button className={'replayer-settings-toggle' + (settings.lightStrip ? ' on' : '')}
-              aria-pressed={!!settings.lightStrip} aria-label="Rail light strip"
-              onClick={() => onUpdate('lightStrip', !settings.lightStrip)} />
           </div>
         </div>
         <div className="replayer-settings-group">
