@@ -790,6 +790,34 @@
       flex-direction: column;
       align-items: flex-end;
       line-height: var(--lh-tight);
+      /* The TIME is the anchor and does not move: .cal-bar-row1 stays on
+         align-items:center, which is where the time has always sat. The money
+         comes to it.
+
+         The shift is NOT one number. Rows with a guarantee have a two-line
+         money column, rows without have one, and align-items:center places a
+         column by its own height -- so a flat constant fixed the first kind and
+         threw the second 7.75px low. Measured across the list:
+
+             with guarantee     money 30.44 tall   needs 8.47px
+             without            money 14.95 tall   needs 0.72px
+
+         Both fall out of one expression. Centring puts the gap at
+         (money height - time line height) / 2 + (time ascent - buy-in ascent),
+         and a translateY percentage resolves against the element's OWN height,
+         so money height / 2 is just 50%:
+
+             50% - 19.5/2 + 3  =  50% - 6.75px
+
+         19.5px is the time's line box and 3px the difference between the two
+         faces' ascents -- Univers Condensed against Libre Baskerville, which
+         CSS cannot read. Re-measure that 6.75px if --fs-sm, the line heights or
+         either face changes; the 50% takes care of itself.
+
+         Aligning the row on baselines instead needs no constant at all, but it
+         moves the time and grows every card by 10px, which is what this
+         replaces. */
+      transform: translateY(calc(50% - var(--cal-money-baseline-shift, 6.75px)));
     }
     .cal-event-gtd {
       font-family: var(--font-condensed);
@@ -8288,19 +8316,8 @@
       gap: var(--space-xs);
       margin-left: auto;
       flex-shrink: 0;
-      /* Sat on the title's LINE BOX, not its baseline: flex-start plus a
-         margin of half the leftover line height centred the icon between the
-         line's top and bottom, and a line box extends below the baseline by
-         the descender. Measured, that left the icon's bottom edge 5.8px under
-         the name's baseline.
-         align-self: baseline instead, and the margin goes with it. An
-         inline-flex box with no in-flow baseline is aligned by its bottom
-         margin edge, which is exactly where an icon beside a title wants to
-         be: measured, the bottom now sits 1.0px above the baseline. The
-         alternative was keeping the margin and subtracting 5.8px from it —
-         the same result by a constant that stops being true the moment the
-         title's size or line-height moves. This asks the font. */
-      align-self: baseline;
+      align-self: flex-start;
+      margin-top: calc((var(--cal-title-line) - 18px) / 2);
       pointer-events: none;
     }
 
@@ -8314,68 +8331,62 @@
       pointer-events: none;
     }
 
-    /* A baseline is where the INK sits, not where the box ends.
-       align-self: baseline above lands the icon's BOX on the name's first-line
-       baseline, and that was as far as the last pass went -- but every glyph in
-       the shared 24-unit frame leaves a different amount of that frame empty
-       under its drawing. Measured in the running app with getBBox:
+    /* The NAME is the anchor and does not move: .cal-bar-row2 stays on
+       align-items:flex-start and .cal-accolades keeps its flex-start seat, so
+       the title sits exactly where it always has. The icon comes to it.
 
-           glyph        ink bottom   empty below   at 18px
-           ring            20.81         3.19       2.39px
-           bracelet        10.23        13.77      10.33px
-           crosshairs      23.71         0.29       0.22px
-           satellite       24.00         0          0
-           restart         21.01         2.99       2.24px
+       A baseline is where the INK sits, not where the box ends, and every
+       glyph leaves a different amount of the shared 24-unit frame empty under
+       its drawing. Measured with getBBox:
 
-       So the ring's drawn bottom was floating 2.4px over the line while its box
-       sat on it, and the bracelet -- a wide flat band drawn at the TOP of its
-       frame -- was 10px high. Each glyph now carries its own bearing and is
-       shifted by it, expressed as a fraction of --icon-size so it survives a
-       change of icon size.
+           glyph        ink bottom   as a fraction of the frame
+           ring            20.81            0.8671
+           bracelet        10.23            0.4263
+           crosshairs      23.71            0.9879
+           satellite       24.00            1.0000
+           restart         21.01            0.8754
 
-       A transform, deliberately: it moves the drawing without touching layout,
-       so row height, the hit box and the flex baseline all stay where they are.
-       Re-measure with getBBox if a glyph is ever redrawn. */
+       The bracelet is the outlier because it is a wide flat band drawn at the
+       TOP of its frame -- 22.58 units across, 9.56 tall -- not an undersized
+       glyph.
+
+       --accolade-anchor is the gap between the name's baseline and the top of
+       the icon's svg in this seat, measured at 11.22px; subtracting the glyph's
+       own ink depth from it lands each drawing on the baseline. A transform,
+       deliberately: it moves the ink without touching layout, so row height,
+       the hit box and the title's position are all unchanged. */
     .cal-accolades svg[data-icon],
     .cal-bar-row2 > span > svg[data-icon] {
-      --ink-bearing: 0;
-      transform: translateY(calc(var(--icon-size) * var(--ink-bearing)));
+      --accolade-anchor: 11.22px;
+      --ink-bottom: 1;
+      transform: translateY(calc(var(--accolade-anchor) - var(--icon-size) * var(--ink-bottom)));
     }
     .cal-accolades svg[data-icon="ring"],
-    .cal-bar-row2 > span > svg[data-icon="ring"]       { --ink-bearing: 0.1329; }
+    .cal-bar-row2 > span > svg[data-icon="ring"]       { --ink-bottom: 0.8671; }
     .cal-accolades svg[data-icon="bracelet"],
-    .cal-bar-row2 > span > svg[data-icon="bracelet"]   { --ink-bearing: 0.5738; }
+    .cal-bar-row2 > span > svg[data-icon="bracelet"]   { --ink-bottom: 0.4263; }
     .cal-accolades svg[data-icon="crosshairs"],
-    .cal-bar-row2 > span > svg[data-icon="crosshairs"] { --ink-bearing: 0.0121; }
+    .cal-bar-row2 > span > svg[data-icon="crosshairs"] { --ink-bottom: 0.9879; }
     .cal-accolades svg[data-icon="restart"],
-    .cal-bar-row2 > span > svg[data-icon="restart"]    { --ink-bearing: 0.1246; }
-    /* satellite's ink already reaches the foot of its frame: bearing 0. */
+    .cal-bar-row2 > span > svg[data-icon="restart"]    { --ink-bottom: 0.8754; }
+    /* satellite's ink reaches the foot of its frame: --ink-bottom stays 1. */
 
     .cal-bounty-icon { color: var(--text); opacity: 0.5; }
     .cal-ring-icon,
     .cal-bracelet-icon { color: var(--accolade); }
 
-    /* Kept for rows that have not been wrapped in .cal-accolades yet. Both
-       render sites in CalendarEventRow wrap theirs, so this currently matches
-       nothing — it takes the same baseline treatment as .cal-accolades anyway,
-       because a fallback that positions differently from the thing it falls
-       back to is worse than no fallback. */
+    /* Kept for rows that have not been wrapped in .cal-accolades yet. */
     .cal-bar-row2 > .cal-bounty-icon,
     .cal-bar-row2 > .cal-ring-icon,
     .cal-bar-row2 > .cal-bracelet-icon {
       margin-left: auto;
-      align-self: baseline;
+      align-self: flex-start;
+      margin-top: calc((var(--cal-title-line) - 18px) / 2);
     }
 
     .cal-bar-row1 {
       display: flex;
-      /* baseline, not center. The money is a two-line COLUMN — buy-in over
-         guarantee — so centring the column against the time put the buy-in's
-         baseline 8.5px above it, measured. A column flex container takes its
-         baseline from its first item, so aligning on baselines lands the
-         buy-in on the time exactly, whether or not the row carries a
-         guarantee. */
-      align-items: baseline;
+      align-items: center;
       gap: var(--space-md);
     }
 
@@ -8385,9 +8396,7 @@
        line's box (name font-size x line-height); each icon centres on it. */
     .cal-bar-row2 {
       display: flex;
-      /* baseline, so the accolade icons sit on the event name's baseline
-         rather than hanging from the top of the row. */
-      align-items: baseline;
+      align-items: flex-start;
       gap: var(--space-md);
       --cal-title-line: calc(var(--fs-sm) * var(--lh-snug));
     }
