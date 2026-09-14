@@ -670,11 +670,31 @@ export function isWsopOnline(t) {
   return v === 'wsop online' || v === 'wsop.com';
 }
 
+/** WSOP.com runs TWO trophy series and they award different hardware: the annual
+ *  Online Bracelet series (May–July) and a twelve-day Online CIRCUIT series most
+ *  months, which awards gold RINGS. Both carry site='wsop_com', so "is this
+ *  WSOP.com online" cannot tell them apart — and answering it put a bracelet on
+ *  every ring event the moment the Circuit adapter shipped.
+ *
+ *  The signal is the series, which the emitter writes into the venue as
+ *  "WSOP.com <Month> <Year> Online Circuit" against the bracelet series'
+ *  "WSOP.com <Year> Online Bracelet". Read here rather than guessed from the
+ *  event name, because the names are stripped of their series prefix by the time
+ *  they reach a card — "NLH Main Event" says nothing about which series it is.
+ *  This and the watcher's circuitSeries() must change together. */
+export function isWsopOnlineCircuit(t) {
+  if (!isWsopOnline(t)) return false;
+  return /\bonline circuit\b/i.test(String((t && t.venue) || ''));
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;
   if ((t.category || '').toLowerCase() === 'side') return false;
   const v = (t.venue || '').toLowerCase();
+  // A ring is not a bracelet. WSOP.com's Circuit series is online and is not a
+  // bracelet series, so it has to be excluded before the online test admits it.
+  if (isWsopOnlineCircuit(t)) return false;
   const online = isWsopOnline(t);
   if (!v.includes('horseshoe') && !v.includes('paris') && v !== 'wsop europe' && !online) return false;
   const name = (t.event_name || '').toLowerCase();
@@ -706,6 +726,13 @@ export function isRingEvent(t) {
   if (t.is_satellite) return false;
   if (!t.event_number) return false;
   if ((t.category || '').toLowerCase() === 'side') return false;
+  /* The ONLINE Circuit awards rings exactly as the live stops do, but its venue
+     is not a property and so has no "WSOPC …" longName to key on. Admitted
+     directly, before the longName test that only the live stops can pass. */
+  if (isWsopOnlineCircuit(t)) {
+    const n = (t.event_name || '').toLowerCase();
+    return !NON_BRACELET_KEYWORDS.some(kw => n.includes(kw));
+  }
   if (!/^WSOPC/.test(getVenueInfo(t.venue).longName || '')) return false;
   const name = (t.event_name || '').toLowerCase();
   return !NON_BRACELET_KEYWORDS.some(kw => name.includes(kw));
