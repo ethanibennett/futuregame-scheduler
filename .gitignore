@@ -143,3 +143,6 @@ mtt-feed/
 # Local smoke-test inputs (one holds a guest token)
 .smoke-*.txt
 online-feed/
+
+# Render deploy-failure watchdog state (which outcomes have been alerted)
+.render-deploy-watchdog.json
