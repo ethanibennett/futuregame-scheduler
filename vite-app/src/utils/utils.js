@@ -1,6 +1,8 @@
 // ── Utils ─────────────────────────────────────────────────
 // Converted from public/js/utils.js — window globals removed, ES module exports added
 
+import { SITE_VENUE_TIMEZONES, isSiteAvailable, siteAvailability } from './online-sites.js';
+
 // ── Haptic feedback ──
 export function haptic(ms = 15) {
   try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) { /* ignore */ }
@@ -736,12 +738,7 @@ export function getMaxEntries(reentry) {
 /* The zone each online site's events are DISPLAYED in. The watcher currently
    converts every site to Eastern before emitting, so these agree; a site emitted
    in its own advertised zone would change its entry here and there together. */
-export const ONLINE_SITE_TIMEZONES = {
-  'ACR': 'America/New_York',
-  'GGPoker': 'America/New_York',
-  'WSOP.com': 'America/New_York',
-  'Phenom': 'America/New_York',
-};
+export const ONLINE_SITE_TIMEZONES = SITE_VENUE_TIMEZONES;
 
 export function onlineVenueTimezone(venue) {
   const v = String(venue || '');
@@ -1116,8 +1113,26 @@ export function matchesLocation(t, filters) {
    object, or a filter set saved before this existed, must not hide events. */
 export function matchesOnline(t, filters) {
   if (!filters) return true;
-  if (filters.showOnline === false && isOnline(t)) return false;
+  if (!isOnline(t)) return true;
+  if (filters.showOnline === false) return false;
+  /* "Only what I can play." Removes online events on a site we KNOW is
+     unavailable in the user's state, and nothing else — an offshore site
+     publishes no state list, and dropping those would silently empty half the
+     online schedule while appearing to answer a question about licensing.
+     Without a jurisdiction the toggle cannot mean anything, so it abstains
+     rather than filtering on a blank. */
+  if (filters.onlyAvailableOnline && filters.jurisdiction) {
+    if (!isSiteAvailable(t.site, filters.jurisdiction)) return false;
+  }
   return true;
+}
+
+/** The availability of the site an event is on, for the card's caveat line.
+ *  Re-exported here so components ask utils for event facts and never have to
+ *  know a site key is what online-sites.js is indexed by. */
+export function eventAvailability(t, jurisdiction) {
+  if (!isOnline(t)) return { status: 'yes', note: null };
+  return siteAvailability(t.site, jurisdiction);
 }
 
 export function normaliseDate(d) {

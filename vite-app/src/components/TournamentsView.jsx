@@ -126,7 +126,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
     filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
-    filters.showOnline === false;
+    filters.showOnline === false || filters.onlyAvailableOnline === true;
 
   return (
     <>
@@ -504,7 +504,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
-                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,showOnline:true}))
+                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,jurisdiction:f.jurisdiction,jurisdictionManual:f.jurisdictionManual,showOnline:true,onlyAvailableOnline:false}))
               }>Clear all filters</button>
             )}
             <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
@@ -944,6 +944,16 @@ const DEFAULT_FILTERS = {
   // Online play is shown by default. It is deliberately NOT a location field: an online
   // event has no place, so every location filter would otherwise hide all of it.
   showOnline: true,
+  /* Off by default, and it stays off until the user both turns it on AND has a
+     state set. A filter about licensing that defaulted to on would silently
+     shorten the list for every user who has never told us where they are. */
+  onlyAvailableOnline: false,
+  /* Two-letter state code, or null. A standing fact about the user rather than
+     a filter, which is why it survives "Clear all" alongside the location. */
+  jurisdiction: null,
+  /* True when the user chose the state by hand. A derived lookup must not
+     overwrite a deliberate choice. */
+  jurisdictionManual: false,
 };
 
 // LocationDropdown lives in its own file now (shared with CalendarView).
@@ -966,6 +976,8 @@ export default function TournamentsView({
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
       locationLabel: savedLoc.locationLabel || null,
+      jurisdiction: savedLoc.jurisdiction || null,
+      jurisdictionManual: !!savedLoc.jurisdictionManual,
     };
   });
   // Offered as the way out of the filtered-empty state. Clears the search box
@@ -986,17 +998,19 @@ export default function TournamentsView({
       userLocation: f.userLocation,
       locationRegion: f.locationRegion,
       locationLabel: f.locationLabel,
+      jurisdiction: f.jurisdiction,
+      jurisdictionManual: f.jurisdictionManual,
     }));
   };
   // Persist location selection across sessions
   useEffect(() => {
-    const { userLocation, locationRegion, maxDistance, locationLabel } = filters;
-    const loc = { userLocation, locationRegion, maxDistance, locationLabel };
+    const { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual } = filters;
+    const loc = { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual };
     writeLocalLocation(loc);
     // Follows the user: localStorage is per-browser, so without this a region
     // picked on the desktop does not exist on the phone.
     pushServerLocation(token, loc);
-  }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel]);
+  }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel, filters.jurisdiction, filters.jurisdictionManual]);
   /* The account's copy, once we have a token. localStorage has already painted
      so there is no flash; this only corrects it when the choice was made on
      another device.
@@ -1016,7 +1030,7 @@ export default function TournamentsView({
     fetchServerLocation(token).then(remote => {
       if (cancelled || remote === undefined) return;
       const local = readLocalLocation();
-      if (!remote && local && (local.userLocation || local.locationRegion)) {
+      if (!remote && local && (local.userLocation || local.locationRegion || local.jurisdiction)) {
         pushServerLocation(token, local);
         return;
       }
@@ -1026,6 +1040,8 @@ export default function TournamentsView({
         locationRegion: (remote && remote.locationRegion) || null,
         maxDistance: (remote && remote.maxDistance) || '',
         locationLabel: (remote && remote.locationLabel) || null,
+        jurisdiction: (remote && remote.jurisdiction) || null,
+        jurisdictionManual: !!(remote && remote.jurisdictionManual),
       }));
     });
     return () => { cancelled = true; };
@@ -1498,6 +1514,22 @@ export default function TournamentsView({
                 style={{margin:0}}
               /> Online
             </label>
+            {/* Only offered once the Online switch is on — it filters nothing
+                else — and disabled with a reason when no state is set, rather
+                than silently passing everything through. */}
+            {filters.showOnline !== false && (
+              <label
+                title={filters.jurisdiction
+                  ? `Hide online events on sites not available in ${filters.jurisdiction}`
+                  : 'Set your state in the location menu to use this'}
+                style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
+                <input type="checkbox" disabled={!filters.jurisdiction}
+                  checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
+                  onChange={e => setFilters(f => ({...f, onlyAvailableOnline:e.target.checked}))}
+                  style={{margin:0}}
+                /> Available to me
+              </label>
+            )}
           </div>
         </div>
 
