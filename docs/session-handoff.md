@@ -637,6 +637,41 @@ no community board); `OV_STEP=end` or a number steps the transport;
 a grid line (median 0px, worst 3px currently). `move.mjs` still asserts
 `DISTINCT left=1 top=1 width=1 height=1`.
 
+## Online tournaments — where the plan stands (2026-09-14)
+
+Plan: `C:/Users/ethan/.claude/plans/logical-strolling-swing.md`. Watcher lives in
+`D:/projects/online-poker-watcher` (committed locally, **not on GitHub** —
+pushing it is outward-facing and is Ethan's call).
+
+Done: feed separation (#237), the `is_online`/`site` columns, the ACR adapter and
+emitter (701 rows live), the Online toggle (#239), the bracelet/timezone fixes
+(#241), and jurisdiction + availability (#242).
+
+Not done: GGPoker, WSOP.com, Phenom, PokerStars/FanDuel, BetMGM and ClubWPT Gold
+adapters; the watcher's append-only DB and collector loop (the emitter still
+fetches directly); and the payload work — `compression` middleware plus a date
+window from the client, since `/api/tournaments` accepts `startDate`/`endDate`
+and `App.jsx` sends none. The table is 3,164 rows now.
+
+### Traps this work has already paid for
+
+- **`online-sites.js` lists expire.** Every record carries `verifiedOn` and
+  `evidence`. They are claims about gambling law, not constants. Re-check before
+  trusting a filtered-out result, and move the date when you do.
+- **Never clone a feed row to seed test data.** A row with
+  `source_pdf='online-feed'` whose venue is not in the manifest is deleted by the
+  next ingest's prune, silently, at boot. Seed with a different tag.
+- **The two feeds' timezone agreement is load-bearing.** The emitter normalizes
+  every site to Eastern (`emit/online-feed.ts`, `DISPLAY_TZ`); the scheduler
+  labels a card from its venue's zone and defaults an unknown venue to PACIFIC.
+  `online-sites.js` supplies the prefix-to-zone map that bridges them. Change
+  either side alone and the card states a correct time in the wrong zone.
+- **A backslash does not survive CDP `Runtime.evaluate`.** A regex literal sent
+  as part of an expression string arrived with its escape stripped and matched
+  nothing, while a plain literal beside it matched five rows — which reads
+  exactly like a filtering bug and cost several cycles. Build regexes in-page
+  with `new RegExp('...')`.
+
 ## Open to-dos (asked for 2026-09-14, not yet started)
 
 Three UI items raised while the online-tournaments work was in flight, kept here
