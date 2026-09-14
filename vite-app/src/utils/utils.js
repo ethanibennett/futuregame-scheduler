@@ -656,12 +656,24 @@ export function isOnline(t) {
   return v === 'wsop online' || v === 'wsop.com';
 }
 
+/* WSOP's own online room, specifically — NOT "played online".
+   These are separate questions and conflating them put a bracelet icon on every
+   ACR event: isBraceletEvent used to ask "is this online", which was a safe
+   shorthand while WSOP Online was the only online venue that existed, and became
+   wrong the moment a second site arrived. */
+export function isWsopOnline(t) {
+  if (!t) return false;
+  if (t.site) return t.site === 'wsop_com';
+  const v = (t.venue || '').toLowerCase();
+  return v === 'wsop online' || v === 'wsop.com';
+}
+
 export function isBraceletEvent(t) {
   if (t.is_satellite) return false;
   if (t.is_restart) return false;
   if ((t.category || '').toLowerCase() === 'side') return false;
   const v = (t.venue || '').toLowerCase();
-  const online = isOnline(t);
+  const online = isWsopOnline(t);
   if (!v.includes('horseshoe') && !v.includes('paris') && v !== 'wsop europe' && !online) return false;
   const name = (t.event_name || '').toLowerCase();
   if (name.includes('circuit') && v !== 'wsop europe' && !online) return false;
@@ -721,6 +733,24 @@ export function getMaxEntries(reentry) {
 }
 
 // ── Venue Timezone Mapping ─────────────────────────────
+/* The zone each online site's events are DISPLAYED in. The watcher currently
+   converts every site to Eastern before emitting, so these agree; a site emitted
+   in its own advertised zone would change its entry here and there together. */
+export const ONLINE_SITE_TIMEZONES = {
+  'ACR': 'America/New_York',
+  'GGPoker': 'America/New_York',
+  'WSOP.com': 'America/New_York',
+  'Phenom': 'America/New_York',
+};
+
+export function onlineVenueTimezone(venue) {
+  const v = String(venue || '');
+  for (const site of Object.keys(ONLINE_SITE_TIMEZONES)) {
+    if (v === site || v.startsWith(site + ' ')) return ONLINE_SITE_TIMEZONES[site];
+  }
+  return null;
+}
+
 export const VENUE_TIMEZONES = {
   // Vegas (Pacific)
   'Horseshoe / Paris Las Vegas': 'America/Los_Angeles',
@@ -816,6 +846,13 @@ export function getVenueTimezone(venue) {
   if (venue === 'Personal') return getBrowserTimezone();
   const explicit = VENUE_TIMEZONES[venue];
   if (explicit) return explicit;
+  /* Online venues are named "<Site> <Series>" by the watcher and are open-ended,
+     so they cannot each have a VENUE_TIMEZONES row. The site prefix carries it.
+     This has to agree with the zone the watcher EMITS in: it writes Eastern, and
+     without this the unknown-venue fallback below labelled those same Eastern
+     times "PDT" — a three-hour lie on the card. Change one and change the other. */
+  const onlineTz = onlineVenueTimezone(venue);
+  if (onlineTz) return onlineTz;
   const info = VENUE_MAP[venue];
   if (info) {
     if (ABBR_TZ[info.abbr]) return ABBR_TZ[info.abbr];

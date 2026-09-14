@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, matchesLocation, matchesOnline } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -47,6 +47,20 @@ eq('radius set, online still shown', matchesLocation(online, radiusAndShow) && m
 const radiusAndHide = { ...nearVegas, showOnline: false };
 eq('radius set, online hidden by toggle', matchesLocation(online, radiusAndHide) && matchesOnline(online, radiusAndHide), false);
 eq('distant live event stays hidden either way', matchesLocation(texas, radiusAndShow), false);
+
+console.log('isWsopOnline — a bracelet is a WSOP thing, not an online thing');
+const acr   = { event_name: 'OSSXL #118H - $60,000 GTD', venue: 'ACR OSS XL', is_online: 1, site: 'acr' };
+const wsopO = { event_name: 'NLH Bracelet', venue: 'WSOP Online', is_online: 1, site: 'wsop_com' };
+eq('an ACR event is online', isOnline(acr), true);
+eq('an ACR event is NOT WSOP online', isWsopOnline(acr), false);
+eq('a WSOP.com event is WSOP online', isWsopOnline(wsopO), true);
+eq('legacy WSOP Online row, no site column', isWsopOnline({ venue: 'WSOP Online' }), true);
+
+console.log('the clock label must match the emitted value');
+eq('ACR series resolves to Eastern', getVenueTimezone('ACR OSS XL'), 'America/New_York');
+eq('the bare site schedule too', getVenueTimezone('ACR Schedule'), 'America/New_York');
+eq('GGPoker likewise', getVenueTimezone('GGPoker Bounty Hunters'), 'America/New_York');
+eq('a live venue is untouched by the prefix rule', getVenueTimezone('Horseshoe / Paris Las Vegas'), 'America/Los_Angeles');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
