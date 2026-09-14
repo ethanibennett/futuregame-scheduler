@@ -733,15 +733,22 @@ now DECLARES the token — it previously existed only in pm2's saved dump with n
 declared source, so a `pm2 delete` would have dropped it and roster sync would
 have stopped silently), and the GitHub secret in wsop-console.
 
+All nine pm2 apps are on the new token (verified by SHA-256, 0 stale).
+
 STILL ON THE OLD TOKEN — these are why PREVIOUS must stay set:
   * installed iOS/Watch builds — needs a TestFlight build (the GitHub secret is
     already updated, so the next build picks it up)
   * the Mac screensaver config JSON
-  * cash-game-watcher — its stale value comes from the pm2 DAEMON's own
-    environment, which it passes to every child; it beat both `.env` and a clean
-    delete/re-add. Its `ecosystem.config.cjs` is TRACKED, so the value must not
-    go there. Fix it with `pm2 kill` + resurrect from a shell exporting the new
-    value, or by updating the daemon env — not by editing the tracked file.
+
+⚠ `pm2 kill` + `pm2 resurrect` does NOT fix a stale env var. Resurrect restores
+each app's env FROM THE DUMP, and the dump wins over the shell — every app came
+back with the old value even though the reviving shell exported the new one.
+Only `pm2 restart <app> --update-env`, from a shell that exports the new value,
+re-reads it. The one app that was already correct was the scheduler, because its
+gitignored ecosystem.config.cjs DECLARES the token rather than inheriting it,
+which is the pattern the rest should move to.
+cash-game-watcher's ecosystem.config.cjs is TRACKED — its token must never go
+there.
 
 When `[dashboard-token] … authenticated with DASHBOARD_TOKEN_PREVIOUS` stops
 appearing in both services' logs, every consumer has caught up: unset
