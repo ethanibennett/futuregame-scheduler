@@ -57,31 +57,42 @@ lipo -info "${BUNDLE}/Contents/MacOS/${PRODUCT}" | sed 's/^/    /'
 
 # The principal class is the one thing that fails completely silently: if Info.plist names a
 # class the Objective-C runtime does not have, the bundle still links, still passes codesign,
-# and still installs -- principalClass() just returns nil, the engine instantiates nothing,
-# and the screensaver is black with not a single line logged anywhere. That cost a long
-# debugging session once. Check it here, where the answer is cheap.
+# and still installs -- principalClass just returns nil, the engine instantiates nothing, and
+# the screensaver is black with not a single line logged anywhere. That cost a long debugging
+# session once.
 #
-# NSBundle looks the class up by its OBJECTIVE-C runtime name. A bare Swift class registers
-# as "Module.Class" and is emitted under the mangled symbol _TtC<n><module><n><class>; an
-# explicit @objc(Name) overrides that and emits a plain _OBJC_CLASS_$_<Name>. Accept either,
-# so renaming the class or dropping the attribute is caught rather than shipped.
+# Ask the runtime rather than the symbol table. An earlier version of this check grepped nm
+# for _OBJC_CLASS_$_<name> and found nothing at all, because a non-public Swift class emits
+# that symbol with local visibility and `nm -g` only lists global ones -- so it reported a
+# failure it could not actually see either way. Loading the bundle and reading principalClass
+# back is exactly what NSBundle does for the screensaver engine, so it cannot disagree with
+# what happens at runtime.
 echo "==> Verifying principal class"
 DECLARED="$(/usr/libexec/PlistBuddy -c 'Print :NSPrincipalClass' "${BUNDLE}/Contents/Info.plist")"
-if [[ "${DECLARED}" == *.* ]]; then
-  MODULE="${DECLARED%%.*}"
-  CLASS="${DECLARED#*.}"
-  EXPECTED="_OBJC_CLASS_\$__TtC${#MODULE}${MODULE}${#CLASS}${CLASS}"
-else
-  EXPECTED="_OBJC_CLASS_\$_${DECLARED}"
-fi
-if nm -gU "${BUNDLE}/Contents/MacOS/${PRODUCT}" | grep -qF -- "${EXPECTED}"; then
-  echo "    ${DECLARED} -> ${EXPECTED}"
+RESOLVED="$(/usr/bin/xcrun swift - <<SWIFT 2>/dev/null
+import Foundation
+guard let b = Bundle(path: "${HERE}/${BUNDLE}"), b.load(), let c = b.principalClass else { exit(0) }
+print(NSStringFromClass(c))
+SWIFT
+)" || true   # set -e must not kill the build before we can report what went wrong
+
+if [[ "${RESOLVED}" == "${DECLARED}" ]]; then
+  echo "    ${DECLARED} resolves"
 else
   echo "" >&2
-  echo "ERROR: Info.plist declares NSPrincipalClass '${DECLARED}', which is not a class in" >&2
-  echo "       the built binary. Expected the symbol ${EXPECTED}." >&2
-  echo "       Objective-C classes actually present:" >&2
-  nm -gU "${BUNDLE}/Contents/MacOS/${PRODUCT}"     | sed -n 's/.*_OBJC_CLASS_\$_//p' | sort -u | sed 's/^/         /' >&2
+  echo "ERROR: Info.plist declares NSPrincipalClass '${DECLARED}', but loading the bundle" >&2
+  if [[ -z "${RESOLVED}" ]]; then
+    echo "       resolves no principal class at all." >&2
+  else
+    echo "       resolves '${RESOLVED}' instead." >&2
+  fi
+  echo "" >&2
+  echo "       An explicit @objc(Name) sets the Objective-C runtime name to the unqualified" >&2
+  echo "       Name; without it a Swift class registers as Module.Class. Info.plist must" >&2
+  echo "       match whichever one the source uses." >&2
+  echo "" >&2
+  echo "       Objective-C class symbols in the binary:" >&2
+  nm -U "${BUNDLE}/Contents/MacOS/${PRODUCT}" 2>/dev/null     | sed -n 's/.*_OBJC_CLASS_\$_//p' | sort -u | sed 's/^/         /' >&2
   exit 1
 fi
 
