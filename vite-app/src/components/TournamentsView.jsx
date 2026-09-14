@@ -1638,20 +1638,20 @@ export default function TournamentsView({
               level with the icon buttons at left. Row 2 (below) forces itself onto
               the next line, keeping the phone (~380px) from scrolling sideways to
               reach "Available to me". */}
-          <div style={{display:'flex',gap:'10px',alignItems:'center',marginLeft:'auto'}}>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <div style={{display:'flex',gap:'6px',alignItems:'center',marginLeft:'auto'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSatellites}
                 onChange={e => setFilters(f => ({...f, hideSatellites:!e.target.checked}))}
                 style={{margin:0}}
               /> Satellites
             </label>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideRestarts}
                 onChange={e => setFilters(f => ({...f, hideRestarts:!e.target.checked}))}
                 style={{margin:0}}
               /> Restarts
             </label>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSideEvents}
                 onChange={e => setFilters(f => ({...f, hideSideEvents:!e.target.checked}))}
                 style={{margin:0}}
@@ -1662,8 +1662,8 @@ export default function TournamentsView({
               row 1; justify-content:flex-end keeps it right-aligned under them.
               Online play has no location, so these live here rather than in the
               location panel, and stay reachable while a radius or region is set. */}
-          <div style={{display:'flex',gap:'10px',alignItems:'center',flexBasis:'100%',justifyContent:'flex-end'}}>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <div style={{display:'flex',gap:'6px',alignItems:'center',flexBasis:'100%',justifyContent:'flex-end'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={filters.showOnline !== false}
                 onChange={e => setFilters(f => ({...f, showOnline:e.target.checked}))}
                 style={{margin:0}}
@@ -1677,7 +1677,7 @@ export default function TournamentsView({
                 title={filters.jurisdiction
                   ? `Hide online events on sites not available in ${filters.jurisdiction}`
                   : 'Set your state in the location menu to use this'}
-                style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
+                style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
                 <input type="checkbox" disabled={!filters.jurisdiction}
                   checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
                   onChange={e => setFilters(f => ({...f, onlyAvailableOnline:e.target.checked}))}
