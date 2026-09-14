@@ -365,6 +365,26 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   style={{margin:0}} />
                 All rooms
               </label>
+              {/* One grid for every room, not a flex row per room: the controls have
+                  to line up in columns, and a per-row flex box starts each one
+                  wherever that room's name happens to end. The rows are
+                  Fragments so their cells are direct grid children. */}
+              <div style={{
+                display:'grid',
+                gridTemplateColumns:'minmax(0,1fr) auto auto',
+                alignItems:'center', columnGap:'10px', rowGap:'8px',
+              }}>
+                {/* Column headers, so "min $" and "series only" are said ONCE
+                    rather than on every row. Repeating them cost ~100px of width
+                    and truncated the room names to "Americas …" and "WSOP.co…",
+                    which is the opposite of the point: the name is the thing you
+                    are looking for. */}
+                <span />
+                <span style={{fontSize:'0.68rem',color:'var(--text-muted)',letterSpacing:'0.04em',textAlign:'right'}}>MIN $</span>
+                {/* Centred over its column, because the checkboxes below it are
+                    centred — a left-aligned header over centred boxes is two
+                    different columns wearing one heading. */}
+                <span style={{fontSize:'0.68rem',color:'var(--text-muted)',letterSpacing:'0.04em',justifySelf:'center'}}>SERIES</span>
               {onlineSitesInPool.map(({ key, name, count }) => {
                 const rule = (filters.siteRules && filters.siteRules[key]) || {};
                 const setRule = (patch) => setFilters(f => {
@@ -378,14 +398,14 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 });
                 const on = !rule.hidden;
                 return (
-                  <div key={key} style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                  <React.Fragment key={key}>
                     {/* The room switch itself. Its label is the room name, so the
                         whole name is the hit target rather than a bare box. */}
-                    <label style={{display:'flex',alignItems:'center',gap:'6px',cursor:'pointer',minWidth:'140px'}}>
+                    <label style={{display:'flex',alignItems:'center',gap:'6px',cursor:'pointer',minWidth:0}}>
                       <input type="checkbox" checked={on}
                         onChange={e => setRule({ hidden: !e.target.checked })}
-                        style={{margin:0}} />
-                      <span style={{fontSize:'0.82rem',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color: on ? 'var(--text)' : 'var(--text-muted)'}}>
+                        style={{margin:0,flexShrink:0}} />
+                      <span style={{fontSize:'0.82rem',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color: on ? 'var(--text)' : 'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                         {name}
                         <span style={{color:'var(--text-muted)',fontWeight:400}}> {count}</span>
                       </span>
@@ -396,21 +416,22 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                         their VALUES are kept, so switching the room back on
                         restores the rules the user set rather than silently
                         discarding them. */}
-                    <span style={{fontSize:'0.75rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,opacity: on ? 1 : 0.4}}>min $</span>
                     <input type="number" min="0" inputMode="numeric" disabled={!on}
                       value={rule.minBuyin ?? ''}
                       placeholder="any"
+                      aria-label={`Minimum buy-in for ${name}`}
                       onChange={e => setRule({ minBuyin: e.target.value })}
-                      style={{width:'68px',padding:'4px 6px',fontSize:'0.8rem',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)',opacity: on ? 1 : 0.4}} />
-                    <label style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',textTransform:'none',letterSpacing:0,cursor: on ? 'pointer' : 'not-allowed',color:'var(--text)',opacity: on ? 1 : 0.4}}>
-                      <input type="checkbox" checked={!!rule.seriesOnly} disabled={!on}
-                        onChange={e => setRule({ seriesOnly: e.target.checked })}
-                        style={{margin:0}} />
-                      series only
-                    </label>
-                  </div>
+                      style={{width:'62px',padding:'4px 6px',fontSize:'0.8rem',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)',opacity: on ? 1 : 0.4}} />
+                    {/* The header names this column, so the box carries the label
+                        for anyone not reading it visually. */}
+                    <input type="checkbox" checked={!!rule.seriesOnly} disabled={!on}
+                      aria-label={`Show only series events for ${name}`}
+                      onChange={e => setRule({ seriesOnly: e.target.checked })}
+                      style={{margin:0,justifySelf:'center',cursor: on ? 'pointer' : 'not-allowed',opacity: on ? 1 : 0.4}} />
+                  </React.Fragment>
                 );
               })}
+              </div>
               {activeSiteRuleCount > 0 && (
                 <button onClick={() => setFilters(f => ({ ...f, siteRules: {} }))} style={{
                   alignSelf:'flex-start',background:'none',border:'none',color:'var(--text-muted)',
