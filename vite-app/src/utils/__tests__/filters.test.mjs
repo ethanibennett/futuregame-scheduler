@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -199,6 +199,40 @@ eq('series only, on the daily schedule', matchesOnline(ggEv, rules({ ggpoker: { 
 // Both at once, and the floor is what fails.
 eq('both rules, floor fails', matchesOnline(acrEv2, rules({ acr: { seriesOnly: true, minBuyin: 200 } })), false);
 eq('a live event ignores site rules entirely', matchesOnline(vegas, rules({ acr: { minBuyin: 99999 } })), true);
+
+
+console.log('a ring is not a bracelet');
+/* WSOP.com runs TWO trophy series under one site key: the annual Online
+   Bracelet series and a monthly Online CIRCUIT series that awards gold RINGS.
+   isBraceletEvent asked only "is this WSOP.com online", so every ring event got
+   a bracelet the moment the Circuit adapter shipped. Same shape of mistake as
+   the ACR bracelet bug in #241 — an over-broad predicate answering a narrower
+   question. These rows are copied from the live database. */
+const ring = { venue: 'WSOP.com September 2026 Online Circuit', event_name: 'NLH 6-Max',
+               event_number: 'WSOP_COM-circuit-202609-3-20260914', category: null,
+               is_satellite: 0, is_restart: 0, is_online: 1, site: 'wsop_com' };
+const braceletOnline = { venue: 'WSOP.com 2026 Online Bracelet', event_name: "NL Hold'Em Kick Off",
+               event_number: 'WSOP_COM-202601-20260530', category: null,
+               is_satellite: 0, is_restart: 0, is_online: 1, site: 'wsop_com' };
+
+eq('the circuit series is recognised', isWsopOnlineCircuit(ring), true);
+eq('the bracelet series is not', isWsopOnlineCircuit(braceletOnline), false);
+eq('and a live venue is not', isWsopOnlineCircuit({ venue: 'Horseshoe / Paris Las Vegas' }), false);
+
+eq('a ring event gets NO bracelet', isBraceletEvent(ring), false);
+eq('a ring event gets a RING', isRingEvent(ring), true);
+eq('an online bracelet event still gets a bracelet', isBraceletEvent(braceletOnline), true);
+eq('and NOT a ring', isRingEvent(braceletOnline), false);
+
+// The exclusions that apply to every trophy event still apply to these.
+eq('a circuit satellite is not a ring', isRingEvent({ ...ring, is_satellite: 1 }), false);
+eq('a circuit side event is not a ring', isRingEvent({ ...ring, category: 'side' }), false);
+eq('nor is one that says so in the name',
+   isRingEvent({ ...ring, event_name: 'NLH Side Event - Nightly' }), false);
+// A live WSOPC stop must keep working exactly as before.
+eq('a live circuit stop still gets a ring',
+   isRingEvent({ venue: 'Turning Stone Casino', event_name: 'NLH Monster Stack',
+                 event_number: '12', category: null, is_satellite: 0 }), true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
