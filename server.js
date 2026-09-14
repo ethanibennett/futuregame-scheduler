@@ -10172,6 +10172,63 @@ async function pushMttFeedToProd() {
 // LWW-merge it, so /b/:token pages + the weekly digest see new/renamed backers.
 // Runs at boot + hourly (:35); self-disables without DASHBOARD_TOKEN.
 const DASHBOARD_BASE_URL = process.env.DASHBOARD_BASE_URL || 'https://dashboard.futurega.me';
+/* Move a backer's page from one token to another.
+ *
+ * A backer's token is a CAPABILITY — it is the whole of the authentication on
+ * /b/:token — so it has to be rotatable, and one leaked in a public repo on
+ * 2026-09-14 is why this exists. But the token is also the FOREIGN KEY that
+ * three tables use to find that backer's data:
+ *
+ *     backer_public     token PRIMARY KEY      their display name
+ *     backer_events     token + session_id     every session they are staked in
+ *     backer_push_subs  token                  their push subscriptions
+ *
+ * Change the token without moving those and the new link resolves a name and a
+ * stake and shows ZERO sessions, while their push notifications stop — a worse
+ * outcome than the leak, and a silent one. So all three move together or none
+ * of them do.
+ *
+ * Returns a per-table count of what moved, so a caller can assert on it rather
+ * than trust it. */
+function rotateBackerToken(oldToken, newToken) {
+  if (!BACKER_TOKEN_RE.test(String(oldToken || '')) || !BACKER_TOKEN_RE.test(String(newToken || ''))) {
+    return { ok: false, error: 'invalid token shape' };
+  }
+  if (oldToken === newToken) return { ok: false, error: 'tokens are identical' };
+
+  /* A new token that is already in use would MERGE two backers: one would
+     inherit the other's sessions. Checked before anything is written, because
+     there is no unpicking it afterwards. */
+  const inUse = (tok) => {
+    for (const sql of [
+      'SELECT 1 FROM backer_public WHERE token = ? LIMIT 1',
+      'SELECT 1 FROM backer_events WHERE token = ? LIMIT 1',
+      'SELECT 1 FROM backer_push_subs WHERE token = ? LIMIT 1',
+    ]) {
+      const r = db.exec(sql, [tok]);
+      if (r.length && r[0].values.length) return true;
+    }
+    return false;
+  };
+  if (inUse(newToken)) return { ok: false, error: 'new token already carries data' };
+
+  const counts = {};
+  try {
+    db.run('BEGIN');
+    db.run('UPDATE backer_public SET token = ? WHERE token = ?', [newToken, oldToken]);
+    counts.backer_public = db.getRowsModified();
+    db.run('UPDATE backer_events SET token = ? WHERE token = ?', [newToken, oldToken]);
+    counts.backer_events = db.getRowsModified();
+    db.run('UPDATE backer_push_subs SET token = ? WHERE token = ?', [newToken, oldToken]);
+    counts.backer_push_subs = db.getRowsModified();
+    db.run('COMMIT');
+  } catch (err) {
+    try { db.run('ROLLBACK'); } catch (_) { /* the BEGIN may not have landed */ }
+    return { ok: false, error: err.message };
+  }
+  return { ok: true, counts };
+}
+
 async function syncBackerRoster() {
   const token = process.env.DASHBOARD_TOKEN;
   if (!token) return;
@@ -10181,8 +10238,21 @@ async function syncBackerRoster() {
     const body = await res.json();
     const records = Array.isArray(body && body.records) ? body.records : [];
     let changed = 0;
+    let rotated = 0;
     for (const r of records) {
       if (!r || r.store !== 'backers' || typeof r.id !== 'string' || typeof r.updatedAt !== 'number') continue;
+
+      /* The token this backer had BEFORE this record lands. The roster carries
+         both the backer's stable id and their token, so a rotation performed in
+         the dashboard arrives here as "same id, different token" — which is the
+         only signal there is, and it is enough. Read before the upsert
+         overwrites it. */
+      const prevToken = (() => {
+        const q = db.exec("SELECT data FROM console_records WHERE store = 'backers' AND id = ?", [r.id]);
+        if (!q.length || !q[0].values.length) return null;
+        try { return (JSON.parse(q[0].values[0][0]) || {}).token || null; } catch (_) { return null; }
+      })();
+
       db.run(
         `INSERT INTO console_records (store, id, data, updated_at, deleted)
          VALUES ('backers', ?, ?, ?, 0)
@@ -10191,8 +10261,27 @@ async function syncBackerRoster() {
          WHERE excluded.updated_at >= console_records.updated_at`,
         [r.id, typeof r.data === 'string' ? r.data : null, r.updatedAt]
       );
-      changed += db.getRowsModified();
+      const applied = db.getRowsModified();
+      changed += applied;
+
+      /* Only when the write actually landed: a record rejected by the
+         updated_at guard is older than what we hold, and its token is the one
+         that was rotated AWAY from. Acting on it would rotate backwards. */
+      if (applied > 0 && prevToken) {
+        let nextToken = null;
+        try { nextToken = (JSON.parse(r.data) || {}).token || null; } catch (_) { /* malformed */ }
+        if (nextToken && nextToken !== prevToken) {
+          const res = rotateBackerToken(prevToken, nextToken);
+          if (res.ok) {
+            rotated++;
+            console.log(`[roster] backer ${r.id} token rotated — moved ${JSON.stringify(res.counts)}`);
+          } else {
+            console.error(`[roster] backer ${r.id} token changed but the re-key FAILED (${res.error}) — their page will show no history until this is resolved`);
+          }
+        }
+      }
     }
+    if (rotated) console.log(`[roster] ${rotated} backer token rotation(s) applied`);
     if (changed) {
       await saveDatabase();
       console.log(`[roster] backer roster synced from dashboard: ${changed} row(s) updated`);
