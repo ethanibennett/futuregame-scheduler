@@ -723,6 +723,27 @@ plus a date window from the client, since `/api/tournaments` accepts
   exactly like a filtering bug and cost several cycles. Build regexes in-page
   with `new RegExp('...')`.
 
+## A backer token is exposed and is NOT being rotated — deliberate, 2026-09-14
+
+One backer's token (David Mulle) was committed to this PUBLIC repo inside a
+scratch database copy, commit 4d52085. The force-push removed it from master but
+GitHub still serves unreachable objects by SHA — verified, the blob still
+returns 1,564,672 bytes. The token grants READ access to his private page: name,
+stakes, opening and cumulative figures, and five session results. Read-only; no
+write, nothing financial to move.
+
+**Ethan decided not to rotate it.** Changing the link breaks the one he has
+already sent. Do not rotate it without asking him again — the earlier
+instruction to rotate was withdrawn.
+
+The mechanism EXISTS and is tested if that changes: dashboard -> Backers ->
+"New link", which re-keys backer_public, backer_events and backer_push_subs via
+the roster seam (futuregame-scheduler#250). scripts/test-backer-rotation.mjs.
+
+The remaining mitigation is a GitHub Support request to purge the unreachable
+objects from ethanibennett/futuregame-scheduler at 4d52085. That is now the only
+thing that reduces this exposure.
+
 ## DASHBOARD_TOKEN rotation — IN PROGRESS since 2026-09-14
 
 A rotation is live right now. Both services accept the new token AND the old
