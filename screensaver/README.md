@@ -11,32 +11,26 @@ refresh every minute. This directory is now the source of truth.
 
 This directory is the **native** half of the screensaver: the thing the Mac
 builds. The page it displays is the dashboard's and lives in `wsop-console`.
-That is the seam — *what the Mac builds* here, *what the dashboard serves*
-there — and it is worth stating because the two directories are both called
-`screensaver/` and used to overlap.
+That is the seam -- *what the Mac builds* here, *what the dashboard serves*
+there.
 
 | path | what |
 |---|---|
-| `DashboardSaver/` | the `.saver` bundle — `DashboardSaverView.swift`, `Info.plist`, `build.sh` |
-| `DashboardSaverHelper/` | the refresher — `main.swift`, `render.sh`, `build.sh`, LaunchAgent plist |
-| `cockpit-screensaver.html`, `cockpit-min.html` | an older Cockpit page. **Nothing serves these** — see below |
+| `DashboardSaver/` | the `.saver` bundle -- `DashboardSaverView.swift`, `Info.plist`, `build.sh` |
+| `DashboardSaverHelper/` | the refresher -- `main.swift`, `render.sh`, `build.sh`, LaunchAgent plist |
 
-`dashboard-page.html` and `baskerville.b64` used to sit here too. They were
-byte-identical to `wsop-console/screensaver/`, which is where the dashboard
-READS them from at runtime (`server/server.js`, `DASHBOARD_PAGE_HTML`), so the
-copies here were duplication with a second place to drift. Removed.
+Four files used to sit here and no longer do. `dashboard-page.html` and
+`baskerville.b64` were byte-identical to `wsop-console/screensaver/`, which is
+where the dashboard READS them at runtime. `cockpit-screensaver.html` and
+`cockpit-min.html` were the Cockpit page, stranded here by the 2026-08-09
+cutover: it took the `/d/:token` route away but left the page, so the dashboard
+went on serving the older design while the newer one sat in a repo with no
+route to serve it from. The newer of the two is now
+`wsop-console/screensaver/cockpit-page.html` and is what `/d/:token` serves
+(wsop-console#3).
 
-### The Cockpit pages are unserved, and that may be a regression
-
-The July commits in this repo (`a5e2450`, `9310bbc`, `05657d6`) built the
-"minimalist futurega.me | life" Cockpit and served it from `/d/:token` HERE.
-The 2026-08-09 cutover moved that route to the dashboard, which serves its own
-`dashboard-page.html` — a page carrying none of the Cockpit markers.
-
-So the live screensaver is showing the OLDER design, and the Cockpit is sitting
-unserved in the wrong repo. Whether to carry it across or retire it is the
-dashboard's call, not this repo's; these two files stay put until that session
-decides, rather than being deleted out from under it.
+If you are looking for the page the saver displays, it is in that repo. Nothing
+in this one renders HTML any more.
 
 ## How it works
 
