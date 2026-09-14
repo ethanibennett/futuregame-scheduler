@@ -12,6 +12,7 @@ import {
 
   isSideEvent,
   matchesLocation,
+  matchesOnline,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
@@ -64,7 +65,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
       if (!d || d < today) return false;
       if (filters.dateFrom && d < filters.dateFrom) return false;
       if (filters.dateTo && d > filters.dateTo) return false;
-      return matchesLocation(t, filters);
+      return matchesLocation(t, filters) && matchesOnline(t, filters);
     });
   }, [tournaments, filters.dateFrom, filters.dateTo,
       filters.locationRegion, filters.userLocation, filters.maxDistance]);
@@ -124,7 +125,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   }, [open]);
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
-    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo;
+    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
+    filters.showOnline === false;
 
   return (
     <>
@@ -502,7 +504,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
-                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
+                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,showOnline:true}))
               }>Clear all filters</button>
             )}
             <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
@@ -939,6 +941,9 @@ const DEFAULT_FILTERS = {
   hideSideEvents: false, hiddenMonths: [], ladiesOnly: false, seniorsOnly: false,
   mixedOnly: false, dateFrom: '', dateTo: '',
   maxDistance: '', userLocation: null, locationRegion: null, locationLabel: null,
+  // Online play is shown by default. It is deliberately NOT a location field: an online
+  // event has no place, so every location filter would otherwise hide all of it.
+  showOnline: true,
 };
 
 // LocationDropdown lives in its own file now (shared with CalendarView).
@@ -1262,6 +1267,7 @@ export default function TournamentsView({
         // One predicate, shared with the panel that builds the option lists, so
         // the two cannot drift and offer an option the list would refuse.
         if (!matchesLocation(t, filters)) return false;
+        if (!matchesOnline(t, filters)) return false;
         {
           const specialActive = filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || filters.ladiesOnly || filters.seniorsOnly;
           if (specialActive) {
@@ -1482,6 +1488,15 @@ export default function TournamentsView({
                 onChange={e => setFilters(f => ({...f, hideSideEvents:!e.target.checked}))}
                 style={{margin:0}}
               /> Side Events
+            </label>
+            {/* Not in the location panel, deliberately. Online play has no location, so it
+                belongs with the other "what kind of event" switches rather than with "where
+                am I" — and it has to stay reachable while a radius or region is set. */}
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+              <input type="checkbox" checked={filters.showOnline !== false}
+                onChange={e => setFilters(f => ({...f, showOnline:e.target.checked}))}
+                style={{margin:0}}
+              /> Online
             </label>
           </div>
         </div>
