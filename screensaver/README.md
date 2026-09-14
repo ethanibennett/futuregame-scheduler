@@ -87,9 +87,45 @@ shows a stale image, with no error, if it is missing.
 ## Build and install
 
 ```bash
-cd DashboardSaver && ./build.sh          # produces DashboardSaver.saver
+cd DashboardSaver && ./build.sh
+cp -R build/DashboardSaver.saver ~/Library/Screen\ Savers/
 ```
 
-Copy the result into `~/Library/Screen Savers/`, then select it in System
-Settings. Building the `.saver` requires Xcode and a Mac; this is the one part
-of the suite that cannot move to the Windows box.
+Then select **Daily Dashboard** in System Settings. Note the `build/` prefix:
+`build.sh` starts with `rm -rf build`, so the bundle only ever exists one
+directory down, and a `cp` without it fails with a bare "No such file or
+directory" that reads like the build failed when it did not.
+
+Building the `.saver` requires Xcode and a Mac; this is the one part of the
+suite that cannot move to the Windows box.
+
+## When the screen is black
+
+The saver draws into `legacyScreenSaver.appex`, which has no stdout, and macOS
+SIGKILLs `ScreenSaverEngine` if you launch it from a shell to watch it. So the
+view narrates itself to `os_log` instead — construction, every frame load, and
+each change in what it draws:
+
+```bash
+log show --last 10m --predicate 'subsystem == "me.futurega.DashboardSaver"' --style compact
+```
+
+Read it against the three things black can mean:
+
+| what the log says | what is wrong |
+|---|---|
+| nothing at all | the bundle never loaded — check `codesign -dv` and the `NSPrincipalClass` in `Info.plist` |
+| `init` but no `draw ->` | the view exists and is never asked to draw |
+| `draw -> placeholder` | drawing fine, no frame — the `no frame:` line above it says whether the PNG is missing or unreadable |
+| `draw -> frame` | the saver is working; you are looking at something else |
+
+That last row is the common one. The preview pane in System Settings renders
+third-party `.saver` bundles through WallpaperAgent rather than the screensaver
+engine, and it shows black for savers that run correctly when actually
+invoked — so judge the saver by going idle, never by the preview.
+
+Check the helper separately; it logs to its own file:
+
+```bash
+tail ~/Library/Logs/DashboardSaver/helper.log
+```

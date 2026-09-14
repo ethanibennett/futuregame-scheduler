@@ -12,6 +12,21 @@
 import ScreenSaver
 import AppKit
 import CoreGraphics
+import os
+
+// MARK: - Diagnostics
+
+/// The saver runs inside legacyScreenSaver.appex, where there is no stdout to watch and no
+/// way to launch the engine by hand (macOS SIGKILLs ScreenSaverEngine started from a shell).
+/// os_log is the only channel out, so the view narrates its own state transitions and you
+/// read them back with:
+///
+///     log show --last 10m --predicate 'subsystem == "me.futurega.DashboardSaver"'
+///
+/// Transitions only, never per-tick: draw() runs once a second for as long as the screen is
+/// idle, and a line per frame would bury the three facts that matter (did we construct, did
+/// we find a frame, did we draw it).
+private let diag = Logger(subsystem: "me.futurega.DashboardSaver", category: "saver")
 
 // MARK: - Shared paths
 
@@ -89,6 +104,7 @@ final class DashboardSaverView: ScreenSaverView {
     private var loadedTimestamp: Date?   // parsed from the .timestamp sidecar (frame data time)
     private var lastPollAt: TimeInterval = 0
     private var didRegisterNotifications = false
+    private var lastDrawnState: String?
 
     // MARK: Init
 
@@ -102,6 +118,7 @@ final class DashboardSaverView: ScreenSaverView {
         layer?.backgroundColor = Palette.ink.cgColor
         registerNotificationsIfNeeded()
         InstanceRegistry.shared.makeActive(self)
+        diag.notice("init(frame:) isPreview=\(isPreview, privacy: .public) bounds=\(NSStringFromRect(frame), privacy: .public)")
         loadFrameIfChanged(force: true)
     }
 
@@ -112,6 +129,7 @@ final class DashboardSaverView: ScreenSaverView {
         layer?.backgroundColor = Palette.ink.cgColor
         registerNotificationsIfNeeded()
         InstanceRegistry.shared.makeActive(self)
+        diag.notice("init(coder:) bounds=\(NSStringFromRect(self.frame), privacy: .public)")
         loadFrameIfChanged(force: true)
     }
 
@@ -143,6 +161,7 @@ final class DashboardSaverView: ScreenSaverView {
     override func startAnimation() {
         super.startAnimation()
         InstanceRegistry.shared.makeActive(self)
+        diag.notice("startAnimation bounds=\(NSStringFromRect(self.bounds), privacy: .public)")
         loadFrameIfChanged(force: true)
     }
 
@@ -159,8 +178,13 @@ final class DashboardSaverView: ScreenSaverView {
         let path = SharedPaths.pngPath
         guard let attrs = try? fm.attributesOfItem(atPath: path),
               let modified = attrs[.modificationDate] as? Date else {
-            // No PNG yet (helper hasn't produced a first frame). Keep whatever we have.
-            if force { frameImage = nil; loadedModified = nil }
+            // No PNG yet (helper hasn't produced a first frame), or the sandbox will not let
+            // us open it. Those look identical from here, so log which by asking separately.
+            if force {
+                frameImage = nil
+                loadedModified = nil
+                diag.error("no frame: path=\(path, privacy: .public) exists=\(fm.fileExists(atPath: path), privacy: .public) readable=\(fm.isReadableFile(atPath: path), privacy: .public)")
+            }
             return
         }
         if !force, let prev = loadedModified, prev == modified { return }
@@ -171,6 +195,11 @@ final class DashboardSaverView: ScreenSaverView {
             frameImage = img
             loadedModified = modified
             loadedTimestamp = readTimestampSidecar()
+            diag.notice("loaded frame \(Int(img.size.width), privacy: .public)x\(Int(img.size.height), privacy: .public) reps=\(img.representations.count, privacy: .public)")
+        } else {
+            // The file is readable but AppKit would not decode it — a truncated PNG caught
+            // mid-write, or an error page saved under a .png name.
+            diag.error("frame at \(path, privacy: .public) did not decode as an image")
         }
     }
 
@@ -201,6 +230,8 @@ final class DashboardSaverView: ScreenSaverView {
     // MARK: Drawing
 
     override func draw(_ rect: NSRect) {
+        logDrawTransition()
+
         // 1. Fill the console ink background (also the letterbox color).
         Palette.ink.setFill()
         bounds.fill()
@@ -221,6 +252,16 @@ final class DashboardSaverView: ScreenSaverView {
 
         // 3. Staleness overlay ("as of HH:MM", plus STALE badge if too old).
         drawTimestampOverlay(imageRect: dst)
+    }
+
+    /// Log the first draw and any later change to what we are drawing. A uniform-black
+    /// screen has two causes that look the same from the outside — draw() never running, and
+    /// draw() running with no image — and this is the line that tells them apart.
+    private func logDrawTransition() {
+        let state = frameImage == nil ? "placeholder" : "frame"
+        guard state != lastDrawnState else { return }
+        lastDrawnState = state
+        diag.notice("draw -> \(state, privacy: .public) bounds=\(NSStringFromRect(self.bounds), privacy: .public) window=\(self.window != nil, privacy: .public)")
     }
 
     private func drawPlaceholder(in rect: NSRect) {
