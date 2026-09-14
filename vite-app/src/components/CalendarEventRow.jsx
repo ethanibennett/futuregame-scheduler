@@ -712,8 +712,18 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 <>
                   <div className="cal-detail-badges">
                     <div className="cal-badges-left">
-                      {tournament.event_number && (
-                        <span className="cal-meta-line">#{shortEventNumber(tournament.event_number)}</span>
+                      {/* The event-number PILL, restored. It was a tinted badge
+                          until 18df4f0 flattened it into a plain meta line, and
+                          the number is the thing you say out loud at the desk —
+                          it earns the strip colour. Rendered only when
+                          shortEventNumber finds a real number: most online rooms
+                          publish none, and the old first-dash-segment rule turned
+                          those into "#bounty" and "#WSOP_COM". */}
+                      {shortEventNumber(tournament.event_number) && (
+                        <span className="badge badge-event"
+                              style={{ background: stripColor, color: stripTextColor }}>
+                          #{shortEventNumber(tournament.event_number)}
+                        </span>
                       )}
                       {tournament.game_variant && getGamePills(tournament.game_variant, tournament.event_name).map((g, i) => (
                         <span key={i} className="cal-meta-line">{g}</span>

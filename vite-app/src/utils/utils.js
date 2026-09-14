@@ -625,10 +625,42 @@ export function formatGuarantee(v, venue) {
 // three on screen. As a coloured badge that was merely ugly; as a meta line
 // it is the first thing under the title, so it gets trimmed to the part a
 // player would say out loud. Short forms like WYNN-4-D2 keep their suffix.
+/** The event number to SHOW, or null when the source never published one.
+ *
+ *  Both feeds build event_number as "<base>-<id>-<YYYYMMDD>" — the trailing id
+ *  and date exist to make the value unique per instance, because multi-flight
+ *  events share both an event number and a tournament id and differ only by
+ *  date (mtt-series-watcher, emit/snbwsop.ts). Only `base` is the event number.
+ *
+ *  Crucially, that watcher writes the literal string 'PA' as the base WHEN
+ *  POKERATLAS PUBLISHED NO NUMBER. So "PA-283635-20260816" does not mean event
+ *  283635 — it means this event has no number, and 283635 is a PokerAtlas
+ *  tournament id. Rendering it as "#283635" invents an event number out of an
+ *  internal key. The same goes for "ACR-35922782-…": that is ACR's tournament
+ *  id, and ACR does not number its events either.
+ *
+ *  Null means the caller renders no pill, which is the honest answer for the
+ *  rooms and series that simply do not number their events. */
 export function shortEventNumber(v) {
-  const t = String(v || {}).replace(/^[A-Za-z]+-/, '');
-  return t.length > 6 ? t.split('-')[0] : t;
+  const raw = String(v == null ? '' : v).trim();
+  if (!raw) return null;
+
+  /* The WSOP.com Online Circuit is the one CONSTRUCTED id that carries a real
+     event number — its events are "Event #1".."#12" and the id shape is this
+     codebase's own (the watcher's wsop-circuit source). Worth unpacking. */
+  const circuit = raw.match(/-circuit-\d{6}-(\d+)-\d{8}$/);
+  if (circuit) return circuit[1];
+
+  // Strip the "-<id>-<YYYYMMDD>" uniqueness suffix to leave the base.
+  const m = raw.match(/^(.+)-[^-]+-\d{8}$/);
+  const base = m ? m[1] : raw;
+
+  /* A number, optionally with a short flight/day suffix ("12", "12H", "1A"), or
+     a comma-separated LIST of them: 333 live rows are combined-flight events
+     numbered "2, 6, 8, 10", and the list is exactly what that row covers. */
+  return /^\d{1,8}[A-Za-z]{0,2}(?:\s*,\s*\d{1,8}[A-Za-z]{0,2})*$/.test(base) ? base : null;
 }
+
 
 /* Is this a side event?
    The Side Events filter tested `category === 'side'` and appeared to do

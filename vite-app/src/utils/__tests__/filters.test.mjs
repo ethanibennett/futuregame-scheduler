@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -249,6 +249,40 @@ eq('off beats series-only on a series event',
 const allOff = rules({ acr: { hidden: true }, ggpoker: { hidden: true }, phenom: { hidden: true } });
 eq('every online room off', [ggEv, acrEv2, phEv].every(e => matchesOnline(e, allOff) === false), true);
 eq('a live event is still shown', matchesOnline(vegas, allOff), true);
+
+
+console.log('the event-number pill shows a number, or nothing');
+/* Both feeds build event_number as "<base>-<id>-<YYYYMMDD>" — the id and date
+   exist only to make it unique per instance, because multi-flight events share
+   an event number AND a tournament id and differ only by date. Only `base` is
+   the event number, and mtt-series-watcher writes the literal 'PA' as the base
+   WHEN POKERATLAS PUBLISHED NO NUMBER. */
+eq('a real PokerAtlas number', shortEventNumber('27-281793-20260730'), '27');
+eq('a leading-zero number', shortEventNumber('03-296705-20261001'), '03');
+/* "PA-283635-…" does NOT mean event 283635 — it means this event has no number
+   and 283635 is an internal tournament id. Rendering it would invent an event
+   number out of a database key. */
+eq('no number published', shortEventNumber('PA-283635-20260816'), null);
+// Combined-flight rows carry the list of events they cover; the list IS useful.
+eq('a multi-event row', shortEventNumber('2, 6, 8, 10-293208-20260914'), '2, 6, 8, 10');
+
+/* Online rooms mostly do not number their events, and the ids are constructed.
+   The first-dash-segment rule this replaced turned them into "#bounty",
+   "#daily" and "#WSOP_COM". */
+eq('ACR publishes a tournament id, not an event number', shortEventNumber('ACR-35922782-20260914'), null);
+eq('GGPoker numbers nothing', shortEventNumber('GGPOKER-bounty-hunters-0230-x-20260915'), null);
+eq('nor does Phenom', shortEventNumber('PHENOM-daily-2045-8-game-mix-20260914'), null);
+eq('nor the WSOP bracelet id', shortEventNumber('WSOP_COM-202601-20260530'), null);
+/* The one constructed id that DOES carry a real number: the online Circuit,
+   whose events are "Event #1".."#12". */
+eq('the online Circuit event number', shortEventNumber('WSOP_COM-circuit-202609-3-20260914'), '3');
+eq('and a two-digit one', shortEventNumber('WSOP_COM-circuit-202609-12-20260923'), '12');
+
+eq('a bare number is itself', shortEventNumber('12'), '12');
+eq('a flight suffix survives', shortEventNumber('12H'), '12H');
+eq('empty', shortEventNumber(''), null);
+eq('null', shortEventNumber(null), null);
+eq('undefined', shortEventNumber(undefined), null);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
