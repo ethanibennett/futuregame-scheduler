@@ -10046,6 +10046,19 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
     // series that ended or dropped out of the watcher's forward window. Keeps the schedule in sync
     // with the feed (add/update/remove) without touching non-feed tournaments.
     const manifestVenues = manifest.map(e => e.venue);
+    /* An EMPTY manifest means the watcher failed, not that every series ended.
+       Prune deletes each feed row whose venue is absent from the list it is
+       handed, so an empty list deletes the whole feed — 1,809 MTT rows or 1,199
+       online ones — and the next good run would have to rebuild them, losing any
+       id a user's saved schedule pointed at that the reference guard did not
+       cover. The prod push path has always had this guard (it requires
+       feedVenues.length and an actual upsert); this path, which runs at boot and
+       hourly against whatever is on disk, never did. A watcher that dies
+       mid-write, a disk that fills, or a fetch that 403s at 03:10 is enough. */
+    if (!manifestVenues.length) {
+      console.log(`[${label}] manifest lists no series — skipping ingest and prune (treating it as a failed emit, not an empty schedule)`);
+      return;
+    }
     pruned = pruneFeedVenues(manifestVenues, label, tag).pruned;
     for (const entry of manifest) {
       const filePath = path.join(__dirname, feedDir, entry.file);
