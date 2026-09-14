@@ -8314,6 +8314,43 @@
       pointer-events: none;
     }
 
+    /* A baseline is where the INK sits, not where the box ends.
+       align-self: baseline above lands the icon's BOX on the name's first-line
+       baseline, and that was as far as the last pass went -- but every glyph in
+       the shared 24-unit frame leaves a different amount of that frame empty
+       under its drawing. Measured in the running app with getBBox:
+
+           glyph        ink bottom   empty below   at 18px
+           ring            20.81         3.19       2.39px
+           bracelet        10.23        13.77      10.33px
+           crosshairs      23.71         0.29       0.22px
+           satellite       24.00         0          0
+           restart         21.01         2.99       2.24px
+
+       So the ring's drawn bottom was floating 2.4px over the line while its box
+       sat on it, and the bracelet -- a wide flat band drawn at the TOP of its
+       frame -- was 10px high. Each glyph now carries its own bearing and is
+       shifted by it, expressed as a fraction of --icon-size so it survives a
+       change of icon size.
+
+       A transform, deliberately: it moves the drawing without touching layout,
+       so row height, the hit box and the flex baseline all stay where they are.
+       Re-measure with getBBox if a glyph is ever redrawn. */
+    .cal-accolades svg[data-icon],
+    .cal-bar-row2 > span > svg[data-icon] {
+      --ink-bearing: 0;
+      transform: translateY(calc(var(--icon-size) * var(--ink-bearing)));
+    }
+    .cal-accolades svg[data-icon="ring"],
+    .cal-bar-row2 > span > svg[data-icon="ring"]       { --ink-bearing: 0.1329; }
+    .cal-accolades svg[data-icon="bracelet"],
+    .cal-bar-row2 > span > svg[data-icon="bracelet"]   { --ink-bearing: 0.5738; }
+    .cal-accolades svg[data-icon="crosshairs"],
+    .cal-bar-row2 > span > svg[data-icon="crosshairs"] { --ink-bearing: 0.0121; }
+    .cal-accolades svg[data-icon="restart"],
+    .cal-bar-row2 > span > svg[data-icon="restart"]    { --ink-bearing: 0.1246; }
+    /* satellite's ink already reaches the foot of its frame: bearing 0. */
+
     .cal-bounty-icon { color: var(--text); opacity: 0.5; }
     .cal-ring-icon,
     .cal-bracelet-icon { color: var(--accolade); }
