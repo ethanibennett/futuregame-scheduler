@@ -647,17 +647,42 @@ Done: feed separation (#237), the `is_online`/`site` columns, the ACR adapter an
 emitter (701 rows live), the Online toggle (#239), the bracelet/timezone fixes
 (#241), and jurisdiction + availability (#242).
 
-Not done: GGPoker, WSOP.com, Phenom, PokerStars/FanDuel, BetMGM and ClubWPT Gold
-adapters; the watcher's append-only DB and collector loop (the emitter still
-fetches directly); and the payload work — `compression` middleware plus a date
-window from the client, since `/api/tournaments` accepts `startDate`/`endDate`
-and `App.jsx` sends none. The table is 3,164 rows now.
+Adapters: ACR, **GGPoker**, **WSOP.com** and **Phenom** all ship. Live feed is
+1,199 rows — ACR 701, GGPoker 370, Phenom 128, WSOP.com 0 (its 2026 bracelet
+series ran May 30–July 14; a schedule of finished events is not a schedule, and
+it will fill again when the next series is announced).
+
+**PokerStars/FanDuel, BetMGM and ClubWPT Gold have no adapter and will not get
+one**, because they publish no schedule on the open web — every PokerStars
+domain terminates at a 235-byte redirect shell, BetMGM's only schedules are blog
+posts behind `Disallow: /`, and ClubWPT Gold's bundle has no tournament route at
+all. That is a finding, not a gap: an adapter needs a source. See the watcher's
+`docs/sources.md` for the evidence per site.
+
+Not done: the watcher's append-only DB and collector loop (the emitter still
+fetches directly, on demand — nothing schedules it yet, so the online feed is
+only as fresh as the last manual `npm run emit`); and the payload work —
+`compression` middleware plus a date window from the client, since
+`/api/tournaments` accepts `startDate`/`endDate` and `App.jsx` sends none. The
+table is 3,292 rows now.
 
 ### Traps this work has already paid for
 
-- **`online-sites.js` lists expire.** Every record carries `verifiedOn` and
-  `evidence`. They are claims about gambling law, not constants. Re-check before
-  trusting a filtered-out result, and move the date when you do.
+- **`online-sites.js` lists expire, and review sites are not sources.** Every
+  record carries `verifiedOn` and `evidence`. #242 took ClubWPT Gold's deny-list
+  from a review page and shipped SEVEN states where the operator names eight —
+  Arizona missing, so an Arizona player was told the room was open to them
+  (fixed in #243). The watcher's recon doc had already recorded that the
+  secondary sources contradict each other and must not be encoded. **Take a
+  state list from the operator or not at all.**
+- **A buy-in floor is per room, not per dollar.** ACR tops out at $25,500 and
+  Phenom at $500; one $200 rule kept 10 of Phenom's 186 rules, switching the
+  room off rather than filtering it. `SITE_FLOORS` in the emitter, overridable
+  with `ONLINE_BUYIN_FLOOR_<SITE>`.
+- **A published schedule keeps its finished events on it.** WSOP.com's page
+  still lists the whole 2026 series; GGPoker's `/wsop-online/` lists bracelets
+  back to August. Every adapter drops instances at or before the poll time, or
+  the scheduler fills with tournaments that already played.
 - **Never clone a feed row to seed test data.** A row with
   `source_pdf='online-feed'` whose venue is not in the manifest is deleted by the
   next ingest's prune, silently, at boot. Seed with a different tag.
