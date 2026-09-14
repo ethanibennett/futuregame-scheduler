@@ -652,8 +652,20 @@ Adapters: ACR, **GGPoker**, **WSOP.com** and **Phenom** all ship. Live feed is
 series ran May 30–July 14; a schedule of finished events is not a schedule, and
 it will fill again when the next series is announced).
 
-**PokerStars/FanDuel, BetMGM and ClubWPT Gold have no adapter and will not get
-one**, because they publish no schedule on the open web — every PokerStars
+**ClubWPT Gold now HAS an adapter** — reversed on 2026-09-14. Its web bundle
+carries no schedule, but a separate protobuf backend (mttapi.clubwptgold.com,
+found via cert transparency) does. It is TOKEN-FED: the watcher reads a ClubWPT
+session token from the watcher repo's gitignored `.env` (CLUBWPT_TOKEN) and never
+logs in. The token is a live real-money-account session and EXPIRES — when it
+does, the ClubWPT list is carried forward (not pruned) and the emitter logs "the
+list is going stale"; refresh it by capturing a new token from a logged-in
+browser (DevTools > Network > tournamentList) into that .env and
+`pm2 delete online-poker-watcher && pm2 start ecosystem.config.cjs` (a plain
+restart does NOT re-read interpreter_args, so the --env-file flag needs the
+delete+start). Live: 36 ClubWPT events in the scheduler.
+
+**PokerStars/FanDuel and BetMGM have no adapter and will not get one**, because
+they publish no schedule anywhere reachable — every PokerStars
 domain terminates at a 235-byte redirect shell, BetMGM's only schedules are blog
 posts behind `Disallow: /`, and ClubWPT Gold's bundle has no tournament route at
 all. That is a finding, not a gap: an adapter needs a source. See the watcher's

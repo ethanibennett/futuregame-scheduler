@@ -79,7 +79,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Opt-in via `TESTFLIGHT_WATCHDOG=1` so only this box runs it; Render has no `gh` and no
   business dispatching builds. Mitigation only — the cure for the dark wake is on the Mac.
 - **Online feed (in)**: `online-poker-watcher` runs its own pm2 app (a persistent
-  loop, emitting at :10 past the hour and at boot) into `./online-feed/`, ingested by
+  loop, emitting at :10 past the hour and at boot) into `./online-feed/` — sources
+  ACR, GGPoker, WSOP.com (bracelets + monthly Circuit rings), Phenom, and ClubWPT
+  Gold. ClubWPT is TOKEN-FED (a rotating account session token in the watcher's
+  gitignored `.env`); an expired token carries the ClubWPT list forward rather
+  than pruning it. Ingested by
   `ingestOnlineFeed()` at boot and hourly at :20, alongside the MTT feed. **Each feed owns
   its rows through `source_pdf`** (`'mtt-feed'` / `'online-feed'`) and every operation is
   scoped by that tag — `pruneFeedVenues(keep, label, tag)`, `ingestFeed(dir, tag, label,
