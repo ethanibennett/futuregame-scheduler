@@ -1161,6 +1161,9 @@ export function matchesOnline(t, filters) {
      existed behaves exactly as it did. */
   const rule = filters.siteRules && t.site ? filters.siteRules[t.site] : null;
   if (rule) {
+    /* A room switched off is off outright — checked before the other rules,
+       which are refinements WITHIN a room the user still wants to see. */
+    if (rule.hidden) return false;
     if (rule.seriesOnly && !isSeriesEvent(t)) return false;
     const floor = Number(rule.minBuyin);
     if (Number.isFinite(floor) && floor > 0 && Number(t.buyin || 0) < floor) return false;

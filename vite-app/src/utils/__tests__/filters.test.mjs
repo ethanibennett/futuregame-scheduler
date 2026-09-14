@@ -234,5 +234,21 @@ eq('a live circuit stop still gets a ring',
    isRingEvent({ venue: 'Turning Stone Casino', event_name: 'NLH Monster Stack',
                  event_number: '12', category: null, is_satellite: 0 }), true);
 
+
+console.log('a room switched off is off');
+eq('hidden hides the room', matchesOnline(ggEv, rules({ ggpoker: { hidden: true } })), false);
+eq('and leaves other rooms alone', matchesOnline(acrEv2, rules({ ggpoker: { hidden: true } })), true);
+eq('hidden:false is not hidden', matchesOnline(ggEv, rules({ ggpoker: { hidden: false } })), true);
+/* Off beats the refinements: a floor or a series switch narrows what you see
+   WITHIN a room you still want, so they cannot resurrect one you turned off. */
+eq('off beats a floor the event clears',
+   matchesOnline(ggEv, rules({ ggpoker: { hidden: true, minBuyin: 1 } })), false);
+eq('off beats series-only on a series event',
+   matchesOnline(acrEv2, rules({ acr: { hidden: true, seriesOnly: true } })), false);
+// Turning every room off empties the online half and touches nothing live.
+const allOff = rules({ acr: { hidden: true }, ggpoker: { hidden: true }, phenom: { hidden: true } });
+eq('every online room off', [ggEv, acrEv2, phEv].every(e => matchesOnline(e, allOff) === false), true);
+eq('a live event is still shown', matchesOnline(vegas, allOff), true);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

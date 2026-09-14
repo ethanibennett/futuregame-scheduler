@@ -105,7 +105,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   const activeSiteRuleCount = useMemo(() => {
     const r = filters.siteRules || {};
-    return Object.keys(r).filter(k => r[k] && (r[k].seriesOnly || Number(r[k].minBuyin) > 0)).length;
+    return Object.keys(r).filter(k => r[k] && (r[k].hidden || r[k].seriesOnly || Number(r[k].minBuyin) > 0)).length;
   }, [filters.siteRules]);
 
   const poolFacts = useMemo(() => {
@@ -346,6 +346,25 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               <div style={{fontSize:'0.7rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,lineHeight:1.4}}>
                 One buy-in floor cannot fit every room — these run from $1 to $25,500.
               </div>
+              <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.78rem',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <input type="checkbox"
+                  checked={onlineSitesInPool.every(s => !(filters.siteRules || {})[s.key]?.hidden)}
+                  ref={el => { if (el) {
+                    const off = onlineSitesInPool.filter(s => (filters.siteRules || {})[s.key]?.hidden).length;
+                    el.indeterminate = off > 0 && off < onlineSitesInPool.length;
+                  } }}
+                  onChange={e => setFilters(f => {
+                    const next = { ...(f.siteRules || {}) };
+                    for (const s of onlineSitesInPool) {
+                      const merged = { ...(next[s.key] || {}), hidden: !e.target.checked };
+                      if (!merged.hidden && !merged.seriesOnly && !(Number(merged.minBuyin) > 0)) delete next[s.key];
+                      else next[s.key] = merged;
+                    }
+                    return { ...f, siteRules: next };
+                  })}
+                  style={{margin:0}} />
+                All rooms
+              </label>
               {onlineSitesInPool.map(({ key, name, count }) => {
                 const rule = (filters.siteRules && filters.siteRules[key]) || {};
                 const setRule = (patch) => setFilters(f => {
@@ -353,24 +372,38 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   const merged = { ...(next[key] || {}), ...patch };
                   // Drop a rule that no longer restricts anything, so "how many
                   // are set" stays honest and a cleared box really is cleared.
-                  if (!merged.seriesOnly && !(Number(merged.minBuyin) > 0)) delete next[key];
+                  if (!merged.hidden && !merged.seriesOnly && !(Number(merged.minBuyin) > 0)) delete next[key];
                   else next[key] = merged;
                   return { ...f, siteRules: next };
                 });
+                const on = !rule.hidden;
                 return (
                   <div key={key} style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                    <span style={{fontSize:'0.82rem',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color:'var(--text)',minWidth:'120px'}}>
-                      {name}
-                      <span style={{color:'var(--text-muted)',fontWeight:400}}> {count}</span>
-                    </span>
-                    <span style={{fontSize:'0.75rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0}}>min $</span>
-                    <input type="number" min="0" inputMode="numeric"
+                    {/* The room switch itself. Its label is the room name, so the
+                        whole name is the hit target rather than a bare box. */}
+                    <label style={{display:'flex',alignItems:'center',gap:'6px',cursor:'pointer',minWidth:'140px'}}>
+                      <input type="checkbox" checked={on}
+                        onChange={e => setRule({ hidden: !e.target.checked })}
+                        style={{margin:0}} />
+                      <span style={{fontSize:'0.82rem',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color: on ? 'var(--text)' : 'var(--text-muted)'}}>
+                        {name}
+                        <span style={{color:'var(--text-muted)',fontWeight:400}}> {count}</span>
+                      </span>
+                    </label>
+                    {/* A floor and a series switch are refinements WITHIN a room.
+                        With the room off they cannot mean anything, so they are
+                        disabled and dimmed rather than left live and inert — but
+                        their VALUES are kept, so switching the room back on
+                        restores the rules the user set rather than silently
+                        discarding them. */}
+                    <span style={{fontSize:'0.75rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,opacity: on ? 1 : 0.4}}>min $</span>
+                    <input type="number" min="0" inputMode="numeric" disabled={!on}
                       value={rule.minBuyin ?? ''}
                       placeholder="any"
                       onChange={e => setRule({ minBuyin: e.target.value })}
-                      style={{width:'68px',padding:'4px 6px',fontSize:'0.8rem',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)'}} />
-                    <label style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                      <input type="checkbox" checked={!!rule.seriesOnly}
+                      style={{width:'68px',padding:'4px 6px',fontSize:'0.8rem',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)',opacity: on ? 1 : 0.4}} />
+                    <label style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',textTransform:'none',letterSpacing:0,cursor: on ? 'pointer' : 'not-allowed',color:'var(--text)',opacity: on ? 1 : 0.4}}>
+                      <input type="checkbox" checked={!!rule.seriesOnly} disabled={!on}
                         onChange={e => setRule({ seriesOnly: e.target.checked })}
                         style={{margin:0}} />
                       series only

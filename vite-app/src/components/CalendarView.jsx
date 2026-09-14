@@ -859,6 +859,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           // Per-room rules, same predicate as matchesOnline's.
           const rule = filters.siteRules && t.site ? filters.siteRules[t.site] : null;
           if (rule) {
+            if (rule.hidden) return false;
             if (rule.seriesOnly && !isSeriesEvent(t)) return false;
             const floor = Number(rule.minBuyin);
             if (Number.isFinite(floor) && floor > 0 && Number(t.buyin || 0) < floor) return false;
