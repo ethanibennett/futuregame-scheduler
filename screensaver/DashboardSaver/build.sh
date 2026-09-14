@@ -48,12 +48,54 @@ lipo -create "build/${PRODUCT}-arm64" "build/${PRODUCT}-x86_64" \
 echo "==> Bundling Info.plist"
 cp Info.plist "${BUNDLE}/Contents/Info.plist"
 
-echo "==> Ad-hoc codesign"
-codesign -f -s - --timestamp=none "${BUNDLE}"
+# Signing: ad-hoc does NOT work for a screensaver, however well it builds.
+#
+# legacyScreenSaver loads the bundle through AMFI, which rejects it outright:
+#
+#   amfid: .../DashboardSaver not valid: AppleMobileFileIntegrityError Code=-423
+#          "The file is adhoc signed or signed by an unknown certificate chain"
+#
+# and the failure is invisible from every angle that looks reasonable. The bundle
+# links, codesign verifies it, System Settings lists and selects it, the log even
+# says `Setting module "DashboardSaver"` -- and then the principal class is never
+# instantiated, so the screen is black and the saver's own logging never runs to
+# report anything. Only amfid says why, in a subsystem nobody thinks to read.
+#
+# A real certificate chain fixes it. Notarization is NOT needed: that gates
+# Gatekeeper on quarantined downloads, and this bundle is built locally.
+echo "==> Codesign"
+IDENTITY="${CODESIGN_IDENTITY:-}"
+if [[ -z "${IDENTITY}" ]]; then
+  # Prefer Developer ID; an Apple Development cert chains to Apple's WWDR too and
+  # is what a Mac set up for TestFlight already has.
+  for PREFIX in "Developer ID Application" "Apple Development" "Mac Developer"; do
+    IDENTITY="$(security find-identity -v -p codesigning | awk -F'"' -v p="${PREFIX}: " 'index($2, p) == 1 { print $2; exit }')"
+    [[ -n "${IDENTITY}" ]] && break
+  done
+fi
+if [[ -z "${IDENTITY}" ]]; then
+  echo "ERROR: no codesigning identity found, and ad-hoc signing will not load." >&2
+  echo "       Available identities:" >&2
+  security find-identity -v -p codesigning | sed 's/^/         /' >&2
+  echo "       Set CODESIGN_IDENTITY to one of them and rebuild." >&2
+  exit 1
+fi
+echo "    ${IDENTITY}"
+codesign -f -s "${IDENTITY}" --timestamp=none "${BUNDLE}"
 
 echo "==> Verifying"
 codesign -dv --verbose=2 "${BUNDLE}" 2>&1 | sed 's/^/    /'
 lipo -info "${BUNDLE}/Contents/MacOS/${PRODUCT}" | sed 's/^/    /'
+
+# Catch a signature AMFI will reject, here rather than as a black screen.
+echo "==> Verifying signature is loadable"
+if codesign -dv --verbose=2 "${BUNDLE}" 2>&1 | grep -q "flags=.*adhoc"; then
+  echo "ERROR: bundle is ad-hoc signed. AMFI will refuse to load it into" >&2
+  echo "       legacyScreenSaver and the screensaver will be black." >&2
+  exit 1
+fi
+TEAM="$(codesign -dv --verbose=2 "${BUNDLE}" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+echo "    TeamIdentifier=${TEAM:-none}"
 
 # The principal class is the one thing that fails completely silently: if Info.plist names a
 # class the Objective-C runtime does not have, the bundle still links, still passes codesign,
