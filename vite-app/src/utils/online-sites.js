@@ -26,8 +26,13 @@ export const SITE_MODELS = {
   regulated: 'regulated',
   /** National promotional model. Available everywhere EXCEPT `blockedStates`. */
   sweepstakes: 'sweepstakes',
-  /** No domestic licence and no jurisdiction claim we can verify. Never filtered
-   *  out by availability: absence of a claim is not a claim of absence. */
+  /** No domestic licence. What that means for a given player is NOT uniform, so
+   *  an offshore record carries its own data and the answer follows it:
+   *    servesUS: false   → unavailable anywhere in the US (GGPoker)
+   *    blockedStates     → a deny-list published by the operator (ACR)
+   *    neither           → genuinely unknown (Phenom)
+   *  Treating all three as "unknown" is what put GGPoker — which does not accept
+   *  US players at all — in a Pennsylvania player's "available to me" list. */
   offshore: 'offshore',
 };
 
@@ -108,9 +113,13 @@ export const ONLINE_SITES = {
     abbr: 'ACR',
     venuePrefix: 'ACR',
     model: SITE_MODELS.offshore,
+    /** ACR DOES serve the US, minus the states its own EULA excludes. §1.4 of
+     *  americascardroom.eu/terms-conditions/ names these. Recorded in the
+     *  watcher's recon from the operator's own document, not a review site. */
+    blockedStates: ['WA', 'KY', 'DE', 'LA', 'MD', 'MI', 'MS', 'NV', 'NJ'],
     timezone: 'America/New_York',
     verifiedOn: '2026-09-14',
-    evidence: 'Winning Poker Network. No US state licence; makes no per-state availability claim.',
+    evidence: 'PRIMARY: americascardroom.eu/terms-conditions/ §1.4 excludes residents of WA, KY, DE, LA, MD, MI, MS, NV, NJ. Curacao-licensed.',
   },
   ggpoker: {
     key: 'ggpoker',
@@ -118,9 +127,18 @@ export const ONLINE_SITES = {
     abbr: 'GG',
     venuePrefix: 'GGPoker',
     model: SITE_MODELS.offshore,
+    /** GGPoker does NOT accept US players — no US-regulated room, and the
+     *  international site (GG International Ltd, Isle of Man) does not serve the
+     *  States. The first version of this file recorded it as an ordinary
+     *  offshore site with no state data, which made the availability filter
+     *  answer "unknown" and therefore SHOW it; a player in Pennsylvania was told
+     *  GGPoker was available to them. The watcher's recon said "No US access" in
+     *  as many words. Its events are still ingested and still listed — they are
+     *  real tournaments — they are simply never "available to me" in the US. */
+    servesUS: false,
     timezone: 'America/New_York',
     verifiedOn: '2026-09-14',
-    evidence: 'GGPoker has no US-regulated room; ggpoker.com serves US players offshore.',
+    evidence: 'GG International Ltd (Isle of Man). No US-regulated room and no US access; see online-poker-watcher docs/sources.md.',
   },
   phenom: {
     key: 'phenom',
@@ -165,11 +183,26 @@ export function getSite(key) {
 export function siteAvailability(siteKey, jurisdiction) {
   const site = getSite(siteKey);
   if (!site) return { status: 'unknown', note: null };
-  if (site.model === SITE_MODELS.offshore) {
-    return { status: 'unknown', note: 'No published state-by-state availability' };
+  /* A site that does not serve the US at all is unavailable to every US player,
+     and that is knowable without knowing their state. Checked before the
+     jurisdiction test for exactly that reason. */
+  if (site.servesUS === false) {
+    return { status: 'no', note: 'Does not accept players in the United States' };
   }
+
   const st = (jurisdiction || '').toUpperCase();
   if (!/^[A-Z]{2}$/.test(st)) return { status: 'unknown', note: 'Your state is not set' };
+
+  if (site.model === SITE_MODELS.offshore) {
+    /* An offshore site that publishes a deny-list can be answered from it; one
+       that publishes nothing genuinely cannot. */
+    if (!site.blockedStates) {
+      return { status: 'unknown', note: 'No published state-by-state availability' };
+    }
+    return site.blockedStates.includes(st)
+      ? { status: 'no', note: `Excluded in ${st} by the operator's terms` }
+      : { status: 'yes', note: null };
+  }
 
   if (site.model === SITE_MODELS.regulated) {
     return site.states.includes(st)

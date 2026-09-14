@@ -4,6 +4,7 @@ import Icon from './Icon.jsx';
 import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
+import { ONLINE_SITES } from '../utils/online-sites.js';
 import { Filtered } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
@@ -34,6 +35,7 @@ const GAME_GROUPS = [
 function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
   const panelRef = useRef(null);
   const [whereOpen, setWhereOpen] = useState(false);
+  const [onlineOpen, setOnlineOpen] = useState(false);
   const [howMuchOpen, setHowMuchOpen] = useState(false);
   const [whichOpen, setWhichOpen] = useState(false);
   const [specialOpen, setSpecialOpen] = useState(false);
@@ -86,6 +88,26 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   /* Which of the fixed buy-in bands and quick pills have anything behind them
      here. A band with no events is not a choice, it is a dead end. */
+  /* Which online rooms are actually represented, and how many events each has.
+     Derived from the tournaments in hand rather than from the site registry, so
+     the panel offers a control for a room only when that room has events to
+     control — and the count tells the user what a floor is about to act on. */
+  const onlineSitesInPool = useMemo(() => {
+    const counts = new Map();
+    for (const t of tournaments || []) {
+      if (!t || !t.site) continue;
+      counts.set(t.site, (counts.get(t.site) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([key, count]) => ({ key, count, name: (ONLINE_SITES[key] && ONLINE_SITES[key].name) || key }))
+      .sort((a, b) => b.count - a.count);
+  }, [tournaments]);
+
+  const activeSiteRuleCount = useMemo(() => {
+    const r = filters.siteRules || {};
+    return Object.keys(r).filter(k => r[k] && (r[k].seriesOnly || Number(r[k].minBuyin) > 0)).length;
+  }, [filters.siteRules]);
+
   const poolFacts = useMemo(() => {
     const bands = new Set();
     let ladies = false, seniors = false;
@@ -126,7 +148,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
     filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
-    filters.showOnline === false || filters.onlyAvailableOnline === true;
+    filters.showOnline === false || filters.onlyAvailableOnline === true ||
+    Object.keys(filters.siteRules || {}).length > 0;
 
   return (
     <>
@@ -303,6 +326,69 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               </div>
             );
           })()}
+
+          {/* Online rooms — a floor and a series switch, per site.
+              Only rendered when online events are actually in the pool and
+              showing: a control for rooms that are not on screen is noise, and
+              one that cannot change anything reads as broken. */}
+          {filters.showOnline !== false && onlineSitesInPool.length > 0 && (
+          <div className="filter-group filter-span2">
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setOnlineOpen(o => !o)}>
+              Online rooms
+              {activeSiteRuleCount > 0 && (
+                <span style={{fontSize:'0.7rem',color:'var(--accent)',textTransform:'none',letterSpacing:0}}>
+                  {activeSiteRuleCount} set
+                </span>
+              )}
+              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: onlineOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'▼'}</span>
+            </label>
+            {onlineOpen && (<div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+              <div style={{fontSize:'0.7rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,lineHeight:1.4}}>
+                One buy-in floor cannot fit every room — these run from $1 to $25,500.
+              </div>
+              {onlineSitesInPool.map(({ key, name, count }) => {
+                const rule = (filters.siteRules && filters.siteRules[key]) || {};
+                const setRule = (patch) => setFilters(f => {
+                  const next = { ...(f.siteRules || {}) };
+                  const merged = { ...(next[key] || {}), ...patch };
+                  // Drop a rule that no longer restricts anything, so "how many
+                  // are set" stays honest and a cleared box really is cleared.
+                  if (!merged.seriesOnly && !(Number(merged.minBuyin) > 0)) delete next[key];
+                  else next[key] = merged;
+                  return { ...f, siteRules: next };
+                });
+                return (
+                  <div key={key} style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                    <span style={{fontSize:'0.82rem',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color:'var(--text)',minWidth:'120px'}}>
+                      {name}
+                      <span style={{color:'var(--text-muted)',fontWeight:400}}> {count}</span>
+                    </span>
+                    <span style={{fontSize:'0.75rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0}}>min $</span>
+                    <input type="number" min="0" inputMode="numeric"
+                      value={rule.minBuyin ?? ''}
+                      placeholder="any"
+                      onChange={e => setRule({ minBuyin: e.target.value })}
+                      style={{width:'68px',padding:'4px 6px',fontSize:'0.8rem',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)'}} />
+                    <label style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                      <input type="checkbox" checked={!!rule.seriesOnly}
+                        onChange={e => setRule({ seriesOnly: e.target.checked })}
+                        style={{margin:0}} />
+                      series only
+                    </label>
+                  </div>
+                );
+              })}
+              {activeSiteRuleCount > 0 && (
+                <button onClick={() => setFilters(f => ({ ...f, siteRules: {} }))} style={{
+                  alignSelf:'flex-start',background:'none',border:'none',color:'var(--text-muted)',
+                  fontSize:'0.78rem',cursor:'pointer',padding:0,textTransform:'none',letterSpacing:0,
+                }}>
+                  Clear room rules
+                </button>
+              )}
+            </div>)}
+          </div>
+          )}
 
           {/* Series */}
           <div className="filter-group filter-span2">
@@ -504,7 +590,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
-                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,jurisdiction:f.jurisdiction,jurisdictionManual:f.jurisdictionManual,showOnline:true,onlyAvailableOnline:false}))
+                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,jurisdiction:f.jurisdiction,jurisdictionManual:f.jurisdictionManual,showOnline:true,onlyAvailableOnline:false,siteRules:{}}))
               }>Clear all filters</button>
             )}
             <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
@@ -954,6 +1040,10 @@ const DEFAULT_FILTERS = {
   /* True when the user chose the state by hand. A derived lookup must not
      overwrite a deliberate choice. */
   jurisdictionManual: false,
+  /* Per-room overrides: { [siteKey]: { minBuyin, seriesOnly } }. Empty means no
+     restriction anywhere, which is what a filter set saved before this existed
+     also means. */
+  siteRules: {},
 };
 
 // LocationDropdown lives in its own file now (shared with CalendarView).
