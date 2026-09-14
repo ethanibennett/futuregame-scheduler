@@ -1535,7 +1535,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               ))}
             </div>
           </div>
-          {settings.theme === 'default' && (
+          {settings.theme === 'default' && (<>
             <div className="replayer-settings-row is-stacked">
               <div className="replayer-settings-label">Felt Color</div>
               <div className="replayer-settings-swatches">
@@ -1555,7 +1555,23 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 </span>
               </div>
             </div>
-          )}
+            {/* Bright Felt lives with the colour it lights: it sets how brightly
+                the cloth is lit, not which colour it is, and only the default
+                theme's felt is driven by this picker — so it sits inside the same
+                theme gate rather than as a standalone row that also showed (inert)
+                under the custom themes. */}
+            <div className="replayer-settings-row is-stacked">
+              <div>
+                <div className="replayer-settings-label">Bright Felt</div>
+                <div className="replayer-settings-sublabel">
+                  A lit cloth instead of the dark one &mdash; the same felt colour, lit brighter.
+                </div>
+              </div>
+              <button className={'replayer-settings-toggle' + (settings.feltBright ? ' on' : '')}
+                aria-pressed={!!settings.feltBright} aria-label="Bright felt"
+                onClick={() => onUpdate('feltBright', !settings.feltBright)} />
+            </div>
+          </>)}
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Cards</div>
@@ -1617,20 +1633,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             <button className={'replayer-settings-toggle' + (settings.cardSplay ? ' on' : '')}
               aria-pressed={!!settings.cardSplay} aria-label="Splay hole cards"
               onClick={() => onUpdate('cardSplay', !settings.cardSplay)} />
-          </div>
-          {/* Above the felt-colour picker it would have nothing to act on yet;
-              below it, it reads as what it is — the same colour, lit two
-              different ways. */}
-          <div className="replayer-settings-row is-stacked">
-            <div>
-              <div className="replayer-settings-label">Bright Felt</div>
-              <div className="replayer-settings-sublabel">
-                A lit cloth instead of the dark one. The felt colour drives both &mdash; this is how brightly it is lit, not which colour it is.
-              </div>
-            </div>
-            <button className={'replayer-settings-toggle' + (settings.feltBright ? ' on' : '')}
-              aria-pressed={!!settings.feltBright} aria-label="Bright felt"
-              onClick={() => onUpdate('feltBright', !settings.feltBright)} />
           </div>
           <div className="replayer-settings-row">
             <div className="replayer-settings-label">Rail Light Strip</div>
