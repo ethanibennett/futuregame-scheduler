@@ -31,11 +31,17 @@
     <key>CFBundleVersion</key>
     <string>1</string>
 
-    <!-- Principal class = module.class. The @objc(DashboardSaverView) name and the module
-         (product) name both matter; with the swiftc build below the module is "DashboardSaver",
-         so the fully-qualified principal class is DashboardSaver.DashboardSaverView. -->
+    <!-- Principal class = the name the class has in the OBJECTIVE-C runtime, which is what
+         NSBundle looks up. A bare Swift class registers as "Module.Class", but an explicit
+         @objc(Name) attribute overrides that entirely, and DashboardSaverView carries
+         @objc(DashboardSaverView) - so the runtime name is the unqualified one and the
+         module name does not appear. Getting this wrong fails silently in the worst way:
+         the bundle links, principalClass comes back nil, the engine has nothing to
+         instantiate, and the screen is simply black with nothing logged anywhere.
+         Verify after any rename with:
+           nm -gU .../Contents/MacOS/DashboardSaver | grep OBJC_CLASS -->
     <key>NSPrincipalClass</key>
-    <string>DashboardSaver.DashboardSaverView</string>
+    <string>DashboardSaverView</string>
 
     <!-- Minimum system version: Swift screensavers need a modern runtime. -->
     <key>LSMinimumSystemVersion</key>
