@@ -324,6 +324,68 @@ async function requireHamBasic(req, res, next) {
   }
 }
 
+// ── Live cash-game watcher (futurega.me/cash) ────────────────────────────────
+// The watcher is its own project (D:\projects\cash-game-watcher) on its own Render
+// service at cashwatcher.futurega.me. We do NOT duplicate its data — this is a
+// read-only reverse proxy so the page is SAME-ORIGIN with futurega.me.
+//
+// Why a proxy and not just a link: `fg_session` is a HOST-ONLY cookie —
+// setSessionCookie() sets no `domain`, so it is scoped to futurega.me exactly and
+// never reaches cashwatcher.futurega.me. That subdomain therefore always fell back
+// to a Basic prompt, and "logged into futurega.me" never carried. Serving under
+// /cash puts the page on the origin the cookie is already scoped to. (The
+// alternative — widening the cookie to .futurega.me — would send the session to
+// every present and future subdomain for one page's benefit.)
+//
+// Auth: requireHamBasic gates the edge exactly like /console, then the SAME
+// fg_session cookie is forwarded upstream; cashwatcher verifies the identical
+// HS256 JWT against the shared JWT_SECRET. No new secret is introduced.
+const CASHWATCHER_URL = (process.env.CASHWATCHER_URL || 'https://cashwatcher.futurega.me').replace(/\/$/, '');
+
+app.use('/cash', requireHamBasic, async (req, res) => {
+  // Read-only. The upstream ingest routes take a different bearer (INGEST_TOKEN)
+  // and must never be reachable behind a browser session, so they are refused here
+  // rather than relying on the upstream to reject them.
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(405).type('txt').send('method not allowed');
+  }
+  const upstreamPath = req.url || '/';
+  if (/^\/api\/(sweep\/)?ingest/.test(upstreamPath)) {
+    return res.status(404).type('txt').send('not found');
+  }
+
+  let upstream;
+  try {
+    upstream = await fetch(`${CASHWATCHER_URL}${upstreamPath}`, {
+      method: req.method,
+      headers: {
+        ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
+        accept: req.headers.accept || '*/*',
+        // Tells the page it is mounted under a path, so its own fetches become
+        // /cash/api/... instead of hitting THIS host's /api.
+        'x-cgw-base': '/cash',
+      },
+      redirect: 'manual',
+    });
+  } catch (err) {
+    console.error('[cash] upstream unreachable:', err && err.message);
+    return res.status(503).type('txt').send('cash watcher offline');
+  }
+
+  // A 401 here means the edge accepted a session the upstream refused — a config
+  // mismatch, not a user problem. Forwarding it would pop a Basic dialog in the
+  // browser for a page the user is already authenticated for, so say what happened.
+  if (upstream.status === 401) {
+    console.error('[cash] upstream rejected a session the edge accepted — check JWT_SECRET / CONSOLE_OWNER_USER_ID parity');
+    return res.status(502).type('txt').send('cash watcher rejected the session');
+  }
+
+  const body = Buffer.from(await upstream.arrayBuffer());
+  const type = upstream.headers.get('content-type');
+  if (type) res.type(type);
+  res.status(upstream.status).send(body);
+});
+
 // ── Backer-facing public surface (NOT under /console — backers have no creds) ──
 // Access is gated purely by the unguessable token in the URL; each token sees
 // only its own feed. Registered before the console gate + the SPA catch-all so
