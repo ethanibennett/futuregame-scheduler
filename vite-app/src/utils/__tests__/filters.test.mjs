@@ -76,6 +76,12 @@ eq('BetMGM in Nevada is not licensed', siteAvailability('betmgm', 'NV').status, 
 eq('PokerStars/FanDuel in Michigan', siteAvailability('pokerstars', 'MI').status, 'yes');
 eq('ClubWPT Gold is national by default', siteAvailability('clubwpt_gold', 'TX').status, 'yes');
 eq('ClubWPT Gold withdrew from Michigan', siteAvailability('clubwpt_gold', 'MI').status, 'no');
+// Arizona was missing from the list #242 shipped, which came from a review site
+// rather than the operator. It is the regression test for taking a state list
+// from the wrong kind of source.
+eq('ClubWPT Gold is out of Arizona too', siteAvailability('clubwpt_gold', 'AZ').status, 'no');
+eq('and all eight are blocked', ['AZ','CT','LA','MI','MT','NJ','TN','WA']
+   .every(st => siteAvailability('clubwpt_gold', st).status === 'no'), true);
 eq('ClubWPT Gold is limited in California', siteAvailability('clubwpt_gold', 'CA').status, 'limited');
 ok('and says why', /Game Days/.test(siteAvailability('clubwpt_gold', 'CA').note || ''));
 // An offshore site publishes no state list. Answering 'no' would be our claim,

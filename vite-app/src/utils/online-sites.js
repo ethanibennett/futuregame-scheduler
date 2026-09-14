@@ -79,14 +79,28 @@ export const ONLINE_SITES = {
     venuePrefix: 'ClubWPT Gold',
     model: SITE_MODELS.sweepstakes,
     /** Withdrawn from these. The list only grows as state sweepstakes bans pass,
-     *  which is exactly why this is a deny-list. */
-    blockedStates: ['CT', 'LA', 'MI', 'MT', 'NJ', 'TN', 'WA'],
+     *  which is exactly why this is a deny-list.
+     *
+     *  Taken from ClubWPT Gold's OWN support article, which names eight states.
+     *  The review sites disagree with each other and with the operator: two
+     *  secondary sources gave seven-state and six-state lists, a third said "46
+     *  states plus DC" (the real figure is 42 plus DC), and the seven-state list
+     *  is what shipped in #242 — leaving ARIZONA marked available when it is
+     *  not. The operator is the only source that can be right about this by
+     *  definition; do not take a state list from a review page again.
+     *  Quebec is excluded too, which this registry has no field for — it tests
+     *  US states, and a Canadian user's answer is 'unknown' rather than wrong. */
+    blockedStates: ['AZ', 'CT', 'LA', 'MI', 'MT', 'NJ', 'TN', 'WA'],
     /** States where it operates under a restricted arrangement. Shown, with the
-     *  caveat surfaced, rather than hidden: a limited room is still a room. */
-    limitedStates: { CA: 'Redemption limited to designated "Game Days" each month' },
+     *  caveat surfaced, rather than hidden: a limited room is still a room.
+     *  SECONDARY, unlike the deny-list above: the operator's own page does not
+     *  mention it and lists California as unrestricted. Kept because 'limited'
+     *  hides nothing — it only annotates — but it must not be promoted to a
+     *  block without a primary source. */
+    limitedStates: { CA: 'Redemption reportedly limited to designated "Game Days" each month (unconfirmed by the operator)' },
     timezone: 'America/New_York',
     verifiedOn: '2026-09-14',
-    evidence: 'tech-insider.org/clubwpt-gold-review/ (Aug 2026) + covers.com Tennessee exit (May 2026); CA Game Days per cardplayer.com',
+    evidence: 'PRIMARY: support.clubwptgold.com "Who is eligible to play on ClubWPT Gold" — available in all US states except AZ, WA, NJ, LA, CT, MI, MT, TN. CA note is secondary (cardplayer.com) and unconfirmed.',
   },
   acr: {
     key: 'acr',
