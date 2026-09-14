@@ -5,9 +5,10 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-09-11. The dated sections at the end run through 2026-08-30;
-"Seams to the dashboard" and "The build pipeline" below were added from the
-wsop-console side and verified against both live services.
+Last updated: 2026-09-14 (03:20 UTC — the evening of 09-13 in ET). The dated
+sections at the end run through 2026-08-30; "Seams to the dashboard" and "The
+build pipeline" below were added from the wsop-console side and verified against
+both live services. The newest section, 2026-09-13, is the screensaver split.
 
 ---
 
@@ -25,6 +26,42 @@ to the account and readable with WebFetch.
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
+
+---
+
+## Shipped 2026-09-13 — the screensaver, and where its halves live
+
+Three PRs, all screensaver, all ending in the same failure mode: something
+reports success while showing you an old or wrong picture.
+
+**#225 — the Cockpit page left this repo.** `wsop-console#3` took `cockpit-min.html`
+across as `screensaver/cockpit-page.html` and pointed `/d/:token` at it, which made
+the two copies here the stale ones. Deleted. **Nothing in this repo renders HTML any
+more**, and that is now the line: the Mac builds the `.saver` bundle and its refresher
+*here*; the dashboard serves the page, its fonts and the endpoint specs *there*. This
+closes the long-standing "decide where the macOS screensaver source belongs" item.
+
+Worth recording once: **"min" meant MINIMALIST, not minified.** `cockpit-min.html`
+(07-12) was the *newer* of the two and a different document from
+`cockpit-screensaver.html` (07-09) rather than a build of it. Following the name would
+have shipped the older full-bleed page over the one with the departures board.
+
+**#226 — `config.json`'s `url` is the ORIGIN.** `render.sh` composes the page URL
+itself (`url + '/d/' + token`), so a full page URL there yields `/d/<token>/d/<token>`
+and a 404. #222 had "corrected" the README to the full URL, which produced the exact
+failure #222 existed to prevent.
+
+**#227 — `render.sh` asks for the HTTP status before spending a render.** Chrome
+screenshots an error page as happily as a good one, so the render cannot tell you the
+page was wrong: on the current Mac a bad token produced a 26 KB picture of the words
+"Not found" while the script logged `wrote frame 26596 bytes`, every minute, forever.
+Status rather than byte size, because a size threshold is a guess that would eventually
+freeze the saver on a legitimate redesign. A refused render keeps the previous frame,
+since a stale dashboard is better than a picture of an error.
+
+Cross-repo: the dashboard also fixed a token-format check the same night
+(`wsop-console 0a1acf5`) that had been rejecting ~65% of correctly generated
+`base64url` tokens — the same 404, reached from the other end.
 
 ---
 
