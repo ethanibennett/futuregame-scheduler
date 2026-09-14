@@ -723,6 +723,35 @@ plus a date window from the client, since `/api/tournaments` accepts
   exactly like a filtering bug and cost several cycles. Build regexes in-page
   with `new RegExp('...')`.
 
+## DASHBOARD_TOKEN rotation — IN PROGRESS since 2026-09-14
+
+A rotation is live right now. Both services accept the new token AND the old
+one (`DASHBOARD_TOKEN_PREVIOUS`), so nothing is locked out.
+
+Done: Render scheduler, Render dashboard, local `ecosystem.config.cjs` (which
+now DECLARES the token — it previously existed only in pm2's saved dump with no
+declared source, so a `pm2 delete` would have dropped it and roster sync would
+have stopped silently), and the GitHub secret in wsop-console.
+
+STILL ON THE OLD TOKEN — these are why PREVIOUS must stay set:
+  * installed iOS/Watch builds — needs a TestFlight build (the GitHub secret is
+    already updated, so the next build picks it up)
+  * the Mac screensaver config JSON
+  * cash-game-watcher — its stale value comes from the pm2 DAEMON's own
+    environment, which it passes to every child; it beat both `.env` and a clean
+    delete/re-add. Its `ecosystem.config.cjs` is TRACKED, so the value must not
+    go there. Fix it with `pm2 kill` + resurrect from a shell exporting the new
+    value, or by updating the daemon env — not by editing the tracked file.
+
+When `[dashboard-token] … authenticated with DASHBOARD_TOKEN_PREVIOUS` stops
+appearing in both services' logs, every consumer has caught up: unset
+DASHBOARD_TOKEN_PREVIOUS on both Render services and the old token is dead.
+
+⚠ Render does NOT redeploy on an API env-var change, and `POST /services/:id/restart`
+does NOT pick up new env either — it created no deploy at all. Only
+`POST /services/:id/deploys` does. Two rounds of verification said the rotation
+had failed when it had simply never been loaded.
+
 ## Rotating DASHBOARD_TOKEN
 
 It is ONE shared secret gating both dashboard seams in both directions, compared
