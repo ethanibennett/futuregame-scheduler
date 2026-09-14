@@ -8301,6 +8301,16 @@
       height: 18px;
       flex-shrink: 0;
       pointer-events: none;
+      /* An inline <svg> sits on the text baseline, which pushed it 1px below its
+         own 18px span — measured, on every icon. The span is the thing the
+         layout positions, so the art has to fill it exactly. */
+      display: inline-flex;
+      line-height: 0;
+    }
+    .cal-bounty-icon > svg,
+    .cal-ring-icon > svg,
+    .cal-bracelet-icon > svg {
+      display: block;
     }
 
 
@@ -8348,7 +8358,12 @@
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      line-height: 1.3;
+      /* The SAME token --cal-title-line is built from. It was a bare 1.3 while
+         the accolade centering computed against --lh-snug (1.35), so the icons
+         were centred on a line box 0.65px taller than the one being drawn — and
+         a literal here is a token violation besides. Two consumers, one token,
+         and the centering is right by construction rather than by coincidence. */
+      line-height: var(--lh-snug);
       overflow: hidden;
     }
     /* Truncate long names on one line, but allow Flight/Day sub-line via <br> */
