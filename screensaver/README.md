@@ -38,6 +38,21 @@ which holds `url` and `token`. **That token is a credential and is deliberately
 not committed.** On a new machine, recreate the file with the dashboard URL and
 the `DASHBOARD_TOKEN` value from the server environment.
 
+The URL is on the **dashboard**, not on this server:
+
+```
+https://dashboard.futurega.me/d/<DASHBOARD_TOKEN>
+```
+
+This repo's own history says otherwise and will mislead you: `a5e2450 Cockpit
+screensaver: serve the flight-deck at /d/:token` added that route HERE, and the
+2026-08-09 cutover moved the whole dashboard surface to the standalone service.
+`grep "app.get('/d/" server.js` in this repo now returns nothing; the route
+lives in `wsop-console/server/server.js`. Pointing `config.json` at the
+scheduler gets a 404, and because `render.sh` only replaces `dashboard.png`
+when Chrome produced a frame, the saver goes on showing the last good image
+with no error anywhere -- the silent-stale failure described above.
+
 ## Refresh schedule
 
 The refresh runs from `crontab`, not launchd:
