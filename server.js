@@ -390,6 +390,9 @@ app.use('/cash', requireHamBasic, async (req, res) => {
 // Access is gated purely by the unguessable token in the URL; each token sees
 // only its own feed. Registered before the console gate + the SPA catch-all so
 // these win.
+const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
+const warnPreviousDashboardToken = makePreviousTokenWarner();
+
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
 
 // Push service worker for the backer page (scope /b/). Must be registered
@@ -10230,7 +10233,9 @@ function rotateBackerToken(oldToken, newToken) {
 }
 
 async function syncBackerRoster() {
-  const token = process.env.DASHBOARD_TOKEN;
+  // Always the CURRENT value — see lib/dashboard-token.js on why outbound never
+  // falls back to the previous one.
+  const token = outboundDashboardToken();
   if (!token) return;
   try {
     const res = await fetch(`${DASHBOARD_BASE_URL}/api/roster/${token}`);
@@ -10299,13 +10304,12 @@ async function syncBackerRoster() {
 // first (so a malformed token can't reach the compare), then length-guard
 // timingSafeEqual (it throws on unequal-length buffers). Returns false — the
 // caller 404s — on any mismatch, matching the backer routes' unguessable posture.
+
 function dashboardTokenOk(token) {
-  const expected = process.env.DASHBOARD_TOKEN || '';
-  if (!expected || !BACKER_TOKEN_RE.test(token)) return false;
-  const a = Buffer.from(token);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  const res = checkDashboardToken(token);
+  // Still accepted, but say so: the rotation is not finished while this fires.
+  if (res.ok && res.via === 'previous') warnPreviousDashboardToken('an inbound dashboard request');
+  return res.ok;
 }
 
 // ── Dashboard events: the user's upcoming SCHEDULED tournaments (his MTT picks) ──

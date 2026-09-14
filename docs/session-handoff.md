@@ -723,6 +723,38 @@ plus a date window from the client, since `/api/tournaments` accepts
   exactly like a filtering bug and cost several cycles. Build regexes in-page
   with `new RegExp('...')`.
 
+## Rotating DASHBOARD_TOKEN
+
+It is ONE shared secret gating both dashboard seams in both directions, compared
+byte-for-byte at each end — and it has SEVEN copies:
+
+  1. Render env, scheduler (futurega.me)
+  2. Render env, dashboard (dashboard.futurega.me)
+  3. local `ecosystem.config.cjs`  (the local pm2 instance really does sync)
+  4. GitHub secret `DASHBOARD_TOKEN` in wsop-console (materializes DashboardSecret.swift)
+  5. **installed iOS/Watch builds** — compiled in; only a TestFlight build updates them
+  6. cash-game-watcher (APNs alert seam, sent as a header)
+  7. the Mac screensaver's config JSON
+
+`DASHBOARD_TOKEN_PREVIOUS` is accepted for INBOUND checks so the seven can be
+rolled one at a time. Outbound calls always present the CURRENT value, so a
+rotation cannot settle back onto the old secret.
+
+    1. set DASHBOARD_TOKEN_PREVIOUS = the current value on BOTH Render services
+    2. generate a new one:  openssl rand -hex 32
+       (must match /^[A-Za-z0-9]{6,64}$/ — both ends shape-gate before comparing)
+    3. set the new DASHBOARD_TOKEN in all seven places
+    4. ship a TestFlight build, or every installed phone stays on the old value
+    5. when `[dashboard-token] … authenticated with DASHBOARD_TOKEN_PREVIOUS`
+       stops appearing in either service's log, every consumer has caught up
+    6. unset DASHBOARD_TOKEN_PREVIOUS on both services — the old token is now dead
+
+The warning in step 5 is throttled to once an hour, so a consumer polling every
+minute cannot bury it. Tests: `node scripts/test-dashboard-token.mjs` here and
+`node server/test/dashboard-token.test.js` in wsop-console — the same 24
+assertions, because the two files are two ends of one handshake and a
+disagreement breaks the seam in one direction only.
+
 ## Open to-dos (asked for 2026-09-14, not yet started)
 
 Three UI items raised while the online-tournaments work was in flight, kept here
