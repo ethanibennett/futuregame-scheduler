@@ -69,7 +69,8 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   newest build), capped at 3 attempts per SHA, then opens a handoff issue for the Mac.
   Opt-in via `TESTFLIGHT_WATCHDOG=1` so only this box runs it; Render has no `gh` and no
   business dispatching builds. Mitigation only — the cure for the dark wake is on the Mac.
-- **Online feed (in)**: `online-poker-watcher` emits into `./online-feed/`, ingested by
+- **Online feed (in)**: `online-poker-watcher` runs its own pm2 app (a persistent
+  loop, emitting at :10 past the hour and at boot) into `./online-feed/`, ingested by
   `ingestOnlineFeed()` at boot and hourly at :20, alongside the MTT feed. **Each feed owns
   its rows through `source_pdf`** (`'mtt-feed'` / `'online-feed'`) and every operation is
   scoped by that tag — `pruneFeedVenues(keep, label, tag)`, `ingestFeed(dir, tag, label,
@@ -106,7 +107,7 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 | cash watcher | `D:\projects\cash-game-watcher` | cash-game-watcher |
 | mtt watcher | `D:\projects\mtt-series-watcher` | mtt-series-watcher |
 | dashboard | `D:\projects\wsop-console` (prod on Render + WSL standby) | wsop-console |
-| online watcher | `D:\projects\online-poker-watcher` | not yet on GitHub |
+| online watcher | `D:\projects\online-poker-watcher` | not yet on GitHub (pm2: `online-poker-watcher`) |
 
 The Mac is the Xcode build node (iOS/Watch/screensaver) — see `docs/mac-build.md`.
 Ship the app with `./scripts/ios-testflight.sh` there (NOT `deploy.sh --ios`, which

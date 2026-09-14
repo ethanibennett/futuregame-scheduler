@@ -659,12 +659,20 @@ posts behind `Disallow: /`, and ClubWPT Gold's bundle has no tournament route at
 all. That is a finding, not a gap: an adapter needs a source. See the watcher's
 `docs/sources.md` for the evidence per site.
 
-Not done: the watcher's append-only DB and collector loop (the emitter still
-fetches directly, on demand — nothing schedules it yet, so the online feed is
-only as fresh as the last manual `npm run emit`); and the payload work —
-`compression` middleware plus a date window from the client, since
-`/api/tournaments` accepts `startDate`/`endDate` and `App.jsx` sends none. The
-table is 3,292 rows now.
+**The collector loop runs.** pm2 app `online-poker-watcher` (its own
+`ecosystem.config.cjs`), one persistent process that emits at :10 past the hour
+and at boot — deliberately NOT a pm2 `cron_restart`, which mtt-series-watcher
+already learned silently stops firing. The scheduler ingests at :20 and the MTT
+watcher emits at :15, so :10 shares a minute with nobody. `pm2 logs
+online-poker-watcher` shows one block per run with a per-source tally.
+
+WSOP.com now also has the monthly gold-RING Circuit series, 10 events live.
+
+Not done: the watcher's append-only raw-response archive (it fetches, normalizes
+and emits in one pass, so the only record of what a source said is the current
+feed and the captured fixtures); and the payload work — `compression` middleware
+plus a date window from the client, since `/api/tournaments` accepts
+`startDate`/`endDate` and `App.jsx` sends none. The table is 3,302 rows.
 
 ### Traps this work has already paid for
 
@@ -679,6 +687,24 @@ table is 3,292 rows now.
   Phenom at $500; one $200 rule kept 10 of Phenom's 186 rules, switching the
   room off rather than filtering it. `SITE_FLOORS` in the emitter, overridable
   with `ONLINE_BUYIN_FLOOR_<SITE>`.
+- **pm2 fork mode never runs your script as `argv[1]`.** It runs its own
+  `ProcessContainerFork.js` and imports your module, so every argv-based "am I
+  the main module?" guard answers false under pm2 — `main()` never runs, the
+  event loop empties, the process exits 0, and pm2 logs "exited via signal
+  [SIGINT]" with two EMPTY log files. No stack, no error, because nothing ran.
+  A pm2 entry must do its work as a top-level side effect with no guard, and
+  keep anything importable (therefore testable) in another module.
+- **An empty manifest is a failed emit, not an empty schedule.** Both halves are
+  guarded now — the scheduler skips ingest on a manifest with no series (#244),
+  and the emitter refuses to write one. Losing the feed should take two
+  independent failures.
+- **Don't write off a promo page because its schedule is an image.** WSOP.com's
+  Circuit schedule renders as a JPG, which the recon read as "not collectable" —
+  and the same page links the promotion's T&C as a **PDF** with the whole table
+  in text. A live series with $1.5M in guarantees was invisible for want of
+  opening the second link.
+- **`git add -A` committed a 1.5 MB scratch DB and a debug file** in one
+  afternoon. Both now ignored by pattern (`scratch-*.db`, `*-diag.txt`).
 - **A published schedule keeps its finished events on it.** WSOP.com's page
   still lists the whole 2026 series; GGPoker's `/wsop-online/` lists bracelets
   back to August. Every adapter drops instances at or before the poll time, or
