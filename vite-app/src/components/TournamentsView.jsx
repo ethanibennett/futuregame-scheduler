@@ -1633,11 +1633,12 @@ export default function TournamentsView({
           >
             <Icon.upload />
           </button>
-          {/* Two rows, right-aligned: the event-kind switches on top, the online
-              pair beneath. Kept off one long line so the phone (~380px) never
-              scrolls sideways to reach "Available to me". */}
-          <div style={{display:'flex',flexDirection:'column',gap:'6px',alignItems:'flex-end',marginLeft:'auto'}}>
-           <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+          {/* Row 1 rides the button line — parent is align-items:center and this
+              group only carries marginLeft:auto, so the event-kind switches sit
+              level with the icon buttons at left. Row 2 (below) forces itself onto
+              the next line, keeping the phone (~380px) from scrolling sideways to
+              reach "Available to me". */}
+          <div style={{display:'flex',gap:'10px',alignItems:'center',marginLeft:'auto'}}>
             <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSatellites}
                 onChange={e => setFilters(f => ({...f, hideSatellites:!e.target.checked}))}
@@ -1656,10 +1657,12 @@ export default function TournamentsView({
                 style={{margin:0}}
               /> Side Events
             </label>
-           </div>
-           <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
-            {/* Online play has no location, so these are here rather than in the
-                location panel, and stay reachable while a radius or region is set. */}
+          </div>
+          {/* flex-basis:100% forces this pair onto the line below the buttons and
+              row 1; justify-content:flex-end keeps it right-aligned under them.
+              Online play has no location, so these live here rather than in the
+              location panel, and stay reachable while a radius or region is set. */}
+          <div style={{display:'flex',gap:'10px',alignItems:'center',flexBasis:'100%',justifyContent:'flex-end'}}>
             <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={filters.showOnline !== false}
                 onChange={e => setFilters(f => ({...f, showOnline:e.target.checked}))}
@@ -1682,7 +1685,6 @@ export default function TournamentsView({
                 /> Available to me
               </label>
             )}
-           </div>
           </div>
         </div>
 
