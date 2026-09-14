@@ -1152,9 +1152,15 @@ async function initDatabase() {
       const rake = getWSOPRake(row.buyin, row.event_number);
       if (rake.rakePct !== null) {
         db.run(
-          `UPDATE tournaments SET prize_pool = ?, house_fee = ?, opt_add_on = ?,
+          // NOT prize_pool. getWSOPRake().prizePool is the per-entry split of a
+          // buy-in (buyin - rake), and prize_pool is the advertised GUARANTEE --
+          // the card renders it as "$504 GTD". Writing one into the other put a
+          // $600 event on the board guaranteeing $504. The per-entry figure is
+          // derivable from buyin - rake_dollars wherever it is wanted, so it is
+          // no longer stored at all.
+          `UPDATE tournaments SET house_fee = ?, opt_add_on = ?,
            rake_pct = ?, rake_dollars = ? WHERE id = ?`,
-          [rake.prizePool, rake.houseFee, rake.optAddOn, rake.rakePct, rake.rakeDollars, row.id]
+          [rake.houseFee, rake.optAddOn, rake.rakePct, rake.rakeDollars, row.id]
         );
         backfillCount++;
       }
@@ -2096,6 +2102,31 @@ async function initDatabase() {
           updated += db.getRowsModified();
         }
         console.log(`WSOPE event rename: ${updated} rows updated`);
+      }
+    },
+    {
+      // prize_pool has carried two meanings and the card only ever showed one.
+      // The feed writes an advertised GUARANTEE; the WSOP rake backfill, the
+      // structure-sheet parser and the seed all wrote the per-entry split of
+      // the buy-in. A $600 event came out reading "$504 GTD" -- 600 minus 96
+      // of rake -- which is not a guarantee at all.
+      //
+      // Identified arithmetically, not by a threshold: prize_pool is exactly
+      // buyin - rake_dollars. Measured on the live DB, 270 of 1,444 rows with
+      // a prize_pool matched, and they were precisely the rows whose
+      // prize_pool was below their buy-in -- no exceptions in either
+      // direction. A real guarantee below the buy-in does not exist.
+      //
+      // The writers are fixed above, so this runs once and stays fixed.
+      name: 'prize-pool-guarantee-only-2026-09',
+      fn: () => {
+        db.run(
+          `UPDATE tournaments SET prize_pool = NULL
+            WHERE prize_pool > 0 AND buyin > 0 AND rake_dollars IS NOT NULL
+              AND ABS(prize_pool - (buyin - rake_dollars)) < 1`
+        );
+        const updated = db.getRowsModified();
+        console.log(`prize_pool: cleared the per-entry split from ${updated} events (it is a guarantee column)`);
       }
     },
     {
@@ -3116,7 +3147,7 @@ async function initDatabase() {
           t.gameVariant, t.venue, t.notes || null,
           t.category || null, t.isSatellite ? 1 : 0, t.targetEvent || null,
           t.isRestart ? 1 : 0, t.parentEvent || null,
-          t.prizePool || null, t.houseFee || null, t.optAddOn || null,
+          null, t.houseFee || null, t.optAddOn || null,  // prize_pool: guarantee only, never the per-entry split
           t.rakePct || null, t.rakeDollars || null,
           'WSOP 2026 Official Schedule'
         ]
@@ -3639,7 +3670,7 @@ app.post('/api/upload-schedule', authenticateToken, requireRegistered, upload.si
           tournament.targetEvent || null,
           tournament.isRestart ? 1 : 0,
           tournament.parentEvent || null,
-          tournament.prizePool || null,
+          null,  // prize_pool is the guarantee; a structure sheet carries the per-entry split, not one
           tournament.houseFee || null,
           tournament.optAddOn || null,
           tournament.rakePct || null,

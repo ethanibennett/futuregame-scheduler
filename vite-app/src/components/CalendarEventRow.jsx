@@ -757,10 +757,17 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         <span className="cal-detail-value">{tournament.late_reg}</span>
                       </div>
                     )}
-                    {showRakeBreakdown && tournament.prize_pool > 0 && (
+                    {/* Derived, not stored. This line is the per-entry split of the
+                        buy-in -- it sits beside House Fee and Staff Fee and adds up to
+                        the entry -- whereas prize_pool is the advertised GUARANTEE the
+                        collapsed row prints as "GTD". Reading the guarantee column here
+                        is what let the two meanings share one field, and a $600 event
+                        ended up advertising a $504 guarantee. buyin - rake_dollars is
+                        exactly this number and cannot drift from the rake beside it. */}
+                    {showRakeBreakdown && tournament.buyin > 0 && tournament.rake_dollars > 0 && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">Prize Pool</span>
-                        <span className="cal-detail-value">{currencySymbol(tournament.venue)}{Number(tournament.prize_pool).toLocaleString()}</span>
+                        <span className="cal-detail-value">{currencySymbol(tournament.venue)}{(Number(tournament.buyin) - Number(tournament.rake_dollars)).toLocaleString()}</span>
                       </div>
                     )}
                     {showRakeBreakdown && tournament.house_fee > 0 && (
