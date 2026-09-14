@@ -134,12 +134,33 @@ if [ -n "$FORCE_BUILD" ]; then
 else
   APPLE_LATEST=$(node "$PROJECT_ROOT/scripts/asc-latest-build.js" \
     "$ASC_KEY_PATH" "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$BUNDLE_ID" 2>/dev/null || echo "0")
+  # The commit count, as a FLOOR under whatever App Store Connect reports.
+  #
+  # ASC is not a reliable high-water mark: it under-reported its own latest
+  # as 144 while build 145 was already uploaded, so two consecutive runs both
+  # computed 145 and the second died with "Redundant Binary Upload". CI never
+  # commits the bumped CURRENT_PROJECT_VERSION -- doing so would retrigger the
+  # workflow forever -- so the committed value is frozen at 62 and ASC was the
+  # only thing that could move the number. When it lagged there was nothing
+  # underneath it.
+  #
+  # The commit count is monotonic and needs no state. It reads 1 on a shallow
+  # clone, which is why the workflow deepens with a commit-only filter first,
+  # and why this is a FLOOR rather than the number itself: if that fetch is
+  # skipped or fails, the count is 1, the floor never binds, and the build
+  # falls back to exactly the behaviour it has today.
+  COMMIT_COUNT=$(git -C "$PROJECT_ROOT" rev-list --count HEAD 2>/dev/null || echo 0)
+  case "$COMMIT_COUNT" in ''|*[!0-9]*) COMMIT_COUNT=0 ;; esac
   if [ -z "$APPLE_LATEST" ] || [ "$APPLE_LATEST" = "0" ] || [ "$APPLE_LATEST" -lt "$CURRENT_BUILD" ]; then
     NEW_BUILD=$((CURRENT_BUILD + 1))
-    warn "App Store Connect reported '$APPLE_LATEST' — using local counter."
-    info "iOS build number: $CURRENT_BUILD → $NEW_BUILD"
+    warn "App Store Connect reported '$APPLE_LATEST' -- using local counter."
   else
     NEW_BUILD=$((APPLE_LATEST + 1))
+  fi
+  if [ "$COMMIT_COUNT" -gt "$NEW_BUILD" ]; then
+    info "iOS build number: $CURRENT_BUILD → $COMMIT_COUNT (commit count; ASC latest $APPLE_LATEST would have given $NEW_BUILD)"
+    NEW_BUILD="$COMMIT_COUNT"
+  else
     info "iOS build number: $CURRENT_BUILD → $NEW_BUILD (past ASC latest $APPLE_LATEST for $BUNDLE_ID)"
   fi
 fi
