@@ -93,6 +93,12 @@ public-vite/
 vite-app/public/version.txt
 build/
 
+# Scratch DB copies. Testing against a copy on a spare port is the documented way
+# to exercise ingest and prune without touching the pm2 app's live database, so
+# these get created often — and one was committed by a `git add -A` in #245.
+# poker-tournaments.db itself is runtime state owned by pm2 and is never tracked.
+scratch-*.db
+
 # Dev scratch
 test-hands.json
 test-hands.md
