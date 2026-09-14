@@ -8,7 +8,7 @@ import {
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
   haptic, VENUE_MAP, getVenueBrandColor, getVenueCoords, haversineDistance,
   VENUE_TO_SERIES, LOCATION_REGIONS,
-  isSideEvent, isOnline,
+  isSideEvent, isOnline, isSeriesEvent,
 } from '../utils/utils.js';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
@@ -113,7 +113,8 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
     filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
-    filters.showOnline === false || filters.onlyAvailableOnline === true;
+    filters.showOnline === false || filters.onlyAvailableOnline === true ||
+    Object.keys(filters.siteRules || {}).length > 0;
   /* Location is deliberately NOT counted here. It survives "Clear all",
      so counting it would show a Clear button that then appears to do
      nothing when a location is the only thing set. TournamentsView's
@@ -673,6 +674,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       // other produces two different lists from identical data.
       showOnline: true,
       onlyAvailableOnline: false,
+      siteRules: {},
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
@@ -854,6 +856,13 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
              agree or the same data produces two lists. */
           if (filters.onlyAvailableOnline && filters.jurisdiction
               && !isSiteAvailable(t.site, filters.jurisdiction)) return false;
+          // Per-room rules, same predicate as matchesOnline's.
+          const rule = filters.siteRules && t.site ? filters.siteRules[t.site] : null;
+          if (rule) {
+            if (rule.seriesOnly && !isSeriesEvent(t)) return false;
+            const floor = Number(rule.minBuyin);
+            if (Number.isFinite(floor) && floor > 0 && Number(t.buyin || 0) < floor) return false;
+          }
         }
         if (!isOnline(t) && filters.maxDistance && filters.userLocation) {
           const coords = getVenueCoords(t.venue);

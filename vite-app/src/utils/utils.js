@@ -1124,7 +1124,34 @@ export function matchesOnline(t, filters) {
   if (filters.onlyAvailableOnline && filters.jurisdiction) {
     if (!isSiteAvailable(t.site, filters.jurisdiction)) return false;
   }
+
+  /* Per-site rules. One buy-in floor across every online room says the wrong
+     thing everywhere: ACR runs to $25,500 and Phenom tops out at $500, so a
+     figure that trims ACR sensibly switches Phenom off, and one that keeps
+     Phenom's schedule drowns the list in GGPoker micros. Same for series: the
+     rooms that matter for a series are not the rooms worth watching daily.
+     Absent rules mean no restriction, so a saved filter set from before this
+     existed behaves exactly as it did. */
+  const rule = filters.siteRules && t.site ? filters.siteRules[t.site] : null;
+  if (rule) {
+    if (rule.seriesOnly && !isSeriesEvent(t)) return false;
+    const floor = Number(rule.minBuyin);
+    if (Number.isFinite(floor) && floor > 0 && Number(t.buyin || 0) < floor) return false;
+  }
   return true;
+}
+
+/** Is this online event part of a SERIES, as opposed to the room's standing
+ *  schedule?
+ *
+ *  The emitter names an online venue either "<Site> <Series>" or, for a
+ *  non-series event, "<Site> Schedule" — see venueFor() in the watcher's
+ *  emit/online-feed.ts. That convention is the only signal in the row, so it is
+ *  read here rather than guessed at from the event name, and the two must change
+ *  together. A live (non-online) event is not answered by this at all. */
+export function isSeriesEvent(t) {
+  if (!t || !isOnline(t)) return false;
+  return !/\sSchedule$/.test(String(t.venue || '').trim());
 }
 
 /** The availability of the site an event is on, for the card's caveat line.

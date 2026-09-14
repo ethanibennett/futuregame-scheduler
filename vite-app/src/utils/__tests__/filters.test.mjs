@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -84,10 +84,15 @@ eq('and all eight are blocked', ['AZ','CT','LA','MI','MT','NJ','TN','WA']
    .every(st => siteAvailability('clubwpt_gold', st).status === 'no'), true);
 eq('ClubWPT Gold is limited in California', siteAvailability('clubwpt_gold', 'CA').status, 'limited');
 ok('and says why', /Game Days/.test(siteAvailability('clubwpt_gold', 'CA').note || ''));
-// An offshore site publishes no state list. Answering 'no' would be our claim,
-// not theirs; answering 'yes' would assert availability we cannot support.
-eq('ACR is unknown everywhere', siteAvailability('acr', 'NV').status, 'unknown');
-eq('Phenom likewise', siteAvailability('phenom', 'PA').status, 'unknown');
+/* An offshore site that publishes NOTHING per-state is unknown — answering 'no'
+   would be our claim, not theirs, and 'yes' would assert availability we cannot
+   support. That is Phenom. It is NOT ACR, whose own EULA names the states it
+   excludes, and not GGPoker, which does not serve the US at all. This assertion
+   used to read "ACR is unknown everywhere", which was the bug: it treated
+   "offshore" as a synonym for "no information" when two of the three offshore
+   rooms publish plenty. */
+eq('Phenom publishes nothing per-state', siteAvailability('phenom', 'PA').status, 'unknown');
+eq('and ACR without a state is unanswerable', siteAvailability('acr', null).status, 'unknown');
 eq('no jurisdiction set', siteAvailability('wsop_com', null).status, 'unknown');
 eq('a junk state code', siteAvailability('wsop_com', 'ZZZ').status, 'unknown');
 eq('a site we do not know', siteAvailability('nope', 'NV').status, 'unknown');
@@ -132,6 +137,68 @@ for (const [key, s] of Object.entries(ONLINE_SITES)) {
   ok(`${key}: carries a verifiedOn date`, /^\d{4}-\d{2}-\d{2}$/.test(s.verifiedOn || ''));
   ok(`${key}: a regulated site names its states`, s.model !== 'regulated' || (s.states || []).length > 0);
 }
+
+
+console.log('offshore is not one thing — three rooms, three answers');
+/* GGPoker does not accept US players AT ALL. The first version of this file
+   filed it as a plain offshore site with no state data, which made the answer
+   "unknown" and therefore SHOWED it: a player in Pennsylvania was told GGPoker
+   was available to them. The watcher's recon said "No US access" in as many
+   words; the fact existed and was not encoded. */
+eq('GGPoker in Pennsylvania', siteAvailability('ggpoker', 'PA').status, 'no');
+eq('GGPoker in Nevada', siteAvailability('ggpoker', 'NV').status, 'no');
+eq('GGPoker with no state set is still no', siteAvailability('ggpoker', null).status, 'no');
+ok('and it says why', /United States/.test(siteAvailability('ggpoker', 'PA').note || ''));
+
+// ACR DOES serve the US, minus the states its own EULA §1.4 excludes.
+eq('ACR in Pennsylvania', siteAvailability('acr', 'PA').status, 'yes');
+eq('ACR in Texas', siteAvailability('acr', 'TX').status, 'yes');
+eq('ACR in Nevada is excluded', siteAvailability('acr', 'NV').status, 'no');
+eq('and in New Jersey', siteAvailability('acr', 'NJ').status, 'no');
+eq('and in Michigan', siteAvailability('acr', 'MI').status, 'no');
+ok('all nine excluded states', ['WA','KY','DE','LA','MD','MI','MS','NV','NJ']
+   .every(st => siteAvailability('acr', st).status === 'no'));
+eq('but without a state, ACR is unanswerable', siteAvailability('acr', null).status, 'unknown');
+
+// Phenom publishes nothing per-state, so it stays genuinely unknown.
+eq('Phenom is still unknown', siteAvailability('phenom', 'PA').status, 'unknown');
+eq('and is therefore not filtered out', isSiteAvailable('phenom', 'PA'), true);
+
+console.log('the toggle, from Pennsylvania');
+const ggEv  = { venue: 'GGPoker Schedule', is_online: 1, site: 'ggpoker', buyin: 500 };
+const acrEv2 = { venue: 'ACR OSS XL', is_online: 1, site: 'acr', buyin: 66 };
+const phEv  = { venue: 'Phenom Schedule', is_online: 1, site: 'phenom', buyin: 100 };
+const paOn = { onlyAvailableOnline: true, jurisdiction: 'PA' };
+eq('GGPoker is hidden in PA', matchesOnline(ggEv, paOn), false);
+eq('ACR is shown in PA', matchesOnline(acrEv2, paOn), true);
+eq('Phenom is shown in PA', matchesOnline(phEv, paOn), true);
+// From Nevada the answer flips for ACR and stays put for GGPoker.
+const nvOn = { onlyAvailableOnline: true, jurisdiction: 'NV' };
+eq('ACR is hidden in NV', matchesOnline(acrEv2, nvOn), false);
+eq('GGPoker is hidden in NV too', matchesOnline(ggEv, nvOn), false);
+eq('with the toggle off, GGPoker is back', matchesOnline(ggEv, { jurisdiction: 'PA' }), true);
+
+console.log('isSeriesEvent reads the emitter naming convention');
+eq('a series venue', isSeriesEvent({ venue: 'ACR OSS XL', is_online: 1, site: 'acr' }), true);
+eq('the standing schedule is not a series', isSeriesEvent({ venue: 'GGPoker Schedule', is_online: 1, site: 'ggpoker' }), false);
+eq('a monthly circuit is', isSeriesEvent({ venue: 'WSOP.com September 2026 Online Circuit', is_online: 1, site: 'wsop_com' }), true);
+// A live venue is not answered by this at all.
+eq('a live event is not an online series', isSeriesEvent({ venue: 'Horseshoe / Paris Las Vegas' }), false);
+
+console.log('per-site rules — a floor that fits the room');
+const rules = f => ({ siteRules: f });
+eq('no rules means no restriction', matchesOnline(acrEv2, rules({})), true);
+eq('a floor the event clears', matchesOnline(ggEv, rules({ ggpoker: { minBuyin: 200 } })), true);
+eq('a floor it does not', matchesOnline(acrEv2, rules({ acr: { minBuyin: 200 } })), false);
+// The rule is per SITE: a floor on one room must not touch another.
+eq('another room is untouched', matchesOnline(phEv, rules({ acr: { minBuyin: 200 } })), true);
+eq('a zero floor is no floor', matchesOnline(acrEv2, rules({ acr: { minBuyin: 0 } })), true);
+eq('a blank floor is no floor', matchesOnline(acrEv2, rules({ acr: { minBuyin: '' } })), true);
+eq('series only, on a series event', matchesOnline(acrEv2, rules({ acr: { seriesOnly: true } })), true);
+eq('series only, on the daily schedule', matchesOnline(ggEv, rules({ ggpoker: { seriesOnly: true } })), false);
+// Both at once, and the floor is what fails.
+eq('both rules, floor fails', matchesOnline(acrEv2, rules({ acr: { seriesOnly: true, minBuyin: 200 } })), false);
+eq('a live event ignores site rules entirely', matchesOnline(vegas, rules({ acr: { minBuyin: 99999 } })), true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
