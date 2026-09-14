@@ -637,6 +637,24 @@ no community board); `OV_STEP=end` or a number steps the transport;
 a grid line (median 0px, worst 3px currently). `move.mjs` still asserts
 `DISTINCT left=1 top=1 width=1 height=1`.
 
+## Open to-dos (asked for 2026-09-14, not yet started)
+
+Three UI items raised while the online-tournaments work was in flight, kept here
+so they survive a compaction:
+
+- **Bring back the event-number pills.** They were on the card and are gone.
+- **Variants in the event card need a better solution.** HORSE renders correctly;
+  9-Game does not. The mixed-game variant list is the general case and the fix
+  should be one that covers any N-game mix rather than another special case.
+- **New card graphics for the replayer.**
+
+Also outstanding from the same day: the event card's start time and buy-in are
+NOT baseline-aligned, and neither are the accolade icon and the event name. That
+is deliberate as of #236 — locking the time and the name forced the money down
+into the icon and 65 of 65 cards collided. The geometry is back to its
+pre-baseline state. Options, if it comes up again: guarantee beside the buy-in
+(one line, no stack to collide with), a taller card, or accept the offsets.
+
 ### Trap: the share-link codec collided game codes with player counts
 
 `encodeHand` writes `gameCode + numPlayers + heroIdx` with no separator, and

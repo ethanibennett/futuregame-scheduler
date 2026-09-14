@@ -3046,6 +3046,7 @@ async function initDatabase() {
   // exist. Also re-runs hourly at :20 via cron (see app.listen) so the schedule tracks the
   // watcher's :15 emits without needing a restart.
   await ingestMttFeed();
+  await ingestOnlineFeed();
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tracking_entries (
@@ -9818,14 +9819,18 @@ function backerRecordByToken(token) {
 // Deterministic id for feed rows so /api/tournaments/feed-sync can upsert by stable_id.
 // event_number is unique within a venue (watcher-assigned, e.g. "PA-291042-20260811");
 // the MTT- prefix keeps these ids disjoint from the migration-era legacy ids.
-function feedStableId(t) {
+// `prefix` is per FEED, not decorative: two feeds can carry a series whose sanitised name and
+// event_number coincide, and tournaments.stable_id is UNIQUE -- the collision would kill an
+// ingest on the INSERT, which is exactly how the 12-char slice below failed in 2026-08.
+// Defaulting to MTT keeps every existing id byte-identical.
+function feedStableId(t, prefix = 'MTT') {
   if (!t.event_number) return null;
   // 48, not 12: every "2026-27 WSOPC <stop>-<season>" series shares its first 12 alphanumerics
   // (202627WSOPCT covers both Tulsa and Tunica), so the shorter slice made two series' rows
   // collide on stable_id and the ingest died on the INSERT. Existing rows keep their old-format
   // ids — the ingest only sets stable_id via COALESCE — so widening this only affects new rows.
   const v = String(t.venue || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 48).toUpperCase();
-  return `MTT-${v}-${t.event_number}`;
+  return `${prefix}-${v}-${t.event_number}`;
 }
 
 // Fields an admin may override. Deliberately excludes venue and event_number: those two are the
@@ -9937,19 +9942,24 @@ function feedRefGuardSql() {
 // Delete feed-managed rows whose series is no longer in `keepVenues`. Shared by the local
 // ingest and the production feed-sync endpoint so both databases prune by the same rule.
 // Returns {pruned, skipped} — skipped counts rows kept only because of the guard above.
-function pruneFeedVenues(keepVenues, label) {
+// `tag` scopes this to ONE feed. It hardcoded 'mtt-feed' in all three statements, which was
+// survivable with one feed and a loaded gun with two: this deletes every feed row whose venue
+// is absent from the list it is handed, so an online ingest -- passing only online venues --
+// would have deleted every live MTT row, and the MTT ingest would have returned the favour.
+// The default keeps existing callers unchanged.
+function pruneFeedVenues(keepVenues, label, tag = 'mtt-feed') {
   const keep = new Set(keepVenues);
-  const distinct = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = 'mtt-feed'");
+  const distinct = db.exec("SELECT DISTINCT venue FROM tournaments WHERE source_pdf = ?", [tag]);
   if (!distinct.length) return { pruned: 0, skipped: 0 };
   const guard = feedRefGuardSql();
   let pruned = 0, skipped = 0;
   for (const [venue] of distinct[0].values) {
     if (keep.has(venue)) continue;
     const before = db.exec(
-      "SELECT COUNT(*) FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?",
-      [venue]
+      "SELECT COUNT(*) FROM tournaments WHERE source_pdf = ? AND venue = ?",
+      [tag, venue]
     )[0].values[0][0];
-    db.run(`DELETE FROM tournaments WHERE source_pdf = 'mtt-feed' AND venue = ?${guard}`, [venue]);
+    db.run(`DELETE FROM tournaments WHERE source_pdf = ? AND venue = ?${guard}`, [tag, venue]);
     const gone = db.getRowsModified();
     pruned += gone;
     skipped += before - gone;
@@ -9960,10 +9970,19 @@ function pruneFeedVenues(keepVenues, label) {
   return { pruned, skipped };
 }
 
-async function ingestMttFeed() {
+// Every feed the scheduler consumes. A feed owns its rows through `source_pdf`, and nothing
+// crosses that line: ingest, prune and push are all scoped by it.
+const FEED_TAGS = ['mtt-feed', 'online-feed'];
+
+async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT feed', 'MTT'); }
+// Online tournaments arrive the same way the live ones do, from a sibling watcher, but under
+// their own tag and directory so the two can never prune each other.
+async function ingestOnlineFeed() { return ingestFeed('online-feed', 'online-feed', 'Online feed', 'ONL'); }
+
+async function ingestFeed(feedDir, tag, label, idPrefix) {
   const fs = require('fs');
   try {
-    const manifestPath = path.join(__dirname, 'mtt-feed', 'manifest.json');
+    const manifestPath = path.join(__dirname, feedDir, 'manifest.json');
     if (!fs.existsSync(manifestPath)) return;
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     let upserts = 0, inserts = 0, pruned = 0, rowFailures = 0;
@@ -9971,9 +9990,9 @@ async function ingestMttFeed() {
     // series that ended or dropped out of the watcher's forward window. Keeps the schedule in sync
     // with the feed (add/update/remove) without touching non-feed tournaments.
     const manifestVenues = manifest.map(e => e.venue);
-    pruned = pruneFeedVenues(manifestVenues, 'MTT feed').pruned;
+    pruned = pruneFeedVenues(manifestVenues, label, tag).pruned;
     for (const entry of manifest) {
-      const filePath = path.join(__dirname, 'mtt-feed', entry.file);
+      const filePath = path.join(__dirname, feedDir, entry.file);
       if (!fs.existsSync(filePath)) continue;
       const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       for (const t of rows) {
@@ -9999,7 +10018,7 @@ async function ingestMttFeed() {
            t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
            t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
            t.property || null,
-           t.source_pdf || 'mtt-feed', feedStableId(t), t.structure_sheet_path || null,
+           t.source_pdf || tag, feedStableId(t, idPrefix), t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
         if (db.getRowsModified() > 0) { upserts++; continue; }
@@ -10014,7 +10033,7 @@ async function ingestMttFeed() {
            t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
            t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
            t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
-           t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t),
+           t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t, idPrefix),
            t.structure_sheet_path || null, t.property || null]
         );
         inserts++;
@@ -10022,20 +10041,20 @@ async function ingestMttFeed() {
           // One row must not cost the other five thousand: the 12-char stable_id collision
           // aborted every hourly ingest from the first bad row onward (2026-08-31).
           rowFailures++;
-          if (rowFailures <= 3) console.error(`[MTT feed] row failed (${t.venue} #${t.event_number}): ${rowErr.message}`);
+          if (rowFailures <= 3) console.error(`[${label}] row failed (${t.venue} #${t.event_number}): ${rowErr.message}`);
         }
       }
     }
-    if (rowFailures > 3) console.error(`[MTT feed] ${rowFailures} row(s) failed total`);
+    if (rowFailures > 3) console.error(`[${label}] ${rowFailures} row(s) failed total`);
     if (upserts + inserts + pruned > 0) {
       // Overrides go on AFTER the upsert, which is the whole point: the upsert has just
       // overwritten every field the feed owns, including any admin correction.
-      applyAdminOverrides('MTT feed');
+      applyAdminOverrides(label);
       await saveDatabase();
-      console.log(`MTT feed sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
+      console.log(`${label} sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
     }
   } catch (e) {
-    console.log('MTT feed sync skipped:', e.message);
+    console.log(`${label} sync skipped:`, e.message);
   }
 }
 
@@ -10048,7 +10067,11 @@ async function pushMttFeedToProd() {
   if (!token) return;
   if (process.env.RENDER || process.env.IS_PRODUCTION) return;
   try {
-    const stmt = db.prepare("SELECT * FROM tournaments WHERE source_pdf = 'mtt-feed' AND stable_id IS NOT NULL");
+    // Both feeds ride one push. Each row keeps its own source_pdf and the receiver prunes per
+    // tag, so production ends up with the same ownership split as here.
+    const tagList = FEED_TAGS.map(() => '?').join(', ');
+    const stmt = db.prepare(`SELECT * FROM tournaments WHERE source_pdf IN (${tagList}) AND stable_id IS NOT NULL`);
+    stmt.bind(FEED_TAGS);
     const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
@@ -11976,7 +11999,9 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
     // be read as "the feed is now empty, delete everything else".
     let pruned = 0;
     if (Array.isArray(feedVenues) && feedVenues.length && (result.inserted + result.updated) > 0) {
-      pruned = pruneFeedVenues(feedVenues, 'FeedSync').pruned;
+      // Per tag: a venue missing from the push is gone from whichever feed owned it, and
+      // pruning one tag can never reach the other's rows.
+      for (const tag of FEED_TAGS) pruned += pruneFeedVenues(feedVenues, `FeedSync:${tag}`, tag).pruned;
       if (pruned > 0) {
         await saveDatabase();
         console.log(`[FeedSync] pruned ${pruned} row(s) from series no longer in the feed`);
@@ -12382,6 +12407,7 @@ initDatabase().then(() => {
       pushMttFeedToProd();
       cron.schedule('20 * * * *', async () => {
         await ingestMttFeed();
+        await ingestOnlineFeed();
         await pushMttFeedToProd();
       }, { timezone: CONSOLE_TZ });
     } catch (err) {

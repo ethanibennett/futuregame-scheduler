@@ -142,3 +142,4 @@ mtt-feed/
 
 # Local smoke-test inputs (one holds a guest token)
 .smoke-*.txt
+online-feed/
