@@ -8288,8 +8288,19 @@
       gap: var(--space-xs);
       margin-left: auto;
       flex-shrink: 0;
-      align-self: flex-start;
-      margin-top: calc((var(--cal-title-line) - 18px) / 2);
+      /* Sat on the title's LINE BOX, not its baseline: flex-start plus a
+         margin of half the leftover line height centred the icon between the
+         line's top and bottom, and a line box extends below the baseline by
+         the descender. Measured, that left the icon's bottom edge 5.8px under
+         the name's baseline.
+         align-self: baseline instead, and the margin goes with it. An
+         inline-flex box with no in-flow baseline is aligned by its bottom
+         margin edge, which is exactly where an icon beside a title wants to
+         be: measured, the bottom now sits 1.0px above the baseline. The
+         alternative was keeping the margin and subtracting 5.8px from it —
+         the same result by a constant that stops being true the moment the
+         title's size or line-height moves. This asks the font. */
+      align-self: baseline;
       pointer-events: none;
     }
 
@@ -8307,18 +8318,27 @@
     .cal-ring-icon,
     .cal-bracelet-icon { color: var(--accolade); }
 
-    /* Kept for rows that have not been wrapped in .cal-accolades yet. */
+    /* Kept for rows that have not been wrapped in .cal-accolades yet. Both
+       render sites in CalendarEventRow wrap theirs, so this currently matches
+       nothing — it takes the same baseline treatment as .cal-accolades anyway,
+       because a fallback that positions differently from the thing it falls
+       back to is worse than no fallback. */
     .cal-bar-row2 > .cal-bounty-icon,
     .cal-bar-row2 > .cal-ring-icon,
     .cal-bar-row2 > .cal-bracelet-icon {
       margin-left: auto;
-      align-self: flex-start;
-      margin-top: calc((var(--cal-title-line) - 18px) / 2);
+      align-self: baseline;
     }
 
     .cal-bar-row1 {
       display: flex;
-      align-items: center;
+      /* baseline, not center. The money is a two-line COLUMN — buy-in over
+         guarantee — so centring the column against the time put the buy-in's
+         baseline 8.5px above it, measured. A column flex container takes its
+         baseline from its first item, so aligning on baselines lands the
+         buy-in on the time exactly, whether or not the row carries a
+         guarantee. */
+      align-items: baseline;
       gap: var(--space-md);
     }
 
@@ -8328,7 +8348,9 @@
        line's box (name font-size x line-height); each icon centres on it. */
     .cal-bar-row2 {
       display: flex;
-      align-items: flex-start;
+      /* baseline, so the accolade icons sit on the event name's baseline
+         rather than hanging from the top of the row. */
+      align-items: baseline;
       gap: var(--space-md);
       --cal-title-line: calc(var(--fs-sm) * var(--lh-snug));
     }
