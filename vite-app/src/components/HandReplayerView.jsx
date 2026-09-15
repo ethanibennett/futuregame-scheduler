@@ -5665,15 +5665,18 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
       canvas.width = outW; canvas.height = outH;
       const ctx = canvas.getContext('2d');
 
-      // Dark gradient background
+      // Felt background from the felt-colour picker, so the shared image matches
+      // the table the user set (was a hardcoded navy gradient + green texture that
+      // ignored the picker entirely).
+      const _fst = feltStops(feltColor, rSettings.feltBright) || { lit: feltColor, shade: feltColor };
       const grad = ctx.createLinearGradient(0, 0, 0, outH);
-      grad.addColorStop(0, '#1a1a2e');
-      grad.addColorStop(1, '#0f0f1a');
+      grad.addColorStop(0, _fst.lit);
+      grad.addColorStop(1, _fst.shade);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, outW, outH);
 
-      // Felt texture
-      ctx.strokeStyle = 'rgba(34,197,94,0.08)';
+      // Felt texture — faint neutral tint so it reads on any felt colour.
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
       ctx.lineWidth = 1;
       for (let y = 0; y < outH; y += 40) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(outW, y); ctx.stroke();
