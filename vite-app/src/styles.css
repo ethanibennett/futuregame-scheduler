@@ -1966,6 +1966,24 @@
       background: rgba(0,0,0,0.45);
     }
 
+    /* Centred modal overlay, shared by RealNamePrompt and OnboardingWizard.
+       These were used by components but never defined — the modal then rendered
+       unstyled in normal flow, behind the app. */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: var(--z-modal);
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-content {
+      max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto;
+      background: var(--surface);
+      border: var(--bw-1) solid var(--border);
+      border-radius: var(--radius-lg, 14px);
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+
     .live-update-panel {
       position: fixed;
       width: 300px;
