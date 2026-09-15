@@ -342,7 +342,7 @@ export default function App() {
   // (The #h/ fragment above is decoded synchronously; this one needs the server.)
   useEffect(() => {
     if (!PATH_HAND_ID) return;
-    fetch(`${API_URL}/api/hand-links/${PATH_HAND_ID}`)
+    fetch(`${API_URL}/hand-links/${PATH_HAND_ID}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d || !d.shorthand) return;

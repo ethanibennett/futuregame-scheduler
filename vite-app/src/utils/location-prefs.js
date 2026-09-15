@@ -49,7 +49,7 @@ export function writeLocalLocation(loc) {
 export async function fetchServerLocation(token) {
   if (!token) return undefined;
   try {
-    const res = await fetch(`${API_URL}/api/user/location`, {
+    const res = await fetch(`${API_URL}/user/location`, {
       headers: { Authorization: 'Bearer ' + token },
     });
     if (!res.ok) return undefined;
@@ -66,7 +66,7 @@ export async function fetchServerLocation(token) {
 export function pushServerLocation(token, loc) {
   if (!token) return;
   const body = (loc && (loc.userLocation || loc.locationRegion || loc.jurisdiction)) ? loc : null;
-  fetch(`${API_URL}/api/user/location`, {
+  fetch(`${API_URL}/user/location`, {
     method: 'PUT',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ location: body }),

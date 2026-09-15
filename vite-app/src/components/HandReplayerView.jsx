@@ -5578,7 +5578,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       // (offline / not signed in).
       let url = SITE_URL + '/#h/' + shorthand;
       try {
-        const res = await fetch(`${API_URL}/api/hand-links`, {
+        const res = await fetch(`${API_URL}/hand-links`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify({ shorthand, title }),
