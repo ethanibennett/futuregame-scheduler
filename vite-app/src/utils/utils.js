@@ -326,6 +326,11 @@ export const VENUE_MAP = {
   '2026 Summer Poker Round Up':                             { abbr: 'WILDHORSE',        color: '#a630a6', longName: 'Wildhorse Casino' },
   '2026 Wynn Fall Classic':                                 { abbr: 'WYNN',             color: '#ad401f', longName: 'Wynn Las Vegas' },
   'Wynn Signature Series August 2026':                      { abbr: 'WYNN',             color: '#ad511f', longName: 'Wynn Las Vegas' },
+  // WPT World Championship at Wynn (Nov 27 – Dec 21, 2026). Added manually as a bridge from the
+  // published festival schedule ahead of PokerAtlas listing it; the mtt-feed supersedes the bridge
+  // once PokerAtlas carries the series (see server.js supersedeBridge). Same string is what the feed
+  // will file it under ("2026 <series>"), so this entry keeps working after the handoff.
+  '2026 WPT World Championship':                            { abbr: 'WYNN',             color: '#ad621f', longName: 'Wynn Las Vegas' },
 
   // WSOP Circuit stops (wsop-circuit source, not PokerAtlas — no series_directory row,
   // so the room comes from the series title itself). Rooms the map already knows reuse

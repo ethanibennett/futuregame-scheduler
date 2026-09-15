@@ -10033,6 +10033,39 @@ function pruneFeedVenues(keepVenues, label, tag = 'mtt-feed') {
 // crosses that line: ingest, prune and push are all scoped by it.
 const FEED_TAGS = ['mtt-feed', 'online-feed'];
 
+// A "bridge" series is one added by hand from a published schedule ahead of the watcher — imported
+// via /api/import-parsed-schedule under its own source_pdf tag so no feed prune ever touches it
+// (WPT World Championship was added this way on 2026-09-14, before PokerAtlas listed it). The bridge
+// is retired the instant the real feed carries the same series: the feed is the authority, with
+// correct per-event keys, structures and its own prune, and keeping both would double-list every
+// event. The match is the venue string the feed files the series under — PokerAtlas names Wynn
+// series "2026 <name>", which is exactly the bridge's venue, so no guessing. Rows a user has saved
+// or logged results against are KEPT (feedRefGuardSql, same as prune): a rare, deliberate duplicate
+// for one person beats orphaning the event they were tracking.
+const BRIDGE_SUPERSEDE = [
+  { bridgeTag: 'WPT World Championship 2026', feedVenue: '2026 WPT World Championship' },
+];
+
+// Given the set of venue strings a feed currently carries, drop any bridge series the feed has now
+// taken over. Returns the number of rows removed. Safe to call from either database's ingest path:
+// where no bridge rows exist (the local box), it is a no-op.
+function supersedeBridges(feedVenueSet, label) {
+  const guard = feedRefGuardSql();
+  let removed = 0;
+  for (const { bridgeTag, feedVenue } of BRIDGE_SUPERSEDE) {
+    if (!feedVenueSet.has(feedVenue)) continue;
+    const cnt = db.exec("SELECT COUNT(*) FROM tournaments WHERE source_pdf = ?", [bridgeTag]);
+    if (!cnt.length || !cnt[0].values[0][0]) continue;
+    db.run(`DELETE FROM tournaments WHERE source_pdf = ?${guard}`, [bridgeTag]);
+    const gone = db.getRowsModified();
+    removed += gone;
+    if (gone > 0) {
+      console.log(`[${label}] superseded bridge "${bridgeTag}" (${gone} row(s)) — feed now carries "${feedVenue}"`);
+    }
+  }
+  return removed;
+}
+
 async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT feed', 'MTT'); }
 // Online tournaments arrive the same way the live ones do, from a sibling watcher, but under
 // their own tag and directory so the two can never prune each other.
@@ -10063,6 +10096,8 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
       return;
     }
     pruned = pruneFeedVenues(manifestVenues, label, tag).pruned;
+    // Retire any hand-added bridge series this feed has now taken over (no-op when none match).
+    supersedeBridges(new Set(manifestVenues), label);
     for (const entry of manifest) {
       const filePath = path.join(__dirname, feedDir, entry.file);
       if (!fs.existsSync(filePath)) continue;
@@ -12156,6 +12191,9 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
 
   try {
     const result = await upsertTournamentsByStableId(tournaments, 'mtt-feed');
+    // Retire any hand-added bridge series the feed now carries (keyed on the pushed rows' venues),
+    // so a manually-imported series stops double-listing once the watcher owns it.
+    const supersededBridge = supersedeBridges(new Set(tournaments.map(t => t.venue)), 'FeedSync');
     // Reconcile deletions. Guarded three ways so a truncated or malformed push can't
     // empty the production schedule: the venue list must be present and non-empty, the
     // upsert must have actually landed rows, and pruneFeedVenues() skips anything a user
@@ -12173,7 +12211,13 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
         broadcastToAll('schedule-refetch', { source: 'mtt-feed-prune', pruned });
       }
     }
-    res.json({ ...result, pruned, total: tournaments.length });
+    // A supersede can land rows to delete even when prune was skipped (empty feedVenues, or an
+    // update-only push): persist and refresh in that case too.
+    if (supersededBridge > 0 && pruned === 0) {
+      await saveDatabase();
+      broadcastToAll('schedule-refetch', { source: 'bridge-supersede', removed: supersededBridge });
+    }
+    res.json({ ...result, pruned, supersededBridge, total: tournaments.length });
   } catch (err) {
     console.error('[FeedSync] Error:', err.message);
     res.status(500).json({ error: err.message });
