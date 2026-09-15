@@ -61,6 +61,11 @@ const RESET_TOKEN = RESET_MATCH ? RESET_MATCH[1] : null;
 const HAND_MATCH = window.location.hash.match(/^#h\/(.+)$/);
 const HAND_SHORTHAND = HAND_MATCH ? decodeURIComponent(HAND_MATCH[1]) : null;
 
+// Server-backed short link: /h/<id>. Unlike the self-contained #h/ fragment, this
+// needs a fetch to resolve, handled in an effect below.
+const PATH_HAND_MATCH = window.location.pathname.match(/^\/h\/([A-Za-z0-9]{1,16})$/);
+const PATH_HAND_ID = PATH_HAND_MATCH ? PATH_HAND_MATCH[1] : null;
+
 // Detect notification deep link: /?find=<query> — a new-series push tap lands on the calendar
 // with this query applied (web push opens the URL; the native tap listener parses the same form).
 const FIND_MATCH = window.location.search.match(/[?&]find=([^&]*)/);
@@ -326,11 +331,29 @@ export default function App() {
 
      The gate needs to remember that a hand ARRIVED, which is not the same
      question as whether it is still waiting to be handed over. */
-  const [sharedHandArrived, setSharedHandArrived] = useState(!!HAND_SHORTHAND);
+  const [sharedHandArrived, setSharedHandArrived] = useState(!!HAND_SHORTHAND || !!PATH_HAND_ID);
 
   // If a shared hand was decoded, switch to hands tab on mount
   useEffect(() => {
     if (sharedHandData) setCurrentView('hands');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve a /h/<id> short link: fetch the stored hand, decode, and open it.
+  // (The #h/ fragment above is decoded synchronously; this one needs the server.)
+  useEffect(() => {
+    if (!PATH_HAND_ID) return;
+    fetch(`${API_URL}/api/hand-links/${PATH_HAND_ID}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d || !d.shorthand) return;
+        const decoded = decodeHand(d.shorthand);
+        if (!decoded) return;
+        setSharedHandData(decoded);
+        setSharedHandArrived(true);
+        setCurrentView('hands');
+        if (window.history.replaceState) window.history.replaceState(null, '', '/');
+      })
+      .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for hashchange to handle #h/ hand links without full reload
