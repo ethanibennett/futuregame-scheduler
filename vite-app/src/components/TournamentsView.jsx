@@ -154,7 +154,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   return (
     <>
       <div className="filter-row" style={{gap:'8px',marginBottom:'0',width:'100%',alignItems:'center'}}>
-        <div style={{flex:1,display:'flex',alignItems:'center',gap:'8px',justifyContent:'flex-end'}}>
+        <div style={{flex:1,display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap',rowGap:'6px',justifyContent:'flex-start'}}>
           {filters.selectedGames.length > 0 && (
             <span className="filter-chip active">
               {filters.selectedGames.length === 1 ? filters.selectedGames[0] : `${filters.selectedGames.length} games`}
