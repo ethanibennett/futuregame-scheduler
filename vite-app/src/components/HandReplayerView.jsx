@@ -4241,6 +4241,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         <ReplayErrorBoundary onBack={() => { setMode('list'); fetchHands(); }}>
           <HandReplayerReplayView
             hand={currentHand}
+            token={token}
             onEdit={() => setMode('entry')}
             onBack={() => { setMode('list'); fetchHands(); }}
             cardSplay={cardSplay}
@@ -4650,7 +4651,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }) {
+function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolveSpot }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
