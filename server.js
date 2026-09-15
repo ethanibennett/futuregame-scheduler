@@ -1069,6 +1069,19 @@ async function initDatabase() {
     )
   `);
 
+  // Replayer short links: a hand shared as futurega.me/h/<id>. The `title`
+  // (e.g. "NLH 300/500/500") is stored so /h/:id can emit a per-hand preview,
+  // which a #h/ fragment link never could (the server never sees the fragment).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shared_hands (
+      id TEXT PRIMARY KEY,
+      shorthand TEXT NOT NULL,
+      title TEXT,
+      uploaded_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Migrate: add profit_threshold column if missing (existing DBs)
   try {
     db.run('ALTER TABLE schedule_conditions ADD COLUMN profit_threshold INTEGER');
@@ -7595,6 +7608,74 @@ app.delete('/api/hands/:id', authenticateToken, requireRegistered, async (req, r
 // view, so we just serve the SPA shell and let the client route to it.
 app.get('/replayer', (req, res) => {
   res.sendFile(path.join(__dirname, 'public-vite', 'index.html'));
+});
+
+// ── Replayer short links (futurega.me/h/<id>) ───────────────────────────────
+// A shared hand used to ride in the URL FRAGMENT (#h/<hand>), which the server
+// never sees — so the link could not be short and its preview could not name the
+// hand. These store the hand under a short content-hash id so the link is small
+// AND /h/:id can emit a per-hand preview title. Old #h/ links still work (client
+// keeps decoding them), so nothing already shared breaks.
+function handLinkId(shorthand) {
+  return crypto.createHash('sha256').update(shorthand).digest('base64url')
+    .replace(/[^A-Za-z0-9]/g, '').slice(0, 8);
+}
+
+// Mint (or return the existing id for) a short link. Same auth as creating hands.
+app.post('/api/hand-links', authenticateToken, requireRegistered, express.json({ limit: '64kb' }), async (req, res) => {
+  const { shorthand, title } = req.body || {};
+  if (!shorthand || typeof shorthand !== 'string' || shorthand.length > 4000) {
+    return res.status(400).json({ error: 'shorthand required' });
+  }
+  const id = handLinkId(shorthand);
+  const cleanTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 80) : null;
+  try {
+    const existing = db.exec('SELECT id FROM shared_hands WHERE id = ?', [id]);
+    if (!existing.length || !existing[0].values.length) {
+      db.run('INSERT INTO shared_hands (id, shorthand, title, uploaded_by) VALUES (?, ?, ?, ?)',
+        [id, shorthand, cleanTitle, req.user.id]);
+      await saveDatabase();
+    }
+    res.json({ id });
+  } catch (e) {
+    console.error('hand-link mint error:', e.message);
+    res.status(500).json({ error: 'could not create link' });
+  }
+});
+
+// Resolve a short link back to the hand. Public: anyone with the link can view,
+// exactly like the old #h/ links.
+app.get('/api/hand-links/:id', (req, res) => {
+  try {
+    const rows = db.exec('SELECT shorthand FROM shared_hands WHERE id = ?', [String(req.params.id)]);
+    if (!rows.length || !rows[0].values.length) return res.status(404).json({ error: 'not found' });
+    res.json({ shorthand: rows[0].values[0][0] });
+  } catch (e) {
+    res.status(500).json({ error: 'lookup failed' });
+  }
+});
+
+// Serve the SPA for a short link WITH a per-hand preview title, so a pasted link
+// shows the hand ("NLH 300/500/500") instead of the site's generic season title.
+app.get('/h/:id', (req, res) => {
+  const fs = require('fs');
+  let html;
+  try { html = fs.readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8'); }
+  catch (e) { return res.status(500).send('unavailable'); }
+  let title = 'Poker hand';
+  try {
+    const rows = db.exec('SELECT title FROM shared_hands WHERE id = ?', [String(req.params.id)]);
+    if (rows.length && rows[0].values.length && rows[0].values[0][0]) title = String(rows[0].values[0][0]);
+  } catch (e) { /* fall back to the generic title */ }
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const t = esc(title);
+  html = html.replace(/<title>[^<]*<\/title>/, `<title>${t} · futurega.me</title>`);
+  const og = `<meta property="og:title" content="${t}">\n`
+    + `<meta property="og:description" content="Replay this poker hand on futurega.me">\n`
+    + `<meta name="twitter:card" content="summary">\n`;
+  html = html.replace('</head>', og + `<meta name="build-version" content="${BUILD_VERSION}">\n</head>`);
+  res.set('Cache-Control', 'no-store');
+  res.type('html').send(html);
 });
 
 // Replayer hands — reuse saved_hands table with replayer-specific endpoints

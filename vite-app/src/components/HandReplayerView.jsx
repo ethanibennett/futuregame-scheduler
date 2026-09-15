@@ -5564,16 +5564,30 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
 
   // Share link
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
-  const copyShareLink = useCallback(() => {
+  const copyShareLink = useCallback(async () => {
     try {
       const shorthand = encodeHand(hand);
       if (!shorthand) return;
-      // SITE_URL, not window.location.origin: in the native app the origin is
-      // capacitor://localhost, which makes the shared link open nowhere.
-      const url = SITE_URL + '/#h/' + encodeURIComponent(shorthand);
-      navigator.clipboard.writeText(url).then(() => { setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); });
+      const b = hand.blinds || {};
+      const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${b.ante ? '/' + b.ante : ''}`;
+      // Fallback: the self-contained fragment link. SITE_URL (not
+      // window.location.origin, which is capacitor://localhost in the app), and
+      // NOT url-encoded — the format's commas/slashes are fragment-safe, so this
+      // is shorter and the decoder handles encoded or raw. Used if the mint fails
+      // (offline / not signed in).
+      let url = SITE_URL + '/#h/' + shorthand;
+      try {
+        const res = await fetch(`${API_URL}/api/hand-links`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ shorthand, title }),
+        });
+        if (res.ok) { const d = await res.json(); if (d && d.id) url = SITE_URL + '/h/' + d.id; }
+      } catch (e) { /* keep the fragment fallback */ }
+      await navigator.clipboard.writeText(url);
+      setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000);
     } catch (e) { console.error('Share link error:', e); }
-  }, [hand]);
+  }, [hand, token]);
 
   // Seat class
   const getPlayerSeatClass = (playerIdx) => {
