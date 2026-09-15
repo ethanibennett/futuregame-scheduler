@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-09-14 (03:20 UTC — the evening of 09-13 in ET). The dated
+Last updated: 2026-09-15 (03:50 UTC — the evening of 09-14 in ET, from the Mac). The dated
 sections at the end run through 2026-08-30; "Seams to the dashboard" and "The
 build pipeline" below were added from the wsop-console side and verified against
 both live services. The newest section, 2026-09-13, is the screensaver split.
@@ -26,6 +26,34 @@ to the account and readable with WebFetch.
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
+
+---
+
+## 2026-09-14 (Mac) — Mac Catalyst: the app builds, runs and archives for macOS
+
+Handoff #264. Everything is in `docs/mac-catalyst.md`; the three things that cost time:
+
+**Capacitor's Swift package has no Catalyst slice.** `capacitor-swift-pm` is two
+binary xcframeworks (device + simulator only), so enabling the destination fails
+before any app code compiles. The source compiles for Catalyst unmodified, so
+`scripts/build-capacitor-xcframeworks.sh` builds that slice from upstream's Xcode
+project at the pinned tag and merges it with upstream's own iOS slices; the local
+package `ios/App/capacitor-swift-pm/` overrides the remote by identity. The
+binaries are gitignored — **a checkout that has not run the script cannot build the
+iOS app either**, which is why the ship script now calls it first.
+
+**The App Manager key cannot do the first Catalyst build.** Device registration
+and the Mac Catalyst profiles need the Admin key (`AXP57ABRUD`) plus
+`-allowProvisioningDeviceRegistration`. One run fixed it; routine builds work with
+either key afterwards.
+
+**The window floor from #263 did not hold** (window dragged to 515×319). Applying
+it on scene connect + activate + didBecomeActive does; verified at 370×555 screen
+points, which is 480×720 UIKit points under Catalyst's 0.77 iPad scaling.
+
+Verified: Debug build runs sandboxed, loads the live schedule as guest; Release
+archive for `Any Mac (Mac Catalyst)` and an App Store **export** (not upload)
+succeed. Waiting on Windows: the `--catalyst` flag in `ios-testflight.sh`.
 
 ---
 
