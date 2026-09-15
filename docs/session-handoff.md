@@ -53,7 +53,17 @@ points, which is 480×720 UIKit points under Catalyst's 0.77 iPad scaling.
 
 Verified: Debug build runs sandboxed, loads the live schedule as guest; Release
 archive for `Any Mac (Mac Catalyst)` and an App Store **export** (not upload)
-succeed. Waiting on Windows: the `--catalyst` flag in `ios-testflight.sh`.
+succeed. Waiting on Windows: the `--catalyst` flag in `ios-testflight.sh` (#267).
+
+**#266 merged; the runner's first build with the override archived fine (1300)
+and then hit Apple's daily upload cap** — App Store Connect error 90382 "Upload
+limit reached ... wait 1 day", after ten uploads in eight hours. The three
+failed runs from 03:18 UTC onward are all this, not build failures, and the
+watchdog does not retry it (it only knows the 600-second sleep-kill). Re-dispatch
+by hand once the window clears (from ~19:30 UTC 09-15):
+`gh api repos/ethanibennett/futuregame-scheduler/dispatches -f event_type=ios-testflight`.
+Rule of thumb the cap implies: **rapid merges should batch**, since every push
+to master that touches `vite-app/**` or `ios/**` costs one of the day's uploads.
 
 ---
 

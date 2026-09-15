@@ -50,6 +50,20 @@ ourselves and override the package locally:
   app — iOS included — fails with "no such package", because the override replaces
   the remote for all platforms. The ship script should call it first.
 
+Two things the override changes about every build, worth knowing before they bite:
+- Xcode logs `Conflicting identity for capacitor-swift-pm: dependency
+  'github.com/ionic-team/capacitor-swift-pm' and dependency '.../ios/app/capacitor-swift-pm'
+  both point to the same package identity ... This will be escalated to an error in
+  future versions of SwiftPM.` That collision IS the override mechanism. When a
+  future Xcode turns it into an error, the fallback is to stop depending on the
+  remote at all: point `CapApp-SPM/Package.swift` (and each plugin's) at the local
+  path — which `cap sync` would overwrite, so it would need a post-sync patch step.
+  Not done pre-emptively.
+- `exportArchive` warns `Upload Symbols Failed ... did not include a dSYM for
+  Capacitor.framework` (and Cordova). Upstream's binary xcframeworks never shipped
+  dSYMs either, so this is unchanged behaviour surfacing under a new path — crash
+  symbolication for frames inside Capacitor was never available. Harmless.
+
 Not viable alternatives, for the record: a source Swift package over
 `node_modules/@capacitor/ios` (Capacitor is mixed Swift + Objective-C, which SPM
 forbids in one target); switching the project to CocoaPods (would rewrite the iOS
