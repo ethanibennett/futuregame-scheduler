@@ -4111,16 +4111,27 @@
     }
     .replayer-pot-total { display: inline-flex; align-items: baseline; }
     .replayer-pot-total, .replayer-pot-pill { position: relative; }
-    /* Portrait lifts the label back above the figure. Inline it adds its own
-       width plus the gap — about 30px on a 382px table, 15 a side — and that
-       is what reached the side seats' cards: 18px in at 402x874 and 375x667,
-       with the chips already moved out of the way. Landscape has the width for
-       an inline label and portrait does not, which is the same trade the chip
-       cell makes just above. */
+    /* Ethan asked for POT inside the pill rather than floating above it, all
+       caps and half the figure's height. STACKED, not inline: inline it adds
+       its own width plus the gap — about 30px on a 382px table, 15 a side —
+       and that is what reached the side seats' cards (18px in at 402x874 and
+       375x667). A line ABOVE the figure but INSIDE the plaque costs height,
+       not width, so the pill stays exactly one figure wide and no wider than
+       it was — the seat clearance the floating label bought is kept. Half the
+       figure's height is 0.5em against the total's 1em. */
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-total {
+      flex-direction: column; align-items: center;
+    }
     .replayer-replay:not(.replayer-landscape) .replayer-pot-cell-label {
-      position: absolute; left: 50%; bottom: calc(100% + 3px);
-      transform: translateX(-50%);
-      margin-right: 0;
+      margin-right: 0; margin-bottom: 0.05em; line-height: 1; font-size: 0.5em;
+    }
+    /* "Make the pot pill smaller" — the figure drives the plaque's size, so
+       drop it from 4.4cqmin to 3.9. That stays above the 3.6cqmin player
+       stacks, so the pot is still the largest number on the table, and the
+       stacked POT line adds no width to worry the side seats. Portrait only;
+       landscape keeps its size. */
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-display {
+      font-size: clamp(10px, 3.9cqmin, 48px);
     }
     .replayer-pot-pill {
       display: inline-flex; align-items: baseline; justify-content: center;
