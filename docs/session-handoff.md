@@ -756,9 +756,26 @@ The remaining mitigation is a GitHub Support request to purge the unreachable
 objects from ethanibennett/futuregame-scheduler at 4d52085. That is now the only
 thing that reduces this exposure.
 
-## DASHBOARD_TOKEN rotation — IN PROGRESS since 2026-09-14
+## DASHBOARD_TOKEN rotation — COMPLETE (2026-09-15)
 
-A rotation is live right now. Both services accept the new token AND the old
+`DASHBOARD_TOKEN_PREVIOUS` was unset on both Render services and both were
+redeployed to reload env — the old token is now dead. The final laggard was NOT
+the phone or the screensaver: it was **this box's own local pm2 scheduler**,
+which had the OLD token live in memory and hit the dashboard's roster seam hourly
+with it. Its `ecosystem.config.cjs` already held the CURRENT token — but
+`pm2 restart <name> --update-env` reads the SHELL env, not the config file, so
+every restart this session kept the stale in-memory value. Fixed with
+`pm2 delete futuregame-scheduler && pm2 start ecosystem.config.cjs && pm2 save`
+(a full config re-read), verified by SHA. Post-restart the boot roster sync went
+out on the current token with zero PREVIOUS warnings. iOS build 17 (installed +
+open) covers the phone. The one consumer never directly verified was the Mac
+screensaver config JSON; if it 401s, update its token to the current value.
+
+History below kept for the next rotation.
+
+--- (during the rotation) ---
+
+Both services accept the new token AND the old
 one (`DASHBOARD_TOKEN_PREVIOUS`), so nothing is locked out.
 
 Done: Render scheduler, Render dashboard, local `ecosystem.config.cjs` (which
