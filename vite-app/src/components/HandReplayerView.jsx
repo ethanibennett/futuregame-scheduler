@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
-import { API_URL } from '../utils/api.js';
+import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip} from '../utils/utils.js';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
          bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
@@ -5568,7 +5568,9 @@ function HandReplayerReplayView({ hand, onEdit, onBack, cardSplay, onSolveSpot }
     try {
       const shorthand = encodeHand(hand);
       if (!shorthand) return;
-      const url = window.location.origin + '/#h/' + encodeURIComponent(shorthand);
+      // SITE_URL, not window.location.origin: in the native app the origin is
+      // capacitor://localhost, which makes the shared link open nowhere.
+      const url = SITE_URL + '/#h/' + encodeURIComponent(shorthand);
       navigator.clipboard.writeText(url).then(() => { setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); });
     } catch (e) { console.error('Share link error:', e); }
   }, [hand]);
