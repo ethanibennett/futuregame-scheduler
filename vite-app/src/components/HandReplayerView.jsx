@@ -1479,9 +1479,13 @@ const REPLAYER_TABLE_SHAPES = [
   { id: 'oval', label: 'Oval' }, { id: 'round', label: 'Round' }, { id: 'octagon', label: 'Octagon' },
 ];
 
-function useReplayerSetting(key, defaultVal) {
+function useReplayerSetting(key, defaultVal, seed) {
   const fullKey = 'replayer' + key;
   const [val, setVal] = useState(() => {
+    // A seed (from a shared hand) wins over the viewer's stored value on mount,
+    // without being written back — so a link's felt shows without clobbering
+    // the viewer's own setting.
+    if (seed !== undefined && seed !== null) return seed;
     const stored = localStorage.getItem(fullKey);
     if (stored === null) return defaultVal;
     if (defaultVal === true || defaultVal === false) return stored === 'true';
@@ -4677,7 +4681,11 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     return () => { mql.removeEventListener('change', handler); };
   }, []);
   const [showSettings, setShowSettings] = useState(false);
-  const [feltColor, setFeltColor] = useState(() => localStorage.getItem('replayerFeltColor') || '#6b5b8a');
+  // A shared hand carries the sharer's felt (decoded onto the hand); use it so
+  // the recipient sees the same table. The viewer's own saved hands carry no
+  // felt, so they fall back to the viewer's stored preference. Not persisted —
+  // viewing someone's link must not overwrite your own felt.
+  const [feltColor, setFeltColor] = useState(() => (hand && hand.feltColor) || localStorage.getItem('replayerFeltColor') || '#6b5b8a');
   const [cardTheme, setCardTheme] = useState(() => localStorage.getItem('replayerCardTheme') || 'default');
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
@@ -4794,7 +4802,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _cardSplay = useReplayerSetting('CardSplay', true);
   /* Off by default: the dark cloth is what the table looks like today, and a
      setting that changes the first thing you see should be opt-in. */
-  const _feltBright = useReplayerSetting('FeltBright', false);
+  const _feltBright = useReplayerSetting('FeltBright', false, hand && hand.feltColor ? !!hand.feltBright : undefined);
   const _lightStrip = useReplayerSetting('LightStrip', false);
   const _animDeal = useReplayerSetting('AnimateDeal', true);
   const _animChips = useReplayerSetting('AnimateChips', true);
@@ -5567,7 +5575,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const copyShareLink = useCallback(async () => {
     try {
-      const shorthand = encodeHand(hand);
+      // Carry the felt the sharer is looking at, so the link reproduces their
+      // table rather than the recipient's default felt.
+      const shorthand = encodeHand({ ...hand, feltColor, feltBright: rSettings.feltBright });
       if (!shorthand) return;
       const b = hand.blinds || {};
       const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${b.ante ? '/' + b.ante : ''}`;

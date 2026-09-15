@@ -174,6 +174,18 @@ export function encodeHand(hand) {
   }
   parts.push(resultStr);
 
+  /* Felt appearance rides along as an optional trailing part so a shared hand
+     shows the SHARER's felt, not the viewer's own default. It is appended only
+     when set (copyShareLink injects the live felt at share time), so a saved
+     hand's shorthand is unchanged and older decoders — which read only the
+     first five parts — ignore it. '#'-less hex because '#' is the fragment
+     delimiter in a #h/ link; a trailing 'b' marks bright felt. */
+  if (hand.feltColor) {
+    var feltPart = 'f' + String(hand.feltColor).replace(/^#/, '');
+    if (hand.feltBright) feltPart += 'b';
+    parts.push(feltPart);
+  }
+
   return parts.join('.');
 }
 
@@ -379,9 +391,21 @@ export function decodeHand(str) {
     }
   }
 
+  /* Optional trailing felt part (see encode). Absent on older/saved-hand
+     shorthands, in which case the viewer keeps their own felt. */
+  var feltColor = null, feltBright = false;
+  var feltStr = parts[5] || '';
+  if (feltStr.charAt(0) === 'f') {
+    var fb = feltStr.slice(1);
+    if (fb.charAt(fb.length - 1) === 'b') { feltBright = true; fb = fb.slice(0, -1); }
+    if (/^[0-9a-fA-F]{3,8}$/.test(fb)) feltColor = '#' + fb;
+  }
+
   return {
     gameType: gameType,
     players: players,
+    feltColor: feltColor,
+    feltBright: feltBright,
     blinds: (function() {
       var b = { sb: sb, bb: bb, ante: ante };
       if (!straddleCode) return b;
