@@ -16,7 +16,7 @@ import {
   matchesOnline,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
-  fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
+  fetchServerLocation, sameLocation, readLocalFilters } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
@@ -1094,8 +1094,11 @@ export default function TournamentsView({
     // Restore previously-chosen location from localStorage so users don't have
     // to re-enter distance/region on every launch.
     const savedLoc = readLocalLocation() || {};
+    // Non-location answers from the first-run wizard (games, buy-in band, online).
+    const savedFilters = readLocalFilters() || {};
     return {
       ...DEFAULT_FILTERS,
+      ...savedFilters,
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,

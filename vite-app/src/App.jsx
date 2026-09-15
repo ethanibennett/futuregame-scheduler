@@ -29,6 +29,8 @@ import SharedScheduleView from './components/SharedScheduleView.jsx';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
+import OnboardingWizard from './components/OnboardingWizard.jsx';
+import { hasOnboarded, readLocalLocation, readLocalFilters } from './utils/location-prefs.js';
 import NotificationsPanel from './components/NotificationsPanel.jsx';
 import SwapModal from './components/SwapModal.jsx';
 import MilestoneCelebration from './components/MilestoneCelebration.jsx';
@@ -178,6 +180,22 @@ export default function App() {
   // Real name / display name
   const [realName, setRealName] = useState(localStorage.getItem('realName') || null);
   const [showRealNamePrompt, setShowRealNamePrompt] = useState(false);
+  // First-run filter wizard: auto-opens once for a logged-in (non-guest) user who
+  // hasn't been through it. Re-openable later via a 'reopen-onboarding' window event
+  // (fired from the location menu), which bypasses the once-only flag.
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    // Auto-open only for genuinely new users: logged in, not a guest, never onboarded,
+    // and no filters/location already chosen — so existing users aren't nagged.
+    if (token && !isGuest && !hasOnboarded() && !readLocalLocation() && !readLocalFilters()) {
+      setShowOnboarding(true);
+    }
+  }, [token, isGuest]);
+  useEffect(() => {
+    const reopen = () => setShowOnboarding(true);
+    window.addEventListener('reopen-onboarding', reopen);
+    return () => window.removeEventListener('reopen-onboarding', reopen);
+  }, []);
   const [nameMode, setNameMode] = useState(localStorage.getItem('displayNameMode') || 'real');
   const displayName = useCallback((user) => {
     if (nameMode === 'username') return user.username;
@@ -1403,6 +1421,12 @@ export default function App() {
           onSave={(name) => { setRealName(name); localStorage.setItem('realName', name); setShowRealNamePrompt(false); }}
           onDismiss={() => setShowRealNamePrompt(false)}
         />
+      )}
+
+      {/* Onboarding waits behind the real-name prompt so a brand-new user answers
+          one at a time rather than seeing two stacked modals. */}
+      {showOnboarding && !showRealNamePrompt && (
+        <OnboardingWizard token={token} onDone={() => setShowOnboarding(false)} />
       )}
 
       {showNotifications && (
