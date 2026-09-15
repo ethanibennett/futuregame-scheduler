@@ -4178,25 +4178,16 @@
       margin-right: 0.6em;
     }
 
-    .replayer-board-area:has(.card-row > *:nth-child(4)) { --card-h: clamp(22px, 12.5cqmin, 160px); }   /* 2 cells */
-    /* A card is 0.714 as wide as it is tall, so on a square-cell grid a
-       two-cell card is 1.43 cells wide and five of them are 47% of the table —
-       and with three seats down each side there is a fan reaching in to 30%
-       on the row the board sits on. 1.75 cells makes a card 1.25 wide, five of
-       them 39%, which is what passes between them. The turn card still gets
-       two: four cards clear the fans at that size. */
-    .replayer-board-area:has(.card-row > *:nth-child(5)) { --card-h: clamp(18px, 10.9375cqmin, 140px); }   /* 1.75 cells */
     .replayer-board-area {
-      /* Narrower felt means less room across, so the board keeps a card a
-         step down from the ones in front of the players. */
-      /* The board was a step SMALLER than the cards in front of the players,
-         which is backwards — it is the one thing everyone at the table is
-         looking at. It was sized down so that FIVE community cards clear the
-         two mid-height side plaques, and that is only true when there are
-         five. It steps down as the turn and the river land, so the five-card
-         row is exactly what it has always been and a flop is not. */
-      --card-h: clamp(26px, 17.1875cqmin, 220px);   /* 2.75 cells — a flop has room */
-      position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
+      /* ONE fixed card size for the whole hand. It is sized so that FIVE cards
+         clear the side fans/plaques, so the flop, turn and river are identical:
+         the row grows WIDER as cards land, the cards themselves never resize.
+         (Previously the height stepped down at the turn and river via
+         :has(nth-child(4|5)), so the cards shrank mid-hand — that is gone.) */
+      --card-h: clamp(18px, 10.9375cqmin, 140px);   /* 1.75 cells — fits five */
+      /* top:47% matches .replayer-watermark so the board is vertically CENTRED
+         on the futurega.me wordmark rather than sitting a step below it. */
+      position:absolute; left:50%; top:47%; transform:translate(-50%,-50%);
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
