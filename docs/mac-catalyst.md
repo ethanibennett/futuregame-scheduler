@@ -52,10 +52,11 @@ Then in Xcode select **My Mac (Mac Catalyst)** and Run (⌘R).
   `--catalyst` flag to that script so it's one command like the iOS ship.
 
 ## Optional polish (not needed to ship)
-- **Minimum window size.** Catalyst windows drag arbitrarily small. Constrain it
-  with `windowScene.sizeRestrictions?.minimumSize` (~480×720 keeps the phone
-  layout usable). Capacitor uses an app-based `AppDelegate` (no `SceneDelegate`),
-  so this needs a small scene hook — ask me and I'll wire it.
+- **Minimum window size — wired.** `AppDelegate.swift` pins the Catalyst window to a
+  480×720 minimum (`windowScene.sizeRestrictions?.minimumSize`, set on scene
+  activation, `#if targetEnvironment(macCatalyst)` so it's inert on iPad). Adjust the
+  `CGSize` there if you want a different floor. Only takes effect once the Catalyst
+  destination is enabled and built.
 - **Content mode.** `capacitor.config.json` sets `ios.preferredContentMode:
   "mobile"`; the responsive layout renders fine in a Mac window. Switch to
   `"desktop"` only if you want the wide layout by default on Mac.
