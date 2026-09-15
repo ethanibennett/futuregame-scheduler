@@ -8,6 +8,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        #if targetEnvironment(macCatalyst)
+        // Mac Catalyst only: a Mac window can be dragged arbitrarily small, which collapses
+        // the layout. Pin a minimum below which the phone-portrait layout stops being usable.
+        // `sizeRestrictions` is non-nil only on Mac, so this is inert on iPad. Capacitor uses
+        // an app-based AppDelegate (no SceneDelegate), so we apply it on scene activation
+        // rather than adopting the scene lifecycle — no Info.plist scene manifest, no risk to
+        // Capacitor's own window setup.
+        NotificationCenter.default.addObserver(
+            forName: UIScene.didActivateNotification, object: nil, queue: .main
+        ) { note in
+            guard let scene = note.object as? UIWindowScene,
+                  let restrictions = scene.sizeRestrictions else { return }
+            restrictions.minimumSize = CGSize(width: 480, height: 720)
+        }
+        #endif
         return true
     }
 
