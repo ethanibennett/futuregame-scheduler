@@ -330,7 +330,7 @@ export const VENUE_MAP = {
   // published festival schedule ahead of PokerAtlas listing it; the mtt-feed supersedes the bridge
   // once PokerAtlas carries the series (see server.js supersedeBridge). Same string is what the feed
   // will file it under ("2026 <series>"), so this entry keeps working after the handoff.
-  '2026 WPT World Championship':                            { abbr: 'WYNN',             color: '#ad621f', longName: 'Wynn Las Vegas' },
+  '2026 WPT World Championship':                            { abbr: 'WYNN WPT',         color: '#ad621f', longName: 'Wynn Las Vegas' },
 
   // WSOP Circuit stops (wsop-circuit source, not PokerAtlas — no series_directory row,
   // so the room comes from the series title itself). Rooms the map already knows reuse
@@ -475,6 +475,7 @@ export const VENUE_BRAND_VAR = {
   'IPO':           '--venue-ipo',
   'PERSONAL':      '--venue-personal',
   'WYNN':          '--venue-wynn',
+  'WYNN WPT':      '--venue-wynn',
   'ARIA':          '--venue-aria',
   'GOLDEN NUGGET': '--venue-golden-nugget',
   'RESORTS WORLD': '--venue-resorts-world',
@@ -1029,6 +1030,8 @@ export const PROPERTY_COORDS = {
   'WILDHORSE':        { lat: 45.64762, lng: -118.6796, region: 'OR' },  
   'WOLINAK':          { lat: 46.32897, lng: -72.42083, region: 'CA-QC' },  
   'WYNN':             { lat: 36.12662, lng: -115.1654, region: 'NV' },
+  'WYNN WPT':         { lat: 36.12662, lng: -115.1654, region: 'NV' },   // WPT World Championship strip; same building as WYNN
+
   'GRAN VIA':         { lat: 40.42015,   lng: -3.70103,    region: 'ES' },
   'GRAND VICTORIA':   { lat: 42.03132,   lng: -88.27965,   region: 'IL' },
   'PARTOUCHE':        { lat: 48.87146,   lng: 2.307,       region: 'FR' },
