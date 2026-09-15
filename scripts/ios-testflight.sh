@@ -170,6 +170,14 @@ sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION =
 info "Syncing web build into ios/App (npx cap sync ios)..."
 npx cap sync ios
 
+# ── Capacitor xcframeworks ──────────────────────────────────────────────────
+# The project overrides the capacitor-swift-pm package with a local one whose
+# xcframeworks are gitignored (they carry the Mac Catalyst slice upstream lacks —
+# see docs/mac-catalyst.md). Without them EVERY build fails, iOS included, so a
+# fresh runner checkout needs this. No-op once built for the pinned version,
+# which `cap sync` above may have just changed.
+"$PROJECT_ROOT/scripts/build-capacitor-xcframeworks.sh"
+
 if $DRY_RUN; then
   info "--dry-run: stopping before archive."
   info "Build number staged at $NEW_BUILD in project.pbxproj (revert with: git checkout -- $IOS_PROJECT/project.pbxproj)"

@@ -152,3 +152,7 @@ online-feed/
 
 # Render deploy-failure watchdog state (which outcomes have been alerted)
 .render-deploy-watchdog.json
+
+# Mac Catalyst: rebuilt Capacitor xcframeworks (scripts/build-capacitor-xcframeworks.sh)
+ios/App/capacitor-swift-pm/*.xcframework
+ios/App/capacitor-swift-pm/.built-version

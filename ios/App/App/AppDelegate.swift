@@ -11,16 +11,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         #if targetEnvironment(macCatalyst)
         // Mac Catalyst only: a Mac window can be dragged arbitrarily small, which collapses
         // the layout. Pin a minimum below which the phone-portrait layout stops being usable.
-        // `sizeRestrictions` is non-nil only on Mac, so this is inert on iPad. Capacitor uses
-        // an app-based AppDelegate (no SceneDelegate), so we apply it on scene activation
-        // rather than adopting the scene lifecycle — no Info.plist scene manifest, no risk to
-        // Capacitor's own window setup.
-        NotificationCenter.default.addObserver(
-            forName: UIScene.didActivateNotification, object: nil, queue: .main
-        ) { note in
-            guard let scene = note.object as? UIWindowScene,
-                  let restrictions = scene.sizeRestrictions else { return }
-            restrictions.minimumSize = CGSize(width: 480, height: 720)
+        // Capacitor uses an app-based AppDelegate (no SceneDelegate), so there is no
+        // scene(_:willConnectTo:) to set this in; instead apply it whenever a window scene
+        // connects or activates, and again on didBecomeActive. Observing didActivate alone
+        // (the first cut) left the window shrinkable to 515x319, so all three hooks stay.
+        // `sizeRestrictions` is non-nil only on Mac. 480x720 are UIKit points: under
+        // "Scale Interface to Match iPad" the Mac window floors at 370x555 screen points.
+        for name in [UIScene.willConnectNotification, UIScene.didActivateNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { note in
+                (note.object as? UIWindowScene).map(AppDelegate.applyWindowFloor)
+            }
         }
         #endif
         return true
@@ -42,7 +42,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        #if targetEnvironment(macCatalyst)
+        application.connectedScenes.compactMap { $0 as? UIWindowScene }.forEach(AppDelegate.applyWindowFloor)
+        #endif
     }
+
+    #if targetEnvironment(macCatalyst)
+    static func applyWindowFloor(_ scene: UIWindowScene) {
+        scene.sizeRestrictions?.minimumSize = CGSize(width: 480, height: 720)
+    }
+    #endif
 
     func applicationWillTerminate(_ application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.

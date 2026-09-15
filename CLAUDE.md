@@ -15,6 +15,12 @@ sessions opened here own scheduler work.
   junction** → `D:\projects\futuregame-solver\solver` (server.js requires into it at
   boot for the trainer features). On Render, `build.js` clones the private
   `futuregame-solver` repo via `SOLVER_REPO_TOKEN`.
+- **Mac app**: the same `ios/App` project builds a native macOS app via **Mac Catalyst**
+  (enabled 2026-09-14, `docs/mac-catalyst.md`). Capacitor's Swift package ships no
+  Catalyst slice, so the project overrides it with the local package
+  `ios/App/capacitor-swift-pm/` whose xcframeworks are gitignored and produced by
+  `scripts/build-capacitor-xcframeworks.sh` — **every** app build, iOS included, fails
+  with "no such package" until that script has run once (the ship script calls it).
 - **Build**: `node build.js` = vite build + solver fetch (token) or junction fallback.
   Note: `spawnSync('npm')` fails on native Windows — run `npm install` / `npm run build`
   inside `vite-app/` directly when building locally.
