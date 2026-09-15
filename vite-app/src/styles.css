@@ -7174,6 +7174,12 @@
       background: var(--bg);
       margin: -12px -12px 0;
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
+      /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
+         negative top lets rows bleed THROUGH it during momentum scroll — the
+         card was peeking over the header. Promoting the sticky to its own GPU
+         layer makes it paint opaquely above the scrolled content. Desktop never
+         showed the bleed; this is the iOS-only fix. */
+      transform: translateZ(0);
       /* Removed: box-shadow: 0 4px 0 0 var(--bg) — the var sometimes
          resolved one frame late during sticky transitions and fell back
          to currentColor (dark text), producing a thin black band below
