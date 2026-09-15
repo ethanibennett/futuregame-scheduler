@@ -32,7 +32,7 @@ const GAME_GROUPS = [
 ];
 
 // ── Inline Filters (portal-based, matching original) ──
-function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
+function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
   const panelRef = useRef(null);
   const [whereOpen, setWhereOpen] = useState(false);
   const [onlineOpen, setOnlineOpen] = useState(false);
@@ -208,6 +208,31 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               {filters.dateFrom && filters.dateTo ? `${fmtShortDate(filters.dateFrom)} \u2014 ${fmtShortDate(filters.dateTo)}` : filters.dateFrom ? `From ${fmtShortDate(filters.dateFrom)}` : `Until ${fmtShortDate(filters.dateTo)}`}
               <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, dateFrom:'', dateTo:''}))}>&#10005;</span>
             </span>
+          )}
+        </div>
+        {/* Online / Available to me ride the right of this row so they share a
+            line with the active-filter pills instead of taking one of their own.
+            setFiltersRaw (not the scroll-wrapped setter) so toggling online play
+            doesn't jump the list back to today. */}
+        <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <input type="checkbox" checked={filters.showOnline !== false}
+              onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
+              style={{margin:0}}
+            /> Online
+          </label>
+          {filters.showOnline !== false && (
+            <label
+              title={filters.jurisdiction
+                ? `Hide online events on sites not available in ${filters.jurisdiction}`
+                : 'Set your state in the location menu to use this'}
+              style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
+              <input type="checkbox" disabled={!filters.jurisdiction}
+                checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
+                onChange={e => setFiltersRaw(f => ({...f, onlyAvailableOnline:e.target.checked}))}
+                style={{margin:0}}
+              /> Available to me
+            </label>
           )}
         </div>
       </div>
@@ -1579,9 +1604,9 @@ export default function TournamentsView({
   return (
     <div>
       <div className="sticky-filters" ref={stickyFiltersRef}>
-        {/* wrap + rowGap: on a narrow phone the toggle group drops to its own
-            line below the icon buttons instead of overflowing and clipping
-            "Side Events" / "Available to me" off the right edge. */}
+        {/* wrap + rowGap: on a narrow phone the event-kind switches drop to their
+            own line below the icon buttons instead of overflowing and clipping
+            "Side Events" off the right edge. */}
         <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap',rowGap:'8px'}}>
           <button
             ref={locationBtnRef}
@@ -1633,11 +1658,11 @@ export default function TournamentsView({
           >
             <Icon.upload />
           </button>
-          {/* Row 1 rides the button line — parent is align-items:center and this
-              group only carries marginLeft:auto, so the event-kind switches sit
-              level with the icon buttons at left. Row 2 (below) forces itself onto
-              the next line, keeping the phone (~380px) from scrolling sideways to
-              reach "Available to me". */}
+          {/* The event-kind switches ride the button line — parent is
+              align-items:center and this group carries marginLeft:auto, so they
+              sit level with the icon buttons at left. Online / Available to me and
+              the active-filter pills share the row below (the Filters .filter-row),
+              keeping the phone (~380px) from scrolling sideways. */}
           <div style={{display:'flex',gap:'6px',alignItems:'center',marginLeft:'auto'}}>
             <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSatellites}
@@ -1658,37 +1683,9 @@ export default function TournamentsView({
               /> Side Events
             </label>
           </div>
-          {/* flex-basis:100% forces this pair onto the line below the buttons and
-              row 1; justify-content:flex-end keeps it right-aligned under them.
-              Online play has no location, so these live here rather than in the
-              location panel, and stay reachable while a radius or region is set. */}
-          <div style={{display:'flex',gap:'6px',alignItems:'center',flexBasis:'100%',justifyContent:'flex-end'}}>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
-              <input type="checkbox" checked={filters.showOnline !== false}
-                onChange={e => setFilters(f => ({...f, showOnline:e.target.checked}))}
-                style={{margin:0}}
-              /> Online
-            </label>
-            {/* Only offered once the Online switch is on — it filters nothing
-                else — and disabled with a reason when no state is set, rather
-                than silently passing everything through. */}
-            {filters.showOnline !== false && (
-              <label
-                title={filters.jurisdiction
-                  ? `Hide online events on sites not available in ${filters.jurisdiction}`
-                  : 'Set your state in the location menu to use this'}
-                style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
-                <input type="checkbox" disabled={!filters.jurisdiction}
-                  checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
-                  onChange={e => setFilters(f => ({...f, onlyAvailableOnline:e.target.checked}))}
-                  style={{margin:0}}
-                /> Available to me
-              </label>
-            )}
-          </div>
         </div>
 
-        <Filters filters={filters} setFilters={setFiltersWithScroll} gameVariants={gameVariants} venues={venues} buyinOptions={buyinOptions} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
+        <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} gameVariants={gameVariants} venues={venues} buyinOptions={buyinOptions} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
 
         <ImportSchedulePanel isOpen={importDropdownOpen} onClose={() => setImportDropdownOpen(false)} token={token} onRefreshTournaments={onRefreshTournaments} />
 
