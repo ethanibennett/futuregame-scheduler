@@ -84,3 +84,38 @@ export function sameLocation(a, b) {
   });
   return norm(a) === norm(b);
 }
+
+/* ── Onboarding filter prefs ────────────────────────────────────────────────
+ * The first-run wizard sets more than location — games, buy-in band, whether to
+ * show online play. Those are NOT location, so they live in their own key. Only
+ * the fields the wizard actually writes are stored; TournamentsView merges them
+ * over DEFAULT_FILTERS at init (location still comes from savedLocation above).
+ * localStorage-only: they are per-browser conveniences, not account facts, and a
+ * blocked store just falls back to defaults for the session.
+ */
+const FILTERS_KEY = 'savedFilters';
+
+export function readLocalFilters() {
+  try {
+    const raw = localStorage.getItem(FILTERS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function writeLocalFilters(f) {
+  try {
+    if (f && Object.keys(f).length) localStorage.setItem(FILTERS_KEY, JSON.stringify(f));
+    else localStorage.removeItem(FILTERS_KEY);
+  } catch (e) { /* private window: session-only, fine */ }
+}
+
+/* One flag, set the first time the wizard is finished or skipped, so it never
+ * auto-opens again. The user can still reopen it by hand. */
+export function hasOnboarded() {
+  try { return localStorage.getItem('onboarded') === '1'; } catch (e) { return true; }
+}
+export function markOnboarded() {
+  try { localStorage.setItem('onboarded', '1'); } catch (e) { /* ignore */ }
+}

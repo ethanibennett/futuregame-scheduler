@@ -210,6 +210,14 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           </button>
         </>
       )}
+      <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
+      <button onClick={() => { window.dispatchEvent(new Event('reopen-onboarding')); onClose(); }} style={{
+        display:'block',width:'100%',padding:'var(--space-lg) var(--space-xl)',
+        background:'none',border:'none',color:'var(--text-muted)',
+        fontSize:'0.8rem',cursor:'pointer',textAlign:'left',
+      }}>
+        Re-run filter setup
+      </button>
     </div>
   );
 }
