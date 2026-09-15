@@ -1655,7 +1655,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
           {[
             { key:'showChipStacks', label:'Pot Chip Stacks', sub:'Chips in the pot, by denomination' },
             { key:'showCommentary', label:'Commentator Mode', sub:'A play-by-play line under the table' },
-            { key:'showTimeline', label:'Action Timeline', sub:'A scrubbable dot per action' },
             { key:'showPlayerStats', label:'Player Stats', sub:'A stats chip on each seat' },
             { key:'stacksInBB', label:'Stacks in BB', sub:'Big blinds — or big bets in a limit game. Tapping any stack on the table toggles this too' },
           ].map(opt => (
@@ -4784,7 +4783,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
   const _showPotOdds = useReplayerSetting('ShowPotOdds', false);
   const _showCommentary = useReplayerSetting('ShowCommentary', false);
-  const _showTimeline = useReplayerSetting('ShowTimeline', true);
   const _showPlayerStats = useReplayerSetting('ShowPlayerStats', false);
   const _showNuts = useReplayerSetting('ShowNutsHighlight', false);
   const _showSPR = useReplayerSetting('ShowSPR', false);
@@ -4813,7 +4811,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const rSettings = {
     theme: _theme[0], tableShape: _tableShape[0], feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
     highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
-    showPotOdds: _showPotOdds[0], showCommentary: _showCommentary[0], showTimeline: _showTimeline[0],
+    showPotOdds: _showPotOdds[0], showCommentary: _showCommentary[0],
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
@@ -4828,7 +4826,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     theme: _theme[1], tableShape: _tableShape[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
     cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], highContrastDeck: _hcDeck[1],
     showChipStacks: _showChipStacks[1], showHandStrength: _showHandStrength[1], showPotOdds: _showPotOdds[1],
-    showCommentary: _showCommentary[1], showTimeline: _showTimeline[1], showPlayerStats: _showPlayerStats[1],
+    showCommentary: _showCommentary[1], showPlayerStats: _showPlayerStats[1],
     showNutsHighlight: _showNuts[1],
     showSPR: _showSPR[1], showBetSizing: _showBetSizing[1],
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
@@ -5441,29 +5439,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   /* 60: the interval ran regardless of document visibility, so backgrounding
      the app played the hand out unseen and handed you back the result — and a
      throttled background timer gets the pacing wrong anyway. */
-  /* 46: at 4x on a 30-action hand the strip scrolls past the viewport, so the
-     one dot that matters has to be pulled back into it. */
-  const timelineRef = useRef(null);
-  // 78: past about twenty actions the strip scrolls further than it reads.
-  const totalActionCount = hand.streets.reduce((n, st) => n + (st.actions?.length || 0), 0);
-  useEffect(() => {
-    const el = timelineRef.current;
-    if (!el) return;
-    const dot = el.querySelector('.replayer-timeline-dot.current');
-    if (!dot) return;
-    /* This was dot.scrollIntoView({ block: 'nearest', inline: 'center' }),
-       which scrolls EVERY scrollable ancestor, not just the strip — including
-       .replayer-replay, whose overflow:hidden does not stop it being scrolled
-       programmatically. Measured: the moment a draw street inserted its info
-       bar below the table, the timeline dropped out of view, this fired, and
-       the whole column scrolled 52px — which is the table moving under you
-       mid-hand. The strip scrolls itself, horizontally, and nothing else
-       moves. */
-    const target = dot.offsetLeft - el.clientWidth / 2 + dot.offsetWidth / 2;
-    const max = el.scrollWidth - el.clientWidth;
-    el.scrollTo({ left: Math.max(0, Math.min(max, target)), behavior: 'smooth' });
-  }, [streetIdx, actionIdx]);
-
   /* 65: the flying chips landed at 50%/42% and disappeared while the pot's
      number swapped on the same render — so they arrived at a coordinate
      rather than at the pot. The pot now takes the impact. */
@@ -7158,34 +7133,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           setting DEFAULTS TO TRUE, and the settings panel advertises
           "clickable dots showing all actions" — for markup no component ever
           emitted. The toggle toggled nothing. */}
-      {/* 78: the dots were floating on the page with a grey bar between
-          streets. Each street is a shaded span on a recessed track now, so the
-          groups read as groups and there is something to scrub along. A hand of
-          more than about twenty actions collapses to a denser strip rather than
-          scrolling further and further. */}
-      {rSettings.showTimeline && (
-        <div className={'replayer-timeline' + (totalActionCount > 20 ? ' is-dense' : '')} ref={timelineRef}>
-          {hand.streets.map((st, si) => (
-            <div className="replayer-timeline-street" key={'tl-' + si}>
-              <div className="replayer-timeline-street-label">{st.name || ('St' + si)}</div>
-              {(st.actions || []).map((act, ai) => {
-                const isCurrent = si === streetIdx && ai === actionIdx;
-                const who = hand.players[act.player]?.name || 'Player';
-                const amt = act.amount ? ' ' + fmtChips(act.amount) : '';
-                return (
-                  <button key={'tl-' + si + '-' + ai}
-                    className={'replayer-timeline-dot action-' + (act.action === 'all-in' ? 'allin' : act.action) + (isCurrent ? ' current' : '')}
-                    onClick={() => { setPlaying(false); setShowResult(false); setStreetIdx(si); setActionIdx(ai); }}
-                    title={who + ' ' + act.action + amt}
-                    aria-label={who + ' ' + act.action + amt}
-                    aria-current={isCurrent ? 'step' : undefined} />
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Commentary */}
       {rSettings.showCommentary && (
         <div className="replayer-commentary">

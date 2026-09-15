@@ -5098,7 +5098,7 @@
        per street, a strict subset of one dot per action with the street
        markers between them. No component emits either class; the timeline is
        the one that survives, and it collapses to street granularity when the
-       hand is long enough to overflow (see .replayer-timeline.is-dense). */
+       hand is long enough to overflow. */
 
 
     /* 40 */
@@ -5513,60 +5513,6 @@
       letter-spacing: var(--track-caps); text-transform: uppercase;
       color: var(--brand); margin-bottom: 1px;
     }
-
-    /* ── Action Timeline ── */
-    /* 78: 10px circles in the action colours, floating on the page
-       background with a 2px grey bar between streets — so the dots had
-       nothing to sit along and the street groupings were legible only from
-       the gaps. A timeline is a spatial object; without a track there is
-       nothing to scrub, which is what the control is for. */
-    .replayer-timeline {
-      display:flex; align-items:center; gap: var(--space-2xs);
-      padding: var(--space-xs) var(--space-md);
-      margin: var(--space-sm) auto 0;
-      max-width: max-content;
-      border-radius: var(--radius-pill);
-      background: rgba(255,255,255,0.045);
-      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
-      overflow-x:auto; -webkit-overflow-scrolling:touch;
-      scrollbar-width: none;
-    }
-    .replayer-timeline::-webkit-scrollbar { display: none; }
-    /* Each street's span is shaded a step differently, so the groups read
-       without needing the markers to do all the work. */
-    .replayer-timeline-street {
-      display: flex; align-items: center; gap: var(--space-2xs);
-      padding: 2px var(--space-xs);
-      border-radius: var(--radius-pill);
-      background: rgba(255,255,255,0.05);
-    }
-    .replayer-timeline-street:nth-child(2n) { background: rgba(255,255,255,0.09); }
-    /* A hand long enough to overflow collapses to one dot per street. */
-    .replayer-timeline.is-dense .replayer-timeline-dot:not(.current):not(.street-marker) {
-      width: 6px; height: 6px;
-    }
-    .replayer-timeline.is-dense .replayer-timeline-street-label { display: none; }
-    .replayer-timeline-dot {
-      width:10px; height:10px; border-radius:50%; flex-shrink:0; cursor:pointer;
-      transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); border: var(--bw-1) solid transparent;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-timeline-dot:hover { transform:scale(1.4); }
-    }
-    .replayer-timeline-dot.current { border-color:#fff; transform:scale(1.3); }
-    .replayer-timeline-dot.action-fold { background: var(--act-fold); }
-    .replayer-timeline-dot.action-check { background: var(--act-check); }
-    .replayer-timeline-dot.action-call { background: var(--act-call); }
-    .replayer-timeline-dot.action-bet { background: var(--act-bet); }
-    .replayer-timeline-dot.action-raise { background: var(--act-raise); }
-    .replayer-timeline-dot.action-allin { background: var(--act-allin); }
-    .replayer-timeline-dot.street-marker {
-      width:2px; height:14px; border-radius:1px; background:var(--border); cursor:default;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .replayer-timeline-dot.street-marker:hover { transform:none; }
-    }
-
     /* ── Hand Strength Meter ── */
     .replayer-hand-strength {
       display:flex; align-items:center; gap: var(--space-sm); margin-top: var(--space-xs); padding: var(--space-xs) var(--space-md);
@@ -5661,21 +5607,6 @@
       font-size: var(--fs-2xs); font-family: var(--font-condensed); line-height:1.4;
     }
     .replayer-notes-area textarea:focus { border-color: var(--brand-line); }
-    /* ── Enhanced Timeline with street color segments ── */
-    .replayer-timeline-street-label {
-      font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase;
-      letter-spacing: var(--track-tight); padding: 0 var(--space-2xs); flex-shrink:0; opacity:0.7;
-    }
-    /* Streets are a SEQUENCE, so they read as value steps of one neutral -
-       four more hues in the same strip collided with the action scale above. */
-    .replayer-timeline-dot.street-preflop { background: rgba(255,255,255,0.28); }
-    .replayer-timeline-dot.street-flop    { background: rgba(255,255,255,0.45); }
-    .replayer-timeline-dot.street-turn    { background: rgba(255,255,255,0.62); }
-    .replayer-timeline-dot.street-river   { background: rgba(255,255,255,0.80); }
-    .replayer-timeline-dot.street-preflop.current,
-    .replayer-timeline-dot.street-flop.current,
-    .replayer-timeline-dot.street-turn.current,
-    .replayer-timeline-dot.street-river.current { border-color:#fff; transform:scale(1.3); }
 
     /* ── Cinematic Card Deal Animation (preflop) ── */
     @keyframes cinematicDeal {
@@ -6414,7 +6345,11 @@
          the gaps between bands are the only clear air. Measured, those gaps are
          27.4-31.6, 34.6-37.9, 48.6-57.0 and 60.0-64.2; the third is the only
          one tall enough. */
-      position: absolute; left: 50%; top: 52.8%;
+      /* Nudged down from 52.8% for the same "space to breathe" pass. The clear
+         band under the board (before the hero's chip band at ~57%) runs to
+         57.0%; at ~3.7% pill height a 54.5% centre keeps the bottom near 56.3%,
+         still inside it, while opening the gap below the board. */
+      position: absolute; left: 50%; top: 54.5%;
       transform: translate(-50%, -50%);
       z-index: var(--z-felt);
       display: flex; flex-direction: column; align-items: center; gap: 1px;
