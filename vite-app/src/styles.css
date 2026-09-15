@@ -4111,25 +4111,19 @@
     }
     .replayer-pot-total { display: inline-flex; align-items: baseline; }
     .replayer-pot-total, .replayer-pot-pill { position: relative; }
-    /* Ethan asked for POT inside the pill rather than floating above it, all
-       caps and half the figure's height. STACKED, not inline: inline it adds
-       its own width plus the gap — about 30px on a 382px table, 15 a side —
-       and that is what reached the side seats' cards (18px in at 402x874 and
-       375x667). A line ABOVE the figure but INSIDE the plaque costs height,
-       not width, so the pill stays exactly one figure wide and no wider than
-       it was — the seat clearance the floating label bought is kept. Half the
-       figure's height is 0.5em against the total's 1em. */
-    .replayer-replay:not(.replayer-landscape) .replayer-pot-total {
-      flex-direction: column; align-items: center;
-    }
-    .replayer-replay:not(.replayer-landscape) .replayer-pot-cell-label {
-      margin-right: 0; margin-bottom: 0.05em; line-height: 1; font-size: 0.5em;
-    }
+    /* Ethan wants POT inline — same baseline, to the LEFT of the figure — and
+       the pill kept off the community cards below it. Inline IS the base
+       .replayer-pot-total (inline-flex, baseline) and the base label, so
+       portrait no longer overrides either: the label rides the figure's
+       baseline and adds no height, so the pill is exactly as tall as the figure
+       and clears the board (the earlier stacked line is what dropped into the
+       cards). Inline does cost width — the reason it was once floated out — but
+       the figure is smaller now; if it ever reaches the side seats' cards the
+       fix is a smaller figure, not a taller pill. */
     /* "Make the pot pill smaller" — the figure drives the plaque's size, so
        drop it from 4.4cqmin to 3.9. That stays above the 3.6cqmin player
-       stacks, so the pot is still the largest number on the table, and the
-       stacked POT line adds no width to worry the side seats. Portrait only;
-       landscape keeps its size. */
+       stacks, so the pot is still the largest number on the table. Portrait
+       only; landscape keeps its size. */
     .replayer-replay:not(.replayer-landscape) .replayer-pot-display {
       font-size: clamp(10px, 3.9cqmin, 48px);
     }
@@ -4151,7 +4145,8 @@
        used to keep the floating form (.replayer-pot-label) because it was its
        own single object; it is the pot row now, so that rule went with it. */
     .replayer-pot-cell-label {
-      font-size: 0.42em; font-weight: var(--fw-bold);
+      /* Half the figure's height (Ethan), baseline-aligned to its left. */
+      font-size: 0.5em; font-weight: var(--fw-bold);
       color: rgba(255,255,255,0.72);
       text-transform: uppercase; letter-spacing: var(--track-caps);
       margin-right: 0.6em;
