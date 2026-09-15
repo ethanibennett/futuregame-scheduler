@@ -3502,8 +3502,17 @@
          timeline, so centring them is -12% of the table's height. That lands
          18px of air above the top seats and 17px below the hero's label —
          balanced, and the table keeps all 87cqh of its height. */
-      height: min(87cqh, calc(87cqw / 1.75));
-      transform: translateY(-12%);
+      /* Fill the frame (Ethan: the table should be as WIDE as the browser
+         allows in landscape). 96, not 87 — the min() still fits the box to
+         whichever axis binds, so it never overflows; on a normal desktop
+         aspect the width binds and the felt now runs nearly edge to edge, the
+         "wider than the frame" look this block already wanted. The footprint
+         centres at -6.5% now rather than -12%: measured at 96cqh the seats sat
+         74px from the top and 138 from the bottom, and -6.5% evens both to
+         106px. (The old -12% was set against 87cqh and a timeline strip that
+         is gone.) */
+      height: min(96cqh, calc(96cqw / 1.75));
+      transform: translateY(-6.5%);
       width: auto;
       max-width: none;
       margin: 0;

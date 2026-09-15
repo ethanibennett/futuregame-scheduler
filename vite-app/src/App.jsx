@@ -1313,6 +1313,25 @@ export default function App() {
     return <ResetPasswordForm resetToken={RESET_TOKEN} theme={theme} toggleTheme={toggleTheme} />;
   }
 
+  // ── Render: a shared hand replay, viewable without an account ──
+  // A /h/<id> or #h/ link opens straight into the replayer for anyone. Without
+  // this, the login gate below stopped every shared hand at a sign-in wall —
+  // the opposite of what a shareable link is for. PATH_HAND_ID means a hand is
+  // still being fetched, so show the replayer (with a loading state) rather
+  // than the login screen while it resolves.
+  if (!token && (PATH_HAND_ID || HAND_SHORTHAND || sharedHandData)) {
+    return (
+      <div className="app-shell" style={{ height: '100%' }}>
+        {sharedHandData
+          ? <Suspense fallback={<LazyFallback />}>
+              <HandReplayerView token={null} heroName="Hero" cardSplay={cardSplay}
+                initialHand={sharedHandData} onClearInitialHand={() => {}} />
+            </Suspense>
+          : <LazyFallback />}
+      </div>
+    );
+  }
+
   // ── Render: auth screens ──
   if (!token) {
     if (authView === 'forgot') {
