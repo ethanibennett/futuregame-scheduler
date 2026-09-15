@@ -117,8 +117,22 @@ export default function OnboardingWizard({ token, onDone }) {
   );
 
   return createPortal(
-    <div className="modal-backdrop">
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', width: '100%' }}>
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 'var(--z-modal, 500)',
+        background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '16px',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth: '420px', width: '100%', maxHeight: '90vh', overflowY: 'auto',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: '14px', padding: '20px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+        }}
+      >
         {/* header: step dots + skip */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
