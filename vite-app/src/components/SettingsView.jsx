@@ -4,11 +4,12 @@ import Avatar from './Avatar.jsx';
 import { THEME_ORDER, THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, SERIF_ORDER, setDebugNow, getDebugNow, haptic, getStoredSeasonLabel } from '../utils/utils.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
+import { SITE_URL } from '../utils/api.js';
 
 export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel }) {
   const toast = useToast();
   const displayName = useDisplayName();
-  const [debugInput, setDebugInput] = useState(getDebugNow());
+  const [debugInput, setDebugInput] = useState(getDebugNow());
 
   const applyDebugTime = (val) => {
     setDebugInput(val);
@@ -81,12 +82,12 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
                 <input
                   className="settings-debug-input"
                   readOnly
-                  value={`${window.location.origin}/shared/${shareToken}`}
+                  value={`${SITE_URL}/shared/${shareToken}`}
                   style={{flex:1,fontSize:'0.72rem',minWidth:0}}
                   onClick={e => e.target.select()}
                 />
                 <button className="btn btn-ghost btn-sm" style={{display:'inline-flex',alignItems:'center',gap:'4px'}} onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/shared/${shareToken}`);
+                  navigator.clipboard.writeText(`${SITE_URL}/shared/${shareToken}`);
                 }}><Icon.copy /> Copy</button>
                 <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={onRevokeShareToken}>Revoke</button>
               </div>
