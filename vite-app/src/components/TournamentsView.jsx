@@ -154,66 +154,21 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
   return (
     <>
       <div className="filter-row" style={{gap:'8px',marginBottom:'0',width:'100%',alignItems:'center'}}>
-        <div style={{flex:1,display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap',rowGap:'6px',justifyContent:'flex-start'}}>
-          {filters.selectedGames.length > 0 && (
-            <span className="filter-chip active">
-              {filters.selectedGames.length === 1 ? filters.selectedGames[0] : `${filters.selectedGames.length} games`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, selectedGames:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.buyinRanges && filters.buyinRanges.length > 0 && (
-            <span className="filter-chip active">
-              {filters.buyinRanges.length === 1 ? ({'0-500':'< $500','500-1500':'$500\u2013$1.5K','1500-5000':'$1.5K\u2013$5K','5000-10000':'$5K\u2013$10K','10000+':'$10K+'})[filters.buyinRanges[0]] : `${filters.buyinRanges.length} buy-ins`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, buyinRanges:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.rakeRanges && filters.rakeRanges.length > 0 && (
-            <span className="filter-chip active">
-              {filters.rakeRanges.length === 1 ? ({'0-5':'< 5%','5-8':'5\u20138%','8-10':'8\u201310%','10-13':'10\u201313%','13+':'13%+'})[filters.rakeRanges[0]] : `${filters.rakeRanges.length} rake ranges`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, rakeRanges:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.bountyOnly && (
-            <span className="filter-chip active">Bounty<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, bountyOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.mysteryBountyOnly && (
-            <span className="filter-chip active">Mystery Bounty<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mysteryBountyOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.headsUpOnly && (
-            <span className="filter-chip active">Heads Up<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, headsUpOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.tagTeamOnly && (
-            <span className="filter-chip active">Tag Team<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, tagTeamOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.employeesOnly && (
-            <span className="filter-chip active">Employees<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, employeesOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.hiddenVenues && filters.hiddenVenues.length > 0 && (
-            <span className="filter-chip active">
-              {availableVenues.length - filters.hiddenVenues.filter(v => availableVenues.some(av => av.venue === v)).length} of {availableVenues.length} venues
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, hiddenVenues:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.ladiesOnly && (
-            <span className="filter-chip active">Ladies Only<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, ladiesOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.seniorsOnly && (
-            <span className="filter-chip active">Seniors Only<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, seniorsOnly:false}))}>&#10005;</span></span>
-          )}
-          {filters.mixedOnly && (
-            <span className="filter-chip active">Mixed<span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mixedOnly:false}))}>&#10005;</span></span>
-          )}
-          {(filters.dateFrom || filters.dateTo) && (
-            <span className="filter-chip active">
-              {filters.dateFrom && filters.dateTo ? `${fmtShortDate(filters.dateFrom)} \u2014 ${fmtShortDate(filters.dateTo)}` : filters.dateFrom ? `From ${fmtShortDate(filters.dateFrom)}` : `Until ${fmtShortDate(filters.dateTo)}`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, dateFrom:'', dateTo:''}))}>&#10005;</span>
-            </span>
-          )}
+        {/* Current location + radius under the buttons (replaces the active-filter
+            pills). 'All locations' when nothing is set; a region label, or
+            '<place> · <n> mi' for a saved point + radius. */}
+        <div style={{flex:1,display:'flex',alignItems:'center',minWidth:0}}>
+          <span style={{fontSize:'0.78rem',color:'var(--text-muted)',fontFamily:'var(--font-condensed)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+            {filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
+              ? LOCATION_REGIONS[filters.locationRegion].label
+              : filters.userLocation && filters.maxDistance
+                ? `${filters.locationLabel || 'Location'} · ${filters.maxDistance} mi`
+                : 'All locations'}
+          </span>
         </div>
-        {/* Online / Available to me ride the right of this row so they share a
-            line with the active-filter pills instead of taking one of their own.
-            setFiltersRaw (not the scroll-wrapped setter) so toggling online play
-            doesn't jump the list back to today. */}
+        {/* Online / Available to me ride the right of this row, opposite the
+            location indicator. setFiltersRaw (not the scroll-wrapped setter) so
+            toggling online play doesn't jump the list back to today. */}
         <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
           <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={filters.showOnline !== false}
