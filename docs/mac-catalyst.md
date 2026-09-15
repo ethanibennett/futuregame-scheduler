@@ -153,7 +153,14 @@ numbers in `AppDelegate.swift` and the window do not match.
   2026-09-14:** a manual archive and an App Store export (`destination: export`,
   the same `ios/ExportOptions.plist` otherwise) both succeed with the Admin key,
   producing a signed `futurega.me.pkg` (arm64 + x86_64). Nothing was uploaded.
-  Next step is the `--catalyst` flag in that script so it ships in one command.
+  **Shipping it (added 2026-09-15, #267):** `./scripts/ios-testflight.sh --catalyst`
+  — same scheme, build-number bump, `cap sync`, xcframework build and
+  `ExportOptions.plist` as the iOS ship; only the archive destination differs, and
+  it writes to its own archive/export paths. The FIRST Catalyst archive on a
+  machine needs the Admin ASC key (`ASC_ADMIN_KEY_ID` / `ASC_ADMIN_KEY_B64`) for
+  device registration + Mac profiles; the App Manager key is enough afterwards.
+  The upload path itself (`ExportOptions.plist` has `destination: upload`) is not
+  yet verified on macOS — the Mac's checks stopped at export.
 
 ## Optional polish (not needed to ship)
 - **Minimum window size — wired and verified.** `AppDelegate.swift` pins the
