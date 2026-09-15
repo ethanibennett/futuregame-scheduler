@@ -20,25 +20,34 @@ set -euo pipefail
 # yourself, or pass --commit.
 #
 # Usage:
-#   ./scripts/ios-testflight.sh              # pull, build, archive, upload
+#   ./scripts/ios-testflight.sh              # pull, build, archive, upload (iOS)
+#   ./scripts/ios-testflight.sh --catalyst   # same, but the native Mac (Mac Catalyst) app
 #   ./scripts/ios-testflight.sh --dry-run    # everything up to archive, then stop
 #   ./scripts/ios-testflight.sh --no-pull    # build what is in the tree already
 #   ./scripts/ios-testflight.sh --commit     # also commit the build-number bump
 #   ./scripts/ios-testflight.sh --build 42   # force a specific build number
+#
+# --catalyst ships the SAME app/scheme/ExportOptions to the macOS platform of the
+# same App Store Connect record — only the archive destination differs. The FIRST
+# Catalyst archive on a machine needs the Admin App Store Connect key (device
+# registration + Mac profiles): pass it via ASC_ADMIN_KEY_ID / ASC_ADMIN_KEY_B64.
+# The App Manager key is enough on later runs.
 # ─────────────────────────────────────────────────────────────────────────────
 
 DO_PULL=true
 DRY_RUN=false
 DO_COMMIT=false
 FORCE_BUILD=""
+CATALYST=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --no-pull) DO_PULL=false ;;
-    --dry-run) DRY_RUN=true ;;
-    --commit)  DO_COMMIT=true ;;
-    --build)   FORCE_BUILD="${2:-}"; shift ;;
-    -h|--help) sed -n '3,30p' "$0"; exit 0 ;;
+    --no-pull)  DO_PULL=false ;;
+    --dry-run)  DRY_RUN=true ;;
+    --commit)   DO_COMMIT=true ;;
+    --catalyst) CATALYST=true ;;
+    --build)    FORCE_BUILD="${2:-}"; shift ;;
+    -h|--help) sed -n '3,35p' "$0"; exit 0 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
   shift
@@ -68,8 +77,20 @@ fi
 IOS_PROJECT="$PROJECT_ROOT/ios/App/App.xcodeproj"
 IOS_SCHEME="${IOS_SCHEME:-futurega.me}"
 EXPORT_OPTIONS="$PROJECT_ROOT/ios/ExportOptions.plist"
-ARCHIVE_PATH="${TMPDIR:-/tmp}/futuregame.xcarchive"
-EXPORT_PATH="${TMPDIR:-/tmp}/futuregame-export"
+
+# Only the archive destination differs between iOS and Mac Catalyst; separate
+# archive/export paths so an iOS run and a Catalyst run don't clobber each other.
+if $CATALYST; then
+  PLATFORM_LABEL="Mac Catalyst"
+  BUILD_DESTINATION='generic/platform=macOS,variant=Mac Catalyst'
+  ARCHIVE_PATH="${TMPDIR:-/tmp}/futuregame-catalyst.xcarchive"
+  EXPORT_PATH="${TMPDIR:-/tmp}/futuregame-catalyst-export"
+else
+  PLATFORM_LABEL="iOS"
+  BUILD_DESTINATION='generic/platform=iOS'
+  ARCHIVE_PATH="${TMPDIR:-/tmp}/futuregame.xcarchive"
+  EXPORT_PATH="${TMPDIR:-/tmp}/futuregame-export"
+fi
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info() { echo -e "${GREEN}▸${NC} $*"; }
@@ -185,12 +206,17 @@ if $DRY_RUN; then
 fi
 
 # ── Archive ─────────────────────────────────────────────────────────────────
-info "Archiving (this takes a few minutes)..."
+if $CATALYST && { [ -z "${ASC_ADMIN_KEY_B64:-}" ] || [ -z "${ASC_ADMIN_KEY_ID:-}" ]; }; then
+  warn "Catalyst: using the App Manager key. The FIRST Catalyst archive on a machine"
+  warn "needs the Admin key (device registration + Mac profiles) — set ASC_ADMIN_KEY_ID"
+  warn "and ASC_ADMIN_KEY_B64 if signing fails to provision. Later runs are fine either way."
+fi
+info "Archiving $PLATFORM_LABEL (this takes a few minutes)..."
 rm -rf "$ARCHIVE_PATH"
 xcodebuild -project "$IOS_PROJECT" \
   -scheme "$IOS_SCHEME" \
   -configuration Release \
-  -destination 'generic/platform=iOS' \
+  -destination "$BUILD_DESTINATION" \
   -archivePath "$ARCHIVE_PATH" \
   archive \
   -allowProvisioningUpdates \
@@ -204,7 +230,7 @@ info "Archive succeeded"
 # ── Upload ──────────────────────────────────────────────────────────────────
 # ExportOptions.plist has destination=upload, so exportArchive uploads straight
 # to App Store Connect rather than writing an .ipa to disk.
-info "Uploading to TestFlight..."
+info "Uploading $PLATFORM_LABEL to TestFlight..."
 rm -rf "$EXPORT_PATH"
 if xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
