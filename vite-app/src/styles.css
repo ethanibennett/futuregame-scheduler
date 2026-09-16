@@ -4859,7 +4859,7 @@
          2.1cqmin measured 11.5px, LARGER than the token it replaced; 1.35
          gives 7.4px and a badge about the width of the card under it.
          Padding in em so it scales with the type rather than staying 8px. */
-      font-size: clamp(6px, 1.35cqmin, var(--fs-2xs)); font-family: var(--font-condensed);
+      font-size: clamp(7px, 1.9cqmin, var(--fs-xs)); font-family: var(--font-condensed);
       padding: 0.25em 0.6em; border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
       font-weight: var(--fw-bold); line-height: 1; white-space: nowrap;
       pointer-events: none;
@@ -4887,14 +4887,14 @@
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check {
       font-weight: 300;
-      font-size: clamp(6px, 1.2cqmin, var(--fs-2xs));
+      font-size: clamp(7px, 1.7cqmin, var(--fs-xs));
       padding: var(--nudge-1) var(--space-sm);
       opacity: 0.85;
     }
     /* 57 Condensed for a call, 67 Bold Condensed for a bet or a raise. */
-    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(6px, 1.2cqmin, var(--fs-2xs)); }
+    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(7px, 1.7cqmin, var(--fs-xs)); }
     .replayer-action-badge-outer.action-bet,
-    .replayer-action-badge-outer.action-raise { font-size: clamp(7px, 1.45cqmin, var(--fs-xs)); }
+    .replayer-action-badge-outer.action-raise { font-size: clamp(8px, 2.0cqmin, var(--fs-sm)); }
     /* 35: ALL-IN was visually interchangeable with a fold. It is the
        stakes-defining action of a hand. */
     /* 46: caps were doing three jobs at once on one screen — the badges were
@@ -4910,7 +4910,7 @@
          of the others. The one action that should stop you. */
       font-family: var(--font-sans);
       font-weight: 900;
-      font-size: clamp(8px, 1.9cqmin, var(--fs-sm));
+      font-size: clamp(9px, 2.4cqmin, var(--fs-md));
       font-weight: var(--fw-bold);
       padding: var(--nudge-1) var(--space-ml);
       letter-spacing: var(--track-caps);
