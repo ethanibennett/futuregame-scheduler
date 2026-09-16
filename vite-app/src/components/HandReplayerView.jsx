@@ -1389,7 +1389,7 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
   };
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ }) {
+function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ, discardIdx }) {
   const SUIT_SYMBOLS = {h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'};
   let cards = parseCardNotation(text);
   if (!cards.length && placeholderCount > 0) {
@@ -1418,7 +1418,11 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
         const k = c.rank + c.suit + '_' + i;
         const isDown = downIdx && downIdx.has(i);
         const isStudUp = stud && !isDown && i >= 2 && i <= 5;
-        const studYOffset = isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : '';
+        // A discarded card (draw games) lifts UP exactly the way a stud up-card
+        // does, and dims — see the seat render, which flags the thrown cards the
+        // moment the d1/d2/pat badge appears.
+        const isDiscard = discardIdx && discardIdx.has(i);
+        const studYOffset = isStudUp ? STUD_LIFT_UP : isDown ? STUD_LIFT_DOWN : (isDiscard ? STUD_LIFT_UP : '');
         // A revealed face never reverses: the rank index lives at top-left only,
         // so leftmost-on-top buries every rank but the first.
         // 63: --ci is the card's place in the hand. The per-card deal
@@ -1432,7 +1436,8 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
            a full card's gap in it. */
         const splayStyle = { '--ci': i, ...(splay
           ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max)
-          : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)) };
+          : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
+          ...(isDiscard ? { opacity: 0.4, transition: 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' } : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
           return <div key={k} className="card-unknown" style={splayStyle} />;
         }
@@ -6361,6 +6366,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       : { '--pot-text': '#ffffff', '--pot-shadow': '0 1px 3px rgba(0,0,0,0.6)' };
   })();
 
+  // A street's draw lands AFTER its betting — the same instant the d1/d2/pat
+  // badge appears — so the discard lift is gated on the identical condition the
+  // badge uses, and the two move together.
+  const drawStreetActionCount = (hand.streets[streetIdx]?.actions || []).length;
+  const drawDoneThisStreet = isDrawGame && actionIdx >= drawStreetActionCount - 1;
+
   return (
     /* 77: isLandscape was computed at mount and kept current by a live
        matchMedia listener, and then referenced nowhere — so forty lines of
@@ -6720,6 +6731,29 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           const pos = seats[pi] || [50, 50];
           const rawCards = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
           let cards = (pi === replayHeroIdx || showResult) ? (rawCards === 'MUCK' ? '' : rawCards) : '';
+          /* Draw discards: the moment this street's draw is announced (the same
+             instant the d1/d2/pat badge appears), flag the cards being thrown so
+             CardRow lifts them like a stud up-card and dims them. `cards` is the
+             pre-draw hand entering the street, so the discards are still in it to
+             mark; opponents show backs, so this only ever lands on a face-up
+             hand — the hero, or a shown hand at showdown. */
+          let discardIdx = null;
+          if (drawDoneThisStreet && cards) {
+            const sd = (hand.streets[streetIdx]?.draws || []).find(d => d.player === pi && d.discarded > 0);
+            if (sd) {
+              const shown = parseCardNotation(cards);
+              const set = new Set();
+              if (sd.discardedCards) {
+                const need = {};
+                parseCardNotation(sd.discardedCards).forEach(c => { const key = c.rank + c.suit; need[key] = (need[key] || 0) + 1; });
+                shown.forEach((c, i) => { const key = c.rank + c.suit; if (need[key] > 0) { need[key]--; set.add(i); } });
+              } else {
+                // No specific cards recorded — computeDrawHand throws the last N.
+                for (let i = Math.max(0, shown.length - sd.discarded); i < shown.length; i++) set.add(i);
+              }
+              if (set.size) discardIdx = set;
+            }
+          }
           /* An opponent's up cards are public in stud — the door card and 4th
              through 6th sit face up on the table — and the string entered for
              an opponent IS those up cards, accumulated street by street. Only
@@ -6843,6 +6877,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx}
+                  discardIdx={discardIdx}
                   /* The hero used to fan wider than everybody else — a bigger
                      arc and a wider allowance, on the grounds that the bottom
                      seat has no neighbour to crowd. It just made one hand at
