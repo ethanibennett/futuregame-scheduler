@@ -3867,7 +3867,7 @@ class ReplayErrorBoundary extends React.Component {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   const [entryMode, setEntryMode] = useState('gto');
@@ -4249,6 +4249,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             onBack={() => { setMode('list'); fetchHands(); }}
             cardSplay={cardSplay}
             onSolveSpot={onSolveSpot}
+            linkedReplay={linkedReplay}
           />
         </ReplayErrorBoundary>
       </div>
@@ -4654,7 +4655,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolveSpot }) {
+function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolveSpot, linkedReplay }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -6343,6 +6344,23 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     };
   };
 
+  // Pot shows as text on the felt now (no plaque), so it needs a colour that
+  // reads on the cloth. Only the default theme uses the felt picker; the named
+  // themes carry their own pot colour in CSS, so leave those alone. Contrast is
+  // measured against the felt's LIT stop — the centre of the cloth, under the
+  // pot — because a bright felt can run light enough (band tops out near 0.52)
+  // to need black text.
+  const potContrast = (() => {
+    if (rSettings.theme !== 'default') return null;
+    const st = feltStops(feltColor, rSettings.feltBright);
+    const m = st && String(st.lit).match(/(\d+)\D+(\d+)\D+(\d+)/);
+    if (!m) return null;
+    const lum = (+m[1] * 0.2126 + +m[2] * 0.7152 + +m[3] * 0.0722) / 255;
+    return lum > 0.5
+      ? { '--pot-text': '#0b0b0b', '--pot-shadow': '0 1px 2px rgba(255,255,255,0.55)' }
+      : { '--pot-text': '#ffffff', '--pot-shadow': '0 1px 3px rgba(0,0,0,0.6)' };
+  })();
+
   return (
     /* 77: isLandscape was computed at mount and kept current by a live
        matchMedia listener, and then referenced nowhere — so forty lines of
@@ -6373,19 +6391,22 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
       data-felt={rSettings.feltBright ? 'bright' : 'dark'}
-        style={rSettings.cardBack === 'custom' ? (() => {
-          // Same derivation as the felt below, and for the same reason.
-          const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
-          if (!m) return undefined;
-          const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
-          const mix = (f, w) => `rgb(${Math.round(r * f + 255 * w)},${Math.round(g * f + 255 * w)},${Math.round(b * f + 255 * w)})`;
-          return {
-            '--back-custom-1': mix(1, 0),
-            '--back-custom-2': mix(0.8, 0),
-            '--back-custom-3': mix(0.6, 0),
-            '--back-custom-border': mix(0.7, 0.3),
-          };
-        })() : undefined}>
+        style={(() => {
+          const s = { ...(potContrast || {}) };
+          if (rSettings.cardBack === 'custom') {
+            // Same derivation as the felt below, and for the same reason.
+            const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
+            if (m) {
+              const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+              const mix = (f, w) => `rgb(${Math.round(r * f + 255 * w)},${Math.round(g * f + 255 * w)},${Math.round(b * f + 255 * w)})`;
+              s['--back-custom-1'] = mix(1, 0);
+              s['--back-custom-2'] = mix(0.8, 0);
+              s['--back-custom-3'] = mix(0.6, 0);
+              s['--back-custom-border'] = mix(0.7, 0.3);
+            }
+          }
+          return Object.keys(s).length ? s : undefined;
+        })()}>
         {/* Only the default theme takes its rail from the felt picker; the
             themes now bring their own, so handing feltColor in would override
             them with whatever colour happened to be stored. */}
@@ -7261,8 +7282,11 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             row is navigation now; the exports live behind one Share button in
             the sheet the app already ships for exactly this. */}
         <div className="replayer-actions-bar">
-          <button className="btn btn-ghost btn-sm" onClick={onBack}>Back</button>
-          <button className="btn btn-ghost btn-sm" onClick={onEdit}>Edit</button>
+          {/* A shared link is a clean view of one hand — no navigating back to a
+              list that is not there, no editing someone else's hand, no
+              re-sharing chrome. Ethan: drop Back/Edit/Share on a linked replay. */}
+          {!linkedReplay && <button className="btn btn-ghost btn-sm" onClick={onBack}>Back</button>}
+          {!linkedReplay && <button className="btn btn-ghost btn-sm" onClick={onEdit}>Edit</button>}
           {onSolveSpot && (
             <button className={'btn btn-sm ' + (canSolveSpot ? 'btn-primary' : 'btn-ghost')}
               onClick={handleSolveSpot} disabled={!canSolveSpot}>
@@ -7270,10 +7294,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               Solve this spot
             </button>
           )}
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowExportMenu(true)}
+          {!linkedReplay && <button className="btn btn-ghost btn-sm" onClick={() => setShowExportMenu(true)}
             disabled={videoExporting || gifExporting}>
             Share
-          </button>
+          </button>}
           <button className="replayer-gear-btn" onClick={() => setShowSettings(true)} title="Replayer Settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>

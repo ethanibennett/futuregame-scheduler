@@ -4078,7 +4078,7 @@
          one most able to reach a top seat's plaque on a small table. */
       /* 73 Black Extended. The pot got its presence from being bigger than
          everything else; width gives it the same weight at the same size. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: var(--fw-bold); color:#fff;
+      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: var(--fw-bold); color: var(--pot-text, #fff); text-shadow: var(--pot-shadow, 0 1px 3px rgba(0,0,0,0.55));
       /* Condensed Bold, not Expanded Black. Two weights means the pot cannot
          have a weight of its own, so its presence has to come from size — and
          4.4cqmin against the stack's 3.6 is the 1.22 ratio the scheme was
@@ -4099,13 +4099,10 @@
        be able to set a plaqued total beside unplaqued side pills, and a
        background on the container would draw one slab behind all three. */
     .replayer-pot-total {
-      background: linear-gradient(180deg, rgba(24,21,32,0.94), rgba(12,10,17,0.94));
-      border: 1px solid rgba(255,224,138,0.45);
-      border-radius: var(--radius-pill);
-      /* Relative to the type it wraps, so the pill does not stay a fixed 16px
-         wide on a phone table and a fixed 16px on a desktop one. */
-      padding: 0.14em 0.62em;
-      box-shadow: var(--plate-bevel);
+      /* Ethan: no plaque — the pot reads as text laid straight on the felt.
+         Its colour and shadow come from --pot-text / --pot-shadow (chosen per
+         felt in JS) so the figure stays legible whatever the cloth. */
+      padding: 0;
     }
     /* MAIN | TOTAL | SIDE across, measured off the reference: each pill is
        197px on its 1295px table — 15.2% of the width — and 39px on 742 of
@@ -4156,7 +4153,7 @@
     .replayer-pot-cell-label {
       /* Half the figure's height (Ethan), baseline-aligned to its left. */
       font-size: 0.5em; font-weight: var(--fw-bold);
-      color: rgba(255,255,255,0.72);
+      color: var(--pot-text, #fff); opacity: 0.72;
       text-transform: uppercase; letter-spacing: var(--track-caps);
       margin-right: 0.6em;
     }

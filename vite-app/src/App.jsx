@@ -1325,7 +1325,7 @@ export default function App() {
         {sharedHandData
           ? <Suspense fallback={<LazyFallback />}>
               <HandReplayerView token={null} heroName="Hero" cardSplay={cardSplay}
-                initialHand={sharedHandData} onClearInitialHand={() => {}} />
+                initialHand={sharedHandData} onClearInitialHand={() => {}} linkedReplay />
             </Suspense>
           : <LazyFallback />}
       </div>
