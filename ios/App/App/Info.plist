@@ -54,6 +54,12 @@
 		<string>instagram-stories</string>
 		<string>instagram</string>
 	</array>
+	<!-- Facebook App ID for "Add to Instagram Story" sharing. Instagram passes
+	     this as source_application and drops the shared sticker without it.
+	     Register an app at developers.facebook.com and paste its App ID below;
+	     while this is empty, sharing falls back to the iOS share sheet. -->
+	<key>FacebookAppID</key>
+	<string></string>
 	<key>NSCameraUsageDescription</key>
 	<string>futurega.me uses the camera for table scanning and registration photos</string>
 	<key>NSPhotoLibraryUsageDescription</key>

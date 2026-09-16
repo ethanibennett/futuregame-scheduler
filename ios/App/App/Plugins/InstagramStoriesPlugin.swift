@@ -28,8 +28,21 @@ public class InstagramStoriesPlugin: CAPPlugin, CAPBridgedPlugin {
         // Optional background image (base64 JPEG/PNG)
         let bgBase64 = call.getString("backgroundImageBase64")
 
+        // Instagram attributes a Stories share to the Facebook app whose ID is
+        // passed as source_application, and without it it tends to ignore the
+        // pasted sticker. Read the ID from Info.plist (FacebookAppID) rather
+        // than hardcoding it; when it is absent we still open the bare URL and
+        // let the JS side fall back to the share sheet.
+        let fbAppID = (Bundle.main.object(forInfoDictionaryKey: "FacebookAppID") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
         DispatchQueue.main.async {
-            guard let url = URL(string: "instagram-stories://share") else {
+            var urlString = "instagram-stories://share"
+            if let id = fbAppID, !id.isEmpty {
+                urlString += "?source_application=\(id)"
+            }
+
+            guard let url = URL(string: urlString) else {
                 call.reject("Cannot create Instagram URL")
                 return
             }
