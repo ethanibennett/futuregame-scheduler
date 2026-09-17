@@ -59,7 +59,7 @@
 	     Register an app at developers.facebook.com and paste its App ID below;
 	     while this is empty, sharing falls back to the iOS share sheet. -->
 	<key>FacebookAppID</key>
-	<string></string>
+	<string>2849722905386924</string>
 	<key>NSCameraUsageDescription</key>
 	<string>futurega.me uses the camera for table scanning and registration photos</string>
 	<key>NSPhotoLibraryUsageDescription</key>
