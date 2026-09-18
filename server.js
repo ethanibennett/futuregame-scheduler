@@ -3778,8 +3778,25 @@ app.get('/api/tournaments', authenticateToken, (req, res) => {
     }
     stmt.free();
     
-    attachOverrideFields(tournaments);
-    res.json(tournaments);
+    // Default to UPCOMING events when the caller gives no explicit window.
+    // This endpoint had been returning the whole table — 6,530 rows, more than
+    // HALF of them already in the past — ~5.6MB shipped to every client at boot,
+    // enough to run an iOS webview out of memory and crash the app on open. A
+    // browse/schedule endpoint should return the schedule AHEAD, not months of
+    // finished events. Nothing on screen depends on stale rows being here: a
+    // user's scheduled or tracked past events carry their own full tournament
+    // rows from /my-schedule and /tracking. Unparseable dates are kept rather
+    // than dropped; a 3-day grace keeps just-finished events for late results.
+    let out = tournaments;
+    if (!startDate && !endDate) {
+      const cutoff = Date.now() - 3 * 86400000;
+      out = tournaments.filter(t => {
+        const ms = Date.parse(t.date);
+        return Number.isNaN(ms) ? true : ms >= cutoff;
+      });
+    }
+    attachOverrideFields(out);
+    res.json(out);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
