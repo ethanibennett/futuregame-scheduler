@@ -263,7 +263,43 @@ here. **The key is deliberately not a GitHub secret** — it never leaves this M
 
 To pause automatic builds, stop the runner; the script keeps working by hand.
 
-### Second Mac — a backup runner (failover)
+### Keep the build node always-on (the reliability model)
+
+A self-hosted runner is only useful while the Mac is **awake and online** — a
+laptop asleep in a bag shows `offline` in Settings → Actions → Runners, and every
+build queued against it hangs until it times out. Confirmed on 2026-09-18: the
+sole runner `mac-build-node` was `offline` and overnight builds failed after
+hours of waiting. So one Mac is designated the build box and kept from ever
+sleeping:
+
+```bash
+sudo pmset -a sleep 0            # never system-sleep on power
+sudo pmset -a disablesleep 1     # LAPTOP: stay awake lid-closed (clamshell) on power — omit on a Mac mini
+sudo pmset -a displaysleep 10    # the SCREEN may still sleep; the system stays up
+sudo pmset -a autorestart 1      # come back after a power blip
+sudo pmset -a womp 1             # wake for network (optional)
+sudo systemsetup -setrestartpowerfailure on   # also: System Settings → Energy → start up after power failure
+pmset -g | grep -E 'sleep|disablesleep'        # verify: sleep 0, disablesleep 1
+```
+
+Keep it plugged into power (`disablesleep` only holds on AC) and on a stable
+network. As a belt-and-suspenders against anything re-enabling sleep, launch the
+agent wrapped in `caffeinate`:
+
+```bash
+caffeinate -dimsu ~/actions-runner/run.sh
+```
+
+Unattended reboots still need the FileVault unlock discussed under "Accepted
+limitation" above — auto-login, or a person to unlock the disk once at boot.
+After applying, the runner should read `online` in GitHub within a minute.
+
+The traveling laptop is a poor build box precisely because none of this holds in
+a backpack; make the machine that stays put the runner, and if that machine is
+not the one currently registered, install the runner there first (the sections
+above) before applying these settings.
+
+### Second Mac — a backup runner (failover, optional)
 
 The workflow targets runners by LABEL (`runs-on: [self-hosted, macOS]`), not by
 name, so a second Mac registered with the same labels is picked up automatically
