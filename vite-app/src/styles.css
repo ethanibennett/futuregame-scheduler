@@ -1469,9 +1469,14 @@
          22px break and everything inside a day is a 6px rhythm. */
       padding: var(--space-xl) var(--space-lg) var(--space-sm) var(--space-2xs);
       color: var(--text);
-      /* The scrim rows scroll under. Its fade has to match the bottom padding
-         or it eats into the date's own baseline. */
-      background: linear-gradient(var(--bg) 0 calc(100% - 6px), rgba(0,0,0,0));
+      /* Solid, not a fade to transparent. The old 6px transparent tail was a
+         hole a card scrolling under showed THROUGH — the peek Ethan flagged as
+         "this can never happen" — so the background now covers the whole box. */
+      background: var(--bg);
+      /* Own compositing layer, the same fix .sticky-filters carries: an iOS
+         sticky element without one lets rows bleed over it during momentum
+         scroll. Opaque bg alone did not stop it; the layer does. */
+      transform: translateZ(0);
       user-select: none;
     }
     .schedule-date-break[onclick],
@@ -2796,6 +2801,9 @@
       top: -12px;
       z-index: 6;
       background: var(--bg);
+      /* Own compositing layer — the iOS momentum-scroll bleed fix, so a card
+         can never show through this header either. */
+      transform: translateZ(0);
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
       margin: -12px -12px 0;
       /* Removed: box-shadow: 0 4px 0 0 var(--bg) — the var sometimes
@@ -7884,6 +7892,10 @@
       top: -12px;
       z-index: 6;
       background: var(--bg);
+      /* Own compositing layer — the iOS momentum-scroll bleed fix that
+         .sticky-filters and the date break carry. No sticky header on this
+         screen may let a card show through it. */
+      transform: translateZ(0);
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
       margin: -12px -12px 0;
       /* Removed: box-shadow: 0 4px 0 0 var(--bg) — the var sometimes
