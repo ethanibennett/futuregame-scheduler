@@ -263,6 +263,51 @@ here. **The key is deliberately not a GitHub secret** — it never leaves this M
 
 To pause automatic builds, stop the runner; the script keeps working by hand.
 
+### Second Mac — a backup runner (failover)
+
+The workflow targets runners by LABEL (`runs-on: [self-hosted, macOS]`), not by
+name, so a second Mac registered with the same labels is picked up automatically
+— **no workflow change**. When the primary is asleep (its runner offline), a
+queued build is handed to whichever labelled runner is awake. The `concurrency`
+group still serialises builds, so the two Macs never build the same commit at
+once, and the build number comes from App Store Connect (not from either
+machine), so there is no number to collide over.
+
+Register the second Mac exactly like the first — the sections above are the
+runbook; the only differences are noted here:
+
+1. **Xcode + license.** Install Xcode, open it once to let it install
+   components, and `sudo xcodebuild -license accept`. An un-accepted license is
+   the failure that took down builds on 2026-09-17 (exit 69, even `git`), so do
+   this before anything else.
+2. **Toolchain on PATH before `config.sh`** — same freeze-into-`.path` gotcha as
+   above; verify with the `env -i PATH=...` check. Give this runner a distinct
+   name at `config.sh` time so the two are tellable apart in
+   Settings → Actions → Runners; keep the default `[self-hosted, macOS]` labels.
+3. **Signing material must be copied over — none of it is in the repo.** Rebuild
+   the dedicated **build keychain** here (distribution + development `.p12`, plus
+   the **WWDR G3** cert; `set-key-partition-list`), and drop the App Store
+   Connect key at `~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8`. Move the
+   `.p12` and `.p8` between machines over AirDrop/USB, **never** through the repo
+   or any chat — they sign releases. A provisioning profile for
+   `app.futurega.me.beta` must resolve here too (automatic signing is simplest).
+4. **Keep it awake — this is the whole point.** A backup that also sleeps solves
+   nothing. Disable sleep on the machine that is meant to catch the builds the
+   other one drops:
+   ```bash
+   sudo pmset -a sleep 0 displaysleep 10 disablesleep 1   # laptop on power; drop disablesleep on a Mac mini
+   ```
+   or run the agent wrapped in `caffeinate -dimsu`. Pair with the primary's
+   own keep-awake so at least one is always reachable.
+5. **Verify failover.** Stop the primary's runner (or let it sleep), then
+   `gh workflow run ios-testflight.yml --ref master` and confirm the run is
+   picked up by the backup in Settings → Actions → Runners (its name shows on
+   the job). A green build from the backup proves the keychain and ASC key are
+   right — a signing/keychain gap surfaces exactly as it does on the primary.
+
+Both runners online is fine: GitHub gives each queued build to whichever is idle
+first, and the concurrency group keeps it to one build at a time.
+
 ### Running it by hand instead
 
 ```bash
