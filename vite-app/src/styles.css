@@ -6284,6 +6284,20 @@
     }
 
 
+    /* The light strip is a gradient painted into a border-box and cut to a thin
+       ring with -webkit-mask-composite: exclude. modern-screenshot serialises
+       the DOM into an SVG <foreignObject>, which does NOT honour mask-composite
+       — so on capture the ring renders as a FILLED gradient rounded-rect, and
+       with its percentage insets resolving against the clone's box it lands
+       offset beside the felt: a bright-edged rounded-rectangle ghost on the
+       right of every exported frame. It is a subtle on-felt specular; drop it
+       for the capture. And the table's ambient drop-shadow (::after) exists
+       only to seat the table on the app's dark page — meaningless on a
+       transparent sticker or over a Story photo, and more semi-opaque bleed
+       outside the felt — so it goes too. */
+    .replayer-table[data-capturing="1"] .replayer-light-strip { display: none !important; }
+    .replayer-table[data-capturing="1"]::after { box-shadow: none !important; }
+
     /* Five themes each swapped the felt's colour and some chrome, and all five
        inherited the identical inset shadow stack, the identical specular pool
        and the identical weave. Six colourways of one lighting setup read as

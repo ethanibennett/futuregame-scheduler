@@ -4748,6 +4748,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const [igDraft, setIgDraft] = useState(null); // { photoUrl, photoImg, stillUrl }
   const [igScale, setIgScale] = useState(0.92); // replay width as a fraction of the 9:16 frame
   const [igSpeed, setIgSpeed] = useState(1000); // ms per step, mirrors the transport's SPEEDS
+  const [igPos, setIgPos] = useState({ x: 0.5, y: 0.5 }); // replay CENTRE as a fraction of the frame
+  const igPosRef = useRef(igPos); igPosRef.current = igPos; // fresh value for the drag closure
+  const igBoxRef = useRef(null);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStep, setVideoStep] = useState(0);
   const [videoTotal, setVideoTotal] = useState(0);
@@ -5980,6 +5983,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
 
       setIgScale(0.92);
       setIgSpeed(speed);
+      setIgPos({ x: 0.5, y: 0.5 });
       setIgDraft({ photoUrl, photoImg, stillUrl });
     };
 
@@ -5993,6 +5997,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const { photoImg, photoUrl } = igDraft;
     const chosenScale = igScale;
     const chosenSpeed = igSpeed;
+    const chosenCenter = igPos;
     setIgDraft(null);
     URL.revokeObjectURL(photoUrl);
 
@@ -6015,6 +6020,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       backgroundImage: photoImg,
       igShare: true,
       tableScale: chosenScale,
+      tableCenter: chosenCenter,
       onFrame: setExportPreview,
       onProgress: (pct, step, total) => { setVideoProgress(pct); setVideoStep(step); setVideoTotal(total); },
       onDone: (info) => {
@@ -6029,10 +6035,34 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         toast?.error?.('Story export failed: ' + (err?.message || 'unknown'));
       },
     });
-  }, [igDraft, igScale, igSpeed, videoExporting, gifExporting, hand, feltColor, toast]);
+  }, [igDraft, igScale, igSpeed, igPos, videoExporting, gifExporting, hand, feltColor, toast]);
 
   const closeIgDraft = useCallback(() => {
     setIgDraft(prev => { if (prev?.photoUrl) URL.revokeObjectURL(prev.photoUrl); return null; });
+  }, []);
+
+  // Drag the replay around the 9:16 preview. Position is the replay's CENTRE as
+  // a fraction of the frame, clamped to [0,1] so it can hang off an edge by at
+  // most half — the same value handed to the export as tableCenter. Pointer
+  // events + a grab offset so it tracks the finger without jumping.
+  const startIgDrag = useCallback((e) => {
+    const box = igBoxRef.current;
+    if (!box) return;
+    e.preventDefault();
+    const rect = box.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const start = igPosRef.current;
+    const move = (ev) => {
+      const nx = Math.min(1, Math.max(0, start.x + (ev.clientX - startX) / rect.width));
+      const ny = Math.min(1, Math.max(0, start.y + (ev.clientY - startY) / rect.height));
+      setIgPos({ x: nx, y: ny });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }, []);
 
   // ── OFC Replay View ──
@@ -7573,12 +7603,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           <div onClick={e => e.stopPropagation()}
             style={{background:'#14141c',borderRadius:'14px',padding:'16px',width:'min(92vw,320px)',boxShadow:'0 20px 60px rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             <div style={{color:'#fff',fontSize:'1rem',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'10px',textAlign:'center'}}>Instagram Story</div>
-            <div style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'10px',overflow:'hidden',background:'#000',margin:'0 auto'}}>
-              <img src={igDraft.photoUrl} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />
+            <div ref={igBoxRef} style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'10px',overflow:'hidden',background:'#000',margin:'0 auto'}}>
+              <img src={igDraft.photoUrl} alt="" draggable={false} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} />
               {igDraft.stillUrl && (
-                <img src={igDraft.stillUrl} alt="" style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:(igScale*100)+'%',height:'auto'}} />
+                <img src={igDraft.stillUrl} alt="" draggable={false} onPointerDown={startIgDrag}
+                  style={{position:'absolute',left:(igPos.x*100)+'%',top:(igPos.y*100)+'%',transform:'translate(-50%,-50%)',width:(igScale*100)+'%',height:'auto',cursor:'grab',touchAction:'none'}} />
               )}
             </div>
+            <div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.62rem',letterSpacing:'0.04em',textAlign:'center',marginTop:'6px'}}>Drag the replay to move it · slider to resize</div>
             <div style={{marginTop:'14px'}}>
               <div style={{display:'flex',justifyContent:'space-between',color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase',marginBottom:'4px'}}>
                 <span>Size</span><span>{Math.round(igScale*100)}%</span>

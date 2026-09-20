@@ -27,7 +27,7 @@ const STORY_W = 1080, STORY_H = 1920;
 export async function exportReplayVideo({
   hand, tableEl, stepForward, canGoForwardRef,
   mode = 'transparent', speed, feltColor,
-  backgroundImage = null, igShare = false, tableScale = 0.92,
+  backgroundImage = null, igShare = false, tableScale = 0.92, tableCenter = null,
   onFrame, onProgress, onDone, onError,
 }) {
   let restore = () => {};
@@ -90,8 +90,12 @@ export async function exportReplayVideo({
     // photo; other story exports keep the full-bleed 0.92 default.
     const tableW = Math.round(STORY_W * (tableScale > 0 ? Math.min(1, tableScale) : 0.92));
     const tableH = Math.round(tableW * (elH / elW));
-    const tableX = Math.round((STORY_W - tableW) / 2);
-    const tableY = Math.round((STORY_H - tableH) / 2);
+    // Where the replay's CENTRE sits, as a fraction of the 9:16 frame. The
+    // Instagram-story flow lets the poster drag it; everything else centres it.
+    const cx = tableCenter && tableCenter.x != null ? tableCenter.x : 0.5;
+    const cy = tableCenter && tableCenter.y != null ? tableCenter.y : 0.5;
+    const tableX = Math.round(STORY_W * cx - tableW / 2);
+    const tableY = Math.round(STORY_H * cy - tableH / 2);
 
     let storyBg = null;
     if (isStory) {
