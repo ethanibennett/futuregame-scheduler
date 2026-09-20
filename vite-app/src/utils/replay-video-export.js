@@ -27,7 +27,7 @@ const STORY_W = 1080, STORY_H = 1920;
 export async function exportReplayVideo({
   hand, tableEl, stepForward, canGoForwardRef,
   mode = 'transparent', speed, feltColor,
-  backgroundImage = null, igShare = false,
+  backgroundImage = null, igShare = false, tableScale = 0.92,
   onFrame, onProgress, onDone, onError,
 }) {
   let restore = () => {};
@@ -85,7 +85,10 @@ export async function exportReplayVideo({
 
     // Where the table sits inside a story frame: centred, with room above for
     // the watermark and below for a caption the poster adds themselves.
-    const tableW = Math.round(STORY_W * 0.92);
+    // How wide the replay sits inside the 9:16 frame, as a fraction of the
+    // story width. The Instagram-story flow lets the poster set this over their
+    // photo; other story exports keep the full-bleed 0.92 default.
+    const tableW = Math.round(STORY_W * (tableScale > 0 ? Math.min(1, tableScale) : 0.92));
     const tableH = Math.round(tableW * (elH / elW));
     const tableX = Math.round((STORY_W - tableW) / 2);
     const tableY = Math.round((STORY_H - tableH) / 2);

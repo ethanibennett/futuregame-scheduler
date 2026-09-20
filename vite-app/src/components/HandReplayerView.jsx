@@ -4742,6 +4742,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   // Which video the progress overlay is recording, so its copy is accurate:
   // 'transparent' | 'greenscreen' | 'story' | 'igstory'.
   const [videoKind, setVideoKind] = useState('transparent');
+  // Instagram Story adjustment: the picked photo and a still of the replay,
+  // held open while the poster sizes the overlay and picks a speed before the
+  // clip is rendered. null when the adjust sheet is closed.
+  const [igDraft, setIgDraft] = useState(null); // { photoUrl, photoImg, stillUrl }
+  const [igScale, setIgScale] = useState(0.92); // replay width as a fraction of the 9:16 frame
+  const [igSpeed, setIgSpeed] = useState(1000); // ms per step, mirrors the transport's SPEEDS
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStep, setVideoStep] = useState(0);
   const [videoTotal, setVideoTotal] = useState(0);
@@ -5934,61 +5940,100 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     input.onchange = async () => {
       const f = input.files && input.files[0];
       if (!f) { cleanup(); return; }
+      cleanup();
 
-      let img;
-      const url = URL.createObjectURL(f);
+      // Keep the object URL alive — the adjust sheet uses it as the preview
+      // background; it is revoked when the sheet closes.
+      const photoUrl = URL.createObjectURL(f);
+      let photoImg;
       try {
-        img = await new Promise((res, rej) => {
+        photoImg = await new Promise((res, rej) => {
           const i = new Image();
           i.onload = () => res(i);
           i.onerror = rej;
-          i.src = url;
+          i.src = photoUrl;
         });
       } catch {
-        URL.revokeObjectURL(url); cleanup();
+        URL.revokeObjectURL(photoUrl);
         toast?.error?.('Could not read that photo');
         return;
       }
-      // The decoded image survives the URL, and drawImage reads the decode.
-      URL.revokeObjectURL(url);
-      cleanup();
 
-      setStreetIdx(0); setActionIdx(-1); setShowResult(false);
-      setHiloAnimate(false); setPlaying(false);
-      await new Promise(r => setTimeout(r, 120));
+      // A transparent still of the replay AS IT SITS NOW, so the sizing box is
+      // WYSIWYG. Best-effort — the export captures its own frames from street 0,
+      // so if this fails the sheet just shows the photo with no overlay preview.
+      let stillUrl = null;
+      try {
+        const [{ domToCanvas }, cap] = await Promise.all([
+          import('modern-screenshot'),
+          import('../utils/replay-capture.js'),
+        ]);
+        const restore = cap.beginCapture(tableRef.current);
+        await new Promise(r => setTimeout(r, 60));
+        const elW = tableRef.current.offsetWidth, elH = tableRef.current.offsetHeight;
+        const canvas = await domToCanvas(tableRef.current, {
+          backgroundColor: null, width: elW, height: elH, scale: cap.exportScale(tableRef.current),
+        });
+        restore();
+        stillUrl = canvas.toDataURL('image/png');
+      } catch { /* preview still is optional */ }
 
-      setVideoExporting(true); setVideoKind('igstory'); setVideoProgress(0); setVideoStep(0);
-      const totalSteps = hand.streets.reduce((sum, s) => sum + 1 + (s.actions?.length || 0), 0) + 1;
-      setVideoTotal(totalSteps);
-
-      await exportReplayVideo({
-        hand,
-        tableEl: tableRef.current,
-        stepForward: () => stepForwardRef.current?.(),
-        canGoForwardRef,
-        mode: 'story',
-        speed,
-        feltColor,
-        backgroundImage: img,
-        igShare: true,
-        onFrame: setExportPreview,
-        onProgress: (pct, step, total) => { setVideoProgress(pct); setVideoStep(step); setVideoTotal(total); },
-        onDone: (info) => {
-          setVideoExporting(false); setVideoProgress(0); setExportPreview(null);
-          if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
-          else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
-          else toast?.success?.('Story video saved');
-        },
-        onError: (err) => {
-          console.error('Instagram story export error:', err);
-          setVideoExporting(false); setVideoProgress(0); setExportPreview(null);
-          toast?.error?.('Story export failed: ' + (err?.message || 'unknown'));
-        },
-      });
+      setIgScale(0.92);
+      setIgSpeed(speed);
+      setIgDraft({ photoUrl, photoImg, stillUrl });
     };
 
     input.click();
-  }, [videoExporting, gifExporting, hand, speed, feltColor, toast]);
+  }, [videoExporting, gifExporting, speed, toast]);
+
+  // Render the story clip with the size + speed the poster chose in the sheet,
+  // then hand it to Instagram (via exportReplayVideo's igShare path).
+  const handleCreateInstagramStory = useCallback(async () => {
+    if (!igDraft || videoExporting || gifExporting) return;
+    const { photoImg, photoUrl } = igDraft;
+    const chosenScale = igScale;
+    const chosenSpeed = igSpeed;
+    setIgDraft(null);
+    URL.revokeObjectURL(photoUrl);
+
+    setStreetIdx(0); setActionIdx(-1); setShowResult(false);
+    setHiloAnimate(false); setPlaying(false);
+    await new Promise(r => setTimeout(r, 120));
+
+    setVideoExporting(true); setVideoKind('igstory'); setVideoProgress(0); setVideoStep(0);
+    const totalSteps = hand.streets.reduce((sum, s) => sum + 1 + (s.actions?.length || 0), 0) + 1;
+    setVideoTotal(totalSteps);
+
+    await exportReplayVideo({
+      hand,
+      tableEl: tableRef.current,
+      stepForward: () => stepForwardRef.current?.(),
+      canGoForwardRef,
+      mode: 'story',
+      speed: chosenSpeed,
+      feltColor,
+      backgroundImage: photoImg,
+      igShare: true,
+      tableScale: chosenScale,
+      onFrame: setExportPreview,
+      onProgress: (pct, step, total) => { setVideoProgress(pct); setVideoStep(step); setVideoTotal(total); },
+      onDone: (info) => {
+        setVideoExporting(false); setVideoProgress(0); setExportPreview(null);
+        if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
+        else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
+        else toast?.success?.('Story video saved');
+      },
+      onError: (err) => {
+        console.error('Instagram story export error:', err);
+        setVideoExporting(false); setVideoProgress(0); setExportPreview(null);
+        toast?.error?.('Story export failed: ' + (err?.message || 'unknown'));
+      },
+    });
+  }, [igDraft, igScale, igSpeed, videoExporting, gifExporting, hand, feltColor, toast]);
+
+  const closeIgDraft = useCallback(() => {
+    setIgDraft(prev => { if (prev?.photoUrl) URL.revokeObjectURL(prev.photoUrl); return null; });
+  }, []);
 
   // ── OFC Replay View ──
   if (hand.gameType === 'OFC') {
@@ -7517,6 +7562,51 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
            the OFC replay still uses it. */
         return controls;
       })()}
+
+      {/* Instagram Story adjust sheet: size the replay over the chosen photo
+          and set the playback speed before rendering. Inline-styled so it needs
+          no stylesheet changes; the 9:16 box is WYSIWYG with the export. */}
+      {igDraft && !videoExporting && createPortal(
+        <div className="share-menu-backdrop"
+          style={{display:'flex',alignItems:'center',justifyContent:'center'}}
+          onClick={closeIgDraft}>
+          <div onClick={e => e.stopPropagation()}
+            style={{background:'#14141c',borderRadius:'14px',padding:'16px',width:'min(92vw,320px)',boxShadow:'0 20px 60px rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+            <div style={{color:'#fff',fontSize:'1rem',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'10px',textAlign:'center'}}>Instagram Story</div>
+            <div style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'10px',overflow:'hidden',background:'#000',margin:'0 auto'}}>
+              <img src={igDraft.photoUrl} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />
+              {igDraft.stillUrl && (
+                <img src={igDraft.stillUrl} alt="" style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:(igScale*100)+'%',height:'auto'}} />
+              )}
+            </div>
+            <div style={{marginTop:'14px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase',marginBottom:'4px'}}>
+                <span>Size</span><span>{Math.round(igScale*100)}%</span>
+              </div>
+              <input type="range" min="40" max="100" step="1" value={Math.round(igScale*100)}
+                onChange={e => setIgScale(Number(e.target.value)/100)} style={{width:'100%'}} />
+            </div>
+            <div style={{marginTop:'12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase'}}>Speed</span>
+              <div style={{display:'flex',gap:'6px'}}>
+                {[2000,1000,500,250].map((ms, i) => (
+                  <button key={ms} onClick={() => setIgSpeed(ms)}
+                    style={{padding:'5px 9px',borderRadius:'7px',border:'1px solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'0.72rem',cursor:'pointer'}}>
+                    {['0.5x','1x','2x','4x'][i]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginTop:'16px',display:'flex',gap:'10px'}}>
+              <button onClick={closeIgDraft}
+                style={{flex:1,padding:'10px',borderRadius:'9px',border:'1px solid rgba(255,255,255,0.25)',background:'transparent',color:'#fff',fontSize:'0.85rem',cursor:'pointer'}}>Cancel</button>
+              <button onClick={handleCreateInstagramStory}
+                style={{flex:2,padding:'10px',borderRadius:'9px',border:'none',background:'#fff',color:'#14141c',fontSize:'0.85rem',fontWeight:600,cursor:'pointer'}}>Create Story</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Video export progress overlay */}
       {videoExporting && createPortal(
