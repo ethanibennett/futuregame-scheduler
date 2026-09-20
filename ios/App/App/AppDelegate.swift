@@ -215,3 +215,17 @@ public class InstagramStoriesPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 }
+
+// ── Root view controller: registers the app-local plugin ─────────────────────
+// Capacitor only auto-registers its built-ins and the PACKAGE plugins listed in
+// capacitor.config.json's packageClassList (registerPlugins() reads that file; it
+// does NOT scan the Obj-C runtime). So a plugin defined in the app is never picked
+// up, and the JS side reports 'InstagramStories plugin is not implemented on ios'
+// — exactly the toast we saw, even though the class was compiled. Register it
+// explicitly in capacitorDidLoad, where the bridge already exists. Main.storyboard
+// instantiates this subclass as the root VC (customClass=MainViewController).
+class MainViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(InstagramStoriesPlugin())
+    }
+}
