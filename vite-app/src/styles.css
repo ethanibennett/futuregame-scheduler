@@ -6281,6 +6281,13 @@
       opacity: 0.32 !important;
       color: #fff !important;
       text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+      /* On the felt the wordmark sits at 47%, deliberately BEHIND the board so
+         it reads as a background mark. But once a board is dealt, the three
+         cards cover the wordmark's middle and only the "fut" tail peeks out on
+         the left — in an exported still that looks like the mark slid off
+         centre. For the capture, drop it into the clear band below the board
+         and the tournament line so the whole wordmark shows, plainly centred. */
+      top: 66% !important;
     }
 
 

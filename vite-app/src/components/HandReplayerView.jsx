@@ -7654,10 +7654,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             <div style={{marginTop:'14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span style={{color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase'}}>Speed</span>
               <div style={{display:'flex',gap:'6px'}}>
-                {[2000,1000,500,250].map((ms, i) => (
+                {[1000,500,250,125,60].map((ms, i) => (
                   <button key={ms} onClick={() => setIgSpeed(ms)}
-                    style={{padding:'5px 9px',borderRadius:'7px',border:'1px solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'0.72rem',cursor:'pointer'}}>
-                    {['0.5x','1x','2x','4x'][i]}
+                    style={{padding:'5px 8px',borderRadius:'7px',border:'1px solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'0.72rem',cursor:'pointer'}}>
+                    {['1x','2x','4x','8x','16x'][i]}
                   </button>
                 ))}
               </div>

@@ -79,5 +79,9 @@ export const CHROMA_GREEN = '#00b140';
  */
 export function stepDelay(speed) {
   const ms = Number(speed);
-  return Number.isFinite(ms) && ms > 0 ? Math.min(2000, Math.max(150, ms)) : 900;
+  // Floor at 60ms (~16 steps/s). The story flow offers up to 8x (125ms); the
+  // old 150ms floor quietly capped anything faster than ~6.7x, so the fastest
+  // options did nothing. 60ms leaves headroom without dropping below a couple
+  // of 24fps frames per step.
+  return Number.isFinite(ms) && ms > 0 ? Math.min(2000, Math.max(60, ms)) : 900;
 }

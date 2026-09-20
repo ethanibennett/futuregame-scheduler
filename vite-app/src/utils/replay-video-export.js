@@ -127,28 +127,61 @@ export async function exportReplayVideo({
        was recorded too and the step durations wobbled in the output. Driving
        the track frame by frame collapses the export to capture speed and makes
        every step exactly the same length. */
+    const FPS = 24;
+    const perStepMs = stepDelay(speed);
+    const framesPerStep = Math.max(1, Math.round((perStepMs / 1000) * FPS));
+    const finalHoldFrames = FPS * 2;
+
+    /* 99: two phases, because iOS is the common case and iOS has no
+       CanvasCaptureMediaStreamTrack.requestFrame — so MediaRecorder can only
+       record in REAL TIME. The old single pass captured a frame (domToCanvas,
+       200-500ms on a phone) WHILE the recorder was running, so that capture
+       time was baked into the clip: every step lasted as long as it took to
+       draw, and the speed control (which only sets how long to HOLD a frame)
+       barely moved the result — "4x" was still agonisingly slow. Now the slow
+       part — capturing every frame of the hand — happens first with nothing
+       recording, and playback holds each pre-drawn frame for exactly the chosen
+       duration. Capture cost stops touching the output pace. */
+    const framesArr = [];
+    let lastGood = null;
+    const grab = async () => {
+      try {
+        const c = await domToCanvas(tableEl, { backgroundColor: null, width: elW, height: elH, scale });
+        lastGood = c;
+        framesArr.push(c);
+      } catch {
+        // 84: on a capture failure hold the LAST GOOD frame rather than a blank.
+        if (lastGood) framesArr.push(lastGood);
+      }
+      const last = framesArr[framesArr.length - 1];
+      if (onFrame && last) { try { onFrame(last.toDataURL('image/png')); } catch { /* tainted */ } }
+      // Capture is the first 70% of the bar; the encode is the rest.
+      onProgress(Math.round((framesArr.length / totalSteps) * 70), framesArr.length, totalSteps);
+    };
+
+    await grab();
+    while (canGoForwardRef.current) {
+      stepForward();
+      // Let React commit before capturing. Animations are paused for the export.
+      await new Promise(r => setTimeout(r, 120));
+      await grab();
+    }
+
+    // Frames are captured — undo the padding/pinned-theme now, before the encode.
+    restore();
+    restore = () => {};
+
+    // ── Phase 2: play the captured frames into the recorder at exact timing.
     const stream = canvas.captureStream(0);
     const track = stream.getVideoTracks()[0];
     const canRequestFrame = typeof track.requestFrame === 'function';
-    const fallbackStream = canRequestFrame ? null : canvas.captureStream(24);
+    const fallbackStream = canRequestFrame ? null : canvas.captureStream(FPS);
     const recStream = canRequestFrame ? stream : fallbackStream;
 
     const recorder = new MediaRecorder(recStream, { mimeType, videoBitsPerSecond: 6_000_000 });
     const chunks = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
     const stopped = new Promise(resolve => { recorder.onstop = resolve; });
-
-    const FPS = 24;
-    const perStepMs = stepDelay(speed);
-    const framesPerStep = Math.max(1, Math.round((perStepMs / 1000) * FPS));
-    const finalHoldFrames = FPS * 2;
-
-    recorder.start();
-
-    let step = 0;
-    // 84: on a capture failure, hold the LAST GOOD frame. Clearing wrote a
-    // fully blank frame into the middle of the recording.
-    let lastGood = null;
 
     const paint = (captured) => {
       if (isStory) {
@@ -177,40 +210,19 @@ export async function exportReplayVideo({
       }
     };
 
-    const captureFrame = async (holdFrames) => {
-      try {
-        const captured = await domToCanvas(tableEl, {
-          backgroundColor: null,
-          width: elW,
-          height: elH,
-          scale,
-        });
-        lastGood = captured;
-        paint(captured);
-      } catch {
-        if (lastGood) paint(lastGood);
-      }
-      await emit(holdFrames);
-      step++;
-      // 85: the same frame the recorder just took, for the overlay.
-      if (onFrame) { try { onFrame(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ } }
-      onProgress(Math.round((step / totalSteps) * 100), step, totalSteps);
-    };
-
-    await captureFrame(framesPerStep);
-    while (canGoForwardRef.current) {
-      stepForward();
-      // Let React commit before capturing. The animations are paused for the
-      // duration of the export, so this only has to cover the render.
-      await new Promise(r => setTimeout(r, 120));
-      await captureFrame(framesPerStep);
+    recorder.start();
+    // Latch the first frame before the timed playback begins.
+    if (framesArr.length) { paint(framesArr[0]); await new Promise(r => setTimeout(r, 80)); }
+    for (let i = 0; i < framesArr.length; i++) {
+      paint(framesArr[i]);
+      const isLast = i === framesArr.length - 1;
+      await emit(isLast ? finalHoldFrames : framesPerStep);
+      onProgress(70 + Math.round(((i + 1) / framesArr.length) * 30), framesArr.length, totalSteps);
     }
-    // Hold the result.
-    await emit(finalHoldFrames);
 
     recorder.stop();
     await stopped;
-    restore();
+    framesArr.length = 0;
 
     const blob = new Blob(chunks, { type: mimeType });
     const baseName = (hand.gameType || 'hand').toLowerCase().replace(/\s+/g, '-');
