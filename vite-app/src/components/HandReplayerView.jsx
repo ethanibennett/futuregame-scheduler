@@ -4749,8 +4749,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const [igScale, setIgScale] = useState(0.92); // replay width as a fraction of the 9:16 frame
   const [igSpeed, setIgSpeed] = useState(1000); // ms per step, mirrors the transport's SPEEDS
   const [igPos, setIgPos] = useState({ x: 0.5, y: 0.5 }); // replay CENTRE as a fraction of the frame
-  const igPosRef = useRef(igPos); igPosRef.current = igPos; // fresh value for the drag closure
+  const igPosRef = useRef(igPos); igPosRef.current = igPos; // fresh value for the gesture closure
+  const igScaleRef = useRef(igScale); igScaleRef.current = igScale;
   const igBoxRef = useRef(null);
+  const igGestureRef = useRef({ pointers: new Map() }); // live pointers + gesture baseline
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStep, setVideoStep] = useState(0);
   const [videoTotal, setVideoTotal] = useState(0);
@@ -6041,29 +6043,64 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     setIgDraft(prev => { if (prev?.photoUrl) URL.revokeObjectURL(prev.photoUrl); return null; });
   }, []);
 
-  // Drag the replay around the 9:16 preview. Position is the replay's CENTRE as
-  // a fraction of the frame, clamped to [0,1] so it can hang off an edge by at
-  // most half — the same value handed to the export as tableCenter. Pointer
-  // events + a grab offset so it tracks the finger without jumping.
-  const startIgDrag = useCallback((e) => {
-    const box = igBoxRef.current;
-    if (!box) return;
-    e.preventDefault();
-    const rect = box.getBoundingClientRect();
-    const startX = e.clientX, startY = e.clientY;
-    const start = igPosRef.current;
-    const move = (ev) => {
-      const nx = Math.min(1, Math.max(0, start.x + (ev.clientX - startX) / rect.width));
-      const ny = Math.min(1, Math.max(0, start.y + (ev.clientY - startY) / rect.height));
-      setIgPos({ x: nx, y: ny });
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+  // Position + size the replay in the 9:16 preview by touch: one finger pans,
+  // two fingers pinch to scale (and pan by the pinch midpoint). Position is the
+  // replay's CENTRE and scale its width, both as fractions of the frame, handed
+  // to the export as tableCenter / tableScale. Every finger down or up
+  // re-baselines from the current pos/scale so 1↔2-finger transitions never
+  // jump. Pointer capture keeps a finger's events on the box if it strays out.
+  const IG_MIN = 0.3, IG_MAX = 1.0;
+  const igRebase = useCallback(() => {
+    const g = igGestureRef.current;
+    g.rect = igBoxRef.current?.getBoundingClientRect() || null;
+    g.startScale = igScaleRef.current;
+    g.startPos = { ...igPosRef.current };
+    const pts = [...g.pointers.values()];
+    if (pts.length === 1) {
+      g.startX = pts[0].x; g.startY = pts[0].y;
+    } else if (pts.length >= 2) {
+      const [a, b] = pts;
+      g.startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      g.startMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
   }, []);
+  const igPointerDown = useCallback((e) => {
+    if (!igBoxRef.current) return;
+    e.preventDefault();
+    igBoxRef.current.setPointerCapture?.(e.pointerId);
+    igGestureRef.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    igRebase();
+  }, [igRebase]);
+  const igPointerMove = useCallback((e) => {
+    const g = igGestureRef.current;
+    if (!g.pointers.has(e.pointerId)) return;
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const rect = g.rect;
+    if (!rect) return;
+    const clamp01 = (v) => Math.min(1, Math.max(0, v));
+    const pts = [...g.pointers.values()];
+    if (pts.length === 1) {
+      setIgPos({
+        x: clamp01(g.startPos.x + (pts[0].x - g.startX) / rect.width),
+        y: clamp01(g.startPos.y + (pts[0].y - g.startY) / rect.height),
+      });
+    } else if (pts.length >= 2) {
+      const [a, b] = pts;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      setIgScale(Math.min(IG_MAX, Math.max(IG_MIN, g.startScale * (dist / g.startDist))));
+      setIgPos({
+        x: clamp01(g.startPos.x + (mid.x - g.startMid.x) / rect.width),
+        y: clamp01(g.startPos.y + (mid.y - g.startMid.y) / rect.height),
+      });
+    }
+  }, []);
+  const igPointerUp = useCallback((e) => {
+    const g = igGestureRef.current;
+    if (!g.pointers.delete(e.pointerId)) return;
+    igBoxRef.current?.releasePointerCapture?.(e.pointerId);
+    if (g.pointers.size > 0) igRebase(); // keep the remaining finger(s) smooth
+  }, [igRebase]);
 
   // ── OFC Replay View ──
   if (hand.gameType === 'OFC') {
@@ -7603,22 +7640,18 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           <div onClick={e => e.stopPropagation()}
             style={{background:'#14141c',borderRadius:'14px',padding:'16px',width:'min(92vw,320px)',boxShadow:'0 20px 60px rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             <div style={{color:'#fff',fontSize:'1rem',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'10px',textAlign:'center'}}>Instagram Story</div>
-            <div ref={igBoxRef} style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'10px',overflow:'hidden',background:'#000',margin:'0 auto'}}>
+            <div ref={igBoxRef}
+              onPointerDown={igPointerDown} onPointerMove={igPointerMove}
+              onPointerUp={igPointerUp} onPointerCancel={igPointerUp}
+              style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'10px',overflow:'hidden',background:'#000',margin:'0 auto',touchAction:'none',cursor:'grab'}}>
               <img src={igDraft.photoUrl} alt="" draggable={false} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} />
               {igDraft.stillUrl && (
-                <img src={igDraft.stillUrl} alt="" draggable={false} onPointerDown={startIgDrag}
-                  style={{position:'absolute',left:(igPos.x*100)+'%',top:(igPos.y*100)+'%',transform:'translate(-50%,-50%)',width:(igScale*100)+'%',height:'auto',cursor:'grab',touchAction:'none'}} />
+                <img src={igDraft.stillUrl} alt="" draggable={false}
+                  style={{position:'absolute',left:(igPos.x*100)+'%',top:(igPos.y*100)+'%',transform:'translate(-50%,-50%)',width:(igScale*100)+'%',height:'auto',pointerEvents:'none'}} />
               )}
             </div>
-            <div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.62rem',letterSpacing:'0.04em',textAlign:'center',marginTop:'6px'}}>Drag the replay to move it · slider to resize</div>
-            <div style={{marginTop:'14px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase',marginBottom:'4px'}}>
-                <span>Size</span><span>{Math.round(igScale*100)}%</span>
-              </div>
-              <input type="range" min="40" max="100" step="1" value={Math.round(igScale*100)}
-                onChange={e => setIgScale(Number(e.target.value)/100)} style={{width:'100%'}} />
-            </div>
-            <div style={{marginTop:'12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.62rem',letterSpacing:'0.04em',textAlign:'center',marginTop:'6px'}}>Drag to move · pinch to resize</div>
+            <div style={{marginTop:'14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span style={{color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase'}}>Speed</span>
               <div style={{display:'flex',gap:'6px'}}>
                 {[2000,1000,500,250].map((ms, i) => (
