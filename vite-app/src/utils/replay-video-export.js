@@ -27,6 +27,7 @@ const STORY_W = 1080, STORY_H = 1920;
 export async function exportReplayVideo({
   hand, tableEl, stepForward, canGoForwardRef,
   mode = 'transparent', speed, feltColor,
+  backgroundImage = null, igShare = false,
   onFrame, onProgress, onDone, onError,
 }) {
   let restore = () => {};
@@ -97,6 +98,22 @@ export async function exportReplayVideo({
       storyBg.addColorStop(1, bottom);
     }
 
+    /* The Story background can be a photo the poster picked or shot in-app
+       (Instagram has no transparent-overlay slot, so we bake their chosen
+       image behind the replay and send the whole 9:16 frame as backgroundVideo).
+       Draw it COVER-fit — fill 1080x1920, cropping the overflow — so there is
+       never a letterbox; the replay still floats centred on top. */
+    let bgCover = null;
+    if (isStory && backgroundImage) {
+      const iw = backgroundImage.naturalWidth || backgroundImage.width;
+      const ih = backgroundImage.naturalHeight || backgroundImage.height;
+      if (iw && ih) {
+        const cover = Math.max(STORY_W / iw, STORY_H / ih);
+        const dw = iw * cover, dh = ih * cover;
+        bgCover = { dx: (STORY_W - dw) / 2, dy: (STORY_H - dh) / 2, dw, dh };
+      }
+    }
+
     /* 97: this recorded a LIVE canvas stream with a real setTimeout per step,
        so a thirty-step hand took thirty wall-clock seconds behind a blocking
        overlay — and because the wait was wall-clock, the variable capture time
@@ -128,8 +145,12 @@ export async function exportReplayVideo({
 
     const paint = (captured) => {
       if (isStory) {
-        ctx.fillStyle = storyBg;
-        ctx.fillRect(0, 0, OUT_W, OUT_H);
+        if (bgCover) {
+          ctx.drawImage(backgroundImage, bgCover.dx, bgCover.dy, bgCover.dw, bgCover.dh);
+        } else {
+          ctx.fillStyle = storyBg;
+          ctx.fillRect(0, 0, OUT_W, OUT_H);
+        }
         ctx.drawImage(captured, tableX, tableY, tableW, tableH);
       } else if (isGreenScreen) {
         ctx.fillStyle = CHROMA_GREEN;
@@ -195,7 +216,28 @@ export async function exportReplayVideo({
        nothing at all. iOS cannot play WebM either, which is why greenscreen
        and story now emit MP4. */
     let shareMethod = 'download';
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    let igError = null;
+    // A story clip headed for Instagram goes to the backgroundVideo slot on
+    // iOS first — one tap, animated, and IG opens its editor on top for text
+    // and stickers. Everything else (and any IG failure) falls to the share
+    // sheet, then a download.
+    if (igShare && isStory) {
+      const { canShareToInstagram, shareVideoToInstagramStories } = await import('./instagram-stories.js');
+      if (canShareToInstagram()) {
+        try {
+          const { top, bottom } = feltBackdrop(feltColor);
+          await shareVideoToInstagramStories(blob, {
+            backgroundTopColor: top,
+            backgroundBottomColor: bottom,
+          });
+          shareMethod = 'instagram';
+        } catch (e) {
+          igError = e;
+          console.warn('Instagram video share failed, falling back:', e);
+        }
+      }
+    }
+    if (shareMethod === 'download' && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: 'Hand Replay' });
         shareMethod = 'share-sheet';
@@ -213,7 +255,7 @@ export async function exportReplayVideo({
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
-    onDone({ shareMethod, blob, fileExt });
+    onDone({ shareMethod, blob, fileExt, igError });
   } catch (err) {
     restore();
     onError(err);

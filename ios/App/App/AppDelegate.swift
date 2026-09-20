@@ -144,7 +144,8 @@ public class InstagramStoriesPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "InstagramStoriesPlugin"
     public let jsName = "InstagramStories"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "shareSticker", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "shareSticker", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "shareVideo", returnType: CAPPluginReturnPromise)
     ]
 
     @objc func shareSticker(_ call: CAPPluginCall) {
@@ -200,6 +201,64 @@ public class InstagramStoriesPlugin: CAPPlugin, CAPBridgedPlugin {
             if let bgB64 = bgBase64, let bgData = Data(base64Encoded: bgB64) {
                 items[0]["com.instagram.sharedSticker.backgroundImage"] = bgData
             }
+
+            UIPasteboard.general.setItems(items, options: [
+                .expirationDate: Date().addingTimeInterval(300)
+            ])
+
+            UIApplication.shared.open(url, options: [:]) { success in
+                if success {
+                    call.resolve(["shared": true])
+                } else {
+                    call.reject("Failed to open Instagram")
+                }
+            }
+        }
+    }
+
+    // Share a full-frame 9:16 VIDEO as the Story background. Instagram's only
+    // animated slot is `backgroundVideo` (the sticker slot is still-image only),
+    // so an animated replay has to arrive here. The replay is already composited
+    // over the chosen photo at 1080x1920 on the JS side, so this fills the whole
+    // Story and Instagram opens its editor on top of it — the poster adds text,
+    // stickers and music before posting. Background colors are only a fallback
+    // fill for any letterboxing.
+    @objc func shareVideo(_ call: CAPPluginCall) {
+        guard let base64 = call.getString("videoBase64") else {
+            call.reject("Missing videoBase64")
+            return
+        }
+        guard let videoData = Data(base64Encoded: base64) else {
+            call.reject("Invalid base64 data")
+            return
+        }
+
+        let topColor = call.getString("backgroundTopColor") ?? "#000000"
+        let bottomColor = call.getString("backgroundBottomColor") ?? "#000000"
+
+        let fbAppID = (Bundle.main.object(forInfoDictionaryKey: "FacebookAppID") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        DispatchQueue.main.async {
+            var urlString = "instagram-stories://share"
+            if let id = fbAppID, !id.isEmpty {
+                urlString += "?source_application=\(id)"
+            }
+
+            guard let url = URL(string: urlString) else {
+                call.reject("Cannot create Instagram URL")
+                return
+            }
+
+            guard UIApplication.shared.canOpenURL(url) else {
+                call.reject("Instagram is not installed")
+                return
+            }
+
+            var items: [[String: Any]] = [[:]]
+            items[0]["com.instagram.sharedSticker.backgroundVideo"] = videoData
+            items[0]["com.instagram.sharedSticker.backgroundTopColor"] = topColor
+            items[0]["com.instagram.sharedSticker.backgroundBottomColor"] = bottomColor
 
             UIPasteboard.general.setItems(items, options: [
                 .expirationDate: Date().addingTimeInterval(300)

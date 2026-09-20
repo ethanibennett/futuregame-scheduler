@@ -4739,6 +4739,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
 
   // Video export state
   const [videoExporting, setVideoExporting] = useState(false);
+  // Which video the progress overlay is recording, so its copy is accurate:
+  // 'transparent' | 'greenscreen' | 'story' | 'igstory'.
+  const [videoKind, setVideoKind] = useState('transparent');
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStep, setVideoStep] = useState(0);
   const [videoTotal, setVideoTotal] = useState(0);
@@ -5830,6 +5833,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     await new Promise(r => setTimeout(r, 120));
 
     setVideoExporting(true);
+    setVideoKind(mode);
     setVideoProgress(0);
     setVideoStep(0);
 
@@ -5906,6 +5910,85 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       },
     });
   }, [gifExporting, videoExporting, hand]);
+
+  /* Instagram Story (native iOS): Instagram has no transparent-overlay slot, so
+     an ANIMATED replay must go into its full-frame backgroundVideo. We bake the
+     poster's own photo behind the replay first — a plain file input makes iOS
+     offer "Take Photo / Choose from Library", so both live in one gesture — then
+     export a 1080x1920 clip and hand it to Instagram, which opens its editor on
+     top for text and stickers. The picker MUST open synchronously inside the
+     click (iOS blocks a file input opened after an await), so the export runs
+     from the input's change handler. */
+  const handleExportInstagramStory = useCallback(() => {
+    if (videoExporting || gifExporting) return;
+    if (!tableRef.current) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    document.body.appendChild(input);
+    const cleanup = () => { try { document.body.removeChild(input); } catch { /* already gone */ } };
+
+    input.onchange = async () => {
+      const f = input.files && input.files[0];
+      if (!f) { cleanup(); return; }
+
+      let img;
+      const url = URL.createObjectURL(f);
+      try {
+        img = await new Promise((res, rej) => {
+          const i = new Image();
+          i.onload = () => res(i);
+          i.onerror = rej;
+          i.src = url;
+        });
+      } catch {
+        URL.revokeObjectURL(url); cleanup();
+        toast?.error?.('Could not read that photo');
+        return;
+      }
+      // The decoded image survives the URL, and drawImage reads the decode.
+      URL.revokeObjectURL(url);
+      cleanup();
+
+      setStreetIdx(0); setActionIdx(-1); setShowResult(false);
+      setHiloAnimate(false); setPlaying(false);
+      await new Promise(r => setTimeout(r, 120));
+
+      setVideoExporting(true); setVideoKind('igstory'); setVideoProgress(0); setVideoStep(0);
+      const totalSteps = hand.streets.reduce((sum, s) => sum + 1 + (s.actions?.length || 0), 0) + 1;
+      setVideoTotal(totalSteps);
+
+      await exportReplayVideo({
+        hand,
+        tableEl: tableRef.current,
+        stepForward: () => stepForwardRef.current?.(),
+        canGoForwardRef,
+        mode: 'story',
+        speed,
+        feltColor,
+        backgroundImage: img,
+        igShare: true,
+        onFrame: setExportPreview,
+        onProgress: (pct, step, total) => { setVideoProgress(pct); setVideoStep(step); setVideoTotal(total); },
+        onDone: (info) => {
+          setVideoExporting(false); setVideoProgress(0); setExportPreview(null);
+          if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
+          else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
+          else toast?.success?.('Story video saved');
+        },
+        onError: (err) => {
+          console.error('Instagram story export error:', err);
+          setVideoExporting(false); setVideoProgress(0); setExportPreview(null);
+          toast?.error?.('Story export failed: ' + (err?.message || 'unknown'));
+        },
+      });
+    };
+
+    input.click();
+  }, [videoExporting, gifExporting, hand, speed, feltColor, toast]);
 
   // ── OFC Replay View ──
   if (hand.gameType === 'OFC') {
@@ -7391,6 +7474,18 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   <span className="share-label">Story</span>
                   <span className="share-desc">9:16 video, ready to post</span>
                 </div>
+                {/* The animated Instagram path: Instagram has no transparent-overlay
+                    slot, so the replay goes in as a full-frame backgroundVideo,
+                    composited over a photo the poster picks or shoots in-app.
+                    Native iOS only — canInstagram gates it. */}
+                {canInstagram && (
+                  <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
+                    onClick={() => { if (!videoExporting && !gifExporting) { handleExportInstagramStory(); setShowExportMenu(false); } }}>
+                    <span className="export-preview is-story" aria-hidden="true" />
+                    <span className="share-label">Instagram Story</span>
+                    <span className="share-desc">Animated, over a photo you pick or shoot</span>
+                  </div>
+                )}
                 <div className={'share-menu-item' + (videoExporting || gifExporting ? ' disabled' : '')}
                   onClick={() => { if (!videoExporting && !gifExporting) { handleExportGif(); setShowExportMenu(false); } }}>
                   <span className="export-preview is-gif" aria-hidden="true" />
@@ -7427,10 +7522,16 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       {videoExporting && createPortal(
         <div className="replayer-export-overlay">
           <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
-            Recording Overlay…
+            {videoKind === 'igstory' ? 'Building Instagram Story…'
+              : videoKind === 'story' ? 'Building Story…'
+              : videoKind === 'greenscreen' ? 'Recording Greenscreen…'
+              : 'Recording Overlay…'}
           </div>
           <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
-            WebM VP9 · transparent background
+            {videoKind === 'igstory' ? '9:16 MP4 · over your photo'
+              : videoKind === 'story' ? '9:16 MP4 · ready to post'
+              : videoKind === 'greenscreen' ? 'MP4 · chroma key for editing'
+              : 'WebM VP9 · transparent background'}
           </div>
           {/* 85: the frames, as they are captured. */}
           <div className="replayer-export-frame">
@@ -7445,7 +7546,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           {/* 94: this said "will download automatically" on a platform where
               the outcome is usually a share sheet. */}
           <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
-            {canNativeShare ? 'The share sheet will open when it is ready' : 'It will download when complete'}
+            {videoKind === 'igstory' ? 'Instagram will open when it is ready'
+              : canNativeShare ? 'The share sheet will open when it is ready'
+              : 'It will download when complete'}
           </div>
         </div>,
         document.body

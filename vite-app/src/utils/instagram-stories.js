@@ -45,6 +45,33 @@ export async function shareGifToInstagramStories(gifBlob, opts = {}) {
   return InstagramStories.shareSticker(args);
 }
 
+/**
+ * Share a full-frame 9:16 VIDEO as the Instagram Story background.
+ * Instagram's only animated slot is `backgroundVideo` — the sticker slot is
+ * still-image only — so an ANIMATED replay has to go here. The replay is
+ * composited over the chosen photo at 1080x1920 before this is called, so it
+ * fills the whole Story; Instagram then opens its editor on top, where the
+ * poster adds text, stickers and music.
+ *
+ * @param {Blob} videoBlob - The MP4 (H.264) story clip
+ * @param {object} opts
+ * @param {string} opts.backgroundTopColor    - Hex, fallback fill only
+ * @param {string} opts.backgroundBottomColor - Hex, fallback fill only
+ */
+export async function shareVideoToInstagramStories(videoBlob, opts = {}) {
+  if (!canShareToInstagram()) {
+    throw new Error('Instagram Stories sharing is only available on iOS');
+  }
+
+  const videoBase64 = await blobToBase64(videoBlob);
+
+  return InstagramStories.shareVideo({
+    videoBase64,
+    backgroundTopColor: opts.backgroundTopColor || '#1a1a2e',
+    backgroundBottomColor: opts.backgroundBottomColor || '#0a0a15',
+  });
+}
+
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
