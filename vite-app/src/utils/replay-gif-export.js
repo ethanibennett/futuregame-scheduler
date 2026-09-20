@@ -233,9 +233,15 @@ export async function exportReplayGif({
     // (share sheet) → direct download.
     let shareMethod = 'download';
     let shareError = null;
+    // Diagnostic: the Instagram-specific failure, surfaced to the toast so we
+    // can tell registration ("not implemented") from scheme ("not installed")
+    // from the open call ("Failed to open") without a remote debugger.
+    let igError = null;
+    let igAttempted = false;
 
     const { canShareToInstagram, shareGifToInstagramStories } = await import('./instagram-stories.js');
     if (canShareToInstagram()) {
+      igAttempted = true;
       try {
         // 95: this was a slate gradient that appears nowhere in this app,
         // sitting behind a table that is purple. It comes from the felt now.
@@ -246,6 +252,7 @@ export async function exportReplayGif({
         shareMethod = 'instagram';
       } catch (e) {
         shareError = e;
+        igError = e;
         console.warn('Instagram direct share failed, falling back:', e);
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
@@ -276,7 +283,7 @@ export async function exportReplayGif({
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
-    onDone({ shareMethod, shareError, blob });
+    onDone({ shareMethod, shareError, igError, igAttempted, blob });
   } catch (err) {
     restore();
     console.error('GIF export error:', err);

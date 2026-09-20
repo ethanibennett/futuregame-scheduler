@@ -5892,7 +5892,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         // Surface which path the share took so the user knows where the GIF went.
         if (info?.shareMethod === 'instagram') toast?.success?.('Opened Instagram with your replay');
         else if (info?.shareMethod === 'share-sheet') toast?.success?.('Share sheet opened');
-        else if (info?.shareMethod === 'download') toast?.success?.('GIF saved');
+        else if (info?.shareMethod === 'download') {
+          // Diagnostic: when we fall through to a plain download, say WHY Instagram
+          // was skipped so we can tell registration vs scheme vs open-call.
+          const why = info?.igAttempted ? (info?.igError?.message || 'unknown error') : 'not native/iOS';
+          toast?.error?.('GIF saved — Instagram: ' + why);
+        }
       },
       onError: (err) => {
         console.error('GIF export error:', err);
