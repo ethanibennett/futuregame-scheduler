@@ -6284,19 +6284,27 @@
     }
 
 
-    /* The light strip is a gradient painted into a border-box and cut to a thin
-       ring with -webkit-mask-composite: exclude. modern-screenshot serialises
-       the DOM into an SVG <foreignObject>, which does NOT honour mask-composite
-       — so on capture the ring renders as a FILLED gradient rounded-rect, and
-       with its percentage insets resolving against the clone's box it lands
-       offset beside the felt: a bright-edged rounded-rectangle ghost on the
-       right of every exported frame. It is a subtle on-felt specular; drop it
-       for the capture. And the table's ambient drop-shadow (::after) exists
-       only to seat the table on the app's dark page — meaningless on a
-       transparent sticker or over a Story photo, and more semi-opaque bleed
-       outside the felt — so it goes too. */
-    .replayer-table[data-capturing="1"] .replayer-light-strip { display: none !important; }
-    .replayer-table[data-capturing="1"]::after { box-shadow: none !important; }
+    /* The right-side ghost: a warm rounded-rectangle bleeding off the right of
+       every exported frame. It is WebKit-specific — reproduced on the real
+       WebKit engine (Playwright) and ABSENT on Chromium, which is why it only
+       ever showed on the phone. modern-screenshot serialises the DOM into an SVG
+       <foreignObject>, and WebKit renders a BOX-SHADOW inside a foreignObject at
+       a fixed rightward offset — most visibly the felt's big inset dish-shadow,
+       which ghosts as a table-silhouette-shaped copy. (An earlier fix blamed the
+       mask-composited light strip; that was wrong — the strip renders correctly
+       on WebKit. Isolated by killing one layer at a time on the WebKit repro:
+       only box-shadow removal cleared it.) The shadows are ambient depth the
+       felt/rail gradients already imply, so dropping them for the capture costs
+       the export almost nothing and removes the ghost completely. Whole subtree,
+       pseudo-elements included, because any box-shadow ghosts the same way. */
+    .replayer-table[data-capturing="1"],
+    .replayer-table[data-capturing="1"] *,
+    .replayer-table[data-capturing="1"]::before,
+    .replayer-table[data-capturing="1"]::after,
+    .replayer-table[data-capturing="1"] *::before,
+    .replayer-table[data-capturing="1"] *::after {
+      box-shadow: none !important;
+    }
 
     /* Five themes each swapped the felt's colour and some chrome, and all five
        inherited the identical inset shadow stack, the identical specular pool
