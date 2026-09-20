@@ -82,3 +82,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 }
+
+// iOS 26+ makes UIScene lifecycle adoption MANDATORY: an app built against that
+// SDK that ships no scene manifest is killed at launch inside
+// `_UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption` (EXC_BREAKPOINT
+// on the main thread) — which is exactly what crashed build 1326 on iOS 27 the
+// moment the Mac's Xcode updated to the new SDK. Adopting a scene fixes it.
+//
+// The window and its CAPBridgeViewController are still built from Main.storyboard
+// (UISceneStoryboardFile in the manifest), so this delegate does NOT create the
+// UI. It only re-homes the two things the app delegate used to own that a scene
+// now owns: the Mac Catalyst window floor, and deep-link delivery — once a scene
+// lifecycle is in use, openURL / continue-userActivity are delivered here, not to
+// the app delegate. Living in this already-compiled file keeps it out of the
+// Xcode project file (no new Compile Sources entry to hand-edit).
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        #if targetEnvironment(macCatalyst)
+        (scene as? UIWindowScene)?.sizeRestrictions?.minimumSize = CGSize(width: 480, height: 720)
+        #endif
+        // A cold launch FROM a URL / universal link arrives in connectionOptions,
+        // not through the openURL callbacks below.
+        if let url = connectionOptions.urlContexts.first?.url {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+        }
+        if let activity = connectionOptions.userActivities.first {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: activity, restorationHandler: { _ in })
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: userActivity, restorationHandler: { _ in })
+    }
+
+    #if targetEnvironment(macCatalyst)
+    func windowScene(_ windowScene: UIWindowScene, didUpdate previousCoordinateSpace: UICoordinateSpace, interfaceOrientation previousInterfaceOrientation: UIInterfaceOrientation, traitCollection previousTraitCollection: UITraitCollection) {
+        windowScene.sizeRestrictions?.minimumSize = CGSize(width: 480, height: 720)
+    }
+    #endif
+}
