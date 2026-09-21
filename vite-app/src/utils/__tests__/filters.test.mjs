@@ -80,6 +80,8 @@ console.log('the clock label must match the emitted value');
 eq('ACR series resolves to Eastern', getVenueTimezone('ACR OSS XL'), 'America/New_York');
 eq('the bare site schedule too', getVenueTimezone('ACR Schedule'), 'America/New_York');
 eq('GGPoker likewise', getVenueTimezone('GGPoker Bounty Hunters'), 'America/New_York');
+eq('PokerStars .com series resolve to Eastern', getVenueTimezone('PokerStars WCOOP 2026'), 'America/New_York');
+eq('and the FanDuel room too', getVenueTimezone('PokerStars on FanDuel September Dynasty Series 2026'), 'America/New_York');
 eq('a live venue is untouched by the prefix rule', getVenueTimezone('Horseshoe / Paris Las Vegas'), 'America/Los_Angeles');
 
 
@@ -88,6 +90,8 @@ const { siteAvailability, isSiteAvailable, stateCodeFrom, ONLINE_SITES } = sites
 
 console.log('availability — three models, and "unknown" is a real answer');
 eq('WSOP.com in Nevada', siteAvailability('wsop_com', 'NV').status, 'yes');
+eq('PokerStars on FanDuel in Pennsylvania', siteAvailability('pokerstars', 'PA').status, 'yes');
+eq('PokerStars .com is unavailable in every US state (geo-blocked)', siteAvailability('pokerstars_com', 'PA').status, 'no');
 eq('WSOP.com in Texas', siteAvailability('wsop_com', 'TX').status, 'no');
 eq('BetMGM in Nevada is not licensed', siteAvailability('betmgm', 'NV').status, 'no');
 eq('PokerStars/FanDuel in Michigan', siteAvailability('pokerstars', 'MI').status, 'yes');

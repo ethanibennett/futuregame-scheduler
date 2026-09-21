@@ -59,12 +59,32 @@ export const ONLINE_SITES = {
     key: 'pokerstars',
     name: 'PokerStars on FanDuel',
     abbr: 'PS',
-    venuePrefix: 'PokerStars',
+    /* The mtt-series-watcher's online-series feed emits property 'PokerStars on FanDuel' for
+       this room, and venuePrefix is defined as that string. Its venues also happen to start
+       with the .com entry's shorter 'PokerStars' prefix — both resolve Eastern, so the overlap
+       is harmless, but keep the two prefixes distinct all the same. */
+    venuePrefix: 'PokerStars on FanDuel',
     model: SITE_MODELS.regulated,
     states: ['MI', 'NJ', 'PA'],
     timezone: 'America/New_York',
     verifiedOn: '2026-09-14',
     evidence: 'fanduel.com/about/news/pokerstars-exclusively-on-fanduel-goes-live — MI, NJ, PA on one shared pool (April 2026)',
+  },
+  pokerstars_com: {
+    key: 'pokerstars_com',
+    name: 'PokerStars (.com)',
+    abbr: 'PS COM',
+    venuePrefix: 'PokerStars',
+    /* The INTERNATIONAL pool (WCOOP, SCOOP). Like GGPoker it does not serve the US at all —
+       and unlike most offshore claims, this one is machine-verified: every PokerStars domain
+       geo-redirects US IPs to a FanDuel bootstrap page (probed from a US connection,
+       2026-09-16, mtt-series-watcher). Its events are real and listed; they are simply never
+       "available to me" for a US player. */
+    model: SITE_MODELS.offshore,
+    servesUS: false,
+    timezone: 'America/New_York',
+    verifiedOn: '2026-09-21',
+    evidence: 'Direct probe 2026-09-16: pokerstars.com/.eu/.net all redirect US IPs to cdn.poker.fanduel.com; US access is FanDuel-only (see mtt-series-watcher CLAUDE.md).',
   },
   betmgm: {
     key: 'betmgm',
