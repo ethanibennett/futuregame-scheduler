@@ -46,6 +46,7 @@ const RazzTrainerView = lazy(() => import('./components/RazzTrainerView.jsx'));
 const Multiway3TrainerView = lazy(() => import('./components/Multiway3TrainerView.jsx'));
 const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
+const CashView = lazy(() => import('./components/CashView.jsx'));
 
 const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.85rem'}}>Loading…</div>;
 
@@ -1433,6 +1434,12 @@ export default function App() {
                     Admin
                   </button>
                 )}
+                {isAdmin && (
+                  <button onClick={() => { setShowUserMenu(false); setCurrentView('cash'); }}
+                    style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
+                    Cash
+                  </button>
+                )}
                 <div style={{height:'1px',background:'var(--border)',margin:'2px 0'}} />
                 <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
                   style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'0.85rem'}}>
@@ -1705,6 +1712,12 @@ export default function App() {
         <div className={'tab-panel' + (currentView === 'admin' ? ' tab-active' : '')} data-tab="admin" style={{display: currentView === 'admin' ? undefined : 'none', height: currentView === 'admin' ? '100%' : undefined}}>
         {visitedTabs.has('admin') && isAdmin && (
           <Suspense fallback={<LazyFallback />}><AdminView token={token} onNavigate={(v) => setCurrentView(v)} /></Suspense>
+        )}
+        </div>
+
+        <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
+        {visitedTabs.has('cash') && isAdmin && (
+          <Suspense fallback={<LazyFallback />}><CashView token={token} /></Suspense>
         )}
         </div>
 

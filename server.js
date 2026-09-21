@@ -386,6 +386,62 @@ app.use('/cash', requireHamBasic, async (req, res) => {
   res.status(upstream.status).send(body);
 });
 
+// ── Cash watcher, IN-APP (Bearer-gated JSON proxy) ───────────────────────────
+// The /cash proxy above hands the watcher's own status PAGE to a browser
+// session (the fg_session cookie, or Basic). The native app has neither — it
+// carries a Bearer JWT — and it wants the DATA rendered inside its own UI, not
+// the status page. So this sibling accepts the app's Bearer token, gates it to
+// the app-admin usernames, and forwards the read API upstream under a freshly
+// minted OWNER session: the watcher is single-user and only authorises the
+// owner id, and the chosen policy is that every app admin sees the owner's cash
+// data. Read-only, and the ingest routes are refused here as under /cash.
+const APP_ADMIN_USERNAMES = new Set(['ham', 'ham5', 'claude']);
+
+app.use('/api/cash', authenticateToken, (req, res) => {
+  const u = String((req.user && req.user.username) || '').toLowerCase();
+  if (!APP_ADMIN_USERNAMES.has(u)) {
+    return res.status(403).json({ error: 'admin only' });
+  }
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(405).json({ error: 'method not allowed' });
+  }
+  const sub = req.url || '/'; // path AFTER /api/cash, e.g. '/current' or '/heatmap?...'
+  if (/(^|\/)(sweep\/)?ingest/.test(sub)) {
+    return res.status(404).json({ error: 'not found' });
+  }
+  if (HAM_OWNER_ID == null) {
+    return res.status(503).json({ error: 'cash watcher owner unresolved' });
+  }
+  let ownerCookie;
+  try {
+    const tok = jwt.sign({ id: HAM_OWNER_ID, username: 'ham' }, JWT_SECRET, { expiresIn: '10m' });
+    ownerCookie = `${SESSION_COOKIE}=${encodeURIComponent(tok)}`;
+  } catch (e) {
+    return res.status(500).json({ error: 'cash auth mint failed' });
+  }
+  (async () => {
+    let upstream;
+    try {
+      upstream = await fetch(`${CASHWATCHER_URL}/api${sub}`, {
+        method: req.method,
+        headers: { cookie: ownerCookie, accept: 'application/json' },
+        redirect: 'manual',
+      });
+    } catch (err) {
+      console.error('[cash-app] upstream unreachable:', err && err.message);
+      return res.status(503).json({ error: 'cash watcher offline' });
+    }
+    if (upstream.status === 401) {
+      console.error('[cash-app] upstream rejected the minted owner session — check JWT_SECRET / CONSOLE_OWNER_USER_ID parity');
+      return res.status(502).json({ error: 'cash watcher rejected the session' });
+    }
+    const body = Buffer.from(await upstream.arrayBuffer());
+    const type = upstream.headers.get('content-type');
+    if (type) res.type(type);
+    res.status(upstream.status).send(body);
+  })();
+});
+
 // ── Backer-facing public surface (NOT under /console — backers have no creds) ──
 // Access is gated purely by the unguessable token in the URL; each token sees
 // only its own feed. Registered before the console gate + the SPA catch-all so
