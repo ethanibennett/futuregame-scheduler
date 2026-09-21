@@ -959,6 +959,41 @@ export const VENUE_COORDS = {
   'WSOPC Cherokee':              { lat: 35.4617, lng: -83.3225, region: 'NC' },
   'Choctaw Casino':              { lat: 34.0289, lng: -96.3931, region: 'OK' },
   'Horseshoe Tunica':            { lat: 34.6965, lng: -90.3398, region: 'MS' },
+
+  // ── Feed PROPERTY strings for rooms that have never had a curated series ──
+  // getVenueCoords also looks the feed row's `property` up here by its exact name, so these
+  // keys must match the watcher's spelling verbatim. City-level entries follow the same
+  // standard as PROPERTY_COORDS below: town centre, within a few miles, fine for the 100-mile
+  // default radius. (Rooms whose property has EVER appeared as a curated longName resolve via
+  // ABBR_BY_PROPERTY instead and don't need a row.)
+  'Ameristar Casino St. Charles':   { lat: 38.7687, lng: -90.4796, region: 'MO' },  // city-level
+  'Aria Casino':                    { lat: 36.1073, lng: -115.1765, region: 'NV' },
+  "Bally's Black Hawk Casino":      { lat: 39.7972, lng: -105.4917, region: 'CO' }, // city-level
+  'Bay 101 Casino':                 { lat: 37.3697, lng: -121.9223, region: 'CA' }, // city-level
+  'Caesars New Orleans':            { lat: 29.9490, lng: -90.0765, region: 'LA' },
+  'Casino Gran Via Madrid':         { lat: 40.4203, lng: -3.7058, region: 'ES' },
+  'Casino Middelkerke betFirst':    { lat: 51.1856, lng: 2.8203, region: 'BE' },    // city-level
+  'Celebrity Card Club Odessa':     { lat: 31.8457, lng: -102.3676, region: 'TX' }, // city-level
+  'Chamada Prestige Hotel & Spa':   { lat: 35.3417, lng: 33.3186, region: 'CY' },   // city-level (Kyrenia)
+  'Chances Casino Kelowna':         { lat: 49.8880, lng: -119.4960, region: 'BC' }, // city-level
+  'Chinook Winds Casino':           { lat: 44.9713, lng: -124.0179, region: 'OR' }, // city-level
+  'Commerce Casino':                { lat: 33.9963, lng: -118.1537, region: 'CA' },
+  'Elite Poker Lounge Brownsville': { lat: 25.9017, lng: -97.4975, region: 'TX' },  // city-level
+  'Foxwoods Casino':                { lat: 41.4719, lng: -71.9699, region: 'CT' },
+  'Grand Victoria Casino':          { lat: 42.0354, lng: -88.2826, region: 'IL' },  // city-level (Elgin)
+  'Hard Rock Hotel & Casino Bristol': { lat: 36.5951, lng: -82.1887, region: 'VA' }, // city-level
+  "Harrah's Pompano Beach":         { lat: 26.2379, lng: -80.1248, region: 'FL' },  // city-level
+  'Horseshoe Casino Council Bluffs':{ lat: 41.2619, lng: -95.8608, region: 'IA' },  // city-level
+  'Inspire Entertainment Resort':   { lat: 37.4438, lng: 126.4494, region: 'KR' },  // city-level (Incheon)
+  'MGM Cotai':                      { lat: 22.1470, lng: 113.5590, region: 'MACAU' }, // city-level
+  'Potawatomi Hotel & Casino':      { lat: 43.0192, lng: -87.9370, region: 'WI' },
+  'Pure Casino Yellowhead':         { lat: 53.5726, lng: -113.4938, region: 'AB' },  // city-level (Edmonton)
+  'Rivers Casino Philadelphia':     { lat: 39.9606, lng: -75.1417, region: 'PA' },
+  'Rivers Casino Schenectady':      { lat: 42.8266, lng: -73.9276, region: 'NY' },
+  'Spades Poker House Baytown':     { lat: 29.7355, lng: -94.9774, region: 'TX' },   // city-level
+  'Sycuan Casino':                  { lat: 32.7357, lng: -116.8697, region: 'CA' },  // city-level (El Cajon)
+  'Texas Card House Houston':       { lat: 29.7604, lng: -95.3698, region: 'TX' },   // city-level
+  'Texline Card House':             { lat: 36.3790, lng: -103.0197, region: 'TX' },  // city-level
 };
 
 // ── Property GPS coordinates (keyed by venue abbreviation) ──
@@ -1053,14 +1088,43 @@ const COORDS_BY_ABBR = (() => {
   return m;
 })();
 
-// Resolve a venue string to coordinates: an explicit legacy entry first, then the
-// property behind the series. Returns null when the location is genuinely unknown —
-// callers must decide what that means rather than assuming a match.
-export function getVenueCoords(venue) {
+// property name → abbr, built from the curated entries' longNames. By convention a curated
+// series entry's longName IS the hosting room's property string (it comes from the watcher's
+// series_directory), so any room that has EVER had a curated series resolves every FUTURE
+// uncurated series at that room through its `property` — "Big Stax XL" arrives with property
+// "Parx Casino", which "Big Stax XXXIX"'s curated row already binds to PARX and its coordinates.
+// The "WSOPC " longName prefix is display-only (isRingEvent keys on it) and is stripped here.
+// NOTE: this must NOT guess by derived abbreviation — "Hard Rock Casino Cincinnati" derives to
+// the same 'HARD ROCK' abbr as Seminole Hollywood, 900 miles away. Exact property names only.
+const ABBR_BY_PROPERTY = (() => {
+  const m = new Map();
+  for (const info of Object.values(VENUE_MAP)) {
+    const prop = (info.longName || '').replace(/^WSOPC\s+/, '');
+    if (prop && !m.has(prop)) m.set(prop, info.abbr);
+  }
+  return m;
+})();
+
+// Resolve a venue string to coordinates: an explicit legacy entry first, then the curated
+// venue entry's abbr, then the hosting room named by the feed's `property` (pass it from the
+// row when you have it — the PROPERTY_BY_VENUE fallback only knows venues something already
+// rendered). Returns null when the location is genuinely unknown — callers must decide what
+// that means rather than assuming a match. Before the property arm existed, every uncurated
+// feed series lacked coordinates and BOTH location filters silently hid it — 110 of 194 feed
+// venues, including entire series the watcher had just added (Big Stax XL, the 2026 RRPO).
+export function getVenueCoords(venue, property) {
   const direct = VENUE_COORDS[venue];
   if (direct) return direct;
   const info = VENUE_MAP[venue];
-  return (info && COORDS_BY_ABBR.get(info.abbr)) || null;
+  const byAbbr = info && COORDS_BY_ABBR.get(info.abbr);
+  if (byAbbr) return byAbbr;
+  const prop = property || PROPERTY_BY_VENUE.get(venue);
+  if (prop) {
+    if (VENUE_COORDS[prop]) return VENUE_COORDS[prop];
+    const abbr = ABBR_BY_PROPERTY.get(prop);
+    if (abbr) return COORDS_BY_ABBR.get(abbr) || null;
+  }
+  return null;
 }
 
 // ── Location Regions ─────────────────────────────────────
@@ -1160,13 +1224,13 @@ export function matchesLocation(t, filters) {
   if (!filters) return true;
   if (isOnline(t)) return true;
   if (filters.maxDistance && filters.userLocation) {
-    const coords = getVenueCoords(t.venue);
+    const coords = getVenueCoords(t.venue, t.property);
     if (!coords) return false;
     const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
     if (dist > Number(filters.maxDistance)) return false;
   }
   if (filters.locationRegion) {
-    const coords = getVenueCoords(t.venue);
+    const coords = getVenueCoords(t.venue, t.property);
     const regionDef = LOCATION_REGIONS[filters.locationRegion];
     if (regionDef && (!coords || !regionDef.test(coords))) return false;
   }

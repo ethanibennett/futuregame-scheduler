@@ -866,13 +866,13 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           }
         }
         if (!isOnline(t) && filters.maxDistance && filters.userLocation) {
-          const coords = getVenueCoords(t.venue);
+          const coords = getVenueCoords(t.venue, t.property);
           if (!coords) return false;
           const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
           if (dist > Number(filters.maxDistance)) return false;
         }
         if (!isOnline(t) && filters.locationRegion) {
-          const coords = getVenueCoords(t.venue);
+          const coords = getVenueCoords(t.venue, t.property);
           const regionDef = typeof LOCATION_REGIONS !== 'undefined' && LOCATION_REGIONS[filters.locationRegion];
           if (regionDef) { if (!coords || !regionDef.test(coords)) return false; }
         }

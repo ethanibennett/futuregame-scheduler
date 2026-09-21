@@ -37,6 +37,23 @@ eq('legacy online passes too', matchesLocation(legacy, nearVegas), true);
 eq('a Vegas venue passes near Vegas', matchesLocation(vegas, nearVegas), true);
 eq('a Vegas venue FAILS the Texas region', matchesLocation(vegas, regionTx), false);
 
+console.log('matchesLocation — uncurated feed series resolve through their property');
+// The feed names its "venue" after the SERIES; without a curated VENUE_MAP row the venue string
+// resolves no coordinates, and both location filters silently hid the whole series (110 of 194
+// feed venues on 2026-09-21, including Big Stax XL and the 2026 RRPO). The row's `property` —
+// the hosting room — is the stable key: curated longNames bind it to an abbr, and never-curated
+// rooms get an exact-name VENUE_COORDS row.
+const rrpo = { venue: '2026 Rock ‘n’ Roll Poker Open', property: 'Seminole Hard Rock Hollywood' };
+const bigStax = { venue: 'Big Stax XL', property: 'Parx Casino' };
+const pinktober = { venue: '2026 Pinktober Poker Open', property: 'Seminole Hard Rock Tampa' };
+const nearPhilly = { maxDistance: '50', userLocation: { lat: 39.9526, lng: -75.1652 } };
+eq('an uncurated FL series passes the Florida region via its property', matchesLocation(rrpo, { locationRegion: 'florida' }), true);
+eq('and FAILS the Northeast region', matchesLocation(rrpo, { locationRegion: 'northeast' }), false);
+eq('Big Stax XL is within 50 miles of Philadelphia', matchesLocation(bigStax, nearPhilly), true);
+eq('but not within 50 miles of Vegas', matchesLocation(bigStax, nearVegas), false);
+eq('Tampa does not inherit Hollywood coords: 150mi from Hollywood excludes it (they are ~190mi apart)', matchesLocation(pinktober, { maxDistance: '150', userLocation: { lat: 26.0512, lng: -80.2109 } }), false);
+eq('a venue with no coords and no property is still hidden, not shown nationwide', matchesLocation({ venue: 'Fall Series' }, nearPhilly), false);
+
 console.log('matchesOnline — the toggle');
 eq('shown by default (field absent)', matchesOnline(online, {}), true);
 eq('shown when true', matchesOnline(online, { showOnline: true }), true);
