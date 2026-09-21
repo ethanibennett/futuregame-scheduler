@@ -84,6 +84,12 @@
 	     while this is empty, sharing falls back to the iOS share sheet. -->
 	<key>FacebookAppID</key>
 	<string>2849722905386924</string>
+	<!-- WKWebView routes navigator.geolocation through CoreLocation, and CoreLocation refuses to
+	     even PROMPT without this key — the web layer just gets a denial, so "Current Location"
+	     showed "Could not get your location" with no permission dialog. The PWA never hit this
+	     because Safari holds the location entitlement itself; the wrapper declares its own. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>futurega.me uses your location to find tournaments near you</string>
 	<key>NSCameraUsageDescription</key>
 	<string>futurega.me uses the camera for table scanning and registration photos</string>
 	<key>NSPhotoLibraryUsageDescription</key>
