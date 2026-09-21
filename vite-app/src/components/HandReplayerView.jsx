@@ -6599,6 +6599,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
            cards currently on the table shrank them when the 6th arrived, so a
            stud hand changed size halfway through. */
         data-hand-cards={gameCfg.heroCards || 2}
+        /* Community games have the central board that sits over the wordmark;
+           the export moves the wordmark clear of it only when this is set. */
+        data-community={gameCfg.hasBoard && !gameCfg.isStud ? '1' : '0'}
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
       data-felt={rSettings.feltBright ? 'bright' : 'dark'}
