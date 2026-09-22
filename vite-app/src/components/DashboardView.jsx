@@ -454,7 +454,9 @@ export default function DashboardView({
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInSchedule(); }
         } : undefined}
       >
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}>{venueInfo.abbr}</div>
+        {/* The Up Next banner shows the FULL venue name, never the strip
+            abbreviation — abbr stays only for the brand colour + WSOP casing. */}
+        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em', padding: '0 12px'}}>{venueInfo.longName || venueInfo.abbr}</div>
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {!isConditionalOnPlaying && (
           <div style={{display:'flex',flexWrap:'wrap',gap:'4px',alignItems:'center'}}>
