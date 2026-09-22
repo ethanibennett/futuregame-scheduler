@@ -111,7 +111,7 @@ export default function CashView({ token }) {
                 <section key={v.slug} style={{ border: '1px solid var(--border, #2a2a2a)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface, rgba(255,255,255,0.02))' }}>
                   <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border, #2a2a2a)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text, #fff)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</span>
+                      <span style={{ fontFamily: "'Baskerville', 'Baskerville Old Face', 'Libre Baskerville', 'Hoefler Text', Garamond, serif", fontSize: '1.05rem', color: 'var(--text, #fff)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</span>
                       <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', border: '1px solid var(--border,#333)', borderRadius: 5, padding: '1px 5px', whiteSpace: 'nowrap' }}>
                         {SOURCE_LABEL[v.source] || v.source}
                       </span>
