@@ -1,11 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../utils/api.js';
+import { deriveVenueInfo } from '../utils/utils.js';
 
 // ── Cash watcher: Live now ──
 // Admin-only. Reads the cash-game traffic watcher through the scheduler's
-// Bearer-gated proxy (/api/cash/* -> cashwatcher.futurega.me). This first
-// screen is "what's running right now" across the collected venues; heatmaps
-// and history come later off the same proxy.
+// Bearer-gated proxy (/api/cash/* -> cashwatcher.futurega.me). This screen is
+// "what's running right now" per venue, with each game's open duration derived
+// from the watcher's history, and a persistent variant filter.
+
+const BASKERVILLE = "'Baskerville', 'Baskerville Old Face', 'Libre Baskerville', 'Hoefler Text', Garamond, serif";
+const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
+const SOURCE_LABEL = { bravo: 'Bravo', pokeratlas: 'PokerAtlas' };
+const HIDDEN_KEY = 'cashHiddenVariants'; // persisted set of variant labels to hide
+
+// How long a game has been open = the length of its current unbroken run. The
+// watcher polls every ~10 min, so a gap longer than ~2 polls means the game
+// actually stopped and later restarted; anything shorter is just a missed poll.
+const GAP_MAX_MS = 25 * 60 * 1000;
+const HISTORY_HOURS = 16;
+const gameKey = (venueSlug, gameType, stakes) => `${venueSlug}|${gameType}|${stakes}`;
 
 function ago(iso) {
   if (!iso) return null;
@@ -18,17 +31,6 @@ function ago(iso) {
   return Math.floor(s / 86400) + 'd ago';
 }
 
-const SOURCE_LABEL = { bravo: 'Bravo', pokeratlas: 'PokerAtlas' };
-
-// How long a game has been open = the length of its current unbroken run. The
-// watcher polls every ~10 min, so a gap longer than ~2 polls means the game
-// actually stopped and later restarted; anything shorter is just a missed poll.
-const GAP_MAX_MS = 25 * 60 * 1000;
-const HISTORY_HOURS = 16; // how far back to look for a run's start
-const gameKey = (venueSlug, gameType, stakes) => `${venueSlug}|${gameType}|${stakes}`;
-
-// Build, per running game, the timestamp its current run began, by walking its
-// running snapshots backward from newest while the gaps stay within GAP_MAX_MS.
 function buildRunStarts(rows) {
   const byGame = new Map();
   for (const r of (rows || [])) {
@@ -53,17 +55,16 @@ function buildRunStarts(rows) {
   return starts;
 }
 
-// "2h 10m" style, with a trailing + when the run reaches the history window edge
-// (so the true open time may be longer than we looked back).
+// "open 2h 10m", with a trailing + when the run reaches the history window edge.
 function openLabel(startMs, endMs, windowStartMs) {
   if (startMs == null || endMs == null) return null;
   const mins = Math.floor((endMs - startMs) / 60000);
   const capped = startMs <= windowStartMs + GAP_MAX_MS;
   let s;
-  if (mins < 10) s = 'just opened';
+  if (mins < 10) return 'just opened';
   else if (mins < 60) s = `${mins}m`;
   else { const h = Math.floor(mins / 60), m = mins % 60; s = `${h}h${m ? ` ${m}m` : ''}`; }
-  return (mins >= 10 && capped) ? s + '+' : s;
+  return 'open ' + s + (capped ? '+' : '');
 }
 
 export default function CashView({ token }) {
@@ -73,14 +74,26 @@ export default function CashView({ token }) {
   const [fetchedAt, setFetchedAt] = useState(null);
   const [runStarts, setRunStarts] = useState(new Map());
   const [windowStartMs, setWindowStartMs] = useState(0);
+  // Persistent variant filter — the SET OF HIDDEN variants, so a variant we've
+  // never seen defaults to visible. Survives until the user toggles it.
+  const [hidden, setHidden] = useState(() => {
+    try { const s = localStorage.getItem(HIDDEN_KEY); return new Set(s ? JSON.parse(s) : []); } catch { return new Set(); }
+  });
+
+  const toggleVariant = useCallback((variant) => {
+    setHidden(prev => {
+      const n = new Set(prev);
+      if (n.has(variant)) n.delete(variant); else n.add(variant);
+      try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...n])); } catch { /* ignore */ }
+      return n;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     const headers = { Authorization: 'Bearer ' + token };
     const fromMs = Date.now() - HISTORY_HOURS * 3600 * 1000;
     const fromIso = new Date(fromMs).toISOString();
     try {
-      // History drives the "open since" durations; it's best-effort — a failure
-      // there just hides the durations, it doesn't fail the whole view.
       const [curRes, histRes] = await Promise.all([
         fetch(`${API_URL}/cash/current`, { headers }),
         fetch(`${API_URL}/cash/history?from=${encodeURIComponent(fromIso)}&limit=10000`, { headers }).catch(() => null),
@@ -114,32 +127,69 @@ export default function CashView({ token }) {
 
   useEffect(() => {
     load();
-    // The collector polls every ~10 min; refresh a bit inside that.
     const id = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [load]);
 
   const snapMs = (data && Date.parse(data.ts)) || Date.now();
-  const venues = (data && Array.isArray(data.venues) ? data.venues : [])
-    .map(v => ({ ...v, totalTables: (v.games || []).reduce((s, g) => s + (g.tablesRunning || 0), 0) }))
-    .sort((a, b) => (b.totalTables - a.totalTables) || String(a.name).localeCompare(String(b.name)));
+  const rawVenues = (data && Array.isArray(data.venues) ? data.venues : []);
+
+  // The variant chips are every variant currently seen anywhere, so the filter
+  // offers exactly what's on the table.
+  const availableVariants = [...new Set(
+    rawVenues.flatMap(v => (v.games || []).map(g => g.gameType)).filter(Boolean)
+  )].sort();
 
   const sortGames = (games) => [...(games || [])].sort((a, b) =>
     (b.tablesRunning || 0) - (a.tablesRunning || 0) ||
     (b.waitlistLen || 0) - (a.waitlistLen || 0) ||
     String(a.stakes).localeCompare(String(b.stakes)));
 
+  const filterActive = hidden.size > 0;
+  const venues = rawVenues.map(v => {
+    const games = sortGames(v.games).filter(g => !hidden.has(g.gameType));
+    const running = games.filter(g => (g.tablesRunning || 0) > 0);
+    const interest = games.filter(g => !(g.tablesRunning > 0) && (g.isInterest || (g.waitlistLen || 0) > 0));
+    const totalTables = running.reduce((s, g) => s + (g.tablesRunning || 0), 0);
+    return { ...v, _running: running, _interest: interest, _totalTables: totalTables };
+  })
+    // With a filter on, drop venues that no longer have anything to show. With
+    // no filter, keep them all (an idle-but-watched room is informative).
+    .filter(v => v.ok === false || !filterActive || v._running.length || v._interest.length)
+    .sort((a, b) => (b._totalTables - a._totalTables) || String(a.name).localeCompare(String(b.name)));
+
   return (
     <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 'var(--space-md, 16px)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-        <h2 style={{ margin: 0, fontFamily: "var(--font-condensed, inherit)", textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '1.15rem', color: 'var(--text, #fff)' }}>
-          Live cash games
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+        <h2 style={{ margin: 0, fontFamily: BASKERVILLE, fontSize: '1.6rem', fontWeight: 600, color: 'var(--text, #fff)' }}>
+          Live Cash Games
         </h2>
         <button onClick={load}
           style={{ border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
           {status === 'loading' ? 'Loading…' : 'Refresh'}
         </button>
       </div>
+
+      {/* Persistent variant filter */}
+      {availableVariants.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {availableVariants.map(vt => {
+            const on = !hidden.has(vt);
+            return (
+              <button key={vt} onClick={() => toggleVariant(vt)}
+                style={{
+                  fontFamily: UNIVERS, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em',
+                  padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
+                  border: '1px solid ' + (on ? 'var(--text-muted, #999)' : 'var(--border, #333)'),
+                  background: on ? 'var(--text-muted, #999)' : 'transparent',
+                  color: on ? 'var(--bg, #111)' : 'var(--text-muted, #777)',
+                }}>
+                {vt}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {status === 'error' && (
         <div style={{ border: '1px solid var(--border, #333)', borderRadius: 10, padding: 16, color: 'var(--text-muted, #aaa)' }}>
@@ -161,27 +211,30 @@ export default function CashView({ token }) {
           </div>
 
           {venues.length === 0 && (
-            <div style={{ color: 'var(--text-muted, #aaa)', padding: 20, textAlign: 'center' }}>No venues reporting.</div>
+            <div style={{ color: 'var(--text-muted, #aaa)', padding: 20, textAlign: 'center' }}>
+              {filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
+            </div>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {venues.map(v => {
-              const games = sortGames(v.games);
-              const running = games.filter(g => (g.tablesRunning || 0) > 0);
-              const interest = games.filter(g => !(g.tablesRunning > 0) && (g.isInterest || (g.waitlistLen || 0) > 0));
+              const color = deriveVenueInfo(v.name).color;
+              const running = v._running, interest = v._interest;
               return (
                 <section key={v.slug} style={{ border: '1px solid var(--border, #2a2a2a)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface, rgba(255,255,255,0.02))' }}>
-                  <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border, #2a2a2a)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{ fontFamily: "'Baskerville', 'Baskerville Old Face', 'Libre Baskerville', 'Hoefler Text', Garamond, serif", fontSize: '1.05rem', color: 'var(--text, #fff)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</span>
-                      <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', border: '1px solid var(--border,#333)', borderRadius: 5, padding: '1px 5px', whiteSpace: 'nowrap' }}>
-                        {SOURCE_LABEL[v.source] || v.source}
-                      </span>
-                    </div>
+                  {/* Venue strip — same treatment as the Up Next banner: a
+                      brand-coloured bar, full venue name in Univers, uppercase. */}
+                  <div style={{ background: color, color: '#fff', textAlign: 'center', padding: '6px 14px', fontFamily: UNIVERS, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {v.name}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 14px', borderBottom: '1px solid var(--border, #2a2a2a)' }}>
+                    <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', border: '1px solid var(--border,#333)', borderRadius: 5, padding: '1px 6px' }}>
+                      {SOURCE_LABEL[v.source] || v.source}
+                    </span>
                     <span style={{ fontSize: '0.66rem', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>
                       {v.ok === false ? 'poll failed' : v.ok === null ? 'no data yet' : (ago(v.lastPollTs) || '')}
                     </span>
-                  </header>
+                  </div>
 
                   {v.ok === false ? (
                     <div style={{ padding: '10px 14px', color: 'var(--text-muted,#888)', fontSize: '0.78rem' }}>Couldn’t read this room’s feed{v.error ? ` (${v.error})` : ''}.</div>
@@ -193,12 +246,12 @@ export default function CashView({ token }) {
                         const open = openLabel(runStarts.get(gameKey(v.slug, g.gameType, g.stakes)), snapMs, windowStartMs);
                         return (
                           <div key={'r' + i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: i ? '1px solid var(--border, rgba(255,255,255,0.05))' : 'none' }}>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 66 }}>{g.stakes}</span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {g.gameType}
-                              {open && <span style={{ color: 'var(--text-muted, #777)' }}> · open {open}</span>}
-                            </span>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text, #fff)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 62 }}>{g.stakes}</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.gameType}</span>
+                            {open && (
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>{open}</span>
+                            )}
+                            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text, #fff)', fontSize: '0.8rem', whiteSpace: 'nowrap', minWidth: 58, textAlign: 'right' }}>
                               {g.tablesRunning}<span style={{ color: 'var(--text-muted,#888)' }}> {g.tablesRunning === 1 ? 'table' : 'tables'}</span>
                             </span>
                             {(g.waitlistLen || 0) > 0 && (
