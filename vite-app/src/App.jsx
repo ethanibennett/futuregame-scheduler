@@ -1434,12 +1434,6 @@ export default function App() {
                     Admin
                   </button>
                 )}
-                {isAdmin && (
-                  <button onClick={() => { setShowUserMenu(false); setCurrentView('cash'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
-                    Cash
-                  </button>
-                )}
                 <div style={{height:'1px',background:'var(--border)',margin:'2px 0'}} />
                 <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
                   style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'0.85rem'}}>

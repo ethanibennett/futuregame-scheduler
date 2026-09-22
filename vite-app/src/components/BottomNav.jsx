@@ -10,7 +10,8 @@ export default function BottomNav({ current, onChange, scheduleCount, newShareCo
     // Hand Replayer — admin-only entry in the footer until the
     // feature ships to all users.
     ...(isAdmin ? [{ id: 'hands', label: 'Hands', icon: Icon.cards }] : []),
-    { id: 'staking', label: 'Staking', icon: Icon.handshake },
+    // Cash watcher replaced Staking in this slot — admin-only for now.
+    ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
 
   return (
