@@ -6289,11 +6289,18 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     2:  [seat(CC,RT), seat(CC,RB)],
     3:  [seat(5.5,RT), seat(CC,RB), seat(10.5,RT)],
     4:  [seat(CC,RT), seat(CR,16), seat(CC,RB), seat(CL,16)],
-    5:  [seat(5.5,RT), seat(CR,16), seat(CC,RB), seat(CL,16), seat(10.5,RT)],
+    /* Odd counts (5/7/9) have TWO top seats. A layout is a ring — consecutive
+       players must be ADJACENT seats — but these listed top-left first and
+       top-right last, so index 0→1 and (n-2)→(n-1) each jumped clean across the
+       top (the same fault the 10-max note fixed). Putting top-RIGHT first and
+       top-LEFT last makes the ring continuous (down the right, across the
+       bottom, up the left, and the two top seats meet at the wrap). Bottom
+       stays at index ⌊n/2⌋ so the hero-to-bottom rotation is unchanged. */
+    5:  [seat(10.5,RT), seat(CR,16), seat(CC,RB), seat(CL,16), seat(5.5,RT)],
     6:  [seat(CC,RT), seat(CR,11.5), seat(CR,20.5), seat(CC,RB), seat(CL,20.5), seat(CL,11.5)],
-    7:  [seat(5.5,RT), seat(CR,12), seat(CR,20), seat(CC,RB), seat(CL,20), seat(CL,12), seat(10.5,RT)],
+    7:  [seat(10.5,RT), seat(CR,12), seat(CR,20), seat(CC,RB), seat(CL,20), seat(CL,12), seat(5.5,RT)],
     8:  [seat(CC,RT), seat(CR,9), seat(CR,16), seat(CR,23), seat(CC,RB), seat(CL,23), seat(CL,16), seat(CL,9)],
-    9:  [seat(5.5,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(10.5,RT)],
+    9:  [seat(10.5,RT), seat(CR,10), seat(CR,16), seat(CR,22), seat(CC,RB), seat(CL,22), seat(CL,16), seat(CL,10), seat(5.5,RT)],
     /* FOUR a side, not three across the top. Every other even count already
        runs one seat on the top row, one on the bottom and the rest split
        evenly down the two sides — 8-max is 1/3/1/3, 6-max is 1/2/1/2, 4-max
