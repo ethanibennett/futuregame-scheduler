@@ -2108,6 +2108,16 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     try { localStorage.setItem('replayerBuyinCap', String(cap)); } catch { /* ignore */ }
     setHand(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, startingStack: cap })) }));
   };
+  // Reset names to generic placeholders — the hero keeps your name, everyone else
+  // becomes Opp 1, Opp 2, … (numbered over the non-hero seats).
+  const resetNames = () => {
+    setHand(prev => {
+      const hIdx = prev.heroIdx != null ? prev.heroIdx : 0;
+      return { ...prev, players: prev.players.map((p, i) => ({
+        ...p, name: i === hIdx ? (heroName || 'Hero') : ('Opp ' + (i < hIdx ? i + 1 : i)),
+      })) };
+    });
+  };
 
   const gameCfg = HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT;
   const streetDef = getStreetDef(hand.gameType);
@@ -2692,6 +2702,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 placeholder="Cap" style={{textAlign:'right'}} />
             </div>
             <button className="btn btn-ghost btn-sm" onClick={resetStacks} title="Set every seat's stack to the cap">Reset stacks</button>
+            <button className="btn btn-ghost btn-sm" onClick={resetNames} title="Hero keeps your name; everyone else becomes Opp 1, 2, …">Reset names</button>
           </div>
         )}
         <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
