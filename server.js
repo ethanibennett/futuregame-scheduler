@@ -402,10 +402,12 @@ app.use('/api/cash', authenticateToken, (req, res) => {
   if (!APP_ADMIN_USERNAMES.has(u)) {
     return res.status(403).json({ error: 'admin only' });
   }
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
+  const sub = req.url || '/'; // path AFTER /api/cash, e.g. '/current' or '/location'
+  // Reads are open; the one write we proxy is the location picker (SPEC §5).
+  const isLocationWrite = req.method === 'POST' && /^\/location(\?|$)/.test(sub);
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !isLocationWrite) {
     return res.status(405).json({ error: 'method not allowed' });
   }
-  const sub = req.url || '/'; // path AFTER /api/cash, e.g. '/current' or '/heatmap?...'
   if (/(^|\/)(sweep\/)?ingest/.test(sub)) {
     return res.status(404).json({ error: 'not found' });
   }
@@ -422,11 +424,16 @@ app.use('/api/cash', authenticateToken, (req, res) => {
   (async () => {
     let upstream;
     try {
-      upstream = await fetch(`${CASHWATCHER_URL}/api${sub}`, {
+      const init = {
         method: req.method,
         headers: { cookie: ownerCookie, accept: 'application/json' },
         redirect: 'manual',
-      });
+      };
+      if (isLocationWrite) {
+        init.headers['content-type'] = 'application/json';
+        init.body = JSON.stringify(req.body || {});
+      }
+      upstream = await fetch(`${CASHWATCHER_URL}/api${sub}`, init);
     } catch (err) {
       console.error('[cash-app] upstream unreachable:', err && err.message);
       return res.status(503).json({ error: 'cash watcher offline' });

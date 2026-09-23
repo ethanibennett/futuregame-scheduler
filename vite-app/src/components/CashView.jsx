@@ -87,6 +87,88 @@ function openLabel(startMs, endMs, windowStartMs) {
   return 'open ' + s + (capped ? '+' : '');
 }
 
+// The persistent location the watcher polls around (SPEC §5). Sticky until
+// changed, independent of the scheduler's own location filter. Reads/writes
+// through the cash proxy → hosted watcher; the box picks it up within a cycle.
+function CashLocationPicker({ token }) {
+  const [loc, setLoc] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [city, setCity] = useState('');
+  const [radius, setRadius] = useState('100');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const loadLoc = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
+      if (r.ok) setLoc(await r.json());
+    } catch { /* leave unknown */ }
+  }, [token]);
+  useEffect(() => { loadLoc(); }, [loadLoc]);
+
+  const startEdit = () => {
+    setCity(loc && loc.label && loc.label !== 'Home' ? loc.label : '');
+    setRadius(String((loc && loc.radiusMiles) || 100));
+    setMsg('');
+    setEditing(true);
+  };
+
+  const save = async () => {
+    const q = city.trim();
+    if (!q) { setMsg('Enter a city or address.'); return; }
+    const miles = Math.max(5, Math.min(1000, Number(radius) || 100));
+    setBusy(true); setMsg('');
+    try {
+      const g = await fetch(`${API_URL}/geocode?q=${encodeURIComponent(q)}`, { headers: { Authorization: 'Bearer ' + token } });
+      const results = g.ok ? await g.json() : [];
+      if (!results.length) { setMsg('Couldn’t find that place.'); setBusy(false); return; }
+      const top = results[0];
+      const body = { lat: top.lat, lon: top.lng, radiusMiles: miles, label: top.short || q };
+      const p = await fetch(`${API_URL}/cash/location`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!p.ok) { setMsg('Save failed.'); setBusy(false); return; }
+      setLoc(await p.json());
+      setEditing(false);
+    } catch { setMsg('Save failed.'); }
+    setBusy(false);
+  };
+
+  const inputStyle = { background: 'var(--surface, rgba(255,255,255,0.04))', color: 'var(--text, #fff)', border: '1px solid var(--border, #333)', borderRadius: 8, padding: '5px 9px', fontSize: '0.78rem' };
+  const btnStyle = (primary) => ({ border: '1px solid ' + (primary ? 'var(--text, #fff)' : 'var(--border, #333)'), background: primary ? 'var(--text, #fff)' : 'transparent', color: primary ? 'var(--bg, #111)' : 'var(--text-muted, #aaa)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' });
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {!editing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: UNIVERS, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)' }}>
+            {'📍 '}{loc ? `${loc.label} · ${loc.radiusMiles} mi` : 'Location…'}
+          </span>
+          <button onClick={startEdit} style={btnStyle(false)}>Change</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <input value={city} onChange={e => setCity(e.target.value)} placeholder="City or address"
+            onKeyDown={e => { if (e.key === 'Enter') save(); }} style={{ ...inputStyle, flex: '1 1 160px', minWidth: 120 }} autoFocus />
+          <input value={radius} onChange={e => setRadius(e.target.value.replace(/[^0-9]/g, ''))}
+            inputMode="numeric" style={{ ...inputStyle, width: 56, textAlign: 'right' }} title="Radius in miles" />
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #888)' }}>mi</span>
+          <button onClick={save} disabled={busy} style={btnStyle(true)}>{busy ? 'Saving…' : 'Set'}</button>
+          <button onClick={() => setEditing(false)} disabled={busy} style={btnStyle(false)}>Cancel</button>
+        </div>
+      )}
+      {msg && <div style={{ fontSize: '0.7rem', color: 'var(--warning, #e0a458)', marginTop: 4 }}>{msg}</div>}
+      {editing && !msg && (
+        <div style={{ fontSize: '0.66rem', color: 'var(--text-muted, #777)', marginTop: 4 }}>
+          The collector picks up a new location within a few minutes.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CashView({ token }) {
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ok | error
@@ -211,6 +293,9 @@ export default function CashView({ token }) {
       {mode === 'heatmap' && <CashHeatmap token={token} />}
 
       {mode === 'live' && (<>
+
+      {/* Persistent location picker — what the watcher polls around (SPEC §5) */}
+      <CashLocationPicker token={token} />
 
       {/* Persistent variant filter */}
       {availableVariants.length > 0 && (
