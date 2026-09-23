@@ -178,9 +178,11 @@ export default function CashHeatmap({ token }) {
                     const val = !hasData ? '' : metric === 'reliability' ? String(Math.round((c.ranFraction || 0) * 100)) : fmtTables(c.meanTables);
                     return (
                       <button key={h}
+                        className={'cash-heat-cell' + (hasData ? '' : ' no-data')}
                         onClick={() => setPick(hasData ? { dow: d, hour: h, ...c } : null)}
                         title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                         style={{
+                          position: 'relative',
                           aspectRatio: '1 / 1', minHeight: 20, border: active ? '1px solid var(--text,#fff)' : '1px solid transparent',
                           borderRadius: 2, background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',

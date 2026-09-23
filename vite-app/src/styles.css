@@ -11270,3 +11270,12 @@
         overflow-y: auto;
       }
     }
+
+    /* Cash heatmap: magnify a cell (and its number, which the transform scales
+       with it) on hover for a readable close-up. Data cells only. */
+    .cash-heat-cell { transition: transform 0.08s ease; }
+    .cash-heat-cell:not(.no-data):hover {
+      transform: scale(2);
+      z-index: 6;
+      border-color: var(--text, #fff) !important;
+    }
