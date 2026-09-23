@@ -6484,6 +6484,15 @@
       margin-right: var(--space-xs);
     }
     .replayer-pot-display.has-sides { padding-bottom: var(--space-xs); }
+    /* Side pots add a pills row ABOVE the total. The block is centred on its
+       anchor, so that extra row pushed the TOTAL straight down onto the board —
+       measured at 0px between the total and the top card while 25px of air sat
+       below the board. Lift the block in the multi-pot case so the total clears
+       the cards by ~23px, matching the gap beneath them. Portrait only; the
+       landscape/export anchor (35.6%) is a different composition. */
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-display.has-sides {
+      top: 38.1%;
+    }
 
     /* 94 + 95: the level, and where this hand sits in the tournament. */
     .replayer-table-info .replayer-level-blinds,
