@@ -1540,6 +1540,27 @@ function useReplayerSetting(key, defaultVal, seed) {
   return [val, update];
 }
 
+// A live thumbnail of the hole-card fan at the current Splay Amount, drawn with
+// the same getSplayStyle the table uses so the slider previews the real thing.
+function SplayPreview({ scale }) {
+  const n = 4;
+  return (
+    <div style={{ position: 'relative', width: 62, height: 40, flex: '0 0 auto', '--card-w': '13px', alignSelf: 'center' }}>
+      {Array.from({ length: n }, (_, i) => {
+        const st = getSplayStyle(i, n, 15, 0, false, n, scale);
+        return (
+          <div key={i} style={{
+            width: '13px', height: '19px', borderRadius: '2px',
+            background: 'linear-gradient(155deg, #f6f3ec, #d9d3c5)',
+            boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.28)',
+            ...st,
+          }} />
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Settings Panel ──
 function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
   return createPortal(
@@ -1696,7 +1717,8 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               <div className="replayer-settings-label">Splay Amount</div>
               <div className="replayer-settings-sublabel">How wide the hole-card fan opens</div>
               <div style={{display:'flex', alignItems:'center', gap:'10px', width:'100%', marginTop:'6px'}}>
-                <input type="range" className="gto-raise-slider" min={0} max={100} step={5}
+                <SplayPreview scale={(Number(settings.splayAmount) || 0) / 100} />
+                <input type="range" className="gto-raise-slider" min={0} max={175} step={5}
                   value={Number(settings.splayAmount) || 0} aria-label="Splay amount"
                   onChange={e => onUpdate('splayAmount', Number(e.target.value))} style={{flex:'1 1 auto'}} />
                 <span style={{fontFamily:'var(--font-condensed)', fontVariantNumeric:'tabular-nums', minWidth:'36px', textAlign:'right', color:'var(--text-muted)', fontSize:'0.8rem'}}>{Number(settings.splayAmount) || 0}%</span>
