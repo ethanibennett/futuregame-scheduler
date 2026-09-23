@@ -180,6 +180,7 @@ export default function CashHeatmap({ token }) {
                       <button key={h}
                         className={'cash-heat-cell' + (hasData ? '' : ' no-data')}
                         onClick={() => setPick(hasData ? { dow: d, hour: h, ...c } : null)}
+                        onMouseEnter={() => { if (hasData) setPick({ dow: d, hour: h, ...c }); }}
                         title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                         style={{
                           position: 'relative',
