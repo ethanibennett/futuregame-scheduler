@@ -6749,27 +6749,33 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   cell is the half of the pot that is a picture of what the
                   number already says, and this is the one step where the
                   number has a second line to carry. */}
-              {rSettings.showChipStacks && displayPot > 0 && !isSplitResult && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+              {/* Main + side pots stack as a row ABOVE the primary total, so the
+                  layers read as the breakdown of the one big number below. */}
               {potLayers.length > 1 && (
-                <div className="replayer-pot-pill">
-                  <span className="replayer-pot-cell-label">Main</span>
-                  {fmtChips(potLayers[0].amount)}
+                <div className="replayer-pot-layers">
+                  <div className="replayer-pot-pill">
+                    <span className="replayer-pot-cell-label">Main</span>
+                    {fmtChips(potLayers[0].amount)}
+                  </div>
+                  {potLayers.slice(1, 4).map((layer, i) => (
+                    <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
+                      <span className="replayer-pot-cell-label">
+                        {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
+                      </span>
+                      {fmtChips(layer.amount)}
+                    </div>
+                  ))}
                 </div>
               )}
-              <div className="replayer-pot-total">
-                <span className="replayer-pot-cell-label">
-                  {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
-                </span>
-                {fmtChips(countedPot)}
-              </div>
-              {potLayers.slice(1, 4).map((layer, i) => (
-                <div key={i} className="replayer-pot-pill" title={layer.eligible + '-way'}>
+              <div className="replayer-pot-main">
+                {rSettings.showChipStacks && displayPot > 0 && !isSplitResult && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+                <div className="replayer-pot-total">
                   <span className="replayer-pot-cell-label">
-                    {potLayers.length > 2 ? 'Side ' + (i + 1) : 'Side'}
+                    {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
-                  {fmtChips(layer.amount)}
+                  {fmtChips(countedPot)}
                 </div>
-              ))}
+              </div>
             </div>
           );
           if (isSplitResult) {
@@ -6938,9 +6944,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
              where 100 was an sb nothing posts. */
           const limitGame = gameCfg.betting === 'fl';
           const bigB = b.bigBet || (b.bb || 0) * 2;
+          // A straddle is a live blind and belongs in the stakes line: 10/10/20.
+          const straddleAmt = getStraddles(hand.players, b).reduce((m, s) => Math.max(m, s.amount || 0), 0);
           const sizes = b.bb
             ? (limitGame ? formatChipAmount(b.bb) + '/' + formatChipAmount(bigB)
-                         : formatChipAmount(b.sb) + '/' + formatChipAmount(b.bb))
+                         : formatChipAmount(b.sb) + '/' + formatChipAmount(b.bb)
+                           + (straddleAmt ? '/' + formatChipAmount(straddleAmt) : ''))
               + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
           const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');

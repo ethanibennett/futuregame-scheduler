@@ -4119,10 +4119,13 @@
        total at the pot's existing size rather than the reference's smaller
        one, so the largest number on the table stays the largest. */
     .replayer-pot-row {
-      display: flex; align-items: center; justify-content: center;
-      gap: 2.1cqw;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.28em;
       white-space: nowrap;
     }
+    /* The main/side pills sit in their own row ABOVE the primary total. */
+    .replayer-pot-layers { display: flex; align-items: center; justify-content: center; gap: 2.1cqw; }
+    .replayer-pot-main { display: inline-flex; align-items: center; justify-content: center; gap: 2.1cqw; }
     .replayer-pot-total { display: inline-flex; align-items: baseline; }
     .replayer-pot-total, .replayer-pot-pill { position: relative; }
     /* Ethan wants POT inline — same baseline, to the LEFT of the figure — and
@@ -4143,11 +4146,13 @@
     }
     .replayer-pot-pill {
       display: inline-flex; align-items: baseline; justify-content: center;
-      min-width: 15.2cqw;
+      min-width: 12cqw;
       /* Derived: at 0.62em the pill measured 8.2% of the table height against
          the reference's 5.3%. Everything but the 2px border scales with the
          font, so the size that lands on 5.3 is 0.62 x (5.3-0.27)/(8.2-0.27). */
-      font-size: 0.39em;
+      /* Stacked above the total now, so it has the room to be legible — up from
+         0.39em, which read as unlabelled specks on a busy multi-way pot. */
+      font-size: 0.62em;
       padding: 0.28em 0.9em;
       border-radius: var(--radius-pill);
       background: linear-gradient(180deg, rgba(150,110,200,0.94), rgba(108,76,153,0.94));
@@ -4867,7 +4872,9 @@
          2.1cqmin measured 11.5px, LARGER than the token it replaced; 1.35
          gives 7.4px and a badge about the width of the card under it.
          Padding in em so it scales with the type rather than staying 8px. */
-      font-size: clamp(7px, 1.9cqmin, var(--fs-xs)); font-family: var(--font-condensed);
+      /* Sized to the CARDS it hovers over (--card-h on the seat), not a flat
+         token — so the badge grows with the table and stays legible. */
+      font-size: clamp(9px, calc(var(--card-h) * 0.34), 26px); font-family: var(--font-condensed);
       padding: 0.25em 0.6em; border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
       font-weight: var(--fw-bold); line-height: 1; white-space: nowrap;
       pointer-events: none;
@@ -4895,14 +4902,14 @@
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check {
       font-weight: 300;
-      font-size: clamp(7px, 1.7cqmin, var(--fs-xs));
+      font-size: clamp(8px, calc(var(--card-h) * 0.30), 22px);
       padding: var(--nudge-1) var(--space-sm);
       opacity: 0.85;
     }
     /* 57 Condensed for a call, 67 Bold Condensed for a bet or a raise. */
-    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(7px, 1.7cqmin, var(--fs-xs)); }
+    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(9px, calc(var(--card-h) * 0.32), 24px); }
     .replayer-action-badge-outer.action-bet,
-    .replayer-action-badge-outer.action-raise { font-size: clamp(8px, 2.0cqmin, var(--fs-sm)); }
+    .replayer-action-badge-outer.action-raise { font-size: clamp(10px, calc(var(--card-h) * 0.40), 30px); }
     /* 35: ALL-IN was visually interchangeable with a fold. It is the
        stakes-defining action of a hand. */
     /* 46: caps were doing three jobs at once on one screen — the badges were
@@ -4918,7 +4925,7 @@
          of the others. The one action that should stop you. */
       font-family: var(--font-sans);
       font-weight: 900;
-      font-size: clamp(9px, 2.4cqmin, var(--fs-md));
+      font-size: clamp(11px, calc(var(--card-h) * 0.46), 34px);
       font-weight: var(--fw-bold);
       padding: var(--nudge-1) var(--space-ml);
       letter-spacing: var(--track-caps);
