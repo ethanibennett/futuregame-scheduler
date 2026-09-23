@@ -2187,6 +2187,16 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       if (sbIdx >= 0) contrib[sbIdx] = (hand.blinds || {}).sb || 0;
       if (bbIdx >= 0) contrib[bbIdx] = (hand.blinds || {}).bb || 0;
       maxBet = (hand.blinds || {}).bb || 0;
+      /* Straddles post before the deal and set the preflop price: the largest
+         straddle IS the current bet, and each straddler is already in for
+         theirs. Without this, maxBet stayed at the BB — so calls, and every
+         pot-sized bet computed off it, came out short (POT 40 not 80 behind a
+         20 straddle). The pot total already counted the straddle; the betting
+         state did not. */
+      getStraddles(hand.players, hand.blinds).forEach(st => {
+        contrib[st.seat] = st.amount;
+        if (st.amount > maxBet) maxBet = st.amount;
+      });
     }
     (currentStreet.actions || []).forEach(act => {
       if (act.action === 'fold') return;
