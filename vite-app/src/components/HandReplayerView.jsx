@@ -5755,7 +5755,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       const shorthand = encodeHand({ ...hand, feltColor, feltBright: rSettings.feltBright });
       if (!shorthand) return;
       const b = hand.blinds || {};
-      const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${b.ante ? '/' + b.ante : ''}`;
+      // The straddle is part of the stakes — a link that reads "10/10" for a
+      // "10/10/20" game names a different game — so the title carries it too.
+      const _straddleAmt = getStraddles(hand.players, b).reduce((m, st) => Math.max(m, st.amount || 0), 0);
+      const title = `${hand.gameType} ${b.sb || 0}/${b.bb || 0}${_straddleAmt ? '/' + _straddleAmt : ''}${b.ante ? '/' + b.ante : ''}`;
       // Fallback: the self-contained fragment link. SITE_URL (not
       // window.location.origin, which is capacitor://localhost in the app), and
       // NOT url-encoded — the format's commas/slashes are fragment-safe, so this

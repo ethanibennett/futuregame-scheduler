@@ -186,6 +186,15 @@ export function encodeHand(hand) {
     parts.push(feltPart);
   }
 
+  /* A cash hand carries its money: '$' + currency code, so the link shows the
+     dollar (or euro) on the felt rather than reading as tournament chips. Only
+     for cash — a tournament adds nothing, and an older decoder ignores it. Read
+     back by prefix, not position, so it and the felt part can arrive in any
+     order without one being mistaken for the other. */
+  if (hand.gameMode === 'cash') {
+    parts.push('$' + (hand.currency || 'USD'));
+  }
+
   return parts.join('.');
 }
 
@@ -393,12 +402,20 @@ export function decodeHand(str) {
 
   /* Optional trailing felt part (see encode). Absent on older/saved-hand
      shorthands, in which case the viewer keeps their own felt. */
-  var feltColor = null, feltBright = false;
-  var feltStr = parts[5] || '';
-  if (feltStr.charAt(0) === 'f') {
-    var fb = feltStr.slice(1);
-    if (fb.charAt(fb.length - 1) === 'b') { feltBright = true; fb = fb.slice(0, -1); }
-    if (/^[0-9a-fA-F]{3,8}$/.test(fb)) feltColor = '#' + fb;
+  // Trailing parts are read by their leading marker, not their index, so felt
+  // ('f') and the cash marker ('$') can arrive in either order.
+  var feltColor = null, feltBright = false, gameMode = 'mtt', currency = 'USD';
+  for (var tpi = 5; tpi < parts.length; tpi++) {
+    var tp = parts[tpi] || '';
+    if (tp.charAt(0) === 'f') {
+      var fb = tp.slice(1);
+      if (fb.charAt(fb.length - 1) === 'b') { feltBright = true; fb = fb.slice(0, -1); }
+      if (/^[0-9a-fA-F]{3,8}$/.test(fb)) feltColor = '#' + fb;
+    } else if (tp.charAt(0) === '$') {
+      gameMode = 'cash';
+      var cur = tp.slice(1);
+      if (cur) currency = cur;
+    }
   }
 
   return {
@@ -406,6 +423,8 @@ export function decodeHand(str) {
     players: players,
     feltColor: feltColor,
     feltBright: feltBright,
+    gameMode: gameMode,
+    currency: currency,
     blinds: (function() {
       var b = { sb: sb, bb: bb, ante: ante };
       if (!straddleCode) return b;
