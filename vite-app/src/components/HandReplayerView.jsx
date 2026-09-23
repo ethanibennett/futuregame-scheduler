@@ -1283,7 +1283,7 @@ function getFlatStyle(index, total, yOffset, reverseZ) {
 /* The largest hand the replayer deals: two down, four up, one down. */
 const FAN_SLOTS = 7;
 
-function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
+function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanScale = 1) {
   if (total <= 1) return {};
   /* The step is per CARD and fixed by the size of the FINISHED hand, not by
      how many cards have arrived. Dividing the whole arc among the cards on the
@@ -1358,7 +1358,10 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
   const cappedStep = halfSlots > 0
     ? Math.asin(Math.min(1, maxHalfSpan / radiusCards)) * (180 / Math.PI) / halfSlots
     : baseStep;
-  const step = Math.min(baseStep, cappedStep);
+  /* spanScale is the viewer's Splay slider, 0..1 of the fan the table can hold.
+     It scales the settled step so the fan tightens uniformly at every card
+     count — the cap already fixed the wide end, this opens the narrow one. */
+  const step = Math.min(baseStep, cappedStep) * spanScale;
   const rot = (index - (total - 1) / 2) * step;
   const extraY = yOffset || '';
   const z = reverseZ ? (total - 1 - index) : index;
@@ -1426,14 +1429,14 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal) {
   };
 }
 
-function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ, discardIdx }) {
+function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, cardTheme, reverseZ, discardIdx }) {
   const SUIT_SYMBOLS = {h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'};
   let cards = parseCardNotation(text);
   if (!cards.length && placeholderCount > 0) {
     return (
       <div className={"card-row" + (splay ? " card-row-splay" : "")}>
         {Array.from({ length: placeholderCount }, (_, i) => {
-          const style = { '--ci': i, ...(splay ? getSplayStyle(i, placeholderCount, splay, 0, reverseZ) : null) };
+          const style = { '--ci': i, ...(splay ? getSplayStyle(i, placeholderCount, splay, 0, reverseZ, placeholderCount, splayScale) : null) };
           return <div key={'ph' + i} className="card-placeholder" style={style} />;
         })}
       </div>
@@ -1472,7 +1475,7 @@ function CardRow({ text, stud, max, placeholderCount, splay, cardTheme, reverseZ
            began where the fifth card's ended and the row read as though it had
            a full card's gap in it. */
         const splayStyle = { '--ci': i, ...(splay
-          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max)
+          ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max, splayScale)
           : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
           ...(isDiscard ? { opacity: 0.4, transition: 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' } : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
@@ -1688,6 +1691,19 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               aria-pressed={!!settings.cardSplay} aria-label="Splay hole cards"
               onClick={() => onUpdate('cardSplay', !settings.cardSplay)} />
           </div>
+          {settings.cardSplay && (
+            <div className="replayer-settings-row is-stacked">
+              <div className="replayer-settings-label">Splay Amount</div>
+              <div className="replayer-settings-sublabel">How wide the hole-card fan opens</div>
+              <div style={{display:'flex', alignItems:'center', gap:'10px', width:'100%', marginTop:'6px'}}>
+                <input type="range" className="gto-raise-slider" min={0} max={100} step={5}
+                  value={Number(settings.splayAmount) || 0} aria-label="Splay amount"
+                  onChange={e => onUpdate('splayAmount', Number(e.target.value))} style={{flex:'1 1 auto'}} />
+                <span style={{fontFamily:'var(--font-condensed)', fontVariantNumeric:'tabular-nums', minWidth:'36px', textAlign:'right', color:'var(--text-muted)', fontSize:'0.8rem'}}>{Number(settings.splayAmount) || 0}%</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => onUpdate('splayAmount', 100)} title="Reset splay to default">Reset</button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="replayer-settings-group">
           <div className="replayer-settings-group-title">Display</div>
@@ -4950,6 +4966,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _soundFold = useReplayerSetting('SoundFold', false);
   const _soundAllIn = useReplayerSetting('SoundAllIn', false);
   const _cardSplay = useReplayerSetting('CardSplay', true);
+  /* How wide the hole-card fan opens, as a percent of what the table can hold.
+     100 is the default fan; the slider tightens it toward a squared stack. */
+  const _splayAmount = useReplayerSetting('SplayAmount', 100);
   /* Off by default: the dark cloth is what the table looks like today, and a
      setting that changes the first thing you see should be opt-in. */
   const _feltBright = useReplayerSetting('FeltBright', false, hand && hand.feltColor ? !!hand.feltBright : undefined);
@@ -4972,7 +4991,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
     animateFold: _animFold[0],
-    cardTheme, cardSplay: _cardSplay[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
+    cardTheme, cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
   };
   const rSetters = {
     theme: _theme[1], tableShape: _tableShape[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
@@ -4988,7 +5007,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     animateFold: _animFold[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
-    cardSplay: _cardSplay[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
+    cardSplay: _cardSplay[1], splayAmount: _splayAmount[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
   /* The sound calls live inside effects whose dependency arrays deliberately
@@ -7230,6 +7249,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                     ? (parseCardNotation(heroCards || '').length || gameCfg.heroCards)
                     : 0}
                   splay={rSettings.cardSplay ? (gameCfg.heroCards <= 2 ? 12.5 : gameCfg.heroCards <= 4 ? 15 : gameCfg.heroCards <= 5 ? 18 : 22) : 0}
+                  splayScale={(Number(rSettings.splayAmount) || 0) / 100}
                   cardTheme={cardTheme}
                   reverseZ={pi !== replayHeroIdx}
                   discardIdx={discardIdx}
