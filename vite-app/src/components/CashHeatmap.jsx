@@ -13,6 +13,15 @@ const METRIC_KEY = 'cashHeatmapMetric';
 const gLabel = (g) => `${g.stakes} ${g.gameType}`;
 const hourLabel = (h) => h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`;
 
+// Compact avg-tables label for a tiny cell: "1.8", "2", "12", ".5", "0".
+function fmtTables(n) {
+  const r = Math.round((n || 0) * 10) / 10;
+  if (r >= 10) return String(Math.round(r));
+  if (r >= 1) return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  if (r <= 0) return '0';
+  return '.' + Math.round(r * 10);
+}
+
 // Green heat, alpha ramped by intensity, over the card surface.
 function cellColor(intensity, hasData) {
   if (!hasData) return 'var(--surface-sunken, rgba(255,255,255,0.03))';
@@ -148,7 +157,7 @@ export default function CashHeatmap({ token }) {
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ minWidth: 320 }}>
+            <div style={{ minWidth: 560 }}>
               {/* Hour axis */}
               <div style={{ display: 'grid', gridTemplateColumns: '30px repeat(24, minmax(0, 1fr))', gap: 2, marginBottom: 3 }}>
                 <div />
@@ -166,14 +175,18 @@ export default function CashHeatmap({ token }) {
                     const hasData = !!(c && c.samples > 0);
                     const intensity = !hasData ? 0 : metric === 'reliability' ? (c.ranFraction || 0) : (c.meanTables || 0) / maxMean;
                     const active = pick && pick.dow === d && pick.hour === h;
+                    const val = !hasData ? '' : metric === 'reliability' ? String(Math.round((c.ranFraction || 0) * 100)) : fmtTables(c.meanTables);
                     return (
                       <button key={h}
                         onClick={() => setPick(hasData ? { dow: d, hour: h, ...c } : null)}
                         title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                         style={{
-                          aspectRatio: '1 / 1', minHeight: 12, border: active ? '1px solid var(--text,#fff)' : '1px solid transparent',
+                          aspectRatio: '1 / 1', minHeight: 20, border: active ? '1px solid var(--text,#fff)' : '1px solid transparent',
                           borderRadius: 2, background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
-                        }} />
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.5rem', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+                          color: 'rgba(255,255,255,0.92)', textShadow: '0 1px 1px rgba(0,0,0,0.55)',
+                        }}>{val}</button>
                     );
                   })}
                 </div>
