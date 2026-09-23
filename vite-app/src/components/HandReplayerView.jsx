@@ -7325,11 +7325,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   if (!actText) return null;
                   let label = actText;
                   if (lastAct.amount) {
-                    /* Was the player's street TOTAL for a raise and the amount
-                       for everything else, so a raise to 400 that put 160 more
-                       in read "raise 400" beside 160 in chips. Every action now
-                       names the chips that action moves. */
-                    label += ' ' + formatChipAmount(lastAct.amount);
+                    /* Names the seat's TOTAL wager for the street, the same
+                       figure as the chips on the felt in front of it — a call
+                       of a 440 bet reads "call 440" beside 440 in chips, not
+                       "call 320" for the chips that one action happened to
+                       move. Blinds and straddles are already in that total. */
+                    label += ' ' + formatChipAmount(computePlayerContrib(hand, streetIdx, currentActions, lastAct._ai, pi));
                   }
                   // 58: re-keying is what makes the entrance replay when the
                   // same player acts twice in one street.
@@ -7431,7 +7432,13 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
              the pot, and the stack above already counts them. */
           const wonHere = (showResult && potAwards) ? (potAwards[pi] || 0) : 0;
           if (showResult ? !wonHere : (!lastAct || !lastAct.amount)) return null;
-          const chipAmount = showResult ? wonHere : lastAct.amount;
+          /* The chips in front of a seat are its TOTAL wager for the street, not
+             the chips its last action moved: three players who all match a 440
+             bet each have 440 in front of them, even though two of them only
+             added 420 and 320 to get there. The stored amount is the increment,
+             so sum the street (blinds and straddles included) to the bet on the
+             felt. */
+          const chipAmount = showResult ? wonHere : computePlayerContrib(hand, streetIdx, currentActions, actionIdx, pi);
           const pos = seats[pi] || [50, 50];
           /* 23: these were five branches of raw percentage constants along
              different axes of a 3:4.5 table — a top seat's chip sat 10% of
