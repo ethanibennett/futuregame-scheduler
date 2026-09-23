@@ -90,6 +90,21 @@ function getStreetDef(gameType) {
   return STREET_DEFS[getGameCategory(gameType)] || STREET_DEFS.community;
 }
 
+// Sort a hand's cards for the replay display: rank high→low, then suit (spades
+// high), the way a stud hand already reads. Face-down backs sort equal, so an
+// all-hidden hand is unchanged; used only for community games, where a hand is
+// all-up or all-down (never mixed), so a real card never sorts among backs.
+const RANK_SORT = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+const SUIT_SORT = { s:4, h:3, d:2, c:1, x:0 };
+function sortHandByRank(cardStr) {
+  const cards = parseCardNotation(cardStr || '');
+  if (cards.length < 2) return cardStr || '';
+  return cards.slice().sort((a, b) =>
+    (RANK_SORT[b.rank] || 0) - (RANK_SORT[a.rank] || 0) ||
+    (SUIT_SORT[b.suit] || 0) - (SUIT_SORT[a.suit] || 0)
+  ).map(c => c.rank + c.suit).join('');
+}
+
 // ── Position labels ──
 function getPositionLabels(numPlayers) {
   if (numPlayers <= 2) return ['BTN/SB', 'BB'];
@@ -6620,13 +6635,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   // to need black text.
   const potContrast = (() => {
     if (rSettings.theme !== 'default') return null;
-    const st = feltStops(feltColor, rSettings.feltBright);
-    const m = st && String(st.lit).match(/(\d+)\D+(\d+)\D+(\d+)/);
-    if (!m) return null;
-    const lum = (+m[1] * 0.2126 + +m[2] * 0.7152 + +m[3] * 0.0722) / 255;
-    return lum > 0.5
-      ? { '--pot-text': '#0b0b0b', '--pot-shadow': '0 1px 2px rgba(255,255,255,0.55)' }
-      : { '--pot-text': '#ffffff', '--pot-shadow': '0 1px 3px rgba(0,0,0,0.6)' };
+    // Always white, with a dark drop shadow — legible on any felt colour the
+    // picker lands on, light or dark, rather than flipping to black on a pale
+    // felt (Ethan). The shadow is what carries the contrast on a light cloth.
+    return { '--pot-text': '#ffffff', '--pot-shadow': '0 1px 2px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.55)' };
   })();
 
   // A street's draw lands AFTER its betting — the same instant the d1/d2/pat
@@ -7139,7 +7151,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   if (animShowdown) st['--showdown-delay'] = (dealOrder.indexOf(pi) * 70) + 'ms';
                   return st;
                 })()}>
-                <CardRow text={cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
+                <CardRow text={getGameCategory(hand.gameType) === 'community' ? sortHandByRank(cards) : cards} stud={gameCfg.isStud} max={gameCfg.heroCards}
                   /* Everyone is dealt the same cards at the same time, so a
                      face-down seat holds exactly what the hero holds right now.
                      This was gameCfg.heroCards — the size of a FINISHED hand —
