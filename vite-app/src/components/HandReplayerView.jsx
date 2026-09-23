@@ -2659,20 +2659,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
             </div>
           )}
-          {!isOfc && (
-            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
-              <span style={{fontSize:'0.68rem',fontWeight:'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Buy-in cap</span>
-              <div className="replayer-field" style={{flex:'0 0 90px'}}>
-                <input type="text" inputMode="decimal" value={buyinCap}
-                  onChange={e => { setBuyinCap(e.target.value); try { localStorage.setItem('replayerBuyinCap', e.target.value); } catch { /* ignore */ } }}
-                  placeholder="Cap" style={{textAlign:'right'}} />
-              </div>
-              <button className="btn btn-ghost btn-sm" onClick={resetStacks} title="Set every seat's stack to the cap">Reset stacks</button>
-            </div>
-          )}
           {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
+            // With a straddle on, the seat next to act after the BB (the frontmost
+            // position) posts it — label that badge STR. Display only; p.position
+            // is untouched so the action-order logic keeps working.
+            const straddleOn = !gameCfg.isStud && !!(hand.blinds && hand.blinds.straddle) && hand.players.length >= 4;
+            const posLabel = (straddleOn && p.position === getPositionLabels(hand.players.length)[0]) ? 'STR' : p.position;
             return (
               <div key={i} className={'replayer-player-row' + (dragSeat === i ? ' is-dragging' : '')}>
                 {!isOfc && <span
@@ -2682,13 +2676,24 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   onPointerMove={moveSeatDrag}
                   onPointerUp={endSeatDrag}
                   onPointerCancel={endSeatDrag}
-                >{p.position}</span>}
+                >{posLabel}</span>}
                 <div className="replayer-field" style={{flex:'1 1 80px'}}><input type="text" style={{textAlign:'left'}} value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
                 {!isOfc && <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" inputMode="decimal" style={{textAlign:'right'}} value={p.startingStack} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>}
               </div>
             );
           })}
         </div></div>
+        {!isOfc && (
+          <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 0',flexWrap:'wrap'}}>
+            <span style={{fontSize:'0.68rem',fontWeight:'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Buy-in cap</span>
+            <div className="replayer-field" style={{flex:'0 0 100px'}}>
+              <input type="text" inputMode="decimal" value={buyinCap}
+                onChange={e => { setBuyinCap(e.target.value); try { localStorage.setItem('replayerBuyinCap', e.target.value); } catch { /* ignore */ } }}
+                placeholder="Cap" style={{textAlign:'right'}} />
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={resetStacks} title="Set every seat's stack to the cap">Reset stacks</button>
+          </div>
+        )}
         <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
           <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
           {/* Stud went straight to the door cards from here, which meant
