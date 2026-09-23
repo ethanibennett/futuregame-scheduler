@@ -32,6 +32,10 @@ function ago(iso) {
   return Math.floor(s / 86400) + 'd ago';
 }
 
+// One open-time PER TABLE, derived from the count time-series: the watcher
+// reports a table COUNT per game, not individual tables, so the Nth table's
+// start is the last time the count rose to ≥N and stayed there through to now.
+// Returns gameKey -> [start times], longest-open first (index 0 = top row).
 function buildRunStarts(rows) {
   const byGame = new Map();
   for (const r of (rows || [])) {
@@ -41,17 +45,32 @@ function buildRunStarts(rows) {
     const k = gameKey(r.venueSlug, r.gameType, r.stakes);
     let arr = byGame.get(k);
     if (!arr) { arr = []; byGame.set(k, arr); }
-    arr.push(t);
+    arr.push({ t, c: r.tablesRunning });
   }
   const starts = new Map();
-  for (const [k, ts] of byGame) {
-    ts.sort((a, b) => a - b);
-    let start = ts[ts.length - 1];
-    for (let i = ts.length - 1; i > 0; i--) {
-      if (ts[i] - ts[i - 1] <= GAP_MAX_MS) start = ts[i - 1];
-      else break;
+  for (const [k, snaps] of byGame) {
+    snaps.sort((a, b) => a.t - b.t);
+    // The current unbroken run: from the latest snapshot back while each gap
+    // is a missed poll rather than a genuine close-and-reopen.
+    let s = snaps.length - 1;
+    for (let i = snaps.length - 1; i > 0; i--) {
+      if (snaps[i].t - snaps[i - 1].t <= GAP_MAX_MS) s = i - 1; else break;
     }
-    starts.set(k, start);
+    const run = snaps.slice(s);
+    const cnt = run[run.length - 1].c;
+    // minSuffix[i] = the smallest count from snapshot i through the end, so a
+    // level L was open continuously from the earliest i where that stays ≥ L.
+    const minSuf = new Array(run.length);
+    minSuf[run.length - 1] = run[run.length - 1].c;
+    for (let i = run.length - 2; i >= 0; i--) minSuf[i] = Math.min(run[i].c, minSuf[i + 1]);
+    const perTable = [];
+    for (let L = 1; L <= cnt; L++) {
+      let startT = run[run.length - 1].t;
+      for (let i = 0; i < run.length; i++) { if (minSuf[i] >= L) { startT = run[i].t; break; } }
+      perTable.push(startT);
+    }
+    perTable.sort((a, b) => a - b); // earliest start = longest open = top row
+    starts.set(k, perTable);
   }
   return starts;
 }
@@ -265,25 +284,29 @@ export default function CashView({ token }) {
                     <div style={{ padding: '10px 14px', color: 'var(--text-muted,#888)', fontSize: '0.78rem' }}>Nothing running.</div>
                   ) : (
                     <div>
-                      {running.map((g, i) => {
-                        const open = openLabel(runStarts.get(gameKey(v.slug, g.gameType, g.stakes)), snapMs, windowStartMs);
-                        return (
-                          <div key={'r' + i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: i ? '1px solid var(--border, rgba(255,255,255,0.05))' : 'none' }}>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 62 }}>{g.stakes}</span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.gameType}</span>
-                            {open && (
-                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>{open}</span>
-                            )}
-                            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text, #fff)', fontSize: '0.8rem', whiteSpace: 'nowrap', minWidth: 58, textAlign: 'right' }}>
-                              {g.tablesRunning}<span style={{ color: 'var(--text-muted,#888)' }}> {g.tablesRunning === 1 ? 'table' : 'tables'}</span>
-                            </span>
-                            {(g.waitlistLen || 0) > 0 && (
-                              <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.72rem', color: 'var(--warning, #e0a458)', border: '1px solid var(--warning, #e0a458)', borderRadius: 5, padding: '1px 6px', whiteSpace: 'nowrap' }}>
-                                WL {g.waitlistLen}
+                      {running.map((g, gi) => {
+                        // One row PER TABLE, each with its own open duration; the
+                        // stakes and variant name only on the top row of the group.
+                        const starts = runStarts.get(gameKey(v.slug, g.gameType, g.stakes)) || [];
+                        const n = Math.max(g.tablesRunning || 0, starts.length) || 1;
+                        return Array.from({ length: n }, (_, ti) => {
+                          const isTop = ti === 0;
+                          const open = openLabel(starts[ti], snapMs, windowStartMs);
+                          return (
+                            <div key={gi + '-' + ti} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isTop ? '8px 14px' : '3px 14px', borderTop: (gi === 0 && isTop) ? 'none' : (isTop ? '1px solid var(--border, rgba(255,255,255,0.08))' : 'none') }}>
+                              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 62 }}>{isTop ? g.stakes : ''}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isTop ? g.gameType : ''}</span>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap', minWidth: 96, textAlign: 'right' }}>{open || ''}</span>
+                              <span style={{ minWidth: 54, textAlign: 'right' }}>
+                                {isTop && (g.waitlistLen || 0) > 0 && (
+                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.72rem', color: 'var(--warning, #e0a458)', border: '1px solid var(--warning, #e0a458)', borderRadius: 5, padding: '1px 6px', whiteSpace: 'nowrap' }}>
+                                    WL {g.waitlistLen}
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </div>
-                        );
+                            </div>
+                          );
+                        });
                       })}
                       {interest.length > 0 && (
                         <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border, rgba(255,255,255,0.05))', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
