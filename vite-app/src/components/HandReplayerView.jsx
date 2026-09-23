@@ -584,6 +584,26 @@ function formatChipAmount(val, bigBlind) {
   return CHIP_PLAIN.format(n);
 }
 
+/* A hand is a tournament (chips) or a cash game (money). Cash amounts carry a
+   currency symbol; tournament chips carry none — the same number means a stack
+   of chips in one game and a pile of dollars in the other, and the symbol is
+   the whole of that difference on the felt. USD is the default because it is
+   the one most of these hands are played in. */
+const CURRENCIES = [
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'CAD', symbol: 'C$' },
+  { code: 'AUD', symbol: 'A$' },
+  { code: 'MXN', symbol: 'MX$' },
+  { code: 'CNY', symbol: '¥' },
+];
+function currencySymbol(hand) {
+  if (!hand || hand.gameMode !== 'cash') return '';
+  const c = CURRENCIES.find(x => x.code === (hand.currency || 'USD'));
+  return c ? c.symbol : '$';
+}
+
 /* Names a split share as the fraction of the pot it is. Deciding the share is
    the evaluator's job — this only rationalises the number it is handed, which
    is why it will print a percentage rather than guess when the share is not a
@@ -858,6 +878,7 @@ function createEmptyHand(gameType, heroName) {
         name, cards: { hero: '', opponents: [''], board: '' }, actions: [], draws: [],
       })),
       ofcRows: { 0: { top: '', middle: '', bottom: '' }, 1: { top: '', middle: '', bottom: '' } },
+      gameMode: 'mtt', currency: 'USD',
       heroIdx: 0, result: null,
     };
   }
@@ -888,6 +909,7 @@ function createEmptyHand(gameType, heroName) {
     streets: streetDef.streets.map(name => ({
       name, cards: { hero: '', opponents: Array.from({ length: numPlayers - 1 }, () => ''), board: '' }, actions: [], draws: [],
     })),
+    gameMode: 'mtt', currency: 'USD',
     heroIdx: 0, result: null,
   };
 }
@@ -1938,7 +1960,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
           <div key={i} className="replayer-player-row">
             <span className="replayer-player-pos">{p.position}</span>
             <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
-            <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" inputMode="decimal" value={p.startingStack} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>
+            <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" inputMode="decimal" value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>
           </div>
         ))}
       </div>
@@ -2638,7 +2660,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   </div>
                   <button type="button" className={'replayer-settings-toggle' + (on ? ' on' : '')}
                     aria-pressed={on} aria-label="Straddle"
-                    onClick={() => setBlind('straddle', !on)} />
+                    onClick={() => {
+                      const next = !on;
+                      setBlind('straddle', next);
+                      /* A straddle is a cash-game wager. Turning it on says this
+                         is a cash hand, so flip the mode with it — the money
+                         symbol follows. Turning it off leaves the mode alone;
+                         someone may have set Cash deliberately. */
+                      if (next) setHand(prev => ({ ...prev, gameMode: 'cash' }));
+                    }} />
                 </div>
                 {on && nSeats < 4 && (
                   <div className="replayer-field-hint" style={{marginBottom:'6px'}}>
@@ -2713,7 +2743,14 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   onPointerCancel={endSeatDrag}
                 >{posLabel}</span>}
                 <div className="replayer-field" style={{flex:'1 1 80px'}}><input type="text" style={{textAlign:'left'}} value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
-                {!isOfc && <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" inputMode="decimal" style={{textAlign:'right'}} value={p.startingStack} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>}
+                {!isOfc && <div className="replayer-field" style={{flex:'0 0 88px'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'2px'}}>
+                    {hand.gameMode === 'cash' && <span style={{fontSize:'0.8rem', color:'var(--text-muted)', flex:'0 0 auto'}}>{currencySymbol(hand)}</span>}
+                    {/* Clicking a stack selects it, so the first digit typed
+                        replaces the default depth instead of appending to it. */}
+                    <input type="text" inputMode="decimal" style={{textAlign:'right', flex:'1 1 auto', minWidth:0}} value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" />
+                  </div>
+                </div>}
               </div>
             );
           })}
@@ -4270,6 +4307,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       const customDef = STREET_DEFS['custom_' + gameName];
       const hand = {
         gameType: gameName,
+        gameMode: 'mtt', currency: 'USD',
         customConfig: { heroCards, category: cat, streetNames: customDef.streets, hasBoard, isStud },
         players: [
           { name: heroName || 'Hero', position: 'BTN', startingStack: 50000 },
@@ -4345,6 +4383,29 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             <button className={entryMode === 'classic' ? 'active' : ''} onClick={() => setEntryMode('classic')}>Classic</button>
           </div>}
           {entryTab === 'form' && <>
+            {/* Tournament or cash. A cash game is money, so its stacks and pots
+                carry a currency symbol; a straddle is a cash-game wager, so
+                switching it on down in the blinds flips this to Cash for you. */}
+            <div className="replayer-row" style={{marginBottom:'8px', alignItems:'flex-end'}}>
+              <div className="replayer-field" style={{flex:'1 1 auto'}}>
+                <label>Game</label>
+                <div className="live-update-tabs" style={{margin:0}}>
+                  <button type="button" className={(currentHand.gameMode || 'mtt') !== 'cash' ? 'active' : ''}
+                    onClick={() => setCurrentHand(h => ({ ...h, gameMode: 'mtt' }))}>MTT</button>
+                  <button type="button" className={(currentHand.gameMode || 'mtt') === 'cash' ? 'active' : ''}
+                    onClick={() => setCurrentHand(h => ({ ...h, gameMode: 'cash' }))}>Cash</button>
+                </div>
+              </div>
+              {currentHand.gameMode === 'cash' && (
+                <div className="replayer-field" style={{flex:'0 0 96px'}}>
+                  <label>Currency</label>
+                  <select value={currentHand.currency || 'USD'}
+                    onChange={e => setCurrentHand(h => ({ ...h, currency: e.target.value }))}>
+                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
             <div className="replayer-row" style={{marginBottom:'8px'}}>
               <div className="replayer-field">
                 <label>Title</label>
@@ -4951,7 +5012,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _bb = _limitGame
     ? ((hand.blinds || {}).bigBet || ((hand.blinds || {}).bb || 0) * 2)
     : ((hand.blinds || {}).bb || 0);
-  const fmtChips = (v) => formatChipAmount(v, rSettings.stacksInBB ? _bb : 0);
+  /* Cash stacks and pots wear the currency symbol; tournament chips do not.
+     Never in BB mode — "$14 BB" is two units at once — so the symbol rides
+     only the chip figure. */
+  const _curSym = currencySymbol(hand);
+  const fmtChips = (v) => {
+    const s = formatChipAmount(v, rSettings.stacksInBB ? _bb : 0);
+    return (_curSym && s && !rSettings.stacksInBB) ? _curSym + s : s;
+  };
   /* Tapping any stack flips the whole table, not just the one touched: depth
      is only readable by comparison, so a felt showing one seat in BB and the
      rest in chips would be worse than either mode. It writes the same setting
