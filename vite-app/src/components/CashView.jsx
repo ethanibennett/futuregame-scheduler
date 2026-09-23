@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../utils/api.js';
 import { deriveVenueInfo } from '../utils/utils.js';
+import CashHeatmap from './CashHeatmap.jsx';
 
 // ── Cash watcher: Live now ──
 // Admin-only. Reads the cash-game traffic watcher through the scheduler's
@@ -79,6 +80,8 @@ export default function CashView({ token }) {
   const [hidden, setHidden] = useState(() => {
     try { const s = localStorage.getItem(HIDDEN_KEY); return new Set(s ? JSON.parse(s) : []); } catch { return new Set(); }
   });
+  const [mode, setMode] = useState(() => localStorage.getItem('cashMode') || 'live'); // 'live' | 'heatmap'
+  const setModePersist = useCallback((m) => { setMode(m); try { localStorage.setItem('cashMode', m); } catch { /* ignore */ } }, []);
 
   const toggleVariant = useCallback((variant) => {
     setHidden(prev => {
@@ -162,13 +165,33 @@ export default function CashView({ token }) {
     <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 'var(--space-md, 16px)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontFamily: BASKERVILLE, fontSize: '1.6rem', fontWeight: 600, color: 'var(--text, #fff)' }}>
-          Live Cash Games
+          {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
         </h2>
-        <button onClick={load}
-          style={{ border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
-          {status === 'loading' ? 'Loading…' : 'Refresh'}
-        </button>
+        {mode === 'live' && (
+          <button onClick={load}
+            style={{ border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+            {status === 'loading' ? 'Loading…' : 'Refresh'}
+          </button>
+        )}
       </div>
+
+      {/* Live / Heatmaps mode */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
+          <button key={m} onClick={() => setModePersist(m)}
+            style={{
+              fontFamily: UNIVERS, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+              padding: '5px 14px', borderRadius: 999, cursor: 'pointer',
+              border: '1px solid ' + (mode === m ? 'var(--text, #fff)' : 'var(--border, #333)'),
+              background: mode === m ? 'var(--text, #fff)' : 'transparent',
+              color: mode === m ? 'var(--bg, #111)' : 'var(--text-muted, #888)',
+            }}>{lbl}</button>
+        ))}
+      </div>
+
+      {mode === 'heatmap' && <CashHeatmap token={token} />}
+
+      {mode === 'live' && (<>
 
       {/* Persistent variant filter */}
       {availableVariants.length > 0 && (
@@ -280,6 +303,8 @@ export default function CashView({ token }) {
           </div>
         </>
       )}
+
+      </>)}
     </div>
   );
 }
