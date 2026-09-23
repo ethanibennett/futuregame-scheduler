@@ -1662,6 +1662,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'showCommentary', label:'Commentator Mode', sub:'A play-by-play line under the table' },
             { key:'showPlayerStats', label:'Player Stats', sub:'A stats chip on each seat' },
             { key:'stacksInBB', label:'Stacks in BB', sub:'Big blinds — or big bets in a limit game. Tapping any stack on the table toggles this too' },
+            { key:'hideOppNames', label:'Hide Opponent Names', sub:'Show opponents as Opponent 1, 2, … — your name stays' },
           ].map(opt => (
             <div key={opt.key} className="replayer-settings-row">
               <div>
@@ -4811,6 +4812,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _showChipDelta = useReplayerSetting('ShowChipDelta', false);
   const _showEquity = useReplayerSetting('ShowEquity', false);
   const _stacksInBB = useReplayerSetting('StacksInBB', false);
+  // Anonymise every non-hero seat as "Opponent 1", "Opponent 2", … — the hero
+  // (the logged-in user) keeps their name. For clean, private sharing.
+  const _hideOppNames = useReplayerSetting('HideOppNames', false);
   // 99: off by default. Sound that starts without being asked for is worse
   // than no sound, and this is a screen people open in card rooms.
   const _soundDeal = useReplayerSetting('SoundDeal', false);
@@ -4835,7 +4839,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
-    showEquity: _showEquity[0], stacksInBB: _stacksInBB[0],
+    showEquity: _showEquity[0], stacksInBB: _stacksInBB[0], hideOppNames: _hideOppNames[0],
     soundDeal: _soundDeal[0], soundChips: _soundChips[0],
     soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
@@ -4850,7 +4854,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     showNutsHighlight: _showNuts[1],
     showSPR: _showSPR[1], showBetSizing: _showBetSizing[1],
     showRanges: _showRanges[1], showChipDelta: _showChipDelta[1],
-    showEquity: _showEquity[1], stacksInBB: _stacksInBB[1],
+    showEquity: _showEquity[1], stacksInBB: _stacksInBB[1], hideOppNames: _hideOppNames[1],
     soundDeal: _soundDeal[1], soundChips: _soundChips[1],
     soundFold: _soundFold[1], soundAllIn: _soundAllIn[1],
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
@@ -7111,7 +7115,20 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                 {/* No position marker: the dealer button is on the table and
                     every other position follows from it, so the badge was
                     repeating the button in the tightest space on the felt. */}
-                <div className="replayer-seat-name" title={p.name}>{shortenName(p.name, nameBudget)}</div>
+                {(() => {
+                  // "Hide Opponent Names": every non-hero seat reads Opponent N
+                  // (numbered by seat order, hero excluded); the hero keeps their
+                  // own name. title matches so the tooltip doesn't leak it either.
+                  const _heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
+                  const oppName = (rSettings.hideOppNames && pi !== _heroIdx)
+                    ? 'Opponent ' + (pi < _heroIdx ? pi + 1 : pi)
+                    : null;
+                  return (
+                    <div className="replayer-seat-name" title={oppName || p.name}>
+                      {oppName || shortenName(p.name, nameBudget)}
+                    </div>
+                  );
+                })()}
                 {/* 67: the stack dropped the instant the bet was recorded,
                     while the chips were still in flight toward a pot that had
                     already been paid. It counts down over the same duration
