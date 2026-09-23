@@ -2097,6 +2097,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   const [showHeroCardPicker, setShowHeroCardPicker] = useState(false);
   const [studDealTarget, setStudDealTarget] = useState(0);
   const activeSeatRef = useRef(null);
+  // Buy-in cap: remembered across hands, and a one-tap way to put every seat
+  // back on the cap (a fresh full-stack table).
+  const [buyinCap, setBuyinCap] = useState(() => {
+    try { const s = localStorage.getItem('replayerBuyinCap'); if (s) return s; } catch { /* ignore */ }
+    return String((hand.players && hand.players[0] && hand.players[0].startingStack) ?? '');
+  });
+  const resetStacks = () => {
+    const cap = Number(buyinCap) || 0;
+    try { localStorage.setItem('replayerBuyinCap', String(cap)); } catch { /* ignore */ }
+    setHand(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, startingStack: cap })) }));
+  };
 
   const gameCfg = HAND_CONFIG[hand.gameType] || HAND_CONFIG_DEFAULT;
   const streetDef = getStreetDef(hand.gameType);
@@ -2646,6 +2657,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           {category === 'stud' && (
             <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
               Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
+            </div>
+          )}
+          {!isOfc && (
+            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
+              <span style={{fontSize:'0.68rem',fontWeight:'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Buy-in cap</span>
+              <div className="replayer-field" style={{flex:'0 0 90px'}}>
+                <input type="text" inputMode="decimal" value={buyinCap}
+                  onChange={e => { setBuyinCap(e.target.value); try { localStorage.setItem('replayerBuyinCap', e.target.value); } catch { /* ignore */ } }}
+                  placeholder="Cap" style={{textAlign:'right'}} />
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={resetStacks} title="Set every seat's stack to the cap">Reset stacks</button>
             </div>
           )}
           {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
