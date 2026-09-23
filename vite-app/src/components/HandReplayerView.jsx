@@ -3871,8 +3871,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       {createPortal(
         <div className="gto-sticky-footer">
           <div className="gto-street-card">
-            <div style={{display:'flex',gap:'6px',justifyContent:'space-between',alignItems:'center',padding:'10px 12px'}}>
+            <div style={{display:'flex',gap:'6px',alignItems:'center',padding:'10px 12px'}}>
               <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
+              {/* Back to the seat setup to fix names / stacks / positions without
+                  losing the hand — everything entered so far is kept in state. */}
+              <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back to Setup</button>
+              <div style={{flex:1}} />
               <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel Hand</button>
             </div>
           </div>
