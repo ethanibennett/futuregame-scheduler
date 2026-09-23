@@ -120,7 +120,8 @@ function CashLocationPicker({ token }) {
     setBusy(true); setMsg('');
     try {
       const g = await fetch(`${API_URL}/geocode?q=${encodeURIComponent(q)}`, { headers: { Authorization: 'Bearer ' + token } });
-      const results = g.ok ? await g.json() : [];
+      const gj = g.ok ? await g.json() : {};
+      const results = gj.results || [];
       if (!results.length) { setMsg('Couldn’t find that place.'); setBusy(false); return; }
       const top = results[0];
       const body = { lat: top.lat, lon: top.lng, radiusMiles: miles, label: top.short || q };
