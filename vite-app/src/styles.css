@@ -1122,7 +1122,7 @@
     /* The pot's stack sits beside the pot pill, so it is sized against that
        rather than on its own: at 8cqmin it measured 31px across on a 382px
        table, 8% of the whole table for a decoration of the number next to it. */
-    .replayer-pot-chip-disc { --disc-w: clamp(12px, 5cqmin, 60px); }
+    .replayer-pot-chip-disc { --disc-w: clamp(8px, 3cqmin, 32px); }
 
     /* A denominated flying chip builds its sphere from inset shadows rather
        than a colour-mix gradient, so any flat denomination colour works - and
@@ -6202,7 +6202,13 @@
       100% { opacity:0; transform:translate(-50%,-50%) scale(0.55); }
     }
     .replayer-pot-display.anim-collect {
-      animation: potCollect var(--dur-slow) var(--ease-leave) 0.15s both;
+      /* No collect either. It faded the pot to 0.55 and held there, then the
+         class dropped 700ms later and snapped it back to full — the pot shrank
+         and came back, which reads as a pulse at the one frame the whole replay
+         builds to. The chips still fly to the winner (that payoff is spawned
+         separately); the pot itself just stays where it settled, the same
+         answer the impact and landing bumps already got. */
+      animation: none;
     }
     /* 65: the impact. Three percent is enough to say the chips arrived HERE,
        rather than at a coordinate that happens to be where the pot is. */
