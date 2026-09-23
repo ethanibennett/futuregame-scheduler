@@ -4627,13 +4627,9 @@
          (measured: 65% of each fan visible). Just over half a cell. */
       font-family: var(--font-condensed);
       font-size: clamp(9px, 3.6cqmin, 44px);
-      /* Light. The stack is the figure the felt repeats most — once per seat,
-         changing on nearly every action — and at 700 six of them read as six
-         headlines. It keeps its size and its white, which is what separates it
-         from the name above it; the weight was doing the same job a second
-         time. Under the felt's two weights there is no middle to fall back to,
-         so unbold means 300. */
-      font-weight: var(--fw-light);
+      /* Bold condensed (Ethan) — the stack is the figure the felt repeats most,
+         and it carries the table's weight. */
+      font-weight: var(--fw-bold);
       color: #ffffff;
       font-variant-numeric: var(--num-tabular);
       letter-spacing: 0;
@@ -4872,9 +4868,9 @@
          2.1cqmin measured 11.5px, LARGER than the token it replaced; 1.35
          gives 7.4px and a badge about the width of the card under it.
          Padding in em so it scales with the type rather than staying 8px. */
-      /* Sized to the CARDS it hovers over (--card-h on the seat), not a flat
-         token — so the badge grows with the table and stays legible. */
-      font-size: clamp(9px, calc(var(--card-h) * 0.34), 26px); font-family: var(--font-condensed);
+      /* Half the seat's stack figure (which is clamp(9px, 3.6cqmin, 44px)), so
+         it scales with the table but stays the quieter number over the cards. */
+      font-size: clamp(5px, 1.8cqmin, 22px); font-family: var(--font-condensed);
       padding: 0.25em 0.6em; border-radius: var(--r-object); text-transform: uppercase; letter-spacing: var(--track-tight);
       font-weight: var(--fw-bold); line-height: 1; white-space: nowrap;
       pointer-events: none;
@@ -4902,14 +4898,14 @@
     .replayer-action-badge-outer.action-fold,
     .replayer-action-badge-outer.action-check {
       font-weight: 300;
-      font-size: clamp(8px, calc(var(--card-h) * 0.30), 22px);
+      font-size: clamp(5px, 1.6cqmin, 20px);
       padding: var(--nudge-1) var(--space-sm);
       opacity: 0.85;
     }
     /* 57 Condensed for a call, 67 Bold Condensed for a bet or a raise. */
-    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(9px, calc(var(--card-h) * 0.32), 24px); }
+    .replayer-action-badge-outer.action-call { font-weight: var(--fw-regular); font-size: clamp(5px, 1.7cqmin, 21px); }
     .replayer-action-badge-outer.action-bet,
-    .replayer-action-badge-outer.action-raise { font-size: clamp(10px, calc(var(--card-h) * 0.40), 30px); }
+    .replayer-action-badge-outer.action-raise { font-size: clamp(6px, 1.8cqmin, 22px); }
     /* 35: ALL-IN was visually interchangeable with a fold. It is the
        stakes-defining action of a hand. */
     /* 46: caps were doing three jobs at once on one screen — the badges were
@@ -4925,7 +4921,7 @@
          of the others. The one action that should stop you. */
       font-family: var(--font-sans);
       font-weight: 900;
-      font-size: clamp(11px, calc(var(--card-h) * 0.46), 34px);
+      font-size: clamp(7px, 2.2cqmin, 27px);
       font-weight: var(--fw-bold);
       padding: var(--nudge-1) var(--space-ml);
       letter-spacing: var(--track-caps);
