@@ -5821,32 +5821,35 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   // Seat class
   const getPlayerSeatClass = (playerIdx) => {
     if (folded.has(playerIdx)) return 'folded';
-    if (showResult) {
-      const manualWinners = hand.result?.winners;
-      if (manualWinners && manualWinners.length > 0) {
-        const entry = manualWinners.find(w => w.playerIdx === playerIdx);
-        if (entry) return entry.split ? 'split' : 'winner';
-        return manualWinners.length > 0 ? 'loser' : '';
-      }
-      if (evalResult) {
-        if (playerIdx === replayHeroIdx) {
-          const heroWins = evalResult.some(r => r.result.outcome === 'hero');
-          const heroLoses = evalResult.some(r => r.result.outcome === 'opponent');
-          const heroSplits = evalResult.some(r => r.result.outcome === 'split');
-          if (heroWins && !heroLoses) return 'winner';
-          if (heroLoses && !heroWins) return 'loser';
-          if (heroSplits) return 'split';
-        } else {
-          const oppResult = evalResult.find(r => r.index === playerIdx);
-          if (oppResult) {
-            if (oppResult.result.outcome === 'opponent') return 'winner';
-            if (oppResult.result.outcome === 'hero') return 'loser';
-            if (oppResult.result.outcome === 'split') return 'split';
-          }
+    if (!showResult) return '';
+    let cls = '';
+    const manualWinners = hand.result?.winners;
+    if (manualWinners && manualWinners.length > 0) {
+      const entry = manualWinners.find(w => w.playerIdx === playerIdx);
+      cls = entry ? (entry.split ? 'split' : 'winner') : 'loser';
+    } else if (evalResult) {
+      if (playerIdx === replayHeroIdx) {
+        const heroWins = evalResult.some(r => r.result.outcome === 'hero');
+        const heroLoses = evalResult.some(r => r.result.outcome === 'opponent');
+        const heroSplits = evalResult.some(r => r.result.outcome === 'split');
+        if (heroWins && !heroLoses) cls = 'winner';
+        else if (heroLoses && !heroWins) cls = 'loser';
+        else if (heroSplits) cls = 'split';
+      } else {
+        const oppResult = evalResult.find(r => r.index === playerIdx);
+        if (oppResult) {
+          if (oppResult.result.outcome === 'opponent') cls = 'winner';
+          else if (oppResult.result.outcome === 'hero') cls = 'loser';
+          else if (oppResult.result.outcome === 'split') cls = 'split';
         }
       }
     }
-    return '';
+    /* potAwards is the authority on who was actually paid, side pots included:
+       a seat handed a pot the overall winner could not win (a side pot only it
+       was in for) is a winner even though the stored winner list — which names
+       the whole-hand winner — does not mention it. */
+    if (potAwards && (potAwards[playerIdx] || 0) > 0 && cls !== 'split') cls = 'winner';
+    return cls;
   };
 
   // Hand name at showdown
