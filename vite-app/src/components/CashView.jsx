@@ -163,7 +163,7 @@ function CashLocationPicker({ token }) {
       {msg && <div style={{ fontSize: '0.7rem', color: 'var(--warning, #e0a458)', marginTop: 4 }}>{msg}</div>}
       {editing && !msg && (
         <div style={{ fontSize: '0.66rem', color: 'var(--text-muted, #777)', marginTop: 4 }}>
-          The collector picks up a new location within a few minutes.
+          The collector switches areas on its next cycle — allow ~15 minutes for the list to catch up.
         </div>
       )}
     </div>
