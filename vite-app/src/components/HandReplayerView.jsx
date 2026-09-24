@@ -5326,18 +5326,19 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      it needs WHICH seats are eligible for each, not just how many, because a
      layer is settled among its own contestants. */
   const allPotLayers = useMemo(() => {
+    // Each seat's TOTAL commitment, computed exactly as calcPotsAndStacks and the
+    // bet chips do (computePlayerContrib): blinds and the straddle seed the
+    // preflop street, and every action amount is an increment that ADDS. The old
+    // version summed action amounts only — no blinds — and took the MAX of raise
+    // amounts rather than adding them, so a seat that bet then raised in one
+    // street was under-counted; that both shrank the side-pot caps and left the
+    // layers summing to less than the pot they came from.
     const contrib = hand.players.map((_, pi) => {
       let total = 0;
       for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
         const acts = hand.streets[si].actions || [];
         const upTo = si === streetIdx ? actionIdx : acts.length - 1;
-        let street = 0;
-        for (let ai = 0; ai <= upTo && ai < acts.length; ai++) {
-          const a = acts[ai];
-          if (a.player !== pi || !a.amount) continue;
-          street = a.action === 'raise' || a.action === 'all-in' ? Math.max(street, a.amount) : street + a.amount;
-        }
-        total += street;
+        total += computePlayerContrib(hand, si, acts, upTo, pi);
       }
       return total;
     });
@@ -5355,8 +5356,16 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     });
     return layers;
   }, [hand, streetIdx, actionIdx, allIn, folded]);
-  // The pot row only has something to say when the pot actually split.
-  const potLayers = useMemo(() => (allPotLayers.length > 1 ? allPotLayers : []), [allPotLayers]);
+  // The pot row only has something to say when the pot actually split. Reconcile
+  // to the shown total so the MAIN/SIDE pills always sum to it — any dead money
+  // (antes, a folded blind the wager layers miss) rides in the main pot, exactly
+  // where the award logic puts it.
+  const potLayers = useMemo(() => {
+    if (allPotLayers.length <= 1) return [];
+    const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
+    const reconciled = reconcileLayersToPot(allPotLayers, displayPot, contesting);
+    return reconciled.length > 1 ? reconciled : [];
+  }, [allPotLayers, displayPot, folded, hand]);
   /* 66: the pot counts toward its new value over the chips' flight. It snaps
      while scrubbing, because a rewind is not a payment. */
   const countedPot = useCountUp(displayPot, rSettings.animateChips && !rewinding);
@@ -5520,37 +5529,68 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const layers = reconcileLayersToPot(allPotLayers, pot, contesting);
     const cfg = GAME_EVAL[hand.gameType];
 
-    // Score every shown hand, so each layer can be re-decided among its own players.
-    let evals = null;
-    if (cfg && cfg.type === 'hilo') {
-      const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
-      const map = {};
-      let readable = true;
+    /* Each pot layer is decided among ITS OWN eligible players, from the cards.
+       A side pot is won by the best hand of the seats in for it — which is not
+       always the seat that won the whole hand — and a side pot only one seat is
+       eligible for is that seat's regardless of what it holds. Filtering the
+       overall winners into layers got both wrong: a top side pot whose only
+       contestant did not have the best hand was awarded to NOBODY (the chips
+       left the game), and once the layers over-counted the pot and collapsed, it
+       was swept whole to the overall winner. Scores map seat -> { hi, lo } in
+       the form hiLoWinnersAmong reads (best-high wins hi, best-low wins lo). */
+    const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
+    const scoreHand = (parsed) => {
+      if (!cfg) return null;
+      const all = parsed.concat(board);
+      if (cfg.type === 'high') {
+        const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(all);
+        return { hi: hi ? hi.score : null, lo: null };
+      }
+      if (cfg.type === 'hilo') {
+        const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(all);
+        const lo = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(all, true);
+        return { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
+      }
+      if (cfg.type === 'low') {
+        const lo = cfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all);
+        return { hi: null, lo: lo ? lo.score : null };
+      }
+      if (cfg.type === 'badugi') {
+        const bad = bestBadugiHand(parsed);
+        return { hi: null, lo: bad ? bad.score : null };
+      }
+      return null; // split-badugi / unmapped — fall back to the stored winners
+    };
+
+    const scores = {};
+    let readable = !!cfg && cfg.type !== 'split-badugi';
+    if (readable) {
       contesting.forEach(pi => {
+        if (!readable) return;
         const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
         const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
         if (parsed.length < (gameCfg.isStud ? 5 : (gameCfg.heroCards || 2))) { readable = false; return; }
-        const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
-        const lo = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(parsed.concat(board), true);
-        map[pi] = { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
+        const s = scoreHand(parsed);
+        if (!s || (s.hi == null && s.lo == null)) { readable = false; return; }
+        scores[pi] = s;
       });
-      if (readable && Object.keys(map).length) {
-        // Only trust the cards if they say what the saved result says; a
-        // hand-marked winner must stay the winner.
-        const full = hiLoWinnersAmong(map, contesting);
-        const fromCards = {};
-        full.hiWinners.forEach(pi => { fromCards[pi] = { hi: true, lo: false }; });
-        full.loWinners.forEach(pi => { fromCards[pi] = { hi: !!fromCards[pi]?.hi, lo: true }; });
-        const agrees = winners.length === Object.keys(fromCards).length
-          && winners.every(w => fromCards[w.playerIdx]
-            && fromCards[w.playerIdx].hi === w.hi && fromCards[w.playerIdx].lo === w.lo);
-        if (agrees) evals = map;
-      }
     }
 
-    const shaped = evals
-      ? layers.map(l => ({ amount: l.amount, ...hiLoWinnersAmong(evals, l.players || contesting) }))
-      : potLayerWinners(layers, winners);
+    let shaped;
+    if (readable && Object.keys(scores).length === contesting.length) {
+      // Cards shown for everyone still in: they are the authority, per layer.
+      shaped = layers.map(l => ({ amount: l.amount, ...hiLoWinnersAmong(scores, l.players || contesting) }));
+    } else {
+      // Mucked or unscorable: settle from the stored winners, but hand a layer
+      // no stored winner is eligible for back to its own eligible seats rather
+      // than letting those chips vanish.
+      shaped = potLayerWinners(layers, winners).map((s, i) => (
+        (!s.hiWinners.length && !s.loWinners.length)
+          ? { ...s, hiWinners: (layers[i].players || contesting) }
+          : s
+      ));
+    }
+
     const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'BTN/SB');
     const { awards } = computePotAwards(shaped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
     return awards;
