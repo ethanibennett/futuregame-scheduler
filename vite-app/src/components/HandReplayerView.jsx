@@ -5286,12 +5286,37 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
 
      The last action is read from the street rather than taken from actionIdx,
      so this is the finished pot whatever step the replay is parked on. */
+  /* Effective (called) contributions. You cannot wager more than the largest
+     stack still behind you, so a bet no opponent can match is UNCALLED and
+     returned to the seat that made it — there is no such thing as a side pot
+     only one player is eligible for. At the showdown, cap every seat at the
+     SECOND-highest commitment: the single top over-shove's excess never enters
+     the pot, it goes back. Settled only at the result — mid-hand the bet is
+     still live and stands in the pot. */
+  const settled = useMemo(() => {
+    const raw = hand.players.map((_, pi) => {
+      let total = 0;
+      const last = showResult ? hand.streets.length - 1 : streetIdx;
+      for (let si = 0; si <= last && si < hand.streets.length; si++) {
+        const acts = hand.streets[si].actions || [];
+        const upTo = (!showResult && si === streetIdx) ? actionIdx : acts.length - 1;
+        total += computePlayerContrib(hand, si, acts, upTo, pi);
+      }
+      return total;
+    });
+    if (!showResult) return { contrib: raw, uncalled: raw.map(() => 0), contested: raw.reduce((a, b) => a + b, 0) };
+    const sorted = [...raw].sort((a, b) => b - a);
+    const cap = sorted.length > 1 ? sorted[1] : 0;
+    const contrib = raw.map(c => Math.min(c, cap));
+    const uncalled = raw.map((c, i) => c - contrib[i]);
+    return { contrib, uncalled, contested: contrib.reduce((a, b) => a + b, 0) };
+  }, [hand, streetIdx, actionIdx, showResult]);
+
   const displayPot = useMemo(() => {
     if (!showResult) return calcPotsAndStacks(hand, streetIdx, -1).pot;
-    const st = hand.streets[streetIdx];
-    const lastAct = st && st.actions ? st.actions.length - 1 : -1;
-    return calcPotsAndStacks(hand, streetIdx, lastAct).pot;
-  }, [hand, streetIdx, showResult]);
+    // The contested total — the uncalled portion of an over-shove is not in it.
+    return settled.contested;
+  }, [hand, streetIdx, showResult, settled]);
 
   /* 91: a player who moved all-in got an ALL-IN badge for exactly one step and
      then reverted to an ordinary seat with a zero stack. All-in is the state
@@ -5326,22 +5351,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      it needs WHICH seats are eligible for each, not just how many, because a
      layer is settled among its own contestants. */
   const allPotLayers = useMemo(() => {
-    // Each seat's TOTAL commitment, computed exactly as calcPotsAndStacks and the
-    // bet chips do (computePlayerContrib): blinds and the straddle seed the
-    // preflop street, and every action amount is an increment that ADDS. The old
-    // version summed action amounts only — no blinds — and took the MAX of raise
-    // amounts rather than adding them, so a seat that bet then raised in one
-    // street was under-counted; that both shrank the side-pot caps and left the
-    // layers summing to less than the pot they came from.
-    const contrib = hand.players.map((_, pi) => {
-      let total = 0;
-      for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
-        const acts = hand.streets[si].actions || [];
-        const upTo = si === streetIdx ? actionIdx : acts.length - 1;
-        total += computePlayerContrib(hand, si, acts, upTo, pi);
-      }
-      return total;
-    });
+    // Built from the EFFECTIVE (called) contributions — the same number the pot
+    // total and the bet chips use (computePlayerContrib: blinds and the straddle
+    // seed the preflop street, action amounts are increments that ADD), with the
+    // uncalled top over-shove already removed. So the caps are right and no layer
+    // is contributed to by a single seat that no one could match.
+    const contrib = settled.contrib;
     const live = hand.players.map((_, pi) => pi).filter(pi => contrib[pi] > 0);
     if (!live.length) return [];
     const caps = [...new Set(live.filter(pi => allIn.has(pi)).map(pi => contrib[pi]))].sort((a, b) => a - b);
@@ -5355,7 +5370,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       floor = cap;
     });
     return layers;
-  }, [hand, streetIdx, actionIdx, allIn, folded]);
+  }, [settled, hand, allIn, folded]);
   // The pot row only has something to say when the pot actually split. Reconcile
   // to the shown total so the MAIN/SIDE pills always sum to it — any dead money
   // (antes, a folded blind the wager layers miss) rides in the main pot, exactly
@@ -5526,7 +5541,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const winners = flaggedWinners;
     if (!winners.length) return null;
     const contesting = hand.players.map((_, pi) => pi).filter(pi => !folded.has(pi));
-    const layers = reconcileLayersToPot(allPotLayers, pot, contesting);
+    const layers = reconcileLayersToPot(allPotLayers, settled.contested, contesting);
     const cfg = GAME_EVAL[hand.gameType];
 
     /* Each pot layer is decided among ITS OWN eligible players, from the cards.
@@ -5594,7 +5609,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const btnIdx = hand.players.findIndex(p => p.position === 'BTN' || p.position === 'BTN/SB');
     const { awards } = computePotAwards(shaped, { order: seatOrderFromButton(hand.players.length, btnIdx) });
     return awards;
-  }, [showResult, flaggedWinners, hand, allPotLayers, pot, folded, category, boardCards,
+  }, [showResult, flaggedWinners, hand, allPotLayers, settled, folded, category, boardCards,
       heroCards, opponentCards, replayHeroIdx, gameCfg]);
 
   /* The plaque shows what a player HAS, and calcPotsAndStacks only ever
@@ -5611,8 +5626,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      total, which is the one piece of motion at showdown that is showing
      something rather than decorating it. */
   const shownStacks = useMemo(() => (
-    (showResult && potAwards) ? stacks.map((v, i) => v + (potAwards[i] || 0)) : stacks
-  ), [showResult, potAwards, stacks]);
+    (showResult && potAwards) ? stacks.map((v, i) => v + (potAwards[i] || 0) + (settled.uncalled[i] || 0)) : stacks
+  ), [showResult, potAwards, stacks, settled]);
 
   /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
      nudged 8px up together, which communicates nothing — and the down-shifting
