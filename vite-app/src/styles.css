@@ -1495,16 +1495,23 @@
          top of the previous card's own 6px margin, so a day boundary is a
          22px break and everything inside a day is a 6px rhythm. */
       /* Flush to the content rails (no side padding) so the date pill sits on
-         the col-1 line and the weekday/chevron on the right margin. Vertical
-         padding is 0 on top so the date pill sits at the very top of the date
-         break — which sticks at the 6th primary-row line (160px) — i.e. the
-         pill top aligns to that row. The pill is one primary row (32px) and the
-         pill sits at the top and the remaining 8px is one subrow of space
-         beneath it, so the date break is a fixed 40px (5 subrows) and its bottom
-         edge — the border cards disappear behind — lands on the 200px line
-         regardless of the count/sort box extents. */
+         the col-1 line and the weekday/chevron on the right margin. The block is
+         a fixed 40px (5 subrows) and sticks at the 6th primary-row line (160px),
+         so its top and its bottom edge — the border cards disappear behind —
+         land on the 160/200 subrow lines.
+
+         The day numeral is a 32px line box (one primary row). Its glyph baseline
+         sits 26.5px below the line-box top (measured: the display serif's
+         ascent runs 10.5px past half the line-height), so with no top padding
+         the shared day/count baseline lands at 186.5 when stuck — 2.5px off the
+         184 line and 5.5px off 192. A 5.5px top pad drops it to exactly 192 (the
+         4th subrow line inside the block), seating the baseline while keeping the
+         32px numeral box (5.5→37.5) fully inside the 40px block — cards behind
+         still vanish cleanly at 200, and the baseline rests low, close to the
+         events the date heads. Not a grid unit: a font-metric seat, per the
+         standing seat-the-baseline rule. */
       height: calc(var(--subrow) * 5);
-      padding: 0;
+      padding: 5.5px 0 0;
       /* The border where scrolling cards disappear, drawn as an inset hairline
          so it adds no height. */
       box-shadow: inset 0 calc(-1 * var(--bw-hair)) 0 var(--border);
@@ -1538,7 +1545,12 @@
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
-      height: calc(var(--subrow) * 4); /* one primary row (32px) */
+      /* No fixed height: a fixed height with align-items:baseline made the pill's
+         reported baseline diverge from the day's real glyph baseline, so the
+         count (aligned to the pill) sat 5px off it. Content-driven, the pill's
+         baseline IS the day's baseline and the count lines up. The five-subrow
+         (40px) height comes from the day's 32px line + the today highlight's 4px
+         top/bottom padding. */
       gap: var(--space-xs);
       color: var(--text);
     }
@@ -1557,12 +1569,8 @@
       font-family: var(--font-display);
       font-size: var(--fs-3xl);
       font-weight: var(--fw-regular);
-      line-height: 32px; /* 4 subrows */
+      line-height: calc(var(--subrow) * 4); /* one primary row */
       font-variant-numeric: var(--num-tabular);
-      /* Seats the shared date/count baseline on the 184 subrow line (its true
-         baseline sits 2.5px below it in the 32px line box); the count and
-         weekday follow via the row's baseline alignment. */
-      margin-top: -2.5px;
     }
     .date-break-mon {
       font-family: var(--font-display);
