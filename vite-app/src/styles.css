@@ -1580,6 +1580,14 @@
       text-transform: uppercase;
       color: var(--text-muted);
       margin-left: var(--gu); /* one gutter, so the count starts on the col-2 line */
+      /* Seat the count on the PILL's baseline — the pill box's bottom edge — not
+         on the day's text baseline. align-items:baseline lands the count on the
+         "25" glyph baseline (block-top + 26.5); the pill box bottom is block-top
+         + 32, so a 5.5px drop puts the count's baseline on the pill's bottom
+         edge: 192 when pinned, a subrow line. 5.5 = pill height (32) − day
+         baseline offset (26.5) — a font-metric constant, not a grid unit. */
+      position: relative;
+      top: 5.5px;
     }
     .date-break-end {
       margin-left: auto;
@@ -7274,11 +7282,15 @@
       margin: -12px calc(-1 * var(--gu)) 0;
       /* Top padding = base (12px) + one subrow, so with the -12px bleed and the
          8px content pad the whole block sits two subrows (16px) below the
-         header. Bottom padding is 16px so the sticky header's bottom edge lands
-         on the 5th primary-row line (160px) — the region cards disappear behind
-         is exactly the top five primary rows. Horizontal padding is one grid
-         unit so the row is 35g on the rails and its children land on g-lines. */
-      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) var(--space-xl);
+         header. Bottom padding is 24px (3 subrows) so the sticky header's bottom
+         edge lands on the 5th primary-row line (160px) — the region cards
+         disappear behind is exactly the top five primary rows. The checkbox row
+         is 16px (2 subrows, 120→136: the 16px squares fill it, so the row's
+         VISIBLE bottom sits on a grid line); 136→160 is then exactly 3 empty
+         subrows between the checkboxes and the date pill pinned at 160.
+         Horizontal padding is one grid unit so the row is 35g on the rails and
+         its children land on g-lines. */
+      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) calc(var(--space-xl) + var(--subrow));
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
          card was peeking over the header. Promoting the sticky to its own GPU

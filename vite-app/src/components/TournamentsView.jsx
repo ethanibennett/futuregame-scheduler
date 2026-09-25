@@ -161,25 +161,25 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             the left three columns (exactly 26g = 1g..27g); Available-to-me — only
             when Online is on — justified to the right margin. */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'calc(var(--gu) * 26)',flexShrink:0}}>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSatellites}
               onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
               style={{margin:0,width:'16px',height:'16px'}}
             /> Satellites
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideRestarts}
               onChange={e => setFiltersRaw(f => ({...f, hideRestarts:!e.target.checked}))}
               style={{margin:0,width:'16px',height:'16px'}}
             /> Restarts
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSideEvents}
               onChange={e => setFiltersRaw(f => ({...f, hideSideEvents:!e.target.checked}))}
               style={{margin:0,width:'16px',height:'16px'}}
             /> Side Events
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={filters.showOnline !== false}
               onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
               style={{margin:0,width:'16px',height:'16px'}}
@@ -191,7 +191,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             title={filters.jurisdiction
               ? `Hide online events on sites not available in ${filters.jurisdiction}`
               : 'Set your state in the location menu to use this'}
-            style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',height:'24px',marginLeft:'auto',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
+            style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',height:'16px',marginLeft:'auto',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
             <input type="checkbox" disabled={!filters.jurisdiction}
               checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
               onChange={e => setFiltersRaw(f => ({...f, onlyAvailableOnline:e.target.checked}))}
@@ -1209,13 +1209,14 @@ export default function TournamentsView({
   // events area" — same landing y as scrollBelowSticky uses for an
   // expanded card, so an intentional day change drops the first event
   // exactly where it would be if the user had just expanded it.
-  // Formula: scrollTo(groupAbsTop - filtersH - 4). The date-break (first child
-  // of the group) lands at filtersH + 4 below the scrollport top. With the
-  // content-area top at viewport 64 and the sticky filters 100px tall, that puts
-  // the block at 64 + 100 + 4 = 168 — a subrow line (the overlay grid runs from
-  // viewport 0 at 8px), and exactly 3 subrows below the checkbox row (bottom
-  // 144). The old +2 landed it at 166, off every grid line. (When the user then
-  // scrolls, the block pins flush under the filters at 160, also a subrow line.)
+  // Formula: scrollTo(groupAbsTop - filtersH + 4). The date-break (first child
+  // of the group) lands 4px ABOVE filtersH below the scrollport top: with the
+  // content-area top at viewport 64 and the sticky filters 100px tall, that is
+  // 64 + 100 - 4 = 160 — exactly the block's sticky pin line, the 6th primary
+  // row (the overlay grid runs from viewport 0). Landing == pin, so the block
+  // sits flush under the filters from the first paint and does not jump when
+  // the user starts scrolling. The old "- 2" landed it at 166, off every grid
+  // line, 6px shy of the pin.
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
@@ -1223,7 +1224,7 @@ export default function TournamentsView({
     const filtersH = stickyEl ? stickyEl.getBoundingClientRect().height : 0;
     const cTop = container.getBoundingClientRect().top;
     const groupAbsTop = dateGroupEl.getBoundingClientRect().top - cTop + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH - 4), behavior });
+    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH + 4), behavior });
   }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);
