@@ -1209,9 +1209,13 @@ export default function TournamentsView({
   // events area" — same landing y as scrollBelowSticky uses for an
   // expanded card, so an intentional day change drops the first event
   // exactly where it would be if the user had just expanded it.
-  // Formula: scrollTo(groupAbsTop - filtersH - 2). The date-break
-  // (first child of the group) sits at filtersH + 2; first event sits
-  // at filtersH + dateBreakH + 2.
+  // Formula: scrollTo(groupAbsTop - filtersH - 4). The date-break (first child
+  // of the group) lands at filtersH + 4 below the scrollport top. With the
+  // content-area top at viewport 64 and the sticky filters 100px tall, that puts
+  // the block at 64 + 100 + 4 = 168 — a subrow line (the overlay grid runs from
+  // viewport 0 at 8px), and exactly 3 subrows below the checkbox row (bottom
+  // 144). The old +2 landed it at 166, off every grid line. (When the user then
+  // scrolls, the block pins flush under the filters at 160, also a subrow line.)
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
@@ -1219,7 +1223,7 @@ export default function TournamentsView({
     const filtersH = stickyEl ? stickyEl.getBoundingClientRect().height : 0;
     const cTop = container.getBoundingClientRect().top;
     const groupAbsTop = dateGroupEl.getBoundingClientRect().top - cTop + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH - 2), behavior });
+    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH - 4), behavior });
   }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);

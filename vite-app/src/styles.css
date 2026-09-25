@@ -1580,13 +1580,6 @@
       text-transform: uppercase;
       color: var(--text-muted);
       margin-left: var(--gu); /* one gutter, so the count starts on the col-2 line */
-      /* Seat the count on the PILL's baseline — its bottom edge — not the day's
-         text baseline. align-items:baseline puts the count on the day glyph
-         baseline (block-top + 26.5); the pill box bottom is block-top + 32, so a
-         5.5px drop lands the count on the pill's bottom edge (192 when stuck, a
-         subrow line). 5.5 = pill height (32) − day baseline offset (26.5). */
-      position: relative;
-      top: 5.5px;
     }
     .date-break-end {
       margin-left: auto;
