@@ -1208,9 +1208,9 @@ export default function TournamentsView({
   // exactly where it would be if the user had just expanded it.
   // Formula: scrollTo(groupAbsTop - filtersH + 4). The date-break (first child
   // of the group) lands 4px ABOVE filtersH below the scrollport top: with the
-  // content-area top at viewport 64 and the sticky filters 92px tall, that is
-  // 64 + 92 - 4 = 152 — exactly the block's sticky pin line, a subrow line (the
-  // overlay grid runs from viewport 0 at 8px). Landing == pin, so the block
+  // content-area top at viewport 64 and the sticky filters 100px tall, that is
+  // 64 + 100 - 4 = 160 — exactly the block's sticky pin line, the 5th primary
+  // row (the overlay grid runs from viewport 0 at 8px). Landing == pin, so the block
   // sits flush under the filters from the first paint and does not jump when
   // the user starts scrolling. filtersH is MEASURED, so a change to the
   // filters' padding moves the landing and the pin together. The old "- 2"
