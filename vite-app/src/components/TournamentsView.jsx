@@ -1569,7 +1569,7 @@ export default function TournamentsView({
         {/* wrap + rowGap: on a narrow phone the event-kind switches drop to their
             own line below the icon buttons instead of overflowing and clipping
             "Side Events" off the right edge. */}
-        <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap',rowGap:'8px'}}>
+        <div style={{display:'flex',gap:'var(--gu)',alignItems:'center',flexWrap:'wrap',rowGap:'8px'}}>
           {/* Location chip expands to fill the row and carries the current
               location indicator inside it; the other tools stay square at the
               right. */}

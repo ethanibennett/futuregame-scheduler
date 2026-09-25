@@ -1489,8 +1489,10 @@
          22px break and everything inside a day is a 6px rhythm. */
       /* Flush to the content rails (no side padding) so the date pill sits on
          the col-1 line and the weekday/chevron on the right margin. Vertical
-         padding on 8px so the row keeps the list on the baseline. */
-      padding: var(--space-xl) 0 var(--space-md) 0;
+         padding trimmed 2.5px off the top (added to the bottom to hold the 64px
+         height) so the date/count baseline rests ON the 40px line rather than
+         2.5px above it. */
+      padding: calc(var(--space-xl) - 2.5px) 0 calc(var(--space-md) + 2.5px) 0;
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
@@ -7241,7 +7243,10 @@
       z-index: var(--z-sticky);
       background: var(--bg);
       margin: -12px calc(-1 * var(--gu)) 0;
-      padding: var(--space-3xl) var(--space-lg) var(--space-sm);
+      /* Top padding trimmed 24 -> 12 so, with the -12px bleed and the 8px
+         content pad, the button row sits one subrow (8px) below the header
+         instead of 20px. */
+      padding: var(--space-lg) var(--space-lg) var(--space-sm);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
          card was peeking over the header. Promoting the sticky to its own GPU
