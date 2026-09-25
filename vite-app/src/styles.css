@@ -8326,15 +8326,11 @@
     .cal-event-bar {
       display: flex;
       flex-direction: column;
-      gap: var(--space-md);
-      /* One step up the scale for the vertical padding, 10 -> 12. Measured on
-         the feed: a row WITHOUT a guarantee is 40px of content, and 40 + 24 of
-         padding is exactly the 64px min-height below — so the extra padding is
-         absorbed there and those rows do not grow at all. A row WITH a
-         guarantee is 49px of content, which had already pushed past the
-         min-height and left the 10px padding as the only breathing room
-         (measured free space: zero). The cost of this lands entirely on the
-         rows that needed it. Horizontal padding is unchanged. */
+      /* No inter-row gap: with 8px top/bottom padding, row1 (40) + row2 (24)
+         plus the 16px chevron row below the bar make the card an even 3 major
+         rows (96px / 12 subrows). A late-reg strip adds a 4th (see its
+         16px top margin). */
+      gap: 0;
       /* Half a subcolumn (one g) of inset on each side — a grid-determined
          internal margin between the venue strip and the title, and between the
          buy-in and the card's right edge. A full subcolumn read as too much. */
@@ -9040,9 +9036,10 @@
       align-items: center;
       gap: var(--space-sm);
       padding: 0;
-      height: 16px; /* 2 subrows, so the strip keeps cards on the baseline */
+      height: 16px;        /* 2 subrows */
+      margin-top: 16px;    /* + strip = a full 32px major row, so a card with a
+                              late-reg bar is 4 major rows (128px) vs the base 3 (96px) */
       justify-content: flex-start;
-      margin-top: 0;
     }
     /* DashboardView renders .mini-late-reg-label and the stylesheet defined
        .mini-late-reg, -time, -track and -fill - but never -label, and none of
