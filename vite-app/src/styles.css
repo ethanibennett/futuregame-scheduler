@@ -7254,11 +7254,11 @@
       z-index: var(--z-sticky);
       background: var(--bg);
       margin: -12px calc(-1 * var(--gu)) 0;
-      /* Top padding trimmed 24 -> 12 so, with the -12px bleed and the 8px
-         content pad, the button row sits one subrow (8px) below the header
-         instead of 20px. Horizontal padding is one grid unit (not 12px) so the
-         row is exactly 35g on the rails and its children land on g-lines. */
-      padding: var(--space-lg) var(--gu) var(--space-sm);
+      /* Top padding = base (12px) + one subrow, so with the -12px bleed and the
+         8px content pad the whole block sits two subrows (16px) below the
+         header. Horizontal padding is one grid unit (not 12px) so the row is
+         exactly 35g on the rails and its children land on g-lines. */
+      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) var(--space-sm);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
          card was peeking over the header. Promoting the sticky to its own GPU
