@@ -7328,7 +7328,8 @@
        the pill shape). Used for the location/calendar/filter/import
        toolbar buttons on the Schedule tab. */
     .filter-chip-square {
-      width: 32px;
+      width: calc(var(--gu) * 3); /* 3g wide; the location chip (flex:1) absorbs
+                                     the rest so the gaps stay 1g */
       height: 32px;
       padding: 0;
       border-radius: var(--radius-sm);
