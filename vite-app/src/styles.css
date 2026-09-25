@@ -1496,10 +1496,11 @@
          22px break and everything inside a day is a 6px rhythm. */
       /* Flush to the content rails (no side padding) so the date pill sits on
          the col-1 line and the weekday/chevron on the right margin. Vertical
-         padding trimmed 2.5px off the top (added to the bottom to hold the 64px
-         height) so the date/count baseline rests ON the 40px line rather than
-         2.5px above it. */
-      padding: calc(var(--space-xl) - 2.5px) 0 calc(var(--space-md) + 2.5px) 0;
+         padding is 0 on top so the date pill sits at the very top of the date
+         break — which sticks at the 6th primary-row line (160px) — i.e. the
+         pill top aligns to that row. The 24px bottom holds the 64px (2-row)
+         height. */
+      padding: 0 0 var(--space-3xl) 0;
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
@@ -7260,9 +7261,11 @@
       margin: -12px calc(-1 * var(--gu)) 0;
       /* Top padding = base (12px) + one subrow, so with the -12px bleed and the
          8px content pad the whole block sits two subrows (16px) below the
-         header. Horizontal padding is one grid unit (not 12px) so the row is
-         exactly 35g on the rails and its children land on g-lines. */
-      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) var(--space-sm);
+         header. Bottom padding is 16px so the sticky header's bottom edge lands
+         on the 5th primary-row line (160px) — the region cards disappear behind
+         is exactly the top five primary rows. Horizontal padding is one grid
+         unit so the row is 35g on the rails and its children land on g-lines. */
+      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) var(--space-xl);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
          card was peeking over the header. Promoting the sticky to its own GPU
