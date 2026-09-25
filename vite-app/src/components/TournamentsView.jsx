@@ -156,37 +156,42 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
       {/* All event-kind + online switches on one line below the buttons.
           setFiltersRaw (not the scroll-wrapped setter) so toggling doesn't jump
           the list back to today. */}
-      <div className="filter-row" style={{gap:'8px',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'wrap'}}>
-        <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
-          <input type="checkbox" checked={!filters.hideSatellites}
-            onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
-            style={{margin:0,width:'16px',height:'16px'}}
-          /> Satellites
-        </label>
-        <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
-          <input type="checkbox" checked={!filters.hideRestarts}
-            onChange={e => setFiltersRaw(f => ({...f, hideRestarts:!e.target.checked}))}
-            style={{margin:0,width:'16px',height:'16px'}}
-          /> Restarts
-        </label>
-        <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
-          <input type="checkbox" checked={!filters.hideSideEvents}
-            onChange={e => setFiltersRaw(f => ({...f, hideSideEvents:!e.target.checked}))}
-            style={{margin:0,width:'16px',height:'16px'}}
-          /> Side Events
-        </label>
-        <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
-          <input type="checkbox" checked={filters.showOnline !== false}
-            onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
-            style={{margin:0,width:'16px',height:'16px'}}
-          /> Online
-        </label>
+      <div className="filter-row" style={{gap:'0',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
+        {/* Satellites / Restarts / Side Events / Online distributed evenly across
+            the left three columns (exactly 26g = 1g..27g); Available-to-me — only
+            when Online is on — justified to the right margin. */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'calc(var(--gu) * 26)',flexShrink:0}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <input type="checkbox" checked={!filters.hideSatellites}
+              onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
+              style={{margin:0,width:'16px',height:'16px'}}
+            /> Satellites
+          </label>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <input type="checkbox" checked={!filters.hideRestarts}
+              onChange={e => setFiltersRaw(f => ({...f, hideRestarts:!e.target.checked}))}
+              style={{margin:0,width:'16px',height:'16px'}}
+            /> Restarts
+          </label>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <input type="checkbox" checked={!filters.hideSideEvents}
+              onChange={e => setFiltersRaw(f => ({...f, hideSideEvents:!e.target.checked}))}
+              style={{margin:0,width:'16px',height:'16px'}}
+            /> Side Events
+          </label>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <input type="checkbox" checked={filters.showOnline !== false}
+              onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
+              style={{margin:0,width:'16px',height:'16px'}}
+            /> Online
+          </label>
+        </div>
         {filters.showOnline !== false && (
           <label
             title={filters.jurisdiction
               ? `Hide online events on sites not available in ${filters.jurisdiction}`
               : 'Set your state in the location menu to use this'}
-            style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
+            style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',height:'24px',marginLeft:'auto',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
             <input type="checkbox" disabled={!filters.jurisdiction}
               checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
               onChange={e => setFiltersRaw(f => ({...f, onlyAvailableOnline:e.target.checked}))}
