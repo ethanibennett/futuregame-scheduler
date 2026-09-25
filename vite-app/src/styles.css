@@ -1913,8 +1913,10 @@
       align-items: center;
       position: relative;
       justify-content: space-between;
-      padding-left: var(--space-xl);
-      padding-right: var(--space-xl);
+      /* Gutter to gutter: the header sits on the same 1g rails as the content
+         area, so the wordmark aligns with everything below it. */
+      padding-left: var(--gu);
+      padding-right: var(--gu);
       flex-shrink: 0;
       z-index: var(--z-sticky);
     }
