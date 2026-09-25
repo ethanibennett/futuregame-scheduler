@@ -27,8 +27,7 @@ function formatEventName(name) {
   return (
     <>
       {base}
-      <br />
-      <span style={{ fontSize: '0.78em', opacity: 0.7 }}>{stage}</span>
+      <span className="cal-event-stage">{stage}</span>
     </>
   );
 }
