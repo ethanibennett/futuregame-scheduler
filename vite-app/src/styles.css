@@ -1480,7 +1480,11 @@
       z-index: 5;
       display: flex;
       align-items: baseline;
-      gap: var(--space-xs);
+      /* No flex gap: the count carries its own 1g left margin, so it lands
+         exactly on the col-2 line (pill ends at 9g + 1g = 10g) with the
+         col-1/col-2 gutter immediately to its left. The sort control on the
+         right uses margin-left:auto, so it needs no gap either. */
+      gap: 0;
       /* The date belongs to the events under it, so it should sit closer to
          them than to the day above. It was 12px above and 16px BELOW, against
          6px between cards — so the biggest gap in the group fell between the
