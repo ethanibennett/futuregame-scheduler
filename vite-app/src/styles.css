@@ -403,6 +403,20 @@
       --space-4xl: 32px;
       --space-5xl: 48px;
 
+      /* --- Layout sub-grid ---------------------------------------------
+         The responsive grid every element is sized to. The screen is 37
+         base units (g) wide: half-subcolumn margins and gutters around
+         four columns of four subcolumns each —
+           .5 + 4 + .5 + 4 + .5 + 4 + .5 + 4 + .5  = 18.5 subcolumns,
+         and 18.5 subcolumns = 37 g. So g = screenWidth / 37, the gutter
+         and outer margin are 1 g (½ subcolumn), a subcolumn is 2 g, and a
+         column is 8 g. Widths are whole subcolumns; the gutter is the
+         half. Height stays on the fixed 8px subrow (--subrow). */
+      --gu:     calc(100vw / 37);     /* base unit g = gutter = margin = ½ subcolumn */
+      --subcol: calc(var(--gu) * 2);  /* one subcolumn */
+      --col:    calc(var(--gu) * 8);  /* one column = 4 subcolumns */
+      --subrow: 8px;                  /* vertical baseline unit */
+
       /* Sub-pixel optical corrections are NOT spacing. */
       --nudge-half: 0.5px;
       --nudge-1:    1px;
@@ -785,12 +799,16 @@
     /* The money column. The guarantee sits under the buy-in rather than in a
        badge, because it is a fact about the event and not a scored value. */
     .cal-event-money {
-      margin-left: auto;
+      /* Fills its 8g column (grid item, no shrink) with the figures
+         right-aligned to the rail, so the block IS the column rather than a
+         text-width island floating at the right. */
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
+      align-items: stretch;
+      text-align: right;
       line-height: var(--lh-tight);
     }
+    .cal-event-buyin, .cal-event-gtd { display: block; width: 100%; }
     .cal-event-gtd {
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
@@ -2816,7 +2834,7 @@
          can never show through this header either. */
       transform: translateZ(0);
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
-      margin: -12px -12px 0;
+      margin: -12px calc(-1 * var(--gu)) 0;
       /* Removed: box-shadow: 0 4px 0 0 var(--bg) — the var sometimes
          resolved one frame late during sticky transitions and fell back
          to currentColor (dark text), producing a thin black band below
@@ -6627,7 +6645,9 @@
       flex: 1;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      padding: 12px 12px 80px; /* bottom pad clears the tab bar */
+      /* Side margins are one grid unit (½ subcolumn), so content sits inside
+         the sub-grid rails. Bottom pad clears the tab bar. */
+      padding: 12px var(--gu) 80px;
       background: var(--bg);
     }
     /* When the replayer tab is active, lock scrolling on the content area.
@@ -7199,7 +7219,7 @@
       top: -12px;
       z-index: var(--z-sticky);
       background: var(--bg);
-      margin: -12px -12px 0;
+      margin: -12px calc(-1 * var(--gu)) 0;
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
@@ -7980,7 +8000,7 @@
          screen may let a card show through it. */
       transform: translateZ(0);
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
-      margin: -12px -12px 0;
+      margin: -12px calc(-1 * var(--gu)) 0;
       /* Removed: box-shadow: 0 4px 0 0 var(--bg) — the var sometimes
          resolved one frame late during sticky transitions and fell back
          to currentColor (dark text), producing a thin black band below
@@ -8403,11 +8423,10 @@
          the time fills the columns to its left, so its box runs line-to-line
          (35 → 326) with the label left-aligned inside it. */
       display: grid;
-      grid-template-columns: 1fr 92.5px;
+      grid-template-columns: 1fr var(--col);
       align-items: center;
       gap: 0;
     }
-    .cal-bar-row1 > .cal-event-money { justify-self: end; }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
        "- Flight A" on a second line, which doubles the row height and used to
@@ -8837,7 +8856,7 @@
     .cal-action-row {
       display: flex;
       box-shadow: inset 0 var(--bw-1) 0 var(--border);
-      margin: 0 -12px;
+      margin: 0 calc(-1 * var(--gu));
       align-items: stretch;
     }
 
@@ -9069,9 +9088,9 @@
 
     /* ── Responsive tweaks for desktop ── */
     @media (min-width: 640px) {
-      .content-area { padding: 16px 20px 80px; }
-      .sticky-filters { margin: -16px -20px 0; padding: var(--space-4xl) var(--space-2xl) var(--space-sm); top: -16px; }
-      .schedule-sticky-header { margin: -16px -20px 0; padding: var(--space-4xl) var(--space-2xl) var(--space-sm); top: -16px; }
+      .content-area { padding: 16px var(--gu) 80px; }
+      .sticky-filters { margin: -16px calc(-1 * var(--gu)) 0; padding: var(--space-4xl) var(--space-2xl) var(--space-sm); top: -16px; }
+      .schedule-sticky-header { margin: -16px calc(-1 * var(--gu)) 0; padding: var(--space-4xl) var(--space-2xl) var(--space-sm); top: -16px; }
 
       .tournament-list {
         display: grid;
@@ -9096,9 +9115,9 @@
     }
 
     @media (min-width: 1024px) {
-      .content-area { padding: 20px 32px 80px; }
-      .sticky-filters { margin: -20px -32px 0; padding: var(--space-5xl) var(--space-4xl) var(--space-sm); top: -20px; }
-      .schedule-sticky-header { margin: -20px -32px 0; padding: var(--space-5xl) var(--space-4xl) var(--space-sm); top: -20px; }
+      .content-area { padding: 20px var(--gu) 80px; }
+      .sticky-filters { margin: -20px calc(-1 * var(--gu)) 0; padding: var(--space-5xl) var(--space-4xl) var(--space-sm); top: -20px; }
+      .schedule-sticky-header { margin: -20px calc(-1 * var(--gu)) 0; padding: var(--space-5xl) var(--space-4xl) var(--space-sm); top: -20px; }
 
       .tournament-list {
         grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
@@ -11374,8 +11393,8 @@
     }
     .grid-dev-cols {
       position: absolute; inset: 0;
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-      padding: 0 12px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gu);
+      padding: 0 var(--gu);
     }
     .grid-dev-col {
       /* Band fill + SECONDARY column lines: each primary column is split into
@@ -11390,8 +11409,8 @@
       border-left: 1px solid color-mix(in srgb, #35a0b3 55%, transparent);
       border-right: 1px solid color-mix(in srgb, #35a0b3 55%, transparent);
     }
-    @media (min-width: 640px) { .grid-dev-cols { padding: 0 20px; } }
-    @media (min-width: 1024px) { .grid-dev-cols { padding: 0 32px; } }
+    /* The grid unit is responsive (100vw/37), so the overlay needs no
+       per-breakpoint margin overrides — it tracks the screen at every width. */
 
     /* Floating admin toggle for the grid overlay. */
     .grid-dev-toggle {
