@@ -282,7 +282,7 @@
          where the label below was being cut. 40 gives the 35 the content needs
          plus symmetric breathing room. */
       --tab-h:     40px;
-      --header-h:  60px;
+      --header-h:  64px;  /* 8 subrows */
       /* Single source of truth for nav height — used by .bottom-nav for
          its own height AND by .replayer-bottom-fixed for `bottom` so the
          two positions can never drift relative to each other. */
@@ -1534,18 +1534,19 @@
       font-family: var(--font-display);
       font-size: var(--fs-3xl);
       font-weight: var(--fw-regular);
-      line-height: 1;
+      line-height: 32px; /* 4 subrows */
       font-variant-numeric: var(--num-tabular);
     }
     .date-break-mon {
       font-family: var(--font-display);
       font-size: var(--fs-md);
-      line-height: 1;
+      line-height: 16px; /* 2 subrows */
       text-transform: capitalize;
     }
     .date-break-count {
       font-size: var(--fs-2xs);
       font-family: var(--font-condensed);
+      line-height: 16px; /* 2 subrows */
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
@@ -1555,12 +1556,13 @@
       margin-left: auto;
       display: inline-flex;
       align-items: center;
+      height: 32px; /* 4 subrows */
       gap: var(--space-md);
     }
     .date-break-dow {
       font-family: var(--font-display);
       font-size: var(--fs-md);
-      line-height: 1;
+      line-height: 16px; /* 2 subrows */
     }
     .date-break-chev {
       display: inline-flex;
@@ -1898,6 +1900,7 @@
 
     .top-bar {
       height: var(--header-h);
+      box-sizing: border-box; /* the 1px border is inside the 8-subrow height */
       background: transparent;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -6646,8 +6649,10 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       /* Side margins are one grid unit (½ subcolumn), so content sits inside
-         the sub-grid rails. Bottom pad clears the tab bar. */
-      padding: 12px var(--gu) 80px;
+         the sub-grid rails. Top pad is one subrow, so with the 64px (8-subrow)
+         header the content origin sits at 72px = 9 subrows. Bottom clears the
+         tab bar. */
+      padding: 8px var(--gu) 80px;
       background: var(--bg);
     }
     /* When the replayer tab is active, lock scrolling on the content area.
@@ -8326,11 +8331,11 @@
          min-height and left the 10px padding as the only breathing room
          (measured free space: zero). The cost of this lands entirely on the
          rows that needed it. Horizontal padding is unchanged. */
-      /* No horizontal padding: the content spans the card's own grid edges
-         (35px secondary line on the left, the 418 right rail), so the time and
-         name start ON the left line and the buy-in ends ON the right rail
-         instead of floating a gutter's width inside. */
-      padding: var(--space-md) 0;
+      /* One subcolumn of inset on each side: a grid-determined gap between the
+         venue strip and the title on the left, and between the buy-in and the
+         card's right edge on the right. Content then runs from the 3rd
+         subcolumn line to one subcolumn short of the right edge, both on lines. */
+      padding: var(--space-md) var(--subcol);
       cursor: pointer;
       position: relative;
       user-select: none;
@@ -8425,7 +8430,7 @@
          the time fills the columns to its left, so its box runs line-to-line
          (35 → 326) with the label left-aligned inside it. */
       display: grid;
-      grid-template-columns: 1fr var(--col);
+      grid-template-columns: 1fr calc(var(--subcol) * 3);
       align-items: center;
       gap: 0;
     }
@@ -9032,8 +9037,9 @@
       align-items: center;
       gap: var(--space-sm);
       padding: 0;
+      height: 16px; /* 2 subrows, so the strip keeps cards on the baseline */
       justify-content: flex-start;
-      margin-top: -2px;
+      margin-top: 0;
     }
     /* DashboardView renders .mini-late-reg-label and the stylesheet defined
        .mini-late-reg, -time, -track and -fill - but never -label, and none of
@@ -9057,6 +9063,7 @@
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
+      line-height: 16px;
       letter-spacing: var(--track-tight);
       color: var(--text-muted);
       flex-shrink: 0;
