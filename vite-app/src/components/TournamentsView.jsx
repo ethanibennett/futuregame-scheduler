@@ -1621,7 +1621,7 @@ export default function TournamentsView({
               sit level with the icon buttons at left. Online / Available to me and
               the active-filter pills share the row below (the Filters .filter-row),
               keeping the phone (~380px) from scrolling sideways. */}
-          <div style={{display:'flex',gap:'6px',alignItems:'center',marginLeft:'auto'}}>
+          <div style={{display:'flex',gap:'8px',alignItems:'center',marginLeft:'auto'}}>
             <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSatellites}
                 onChange={e => setFilters(f => ({...f, hideSatellites:!e.target.checked}))}

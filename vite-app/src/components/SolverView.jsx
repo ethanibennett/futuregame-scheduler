@@ -275,7 +275,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
         {/* ── Spot panel ── */}
         <div style={{ ...panel, padding: '16px 16px 18px' }}>
           <div style={{ ...label, letterSpacing: '0.14em', fontWeight: 700, marginBottom: 14 }}>Spot</div>

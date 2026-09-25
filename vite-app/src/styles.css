@@ -1925,9 +1925,18 @@
 
     /* Three icon buttons (notifications, broadcast, theme). On iOS this group
        is absolutely centered under the Dynamic Island — see the [data-platform="ios"]
-       override below. On web we just let it sit between the title and the user
-       chip via flex. */
-    .top-bar-actions { display: flex; align-items: center; gap: var(--space-sm); margin-left: auto; }
+       override below. */
+    /* On phone the three action icons are centered in the bar (matching iOS,
+       where they sit under the Dynamic Island). The wordmark stays pinned left
+       and the user chip right via the bar's space-between. Desktop (≥640px) has
+       room to let them sit in normal right-aligned flow. */
+    .top-bar-actions {
+      display: flex; align-items: center; gap: var(--space-sm);
+      position: absolute; left: 50%; transform: translateX(-50%); margin-left: 0;
+    }
+    @media (min-width: 640px) {
+      .top-bar-actions { position: static; transform: none; margin-left: auto; }
+    }
     .top-bar-actions .btn-icon {
       width: 32px; height: 32px; min-width: 32px;
       padding: 0; display: flex; align-items: center; justify-content: center;

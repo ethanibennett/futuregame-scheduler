@@ -720,7 +720,7 @@ export default function SocialView({
 
   const shareSection = (
     <>
-      <div className="dashboard-section-header" style={{marginBottom:'8px',marginTop:20}}>
+      <div className="dashboard-section-header" style={{marginBottom:'8px',marginTop:12}}>
         <div className="dashboard-section-title">Share</div>
       </div>
       <div style={{

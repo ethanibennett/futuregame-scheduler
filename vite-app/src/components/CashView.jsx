@@ -265,7 +265,7 @@ export default function CashView({ token }) {
 
   return (
     <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 'var(--space-md, 16px)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontFamily: BASKERVILLE, fontSize: '1.6rem', fontWeight: 600, color: 'var(--text, #fff)' }}>
           {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
         </h2>
