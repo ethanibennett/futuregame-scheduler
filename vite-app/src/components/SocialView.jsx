@@ -741,7 +741,7 @@ export default function SocialView({
           <div className="dashboard-section-title">Connections</div>
         </div>
         {searchBar}
-        <div style={{textAlign:'center',color:'var(--text-muted)',fontSize:'0.82rem',padding:'24px 0'}}>
+        <div style={{textAlign:'left',color:'var(--text-muted)',fontSize:'0.82rem',padding:'16px 0 24px'}}>
           No connections yet. Search for friends above to get started.
         </div>
         {shareSection}

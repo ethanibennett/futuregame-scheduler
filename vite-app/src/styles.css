@@ -7597,6 +7597,15 @@
       .empty-state-action:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
     }
     .empty-state-action:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+    /* On the dashboard, empty-state blocks track the section's left rail instead
+       of centering — so heading, body and CTA sit on the grid with the labels
+       above them, rather than floating in the middle of the column. (Other
+       compact empty states — dropdowns, panels — stay centered.) */
+    .dashboard-section .empty-state { text-align: left; padding-left: 0; padding-right: 0; }
+    .dashboard-section .empty-state svg { margin-left: 0; }
+    .dashboard-section .empty-state p { max-width: 42ch; margin-left: 0; margin-right: 0; }
+    .dashboard-section .empty-state-action { align-self: flex-start; }
     /* Secondary ways out of a filter sit quiet — only one action should pull. */
     .empty-state-action-quiet {
       background: transparent; color: var(--text-muted); border-color: var(--border);
