@@ -8373,13 +8373,15 @@
        an accolade is a property of the EVENT, --brand is the app talking, and
        two undeclared golds 20px apart is a system with no owner. */
     .cal-accolades {
-      display: inline-flex;
+      /* One-subcolumn cell at the right of row 2, its icons centred on the
+         title line (a 24px / 3-subrow box). */
+      display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: var(--space-xs);
-      margin-left: auto;
+      width: var(--subcol);
+      height: var(--cal-title-line);
       flex-shrink: 0;
-      align-self: flex-start;
-      margin-top: calc((var(--cal-title-line) - 18px) / 2);
       pointer-events: none;
     }
 
@@ -8433,9 +8435,14 @@
        drag centred icons down beside the flight. --cal-title-line is the first
        line's box (name font-size x line-height); each icon centres on it. */
     .cal-bar-row2 {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-md);
+      /* Grid like row 1: the name fills the columns to the left, the accolade
+         cluster is a fixed one-subcolumn cell at the right edge, so both are
+         sized to the grid whether or not an accolade is present (the auto track
+         collapses to 0 when it is absent, giving the name the full width). */
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 0;
       --cal-title-line: 24px;
     }
 
