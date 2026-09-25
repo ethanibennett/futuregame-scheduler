@@ -7598,14 +7598,21 @@
     }
     .empty-state-action:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 
-    /* On the dashboard, empty-state blocks track the section's left rail instead
-       of centering — so heading, body and CTA sit on the grid with the labels
-       above them, rather than floating in the middle of the column. (Other
-       compact empty states — dropdowns, panels — stay centered.) */
-    .dashboard-section .empty-state { text-align: left; padding-left: 0; padding-right: 0; }
-    .dashboard-section .empty-state svg { margin-left: 0; }
-    .dashboard-section .empty-state p { max-width: 42ch; margin-left: 0; margin-right: 0; }
-    .dashboard-section .empty-state-action { align-self: flex-start; }
+    /* On the dashboard, empty-state blocks are laid on the same 4-column grid as
+       the rest of the app, so their edges land on column lines instead of
+       floating: body copy spans 3 columns, the CTA spans 2, both starting at
+       the left rail with the labels above them. Row gaps are 8px multiples.
+       (Other compact empty states — dropdowns, panels — stay centered.) */
+    .dashboard-section .empty-state {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      column-gap: var(--space-lg); row-gap: var(--space-md);
+      text-align: left; padding: var(--space-md) 0 var(--space-sm);
+    }
+    .dashboard-section .empty-state svg { grid-column: 1 / -1; margin: 0; justify-self: start; }
+    .dashboard-section .empty-state h3 { grid-column: 1 / -1; margin: 0; }
+    .dashboard-section .empty-state p { grid-column: 1 / 4; max-width: none; margin: 0; }
+    .dashboard-section .empty-state-action { grid-column: 1 / 3; align-self: start; width: 100%; margin: var(--space-sm) 0 0; }
     /* Secondary ways out of a filter sit quiet — only one action should pull. */
     .empty-state-action-quiet {
       background: transparent; color: var(--text-muted); border-color: var(--border);
@@ -9101,7 +9108,9 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 var(--space-2xs);
+      /* Flush to the grid rail so the label sits on the column line, and its
+         trailing accessory on the right margin — no stray 2px inset. */
+      padding: 0;
     }
 
     .dashboard-section-title {
