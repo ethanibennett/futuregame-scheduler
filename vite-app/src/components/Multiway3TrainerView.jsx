@@ -158,7 +158,7 @@ export default function Multiway3TrainerView() {
           columns on wide screens; top of the stack on narrow. */}
       <div className="trainer-top">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', margin: '4px 0 2px' }}>3-Way Razz Trainer</h2>
+        <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: '4px 0 2px' }}>3-Way Razz Trainer</h2>
         <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>MVP · multiway</span>
       </div>
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>

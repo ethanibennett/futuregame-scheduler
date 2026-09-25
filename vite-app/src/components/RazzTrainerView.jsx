@@ -384,7 +384,7 @@ export default function RazzTrainerView() {
           On wide screens it spans above the two columns; on narrow it's the top of the stack. */}
       <div className="trainer-top">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', margin: '4px 0 2px' }}>{gameName} Trainer</h2>
+        <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: '4px 0 2px' }}>{gameName} Trainer</h2>
         {/* Game pills */}
         <div style={{ display: 'flex', gap: 6 }}>
           {GAMES.map(([id, lbl]) => (

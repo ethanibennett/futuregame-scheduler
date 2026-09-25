@@ -69,7 +69,7 @@ export default function SolverTrainerView() {
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '12px 14px 80px', maxWidth: 560, margin: '0 auto', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>
-      <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', margin: '4px 0 2px' }}>Solver Trainer</h2>
+      <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: '4px 0 2px' }}>Solver Trainer</h2>
       <p style={{ ...label, margin: '0 0 10px' }}>Heads-up fixed limit · CFR strategies</p>
 
       {/* Game picker */}

@@ -86,7 +86,7 @@ export default function AdminView({ token, onNavigate }) {
 return (
     <div style={{padding:'16px',maxWidth:'100%'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
-        <h2 style={{fontFamily:'var(--font-condensed)',fontWeight:700,fontSize:'1.2rem',color:'var(--text)',margin:0}}>
+        <h2 className="screen-title" style={{fontSize:'1.2rem',margin:0}}>
           ADMIN &mdash; {users.length} Users
         </h2>
         {onNavigate && (

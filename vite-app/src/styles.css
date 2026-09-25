@@ -265,6 +265,9 @@
       --venue-gn-bg:   #141414;
       --hover-overlay: rgba(255,255,255,0.04);
       --serif:     'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
+      /* Screen/page titles are always Baskerville, independent of the
+         [data-serif] body-text preference that can swap --serif to Univers. */
+      --font-title: 'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
       --radius:    12px;
       --radius-sm: 8px;
       /* The safe-area insets go through custom properties so the layout can be
@@ -1948,6 +1951,14 @@
       letter-spacing: var(--track-wordmark);
       white-space: nowrap;
     }
+
+    /* Screen/page titles — non-bold Baskerville. Size, margins and line-height
+       stay per-view; this only fixes the family and weight. */
+    .screen-title {
+      font-family: var(--font-title);
+      font-weight: var(--fw-regular);
+      color: var(--text);
+    }
     /* The season label stays lowercase — item 52 set it in caps to read as a
        label rather than a truncated sentence, but the wordmark above it is
        lowercase too, so "futurega.me / AUGUST-DECEMBER 2026" put the emphasis
@@ -2374,7 +2385,7 @@
     }
     .replayer-view.is-replay > .replayer-replay { flex: 1 1 auto; min-height: 0; height: auto; }
     .replayer-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-lg); }
-    .replayer-header h2 { font-family: var(--font-condensed); font-size: var(--fs-lg); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); }
+    .replayer-header h2 { font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular); }
     .replayer-header-actions { display:flex; gap: var(--space-sm); }
 
     /* Hand list */

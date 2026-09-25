@@ -254,7 +254,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
     }}>
       {/* Header — title on cols 1–2, game pills on cols 3–4 */}
       <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center', rowGap: 8 }}>
-        <h2 style={{ gridColumn: '1 / 3', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', margin: 0 }}>Solver</h2>
+        <h2 className="screen-title" style={{ gridColumn: '1 / 3', fontSize: '1.2rem', margin: 0 }}>Solver</h2>
         {/* Game pills */}
         <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {GAMES.map(([id, lbl]) => (

@@ -126,7 +126,7 @@ export default function SolverPlayView() {
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '12px 14px 80px', maxWidth: 560, margin: '0 auto', fontFamily: FONT }}>
-      <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', margin: '4px 0 2px' }}>Solver Self-Play</h2>
+      <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: '4px 0 2px' }}>Solver Self-Play</h2>
       <p style={{ ...label, margin: '0 0 10px' }}>Watch the trained strategy play both seats</p>
 
       {/* Game picker */}

@@ -156,7 +156,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
       {/* All event-kind + online switches on one line below the buttons.
           setFiltersRaw (not the scroll-wrapped setter) so toggling doesn't jump
           the list back to today. */}
-      <div className="filter-row" style={{gap:'0',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
+      <div className="filter-row" style={{gap:'0',marginTop:'var(--subrow)',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
         {/* Satellites / Restarts / Side Events / Online distributed evenly across
             the left three columns (exactly 26g = 1g..27g); Available-to-me — only
             when Online is on — justified to the right margin. */}
