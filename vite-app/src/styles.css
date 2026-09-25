@@ -8500,6 +8500,10 @@
       font-size: 0.78em;
       opacity: 0.7;
       line-height: 24px;
+      /* The smaller face rides ~1.5px high in the 24px line box; drop it so the
+         subtitle baseline rests on the 88px line (no layout change). */
+      position: relative;
+      top: 1.5px;
     }
     /* Truncate long names on one line, but allow the Flight/Day sub-line block */
     .cal-event-row:not(.open) .cal-bar-row2 .cal-event-name {
