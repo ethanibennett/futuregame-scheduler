@@ -8023,10 +8023,10 @@
       background: var(--surface);
       border: none;
       border-radius: var(--radius-sm);
-      /* No gap: the card is 96px (3 major rows), so a zero margin keeps the
-         pitch a whole number of major rows and every card's baselines land on
-         the same 32px grid. Cards read apart by their venue strip + outline. */
-      margin-bottom: 0;
+      /* One subrow (8px) gap between cards. The baseline grid is internal to
+         each card (relative to its own top), so the pitch need not be a whole
+         major row. */
+      margin-bottom: var(--space-md);
       overflow: hidden;
       box-shadow: var(--elev-1);
       transition: border-color var(--dur-snap) var(--ease-out),
