@@ -16,6 +16,7 @@ import AuthScreen from './components/AuthScreen.jsx';
 import ForgotPasswordForm from './components/ForgotPasswordForm.jsx';
 import ResetPasswordForm from './components/ResetPasswordForm.jsx';
 import BottomNav from './components/BottomNav.jsx';
+import GridOverlay from './components/GridOverlay.jsx';
 import DashboardView from './components/DashboardView.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
 import ScheduleView from './components/ScheduleView.jsx';
@@ -246,6 +247,8 @@ export default function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
+  // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
+  const [gridOverlay, setGridOverlay] = useState(() => localStorage.getItem('gridOverlay') === 'on');
   // 'bahnschrift' was retired as a display-font option; anyone still holding it
   // in localStorage lands back on the default rather than an unstyled data-serif.
   const [serifFont, setSerifFont] = useState(() => {
@@ -1809,6 +1812,20 @@ export default function App() {
           onShare={() => setActiveMilestone(null)}
           onDismiss={() => setActiveMilestone(null)}
         />
+      )}
+
+      {/* Admin-only layout grid: a faint overlay of the real content grid plus a
+          floating toggle, so alignment can be checked live and layout fixes made
+          by eye. Gated on isAdmin; state persists in localStorage. */}
+      {isAdmin && gridOverlay && <GridOverlay />}
+      {isAdmin && (
+        <button
+          type="button"
+          className={'grid-dev-toggle' + (gridOverlay ? ' is-on' : '')}
+          title={`${gridOverlay ? 'Hide' : 'Show'} layout grid (admin)`}
+          aria-pressed={gridOverlay}
+          onClick={() => setGridOverlay(g => { const next = !g; localStorage.setItem('gridOverlay', next ? 'on' : 'off'); return next; })}
+        >#</button>
       )}
     </div>
     </DisplayNameProvider>

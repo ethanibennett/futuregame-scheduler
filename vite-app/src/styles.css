@@ -11306,3 +11306,46 @@
       z-index: 6;
       border-color: var(--text, #fff) !important;
     }
+
+    /* ── Admin layout-grid overlay (GridOverlay.jsx) ──
+       Draws the real content grid faintly over the screen so alignment can be
+       checked. Matches .content-area rails: 12px side margins (20 at >=640, 32
+       at >=1024), 4 columns / 12px gutters, and an 8px baseline (every 4th line
+       stronger). Never blocks interaction. */
+    .grid-dev-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9997; }
+    .grid-dev-baseline {
+      position: absolute; inset: 0;
+      background-image:
+        repeating-linear-gradient(to bottom,
+          color-mix(in srgb, #35a0b3 22%, transparent) 0, color-mix(in srgb, #35a0b3 22%, transparent) 1px,
+          transparent 1px, transparent 8px),
+        repeating-linear-gradient(to bottom,
+          color-mix(in srgb, #35a0b3 42%, transparent) 0, color-mix(in srgb, #35a0b3 42%, transparent) 1px,
+          transparent 1px, transparent 32px);
+    }
+    .grid-dev-cols {
+      position: absolute; inset: 0;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+      padding: 0 12px;
+    }
+    .grid-dev-col {
+      background: color-mix(in srgb, #35a0b3 8%, transparent);
+      border-left: 1px solid color-mix(in srgb, #35a0b3 45%, transparent);
+      border-right: 1px solid color-mix(in srgb, #35a0b3 45%, transparent);
+    }
+    @media (min-width: 640px) { .grid-dev-cols { padding: 0 20px; } }
+    @media (min-width: 1024px) { .grid-dev-cols { padding: 0 32px; } }
+
+    /* Floating admin toggle for the grid overlay. */
+    .grid-dev-toggle {
+      position: fixed; right: 12px;
+      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+      z-index: 9999; width: 40px; height: 40px; border-radius: var(--radius-circle);
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: 1rem;
+      cursor: pointer;
+      background: var(--surface); color: var(--text-muted);
+    }
+    .grid-dev-toggle.is-on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+    .grid-dev-toggle:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
