@@ -1505,6 +1505,8 @@
       background: none;
       border: 0;
       padding: 0;
+      width: calc(var(--subcol) * 4); /* one column (4 subcolumns): holds the today-pill highlight, right edge on the col-1 line */
+      text-align: left;
       cursor: pointer;
       font: inherit;
       color: inherit;
@@ -1550,12 +1552,14 @@
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-left: var(--space-xs);
+      margin-left: var(--gu); /* one gutter, so the count starts on the col-2 line */
     }
     .date-break-end {
       margin-left: auto;
       display: inline-flex;
       align-items: center;
+      justify-content: flex-end;
+      width: calc(var(--subcol) * 2); /* 2 subcolumns, right edge on the rail */
       height: 32px; /* 4 subrows */
       gap: var(--space-md);
     }
