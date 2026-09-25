@@ -1498,9 +1498,16 @@
          the col-1 line and the weekday/chevron on the right margin. Vertical
          padding is 0 on top so the date pill sits at the very top of the date
          break — which sticks at the 6th primary-row line (160px) — i.e. the
-         pill top aligns to that row. The 24px bottom holds the 64px (2-row)
-         height. */
-      padding: 0 0 var(--space-3xl) 0;
+         pill top aligns to that row. The pill is one primary row (32px) and the
+         pill sits at the top and the remaining 8px is one subrow of space
+         beneath it, so the date break is a fixed 40px (5 subrows) and its bottom
+         edge — the border cards disappear behind — lands on the 200px line
+         regardless of the count/sort box extents. */
+      height: calc(var(--subrow) * 5);
+      padding: 0;
+      /* The border where scrolling cards disappear, drawn as an inset hairline
+         so it adds no height. */
+      box-shadow: inset 0 calc(-1 * var(--bw-hair)) 0 var(--border);
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
@@ -1531,7 +1538,7 @@
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
-      height: 40px;
+      height: calc(var(--subrow) * 4); /* one primary row (32px) */
       gap: var(--space-xs);
       color: var(--text);
     }
@@ -1541,7 +1548,7 @@
        dark themes, near-black on the light ones. Taken from the ends of the
        neutral ramp, so dusk and cloudy get it right without their own rule. */
     .schedule-date-break.is-today .date-break-pill {
-      padding: var(--space-xs) var(--space-lg);
+      padding: 0 var(--space-lg);
       border-radius: var(--radius-pill);
       background: var(--n-8);
       color: var(--n-0);
@@ -1552,6 +1559,10 @@
       font-weight: var(--fw-regular);
       line-height: 32px; /* 4 subrows */
       font-variant-numeric: var(--num-tabular);
+      /* Seats the shared date/count baseline on the 184 subrow line (its true
+         baseline sits 2.5px below it in the 32px line box); the count and
+         weekday follow via the row's baseline alignment. */
+      margin-top: -2.5px;
     }
     .date-break-mon {
       font-family: var(--font-display);
