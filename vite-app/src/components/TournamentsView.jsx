@@ -1570,11 +1570,14 @@ export default function TournamentsView({
             own line below the icon buttons instead of overflowing and clipping
             "Side Events" off the right edge. */}
         <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap',rowGap:'8px'}}>
+          {/* Location chip expands to fill the row and carries the current
+              location indicator inside it; the other tools stay square at the
+              right. */}
           <button
             ref={locationBtnRef}
-            className={`filter-chip filter-chip-square ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
+            className={`filter-chip ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
-            style={{flexShrink:0}}
+            style={{flex:1,minWidth:0,height:'32px',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'8px',padding:'0 10px'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
               ? LOCATION_REGIONS[filters.locationRegion].label
               : filters.userLocation && filters.maxDistance
@@ -1582,6 +1585,13 @@ export default function TournamentsView({
                 : 'All Locations'}
           >
             <Icon.mapPin />
+            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'0.78rem',fontFamily:'var(--font-condensed)',lineHeight:'16px'}}>
+              {filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
+                ? LOCATION_REGIONS[filters.locationRegion].label
+                : filters.userLocation && filters.maxDistance
+                  ? `${filters.locationLabel || 'Location'} \u00B7 ${filters.maxDistance} mi`
+                  : 'All locations'}
+            </span>
           </button>
           {/* Calendar chip: tap → switch to Calendar view. Long-press
               (≥500ms) → open a native date picker scoped to today and
@@ -1620,19 +1630,6 @@ export default function TournamentsView({
           >
             <Icon.upload />
           </button>
-          {/* Location indicator rides the right of the button line. 'All
-              locations' when nothing is set; a region label, or '<place> · <n>
-              mi' for a saved point + radius. The event-kind + online switches
-              share the row below. */}
-          <div style={{marginLeft:'auto',display:'flex',alignItems:'center',height:'32px',minWidth:0}}>
-            <span style={{fontSize:'0.78rem',color:'var(--text-muted)',fontFamily:'var(--font-condensed)',lineHeight:'16px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-              {filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
-                ? LOCATION_REGIONS[filters.locationRegion].label
-                : filters.userLocation && filters.maxDistance
-                  ? `${filters.locationLabel || 'Location'} · ${filters.maxDistance} mi`
-                  : 'All locations'}
-            </span>
-          </div>
         </div>
 
         <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} gameVariants={gameVariants} venues={venues} buyinOptions={buyinOptions} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
