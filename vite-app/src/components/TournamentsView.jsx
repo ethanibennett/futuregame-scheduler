@@ -1736,7 +1736,7 @@ export default function TournamentsView({
                   {!isCollapsed && group.events.map(t => {
                     const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id;
                     return (
-                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 94px'}}>
+                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 112px'}}>
                       {needsFull ? (
                         <CalendarEventRow
                           tournament={t}

@@ -615,7 +615,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
         aria-expanded={open}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
-      <div className="cal-event-row-content" style={isInSchedule ? {borderColor: conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
+      <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
         <div className="cal-event-bar" onClick={() => setOpen(o => !o)} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}>
           {tournament.venue === 'Personal' ? (
@@ -1147,7 +1147,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
         onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span></div>
-      <div className="cal-event-row-content" style={isInSchedule ? {borderColor: hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
+      <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         <div className="cal-event-bar" onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}>
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'8px'}}>

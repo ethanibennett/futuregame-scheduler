@@ -796,10 +796,8 @@
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       letter-spacing: var(--track-tight);
-      /* The guarantee sits directly under the buy-in and was 2px off it, which
-         read as one crowded block rather than a figure and its qualifier. One
-         step, and it only ever costs height on rows that carry a guarantee. */
-      margin-top: var(--space-xs);
+      line-height: 16px;
+      margin-top: 0;
     }
 
     /* Event number and game variants were grey pills, distinguishable from
@@ -1467,7 +1465,10 @@
          Below is now the same 6px that separates two cards. Above is 16px on
          top of the previous card's own 6px margin, so a day boundary is a
          22px break and everything inside a day is a 6px rhythm. */
-      padding: var(--space-xl) var(--space-lg) var(--space-sm) var(--space-2xs);
+      /* Flush to the content rails (no side padding) so the date pill sits on
+         the col-1 line and the weekday/chevron on the right margin. Vertical
+         padding on 8px so the row keeps the list on the baseline. */
+      padding: var(--space-xl) 0 var(--space-md) 0;
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
@@ -1496,6 +1497,7 @@
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
+      height: 40px;
       gap: var(--space-xs);
       color: var(--text);
     }
@@ -7450,9 +7452,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      height: 24px;
+      box-sizing: border-box;
       font-size: var(--fs-xs);
       font-weight: var(--fw-bold);
-      padding: var(--space-xs) var(--space-ml);
+      padding: 0 var(--space-ml);
       border-radius: var(--radius-lg);
       letter-spacing: var(--track-tight);
       line-height: 1;
@@ -7986,13 +7990,19 @@
       background: var(--surface);
       border: none;
       border-radius: var(--radius-sm);
-      margin-bottom: var(--space-sm);
+      margin-bottom: var(--space-md);
       overflow: hidden;
       box-shadow: var(--elev-1);
       transition: border-color var(--dur-snap) var(--ease-out),
                   box-shadow var(--dur-fast) var(--ease-out),
                   background-color var(--dur-fast) var(--ease-out);
-      display: flex;
+      /* On the grid: the venue accent is ONE secondary column wide (a quarter of
+         a primary column ≈ 23px, the old rail's size), and the event content
+         takes the rest — its time on a secondary line, its money on the right
+         margin. Secondary col = (content − 3 gutters) / 16 primary·quarters. */
+      display: grid;
+      grid-template-columns: calc((100% - 3 * var(--space-lg)) / 16) 1fr;
+      column-gap: 0;
       position: relative;
     }
 
@@ -8025,16 +8035,18 @@
     }
 
     .cal-event-row-content {
-      flex: 1;
+      grid-column: 2 / -1;
       min-width: 0;
-      border: var(--bw-1) solid var(--border);
-      border-left: none;
+      /* Outline drawn as an inset shadow so it never adds to the card's height
+         (a 1px border would push the 8px-grid card 2px off). Colour via
+         --card-outline (venue colour for saved events, set inline). */
+      box-shadow: inset 0 0 0 var(--bw-1) var(--card-outline, var(--border));
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
 
     .cal-venue-strip {
-      width: 26px;
-      flex-shrink: 0;
+      grid-column: 1;
+      width: 100%;
       align-self: stretch;
       display: grid;
       place-items: center;
@@ -8085,10 +8097,10 @@
 
     /* Bracelet events only get special border when saved */
     .cal-event-row.bracelet.saved .cal-event-row-content {
-      border-color: #c0c0c0;
+      --card-outline: #c0c0c0;
     }
     :is([data-theme="light"],[data-theme="cloudy"]) .cal-event-row.bracelet.saved .cal-event-row-content {
-      border-color: #000000;
+      --card-outline: #000000;
     }
 
     .cal-event-row.past {
@@ -8097,7 +8109,9 @@
 
     /* ── Conditional events ── */
     .cal-event-row.conditional .cal-event-row-content {
-      border-style: dashed dashed dashed none;
+      box-shadow: none;
+      outline: var(--bw-1) dashed var(--card-outline, var(--border));
+      outline-offset: calc(-1 * var(--bw-1));
     }
     /* Anchor / must-play events — inset bold border (no size change) */
     .cal-event-row.anchor {
@@ -8281,7 +8295,7 @@
     .cal-event-bar {
       display: flex;
       flex-direction: column;
-      gap: var(--space-xs);
+      gap: var(--space-md);
       /* One step up the scale for the vertical padding, 10 -> 12. Measured on
          the feed: a row WITHOUT a guarantee is 40px of content, and 40 + 24 of
          padding is exactly the 64px min-height below — so the extra padding is
@@ -8290,7 +8304,7 @@
          min-height and left the 10px padding as the only breathing room
          (measured free space: zero). The cost of this lands entirely on the
          rows that needed it. Horizontal padding is unchanged. */
-      padding: var(--space-lg);
+      padding: var(--space-md) var(--space-lg);
       cursor: pointer;
       position: relative;
       user-select: none;
@@ -8303,8 +8317,7 @@
        wrapping one keep its 88px; the -webkit-line-clamp below still bounds
        the name, so max-height was only ever a second belt. */
     .cal-event-row:not(.open) .cal-event-bar {
-      min-height: 64px;
-      justify-content: center;
+      min-height: 0;
     }
     .cal-event-row:not(.open) {
       overflow: hidden;
@@ -8392,11 +8405,12 @@
       display: flex;
       align-items: flex-start;
       gap: var(--space-md);
-      --cal-title-line: calc(var(--fs-sm) * var(--lh-snug));
+      --cal-title-line: 24px;
     }
 
     .cal-event-time {
       font-size: var(--fs-sm);
+      line-height: 24px;
       font-weight: var(--fw-bold);
       color: var(--text-muted);
       flex-shrink: 0;
@@ -8406,15 +8420,13 @@
       font-family: var(--serif);
       flex: 1;
       font-size: var(--fs-sm);
+      line-height: var(--cal-title-line);
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      /* The SAME token --cal-title-line is built from. It was a bare 1.3 while
-         the accolade centering computed against --lh-snug (1.35), so the icons
-         were centred on a line box 0.65px taller than the one being drawn — and
-         a literal here is a token violation besides. Two consumers, one token,
-         and the centering is right by construction rather than by coincidence. */
-      line-height: var(--lh-snug);
+      /* Title line box = --cal-title-line (24px = 3 baselines), so a one-line
+         name is 24px and a wrapped Flight/Day name is 48px — both land the card
+         on the 8px grid. Accolade centering uses the same token. */
       overflow: hidden;
     }
     /* Truncate long names on one line, but allow Flight/Day sub-line via <br> */
@@ -8433,6 +8445,7 @@
     .cal-event-buyin {
       font-family: var(--serif);
       font-size: var(--fs-sm);
+      line-height: 24px;
       font-weight: var(--fw-bold);
       color: var(--accent);
       flex-shrink: 0;
@@ -8545,13 +8558,11 @@
 
     .cal-event-chevron {
       display: flex;
+      align-items: center;
       justify-content: center;
+      height: 16px;
       color: var(--text-muted);
       transition: transform var(--dur-snap);
-      margin-top: -3.5px;
-      margin-bottom: -3.5px;
-      position: relative;
-      top: -6px;
       cursor: pointer;
     }
 
@@ -8631,8 +8642,8 @@
     }
 
     .cal-event-detail {
-      border-top: 1px solid var(--border);
-      padding: var(--space-lg) var(--space-lg) var(--space-xs);
+      box-shadow: inset 0 var(--bw-1) 0 var(--border);
+      padding: var(--space-lg) var(--space-lg) var(--space-md);
     }
 
     .cal-detail-grid {
@@ -8812,20 +8823,23 @@
 
     .cal-action-row {
       display: flex;
-      border-top: 1px solid var(--border);
+      box-shadow: inset 0 var(--bw-1) 0 var(--border);
       margin: 0 -12px;
       align-items: stretch;
     }
 
     .cal-action-btn, .cal-entries-counter {
       flex: 1;
-      padding: var(--space-md) var(--space-xs) var(--space-sm);
+      height: 48px;
+      box-sizing: border-box;
+      padding: 0 var(--space-xs);
       background: none;
       border: none;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 0;
       font-family: inherit;
     }
@@ -8903,10 +8917,10 @@
 
     /* ── Late reg bar ── */
     .late-reg-wrap {
-      margin-top: var(--space-ml);
-      margin-bottom: var(--space-ml);
-      padding-top: var(--space-ml);
-      border-top: 1px solid var(--border);
+      margin-top: var(--space-lg);
+      margin-bottom: var(--space-lg);
+      padding-top: var(--space-lg);
+      box-shadow: inset 0 var(--bw-1) 0 var(--border);
     }
 
     .late-reg-label-row {
@@ -11347,9 +11361,17 @@
       padding: 0 12px;
     }
     .grid-dev-col {
-      background: color-mix(in srgb, #35a0b3 8%, transparent);
-      border-left: 1px solid color-mix(in srgb, #35a0b3 45%, transparent);
-      border-right: 1px solid color-mix(in srgb, #35a0b3 45%, transparent);
+      /* Band fill + SECONDARY column lines: each primary column is split into
+         quarters by faint lines (the vertical analog of the 8px minor rows),
+         so elements can size to half- and quarter-columns, not just full ones.
+         Primary column edges are the strong borders. */
+      background:
+        repeating-linear-gradient(to right,
+          color-mix(in srgb, #35a0b3 20%, transparent) 0, color-mix(in srgb, #35a0b3 20%, transparent) 1px,
+          transparent 1px, transparent 25%),
+        color-mix(in srgb, #35a0b3 8%, transparent);
+      border-left: 1px solid color-mix(in srgb, #35a0b3 55%, transparent);
+      border-right: 1px solid color-mix(in srgb, #35a0b3 55%, transparent);
     }
     @media (min-width: 640px) { .grid-dev-cols { padding: 0 20px; } }
     @media (min-width: 1024px) { .grid-dev-cols { padding: 0 32px; } }
