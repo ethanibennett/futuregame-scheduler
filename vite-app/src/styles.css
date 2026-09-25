@@ -1531,12 +1531,17 @@
       font: inherit;
       color: inherit;
     }
-    /* Only TODAY gets a pill. Giving every date break one made the "you are
-       here" mark compete with 30 identical siblings, which is the opposite of
-       what it is for — an ordinary date is just its numerals. */
+    /* Every date break gets the pill SHAPE; only today gets the inverted fill.
+       Ordinary dates carry the same shape at a whisper of the neutral (6% of
+       --n-8 over the page — about the card surface's step above the background,
+       so it reads as a form, not a highlight), which keeps the "you are here"
+       mark for today while letting the rest of the list share its object. */
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
+      padding: 0 var(--space-lg);
+      border-radius: var(--radius-pill);
+      background: color-mix(in srgb, var(--n-8) 6%, transparent);
       /* No fixed height: a fixed height with align-items:baseline made the pill's
          reported baseline diverge from the day's real glyph baseline, so the
          count (aligned to the pill) sat 5px off it. Content-driven, the pill's
@@ -1552,8 +1557,6 @@
        dark themes, near-black on the light ones. Taken from the ends of the
        neutral ramp, so dusk and cloudy get it right without their own rule. */
     .schedule-date-break.is-today .date-break-pill {
-      padding: 0 var(--space-lg);
-      border-radius: var(--radius-pill);
       background: var(--n-8);
       color: var(--n-0);
     }
