@@ -1932,11 +1932,17 @@
        objects. --track-display is -0.02em, matching the splash. */
     .top-bar-title h1 {
       font-family: var(--font-display);
-      font-size: var(--fs-md);
+      /* One column wide, touching both gutters: the wordmark box is exactly a
+         column (8g) and the font is scaled to fill it. The 0.169 factor is the
+         measured font-size-to-text-width ratio for "futurega.me" at this face,
+         so the text spans the column edge to edge and scales with the screen. */
+      width: var(--col);
+      font-size: calc(var(--col) * 0.169);
       font-weight: var(--fw-bold);
       color: var(--text);
       line-height: var(--lh-tight);
       letter-spacing: var(--track-wordmark);
+      white-space: nowrap;
     }
     /* The season label stays lowercase — item 52 set it in caps to read as a
        label rather than a truncated sentence, but the wordmark above it is
@@ -8342,9 +8348,11 @@
       /* Half a subcolumn (one g) of inset on each side — a grid-determined
          internal margin between the venue strip and the title, and between the
          buy-in and the card's right edge. A full subcolumn read as too much.
-         12px top/bottom lands the time/buy-in baseline on the first major row
-         (32px) and the name baseline on the second (64px). */
-      padding: var(--space-lg) var(--gu);
+         Vertical: 15/9 (not 12/12) so the TRUE type baseline — which sits ~3px
+         above the line box centre for this face — lands on the first major row
+         (time/buy-in at 32) and the second (name at 64). Sums with row1 (32) +
+         row2 (24) to 80, + the 16px chevron = 96 (3 major rows). */
+      padding: 15px var(--gu) 9px;
       cursor: pointer;
       position: relative;
       user-select: none;
