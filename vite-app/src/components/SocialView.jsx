@@ -659,14 +659,14 @@ export default function SocialView({
   const hasGroups = myGroups && myGroups.length > 0;
 
   const searchBar = (
-    <div style={{position:'relative',marginBottom:'12px'}}>
+    <div style={{position:'relative',marginBottom:'16px'}}>
       <input
         type="text"
         placeholder="Search by username or name..."
         value={searchQuery}
         onChange={e => handleSearchChange(e.target.value)}
         style={{
-          width:'100%',boxSizing:'border-box',padding:'8px 12px',
+          width:'100%',height:40,boxSizing:'border-box',padding:'0 12px',
           border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
           background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",
           fontSize:'0.82rem',outline:'none',
@@ -720,14 +720,14 @@ export default function SocialView({
 
   const shareSection = (
     <>
-      <div className="dashboard-section-header" style={{marginBottom:'8px',marginTop:12}}>
+      <div className="dashboard-section-header" style={{marginBottom:'8px',marginTop:16}}>
         <div className="dashboard-section-title">Share</div>
       </div>
       <div style={{
-        background:'var(--surface)',border:'1px solid var(--border)',
+        background:'var(--surface)',boxShadow:'inset 0 0 0 1px var(--border)',
         borderRadius:'var(--radius-sm)',padding:'16px 14px',
         textAlign:'center',color:'var(--text-muted)',fontSize:'0.78rem',
-        lineHeight:1.5,
+        lineHeight:'24px',
       }}>
         Social media integrations coming soon
       </div>
@@ -737,11 +737,11 @@ export default function SocialView({
   if (!hasBuddies && !hasGroups) {
     return (
       <div style={{maxWidth:'600px',margin:'0 auto'}}>
-        <div className="dashboard-section-header" style={{marginBottom:'12px'}}>
+        <div className="dashboard-section-header" style={{marginBottom:'8px'}}>
           <div className="dashboard-section-title">Connections</div>
         </div>
         {searchBar}
-        <div style={{textAlign:'left',color:'var(--text-muted)',fontSize:'0.82rem',padding:'16px 0 24px'}}>
+        <div style={{textAlign:'left',color:'var(--text-muted)',fontSize:'0.82rem',lineHeight:'24px',padding:'16px 0 24px'}}>
           No connections yet. Search for friends above to get started.
         </div>
         {shareSection}

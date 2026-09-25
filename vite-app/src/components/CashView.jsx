@@ -11,6 +11,11 @@ import CashHeatmap from './CashHeatmap.jsx';
 
 const BASKERVILLE = "'Baskerville', 'Baskerville Old Face', 'Libre Baskerville', 'Hoefler Text', Garamond, serif";
 const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
+// Grid constants: control height 32 (4 baseline rows), chip 24 (3 rows), gaps
+// on the 8px baseline. Every interactive box is sized to a whole number of rows
+// rather than to font + literal padding, so heights land on the grid.
+const CTRL_H = 32;
+const CHIP_H = 24;
 const SOURCE_LABEL = { bravo: 'Bravo', pokeratlas: 'PokerAtlas' };
 const HIDDEN_KEY = 'cashHiddenVariants'; // persisted set of variant labels to hide
 
@@ -137,11 +142,11 @@ function CashLocationPicker({ token }) {
     setBusy(false);
   };
 
-  const inputStyle = { background: 'var(--surface, rgba(255,255,255,0.04))', color: 'var(--text, #fff)', border: '1px solid var(--border, #333)', borderRadius: 8, padding: '5px 9px', fontSize: '0.78rem' };
-  const btnStyle = (primary) => ({ border: '1px solid ' + (primary ? 'var(--text, #fff)' : 'var(--border, #333)'), background: primary ? 'var(--text, #fff)' : 'transparent', color: primary ? 'var(--bg, #111)' : 'var(--text-muted, #aaa)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' });
+  const inputStyle = { height: CTRL_H, boxSizing: 'border-box', background: 'var(--surface, rgba(255,255,255,0.04))', color: 'var(--text, #fff)', border: '1px solid var(--border, #333)', borderRadius: 8, padding: '0 9px', fontSize: '0.78rem' };
+  const btnStyle = (primary) => ({ height: CTRL_H, boxSizing: 'border-box', border: '1px solid ' + (primary ? 'var(--text, #fff)' : 'var(--border, #333)'), background: primary ? 'var(--text, #fff)' : 'transparent', color: primary ? 'var(--bg, #111)' : 'var(--text-muted, #aaa)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' });
 
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 16 }}>
       {!editing ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: UNIVERS, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)' }}>
@@ -264,26 +269,26 @@ export default function CashView({ token }) {
     .sort((a, b) => (b._totalTables - a._totalTables) || String(a.name).localeCompare(String(b.name)));
 
   return (
-    <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 'var(--space-md, 16px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontFamily: BASKERVILLE, fontSize: '1.6rem', fontWeight: 600, color: 'var(--text, #fff)' }}>
+    <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32, marginBottom: 16 }}>
+        <h2 style={{ margin: 0, fontFamily: BASKERVILLE, fontSize: '1.6rem', lineHeight: '32px', fontWeight: 600, color: 'var(--text, #fff)' }}>
           {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
         </h2>
         {mode === 'live' && (
           <button onClick={load}
-            style={{ border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+            style={{ height: CTRL_H, boxSizing: 'border-box', border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
             {status === 'loading' ? 'Loading…' : 'Refresh'}
           </button>
         )}
       </div>
 
       {/* Live / Heatmaps mode */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} onClick={() => setModePersist(m)}
             style={{
               fontFamily: UNIVERS, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-              padding: '5px 14px', borderRadius: 999, cursor: 'pointer',
+              height: CTRL_H, boxSizing: 'border-box', padding: '0 14px', borderRadius: 999, cursor: 'pointer',
               border: '1px solid ' + (mode === m ? 'var(--text, #fff)' : 'var(--border, #333)'),
               background: mode === m ? 'var(--text, #fff)' : 'transparent',
               color: mode === m ? 'var(--bg, #111)' : 'var(--text-muted, #888)',
@@ -300,14 +305,14 @@ export default function CashView({ token }) {
 
       {/* Persistent variant filter */}
       {availableVariants.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
           {availableVariants.map(vt => {
             const on = !hidden.has(vt);
             return (
               <button key={vt} onClick={() => toggleVariant(vt)}
                 style={{
                   fontFamily: UNIVERS, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em',
-                  padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
+                  height: CHIP_H, boxSizing: 'border-box', padding: '0 10px', borderRadius: 999, cursor: 'pointer',
                   border: '1px solid ' + (on ? 'var(--text-muted, #999)' : 'var(--border, #333)'),
                   background: on ? 'var(--text-muted, #999)' : 'transparent',
                   color: on ? 'var(--bg, #111)' : 'var(--text-muted, #777)',
@@ -320,10 +325,10 @@ export default function CashView({ token }) {
       )}
 
       {status === 'error' && (
-        <div style={{ border: '1px solid var(--border, #333)', borderRadius: 10, padding: 16, color: 'var(--text-muted, #aaa)' }}>
+        <div style={{ boxShadow: 'inset 0 0 0 1px var(--border, #333)', borderRadius: 10, padding: 16, lineHeight: '24px', color: 'var(--text-muted, #aaa)' }}>
           {errMsg || 'Something went wrong.'}
-          <div style={{ marginTop: 10 }}>
-            <button onClick={load} style={{ border: '1px solid var(--border,#333)', background: 'transparent', color: 'var(--text,#fff)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: '0.78rem' }}>Try again</button>
+          <div style={{ marginTop: 8, display: 'flex' }}>
+            <button onClick={load} style={{ height: CTRL_H, boxSizing: 'border-box', border: '1px solid var(--border,#333)', background: 'transparent', color: 'var(--text,#fff)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', fontSize: '0.78rem' }}>Try again</button>
           </div>
         </div>
       )}
