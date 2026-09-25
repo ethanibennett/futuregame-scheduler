@@ -170,10 +170,10 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             location indicator. setFiltersRaw (not the scroll-wrapped setter) so
             toggling online play doesn't jump the list back to today. */}
         <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={filters.showOnline !== false}
               onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
-              style={{margin:0}}
+              style={{margin:0,width:'16px',height:'16px'}}
             /> Online
           </label>
           {filters.showOnline !== false && (
@@ -181,11 +181,11 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               title={filters.jurisdiction
                 ? `Hide online events on sites not available in ${filters.jurisdiction}`
                 : 'Set your state in the location menu to use this'}
-              style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
+              style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
               <input type="checkbox" disabled={!filters.jurisdiction}
                 checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
                 onChange={e => setFiltersRaw(f => ({...f, onlyAvailableOnline:e.target.checked}))}
-                style={{margin:0}}
+                style={{margin:0,width:'16px',height:'16px'}}
               /> Available to me
             </label>
           )}
@@ -1622,22 +1622,22 @@ export default function TournamentsView({
               the active-filter pills share the row below (the Filters .filter-row),
               keeping the phone (~380px) from scrolling sideways. */}
           <div style={{display:'flex',gap:'8px',alignItems:'center',marginLeft:'auto'}}>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSatellites}
                 onChange={e => setFilters(f => ({...f, hideSatellites:!e.target.checked}))}
-                style={{margin:0}}
+                style={{margin:0,width:'16px',height:'16px'}}
               /> Satellites
             </label>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideRestarts}
                 onChange={e => setFilters(f => ({...f, hideRestarts:!e.target.checked}))}
-                style={{margin:0}}
+                style={{margin:0,width:'16px',height:'16px'}}
               /> Restarts
             </label>
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'3px',fontSize:'0.78rem',color:'var(--text)',whiteSpace:'nowrap'}}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'24px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
               <input type="checkbox" checked={!filters.hideSideEvents}
                 onChange={e => setFilters(f => ({...f, hideSideEvents:!e.target.checked}))}
-                style={{margin:0}}
+                style={{margin:0,width:'16px',height:'16px'}}
               /> Side Events
             </label>
           </div>
