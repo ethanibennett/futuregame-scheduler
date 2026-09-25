@@ -1580,23 +1580,31 @@
       text-transform: uppercase;
       color: var(--text-muted);
       margin-left: var(--gu); /* one gutter, so the count starts on the col-2 line */
-      /* Seat the count on the PILL's baseline — the pill box's bottom edge — not
-         on the day's text baseline. align-items:baseline lands the count on the
-         "25" glyph baseline (block-top + 26.5); the pill box bottom is block-top
-         + 32, so a 5.5px drop puts the count's baseline on the pill's bottom
-         edge: 192 when pinned, a subrow line. 5.5 = pill height (32) − day
-         baseline offset (26.5) — a font-metric constant, not a grid unit. */
-      position: relative;
-      top: 5.5px;
     }
     .date-break-end {
       margin-left: auto;
       display: inline-flex;
-      align-items: center;
+      /* Baseline, not center: centering the weekday inside its own 32px box put
+         its baseline at 186, floating six px above the count on 192 and on no
+         grid line. Baseline-aligned, the box hands the weekday's baseline to the
+         block's align-items:baseline like every other child, and the chevron
+         (an icon, baseline = its bottom edge) sits on the same line. */
+      align-items: baseline;
       justify-content: flex-end;
       width: calc(var(--subcol) * 2); /* 2 subcolumns, right edge on the rail */
       height: 32px; /* 4 subrows */
       gap: var(--space-md);
+    }
+    /* Everything OUTSIDE the pill sits on the PILL's baseline — the pill box's
+       bottom edge — not on the "25" text baseline. align-items:baseline lands
+       these on the day glyph baseline (block-top + 26.5); the pill box bottom is
+       block-top + 32, so a 5.5px drop puts their baselines on the pill's bottom
+       edge: 192 when pinned, a subrow line. 5.5 = pill height (32) − day
+       baseline offset (26.5) — one font-metric constant, declared once. */
+    .date-break-count,
+    .date-break-end {
+      position: relative;
+      top: 5.5px;
     }
     .date-break-dow {
       font-family: var(--font-display);
