@@ -5,10 +5,11 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-09-15 (03:50 UTC — the evening of 09-14 in ET, from the Mac). The dated
-sections at the end run through 2026-08-30; "Seams to the dashboard" and "The
-build pipeline" below were added from the wsop-console side and verified against
-both live services. The newest section, 2026-09-13, is the screensaver split.
+Last updated: 2026-09-25 (23:15 UTC, from Windows). The newest section is
+2026-09-25, the Schedule grid sweep — 35 commits, shipped to TestFlight. Below it
+the dated sections run back through 2026-08-30; "Seams to the dashboard" and "The
+build pipeline" were added from the wsop-console side and verified against both
+live services.
 
 ---
 
@@ -26,6 +27,76 @@ to the account and readable with WebFetch.
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
+
+---
+
+## 2026-09-25 (Windows) — the Schedule tab on the grid, shipped
+
+35 commits on master (`c1a7e1c..f91deb6`), pushed 23:06 UTC; TestFlight run
+36199678246 built and uploaded `f91deb6` at 23:13 (`success`, 7 min). Render
+auto-deployed from the same push.
+
+**The grid, as it now stands** (memory `grid-system` has the full rule set):
+g = 100vw/37 (`--gu`), subcolumn 2g, column 8g, subrow 8px (`--subrow`),
+primary row 32px. Gutters 1g. Every Schedule element is sized to it — header
+gutter to gutter, wordmark one column, filter buttons 3g with 1g gaps, checkbox
+squares seated 120→136, sticky filters = the top five primary rows (bottom 160),
+date block pinned at 160 (40px, border at 200), pill 160→192, event cards 96px
+(120 with a Flight/Day line) with every baseline on a row. Nothing here should
+be re-derived: measure the DOM against the overlay.
+
+**The admin grid overlay is anchored to viewport y = 0** — 8px lines, every
+fourth stronger (`.grid-dev-baseline`, `styles.css` ~11470). Not to the content
+origin (72). Half a session was measured against the wrong origin.
+
+**Traps this session paid for, in order of cost:**
+
+- **`Range.getBoundingClientRect().bottom` is NOT the baseline** — it is
+  baseline + font descent, so a 30px serif and a 10px condensed face on the same
+  baseline read 5px apart. An inline-block probe (`height:0; vertical-align:
+  baseline`) is also wrong when appended inside a **flex** item: it becomes a
+  flex child and centres. Two reliable methods: canvas `measureText` font metrics
+  + the element rect (`diag5.js`), or **pixel ink** of caps/digits from a
+  Playwright screenshot decoded with `PNG` from
+  `playwright-core/lib/utilsBundle.js` (`diag6.js`, `final.js`, `dow.js`) —
+  digits and caps have ~0 descent, so ink bottom = baseline to within the 0.5px
+  of anti-aliasing. Harness scripts are in the session scratchpad.
+- **A sticky element's LANDING must equal its PIN.** `scrollDateGroupToTop`
+  (`TournamentsView.jsx` ~1215) is the single helper every scroll-to-today path
+  uses; its constant landed the date block at 166 (`filtersH + 2`) — 6px shy of
+  the pin at 160 and on no grid line — so the default view was off-grid and
+  everything measured "correct when pinned" was wrong on first paint. It is
+  `filtersH - 4` now: block at 64 + 100 − 4 = 160, landing == pin, no jump on
+  the first scroll.
+- **"Between the checkboxes and the pill" means the visible squares**, not the
+  label's container. 16px squares centred in a 24px row bottomed at 140 (off
+  grid) and the gap read as four cells; the labels are 16px now so the squares
+  fill 120→136. The sticky filters' bottom padding grew a subrow to keep the
+  header's bottom at 160.
+- **Anything `align-items: center` inside a baseline-aligned row floats.** The
+  date-break's end box centred its weekday inside its own 32px box, parking the
+  "F" at 186 while the count sat on 192. It is baseline-aligned now, and the one
+  font-metric constant that drops the count and the weekday onto the PILL's
+  bottom edge (5.5px = pill 32 − day baseline 26.5) is declared once for both
+  (`.date-break-count, .date-break-end`).
+- **"On the pill's baseline" means the pill BOX's bottom edge**, not the text
+  baseline of the "25" inside it. Aligning the count to the text baseline was
+  measured correct three ways and was still wrong. The pill is the grid object;
+  the count, weekday and chevron sit on its bottom line (192, a subrow line).
+
+**Open, small:**
+- `.date-break-end`'s transparent 32px wrapper now overhangs the block's bottom
+  by 10px (178→210 vs the block's 200). Nothing visible; the subgrid audit will
+  report it. Drop the fixed height.
+- `ios-testflight.yml` uses `actions/checkout@v4`, and every run now annotates
+  "Node.js 20 is deprecated … forced to run on Node.js 24". Bump to `@v5` (the
+  spawn_task for it failed on a hook timeout, so it exists only here). A
+  workflow-only change does not fire a build — the trigger is path-filtered to
+  `vite-app/**`, `ios/**`, `capacitor.config.json`, `build.js`.
+
+**Not shipped:** the rest of the "full sweep, Schedule first" — Cash, Social,
+Dashboard, the Hands trainers, Settings and Admin are still to be put on the
+same grid (screen titles are already non-bold Baskerville everywhere).
 
 ---
 
@@ -890,12 +961,13 @@ so they survive a compaction:
   should be one that covers any N-game mix rather than another special case.
 - **New card graphics for the replayer.**
 
-Also outstanding from the same day: the event card's start time and buy-in are
-NOT baseline-aligned, and neither are the accolade icon and the event name. That
-is deliberate as of #236 — locking the time and the name forced the money down
-into the icon and 65 of 65 cards collided. The geometry is back to its
-pre-baseline state. Options, if it comes up again: guarantee beside the buy-in
-(one line, no stack to collide with), a taller card, or accept the offsets.
+~~Also outstanding from the same day: the event card's start time and buy-in are
+NOT baseline-aligned … deliberate as of #236.~~ **Superseded 2026-09-25.** The
+card is on the grid now: time and buy-in share the 32px row baseline, the
+guarantee sits one subrow below the buy-in on its own line, and the name is on
+64 — 96px cards, 120 with a Flight/Day line. The #236 collision was solved by
+gridding row 1 (`.cal-bar-row1`: `1fr` + a 3-subcolumn money column) rather than
+by abandoning the baselines.
 
 ### Trap: the share-link codec collided game codes with player counts
 
