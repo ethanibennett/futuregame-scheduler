@@ -80,7 +80,11 @@ export default function OnboardingWizard({ token, onDone }) {
     if (g) { sf.selectedGames = g.filters.selectedGames; sf.mixedOnly = g.filters.mixedOnly; }
     if (b) sf.buyinRanges = b.ranges;
     if (playsOnline === false) sf.showOnline = false;
-    if (playsOnline === true) { sf.showOnline = true; if (jurisdiction) sf.onlyAvailableOnline = true; }
+    // Only showOnline. This used to also set onlyAvailableOnline when a state was
+    // given, but that filter no longer has a control in the UI (the "Available
+    // to me" checkbox was removed 2026-09-25), so writing it here would hide
+    // events the user could never unhide.
+    if (playsOnline === true) { sf.showOnline = true; }
     writeLocalFilters(sf);
 
     markOnboarded();

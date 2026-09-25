@@ -1496,19 +1496,17 @@
          22px break and everything inside a day is a 6px rhythm. */
       /* Flush to the content rails (no side padding) so the date pill sits on
          the col-1 line and the weekday/chevron on the right margin. The block is
-         a fixed 40px (5 subrows) and sticks at the 6th primary-row line (160px),
-         so its top (160) and its bottom edge (200) — the border cards disappear
-         behind — land on subrow lines. No top padding: the pill (a 32px = 4-subrow
-         line box) sits flush at the block top, so it spans 160→192 when stuck,
-         both edges on subrow lines. The one subrow beneath it (192→200) is the
-         gap before the card-disappear border. The event count seats on the pill's
-         bottom edge (192) rather than the day's text baseline — see
-         .date-break-count. */
+         a fixed 40px (5 subrows) and sticks flush under the sticky filters, whose
+         bottom edge is on the 152 subrow line — so the block spans 152→192, both
+         edges on subrow lines. No top padding: the pill (a 32px = 4-subrow line
+         box) sits flush at the block top, 152→184. The one subrow beneath it
+         (184→192) is the gap before the edge cards disappear behind. That edge
+         draws NO line: the solid background alone is the boundary (an inset
+         hairline used to sit here and read as a stray rule under the date). The
+         event count seats on the pill's bottom edge (184) rather than the day's
+         text baseline — see .date-break-count. */
       height: calc(var(--subrow) * 5);
       padding: 0;
-      /* The border where scrolling cards disappear, drawn as an inset hairline
-         so it adds no height. */
-      box-shadow: inset 0 calc(-1 * var(--bw-hair)) 0 var(--border);
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
@@ -1599,7 +1597,7 @@
        bottom edge — not on the "25" text baseline. align-items:baseline lands
        these on the day glyph baseline (block-top + 26.5); the pill box bottom is
        block-top + 32, so a 5.5px drop puts their baselines on the pill's bottom
-       edge: 192 when pinned, a subrow line. 5.5 = pill height (32) − day
+       edge: 184 when pinned, a subrow line. 5.5 = pill height (32) − day
        baseline offset (26.5) — one font-metric constant, declared once. */
     .date-break-count,
     .date-break-end {
@@ -7290,15 +7288,17 @@
       margin: -12px calc(-1 * var(--gu)) 0;
       /* Top padding = base (12px) + one subrow, so with the -12px bleed and the
          8px content pad the whole block sits two subrows (16px) below the
-         header. Bottom padding is 24px (3 subrows) so the sticky header's bottom
-         edge lands on the 5th primary-row line (160px) — the region cards
-         disappear behind is exactly the top five primary rows. The checkbox row
-         is 16px (2 subrows, 120→136: the 16px squares fill it, so the row's
-         VISIBLE bottom sits on a grid line); 136→160 is then exactly 3 empty
-         subrows between the checkboxes and the date pill pinned at 160.
-         Horizontal padding is one grid unit so the row is 35g on the rails and
-         its children land on g-lines. */
-      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) calc(var(--space-xl) + var(--subrow));
+         header. Bottom padding is 8px (1 subrow) so the sticky header's bottom
+         edge lands on the 152 subrow line. The checkbox row (margin-top 2
+         subrows, see TournamentsView) is 16px, 128→144: the 16px squares fill
+         it, so the row's VISIBLE bottom sits on a grid line; 144→152 is then
+         exactly 1 empty subrow between the checkboxes and the date pill, which
+         pins flush at 152. This padding is the one knob for that gap — the date
+         block's pin and its scroll-to-today landing both derive from the
+         measured filters height, so they follow it. Horizontal padding is one
+         grid unit so the row is 35g on the rails and its children land on
+         g-lines. */
+      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) var(--subrow);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
          card was peeking over the header. Promoting the sticky to its own GPU

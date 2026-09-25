@@ -156,11 +156,14 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
       {/* All event-kind + online switches on one line below the buttons.
           setFiltersRaw (not the scroll-wrapped setter) so toggling doesn't jump
           the list back to today. */}
-      <div className="filter-row" style={{gap:'0',marginTop:'var(--subrow)',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
-        {/* Satellites / Restarts / Side Events / Online distributed evenly across
-            the left three columns (exactly 26g = 1g..27g); Available-to-me — only
-            when Online is on — justified to the right margin. */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'calc(var(--gu) * 26)',flexShrink:0}}>
+      <div className="filter-row" style={{gap:'0',marginTop:'calc(var(--subrow) * 2)',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
+        {/* Satellites / Restarts / Side Events / Online distributed margin to
+            margin: the row is the full 35g between the rails, so the first
+            square sits on the left margin and the last label ends on the right.
+            "Available to me" used to sit here (right-justified, shown only when
+            Online was on); it is gone from the UI — see the note on
+            onlyAvailableOnline in DEFAULT_FILTERS. */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%'}}>
           <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSatellites}
               onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
@@ -186,19 +189,6 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             /> Online
           </label>
         </div>
-        {filters.showOnline !== false && (
-          <label
-            title={filters.jurisdiction
-              ? `Hide online events on sites not available in ${filters.jurisdiction}`
-              : 'Set your state in the location menu to use this'}
-            style={{cursor: filters.jurisdiction ? 'pointer' : 'not-allowed',display:'flex',alignItems:'center',height:'16px',marginLeft:'auto',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color: filters.jurisdiction ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'nowrap'}}>
-            <input type="checkbox" disabled={!filters.jurisdiction}
-              checked={!!filters.onlyAvailableOnline && !!filters.jurisdiction}
-              onChange={e => setFiltersRaw(f => ({...f, onlyAvailableOnline:e.target.checked}))}
-              style={{margin:0,width:'16px',height:'16px'}}
-            /> Available to me
-          </label>
-        )}
       </div>
 
       {open && createPortal(
@@ -1073,9 +1063,14 @@ const DEFAULT_FILTERS = {
   // Online play is shown by default. It is deliberately NOT a location field: an online
   // event has no place, so every location filter would otherwise hide all of it.
   showOnline: true,
-  /* Off by default, and it stays off until the user both turns it on AND has a
-     state set. A filter about licensing that defaulted to on would silently
-     shorten the list for every user who has never told us where they are. */
+  /* DARK. The "Available to me" checkbox that drove this was removed from the
+     filter row on 2026-09-25, so nothing in the UI can set it any more. The key
+     stays (matchesOnline still honours it, and CalendarView mirrors it) but it
+     is pinned to false when filters are loaded — the onboarding wizard used to
+     write true for anyone who plays online and gave a state, and a saved true
+     with no control to clear it would hide events forever. Delete the key,
+     the utils.js branch and its tests together if the feature is not coming
+     back. */
   onlyAvailableOnline: false,
   /* Two-letter state code, or null. A standing fact about the user rather than
      a filter, which is why it survives "Clear all" alongside the location. */
@@ -1108,6 +1103,8 @@ export default function TournamentsView({
     return {
       ...DEFAULT_FILTERS,
       ...savedFilters,
+      // Overrides anything saved: the control for this is gone (see DEFAULT_FILTERS).
+      onlyAvailableOnline: false,
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
@@ -1211,12 +1208,13 @@ export default function TournamentsView({
   // exactly where it would be if the user had just expanded it.
   // Formula: scrollTo(groupAbsTop - filtersH + 4). The date-break (first child
   // of the group) lands 4px ABOVE filtersH below the scrollport top: with the
-  // content-area top at viewport 64 and the sticky filters 100px tall, that is
-  // 64 + 100 - 4 = 160 — exactly the block's sticky pin line, the 6th primary
-  // row (the overlay grid runs from viewport 0). Landing == pin, so the block
+  // content-area top at viewport 64 and the sticky filters 92px tall, that is
+  // 64 + 92 - 4 = 152 — exactly the block's sticky pin line, a subrow line (the
+  // overlay grid runs from viewport 0 at 8px). Landing == pin, so the block
   // sits flush under the filters from the first paint and does not jump when
-  // the user starts scrolling. The old "- 2" landed it at 166, off every grid
-  // line, 6px shy of the pin.
+  // the user starts scrolling. filtersH is MEASURED, so a change to the
+  // filters' padding moves the landing and the pin together. The old "- 2"
+  // landed it 6px shy of the pin, off every grid line.
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
