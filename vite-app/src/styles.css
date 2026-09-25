@@ -801,11 +801,13 @@
     .cal-event-money {
       /* Fills its 8g column (grid item, no shrink) with the figures
          right-aligned to the rail, so the block IS the column rather than a
-         text-width island floating at the right. */
+         text-width island floating at the right. One subrow between the buy-in
+         and the guarantee. */
       display: flex;
       flex-direction: column;
       align-items: stretch;
       text-align: right;
+      gap: var(--space-md);
       line-height: var(--lh-tight);
     }
     .cal-event-buyin, .cal-event-gtd { display: block; width: 100%; }
@@ -8021,7 +8023,10 @@
       background: var(--surface);
       border: none;
       border-radius: var(--radius-sm);
-      margin-bottom: var(--space-md);
+      /* No gap: the card is 96px (3 major rows), so a zero margin keeps the
+         pitch a whole number of major rows and every card's baselines land on
+         the same 32px grid. Cards read apart by their venue strip + outline. */
+      margin-bottom: 0;
       overflow: hidden;
       box-shadow: var(--elev-1);
       transition: border-color var(--dur-snap) var(--ease-out),
@@ -8326,15 +8331,18 @@
     .cal-event-bar {
       display: flex;
       flex-direction: column;
-      /* No inter-row gap: with 8px top/bottom padding, row1 (40) + row2 (24)
-         plus the 16px chevron row below the bar make the card an even 3 major
-         rows (96px / 12 subrows). A late-reg strip adds a 4th (see its
-         16px top margin). */
+      /* Row 1 is a fixed 32px major row (time + buy-in, baseline-aligned); an
+         8px gap then row 2 (the name). With 8px top/bottom padding and the 16px
+         chevron row below the bar, the card is an even 3 major rows (96px). The
+         guarantee overflows row 1 downward without pushing the name off its
+         baseline. A late-reg strip adds a 4th major row. */
       gap: 0;
       /* Half a subcolumn (one g) of inset on each side — a grid-determined
          internal margin between the venue strip and the title, and between the
-         buy-in and the card's right edge. A full subcolumn read as too much. */
-      padding: var(--space-md) var(--gu);
+         buy-in and the card's right edge. A full subcolumn read as too much.
+         12px top/bottom lands the time/buy-in baseline on the first major row
+         (32px) and the name baseline on the second (64px). */
+      padding: var(--space-lg) var(--gu);
       cursor: pointer;
       position: relative;
       user-select: none;
@@ -8430,7 +8438,8 @@
          (35 → 326) with the label left-aligned inside it. */
       display: grid;
       grid-template-columns: 1fr calc(var(--subcol) * 3);
-      align-items: center;
+      align-items: baseline; /* buy-in shares the start time's baseline */
+      height: 32px;          /* one major row; the guarantee overflows below */
       gap: 0;
     }
 
