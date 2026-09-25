@@ -807,7 +807,8 @@
       flex-direction: column;
       align-items: stretch;
       text-align: right;
-      gap: var(--space-md);
+      gap: 3px; /* + residual box overhead = one subrow (8px) of visible space
+                   between the buy-in and the guarantee */
       line-height: var(--lh-tight);
     }
     .cal-event-buyin, .cal-event-gtd { display: block; width: 100%; }
@@ -8506,7 +8507,7 @@
     .cal-event-buyin {
       font-family: var(--serif);
       font-size: var(--fs-sm);
-      line-height: 24px;
+      line-height: 16px; /* tight box so the gap to the guarantee reads true */
       font-weight: var(--fw-bold);
       color: var(--accent);
       flex-shrink: 0;
