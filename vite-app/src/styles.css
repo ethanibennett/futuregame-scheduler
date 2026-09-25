@@ -807,8 +807,9 @@
       flex-direction: column;
       align-items: stretch;
       text-align: right;
-      gap: 3px; /* + residual box overhead = one subrow (8px) of visible space
-                   between the buy-in and the guarantee */
+      gap: 1px; /* lands the guarantee baseline on the 48px subrow line (two
+                   subrows below the buy-in), so it rests on a line rather than
+                   the line cutting through it — ~a subrow of visible space */
       line-height: var(--lh-tight);
     }
     .cal-event-buyin, .cal-event-gtd { display: block; width: 100%; }
