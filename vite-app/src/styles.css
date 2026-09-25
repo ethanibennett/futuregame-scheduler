@@ -1497,21 +1497,15 @@
       /* Flush to the content rails (no side padding) so the date pill sits on
          the col-1 line and the weekday/chevron on the right margin. The block is
          a fixed 40px (5 subrows) and sticks at the 6th primary-row line (160px),
-         so its top and its bottom edge — the border cards disappear behind —
-         land on the 160/200 subrow lines.
-
-         The day numeral is a 32px line box (one primary row). Its glyph baseline
-         sits 26.5px below the line-box top (measured: the display serif's
-         ascent runs 10.5px past half the line-height), so with no top padding
-         the shared day/count baseline lands at 186.5 when stuck — 2.5px off the
-         184 line and 5.5px off 192. A 5.5px top pad drops it to exactly 192 (the
-         4th subrow line inside the block), seating the baseline while keeping the
-         32px numeral box (5.5→37.5) fully inside the 40px block — cards behind
-         still vanish cleanly at 200, and the baseline rests low, close to the
-         events the date heads. Not a grid unit: a font-metric seat, per the
-         standing seat-the-baseline rule. */
+         so its top (160) and its bottom edge (200) — the border cards disappear
+         behind — land on subrow lines. No top padding: the pill (a 32px = 4-subrow
+         line box) sits flush at the block top, so it spans 160→192 when stuck,
+         both edges on subrow lines. The one subrow beneath it (192→200) is the
+         gap before the card-disappear border. The event count seats on the pill's
+         bottom edge (192) rather than the day's text baseline — see
+         .date-break-count. */
       height: calc(var(--subrow) * 5);
-      padding: 5.5px 0 0;
+      padding: 0;
       /* The border where scrolling cards disappear, drawn as an inset hairline
          so it adds no height. */
       box-shadow: inset 0 calc(-1 * var(--bw-hair)) 0 var(--border);
@@ -1586,6 +1580,13 @@
       text-transform: uppercase;
       color: var(--text-muted);
       margin-left: var(--gu); /* one gutter, so the count starts on the col-2 line */
+      /* Seat the count on the PILL's baseline — its bottom edge — not the day's
+         text baseline. align-items:baseline puts the count on the day glyph
+         baseline (block-top + 26.5); the pill box bottom is block-top + 32, so a
+         5.5px drop lands the count on the pill's bottom edge (192 when stuck, a
+         subrow line). 5.5 = pill height (32) − day baseline offset (26.5). */
+      position: relative;
+      top: 5.5px;
     }
     .date-break-end {
       margin-left: auto;
