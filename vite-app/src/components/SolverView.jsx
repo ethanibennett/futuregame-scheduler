@@ -249,20 +249,21 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
     <div style={{
       height: '100%', overflowY: 'auto', padding: '0 0 80px', maxWidth: 880,
       margin: '0 auto', fontFamily: FONT,
-      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 12, rowGap: 16,
+      /* Grid: 1g column gaps make the four columns land on the app's 8g lines; 2-subrow row gap. */
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 'var(--gu)', rowGap: 16,
       alignContent: 'start',
     }}>
       {/* Header — title on cols 1–2, game pills on cols 3–4 */}
       <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center', rowGap: 8 }}>
-        <h2 className="screen-title" style={{ gridColumn: '1 / 3', fontSize: '1.2rem', margin: 0 }}>Solver</h2>
+        <h2 className="screen-title" style={{ gridColumn: '1 / 3', fontSize: '1.2rem', margin: 0, lineHeight: '40px', height: 40, boxSizing: 'border-box', paddingTop: 5 }}>Solver</h2>
         {/* Game pills */}
-        <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
           {GAMES.map(([id, lbl]) => (
             <button key={id} onClick={() => { setGame(id); if (id !== 'stud8') setAbstraction('hilo'); }} style={pill(game === id)}>{lbl}</button>
           ))}
         </div>
       </div>
-      <p style={{ ...label, ...full, margin: 0 }}>Live range-form CFR+ · exact subgame solve</p>
+      <p style={{ ...label, ...full, margin: 0, height: 16, lineHeight: '16px' }}>Live range-form CFR+ · exact subgame solve</p>
 
       {/* Handoff note — appears when a spot is imported from the replayer.
           Pre-filled from a frozen replay spot; spells out the up/down split
@@ -287,7 +288,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
       )}
 
       {/* Mode switch — two buttons, each spanning 2 columns */}
-      <div style={{ ...full, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ ...full, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
         {[['exact', 'Node-locked'], ['range', 'Range vs range']].map(([id, lbl]) => (
           <button key={id} onClick={() => setMode(id)}
             style={{
@@ -344,13 +345,13 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         {/* Card preview for hero + opponent upcards */}
         <div style={half}>
           <div style={fieldLab}>Hero</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 44 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 72, boxSizing: 'border-box' }}>
             {heroCards.length ? heroCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span style={{ ...label }}>—</span>}
           </div>
         </div>
         <div style={half}>
           <div style={fieldLab}>Opp upcards</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 44 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 72, boxSizing: 'border-box' }}>
             {oppCards.length ? oppCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span style={{ ...label }}>—</span>}
           </div>
         </div>
@@ -360,14 +361,15 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
           <div style={full}>
             <div style={fieldLab}>Opponent range <span style={{ opacity: 0.6 }}>(node-locked — comma-separated)</span></div>
             <input value={oppRange} onChange={(e) => setOppRange(e.target.value)} placeholder="Kc Kd 2h, Qs Js Tc" style={input} />
-            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 8 }}>
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 8, height: 16, lineHeight: '16px' }}>
               Keep it narrow (a few holdings). Each holding is {downN} cards.
             </div>
             {oppHoldings.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gu)', marginTop: 8 }}>
                 {oppHoldings.map((h, i) => (
                   <span key={i} style={{
-                    fontSize: '0.68rem', fontVariantNumeric: 'tabular-nums', padding: '6px 9px', borderRadius: 6,
+                    fontSize: '0.68rem', fontVariantNumeric: 'tabular-nums', height: 24, boxSizing: 'border-box',
+                    display: 'inline-flex', alignItems: 'center', padding: '0 9px', borderRadius: 6,
                     background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
                   }}>{h}</span>
                 ))}
@@ -389,7 +391,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             </div>
             <div style={half}>
               <div style={fieldLab}>Abstraction {!emdAvailable && <span style={{ opacity: 0.6 }}>(EMD is Stud 8 only)</span>}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
                 {[['hilo', 'Hi/Lo'], ['emd', 'EMD']].map(([id, lbl]) => {
                   const disabled = id === 'emd' && !emdAvailable;
                   const active = abstraction === id;
@@ -448,7 +450,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         )}
 
         {!solving && !error && !result && (
-          <div style={{ ...full, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.55, borderLeft: '2px solid var(--accent)', paddingLeft: 12 }}>
+          <div style={{ ...full, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '24px', borderLeft: '2px solid var(--accent)', paddingLeft: 'calc(var(--gu) - 2px)' }}>
             Edit the spot on the left and hit <b style={{ color: 'var(--text)' }}>Solve spot</b> to run it live.
           </div>
         )}
