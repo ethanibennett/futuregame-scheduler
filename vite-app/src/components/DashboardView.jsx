@@ -481,7 +481,7 @@ export default function DashboardView({
           <div style={{flex:1}}>
             <div className="dash-event-name">{formatEventName(event.event_name)}</div>
             {!isConditionalOnPlaying && (
-              <div className="dash-event-meta" style={{marginTop:'2px'}}>
+              <div className="dash-event-meta">
                 {/* The carousel now runs the whole schedule, so a card can be
                     weeks out — time alone would be ambiguous. */}
                 {normaliseDate(event.date) !== todayISO && (
