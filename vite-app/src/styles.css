@@ -1449,10 +1449,26 @@
        a control - the only emoji UI anywhere, rendering in the OS colour
        font and ignoring every theme.
        ================================================================== */
-    .admin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    /* table-layout:fixed so the five columns honour the grid-unit widths set by
+       the <colgroup> in AdminView and the whole table fits the 35g content rail
+       instead of overflowing (it used to run 453px wide at 402px viewport, so
+       Replayer clipped and Joined fell off-screen). */
+    /* border-collapse:separate (not collapse) so each cell's 1px border is drawn
+       INSIDE its box-sizing:border-box height — collapsed borders add a pixel on
+       top of the set height and the rows drift (they stepped 41px, not 40). */
+    .admin-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fs-sm); table-layout: fixed; }
     .admin-table th {
       text-align: left;
-      padding: var(--space-sm) var(--space-md);
+      /* 1 subrow block above/below the caps label, 1g horizontal; header row a
+         whole 4 subrows tall (32px) via box-sizing so heights land on grid. The
+         -3px seat lands the 10px caps baseline on the line 2 subrows (208) below
+         the head top — a measured seat, per the standing baseline rule. */
+      padding: var(--subrow) var(--gu);
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      vertical-align: middle;
+      position: relative;
+      top: -3px;
       /* extends .settings-section-label rather than re-deriving it 0.03em off */
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
@@ -1464,11 +1480,65 @@
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .admin-table td { padding: var(--space-md); border-bottom: 1px solid var(--border); }
-    .admin-toggle { width: 32px; height: 18px; }
-    .admin-toggle::after { width: 14px; height: 14px; }
-    .admin-toggle.on::after { transform: translateX(14px); }
+    /* Every body row a uniform 5 subrows (40px). The border sits inside the box
+       (box-sizing) so the row steps by exactly 40px. line-height is a 3-subrow
+       text line (the avatar is taken out of flow below, so it can't stretch the
+       line box and swell the row); vertical-align:baseline + the 7px seat lands
+       every cell's 12.8px text baseline on the line 3 subrows (24px) below the
+       row top — a measured seat, per the standing baseline rule. Overflow +
+       ellipsis keeps long emails on one line so rows stay uniform (they used to
+       swing 43-55px as emails wrapped). Horizontal padding is 1g. */
+    .admin-table td {
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      padding: 7px var(--gu) 0;
+      line-height: calc(var(--subrow) * 3);
+      border-bottom: 1px solid var(--border);
+      vertical-align: baseline;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    /* The Replayer toggle is pulled out of flow (like the avatar) so it neither
+       stretches the row nor rides the text baseline: centred vertically in the
+       5-subrow row — (40-24)/2 = 8px = 1 subrow, box spanning lines 8 -> 32 — and
+       centred in its 5g column (left 2.5g minus its own 2g half-width). */
+    .admin-table td.admin-toggle-cell { position: relative; padding: 0; }
+    .admin-table td.admin-toggle-cell .admin-toggle {
+      position: absolute;
+      top: calc((var(--subrow) * 5 - var(--subrow) * 3) / 2);
+      left: 50%;
+      margin-left: calc(var(--gu) * -2);
+    }
+    /* Username cell clears the avatar with a fixed indent (1g rail + 24px avatar
+       + 1 subrow gap). */
+    .admin-table td.admin-user-cell { position: relative; padding-left: calc(var(--gu) + 24px + var(--space-md)); }
+    /* Avatar is pulled out of flow and centred in the 5-subrow row: (40-24)/2 =
+       8px = exactly 1 subrow, so its box spans the lines 8 -> 32 within the row. */
+    .admin-avatar {
+      position: absolute;
+      left: var(--gu);
+      top: calc((var(--subrow) * 5 - 24px) / 2);
+      width: 24px; height: 24px;
+      border-radius: var(--radius-circle);
+      object-fit: cover;
+    }
+    .admin-avatar-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      color: var(--bg);
+    }
+    /* Grid the toggle: height already 3 subrows via .settings-toggle; the double
+       class outweighs .settings-toggle (defined later in the file) so the width
+       snaps to a whole 4g. */
+    .settings-toggle.admin-toggle { width: calc(var(--gu) * 4); height: calc(var(--subrow) * 3); }
 
     /* ==================================================================
        Date break. The pinned header used to sit on a flat --bg with no
