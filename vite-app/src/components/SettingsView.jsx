@@ -9,7 +9,7 @@ import { SITE_URL } from '../utils/api.js';
 export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel }) {
   const toast = useToast();
   const displayName = useDisplayName();
-  const [debugInput, setDebugInput] = useState(getDebugNow());
+  const [debugInput, setDebugInput] = useState(getDebugNow());
 
   const applyDebugTime = (val) => {
     setDebugInput(val);
@@ -23,42 +23,34 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       <div className="settings-section">
         <div className="settings-section-label">Account</div>
         <div className="settings-card">
-          <div className="settings-row" style={{gap:'12px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:'12px',flex:1}}>
-              <Avatar src={avatar} username={username} size={44} />
-              <div>
-                <div style={{fontSize:'0.85rem',fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{realName || username}</div>
-                <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginTop:'2px'}}>@{username}</div>
-              </div>
+          <div className="settings-row settings-acct">
+            <Avatar src={avatar} username={username} size={48} />
+            <div className="settings-acct-info">
+              <div className="settings-acct-name">{realName || username}</div>
+              <div className="settings-acct-handle">@{username}</div>
             </div>
-            <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-              <label className="btn btn-ghost btn-sm" style={{cursor:'pointer',fontSize:'0.75rem',padding:'4px 10px'}}>
+            <div className="settings-acct-actions">
+              <label className="btn btn-ghost btn-sm settings-btn">
                 {avatar ? 'Change' : 'Add photo'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onAvatarUpload} style={{display:'none'}} />
               </label>
               {avatar && (
-                <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',fontSize:'0.75rem',padding:'4px 10px'}} onClick={onAvatarRemove}>Remove</button>
+                <button className="btn btn-ghost btn-sm settings-btn settings-btn--danger" onClick={onAvatarRemove}>Remove</button>
               )}
             </div>
           </div>
-          <div className="settings-row" style={{justifyContent:'space-between',alignItems:'center'}}>
-            <div>
+          <div className="settings-row settings-namemode">
+            <div className="settings-namemode-text">
               <span className="settings-row-label">Display names</span>
-              <p style={{fontSize:'0.72rem',color:'var(--text-muted)',margin:'2px 0 0'}}>
+              <p className="settings-help">
                 Show {nameMode === 'real' ? 'real names' : 'usernames'} throughout the app
               </p>
             </div>
-            <div style={{display:'flex',gap:'4px',background:'var(--bg)',borderRadius:'6px',padding:'2px'}}>
-              <button onClick={() => onToggleNameMode('real')}
-                style={{padding:'4px 10px',borderRadius:'5px',border:'none',cursor:'pointer',fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',
-                  background: nameMode === 'real' ? 'var(--accent)' : 'transparent',
-                  color: nameMode === 'real' ? '#000' : 'var(--text-muted)'}}>
+            <div className="settings-seg">
+              <button className={'settings-seg-btn' + (nameMode === 'real' ? ' is-on' : '')} onClick={() => onToggleNameMode('real')}>
                 Real
               </button>
-              <button onClick={() => onToggleNameMode('username')}
-                style={{padding:'4px 10px',borderRadius:'5px',border:'none',cursor:'pointer',fontSize:'0.72rem',fontWeight: 'var(--fw-bold)',
-                  background: nameMode === 'username' ? 'var(--accent)' : 'transparent',
-                  color: nameMode === 'username' ? '#000' : 'var(--text-muted)'}}>
+              <button className={'settings-seg-btn' + (nameMode === 'username' ? ' is-on' : '')} onClick={() => onToggleNameMode('username')}>
                 Username
               </button>
             </div>
@@ -72,67 +64,63 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       <div className="settings-section">
         <div className="settings-section-label">Sharing</div>
         <div className="settings-card">
-          <div className="settings-row" style={{flexDirection:'column',alignItems:'stretch',gap:'8px'}}>
+          <div className="settings-row settings-row--stack">
             <span className="settings-row-label">Share link</span>
-            <p style={{fontSize:'0.75rem',color:'var(--text-muted)',lineHeight:1.4}}>
+            <p className="settings-help">
               Anyone with this link can view your schedule &mdash; no account needed.
             </p>
             {shareToken ? (
-              <div style={{display:'flex',gap:'6px',alignItems:'center',flexWrap:'wrap'}}>
+              <div className="settings-inline-row">
                 <input
-                  className="settings-debug-input"
+                  className="settings-debug-input settings-share-input"
                   readOnly
                   value={`${SITE_URL}/shared/${shareToken}`}
-                  style={{flex:1,fontSize:'0.72rem',minWidth:0}}
                   onClick={e => e.target.select()}
                 />
-                <button className="btn btn-ghost btn-sm" style={{display:'inline-flex',alignItems:'center',gap:'4px'}} onClick={() => {
+                <button className="btn btn-ghost btn-sm settings-btn" onClick={() => {
                   navigator.clipboard.writeText(`${SITE_URL}/shared/${shareToken}`);
                 }}><Icon.copy /> Copy</button>
-                <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={onRevokeShareToken}>Revoke</button>
+                <button className="btn btn-ghost btn-sm settings-btn settings-btn--danger" onClick={onRevokeShareToken}>Revoke</button>
               </div>
             ) : (
-              <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start',display:'inline-flex',alignItems:'center',gap:'6px'}} onClick={onGenerateShareToken}>
+              <button className="btn btn-ghost btn-sm settings-btn settings-btn--start" onClick={onGenerateShareToken}>
                 <Icon.link /> Generate Share Link
               </button>
             )}
           </div>
-          <div style={{borderTop:'1px solid var(--border)'}} />
-          <div className="settings-row" style={{flexDirection:'column',alignItems:'stretch',gap:'8px'}}>
+          <div className="settings-row settings-row--stack">
             <span className="settings-row-label">Connect with a user</span>
-            <p style={{fontSize:'0.75rem',color:'var(--text-muted)',lineHeight:1.4}}>
+            <p className="settings-help">
               Send a request &mdash; if they accept, you both see each other's schedules.
             </p>
-            <form onSubmit={onSendShareRequest} style={{display:'flex',gap:'6px'}}>
-              <input className="settings-debug-input" name="shareUsername" placeholder="Enter username" style={{flex:1}} />
-              <button type="submit" className="btn btn-ghost btn-sm">Send</button>
+            <form onSubmit={onSendShareRequest} className="settings-inline-row">
+              <input className="settings-debug-input settings-share-input" name="shareUsername" placeholder="Enter username" />
+              <button type="submit" className="btn btn-ghost btn-sm settings-btn">Send</button>
             </form>
             {pendingOutgoing && pendingOutgoing.length > 0 && (
-              <div style={{marginTop:'4px'}}>
-                <span style={{fontSize:'0.7rem',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px'}}>Pending</span>
+              <div className="settings-people">
+                <span className="settings-people-hd">Pending</span>
                 {pendingOutgoing.map(r => (
-                  <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                    padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:'0.82rem',color:'var(--text)'}}>
-                    <span style={{display:'flex',alignItems:'center',gap:'8px',color:'var(--text-muted)'}}>
-                      <Avatar src={r.avatar} username={r.username} size={22} />
+                  <div key={r.id} className="settings-people-item">
+                    <span className="settings-people-name">
+                      <Avatar src={r.avatar} username={r.username} size={24} />
                       {displayName(r)}
                     </span>
-                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',padding:'4px 8px'}} onClick={() => onCancelRequest(r.id)}>Cancel</button>
+                    <button className="btn btn-ghost btn-sm settings-btn settings-btn--danger" onClick={() => onCancelRequest(r.id)}>Cancel</button>
                   </div>
                 ))}
               </div>
             )}
             {shareBuddies && shareBuddies.length > 0 && (
-              <div style={{marginTop:'8px'}}>
-                <span style={{fontSize:'0.7rem',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px'}}>Connected</span>
+              <div className="settings-people">
+                <span className="settings-people-hd">Connected</span>
                 {shareBuddies.map(b => (
-                  <div key={b.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                    padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:'0.82rem',color:'var(--text)'}}>
-                    <span style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                      <Avatar src={b.avatar} username={b.username} size={22} />
+                  <div key={b.id} className="settings-people-item">
+                    <span className="settings-people-name">
+                      <Avatar src={b.avatar} username={b.username} size={24} />
                       {displayName(b)}
                     </span>
-                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)',padding:'4px 8px'}} onClick={() => onRemoveBuddy(b.id)}>Remove</button>
+                    <button className="btn btn-ghost btn-sm settings-btn settings-btn--danger" onClick={() => onRemoveBuddy(b.id)}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -146,11 +134,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
         <div className="settings-card">
           <div className="settings-row">
             <span className="settings-row-label">Theme</span>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={toggleTheme}
-              style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'13px',padding:'4px 10px',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)'}}
-            >
+            <button className="btn btn-ghost btn-sm settings-btn settings-btn--icon" onClick={toggleTheme}>
               {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon, {key: theme})}
               {THEME_LABEL[theme]}
             </button>
@@ -193,8 +177,8 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
       <div className="settings-section">
         <div className="settings-section-label">Debug Tools</div>
         <div className="settings-card">
-          <div className="settings-row" style={{flexDirection:'column',alignItems:'stretch',gap:'8px'}}>
-            <span className="settings-row-label">Simulated date & time</span>
+          <div className="settings-row settings-row--stack">
+            <span className="settings-row-label">Simulated date &amp; time</span>
             <input
               className="settings-debug-input"
               type="datetime-local"
@@ -206,8 +190,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
             />
             {debugInput && (
               <button
-                className="btn btn-ghost btn-sm"
-                style={{alignSelf:'flex-start',marginTop:'4px'}}
+                className="btn btn-ghost btn-sm settings-btn settings-btn--start"
                 onClick={() => applyDebugTime('')}
               >Reset to real time</button>
             )}
@@ -220,7 +203,7 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
         <div className="settings-about">
           <h3>futurega.me</h3>
           <p>{seasonLabel || getStoredSeasonLabel()} &mdash; wsop tournament scheduler</p>
-          <p style={{marginTop:'8px',fontSize:'0.7rem',opacity:0.5}}>v0.1.0</p>
+          <p className="settings-about-ver">v0.1.0</p>
         </div>
       </div>
 
