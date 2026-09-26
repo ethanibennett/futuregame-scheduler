@@ -7947,13 +7947,16 @@
        (Other compact empty states — dropdowns, panels — stay centered.) */
     .dashboard-section .empty-state {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      column-gap: var(--space-lg); row-gap: var(--space-md);
-      text-align: left; padding: var(--space-md) 0 var(--space-sm);
+      /* Real sub-grid: four 8g columns with 1g gutters = 35g, edges on the
+         global g-lines (1,10,19,28g starts) instead of repeat(4,1fr)+12px
+         gaps, which floated the column edges off the grid. */
+      grid-template-columns: repeat(4, var(--col));
+      column-gap: var(--gu); row-gap: var(--space-md);
+      text-align: left; padding: var(--space-md) 0 0;
     }
-    .dashboard-section .empty-state svg { grid-column: 1 / -1; margin: 0; justify-self: start; }
-    .dashboard-section .empty-state h3 { grid-column: 1 / -1; margin: 0; }
-    .dashboard-section .empty-state p { grid-column: 1 / 4; max-width: none; margin: 0; }
+    .dashboard-section .empty-state svg { grid-column: 1 / -1; margin: 0; justify-self: start; width: 24px; height: 24px; }
+    .dashboard-section .empty-state h3 { grid-column: 1 / -1; margin: 0; line-height: calc(var(--subrow) * 3); transform: translateY(-1.5px); }
+    .dashboard-section .empty-state p { grid-column: 1 / 4; max-width: none; margin: 0; line-height: calc(var(--subrow) * 2); }
     .dashboard-section .empty-state-action { grid-column: 1 / 3; align-self: start; width: 100%; margin: 0; }
     /* Secondary ways out of a filter sit quiet — only one action should pull. */
     .empty-state-action-quiet {
@@ -9084,7 +9087,10 @@
     .cal-structure-link:active { opacity: 0.6; }
 
     /* ── Table Scanner (Hendon Mob) ── */
-    .table-scanner { margin-bottom: var(--space-ml); }
+    /* No trailing margin — the 10px here made the scanner section 6.5+ subrows
+       and offset the bottom stack; the section gap (2 subrows) spaces it like
+       every other section. */
+    .table-scanner { margin-bottom: 0; }
 
     .table-scanner-progress {
       display: flex;
@@ -9481,11 +9487,13 @@
     .dash-bottom-stack {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2xl);
+      gap: var(--space-xl); /* 2 subrows — was 20px (2.5 subrows, off-grid) */
       flex: 1;
     }
     .dash-bottom-stack > :last-child {
-      margin-top: auto;
+      /* Flow the last section on-grid instead of pinning it to the viewport
+         bottom (an off-grid edge set by the safe area / tab bar). The stack
+         still fills via flex:1, so nothing clips; the slack sits below. */
       margin-bottom: var(--space-xl);
     }
 
@@ -9493,6 +9501,15 @@
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
+    }
+
+    /* The Table Scanner's idle button reuses .cal-structure-link, which carries
+       a 12px bottom margin — that made the scanner block 52px (6.5 subrows) and
+       knocked the whole bottom stack half a subrow off the grid. Drop it here
+       (direct-child button = idle state only) so the block is a clean 5 subrows
+       and the sections below realign; the section gap already spaces it. */
+    .dashboard-section .table-scanner > button {
+      margin-bottom: 0;
     }
 
     .dashboard-section-header {
@@ -9504,17 +9521,24 @@
          rides a fixed 24px (3 baseline rows) box so section headers are the
          same height everywhere and whatever follows lands on the grid. */
       padding: 0;
-      min-height: 24px;
+      /* Fixed 3-subrow height (not min-height) so a wrapping accessory like the
+         Table Scanner parenthetical can't push the header to 25px and knock the
+         sections below off the grid. */
+      height: calc(var(--subrow) * 3);
     }
 
     .dashboard-section-title {
       font-family: var(--font-condensed);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
-      line-height: 24px;
+      line-height: calc(var(--subrow) * 3);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       color: var(--text-muted);
+      /* Univers Condensed seats its baseline 1px below the line at this size;
+         a 1px optical nudge (--nudge-1) drops it exactly onto the subrow line
+         while the header box stays gridded. */
+      transform: translateY(-1px);
     }
 
     .dashboard-section-badge {
@@ -9536,7 +9560,7 @@
       padding: 28px var(--space-xl) 14px;
       display: flex;
       flex-direction: column;
-      gap: var(--space-sm);
+      gap: var(--space-md); /* 1 subrow — was 6px, off-grid */
       box-shadow: var(--elev-1);
       transition: background var(--dur-snap) var(--ease-out),
                   box-shadow var(--dur-snap) var(--ease-out);
@@ -9551,7 +9575,7 @@
     .dash-venue-strip {
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 18px;
+      height: calc(var(--subrow) * 2); /* 2 subrows — was 18px */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -9574,15 +9598,29 @@
     .dash-event-card.playing .dash-venue-strip,
     .dash-event-card.next-up .dash-venue-strip,
     .dash-event-card.manually-expanded .dash-venue-strip {
-      height: 22px;
+      height: calc(var(--subrow) * 3); /* 3 subrows — was 22px */
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps-lg);
+    }
+    /* Pull the strip out over the card border so its top edge sits on the grid
+       line (the card box top) instead of being pushed down by the border, and
+       its side edges reach the card's own g-line edges. Offset = border width,
+       which differs by state (playing is 2px, the others 1px). */
+    .dash-event-card.playing .dash-venue-strip {
+      top: -2px; left: -2px; right: -2px;
+    }
+    .dash-event-card.next-up .dash-venue-strip,
+    .dash-event-card.manually-expanded .dash-venue-strip {
+      top: -1px; left: -1px; right: -1px;
     }
 
     .dash-event-card.playing,
     .dash-event-card.next-up,
     .dash-event-card.manually-expanded {
-      padding-top: var(--space-4xl);
+      /* 32px reserved above the content (24px strip + 8px gap = 4 subrows),
+         less the 1px border so the content-top lands on a subrow line. The
+         playing state (2px border) subtracts 2px — see below. */
+      padding-top: calc(var(--space-4xl) - 1px);
       padding-left: var(--space-xl);
       box-shadow: var(--elev-2);
     }
@@ -9713,12 +9751,14 @@
 
     .dash-event-card.playing {
       border-width: 2px;
+      /* 2px border → subtract 2px from the 32px reserve so content stays on grid */
+      padding-top: calc(var(--space-4xl) - 2px);
     }
 
     .dash-card-content {
       display: flex;
       flex-direction: column;
-      gap: var(--space-sm);
+      gap: var(--space-md); /* 1 subrow — was 6px, off-grid */
     }
     .dash-event-card.conditional {
       opacity: 0.7;
@@ -9771,6 +9811,18 @@
     .dash-event-card.next-up .dash-event-name,
     .dash-event-card.manually-expanded .dash-event-name {
       font-size: var(--fs-lg);
+      line-height: calc(var(--subrow) * 3); /* 3 subrows per line */
+      /* Seat both name baselines on subrow lines (display font sits 2px below
+         the line at this size); transform doesn't shift the meta/buyin below. */
+      transform: translateY(-2px);
+    }
+    /* A two-line name (base + "- Day 1" stage) carries ~1.5px of display-font
+       line-gap below its last line, which would push the stats/actions off the
+       grid. Pull it back so everything below the header stays on subrow lines. */
+    .dash-event-card.playing .dash-event-name:has(br),
+    .dash-event-card.next-up .dash-event-name:has(br),
+    .dash-event-card.manually-expanded .dash-event-name:has(br) {
+      margin-bottom: -1.5px;
     }
 
     /* Was --accent, which is grey — the figure receded on a card built around
@@ -9783,14 +9835,16 @@
       color: var(--text);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+      line-height: calc(var(--subrow) * 3); /* match the event name's first line box */
     }
 
     .dash-event-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px 14px;
+      gap: var(--space-md) var(--space-lg);
       font-size: var(--fs-xs);
       color: var(--text-muted);
+      line-height: calc(var(--subrow) * 2); /* 2 subrows */
     }
 
     .dash-event-meta span {
@@ -9814,6 +9868,8 @@
       flex: 1 1 0;
       background: var(--surface2);
       border-radius: var(--radius-sm);
+      /* 1 subrow padding + 2-subrow value line + 2-subrow label line + 1 subrow
+         padding = 6 subrows (48px), edges on the grid. */
       padding: var(--space-md) var(--space-sm);
       text-align: center;
       min-width: 0;
@@ -9824,7 +9880,7 @@
       font-size: var(--fs-md);
       font-weight: var(--fw-bold);
       color: var(--text);
-      line-height: 1.1;
+      line-height: calc(var(--subrow) * 2); /* 2 subrows */
     }
 
     .dash-stat-label {
@@ -9832,7 +9888,7 @@
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      margin-top: var(--space-2xs);
+      line-height: calc(var(--subrow) * 2); /* 2 subrows */
     }
 
     .dash-event-tag {
@@ -9913,7 +9969,8 @@
       justify-content: center;
       gap: var(--space-md);
       width: 100%;
-      padding: var(--space-md) var(--space-xl);
+      height: calc(var(--subrow) * 5); /* 5 subrows — was ~46px */
+      padding: 0 var(--space-xl);
       border: 1px solid var(--ok);
       border-radius: var(--radius-sm);
       background: var(--ok-bg);
@@ -9966,7 +10023,7 @@
     .dash-status-stack {
       display: flex;
       flex-direction: column;
-      gap: var(--space-sm);
+      gap: var(--space-md); /* 1 subrow — was 6px, off-grid */
     }
     .dash-status-stack .dash-playing-badge {
       width: 100%;
@@ -10145,11 +10202,15 @@
        places - the header inline in JSX, the grid here - and item 43 changed
        this one from repeat(3, 1fr) without the header following, which left
        Reset overhanging the card by 33px. One variable now. */
-    :root { --pl-cols: 1fr 1fr 1.25fr; }
+    /* g-based columns so both the P&L cards and the Results header land on the
+       global grid: 10g + 10g + 13g tracks with 1g gutters = 35g (1g→36g),
+       edges on g-lines. The 10:10:13 ratio preserves the old ~1:1:1.25 weight
+       that keeps the Net card wider. */
+    :root { --pl-cols: calc(var(--gu) * 10) calc(var(--gu) * 10) calc(var(--gu) * 13); }
     .dash-results-header {
       display: grid;
       grid-template-columns: var(--pl-cols);
-      gap: var(--space-md);
+      gap: var(--gu);
       align-items: center;
     }
     .dash-results-header > .dash-results-head-left {
@@ -10163,7 +10224,7 @@
     .dash-pl-grid {
       display: grid;
       grid-template-columns: var(--pl-cols);
-      gap: var(--space-md);
+      gap: var(--gu);
       align-items: stretch;
     }
 
@@ -10171,15 +10232,20 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: var(--space-md) var(--space-lg);
+      /* Fixed 9-subrow box. Top padding is 1 subrow less the 1px border so the
+         value line's box top lands on a grid line; content is top-aligned so
+         the value (3-subrow line) and label (2-subrow line) sit at the same
+         grid rows across all three cards. */
+      min-height: calc(var(--subrow) * 9);
+      padding: calc(var(--space-md) - 1px) var(--space-lg) 0;
       text-align: center;
       /* these are <button> now, so undo the UA defaults */
       font: inherit;
       color: inherit;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      gap: var(--space-2xs);
+      justify-content: flex-start;
+      gap: 0;
     }
     .dash-pl-btn { cursor: pointer; position: relative; }
 
@@ -10187,14 +10253,15 @@
       background: var(--surface-raised);
       border-color: var(--border-strong);
     }
-    .dash-pl-card--net .dash-pl-value { font-size: var(--fs-xl); }
-    .dash-pl-card:not(.dash-pl-card--net) .dash-pl-value { font-size: var(--fs-md); }
+    .dash-pl-card--net .dash-pl-value { font-size: var(--fs-xl); line-height: calc(var(--subrow) * 3); }
+    .dash-pl-card:not(.dash-pl-card--net) .dash-pl-value { font-size: var(--fs-md); line-height: calc(var(--subrow) * 3); }
     /* "Net — +12.4% ROI" was one 9.3px string doing two jobs. */
     .dash-pl-roi {
       display: block;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps);
+      line-height: calc(var(--subrow) * 2); /* 2 subrows */
     }
     .dash-pl-roi.pos { color: var(--ok); }
     .dash-pl-roi.neg { color: var(--danger); }
@@ -10215,7 +10282,7 @@
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      margin-top: var(--space-2xs);
+      line-height: calc(var(--subrow) * 2); /* 2 subrows — was margin-top 2px, off-grid */
     }
 
     .dash-pl-btn {
