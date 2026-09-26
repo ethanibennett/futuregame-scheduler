@@ -1539,15 +1539,13 @@
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
-      /* The pill hugs "DD Mon", but the type is fixed px while the column scales
-         with g, so on a narrow screen the same text eats more of the column: at
-         375pt "25 Sep" alone is 6.7g of the 8g column, leaving ~1.3g for padding.
-         6px each side is the most that keeps the hug inside one column down to
-         375pt; max-width caps it at exactly one column as a hard stop so it can
-         never spill into the gutter before the count, whatever the width. (12px
-         here pushed it to ~8.5g — past the column edge — on the 402pt phone.) */
-      padding: 0 var(--space-sm);
-      max-width: var(--col);
+      /* Exactly one column wide — a grid object, not a content-hugging badge. Its
+         right edge is on the 9g column line at every width (8.000g, not the 7.89g
+         a hug happened to sum to). The date type is sized in g (see
+         .date-break-day/-mon), so "DD Mon" is a constant ~5.85g and fits inside
+         the 6g content area (8g − 2×1g padding) on every screen, left-aligned. */
+      width: var(--col);
+      padding: 0 var(--gu);
       border-radius: var(--radius-pill);
       background: color-mix(in srgb, var(--n-8) 6%, transparent);
       /* No fixed height: a fixed height with align-items:baseline made the pill's
@@ -1556,7 +1554,7 @@
          baseline IS the day's baseline and the count lines up. The five-subrow
          (40px) height comes from the day's 32px line + the today highlight's 4px
          top/bottom padding. */
-      gap: var(--space-xs);
+      gap: calc(var(--gu) * 0.3442); /* 4px @ 430pt, in g so it scales with the type */
       color: var(--text);
     }
     /* The one mark the whole list is scrolled to on mount. --brand exists so
@@ -1570,14 +1568,19 @@
     }
     .date-break-day {
       font-family: var(--font-display);
-      font-size: var(--fs-3xl);
+      /* Sized in g, not a fixed px, so "25" is the same fraction of the column on
+         every screen and the pill fits the same way on a 375 and a 430. 2.5814g
+         == the old 30px (--fs-3xl) at 430pt; it scales down on narrower phones
+         (28px @ 402, 26px @ 375). Line-height stays a fixed 4 subrows — the box
+         is on the grid; only the glyph inside scales. */
+      font-size: calc(var(--gu) * 2.5814);
       font-weight: var(--fw-regular);
       line-height: calc(var(--subrow) * 4); /* one primary row */
       font-variant-numeric: var(--num-tabular);
     }
     .date-break-mon {
       font-family: var(--font-display);
-      font-size: var(--fs-md);
+      font-size: calc(var(--gu) * 1.2907); /* 15px (--fs-md) at 430pt, in g */
       line-height: 16px; /* 2 subrows */
       text-transform: capitalize;
     }
@@ -1605,15 +1608,17 @@
       gap: var(--space-md);
     }
     /* Everything OUTSIDE the pill sits on the PILL's baseline — the pill box's
-       bottom edge — not on the "25" text baseline. align-items:baseline lands
-       these on the day glyph baseline (block-top + 26.5); the pill box bottom is
-       block-top + 32, so a 5.5px drop puts their baselines on the pill's bottom
-       edge: 192 when pinned, a subrow line. 5.5 = pill height (32) − day
-       baseline offset (26.5) — one font-metric constant, declared once. */
+       bottom edge (block-top + 32, a fixed 4 subrows) — not on the "25" text
+       baseline. align-items:baseline lands these on the day glyph baseline, which
+       sits 16 + (asc−desc)/2 below the line-box top; the drop to the box bottom
+       is 32 − that = 16px − (asc−desc)/2. With the day now sized in g, (asc−desc)/2
+       scales with it: 0.9035g == the old 10.5px at 430pt (where the drop is 5.5).
+       So the drop tracks the type and the count/weekday stay on the pill's bottom
+       edge (192 when pinned) at every width, not just 430. */
     .date-break-count,
     .date-break-end {
       position: relative;
-      top: 5.5px;
+      top: calc(16px - var(--gu) * 0.9035);
     }
     .date-break-dow {
       font-family: var(--font-display);
