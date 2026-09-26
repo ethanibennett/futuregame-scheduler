@@ -84,13 +84,13 @@ export default function AdminView({ token, onNavigate }) {
   );
 
 return (
-    <div style={{padding:'16px',maxWidth:'100%'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
-        <h2 className="screen-title" style={{fontSize:'1.2rem',margin:0}}>
+    <div style={{padding:'calc(var(--subrow) * 2) 0',maxWidth:'100%'}}>
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',height:'calc(var(--subrow) * 4)',marginBottom:'calc(var(--subrow) * 2)',position:'relative',top:'2.5px'}}>
+        <h2 className="screen-title" style={{fontSize:'1.2rem',lineHeight:'calc(var(--subrow) * 3)',margin:0}}>
           ADMIN &mdash; {users.length} Users
         </h2>
         {onNavigate && (
-          <button onClick={() => onNavigate('hands')} style={{padding:'6px 12px',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
+          <button onClick={() => onNavigate('hands')} style={{height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 4)',padding:'0 var(--gu)',boxSizing:'border-box',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
             Hand Replayer
           </button>
         )}
@@ -100,10 +100,17 @@ return (
         placeholder="Filter by username, name, or email..."
         value={filter}
         onChange={e => setFilter(e.target.value)}
-        style={{width:'100%',padding:'8px 12px',marginBottom:'12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',boxSizing:'border-box'}}
+        style={{width:'100%',height:'calc(var(--subrow) * 5)',lineHeight:'calc(var(--subrow) * 3)',padding:'0 var(--gu) 6px',marginBottom:'calc(var(--subrow) * 2)',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'0.85rem',boxSizing:'border-box'}}
       />
       <div style={{overflowX:'auto'}}>
-        <table className="admin-table" style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8rem'}}>
+        <table className="admin-table" style={{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:'0.8rem'}}>
+          <colgroup>
+            <col style={{width:'calc(var(--gu) * 9)'}} />
+            <col style={{width:'calc(var(--gu) * 6)'}} />
+            <col style={{width:'calc(var(--gu) * 9)'}} />
+            <col style={{width:'calc(var(--gu) * 5)'}} />
+            <col style={{width:'calc(var(--gu) * 6)'}} />
+          </colgroup>
           <thead>
             <tr>
               <th onClick={() => handleSort('username')}>Username{sortArrow('username')}</th>
@@ -116,19 +123,19 @@ return (
           <tbody>
             {sorted.map(u => (
               <tr key={u.id}>
-                <td style={{padding:'8px',display:'flex',alignItems:'center',gap:'8px'}}>
+                <td className="admin-user-cell">
                   {u.avatar ? (
-                    <img src={u.avatar} style={{width:24,height:24,borderRadius:'50%',objectFit:'cover'}} alt={u.username} />
+                    <img className="admin-avatar" src={u.avatar} alt={u.username} />
                   ) : (
-                    <div style={{width:24,height:24,borderRadius:'50%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',fontWeight:700,color:'var(--bg)'}}>
+                    <div className="admin-avatar admin-avatar-fallback">
                       {(u.username || '?')[0].toUpperCase()}
                     </div>
                   )}
                   <span style={{fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{u.username}</span>
                 </td>
-                <td style={{padding:'8px',color:'var(--text-muted)'}}>{u.real_name || '\u2014'}</td>
-                <td style={{padding:'8px',color:'var(--text-muted)',fontSize:'0.75rem'}}>{u.email}</td>
-                <td style={{padding:'8px',textAlign:'center'}}>
+                <td style={{color:'var(--text-muted)'}}>{u.real_name || '\u2014'}</td>
+                <td style={{color:'var(--text-muted)'}}>{u.email}</td>
+                <td className="admin-toggle-cell" style={{textAlign:'center'}}>
                   <button
                     onClick={() => toggleReplayerAccess(u.id, !u.hand_replayer_access)}
                     className={'settings-toggle admin-toggle' + (u.hand_replayer_access ? ' on' : '')}
@@ -136,13 +143,13 @@ return (
                     aria-label={`Replayer access for ${u.username}`}>
                   </button>
                 </td>
-                <td style={{padding:'8px',color:'var(--text-muted)',textAlign:'right',whiteSpace:'nowrap'}} title={u.created_at}>{timeAgo(u.created_at)}</td>
+                <td style={{color:'var(--text-muted)',textAlign:'right',whiteSpace:'nowrap'}} title={u.created_at}>{timeAgo(u.created_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {sorted.length === 0 && <div style={{padding:'20px',textAlign:'center',color:'var(--text-muted)'}}>No users found</div>}
+      {sorted.length === 0 && <div style={{height:'calc(var(--subrow) * 9)',lineHeight:'calc(var(--subrow) * 3)',padding:'21.5px var(--gu) 0',boxSizing:'border-box',textAlign:'center',color:'var(--text-muted)'}}>No users found</div>}
     </div>
   );
 }
