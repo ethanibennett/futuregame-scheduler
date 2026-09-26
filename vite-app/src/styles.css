@@ -1547,7 +1547,7 @@
       width: var(--col);
       padding: 0 var(--gu);
       border-radius: var(--radius-pill);
-      background: color-mix(in srgb, var(--n-8) 6%, transparent);
+      background: color-mix(in srgb, var(--n-8) 10%, transparent);
       /* No fixed height: a fixed height with align-items:baseline made the pill's
          reported baseline diverge from the day's real glyph baseline, so the
          count (aligned to the pill) sat 5px off it. Content-driven, the pill's

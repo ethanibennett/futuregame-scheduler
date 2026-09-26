@@ -64,7 +64,9 @@ function scrollBelowSticky(el) {
   // box-shadow that extends below the bounding rect, eating the
   // natural gap. Add 4px back so the gap matches Schedule/My Schedule.
   const stickyShadowComp = (dateBreakH === 0) ? 4 : 0;
-  const target = elAbsTop - filtersH - dateBreakH - 2 - stickyShadowComp;
+  // +6 (was -2): land the expanded card one subrow (8px) higher, tucked flush
+  // under the sticky stack instead of sitting a gap below it.
+  const target = elAbsTop - filtersH - dateBreakH + 6 - stickyShadowComp;
   if (Math.abs(container.scrollTop - target) <= 2) return;
   container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 }

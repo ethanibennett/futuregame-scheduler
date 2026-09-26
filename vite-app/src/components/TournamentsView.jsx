@@ -1629,20 +1629,9 @@ export default function TournamentsView({
           >
             <Icon.filter />
           </button>
-          <button
-            ref={importBtnRef}
-            className={`filter-chip filter-chip-square ${importDropdownOpen ? 'active' : ''}`}
-            onClick={() => setImportDropdownOpen(o => !o)}
-            style={{flexShrink:0}}
-            title="Import schedule"
-          >
-            <Icon.upload />
-          </button>
         </div>
 
         <Filters filters={filters} setFilters={setFiltersWithScroll} setFiltersRaw={setFilters} gameVariants={gameVariants} venues={venues} buyinOptions={buyinOptions} tournaments={tournaments} open={filterPanelOpen} setOpen={setFilterPanelOpen} toggleRef={filterToggleRef} search={search} setSearch={setSearch} />
-
-        <ImportSchedulePanel isOpen={importDropdownOpen} onClose={() => setImportDropdownOpen(false)} token={token} onRefreshTournaments={onRefreshTournaments} />
 
         {locationDropdownOpen && createPortal(
           /* var(--z-scrim), not 998. The PANEL was moved off a 999 literal onto
