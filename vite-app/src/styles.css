@@ -1174,10 +1174,11 @@
        ring rather than a recolour - the old bars recoloured the chosen action,
        which is why a 30% action could look bigger than a 60% one.
        ================================================================== */
-    .freq-ribbon { margin: var(--space-sm) 0 var(--space-lg); }
+    /* Grid: track 3 subrows tall; ribbon margins on subrow rhythm. */
+    .freq-ribbon { margin: var(--subrow) 0 calc(var(--subrow) * 2); }
     .freq-ribbon-track {
       display: flex;
-      height: 24px;
+      height: calc(var(--subrow) * 3);
       border-radius: var(--radius-xs);
       overflow: hidden;
       background: var(--surface2);
@@ -1224,8 +1225,8 @@
     .freq-legend {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-md) var(--space-lg);
-      margin-top: var(--space-sm);
+      gap: var(--subrow) var(--gu);
+      margin-top: var(--subrow);
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps);
@@ -11475,10 +11476,11 @@
          box-shadow: var(--plaque-bevel), 0 0 0 2px var(--accent-ring), ...  */
     .solver-toact { color: var(--accent); }
     .solver-contrib { color: var(--accent2, #eab308); font-weight: var(--fw-bold); }
-    .solver-deadstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xl); margin: 0 0 var(--space-lg); }
-    .solver-dead-row { display: flex; align-items: center; gap: var(--space-xs); }
+    /* Grid: dead-card strip on subrow rhythm — rows 3 subrows tall, 2-subrow bottom margin. */
+    .solver-deadstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gu); margin: 0 0 calc(var(--subrow) * 2); }
+    .solver-dead-row { display: flex; align-items: center; height: calc(var(--subrow) * 3); gap: var(--space-xs); }
     .solver-dead-label { font-family: var(--font-condensed); font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted); margin-right: var(--space-2xs); }
-    .solver-deadstrip img { height: 26px; width: 18px; border-radius: var(--radius-xs); }
+    .solver-deadstrip img { height: 24px; width: auto; border-radius: var(--radius-xs); }
 
     /* ── Solver Trainer responsive shell ──────────────────────────────────
        RazzTrainerView + Multiway3TrainerView. NARROW (<900px): the existing
