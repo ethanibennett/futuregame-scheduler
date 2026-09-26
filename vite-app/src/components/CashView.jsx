@@ -1,6 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { API_URL } from '../utils/api.js';
 import { deriveVenueInfo } from '../utils/utils.js';
+import { readLocalLocation } from '../utils/location-prefs.js';
+import { useToast } from '../contexts/ToastContext.jsx';
+import LocationDropdown from './LocationDropdown.jsx';
+import Icon from './Icon.jsx';
 import CashHeatmap from './CashHeatmap.jsx';
 
 // ── Cash watcher: Live now ──
@@ -95,81 +100,73 @@ function openLabel(startMs, endMs, windowStartMs) {
 // The persistent location the watcher polls around (SPEC §5). Sticky until
 // changed, independent of the scheduler's own location filter. Reads/writes
 // through the cash proxy → hosted watcher; the box picks it up within a cycle.
+// Same auto-populating location picker as the MTT Schedule tab: the shared
+// filter chip + LocationDropdown (pointOnly — no region/jurisdiction, since the
+// cash location is a single poll point the watcher steers around). It seeds from
+// the user's saved scheduler location so it is never empty, then the watcher's
+// own /cash/location (if set) overrides that, and picking a point POSTs it back.
 function CashLocationPicker({ token }) {
-  const [loc, setLoc] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [city, setCity] = useState('');
-  const [radius, setRadius] = useState('100');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
+  const toast = useToast();
+  const [filters, setFiltersState] = useState(() => {
+    const saved = readLocalLocation() || {};
+    return {
+      userLocation: saved.userLocation || null,
+      maxDistance: saved.maxDistance || '100',
+      locationRegion: null,
+      locationLabel: saved.locationLabel || null,
+      jurisdiction: saved.jurisdiction || null,
+      jurisdictionManual: !!saved.jurisdictionManual,
+    };
+  });
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
 
-  const loadLoc = useCallback(async () => {
-    try {
-      const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
-      if (r.ok) setLoc(await r.json());
-    } catch { /* leave unknown */ }
+  // The watcher's own cash location wins over the scheduler default when set.
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
+        if (r.ok) {
+          const loc = await r.json();
+          if (loc && loc.lat != null) {
+            setFiltersState(f => ({ ...f, userLocation: { lat: loc.lat, lng: loc.lon }, maxDistance: String(loc.radiusMiles || 100), locationLabel: loc.label || 'Location' }));
+          }
+        }
+      } catch { /* keep the scheduler default */ }
+    })();
   }, [token]);
-  useEffect(() => { loadLoc(); }, [loadLoc]);
 
-  const startEdit = () => {
-    setCity(loc && loc.label && loc.label !== 'Home' ? loc.label : '');
-    setRadius(String((loc && loc.radiusMiles) || 100));
-    setMsg('');
-    setEditing(true);
-  };
+  // A point selection steers the watcher; region/jurisdiction are hidden here so
+  // there is always a point to save.
+  const saveToCash = useCallback((f) => {
+    if (!f.userLocation) return;
+    const body = { lat: f.userLocation.lat, lon: f.userLocation.lng, radiusMiles: Math.max(5, Math.min(1000, Number(f.maxDistance) || 100)), label: f.locationLabel || 'Location' };
+    fetch(`${API_URL}/cash/location`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+  }, [token]);
 
-  const save = async () => {
-    const q = city.trim();
-    if (!q) { setMsg('Enter a city or address.'); return; }
-    const miles = Math.max(5, Math.min(1000, Number(radius) || 100));
-    setBusy(true); setMsg('');
-    try {
-      const g = await fetch(`${API_URL}/geocode?q=${encodeURIComponent(q)}`, { headers: { Authorization: 'Bearer ' + token } });
-      const gj = g.ok ? await g.json() : {};
-      const results = gj.results || [];
-      if (!results.length) { setMsg('Couldn’t find that place.'); setBusy(false); return; }
-      const top = results[0];
-      const body = { lat: top.lat, lon: top.lng, radiusMiles: miles, label: top.short || q };
-      const p = await fetch(`${API_URL}/cash/location`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!p.ok) { setMsg('Save failed.'); setBusy(false); return; }
-      setLoc(await p.json());
-      setEditing(false);
-    } catch { setMsg('Save failed.'); }
-    setBusy(false);
-  };
+  const setFilters = useCallback((updater) => {
+    setFiltersState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      saveToCash(next);
+      return next;
+    });
+  }, [saveToCash]);
 
-  const inputStyle = { height: CTRL_H, boxSizing: 'border-box', background: 'var(--surface, rgba(255,255,255,0.04))', color: 'var(--text, #fff)', border: '1px solid var(--border, #333)', borderRadius: 8, padding: '0 9px', fontSize: '0.78rem' };
-  const btnStyle = (primary) => ({ height: CTRL_H, boxSizing: 'border-box', border: '1px solid ' + (primary ? 'var(--text, #fff)' : 'var(--border, #333)'), background: primary ? 'var(--text, #fff)' : 'transparent', color: primary ? 'var(--bg, #111)' : 'var(--text-muted, #aaa)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' });
+  const label = filters.userLocation && filters.maxDistance
+    ? `${filters.locationLabel || 'Location'} · ${filters.maxDistance} mi`
+    : 'Set location';
 
   return (
     <div style={{ marginBottom: 16 }}>
-      {!editing ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: UNIVERS, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)' }}>
-            {'📍 '}{loc ? `${loc.label} · ${loc.radiusMiles} mi` : 'Location…'}
-          </span>
-          <button onClick={startEdit} style={btnStyle(false)}>Change</button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <input value={city} onChange={e => setCity(e.target.value)} placeholder="City or address"
-            onKeyDown={e => { if (e.key === 'Enter') save(); }} style={{ ...inputStyle, flex: '1 1 160px', minWidth: 120 }} autoFocus />
-          <input value={radius} onChange={e => setRadius(e.target.value.replace(/[^0-9]/g, ''))}
-            inputMode="numeric" style={{ ...inputStyle, width: 56, textAlign: 'right' }} title="Radius in miles" />
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #888)' }}>mi</span>
-          <button onClick={save} disabled={busy} style={btnStyle(true)}>{busy ? 'Saving…' : 'Set'}</button>
-          <button onClick={() => setEditing(false)} disabled={busy} style={btnStyle(false)}>Cancel</button>
-        </div>
-      )}
-      {msg && <div style={{ fontSize: '0.7rem', color: 'var(--warning, #e0a458)', marginTop: 4 }}>{msg}</div>}
-      {editing && !msg && (
-        <div style={{ fontSize: '0.66rem', color: 'var(--text-muted, #777)', marginTop: 4 }}>
-          The collector switches areas on its next cycle — allow ~15 minutes for the list to catch up.
-        </div>
+      <button ref={btnRef} type="button" className="filter-chip" onClick={() => setOpen(o => !o)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <Icon.mapPin />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem', fontFamily: 'var(--font-condensed)', lineHeight: '16px' }}>{label}</span>
+      </button>
+      {open && createPortal(<div className="dropdown-backdrop" onClick={() => setOpen(false)} />, document.body)}
+      {open && btnRef.current && createPortal(
+        <LocationDropdown rect={btnRef.current.getBoundingClientRect()} filters={filters} setFilters={setFilters} onClose={() => setOpen(false)} toast={toast} token={token} pointOnly />,
+        document.body
       )}
     </div>
   );
@@ -271,7 +268,7 @@ export default function CashView({ token }) {
   return (
     <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32, marginBottom: 16 }}>
-        <h2 className="screen-title" style={{ margin: 0, fontSize: '1.6rem', lineHeight: '32px' }}>
+        <h2 className="screen-title" style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: '32px' }}>
           {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
         </h2>
         {mode === 'live' && (

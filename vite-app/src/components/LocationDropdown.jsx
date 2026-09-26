@@ -9,7 +9,7 @@ import Icon from './Icon.jsx';
 // `setFilters` may be a plain setter or one wrapped to trigger
 // scroll-to-today after a filter change — both work the same way from
 // here.
-export default function LocationDropdown({ rect, filters, setFilters, onClose, toast, token }) {
+export default function LocationDropdown({ rect, filters, setFilters, onClose, toast, token, pointOnly = false }) {
   const [geoQuery, setGeoQuery] = useState('');
   const [geoResults, setGeoResults] = useState([]);
   const [geoLoading, setGeoLoading] = useState(false);
@@ -145,7 +145,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         {(filters.userLocation && !filters.locationRegion) && <span style={{marginLeft:'auto',fontSize:'0.75rem'}}>{'✓'}</span>}
       </button>
       <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
-      {Object.entries(LOCATION_REGIONS).map(([key, { label }]) => (
+      {!pointOnly && Object.entries(LOCATION_REGIONS).map(([key, { label }]) => (
         <button key={key} onClick={() => {
           setFilters(f => ({...f, locationRegion: f.locationRegion === key ? null : key, userLocation: null, maxDistance: '', locationLabel: null}));
           onClose();
@@ -165,7 +165,9 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           because it answers a different question: those filter which VENUES to
           show, this one says which state's rules apply to the user. The two are
           usually the same place and occasionally not, which is exactly why the
-          override exists. */}
+          override exists. Hidden in pointOnly mode (Cash) — the cash location is
+          a single poll point for the watcher, not a jurisdiction question. */}
+      {!pointOnly && (<>
       <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
       <div style={{padding:'var(--space-lg) var(--space-xl)'}}>
         <label htmlFor="jurisdiction-select" style={{
@@ -195,6 +197,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           Decides which online rooms are marked available to you.
         </div>
       </div>
+      </>)}
       {(filters.locationRegion || filters.userLocation) && (
         <>
           <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
@@ -210,14 +213,14 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           </button>
         </>
       )}
-      <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
-      <button onClick={() => { window.dispatchEvent(new Event('reopen-onboarding')); onClose(); }} style={{
+      {!pointOnly && <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />}
+      {!pointOnly && <button onClick={() => { window.dispatchEvent(new Event('reopen-onboarding')); onClose(); }} style={{
         display:'block',width:'100%',padding:'var(--space-lg) var(--space-xl)',
         background:'none',border:'none',color:'var(--text-muted)',
         fontSize:'0.8rem',cursor:'pointer',textAlign:'left',
       }}>
         Re-run filter setup
-      </button>
+      </button>}
     </div>
   );
 }
