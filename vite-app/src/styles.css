@@ -8573,11 +8573,13 @@
       display: block;
       font-size: 0.78em;
       opacity: 0.7;
-      line-height: 24px;
-      /* The smaller face rides ~1.5px high in the 24px line box; drop it so the
-         subtitle baseline rests on the 88px line (no layout change). */
+      /* 16px (2 subrows), not 24: the Flight/Day line rides one subrow higher, on
+         the 80px line, so a stage-card is 112px (14 cells) instead of 120. In the
+         16px box the face's natural baseline is 82.5 (from the card top); -2.5px
+         seats it on 80. */
+      line-height: 16px;
       position: relative;
-      top: 1.5px;
+      top: -2.5px;
     }
     /* Truncate long names on one line, but allow the Flight/Day sub-line block */
     .cal-event-row:not(.open) .cal-bar-row2 .cal-event-name {
