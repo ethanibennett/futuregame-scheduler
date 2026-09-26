@@ -1757,11 +1757,12 @@ export default function App() {
       {/* Hands-tool selector as a second footer row, on top of the primary nav,
           only while the Hands tab is open. One scrolling row so it never grows
           the footer, and it stays put as the tool content scrolls under it. */}
+      {/* Grid: rail is 5 subrows tall (3sr pills + 1sr padding each side), 1g side gutter, 1g gaps. */}
       {currentView === 'hands' && isAdmin && (
-        <div style={{display:'flex',gap:6,padding:'6px 10px',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'1px solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+        <div style={{display:'flex',gap:'var(--gu)',padding:'var(--subrow) var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'1px solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
           {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
             <button key={id} onClick={() => setHandsTool(id)}
-              style={{flex:'0 0 auto',padding:'5px 12px',borderRadius:12,fontFamily:'inherit',fontSize:'0.7rem',fontWeight:'var(--fw-bold)',cursor:'pointer',
+              style={{flex:'0 0 auto',height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:'0 var(--space-ml)',borderRadius:12,fontFamily:'inherit',fontSize:'0.7rem',fontWeight:'var(--fw-bold)',cursor:'pointer',
                 border:'1px solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
                 background: handsTool === id ? 'var(--accent)' : 'transparent',
                 color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>
