@@ -1979,6 +1979,12 @@
     .top-bar-title {
       display: flex;
       flex-direction: column;
+      /* Seat on the grid. align-items:center floats the block, landing the
+         wordmark baseline 4.14px above the 32 line and the season the same above
+         48; the two are already 16px (2 subrows) apart, so one shift seats both.
+         A measured seat, per the standing baseline rule. */
+      position: relative;
+      top: 4.14px;
     }
 
     /* The splash sets this wordmark at 1.6rem/-0.02em; the bar set it at
@@ -2051,6 +2057,9 @@
     .username-chip {
       font-size: var(--fs-sm);
       color: var(--text-muted);
+      /* Seat the name on the wordmark's 32 line; centered it sat 4.5px below. */
+      position: relative;
+      top: -4.5px;
       max-width: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
