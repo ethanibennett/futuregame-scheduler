@@ -10,23 +10,27 @@ import React, { useLayoutEffect, useState } from 'react';
  * columns with 12px gutters, and an 8px vertical baseline with every fourth
  * line (32px) drawn stronger. pointer-events:none so it never blocks the UI.
  *
- * The baseline is anchored to the APP's top, not the screen's. `.app-shell`
- * pads the whole app down by the safe-area inset (index.html: env() in the
- * browser, max(env(), 47px) standalone), so on a phone the app's y=0 sits
- * 47–59px below the screen top — neither a multiple of 8. A ruler starting at
- * screen y=0 then reads every on-grid element as 3–7px off, everywhere, which
- * is what "nothing hits the grid in the PWA" looked like. The offset is
- * MEASURED off the shell (its computed padding-top) rather than restated
- * here, so the overlay follows whatever rule the shell uses.
+ * The baseline is anchored to the APP's real top — the rendered top of the
+ * `.top-bar`, which is the origin every seated element is measured from (the
+ * wordmark on 32, the date block on 160, all relative to it). `.app-shell` pads
+ * the whole app down by the safe-area inset, so on a phone that origin sits
+ * 47–59px below the screen. Earlier this was computed as
+ * shell.top + parseFloat(paddingTop); on the device that computed value and the
+ * actually-rendered content origin differed by a couple of device px (env()
+ * resolves fractionally, parseFloat rounds), so the whole ruler read a hair low
+ * and everything looked "slightly above the grid". Measuring the top-bar's own
+ * getBoundingClientRect().top is the origin by construction — no computation to
+ * drift. Falls back to the shell's content top if the bar isn't present.
  */
 export default function GridOverlay() {
   const [top, setTop] = useState(0);
   useLayoutEffect(() => {
     const measure = () => {
+      const bar = document.querySelector('.top-bar');
+      if (bar) { setTop(bar.getBoundingClientRect().top); return; }
       const shell = document.querySelector('.app-shell');
       const pad = shell ? parseFloat(getComputedStyle(shell).paddingTop) || 0 : 0;
-      const y = shell ? shell.getBoundingClientRect().top + pad : 0;
-      setTop(y);
+      setTop(shell ? shell.getBoundingClientRect().top + pad : 0);
     };
     measure();
     window.addEventListener('resize', measure);

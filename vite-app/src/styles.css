@@ -9156,8 +9156,8 @@
       gap: var(--space-sm);
       padding: 0;
       height: 16px;        /* 2 subrows */
-      margin-top: 16px;    /* + strip = a full 32px major row, so a card with a
-                              late-reg bar is 4 major rows (128px) vs the base 3 (96px) */
+      margin-top: 0;       /* was 16px; dropped so a late-reg card is two subrows
+                              shorter — the bar now adds one major row, not two */
       justify-content: flex-start;
     }
     /* DashboardView renders .mini-late-reg-label and the stylesheet defined
