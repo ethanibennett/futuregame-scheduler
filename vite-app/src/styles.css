@@ -1539,7 +1539,15 @@
     .date-break-pill {
       display: inline-flex;
       align-items: baseline;
-      padding: 0 var(--space-lg);
+      /* The pill hugs "DD Mon", but the type is fixed px while the column scales
+         with g, so on a narrow screen the same text eats more of the column: at
+         375pt "25 Sep" alone is 6.7g of the 8g column, leaving ~1.3g for padding.
+         6px each side is the most that keeps the hug inside one column down to
+         375pt; max-width caps it at exactly one column as a hard stop so it can
+         never spill into the gutter before the count, whatever the width. (12px
+         here pushed it to ~8.5g — past the column edge — on the 402pt phone.) */
+      padding: 0 var(--space-sm);
+      max-width: var(--col);
       border-radius: var(--radius-pill);
       background: color-mix(in srgb, var(--n-8) 6%, transparent);
       /* No fixed height: a fixed height with align-items:baseline made the pill's
