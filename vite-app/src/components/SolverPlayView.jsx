@@ -11,8 +11,9 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 // sampled action marked. Reuses the app's theme tokens + Univers font.
 
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' };
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' };
+const label = { fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: '16px' };
+// Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
+const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
 
 // One strategy row: action label, frequency bar, percentage. The
 // sampled action is accented and check-marked.
@@ -117,7 +118,7 @@ export default function SolverPlayView() {
 
   const ctrlBtn = (txt, onClick, disabled, primary) => (
     <button onClick={onClick} disabled={disabled} style={{
-      padding: '7px 12px', borderRadius: 8, fontFamily: FONT, fontSize: '0.78rem', fontWeight: 700,
+      height: 32, boxSizing: 'border-box', padding: '0 12px', borderRadius: 8, fontFamily: FONT, fontSize: '0.78rem', fontWeight: 700,
       cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1,
       border: '1px solid ' + (primary ? 'var(--accent)' : 'var(--border)'),
       background: primary ? 'var(--brand)' : 'transparent', color: primary ? 'var(--on-brand)' : 'var(--text)',
@@ -125,15 +126,16 @@ export default function SolverPlayView() {
   );
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '12px 14px 80px', maxWidth: 560, margin: '0 auto', fontFamily: FONT }}>
-      <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: '4px 0 2px' }}>Solver Self-Play</h2>
-      <p style={{ ...label, margin: '0 0 10px' }}>Watch the trained strategy play both seats</p>
+    <div style={{ height: '100%', overflowY: 'auto', padding: '0 0 80px', maxWidth: 560, margin: '0 auto', fontFamily: FONT }}>
+      {/* Grid: title box 4 subrows, baseline seated on T12; subtitle a 2-subrow box. */}
+      <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: 0, height: 32, boxSizing: 'border-box', lineHeight: '32px', paddingTop: 1 }}>Solver Self-Play</h2>
+      <p style={{ ...label, margin: '0 0 var(--subrow)', height: 16 }}>Watch the trained strategy play both seats</p>
 
-      {/* Game picker */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+      {/* Game picker — 4-subrow pills, 1-subrow row gap when they wrap */}
+      <div style={{ display: 'flex', columnGap: 6, rowGap: 8, marginBottom: 'calc(var(--subrow) * 2)', flexWrap: 'wrap' }}>
         {(games || []).map(g => (
           <button key={g.id} onClick={() => setGameId(g.id)} disabled={!g.trained}
-            style={{ padding: '6px 12px', borderRadius: 16, cursor: g.trained ? 'pointer' : 'default',
+            style={{ height: 32, boxSizing: 'border-box', padding: '0 12px', borderRadius: 16, cursor: g.trained ? 'pointer' : 'default',
               border: '1px solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
               background: g.id === gameId ? 'var(--accent)' : 'transparent',
               color: g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
@@ -143,17 +145,17 @@ export default function SolverPlayView() {
         ))}
       </div>
 
-      {error && <div style={{ ...panel, color: '#ef4444', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ ...panel, color: '#ef4444', marginBottom: 'var(--subrow)' }}>{error}</div>}
       {loading && <div style={{ color: 'var(--text-muted)', padding: '20px 0' }}>Dealing…</div>}
 
       {play && seats && !loading && (
         <>
           {/* Street + pot header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 2px 8px' }}>
-            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 24, marginBottom: 'var(--subrow)' }}>
+            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', lineHeight: '24px' }}>
               {atEnd ? 'Showdown' : step.streetName}
             </span>
-            <span style={label}>
+            <span style={{ ...label, lineHeight: '24px' }}>
               Pot {atEnd ? play.result.pot : step.pot}
               {' · '}{atEnd ? 'hand complete' : `decision ${idx + 1} of ${play.steps.length}`}
             </span>
@@ -188,8 +190,8 @@ export default function SolverPlayView() {
 
           {/* Strategy bars for the current decision */}
           {step && (
-            <div style={{ ...panel, marginBottom: 10 }}>
-              <div style={{ ...label, marginBottom: 8 }}>
+            <div style={{ ...panel, marginBottom: 'var(--subrow)' }}>
+              <div style={{ ...label, marginBottom: 'var(--subrow)' }}>
                 {(isStud ? `Player ${step.actor + 1}` : (step.actor === 0 ? 'Button' : 'Big Blind'))} ·
                 {step.kind === 'draw' ? ' draw strategy' : ' betting strategy'}
                 {!step.trained && ' · (unvisited — uniform)'}
@@ -197,8 +199,8 @@ export default function SolverPlayView() {
               {/* One ribbon instead of a row per action: the mix now sums to 100% by construction. */}
               <StrategyRibbon actions={step.actions.map(a => ({ id: a.id, label: a.label, prob: a.prob, ev: a.ev }))} chosen={step.chosen} best={step.best} showEv />
               {step.explain && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)',
-                  fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)',
+                  fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '24px' }}>
                   <span style={{ ...label, color: 'var(--accent)', marginRight: 6 }}>Why</span>
                   {step.explain}
                 </div>
@@ -208,14 +210,14 @@ export default function SolverPlayView() {
 
           {/* Result */}
           {atEnd && (
-            <div style={{ ...panel, marginBottom: 10 }}>
-              <div style={{ ...label, marginBottom: 8 }}>Result</div>
+            <div style={{ ...panel, marginBottom: 'var(--subrow)' }}>
+              <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Result</div>
               <ResultBody result={play.result} isStud={isStud} />
             </div>
           )}
 
           {/* Controls */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', columnGap: 8, rowGap: 8, marginBottom: 'var(--subrow)' }}>
             {ctrlBtn('⏮', () => { setAuto(false); setIdx(0); }, idx === 0)}
             {ctrlBtn('◀ Prev', () => { setAuto(false); setIdx(i => Math.max(0, i - 1)); }, idx === 0)}
             {ctrlBtn(auto ? '⏸ Pause' : '▶ Play', () => setAuto(a => !a), atEnd)}
@@ -226,8 +228,8 @@ export default function SolverPlayView() {
           {/* Action log */}
           {logSource && logSource.length > 0 && (
             <div style={{ ...panel }}>
-              <div style={{ ...label, marginBottom: 6 }}>Action log</div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Action log</div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: '16px' }}>
                 {logSource.map((e, i) => (
                   <div key={i}><b style={{ color: 'var(--text)' }}>{e.who}</b> {e.what}</div>
                 ))}

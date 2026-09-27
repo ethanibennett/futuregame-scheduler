@@ -6,7 +6,8 @@ import React from 'react';
 // Card strings match the asset names directly: 'Ah' -> cards_gui_Ah.svg.
 
 export default function SolverCard({ str, faceDown, dim, size = 'md', raised }) {
-  const h = size === 'sm' ? 34 : size === 'lg' ? 56 : 44;
+  // Grid: heights are subrow multiples (32=4sr, 48=6sr, 56=7sr) so card rows land on grid lines.
+  const h = size === 'sm' ? 32 : size === 'lg' ? 56 : 48;
   // stud upcards sit raised above the hole cards, matching the replayer's board layout
   const raise = raised ? 'translateY(-11px)' : undefined;
 

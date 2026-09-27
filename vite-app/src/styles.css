@@ -1174,10 +1174,11 @@
        ring rather than a recolour - the old bars recoloured the chosen action,
        which is why a 30% action could look bigger than a 60% one.
        ================================================================== */
-    .freq-ribbon { margin: var(--space-sm) 0 var(--space-lg); }
+    /* Grid: track 3 subrows tall; ribbon margins on subrow rhythm. */
+    .freq-ribbon { margin: var(--subrow) 0 calc(var(--subrow) * 2); }
     .freq-ribbon-track {
       display: flex;
-      height: 24px;
+      height: calc(var(--subrow) * 3);
       border-radius: var(--radius-xs);
       overflow: hidden;
       background: var(--surface2);
@@ -1224,8 +1225,8 @@
     .freq-legend {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-md) var(--space-lg);
-      margin-top: var(--space-sm);
+      gap: var(--subrow) var(--gu);
+      margin-top: var(--subrow);
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps);
@@ -2367,22 +2368,27 @@
     .hand-game-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); }
 
     /* ── Game picker: tabbed checklist ── */
-    .game-picker { border:1px solid var(--border); border-radius:6px; overflow:hidden; margin-bottom: var(--space-md); }
-    .game-subheading { font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); color:var(--text-muted); margin-bottom: var(--space-sm); }
-    .game-faves-row { display:flex; gap:0; margin-bottom: var(--space-2xl); border-bottom:1px solid var(--border); }
-    .game-fave-btn { flex:1; padding: var(--space-sm) var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; line-height:1; transition:color var(--dur-fast),background var(--dur-fast); border-bottom:2px solid transparent; }
+    /* Grid: outline via inset box-shadow (not a layout border) so inner rows land on subrow lines. */
+    .game-picker { box-shadow: inset 0 0 0 1px var(--border); border-radius:6px; overflow:hidden; margin-bottom: var(--subrow); }
+    .game-subheading { font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); color:var(--text-muted); line-height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
+    /* Grid: separator via inset shadow so row height stays 3 subrows (buttons), not 3sr+1px. */
+    .game-faves-row { display:flex; gap:0; margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 -1px 0 var(--border); }
+    /* Grid: 3-subrow tall tab (border-box) = 22px line-box + 2px active underline. */
+    .game-fave-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; line-height: calc(var(--subrow) * 3 - 2px); transition:color var(--dur-fast),background var(--dur-fast); border-bottom:2px solid transparent; }
     .game-fave-btn.active { border:none; border-bottom:2px solid var(--accent2); background:transparent; color:var(--accent2); font-weight: var(--fw-bold); }
     .game-tab-bar { display:flex; border-bottom:1px solid var(--border); background:var(--surface2); }
-    .game-tab-btn { flex:1; padding: var(--space-sm) var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-bottom:2px solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; margin-bottom:-1px; transition:color var(--dur-fast),border-color var(--dur-fast); line-height:1; }
+    /* Grid: 3-subrow tall tab (border-box). */
+    .game-tab-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-bottom:2px solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; margin-bottom:-1px; transition:color var(--dur-fast),border-color var(--dur-fast); line-height: calc(var(--subrow) * 3 - 2px); }
     .game-tab-btn.active { color:var(--accent2); border-bottom-color:var(--accent2); font-weight: var(--fw-bold); }
-    .game-check-row { display:flex; align-items:center; gap: var(--space-ml); padding: var(--space-sm) var(--space-ml); cursor:pointer; transition:background var(--dur-fast),border-left-color var(--dur-fast); border-bottom:none; border-left: var(--bw-2) solid transparent; }
+    /* Grid: 4-subrow tall row; left padding absorbs the 2px indicator border so the label lands on 3g. */
+    .game-check-row { display:flex; align-items:center; gap: var(--space-ml); height: calc(var(--subrow) * 4); box-sizing:border-box; padding: 0 var(--gu) 0 calc(var(--gu) - 2px); cursor:pointer; transition:background var(--dur-fast),border-left-color var(--dur-fast); border-bottom:none; border-left: var(--bw-2) solid transparent; }
     @media (hover: hover) and (pointer: fine) {
       .game-check-row:hover { background:var(--surface2); }
     }
     .game-check-row.selected { background:rgba(136,136,136,0.08); border-left-color:var(--accent2); }
     .game-check-radio { display:none; }
     .game-check-radio-dot { display:none; }
-    .game-check-more-row { display:flex; align-items:center; justify-content:center; cursor:pointer; border-top:1px solid var(--border); border-left:none; padding: var(--space-xs) var(--space-ml) var(--space-sm); background:transparent; }
+    .game-check-more-row { display:flex; align-items:center; justify-content:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; border-top:1px solid var(--border); border-left:none; padding: 0 calc(var(--gu) - 1px); background:transparent; }
     @media (hover: hover) and (pointer: fine) {
       .game-check-more-row:hover { background:transparent; }
     }
@@ -2390,9 +2396,10 @@
     @media (hover: hover) and (pointer: fine) {
       .game-check-more-btn:hover { color:var(--text); }
     }
-    .game-check-row-label { font-size: var(--fs-sm); color:var(--text-muted); flex:1; transition:color var(--dur-fast); }
+    /* Grid: line-height 4sr + 2px top seats the baseline 3 subrows below the row top (a grid line). */
+    .game-check-row-label { font-size: var(--fs-sm); color:var(--text-muted); flex:1; align-self:flex-start; line-height: calc(var(--subrow) * 4); padding-top: 3px; transition:color var(--dur-fast); }
     .game-check-row-label.selected { color:var(--text); font-weight: var(--fw-regular); }
-    .game-check-section-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); padding: var(--space-sm) var(--space-ml) var(--nudge-1); }
+    .game-check-section-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); line-height: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) - 1px); }
 
     /* ── Card row ── */
     .card-row { display:flex; gap: var(--space-2xs); align-items:center; min-height:32px; flex-wrap:wrap; }
@@ -2521,8 +2528,9 @@
       flex-direction: column;
     }
     .replayer-view.is-replay > .replayer-replay { flex: 1 1 auto; min-height: 0; height: auto; }
-    .replayer-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-lg); }
-    .replayer-header h2 { font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular); }
+    .replayer-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom: calc(var(--subrow) * 2); }
+    /* Grid: title box exactly 4 subrows tall (border-box); baseline seated via padding-top. */
+    .replayer-header h2 { font-family: var(--font-title); font-size: var(--fs-lg); font-weight: var(--fw-regular); height: calc(var(--subrow) * 4); box-sizing:border-box; line-height: calc(var(--subrow) * 4); padding-top: 2px; }
     .replayer-header-actions { display:flex; gap: var(--space-sm); }
 
     /* Hand list */
@@ -2535,10 +2543,12 @@
       .replayer-hand-card:hover { border-color: var(--accent); }
     }
     .replayer-hand-card-top { display:flex; justify-content:space-between; align-items:center; }
-    .replayer-hand-card-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); color:var(--text); }
+    .replayer-hand-card-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); color:var(--text); line-height: calc(var(--subrow) * 2); }
     .replayer-hand-card-game { font-size: var(--fs-2xs); color:var(--accent2); background:var(--surface2); padding: var(--space-2xs) var(--space-sm); border-radius:var(--radius-xs); }
-    .replayer-hand-card-meta { font-size: var(--fs-2xs); color:var(--text-muted); margin-top: var(--space-xs); }
-    .replayer-hand-card-actions { display:flex; gap: var(--space-sm); }
+    .replayer-hand-card-meta { font-size: var(--fs-2xs); color:var(--text-muted); line-height: calc(var(--subrow) * 2); margin-top: var(--space-xs); }
+    .replayer-hand-card-actions { display:flex; gap: var(--space-sm); align-items:center; }
+    /* Grid: scoped so the shared .btn stays untouched elsewhere; 4-subrow control boxes. */
+    .replayer-section .btn.btn-sm, .replayer-hand-card-actions .btn.btn-sm { height: calc(var(--subrow) * 4); box-sizing:border-box; }
     /* 59: the row layout the -meta and -actions classes were written for. */
     .replayer-hand-card.is-row {
       display:flex; align-items:center; gap: var(--space-ml);
@@ -2583,6 +2593,9 @@
        schedule uses for venues — so the outcome moves to the right edge rather
        than being dropped. Two things are being said and each gets a side. */
     .replayer-hand-card.is-row { padding-left: 0; }
+    /* Grid: real saved-hand rows are 6 subrows tall so the list stacks on grid lines.
+       The empty-state card keeps its natural height (its meta wraps). */
+    .replayer-hand-card.is-row:not(.is-empty) { height: calc(var(--subrow) * 6); }
     /* The same strip the schedule draws, property for property, including the
        corner: border-radius is written mirrored because transform:rotate(180deg)
        swaps the corners, so the element's RIGHT radii paint on the visual left.
@@ -2825,8 +2838,9 @@
     /* Entry mode */
     .replayer-entry { display:flex; flex-direction:column; gap: var(--space-ml); }
     .replayer-step-label { font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-2xs); }
-    .replayer-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding: var(--space-md) var(--space-lg); }
-    .replayer-section-title { font-size: var(--fs-xs); font-weight: var(--fw-regular); color:var(--text); margin-bottom: var(--space-md); font-family: var(--font-sans); }
+    /* Grid: 1px border absorbed into padding so inner content lands on 2g..35g / subrow lines. */
+    .replayer-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding: calc(var(--subrow) - 1px) calc(var(--gu) - 1px); }
+    .replayer-section-title { font-size: var(--fs-xs); font-weight: var(--fw-regular); color:var(--text); line-height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); font-family: var(--font-sans); }
 
     .replayer-field { display:flex; flex-direction:column; gap: var(--space-2xs); flex:1; }
     .replayer-field label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-sans); font-weight: var(--fw-regular); text-transform:uppercase; letter-spacing: var(--track-caps); }
@@ -11790,10 +11804,11 @@
          box-shadow: var(--plaque-bevel), 0 0 0 2px var(--accent-ring), ...  */
     .solver-toact { color: var(--accent); }
     .solver-contrib { color: var(--accent2, #eab308); font-weight: var(--fw-bold); }
-    .solver-deadstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xl); margin: 0 0 var(--space-lg); }
-    .solver-dead-row { display: flex; align-items: center; gap: var(--space-xs); }
+    /* Grid: dead-card strip on subrow rhythm — rows 3 subrows tall, 2-subrow bottom margin. */
+    .solver-deadstrip { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gu); margin: 0 0 calc(var(--subrow) * 2); }
+    .solver-dead-row { display: flex; align-items: center; height: calc(var(--subrow) * 3); gap: var(--space-xs); }
     .solver-dead-label { font-family: var(--font-condensed); font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted); margin-right: var(--space-2xs); }
-    .solver-deadstrip img { height: 26px; width: 18px; border-radius: var(--radius-xs); }
+    .solver-deadstrip img { height: 24px; width: auto; border-radius: var(--radius-xs); }
 
     /* ── Solver Trainer responsive shell ──────────────────────────────────
        RazzTrainerView + Multiway3TrainerView. NARROW (<900px): the existing

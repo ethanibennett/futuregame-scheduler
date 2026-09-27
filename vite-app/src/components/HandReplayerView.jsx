@@ -4562,10 +4562,10 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       </div>
 
       {/* New hand creation */}
-      <div className="replayer-section" style={{marginBottom:'12px'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-          <div className="replayer-section-title">New Hand</div>
-          <span style={{fontSize:'0.7rem',color:'var(--accent2)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}>{variantDisplayName}</span>
+      <div className="replayer-section" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',height:'calc(var(--subrow) * 3)'}}>
+          <div className="replayer-section-title" style={{marginBottom:0}}>New Hand</div>
+          <span style={{fontSize:'0.7rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--accent2)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}>{variantDisplayName}</span>
         </div>
         {/* Favorites row — above the full picker */}
         <div className="game-subheading">Favorites</div>
@@ -4708,13 +4708,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             );
           })()}
         </div>
-        <div style={{display:'flex',justifyContent:'flex-end',marginTop:'10px'}}>
+        <div style={{display:'flex',justifyContent:'flex-end',marginTop:'var(--subrow)',height:'calc(var(--subrow) * 4)',alignItems:'center'}}>
           <button className="btn btn-primary btn-sm" onClick={startNewHand}>Create {variantDisplayName} Hand</button>
         </div>
       </div>
 
       {/* Saved hands list */}
-      <div className="replayer-section-title" style={{marginBottom:'6px'}}>Saved Hands</div>
+      <div className="replayer-section-title" style={{marginBottom:'var(--subrow)'}}>Saved Hands</div>
       {/* 78: a single grey sentence — "Create one above" — pointing at a picker
           the user may well have scrolled past, on the screen whose entire job
           is to get a first hand recorded. */}
