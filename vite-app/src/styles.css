@@ -448,10 +448,10 @@
       --gu:     calc(100vw / 37);     /* base unit g = gutter = margin = ½ subcolumn */
       --subcol: calc(var(--gu) * 2);  /* one subcolumn */
       --col:    calc(var(--gu) * 8);  /* one column = 4 subcolumns */
-      --subrow: calc(var(--gu) * 0.625); /* r — the vertical unit. r:g = 1:1.6, so
-                                            r scales with the screen exactly like g.
-                                            4r = 1 Row = 2.5g. (Was a fixed 8px,
-                                            which is NOT the grid at any real width.) */
+      --subrow: calc(var(--gu) * 0.71); /* r — the vertical unit, scales with the
+                                           screen exactly like g. 4r = 1 Row = 2.84g.
+                                           (Was a fixed 8px, which is NOT the grid at
+                                           any real width.) */
 
       /* Sub-pixel optical corrections are NOT spacing. */
       --nudge-half: 0.5px;
@@ -8702,7 +8702,9 @@
          above the line box centre for this face — lands on the first major row
          (time/buy-in at 32) and the second (name at 64). Sums with row1 (32) +
          row2 (24) to 80, + the 16px chevron = 96 (3 major rows). */
-      padding: 15px var(--gu) 9px;
+      /* Whole r: 2r top, 1r bottom, 1g sides. Baselines land on r-lines via
+         text-box-trim on the text + align-items:end on the rows — no nudges. */
+      padding: calc(var(--subrow) * 2) var(--gu) var(--subrow);
       cursor: pointer;
       position: relative;
       user-select: none;
@@ -8798,8 +8800,8 @@
          (35 → 326) with the label left-aligned inside it. */
       display: grid;
       grid-template-columns: 1fr calc(var(--subcol) * 3);
-      align-items: baseline; /* buy-in shares the start time's baseline */
-      height: 32px;          /* one major row; the guarantee overflows below */
+      align-items: end; /* trimmed box bottom = baseline; end puts it on the row's bottom r-line */
+      height: calc(var(--subrow) * 4); /* one Row */
       gap: 0;
     }
 
@@ -8814,17 +8816,18 @@
          collapses to 0 when it is absent, giving the name the full width). */
       display: grid;
       grid-template-columns: 1fr auto;
-      align-items: start;
+      align-items: end;
       gap: 0;
-      --cal-title-line: 24px;
+      --cal-title-line: calc(var(--subrow) * 3);
     }
 
     .cal-event-time {
       font-size: var(--fs-sm);
-      line-height: 24px;
+      line-height: calc(var(--subrow) * 3);
       font-weight: var(--fw-bold);
       color: var(--text-muted);
       flex-shrink: 0;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .cal-event-name {
@@ -8835,10 +8838,8 @@
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      /* Title line box = --cal-title-line (24px = 3 baselines), so a one-line
-         name is 24px and a wrapped Flight/Day name is 48px — both land the card
-         on the 8px grid. Accolade centering uses the same token. */
       overflow: hidden;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* The Flight/Day sub-line as a block with a fixed 24px (3-subrow) line box,
        so a name that carries one is deterministically 48px (two lines) — the
@@ -8871,11 +8872,12 @@
     .cal-event-buyin {
       font-family: var(--serif);
       font-size: var(--fs-sm);
-      line-height: 16px; /* tight box so the gap to the guarantee reads true */
+      line-height: calc(var(--subrow) * 3);
       font-weight: var(--fw-bold);
       color: var(--accent);
       flex-shrink: 0;
       margin-left: auto;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .cal-venue-chip {
