@@ -31,7 +31,7 @@ export default function SharedScheduleView({ shareToken }) {
     <div className="auth-wrap">
       <div className="auth-card" style={{textAlign:'center'}}>
         <div className="auth-logo"><h1>futurega.me</h1><p>{getStoredSeasonLabel()}</p></div>
-        <p style={{color:'var(--text-muted)',marginTop:'16px'}}>Loading schedule...</p>
+        <p style={{color:'var(--text-muted)',marginTop:'var(--space-xl)'}}>Loading schedule...</p>
       </div>
     </div>
   );
@@ -40,7 +40,7 @@ export default function SharedScheduleView({ shareToken }) {
     <div className="auth-wrap">
       <div className="auth-card" style={{textAlign:'center'}}>
         <div className="auth-logo"><h1>futurega.me</h1><p>{getStoredSeasonLabel()}</p></div>
-        <p style={{color:'var(--text-muted)',marginTop:'16px'}}>{error || 'Schedule not found'}</p>
+        <p style={{color:'var(--text-muted)',marginTop:'var(--space-xl)'}}>{error || 'Schedule not found'}</p>
       </div>
     </div>
   );
@@ -60,7 +60,7 @@ export default function SharedScheduleView({ shareToken }) {
           <small>{(data.real_name || data.username)}'s schedule</small>
         </div>
         <div className="top-bar-actions">
-          <span style={{display:'flex',alignItems:'center',gap:'6px'}}>
+          <span style={{display:'flex',alignItems:'center',gap:'var(--space-sm)'}}>
             <Avatar src={data.avatar} username={data.username} size={22} />
           </span>
           <button className="btn btn-ghost btn-sm" onClick={() => setTheme(t => { const n = THEME_ORDER[(THEME_ORDER.indexOf(t)+1)%THEME_ORDER.length]; localStorage.setItem('theme', n); return n; })} title={`Switch to ${THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme)+1)%THEME_ORDER.length]]} mode`}>
@@ -70,7 +70,7 @@ export default function SharedScheduleView({ shareToken }) {
       </header>
       <main className="content-area">
         <div className="section-header">
-          <h2 style={{display:'flex',alignItems:'center',gap:'8px'}}>
+          <h2 style={{display:'flex',alignItems:'center',gap:'var(--space-md)'}}>
             <Avatar src={data.avatar} username={data.username} size={26} />
             {(data.real_name || data.username)}'s Schedule
           </h2>
@@ -90,10 +90,10 @@ export default function SharedScheduleView({ shareToken }) {
               return acc;
             }, {})
           ).map(([date, events], gi) => (
-            <div key={date} data-date-group={date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
+            <div key={date} data-date-group={date} style={{marginTop: gi === 0 ? 0 : 'var(--space-md)'}}>
               <DateBreak date={date} top={0} isToday={date === todayISO} eventCount={events.filter(t => !t.is_restart).length} />
               {events.map(t => (
-                <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 94px'}}>
+                <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 11.75)'}}>
                   <CalendarEventRow
                     tournament={t}
                     isInSchedule={true}

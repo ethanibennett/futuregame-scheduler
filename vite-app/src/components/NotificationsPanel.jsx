@@ -93,13 +93,13 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
           <button
             className="btn btn-ghost btn-sm"
             onClick={onClose}
-            style={{ padding: '2px 6px', fontSize: '1.1rem', lineHeight: 1 }}
+            style={{ padding: 'var(--space-2xs) var(--space-sm)', fontSize: 'calc(var(--gu) * 1.620)', lineHeight: 1 }}
           >{'\u00D7'}</button>
         </div>
         {onEnablePush && (
           // Push permission must be requested from a tap — iOS drops a load-time request — so
           // this button, rendered only while permission is still undecided, IS the request path.
-          <div className="notif-section" style={{ padding: '10px 12px' }}>
+          <div className="notif-section" style={{ padding: 'var(--space-ml) var(--space-lg)' }}>
             <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={onEnablePush}>
               Enable push notifications on this device
             </button>
@@ -107,7 +107,7 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
         )}
         {isEmpty ? (
           <div className="notif-empty">
-            <div style={{ width: 20, height: 20, margin: '0 auto 8px', color: 'var(--text-muted)' }}>
+            <div style={{ width: 'calc(var(--subrow) * 2.5)', height: 'calc(var(--subrow) * 2.5)', margin: '0 auto var(--space-md)', color: 'var(--text-muted)' }}>
               <Icon.check />
             </div>
             All caught up!
@@ -142,7 +142,7 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                 {buddyRequests.map(req => (
                   <div key={`br-${req.id}`} className="notif-item">
                     <div className="notif-item-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                         <Avatar src={req.avatar} username={req.username} size={24} />
                         <div className="notif-item-text">
                           <strong>{displayName(req)}</strong>
@@ -166,7 +166,7 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                 {acceptedBuddies.map(ab => (
                   <div key={`ab-${ab.id}`} className="notif-item notif-item-info">
                     <div className="notif-item-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                         <Avatar src={ab.avatar} username={ab.username} size={24} />
                         <div className="notif-item-text">
                           <strong>{displayName(ab)}</strong>
@@ -186,12 +186,12 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                 {swapSuggestions.map(ss => (
                   <div key={`ss-${ss.id}`} className="notif-item">
                     <div className="notif-item-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                         <Avatar src={ss.from_avatar} username={ss.from_username} size={24} />
                         <div className="notif-item-text">
                           <strong>{ss.from_real_name || ss.from_username}</strong>
                           {` wants a ${ss.type} \u2014 ${ss.my_pct}%/${ss.their_pct}%`}
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          <div style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', marginTop: 'var(--space-2xs)' }}>
                             {ss.event_name} {'\u00B7'} {ss.date}
                           </div>
                         </div>

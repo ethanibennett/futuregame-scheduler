@@ -104,24 +104,24 @@ export default function CashHeatmap({ token }) {
     String(catalog.vNames[a] || a).localeCompare(String(catalog.vNames[b] || b))) : [];
   const gamesForVenue = (catalog && sel && catalog.byVenue[sel.venue]) || [];
 
-  const wrap = { maxWidth: 680, margin: '0 auto', padding: 'var(--space-md, 16px)' };
-  const selectStyle = { background: 'var(--surface, #1a1a1a)', color: 'var(--text, #fff)', border: '1px solid var(--border, #333)', borderRadius: 8, padding: '6px 8px', fontSize: '0.8rem', maxWidth: '100%' };
+  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--space-md, 16px)' };
+  const selectStyle = { background: 'var(--surface, #1a1a1a)', color: 'var(--text, #fff)', border: 'var(--bw-hair) solid var(--border, #333)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm) var(--space-md)', fontSize: 'calc(var(--gu) * 1.178)', maxWidth: '100%' };
 
   if (status === 'error') {
-    return <div style={wrap}><div style={{ border: '1px solid var(--border,#333)', borderRadius: 10, padding: 16, color: 'var(--text-muted,#aaa)' }}>{err}</div></div>;
+    return <div style={wrap}><div style={{ border: 'var(--bw-hair) solid var(--border,#333)', borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'var(--space-xl)', color: 'var(--text-muted,#aaa)' }}>{err}</div></div>;
   }
   if (status === 'loading' || !catalog) {
-    return <div style={wrap}><div style={{ color: 'var(--text-muted,#aaa)', padding: 20, textAlign: 'center' }}>Loading…</div></div>;
+    return <div style={wrap}><div style={{ color: 'var(--text-muted,#aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>Loading…</div></div>;
   }
   if (!sel) {
-    return <div style={wrap}><div style={{ color: 'var(--text-muted,#aaa)', padding: 20, textAlign: 'center' }}>No games collected yet.</div></div>;
+    return <div style={wrap}><div style={{ color: 'var(--text-muted,#aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>No games collected yet.</div></div>;
   }
 
   return (
     <div style={wrap}>
       {/* Pickers */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-        <select value={sel.venue} style={{ ...selectStyle, flex: '1 1 160px' }}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-ml)' }}>
+        <select value={sel.venue} style={{ ...selectStyle, flex: '1 1 calc(var(--subrow) * 20)' }}
           onChange={(e) => {
             const venue = e.target.value;
             const list = catalog.byVenue[venue] || [];
@@ -130,20 +130,20 @@ export default function CashHeatmap({ token }) {
           }}>
           {venueSlugs.map(s => <option key={s} value={s}>{catalog.vNames[s] || s}</option>)}
         </select>
-        <select value={`${sel.gameType}|${sel.stakes}`} style={{ ...selectStyle, flex: '1 1 140px' }}
+        <select value={`${sel.gameType}|${sel.stakes}`} style={{ ...selectStyle, flex: '1 1 calc(var(--subrow) * 17.5)' }}
           onChange={(e) => { const [gameType, stakes] = e.target.value.split('|'); persistSel({ venue: sel.venue, gameType, stakes }); }}>
           {gamesForVenue.map(g => <option key={gLabel(g)} value={`${g.gameType}|${g.stakes}`}>{gLabel(g)} · {g.samples}</option>)}
         </select>
       </div>
 
       {/* Metric toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'calc(var(--subrow) * 1.75)' }}>
         {[['tables', 'Avg tables'], ['reliability', 'Reliability']].map(([m, lbl]) => (
           <button key={m} onClick={() => persistMetric(m)}
             style={{
-              fontFamily: UNIVERS, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em',
-              padding: '4px 10px', borderRadius: 999, cursor: 'pointer',
-              border: '1px solid ' + (metric === m ? 'var(--text-muted,#999)' : 'var(--border,#333)'),
+              fontFamily: UNIVERS, fontSize: 'calc(var(--gu) * 1.031)', textTransform: 'uppercase', letterSpacing: '0.04em',
+              padding: 'var(--space-xs) var(--space-ml)', borderRadius: 999, cursor: 'pointer',
+              border: 'var(--bw-hair) solid ' + (metric === m ? 'var(--text-muted,#999)' : 'var(--border,#333)'),
               background: metric === m ? 'var(--text-muted,#999)' : 'transparent',
               color: metric === m ? 'var(--bg,#111)' : 'var(--text-muted,#777)',
             }}>{lbl}</button>
@@ -151,25 +151,25 @@ export default function CashHeatmap({ token }) {
       </div>
 
       {cells === null ? (
-        <div style={{ color: 'var(--text-muted,#aaa)', padding: 20, textAlign: 'center' }}>Loading heatmap…</div>
+        <div style={{ color: 'var(--text-muted,#aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>Loading heatmap…</div>
       ) : cells.length === 0 ? (
-        <div style={{ color: 'var(--text-muted,#aaa)', padding: 20, textAlign: 'center' }}>Not enough history yet — this fills in after about two weeks of collection.</div>
+        <div style={{ color: 'var(--text-muted,#aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>Not enough history yet — this fills in after about two weeks of collection.</div>
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ minWidth: 560 }}>
+            <div style={{ minWidth: 'calc(var(--subrow) * 70)' }}>
               {/* Hour axis */}
-              <div style={{ display: 'grid', gridTemplateColumns: '30px repeat(24, minmax(0, 1fr))', gap: 2, marginBottom: 3 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(24, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 0.375)' }}>
                 <div />
                 {Array.from({ length: 24 }, (_, h) => (
-                  <div key={h} style={{ fontSize: '0.5rem', color: 'var(--text-muted,#888)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                  <div key={h} style={{ fontSize: 'calc(var(--gu) * 0.736)', color: 'var(--text-muted,#888)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
                     {h % 6 === 0 ? hourLabel(h) : ''}
                   </div>
                 ))}
               </div>
               {DOW.map((day, d) => (
-                <div key={d} style={{ display: 'grid', gridTemplateColumns: '30px repeat(24, minmax(0, 1fr))', gap: 2, marginBottom: 2 }}>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', fontFamily: UNIVERS, textTransform: 'uppercase' }}>{day}</div>
+                <div key={d} style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(24, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'var(--space-2xs)' }}>
+                  <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', fontFamily: UNIVERS, textTransform: 'uppercase' }}>{day}</div>
                   {Array.from({ length: 24 }, (_, h) => {
                     const c = cellMap.get(`${d}-${h}`);
                     const hasData = !!(c && c.samples > 0);
@@ -184,11 +184,11 @@ export default function CashHeatmap({ token }) {
                         title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                         style={{
                           position: 'relative',
-                          aspectRatio: '1 / 1', minHeight: 20, border: active ? '1px solid var(--text,#fff)' : '1px solid transparent',
-                          borderRadius: 2, background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
+                          aspectRatio: '1 / 1', minHeight: 'calc(var(--subrow) * 2.5)', border: active ? 'var(--bw-hair) solid var(--text,#fff)' : 'var(--bw-hair) solid transparent',
+                          borderRadius: 'calc(var(--subrow) * 0.25)', background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '0.5rem', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-                          color: 'rgba(255,255,255,0.92)', textShadow: '0 1px 1px rgba(0,0,0,0.55)',
+                          fontSize: 'calc(var(--gu) * 0.736)', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+                          color: 'rgba(255,255,255,0.92)', textShadow: '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.55)',
                         }}>{val}</button>
                     );
                   })}
@@ -198,13 +198,13 @@ export default function CashHeatmap({ token }) {
           </div>
 
           {/* Legend + tapped-cell readout */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.62rem', color: 'var(--text-muted,#888)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-lg)', marginTop: 'var(--space-lg)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted,#888)' }}>
               <span>{metric === 'reliability' ? '0%' : '0'}</span>
-              <span style={{ width: 90, height: 8, borderRadius: 4, background: `linear-gradient(90deg, ${cellColor(0.1, true)}, ${cellColor(1, true)})` }} />
+              <span style={{ width: 'calc(var(--subrow) * 11.25)', height: 'calc(var(--subrow) * 1)', borderRadius: 'var(--radius-xs)', background: `linear-gradient(90deg, ${cellColor(0.1, true)}, ${cellColor(1, true)})` }} />
               <span>{metric === 'reliability' ? '100%' : `${maxMean.toFixed(1)} tables`}</span>
             </div>
-            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted,#aaa)', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted,#aaa)', fontVariantNumeric: 'tabular-nums' }}>
               {pick
                 ? `${DOW[pick.dow]} ${hourLabel(pick.hour)} — ${(pick.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((pick.ranFraction || 0) * 100)}%`
                 : 'Tap a cell for detail'}

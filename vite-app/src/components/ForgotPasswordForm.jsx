@@ -31,7 +31,7 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'8px'}}>
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
           <button className="btn btn-ghost btn-sm" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
@@ -52,7 +52,7 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
                 placeholder="you@example.com" required autoComplete="email" />
             </div>
             <button type="submit" className="btn btn-primary btn-full"
-              style={{marginTop:'8px'}} disabled={loading}>
+              style={{marginTop:'var(--space-md)'}} disabled={loading}>
               {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
           </form>

@@ -64,13 +64,13 @@ export default function WrapUpViewer({ trackingData, tournaments, onClose }) {
             >{name}</button>
           ))}
         </div>
-        <div style={{ textAlign: 'center', margin: '12px 0' }}>
+        <div style={{ textAlign: 'center', margin: 'var(--space-lg) 0' }}>
           <canvas
             ref={previewRef}
-            style={{ width: '200px', height: '356px', borderRadius: '8px', border: '1px solid var(--border)' }}
+            style={{ width: 'calc(var(--subrow) * 25)', height: 'calc(var(--subrow) * 44.5)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)' }}
           />
         </div>
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center' }}>
           <button className="btn btn-primary btn-sm" onClick={handleShare}>Share This Slide</button>
           <button className="btn btn-ghost btn-sm" onClick={handleShareAll}>Download All</button>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>

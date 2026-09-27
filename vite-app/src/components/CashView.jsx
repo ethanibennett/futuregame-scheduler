@@ -19,8 +19,8 @@ const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-seri
 // Grid constants: control height 32 (4 baseline rows), chip 24 (3 rows), gaps
 // on the 8px baseline. Every interactive box is sized to a whole number of rows
 // rather than to font + literal padding, so heights land on the grid.
-const CTRL_H = 32;
-const CHIP_H = 24;
+const CTRL_H = 'calc(var(--subrow) * 4)';
+const CHIP_H = 'calc(var(--subrow) * 3)';
 const SOURCE_LABEL = { bravo: 'Bravo', pokeratlas: 'PokerAtlas' };
 const HIDDEN_KEY = 'cashHiddenVariants'; // persisted set of variant labels to hide
 
@@ -157,11 +157,11 @@ function CashLocationPicker({ token }) {
     : 'Set location';
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 'var(--space-xl)' }}>
       <button ref={btnRef} type="button" className="filter-chip" onClick={() => setOpen(o => !o)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
         <Icon.mapPin />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem', fontFamily: 'var(--font-condensed)', lineHeight: '16px' }}>{label}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
       </button>
       {open && createPortal(<div className="dropdown-backdrop" onClick={() => setOpen(false)} />, document.body)}
       {open && btnRef.current && createPortal(
@@ -266,27 +266,27 @@ export default function CashView({ token }) {
     .sort((a, b) => (b._totalTables - a._totalTables) || String(a.name).localeCompare(String(b.name)));
 
   return (
-    <div className="cash-view" style={{ maxWidth: 680, margin: '0 auto', padding: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 32, marginBottom: 16 }}>
-        <h2 className="screen-title" style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: '32px' }}>
+    <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
+        <h2 className="screen-title" style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 'calc(var(--subrow) * 4)' }}>
           {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
         </h2>
         {mode === 'live' && (
           <button onClick={load}
-            style={{ height: CTRL_H, boxSizing: 'border-box', border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+            style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
             {status === 'loading' ? 'Loading…' : 'Refresh'}
           </button>
         )}
       </div>
 
       {/* Live / Heatmaps mode */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} onClick={() => setModePersist(m)}
             style={{
-              fontFamily: UNIVERS, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-              height: CTRL_H, boxSizing: 'border-box', padding: '0 14px', borderRadius: 999, cursor: 'pointer',
-              border: '1px solid ' + (mode === m ? 'var(--text, #fff)' : 'var(--border, #333)'),
+              fontFamily: UNIVERS, fontSize: 'calc(var(--gu) * 1.060)', textTransform: 'uppercase', letterSpacing: '0.05em',
+              height: CTRL_H, boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 999, cursor: 'pointer',
+              border: 'var(--bw-hair) solid ' + (mode === m ? 'var(--text, #fff)' : 'var(--border, #333)'),
               background: mode === m ? 'var(--text, #fff)' : 'transparent',
               color: mode === m ? 'var(--bg, #111)' : 'var(--text-muted, #888)',
             }}>{lbl}</button>
@@ -302,15 +302,15 @@ export default function CashView({ token }) {
 
       {/* Persistent variant filter */}
       {availableVariants.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
           {availableVariants.map(vt => {
             const on = !hidden.has(vt);
             return (
               <button key={vt} onClick={() => toggleVariant(vt)}
                 style={{
-                  fontFamily: UNIVERS, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em',
-                  height: CHIP_H, boxSizing: 'border-box', padding: '0 10px', borderRadius: 999, cursor: 'pointer',
-                  border: '1px solid ' + (on ? 'var(--text-muted, #999)' : 'var(--border, #333)'),
+                  fontFamily: UNIVERS, fontSize: 'calc(var(--gu) * 1.031)', textTransform: 'uppercase', letterSpacing: '0.04em',
+                  height: CHIP_H, boxSizing: 'border-box', padding: '0 var(--space-ml)', borderRadius: 999, cursor: 'pointer',
+                  border: 'var(--bw-hair) solid ' + (on ? 'var(--text-muted, #999)' : 'var(--border, #333)'),
                   background: on ? 'var(--text-muted, #999)' : 'transparent',
                   color: on ? 'var(--bg, #111)' : 'var(--text-muted, #777)',
                 }}>
@@ -322,54 +322,54 @@ export default function CashView({ token }) {
       )}
 
       {status === 'error' && (
-        <div style={{ boxShadow: 'inset 0 0 0 1px var(--border, #333)', borderRadius: 10, padding: 16, lineHeight: '24px', color: 'var(--text-muted, #aaa)' }}>
+        <div style={{ boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.125) var(--border, #333)', borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'var(--space-xl)', lineHeight: 'calc(var(--subrow) * 3)', color: 'var(--text-muted, #aaa)' }}>
           {errMsg || 'Something went wrong.'}
-          <div style={{ marginTop: 8, display: 'flex' }}>
-            <button onClick={load} style={{ height: CTRL_H, boxSizing: 'border-box', border: '1px solid var(--border,#333)', background: 'transparent', color: 'var(--text,#fff)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', fontSize: '0.78rem' }}>Try again</button>
+          <div style={{ marginTop: 'var(--space-md)', display: 'flex' }}>
+            <button onClick={load} style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border,#333)', background: 'transparent', color: 'var(--text,#fff)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.149)' }}>Try again</button>
           </div>
         </div>
       )}
 
       {status === 'loading' && !data && (
-        <div style={{ color: 'var(--text-muted, #aaa)', padding: 20, textAlign: 'center' }}>Loading live traffic…</div>
+        <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>Loading live traffic…</div>
       )}
 
       {status !== 'error' && data && (
         <>
-          <div style={{ color: 'var(--text-muted, #999)', fontSize: '0.7rem', marginBottom: 12 }}>
+          <div style={{ color: 'var(--text-muted, #999)', fontSize: 'calc(var(--gu) * 1.031)', marginBottom: 'var(--space-lg)' }}>
             Snapshot {ago(data.ts) || '—'}{fetchedAt ? ` · refreshed ${ago(new Date(fetchedAt).toISOString())}` : ''}
           </div>
 
           {venues.length === 0 && (
-            <div style={{ color: 'var(--text-muted, #aaa)', padding: 20, textAlign: 'center' }}>
+            <div style={{ color: 'var(--text-muted, #aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
               {filterActive ? 'Nothing running in the selected variants.' : 'No venues reporting.'}
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
             {venues.map(v => {
               const color = deriveVenueInfo(v.name).color;
               const running = v._running, interest = v._interest;
               return (
-                <section key={v.slug} style={{ border: '1px solid var(--border, #2a2a2a)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface, rgba(255,255,255,0.02))' }}>
+                <section key={v.slug} style={{ border: 'var(--bw-hair) solid var(--border, #2a2a2a)', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface, rgba(255,255,255,0.02))' }}>
                   {/* Venue strip — same treatment as the Up Next banner: a
                       brand-coloured bar, full venue name in Univers, uppercase. */}
-                  <div style={{ background: color, color: '#fff', textAlign: 'center', padding: '6px 14px', fontFamily: UNIVERS, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ background: color, color: '#fff', textAlign: 'center', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', fontFamily: UNIVERS, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, fontSize: 'calc(var(--gu) * 1.208)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {v.name}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 14px', borderBottom: '1px solid var(--border, #2a2a2a)' }}>
-                    <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', border: '1px solid var(--border,#333)', borderRadius: 5, padding: '1px 6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-md)', padding: 'var(--space-sm) calc(var(--subrow) * 1.75)', borderBottom: 'var(--bw-hair) solid var(--border, #2a2a2a)' }}>
+                    <span style={{ fontSize: 'calc(var(--gu) * 0.884)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', border: 'var(--bw-hair) solid var(--border,#333)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)' }}>
                       {SOURCE_LABEL[v.source] || v.source}
                     </span>
-                    <span style={{ fontSize: '0.66rem', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap' }}>
                       {v.ok === false ? 'poll failed' : v.ok === null ? 'no data yet' : (ago(v.lastPollTs) || '')}
                     </span>
                   </div>
 
                   {v.ok === false ? (
-                    <div style={{ padding: '10px 14px', color: 'var(--text-muted,#888)', fontSize: '0.78rem' }}>Couldn’t read this room’s feed{v.error ? ` (${v.error})` : ''}.</div>
+                    <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Couldn’t read this room’s feed{v.error ? ` (${v.error})` : ''}.</div>
                   ) : running.length === 0 && interest.length === 0 ? (
-                    <div style={{ padding: '10px 14px', color: 'var(--text-muted,#888)', fontSize: '0.78rem' }}>Nothing running.</div>
+                    <div style={{ padding: 'var(--space-ml) calc(var(--subrow) * 1.75)', color: 'var(--text-muted,#888)', fontSize: 'calc(var(--gu) * 1.149)' }}>Nothing running.</div>
                   ) : (
                     <div>
                       {running.map((g, gi) => {
@@ -381,13 +381,13 @@ export default function CashView({ token }) {
                           const isTop = ti === 0;
                           const open = openLabel(starts[ti], snapMs, windowStartMs);
                           return (
-                            <div key={gi + '-' + ti} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isTop ? '8px 14px' : '3px 14px', borderTop: (gi === 0 && isTop) ? 'none' : (isTop ? '1px solid var(--border, rgba(255,255,255,0.08))' : 'none') }}>
-                              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 62 }}>{isTop ? g.stakes : ''}</span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isTop ? g.gameType : ''}</span>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap', minWidth: 96, textAlign: 'right' }}>{open || ''}</span>
-                              <span style={{ minWidth: 54, textAlign: 'right' }}>
+                            <div key={gi + '-' + ti} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-ml)', padding: isTop ? 'var(--space-md) calc(var(--subrow) * 1.75)' : 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.75)', borderTop: (gi === 0 && isTop) ? 'none' : (isTop ? 'var(--bw-hair) solid var(--border, rgba(255,255,255,0.08))' : 'none') }}>
+                              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 'calc(var(--subrow) * 7.75)' }}>{isTop ? g.stakes : ''}</span>
+                              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isTop ? g.gameType : ''}</span>
+                              <span style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap', minWidth: 'calc(var(--subrow) * 12)', textAlign: 'right' }}>{open || ''}</span>
+                              <span style={{ minWidth: 'calc(var(--subrow) * 6.75)', textAlign: 'right' }}>
                                 {isTop && (g.waitlistLen || 0) > 0 && (
-                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.72rem', color: 'var(--warning, #e0a458)', border: '1px solid var(--warning, #e0a458)', borderRadius: 5, padding: '1px 6px', whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--warning, #e0a458)', border: 'var(--bw-hair) solid var(--warning, #e0a458)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', whiteSpace: 'nowrap' }}>
                                     WL {g.waitlistLen}
                                   </span>
                                 )}
@@ -397,10 +397,10 @@ export default function CashView({ token }) {
                         });
                       })}
                       {interest.length > 0 && (
-                        <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border, rgba(255,255,255,0.05))', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          <span style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted,#777)', alignSelf: 'center' }}>Interest</span>
+                        <div style={{ padding: 'var(--space-md) calc(var(--subrow) * 1.75)', borderTop: 'var(--bw-hair) solid var(--border, rgba(255,255,255,0.05))', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                          <span style={{ fontSize: 'calc(var(--gu) * 0.913)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted,#777)', alignSelf: 'center' }}>Interest</span>
                           {interest.map((g, i) => (
-                            <span key={'i' + i} style={{ fontSize: '0.7rem', color: 'var(--text-muted,#999)', border: '1px dashed var(--border,#333)', borderRadius: 5, padding: '1px 6px' }}>
+                            <span key={'i' + i} style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted,#999)', border: 'var(--bw-hair) dashed var(--border,#333)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)' }}>
                               {g.stakes} {g.gameType}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}
                             </span>
                           ))}
