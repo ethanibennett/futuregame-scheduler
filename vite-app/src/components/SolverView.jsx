@@ -25,8 +25,8 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 // arbitrary card-inset widths.
 
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' };
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' };
+const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' };
+const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'var(--space-lg) calc(var(--subrow) * 1.75)' };
 
 // Split a free-text holding/upcard string ("As4s3d2c" / "Kc Kd 2h")
 // into individual two-char card tokens for the SolverCard preview.
@@ -48,16 +48,16 @@ function ctxLabel(hist) {
 // frequency at the node) is accent-green, matching the reference GUI.
 function ActionBar({ name, pct, best }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 5 }}>
-      <span style={{ width: 52, fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{name}</span>
-      <div style={{ flex: 1, height: 16, background: 'var(--surface2)', borderRadius: 4, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1.125)', marginBottom: 'calc(var(--subrow) * 0.625)' }}>
+      <span style={{ width: 'calc(var(--subrow) * 6.5)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{name}</span>
+      <div style={{ flex: 1, height: 'calc(var(--subrow) * 2)', background: 'var(--surface2)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
         <div style={{
-          height: '100%', width: `${pct}%`, borderRadius: 4,
+          height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)',
           background: best ? 'var(--pos, #22c55e)' : 'var(--accent2)',
           transition: 'width .5s cubic-bezier(.4,0,.2,1)',
         }} />
       </div>
-      <span style={{ width: 44, textAlign: 'right', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{pct}%</span>
+      <span style={{ width: 'calc(var(--subrow) * 5.5)', textAlign: 'right', fontSize: 'calc(var(--gu) * 1.060)', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{pct}%</span>
     </div>
   );
 }
@@ -69,10 +69,10 @@ function StrategyNode({ hist, node }) {
   const pcts = (node.freq || []).map((f) => +(f * 100).toFixed(1));
   const best = pcts.length ? Math.max(...pcts) : -1;
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: who === 'Hero' ? 'var(--text)' : 'var(--accent)' }}>{who} to act</span>
-        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>{ctxLabel(hist)}</span>
+    <div style={{ marginBottom: 'var(--space-xl)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
+        <span style={{ fontSize: 'calc(var(--gu) * 1.149)', fontWeight: 700, color: who === 'Hero' ? 'var(--text)' : 'var(--accent)' }}>{who} to act</span>
+        <span style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>{ctxLabel(hist)}</span>
       </div>
       {/* One ribbon: five separate bars asked the reader to sum them. */}
       <StrategyRibbon
@@ -210,20 +210,20 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
   // Controls are a fixed 40px (5×8) so they sit on the 8px baseline; height
   // does the vertical sizing, horizontal padding stays. One constant, every
   // field and button inherits it.
-  const CTRL_H = 40;
+  const CTRL_H = 'calc(var(--subrow) * 5)';
   const input = {
     width: '100%', height: CTRL_H, boxSizing: 'border-box',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    fontSize: '0.78rem', padding: '0 10px', borderRadius: 8,
+    fontSize: 'calc(var(--gu) * 1.149)', padding: '0 var(--space-ml)', borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border)', background: 'var(--surface2)',
     color: 'var(--text)', letterSpacing: '0.02em',
   };
-  const fieldLab = { ...label, display: 'flex', alignItems: 'flex-end', height: 24, marginBottom: 0, lineHeight: 1 };
+  const fieldLab = { ...label, display: 'flex', alignItems: 'flex-end', height: 'calc(var(--subrow) * 3)', marginBottom: 0, lineHeight: 1 };
 
   const pill = (active) => ({
     height: CTRL_H, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-    padding: '0 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
-    fontSize: '0.72rem', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
+    padding: '0 var(--space-lg)', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontFamily: 'inherit',
+    fontSize: 'calc(var(--gu) * 1.060)', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
     border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
     background: active ? 'var(--text)' : 'transparent',
     color: active ? 'var(--bg)' : 'var(--text-muted)',
@@ -235,7 +235,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
   // `full` = a field/control across all 4 columns.
   const panelStyle = {
     gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid',
-    rowGap: 16, background: 'var(--surface)', borderRadius: 12, padding: '16px 0',
+    rowGap: 'var(--space-xl)', background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 'var(--space-xl) 0',
   };
   const half = { gridColumn: 'span 2' };
   const full = { gridColumn: '1 / -1' };
@@ -247,15 +247,15 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
   return (
     <div style={{
-      height: '100%', overflowY: 'auto', padding: '0 0 80px', maxWidth: 880,
+      height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 110)',
       margin: '0 auto', fontFamily: FONT,
       /* Grid: 1g column gaps make the four columns land on the app's 8g lines; 2-subrow row gap. */
-      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 'var(--gu)', rowGap: 16,
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 'var(--gu)', rowGap: 'var(--space-xl)',
       alignContent: 'start',
     }}>
       {/* Header — title on cols 1–2, game pills on cols 3–4 */}
-      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center', rowGap: 8 }}>
-        <h2 className="screen-title" style={{ gridColumn: '1 / 3', fontSize: '1.2rem', margin: 0, lineHeight: '40px', height: 40, boxSizing: 'border-box', paddingTop: 5 }}>Solver</h2>
+      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center', rowGap: 'var(--space-md)' }}>
+        <h2 className="screen-title" style={{ gridColumn: '1 / 3', fontSize: 'calc(var(--gu) * 1.767)', margin: 0, lineHeight: 'calc(var(--subrow) * 5)', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', paddingTop: 'calc(var(--subrow) * 0.625)' }}>Solver</h2>
         {/* Game pills */}
         <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
           {GAMES.map(([id, lbl]) => (
@@ -263,25 +263,25 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
           ))}
         </div>
       </div>
-      <p style={{ ...label, ...full, margin: 0, height: 16, lineHeight: '16px' }}>Live range-form CFR+ · exact subgame solve</p>
+      <p style={{ ...label, ...full, margin: 0, height: 'calc(var(--subrow) * 2)', lineHeight: 'calc(var(--subrow) * 2)' }}>Live range-form CFR+ · exact subgame solve</p>
 
       {/* Handoff note — appears when a spot is imported from the replayer.
           Pre-filled from a frozen replay spot; spells out the up/down split
           assumptions and any ambiguity. Inputs below are editable. */}
       {handoffNote && (
         <div style={{
-          ...full, padding: '12px', borderRadius: 10,
+          ...full, padding: 'var(--space-lg)', borderRadius: 'calc(var(--subrow) * 1.25)',
           background: 'var(--surface2)', border: '1px solid var(--accent)',
-          fontSize: '0.74rem', color: 'var(--text)', lineHeight: 1.5,
+          fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text)', lineHeight: 1.5,
         }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: handoffNote.notes.length ? 8 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-ml)', marginBottom: handoffNote.notes.length ? 'var(--space-md)' : 0 }}>
             <span><b>Spot imported from the replayer.</b>{handoffNote.source ? ` ${handoffNote.source}.` : ''} Review the inputs, then Solve.</span>
             <button onClick={() => setHandoffNote(null)} aria-label="Dismiss"
-              style={{ flex: '0 0 auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', lineHeight: 1, padding: 0 }}>×</button>
+              style={{ flex: '0 0 auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.325)', lineHeight: 1, padding: 0 }}>×</button>
           </div>
           {handoffNote.notes.length > 0 && (
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: 'var(--text-muted)' }}>
-              {handoffNote.notes.map((n, i) => <li key={i} style={{ marginBottom: 2 }}>{n}</li>)}
+            <ul style={{ margin: 'var(--space-md) 0 0', paddingLeft: 'calc(var(--subrow) * 2.25)', color: 'var(--text-muted)' }}>
+              {handoffNote.notes.map((n, i) => <li key={i} style={{ marginBottom: 'var(--space-2xs)' }}>{n}</li>)}
             </ul>
           )}
         </div>
@@ -292,8 +292,8 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         {[['exact', 'Node-locked'], ['range', 'Range vs range']].map(([id, lbl]) => (
           <button key={id} onClick={() => setMode(id)}
             style={{
-              height: 40, boxSizing: 'border-box', padding: '0 14px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: '0.74rem', fontWeight: 'var(--fw-bold)',
+              height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 'calc(var(--gu) * 1.090)', fontWeight: 'var(--fw-bold)',
               border: '1px solid ' + (mode === id ? 'var(--accent)' : 'var(--border)'),
               background: mode === id ? 'var(--surface2)' : 'var(--surface)',
               color: mode === id ? 'var(--text)' : 'var(--text-muted)',
@@ -305,7 +305,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
       {/* ── Spot panel (subgrid across all 4 columns) ── */}
       <div style={panelStyle}>
-        <div style={{ ...label, ...full, letterSpacing: '0.14em', fontWeight: 700, height: 24, display: 'flex', alignItems: 'center', lineHeight: 1 }}>Spot</div>
+        <div style={{ ...label, ...full, letterSpacing: '0.14em', fontWeight: 700, height: 'calc(var(--subrow) * 3)', display: 'flex', alignItems: 'center', lineHeight: 1 }}>Spot</div>
 
         <div style={half}>
           <div style={fieldLab}>Game</div>
@@ -345,13 +345,13 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         {/* Card preview for hero + opponent upcards */}
         <div style={half}>
           <div style={fieldLab}>Hero</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 72, boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 'calc(var(--subrow) * 9)', boxSizing: 'border-box' }}>
             {heroCards.length ? heroCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span style={{ ...label }}>—</span>}
           </div>
         </div>
         <div style={half}>
           <div style={fieldLab}>Opp upcards</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 72, boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 'calc(var(--subrow) * 9)', boxSizing: 'border-box' }}>
             {oppCards.length ? oppCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span style={{ ...label }}>—</span>}
           </div>
         </div>
@@ -361,15 +361,15 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
           <div style={full}>
             <div style={fieldLab}>Opponent range <span style={{ opacity: 0.6 }}>(node-locked — comma-separated)</span></div>
             <input value={oppRange} onChange={(e) => setOppRange(e.target.value)} placeholder="Kc Kd 2h, Qs Js Tc" style={input} />
-            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 8, height: 16, lineHeight: '16px' }}>
+            <div style={{ fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', marginTop: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', lineHeight: 'calc(var(--subrow) * 2)' }}>
               Keep it narrow (a few holdings). Each holding is {downN} cards.
             </div>
             {oppHoldings.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gu)', marginTop: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gu)', marginTop: 'var(--space-md)' }}>
                 {oppHoldings.map((h, i) => (
                   <span key={i} style={{
-                    fontSize: '0.68rem', fontVariantNumeric: 'tabular-nums', height: 24, boxSizing: 'border-box',
-                    display: 'inline-flex', alignItems: 'center', padding: '0 9px', borderRadius: 6,
+                    fontSize: 'calc(var(--gu) * 1.001)', fontVariantNumeric: 'tabular-nums', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box',
+                    display: 'inline-flex', alignItems: 'center', padding: '0 calc(var(--subrow) * 1.125)', borderRadius: 'calc(var(--subrow) * 0.75)',
                     background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
                   }}>{h}</span>
                 ))}
@@ -386,7 +386,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
               <div style={fieldLab}>Opp range (r1)</div>
               <input value={r1} onChange={(e) => setR1(e.target.value)} placeholder="all" style={input} />
             </div>
-            <div style={{ ...full, fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+            <div style={{ ...full, fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)' }}>
               Use <b style={{ color: 'var(--text)' }}>all</b> or a comma-separated holding list. Each holding is {downN} cards.
             </div>
             <div style={half}>
@@ -397,7 +397,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
                   const active = abstraction === id;
                   return (
                     <button key={id} disabled={disabled} onClick={() => setAbstraction(id)}
-                      style={{ ...pill(active), opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '0.7rem' }}>
+                      style={{ ...pill(active), opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 'calc(var(--gu) * 1.031)' }}>
                       {lbl}
                     </button>
                   );
@@ -418,8 +418,8 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
         <button onClick={runSolve} disabled={solving}
           style={{
-            ...full, fontFamily: 'inherit', fontSize: '0.8rem', letterSpacing: '0.08em',
-            textTransform: 'uppercase', fontWeight: 700, height: 48, boxSizing: 'border-box', borderRadius: 8, border: 'none',
+            ...full, fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.178)', letterSpacing: '0.08em',
+            textTransform: 'uppercase', fontWeight: 700, height: 'calc(var(--subrow) * 6)', boxSizing: 'border-box', borderRadius: 'var(--radius-sm)', border: 'none',
             background: 'var(--text)', color: 'var(--bg)', cursor: solving ? 'wait' : 'pointer', opacity: solving ? 0.6 : 1,
           }}>
           {solving ? 'Solving…' : 'Solve spot'}
@@ -428,11 +428,11 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
       {/* ── Solution panel (subgrid across all 4 columns) ── */}
       <div style={panelStyle}>
-        <div style={{ ...label, ...full, letterSpacing: '0.14em', fontWeight: 700, height: 24, display: 'flex', alignItems: 'center', lineHeight: 1 }}>Solution</div>
+        <div style={{ ...label, ...full, letterSpacing: '0.14em', fontWeight: 700, height: 'calc(var(--subrow) * 3)', display: 'flex', alignItems: 'center', lineHeight: 1 }}>Solution</div>
 
         {solving && (
-          <div style={{ ...full, fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.55, animation: 'none' }}>
-            <span style={{ display: 'inline-block', width: 12, height: 12, marginRight: 8, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'middle' }} />
+          <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.208)', color: 'var(--text-muted)', lineHeight: 1.55, animation: 'none' }}>
+            <span style={{ display: 'inline-block', width: 'var(--icon-xs)', height: 'var(--icon-xs)', marginRight: 'var(--space-md)', borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'middle' }} />
             Solving the subgame… range-form CFR+ over the {game} tree.
             <style>{'@keyframes fgspin{to{transform:rotate(360deg)}}'}</style>
           </div>
@@ -440,17 +440,17 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
         {error && !solving && (
           <div style={{
-            ...full, fontSize: '0.78rem', color: 'var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)',
-            border: '1px solid var(--neg, #ef4444)', borderRadius: 8, padding: '9px 11px', lineHeight: 1.5,
+            ...full, fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)',
+            border: '1px solid var(--neg, #ef4444)', borderRadius: 'var(--radius-sm)', padding: 'calc(var(--subrow) * 1.125) calc(var(--subrow) * 1.375)', lineHeight: 1.5,
           }}>
             {error.offline
-              ? <><b>Solver offline.</b> Start it with <code style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: '0.72rem' }}>cd solver/neural &amp;&amp; python3 solve_server.py</code>, then Solve again.</>
+              ? <><b>Solver offline.</b> Start it with <code style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 'calc(var(--gu) * 1.060)' }}>cd solver/neural &amp;&amp; python3 solve_server.py</code>, then Solve again.</>
               : <><b>Could not solve:</b> {error.message}</>}
           </div>
         )}
 
         {!solving && !error && !result && (
-          <div style={{ ...full, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '24px', borderLeft: '2px solid var(--accent)', paddingLeft: 'calc(var(--gu) - 2px)' }}>
+          <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 3)', borderLeft: '2px solid var(--accent)', paddingLeft: 'calc(var(--gu) - 2px)' }}>
             Edit the spot on the left and hit <b style={{ color: 'var(--text)' }}>Solve spot</b> to run it live.
           </div>
         )}
@@ -458,22 +458,22 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         {result && !solving && sum && (
           <>
             {/* Big ± EV */}
-            <div style={{ ...full, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <div style={{ ...full, display: 'flex', alignItems: 'baseline', gap: 'var(--space-ml)' }}>
               <span style={{
-                fontSize: '2.1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                fontSize: 'calc(var(--gu) * 3.093)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
                 color: sum.ev >= 0 ? 'var(--pos, #22c55e)' : 'var(--neg, #ef4444)',
               }}>
                 {sum.ev >= 0 ? '+' : ''}{sum.ev.toFixed(2)}
               </span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>chips · hero EV</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.149)' }}>chips · hero EV</span>
             </div>
 
             {/* Badges */}
-            <div style={{ ...full, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ ...full, display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
               {(() => {
                 const badge = (txt) => (
                   <span key={txt} style={{
-                    fontSize: '0.66rem', padding: '3px 9px', borderRadius: 999, background: 'var(--surface2)',
+                    fontSize: 'calc(var(--gu) * 0.972)', padding: 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.125)', borderRadius: 'var(--radius-pill)', background: 'var(--surface2)',
                     border: '1px solid var(--border)', color: 'var(--text-muted)', letterSpacing: '0.03em',
                   }}>{txt}</span>
                 );
@@ -486,14 +486,14 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             </div>
 
             {/* Auto-summary */}
-            <div style={{ ...full, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.55, borderLeft: '2px solid var(--border)', paddingLeft: 12 }}>
+            <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 1.55, borderLeft: '2px solid var(--border)', paddingLeft: 'var(--space-lg)' }}>
               You are <b style={{ color: 'var(--text)' }}>{sum.lead}</b> for <b style={{ color: 'var(--text)' }}>{sum.ev >= 0 ? '+' : ''}{sum.ev.toFixed(2)}</b> chips.{sum.act}
             </div>
 
             {/* Hero's own line (range mode with a pinned hero hand) */}
             {meStratNodes && meStratNodes.length > 0 && (
               <div style={{ ...panel, ...full, background: 'var(--surface2)' }}>
-                <div style={{ ...label, marginBottom: 10 }}>
+                <div style={{ ...label, marginBottom: 'var(--space-ml)' }}>
                   This hand's line{result.me_bucket != null ? ` · bucket ${result.me_bucket}` : ''}
                 </div>
                 {meStratNodes.map(([hist, node]) => <StrategyNode key={'me' + hist} hist={hist} node={node} />)}

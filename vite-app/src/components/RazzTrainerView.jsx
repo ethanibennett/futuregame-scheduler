@@ -20,9 +20,9 @@ import Card from './SolverCard.jsx';
 // the full list each step (the server is the source of truth for state).
 
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: '16px' };
+const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
 // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
+const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
 
 // ── explicit-discard encoding (mirrors solver/draw-trainer/play.js) ────────
 // FULL DISCARD CONTROL: the hero's draw action is a STATELESS string
@@ -207,18 +207,18 @@ function labelFor(g, actionId) {
 // ── one GTO strategy bar (reused markup from SolverView ActionBar) ───────
 function ActionBar({ name, pct, best, marker }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 5 }}>
-      <span style={{ width: 86, fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1.125)', marginBottom: 'calc(var(--subrow) * 0.625)' }}>
+      <span style={{ width: 'calc(var(--subrow) * 10.75)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {name}{marker ? ' ' + marker : ''}
       </span>
-      <div style={{ flex: 1, height: 16, background: 'var(--surface2)', borderRadius: 4, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 'calc(var(--subrow) * 2)', background: 'var(--surface2)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
         <div style={{
-          height: '100%', width: `${pct}%`, borderRadius: 4,
+          height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)',
           background: best ? 'var(--pos, #22c55e)' : 'var(--accent2)',
           transition: 'width .5s cubic-bezier(.4,0,.2,1)',
         }} />
       </div>
-      <span style={{ width: 40, textAlign: 'right', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{pct}%</span>
+      <span style={{ width: 'calc(var(--subrow) * 5)', textAlign: 'right', fontSize: 'calc(var(--gu) * 1.060)', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{pct}%</span>
     </div>
   );
 }
@@ -380,21 +380,21 @@ export default function RazzTrainerView() {
   // ── render ──
   const gameName = GAME_LABEL[game] || game;
   return (
-    <div className="trainer-shell" style={{ height: '100%', overflowY: 'auto', padding: '0 0 80px', maxWidth: 560, margin: '0 auto', fontFamily: FONT }}>
+    <div className="trainer-shell" style={{ height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 70)', margin: '0 auto', fontFamily: FONT }}>
       {/* Full-width top band (header + game pills + trust badge + pro toggle + error).
           On wide screens it spans above the two columns; on narrow it's the top of the stack. */}
       <div className="trainer-top">
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 8, columnGap: 'var(--gu)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 'var(--space-md)', columnGap: 'var(--gu)' }}>
         {/* Grid: title box 4 subrows, baseline seated on T12. */}
-        <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: 0, height: 32, boxSizing: 'border-box', lineHeight: '32px', paddingTop: 1 }}>{gameName} Trainer</h2>
+        <h2 className="screen-title" style={{ fontSize: 'calc(var(--gu) * 1.767)', margin: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', lineHeight: 'calc(var(--subrow) * 4)', paddingTop: 'calc(var(--subrow) * 0.125)' }}>{gameName} Trainer</h2>
         {/* Game pills */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
           {GAMES.map(([id, lbl]) => (
             <button key={id} onClick={() => selectGame(id)} disabled={loading || stepping} style={gamePill(game === id, loading || stepping)}>{lbl}</button>
           ))}
         </div>
       </div>
-      <p style={{ ...label, margin: '0 0 var(--subrow)', minHeight: 16 }}>
+      <p style={{ ...label, margin: '0 0 var(--subrow)', minHeight: 'calc(var(--subrow) * 2)' }}>
         Heads-up {gameName} · play vs the blueprint · range-aware EV grading
         {game === 'stud8' ? ' · hi/lo split' : ''}
         {cat === 'draw' ? ' · single low · hidden opponent' : ''}
@@ -403,20 +403,20 @@ export default function RazzTrainerView() {
       {/* Blueprint trust badge — how far to trust this game's EV-loss grades */}
       {GAME_TRUST[game] && (GAME_TRUST[game].ok ? (
         <div style={{
-          fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0 0 var(--subrow)', lineHeight: '16px',
-          display: 'flex', alignItems: 'flex-start', gap: 6,
+          fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', margin: '0 0 var(--subrow)', lineHeight: 'calc(var(--subrow) * 2)',
+          display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)',
         }}>
           <span style={{ color: 'var(--pos, #22c55e)' }}>✓</span>
           Trustworthy bot — {GAME_TRUST[game].expl < 0.5 ? '≈0' : `≥${GAME_TRUST[game].expl}`} chips/hand exploitable (best-response LBR, lower bound)
         </div>
       ) : (
         <div style={{
-          fontSize: '0.74rem', lineHeight: 1.45, margin: '0 0 12px', padding: '8px 10px',
-          borderRadius: 8, border: '1px solid var(--warn, #f59e0b)',
+          fontSize: 'calc(var(--gu) * 1.090)', lineHeight: 1.45, margin: '0 0 var(--space-lg)', padding: 'var(--space-md) var(--space-ml)',
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--warn, #f59e0b)',
           background: 'rgba(245,158,11,.10)', color: 'var(--text)',
-          display: 'flex', alignItems: 'flex-start', gap: 8,
+          display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)',
         }}>
-          <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>⚠</span>
+          <span style={{ fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 1 }}>⚠</span>
           <span><b>Approximate grades.</b> The {gameName} bot is {GAME_TRUST[game].note} (≈{GAME_TRUST[game].expl} chips/hand exploitable). Use its EV-loss as a rough guide, not gospel — it’s being sharpened.</span>
         </div>
       ))}
@@ -430,13 +430,13 @@ export default function RazzTrainerView() {
 
       {error && (
         <div style={{
-          ...panel, marginBottom: 12, color: 'var(--neg, #ef4444)',
-          border: '1px solid var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)', fontSize: '0.8rem', lineHeight: 1.5,
+          ...panel, marginBottom: 'var(--space-lg)', color: 'var(--neg, #ef4444)',
+          border: '1px solid var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)', fontSize: 'calc(var(--gu) * 1.178)', lineHeight: 1.5,
         }}>
           {error.offline
             ? <><b>Trainer offline.</b> The {gameName} trainer backend isn’t reachable. {error.message ? `(${error.message})` : ''}</>
             : <><b>Could not deal:</b> {error.message}</>}
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 'var(--space-md)' }}>
             <button onClick={() => deal()} style={primaryBtn}>Retry</button>
           </div>
         </div>
@@ -449,7 +449,7 @@ export default function RazzTrainerView() {
       <div className="trainer-cols">
       <div className="trainer-col trainer-col-play">
 
-      {loading && !state && <div style={{ color: 'var(--text-muted)', padding: '20px 0' }}>Dealing…</div>}
+      {loading && !state && <div style={{ color: 'var(--text-muted)', padding: 'var(--space-2xl) 0' }}>Dealing…</div>}
 
       {state && cat === 'stud' && (
         <StudTable state={state} heroSeat={heroSeat} handOver={handOver} result={result} />
@@ -469,15 +469,15 @@ export default function RazzTrainerView() {
       {heroOnTurn && !drawDecisionInTable && (
         <div style={{ ...panel, marginTop: 'var(--subrow)' }}>
           <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Your action {stepping ? '· …' : ''}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
             {legalActions.map((a) => (
               <button key={a.id} onClick={() => pickAction(a.id)} disabled={stepping}
                 style={{
                   touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-                  flex: '1 1 auto', minWidth: 96, height: 40, boxSizing: 'border-box', padding: '0 14px', borderRadius: 8,
+                  flex: '1 1 auto', minWidth: 'calc(var(--subrow) * 12)', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-sm)',
                   cursor: stepping ? 'wait' : 'pointer', border: '1px solid var(--accent)',
                   background: 'transparent', color: 'var(--text)', fontFamily: 'inherit',
-                  fontSize: '0.9rem', fontWeight: 700, opacity: stepping ? 0.6 : 1,
+                  fontSize: 'calc(var(--gu) * 1.325)', fontWeight: 700, opacity: stepping ? 0.6 : 1,
                 }}>
                 {a.label}
               </button>
@@ -488,10 +488,10 @@ export default function RazzTrainerView() {
 
       {/* waiting on opponent / chance between hero turns */}
       {state && !handOver && !heroOnTurn && (
-        <div style={{ ...panel, marginTop: 10, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+        <div style={{ ...panel, marginTop: 'var(--space-ml)', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.208)' }}>
           {stepping ? 'Advancing the hand…' : 'Opponent to act…'}
           {stepping && proMode && proModeAvailable(game) && (
-            <span style={{ display: 'block', marginTop: 4, fontSize: '0.68rem' }}>
+            <span style={{ display: 'block', marginTop: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 1.001)' }}>
               Pro mode — if the hand ends, each {oracleStreetLabel(game)} decision runs an exact GTO re-solve (~1–5s){game === 'badugi' ? '; each pre-last-draw bet is graded by the certified value net (~0.06 SB)' : ''}.
             </span>
           )}
@@ -510,7 +510,7 @@ export default function RazzTrainerView() {
 
       {handOver && grades && (
         <div style={{ marginTop: 'var(--subrow)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--subrow)', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--subrow)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
             <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>
               Grading report
               {/* Pro-mode provenance: shown when at least one decision in this
@@ -519,7 +519,7 @@ export default function RazzTrainerView() {
               {grades.some((g) => g.gradeSource === 'oracle') && (
                 <span title={`Pro mode — ${oracleStreetLabel(game)} decisions in this hand were graded by the exact GTO re-solve (oracle); other streets by the blueprint. Each card is tagged with its grade source.`}
                   style={{
-                    marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.54rem', fontWeight: 700,
+                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
                     border: '1px solid var(--accent)', color: 'var(--accent)',
                   }}>
@@ -532,7 +532,7 @@ export default function RazzTrainerView() {
               {grades.some((g) => g.gradeSource === 'certified-net') && (
                 <span title={`Pro mode — pre-last-draw badugi bet decisions in this hand were graded by the CERTIFIED value net (a neural approximator of GTO, mean grade error ~0.06 small bets), NOT an exact re-solve. Each card is tagged with its grade source.`}
                   style={{
-                    marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.54rem', fontWeight: 700,
+                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
                     border: '1px dashed var(--accent)', color: 'var(--accent)',
                   }}>
@@ -545,7 +545,7 @@ export default function RazzTrainerView() {
               {grades.some((g) => g.gradeSource === 'oracle-6th') && (
                 <span title={`Pro mode — 6th-street decisions in this hand were graded by the bucketed 6th→7th re-solve: APPROXIMATE (bucket abstraction), SHOWN but NOT charged to your score. Distinct from the near-exact 7th-street oracle. Each card is tagged with its grade source.`}
                   style={{
-                    marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.54rem', fontWeight: 700,
+                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
                     border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
                   }}>
@@ -555,7 +555,7 @@ export default function RazzTrainerView() {
               {grades.some((g) => g.gradeSource === 'oracle-5th') && (
                 <span title={`Pro mode — 5th-street decisions were graded by a depth-limited re-solve with the 6th value net as the leaf: APPROXIMATE (net-leaf, no exact anchor below 6th), SHOWN but NOT charged. The softest tier.`}
                   style={{
-                    marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.54rem', fontWeight: 700,
+                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
                     border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
                   }}>
@@ -563,7 +563,7 @@ export default function RazzTrainerView() {
                 </span>
               )}
             </span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)' }}>
               total EV-loss <b style={{ color: totalEvLoss > 0.5 ? 'var(--neg, #ef4444)' : 'var(--pos, #22c55e)', fontVariantNumeric: 'tabular-nums' }}>
                 {totalEvLoss.toFixed(2)}
               </b> chips
@@ -595,9 +595,9 @@ export default function RazzTrainerView() {
 }
 
 const primaryBtn = {
-  height: 40, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-  padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--accent)',
-  color: '#fff', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
+  height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
+  padding: '0 calc(var(--subrow) * 2.25)', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent)',
+  color: '#fff', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 700, cursor: 'pointer',
   // touch polish: no double-tap zoom / text-select / tap-highlight during rapid play
   touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
 };
@@ -620,17 +620,17 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
       transition: 'border-color .2s ease, background .2s ease',
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 24 }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', lineHeight: '24px' }}>Pro mode</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', height: 'calc(var(--subrow) * 3)' }}>
+          <span style={{ fontSize: 'calc(var(--gu) * 1.208)', fontWeight: 700, color: 'var(--text)', lineHeight: 'calc(var(--subrow) * 3)' }}>Pro mode</span>
           <span style={{
-            padding: '1px 6px', borderRadius: 999, fontSize: '0.54rem', fontWeight: 700,
+            padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
             textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
             border: '1px solid var(--accent)', color: 'var(--accent)',
           }}>
             true GTO
           </span>
         </div>
-        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: '16px', marginTop: 'var(--subrow)' }}>
+        <div style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', marginTop: 'var(--subrow)' }}>
           Grade {streetLbl} {isDraw ? 'bet' : ''} decisions against an <b style={{ color: 'var(--text)' }}>exact GTO re-solve</b> instead
           of the blueprint bot. Much more accurate — but each {streetLbl} decision runs a full solve ({isDraw ? '~1–2s' : '~4–5s'}), so
           finishing a hand is slower. {isDraw ? 'Earlier draws and every draw decision' : 'Earlier streets'} stay on the blueprint grade.
@@ -645,7 +645,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
         aria-label="Pro mode — true-GTO grading"
         title={on ? `Pro mode ON — ${streetLbl} decisions graded by exact GTO re-solve` : 'Pro mode OFF — blueprint grading (fast)'}
         style={{
-          flex: '0 0 auto', position: 'relative', width: 44, height: 24, borderRadius: 999,
+          flex: '0 0 auto', position: 'relative', width: 'calc(var(--subrow) * 5.5)', height: 'calc(var(--subrow) * 3)', borderRadius: 'var(--radius-pill)',
           border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border)'),
           background: on ? 'var(--accent)' : 'var(--surface2)',
           cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
@@ -653,7 +653,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
           touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
         }}>
         <span style={{
-          position: 'absolute', top: 2, left: on ? 22 : 2, width: 18, height: 18, borderRadius: '50%',
+          position: 'absolute', top: 'var(--space-2xs)', left: on ? 'calc(var(--subrow) * 2.75)' : 'var(--space-2xs)', width: 'calc(var(--subrow) * 2.25)', height: 'calc(var(--subrow) * 2.25)', borderRadius: '50%',
           background: '#fff', transition: 'left .18s cubic-bezier(.4,0,.2,1)',
           boxShadow: '0 1px 2px rgba(0,0,0,.3)',
         }} />
@@ -665,9 +665,9 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
 // pill matching SolverView's game pills (filled when active).
 const gamePill = (active, disabled) => ({
   touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-  height: 32, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-  padding: '0 12px', borderRadius: 999, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-  fontSize: '0.72rem', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
+  height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
+  padding: '0 var(--space-lg)', borderRadius: 'var(--radius-pill)', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+  fontSize: 'calc(var(--gu) * 1.060)', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
   border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
   background: active ? 'var(--text)' : 'transparent',
   color: active ? 'var(--bg)' : 'var(--text-muted)',
@@ -684,8 +684,8 @@ function StudTable({ state, heroSeat, handOver, result }) {
 
   return (
     <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 24, marginBottom: 'var(--subrow)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.95rem', lineHeight: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
+        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
           {STREET_NAMES[state.street] || `street ${state.street}`} street
         </span>
         <span style={label}>
@@ -699,12 +699,12 @@ function StudTable({ state, heroSeat, handOver, result }) {
         <div style={{
           marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)',
           background: 'color-mix(in srgb, var(--surface) 70%, #000)',
-          border: '1px dashed var(--border)', borderRadius: 10,
+          border: '1px dashed var(--border)', borderRadius: 'calc(var(--subrow) * 1.25)',
         }}>
-          <div style={{ marginBottom: 'var(--subrow)', height: 16 }}>
+          <div style={{ marginBottom: 'var(--subrow)', height: 'calc(var(--subrow) * 2)' }}>
             <span style={label}>Dead (folded): {deadCards.length} {deadCards.length === 1 ? 'card' : 'cards'}</span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 32, opacity: 0.85 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 4)', opacity: 0.85 }}>
             {deadCards.map((c, i) => <Card key={'dc' + i} str={c} dim size="sm" />)}
           </div>
         </div>
@@ -712,16 +712,16 @@ function StudTable({ state, heroSeat, handOver, result }) {
 
       {/* Opponent */}
       <div style={{ marginBottom: 'var(--subrow)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 16, marginBottom: 'var(--subrow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
           <span style={label}>Opponent</span>
           {state.toAct === (1 - heroSeat) && !handOver && (
-            <span style={{ fontSize: '0.6rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
           )}
         </div>
         {/* Card order: [2 hole cards] [upcards raised] [7th-street river, not raised].
             The river is a down card but sits at the END (right of the 6th upcard) and
             at hole-card level. Hidden pre-showdown; revealed face-up at showdown. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 48, paddingTop: 'calc(var(--subrow) * 2)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 6)', paddingTop: 'calc(var(--subrow) * 2)' }}>
           {/* 2 hole cards */}
           {oppShowdown
             ? oppShowdown.slice(0, 2).map((c, i) => <Card key={'od' + i} str={c} size="sm" />)
@@ -737,13 +737,13 @@ function StudTable({ state, heroSeat, handOver, result }) {
 
       {/* Hero */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 16, marginBottom: 'var(--subrow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
           <span style={label}>You</span>
           {state.toAct === heroSeat && !handOver && (
-            <span style={{ fontSize: '0.6rem', color: 'var(--pos, #22c55e)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--pos, #22c55e)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
           )}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 48, paddingTop: 'calc(var(--subrow) * 2)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 6)', paddingTop: 'calc(var(--subrow) * 2)' }}>
           {/* first 2 down = hole cards */}
           {(state.heroDown || []).slice(0, 2).map((c, i) => <Card key={'hd' + i} str={c} size="sm" />)}
           {/* upcards (3rd door + 4th/5th/6th), raised */}
@@ -755,7 +755,7 @@ function StudTable({ state, heroSeat, handOver, result }) {
 
       {/* Action log */}
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '16px', maxHeight: 128, overflowY: 'auto' }}>
+        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
           {state.log.map((e, i) => (
             <div key={i}>
               <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
@@ -821,28 +821,28 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
 
   return (
     <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 24, marginBottom: 'var(--subrow)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.95rem', lineHeight: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
+        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
           {roundLabel}
-          <span style={{ ...label, marginLeft: 6 }}>{phaseTag}</span>
+          <span style={{ ...label, marginLeft: 'var(--space-sm)' }}>{phaseTag}</span>
         </span>
         <span style={label}>Pot {state.pot}</span>
       </div>
 
       {/* Opponent — entirely hidden until showdown. */}
       <div style={{ marginBottom: 'var(--subrow)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 16, marginBottom: 'var(--subrow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
           <span style={label}>Opponent</span>
           {state.toAct === (1 - heroSeat) && !handOver && (
-            <span style={{ fontSize: '0.6rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
           )}
           {oppDraws.length > 0 && (
-            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted)' }}>
               {oppDraws.map((k, i) => `Opp drew ${k}`).join(' · ')}
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 38 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 4.75)' }}>
           {oppShowdown
             ? oppShowdown.map((c, i) => <Card key={'oc' + i} str={c} size="sm" />)
             : Array.from({ length: handSize }).map((_, i) => <Card key={'ob' + i} faceDown size="sm" />)}
@@ -851,13 +851,13 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
 
       {/* Hero — five face-up cards; on draw-button hover, ring kept vs throw. */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 16, marginBottom: 'var(--subrow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
           <span style={label}>You</span>
           {state.toAct === heroSeat && !handOver && (
-            <span style={{ fontSize: '0.6rem', color: 'var(--pos, #22c55e)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--pos, #22c55e)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
           )}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 46 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 5.75)' }}>
           {heroCards.map((c, i) => {
             // When the hero is PICKING, the source of truth is their click
             // selection (thrownSet); the solver-hint hover preview only applies
@@ -884,7 +884,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
                 style={{
                   touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-                  padding: 2, borderRadius: 7, margin: '0 1px',
+                  padding: 'var(--space-2xs)', borderRadius: 'calc(var(--subrow) * 0.875)', margin: '0 calc(var(--subrow) * 0.125)',
                   cursor: picking ? (drawDecision.stepping ? 'wait' : 'pointer') : 'default',
                   border: '2px solid ' + ring,
                   background: bg,
@@ -893,7 +893,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
                 }}>
                 <Card str={c} size="sm" dim={isThrow} />
                 {(picking || previewing) && (
-                  <span style={{ fontSize: '0.54rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: isThrow ? 'var(--neg, #ef4444)' : 'var(--pos, #22c55e)' }}>
+                  <span style={{ fontSize: 'calc(var(--gu) * 0.795)', textTransform: 'uppercase', letterSpacing: '0.04em', color: isThrow ? 'var(--neg, #ef4444)' : 'var(--pos, #22c55e)' }}>
                     {isThrow ? 'throw' : 'keep'}
                   </span>
                 )}
@@ -904,8 +904,8 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
 
         {/* hero's most recent discards (dimmed) */}
         {myDiscards.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-            <span style={{ ...label, marginRight: 6 }}>you discarded</span>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--space-md)' }}>
+            <span style={{ ...label, marginRight: 'var(--space-sm)' }}>you discarded</span>
             {myDiscards.map((c, i) => <Card key={'md' + i} str={c} dim size="sm" />)}
           </div>
         )}
@@ -917,46 +917,46 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
           lights up which cards IT would throw). The submitted action is the
           explicit string 'd:' + sorted thrown 2-char codes. */}
       {drawDecision && (
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-          <div style={{ ...label, marginBottom: 8 }}>
+        <div style={{ marginTop: 'calc(var(--subrow) * 1.75)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--border)' }}>
+          <div style={{ ...label, marginBottom: 'var(--space-md)' }}>
             Choose your discard {drawDecision.stepping ? '· …' : ''}
-            <span style={{ textTransform: 'none', marginLeft: 6, color: 'var(--text-muted)' }}>
+            <span style={{ textTransform: 'none', marginLeft: 'var(--space-sm)', color: 'var(--text-muted)' }}>
               (click any cards to throw them)
             </span>
           </div>
 
           {/* live count */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-ml)', marginBottom: 'var(--space-ml)' }}>
+            <span style={{ fontSize: 'calc(var(--gu) * 1.399)', fontWeight: 700, color: 'var(--text)' }}>
               {throwCount === 0
                 ? 'Standing pat — drawing 0'
                 : `Throwing ${throwCount} — drawing ${throwCount}`}
             </span>
             {throwCount > 0 && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                 ({heroCards.filter((_, i) => thrownSet.has(i)).join(' ')})
               </span>
             )}
           </div>
 
           {/* Stand Pat shortcut + Confirm */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
             <button onClick={standPat} disabled={drawDecision.stepping || throwCount === 0}
               style={{
-                flex: '0 0 auto', minWidth: 110, padding: '11px 16px', borderRadius: 8,
+                flex: '0 0 auto', minWidth: 'calc(var(--subrow) * 13.75)', padding: 'calc(var(--subrow) * 1.375) var(--space-xl)', borderRadius: 'var(--radius-sm)',
                 cursor: drawDecision.stepping ? 'wait' : (throwCount === 0 ? 'default' : 'pointer'),
                 border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
-                fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 700,
+                fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 700,
                 opacity: drawDecision.stepping || throwCount === 0 ? 0.55 : 1,
               }}>
               Stand Pat
             </button>
             <button onClick={confirmDiscard} disabled={drawDecision.stepping}
               style={{
-                flex: '1 1 auto', minWidth: 140, padding: '11px 16px', borderRadius: 8,
+                flex: '1 1 auto', minWidth: 'calc(var(--subrow) * 17.5)', padding: 'calc(var(--subrow) * 1.375) var(--space-xl)', borderRadius: 'var(--radius-sm)',
                 cursor: drawDecision.stepping ? 'wait' : 'pointer', border: 'none',
                 background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'inherit',
-                fontSize: '0.9rem', fontWeight: 700, opacity: drawDecision.stepping ? 0.6 : 1,
+                fontSize: 'calc(var(--gu) * 1.325)', fontWeight: 700, opacity: drawDecision.stepping ? 0.6 : 1,
               }}>
               {throwCount === 0 ? 'Confirm — Stand Pat' : `Confirm Discard — Draw ${throwCount}`}
             </button>
@@ -978,7 +978,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
 
       {/* Action log (shared shape with StudTable; draw rounds included). */}
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '16px', maxHeight: 128, overflowY: 'auto' }}>
+        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
           {state.log.map((e, i) => (
             <div key={i}>
               <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
@@ -1026,11 +1026,11 @@ function SolverDrawHint({ legalActions, gtoMix, heroCards, onHover }) {
 
   return (
     <div style={{
-      marginTop: 4, padding: '8px 10px', borderRadius: 8,
+      marginTop: 'var(--space-xs)', padding: 'var(--space-md) var(--space-ml)', borderRadius: 'var(--radius-sm)',
       background: 'var(--surface2)', border: '1px solid var(--border)',
-      fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.5,
+      fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)', lineHeight: 1.5,
     }}>
-      <span style={{ ...label, marginRight: 6 }}>Solver</span>
+      <span style={{ ...label, marginRight: 'var(--space-sm)' }}>Solver</span>
       {sorted.map(({ a, p, idx }, i) => (
         <span key={a.id}
           onMouseEnter={() => onHover(idx)}
@@ -1083,14 +1083,14 @@ function ResultBanner({ result, heroSeat, game }) {
   }
 
   return (
-    <div style={{ ...panel, marginTop: 12, borderColor: delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)' }}>
+    <div style={{ ...panel, marginTop: 'var(--space-lg)', borderColor: delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+        <span style={{ fontWeight: 700, fontSize: 'calc(var(--gu) * 1.472)', color: 'var(--text)' }}>
           {headline}
-          {result.endType === 'fold' && <span style={{ ...label, marginLeft: 6 }}>(by fold)</span>}
+          {result.endType === 'fold' && <span style={{ ...label, marginLeft: 'var(--space-sm)' }}>(by fold)</span>}
         </span>
         <span style={{
-          fontSize: '1.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+          fontSize: 'calc(var(--gu) * 2.062)', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
           color: delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--text-muted)',
         }}>
           {delta > 0 ? '+' : ''}{delta} chips
@@ -1102,19 +1102,19 @@ function ResultBanner({ result, heroSeat, game }) {
         ? <Stud8Boards sd={sd} />
         : isDraw
         ? ((sd.heroHand || sd.oppHand) && (
-            <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 'var(--space-md)', fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               {sd.heroHand && <div>Your hand: <b style={{ color: 'var(--text)' }}>{sd.heroHand}</b></div>}
               {sd.oppHand && <div>Opp hand: <b style={{ color: 'var(--text)' }}>{sd.oppHand}</b></div>}
               {Array.isArray(sd.oppCards) && sd.oppCards.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
-                  <span style={{ ...label, marginRight: 6 }}>opp shows</span>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--space-sm)' }}>
+                  <span style={{ ...label, marginRight: 'var(--space-sm)' }}>opp shows</span>
                   {sd.oppCards.map((c, i) => <Card key={'os' + i} str={c} size="sm" />)}
                 </div>
               )}
             </div>
           ))
         : ((sd.heroLow || sd.oppLow) && (
-            <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 'var(--space-md)', fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               {sd.heroLow && <div>Your low: <b style={{ color: 'var(--text)' }}>{sd.heroLow}</b></div>}
               {sd.oppLow && <div>Opp low: <b style={{ color: 'var(--text)' }}>{sd.oppLow}</b></div>}
             </div>
@@ -1151,35 +1151,35 @@ function Stud8Boards({ sd }) {
   const lo = sd.lo || {};
   const loQualifies = !!(lo.winner && lo.winner !== 'none');
   return (
-    <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: 'var(--subrow) var(--gu)' }}>
-        <div style={{ ...label, marginBottom: 4 }}>High · {sideWinnerLabel(hi.winner)}</div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text)', lineHeight: 1.4 }}>
+    <div style={{ marginTop: 'var(--space-ml)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
+        <div style={{ ...label, marginBottom: 'var(--space-xs)' }}>High · {sideWinnerLabel(hi.winner)}</div>
+        <div style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)', lineHeight: 1.4 }}>
           {hi.hand ? <b>{hi.hand}</b> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
         </div>
         {(hi.heroHand || hi.oppHand) && (
-          <div style={{ marginTop: 4, fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          <div style={{ marginTop: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             {hi.heroHand && <div>You: {hi.heroHand}</div>}
             {hi.oppHand && <div>Opp: {hi.oppHand}</div>}
           </div>
         )}
       </div>
-      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: 'var(--subrow) var(--gu)' }}>
-        <div style={{ ...label, marginBottom: 4 }}>Low · {loQualifies ? sideWinnerLabel(lo.winner) : 'no qualifier'}</div>
+      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
+        <div style={{ ...label, marginBottom: 'var(--space-xs)' }}>Low · {loQualifies ? sideWinnerLabel(lo.winner) : 'no qualifier'}</div>
         {loQualifies ? (
           <>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)', lineHeight: 1.4 }}>
               {lo.hand ? <b>{lo.hand}</b> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
             </div>
             {(lo.heroLow || lo.oppLow) && (
-              <div style={{ marginTop: 4, fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              <div style={{ marginTop: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {lo.heroLow && <div>You: {lo.heroLow}</div>}
                 {lo.oppLow && <div>Opp: {lo.oppLow}</div>}
               </div>
             )}
           </>
         ) : (
-          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>No 8-or-better low — hi takes it all</div>
+          <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>No 8-or-better low — hi takes it all</div>
         )}
       </div>
     </div>
@@ -1266,19 +1266,19 @@ function GradeCard({ g, game }) {
 
   return (
     <div style={{
-      ...panel, marginBottom: 10,
+      ...panel, marginBottom: 'var(--space-ml)',
       borderColor: isLeak ? 'var(--neg, #ef4444)' : 'var(--border)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+        <span style={{ fontWeight: 700, fontSize: 'calc(var(--gu) * 1.252)', color: 'var(--text)' }}>
           {head}
-          <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+          <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.149)' }}>
             {' '}· you {g.heroActionLabel || g.heroActionId}
           </span>
           {lowConf && (
             <span title="Opponent range degraded (low particle-filter confidence) — treat this EV as approximate."
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px solid var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
@@ -1290,7 +1290,7 @@ function GradeCard({ g, game }) {
           {isOracleGrade && (
             <span title={`Graded by the exact GTO re-solve (true GTO), not the blueprint bot.${g.oracleIters ? ` ${g.oracleIters} CFR+ iters` : ''}${g.oracleResolveExploitability != null ? ` · resolver self-play gap ${Number(g.oracleResolveExploitability).toFixed(2)} chips` : ''}`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px solid var(--accent)', color: 'var(--accent)',
               }}>
@@ -1300,7 +1300,7 @@ function GradeCard({ g, game }) {
           {isNetGrade && (
             <span title={`Graded by the CERTIFIED value net (torch-free) — a neural approximator of GTO for this pre-last-draw badugi spot, NOT an exact re-solve. Certified mean grade error ~${certSB.toFixed(2)} small bets.${g.netValueGauge != null ? ` · net zero-sum residual ${Number(g.netValueGauge).toExponential(1)}` : ''}`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px solid var(--accent)', color: 'var(--accent)',
               }}>
@@ -1310,7 +1310,7 @@ function GradeCard({ g, game }) {
           {isOracle6thGrade && (
             <span title={`Graded by the bucketed 6th→7th re-solve — APPROXIMATE (bucket abstraction), NOT exact. SHOWN but NOT charged to your score. Estimated abstraction gap ~${oracle6thChips.toFixed(1)} chips for this game.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
@@ -1320,7 +1320,7 @@ function GradeCard({ g, game }) {
           {isOracle5thGrade && (
             <span title={`Graded by a depth-limited 5th-street re-solve using the 6th value net as the leaf — APPROXIMATE (net leaf + public up-card sampling, and NO exact anchor below 6th street). SHOWN but NOT charged to your score. The softest tier — one street below the last exactly-referenceable street.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
@@ -1330,7 +1330,7 @@ function GradeCard({ g, game }) {
           {oracleFellBack && (
             <span title={`Pro mode was on, but the ${netEligibleStreet ? 'certified value net' : 'exact re-solver'} was unavailable for this decision — this grade fell back to the blueprint bot. Treat it as an ordinary blueprint grade, not ${netEligibleStreet ? 'a certified-net grade' : 'true GTO'}.`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
               }}>
@@ -1340,7 +1340,7 @@ function GradeCard({ g, game }) {
           {gradeSource === 'blueprint' && !oracleFellBack && (
             <span title={`Graded by the blueprint bot — the Pro-mode oracle covers only ${oracleStreetLabel(game)} decisions.`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px solid var(--border)', color: 'var(--text-muted)',
               }}>
@@ -1350,7 +1350,7 @@ function GradeCard({ g, game }) {
           {oracleUnconverged && (
             <span title={`The oracle's per-action EV had not converged at ${g.oracleIters || '?'} iters — treat this grade as approximate.`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
               }}>
@@ -1360,7 +1360,7 @@ function GradeCard({ g, game }) {
           {rangeSensitive && (
             <span title={`This decision's grade depends on the ASSUMED opponent range: across a spread of plausible ranges the oracle's best action flips or the EV-loss swings by more than a small bet${rsSpread ? ` (EV-loss ranged ${rsSpread[0].toFixed(1)}–${rsSpread[1].toFixed(1)} chips)` : ''}. It is shown for study but ${notCharged ? 'NOT counted' : 'still counted'} in your session score.`}
               style={{
-                marginLeft: 8, padding: '1px 6px', borderRadius: 999, fontSize: '0.58rem', fontWeight: 700,
+                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
@@ -1369,7 +1369,7 @@ function GradeCard({ g, game }) {
           )}
         </span>
         <span style={{
-          fontSize: '0.82rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+          fontSize: 'calc(var(--gu) * 1.208)', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
           color: isLeak ? 'var(--neg, #ef4444)' : evLoss > 0.01 ? 'var(--accent)' : 'var(--pos, #22c55e)',
         }}>
           {evLoss <= 0.01 ? 'optimal' : `−${evLoss.toFixed(2)} chips`}
@@ -1386,7 +1386,7 @@ function GradeCard({ g, game }) {
           const ev = g.perActionEV ? g.perActionEV[id] : undefined;
           const marker = isHero && isBest ? '✓←' : isBest ? '✓' : isHero ? '←' : '';
           return (
-            <div key={id} style={{ marginBottom: 4 }}>
+            <div key={id} style={{ marginBottom: 'var(--space-xs)' }}>
               <ActionBar
                 name={lbl}
                 pct={Math.round((probs[i] || 0) * 100)}
@@ -1394,7 +1394,7 @@ function GradeCard({ g, game }) {
                 marker={marker}
               />
               {ev !== undefined && (
-                <div style={{ marginLeft: 86, marginTop: -2, marginBottom: 4, fontSize: '0.66rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ marginLeft: 'calc(var(--subrow) * 10.75)', marginTop: 'calc(var(--subrow) * -0.25)', marginBottom: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                   EV {ev >= 0 ? '+' : ''}{Number(ev).toFixed(2)} chips{isBest ? ' · best' : ''}{isHero ? ' · your pick' : ''}
                 </div>
               )}
@@ -1408,10 +1408,10 @@ function GradeCard({ g, game }) {
           play, and the note (recommended keep vs non-standard / off-book). */}
       {isExplicit && (
         <div style={{
-          marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)',
-          fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.5,
+          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)',
+          fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)', lineHeight: 1.5,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: thrownCards.length ? 4 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-sm)', marginBottom: thrownCards.length ? 'var(--space-xs)' : 0 }}>
             <span style={{ ...label }}>Your discard</span>
             {thrownCards.length === 0
               ? <b style={{ color: 'var(--text)' }}>stand pat (threw nothing)</b>
@@ -1443,10 +1443,10 @@ function GradeCard({ g, game }) {
           skipped on the fast path, so it's usually present only on fallback/debug). */}
       {isOracleGrade && (
         <div style={{
-          marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)',
-          fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.5,
+          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)',
+          fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5,
         }}>
-          <span style={{ ...label, marginRight: 6 }}>Oracle</span>
+          <span style={{ ...label, marginRight: 'var(--space-sm)' }}>Oracle</span>
           exact GTO re-solve · EV-loss{' '}
           <b style={{ color: lossColor(evLoss), fontVariantNumeric: 'tabular-nums' }}>
             {evLoss <= 0.01 ? '0.00' : `−${evLoss.toFixed(2)}`}
@@ -1460,7 +1460,7 @@ function GradeCard({ g, game }) {
             ? <span style={{ color: 'var(--pos, #22c55e)' }}> · EV-converged</span>
             : null}
           {rangeSensitive && (
-            <div style={{ marginTop: 4, color: 'var(--accent2, #eab308)' }}>
+            <div style={{ marginTop: 'var(--space-xs)', color: 'var(--accent2, #eab308)' }}>
               range-sensitive{rsSpread ? ` · EV-loss spans ${rsSpread[0].toFixed(2)}–${rsSpread[1].toFixed(2)} chips across plausible opponent ranges` : ''}
               {notCharged ? ' · not charged to your score' : ' · counted in your score'}
             </div>
@@ -1486,12 +1486,12 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
 
   return (
     <div style={{ ...panel, marginTop: 'calc(var(--subrow) * 3)', background: 'var(--surface2)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', height: 24, marginBottom: 'var(--subrow)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
         <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>{gameName ? `${gameName} scoreboard` : 'Session scoreboard'}</span>
         <button onClick={onReset}
           style={{
-            height: 24, boxSizing: 'border-box', padding: '0 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent',
-            color: 'var(--text-muted)', fontFamily: 'inherit', fontSize: '0.66rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em',
+            height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-ml)', borderRadius: 'calc(var(--subrow) * 0.75)', border: '1px solid var(--border)', background: 'transparent',
+            color: 'var(--text-muted)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.972)', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em',
           }}>
           Reset session
         </button>
@@ -1511,12 +1511,12 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
           const a = b.n > 0 ? b.loss / b.n : 0;
           const max = Math.max(0.001, ...session.byStreet.slice(0, nRows).map((x) => (x.n > 0 ? x.loss / x.n : 0)));
           return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: catOf(game) === 'draw' ? 78 : 30, fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{rowLabel(i)}</span>
-              <div style={{ flex: 1, height: 12, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.round((a / max) * 100)}%`, background: a > 0.5 ? 'var(--neg, #ef4444)' : 'var(--accent2)', borderRadius: 3, transition: 'width .4s ease' }} />
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+              <span style={{ width: catOf(game) === 'draw' ? 'calc(var(--subrow) * 9.75)' : 'calc(var(--subrow) * 3.75)', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{rowLabel(i)}</span>
+              <div style={{ flex: 1, height: 'calc(var(--subrow) * 1.5)', background: 'var(--surface)', borderRadius: 'calc(var(--subrow) * 0.375)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.round((a / max) * 100)}%`, background: a > 0.5 ? 'var(--neg, #ef4444)' : 'var(--accent2)', borderRadius: 'calc(var(--subrow) * 0.375)', transition: 'width .4s ease' }} />
               </div>
-              <span style={{ width: 64, textAlign: 'right', fontSize: '0.68rem', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ width: 'calc(var(--subrow) * 8)', textAlign: 'right', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
                 {b.n > 0 ? `${a.toFixed(2)}` : '—'}
                 <span style={{ color: 'var(--text-muted)' }}> ({b.n})</span>
               </span>
@@ -1528,13 +1528,13 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
       {/* recurring leaks */}
       <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Biggest recurring leaks</div>
       {topLeaks.length === 0 ? (
-        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>
           {session.hands ? 'No leaks yet — clean session.' : 'Play a hand to start tracking leaks.'}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           {topLeaks.map((l) => (
-            <div key={l.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: '0.74rem' }}>
+            <div key={l.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-md)', fontSize: 'calc(var(--gu) * 1.090)' }}>
               <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.key}</span>
               <span style={{ color: 'var(--neg, #ef4444)', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
                 −{l.chips.toFixed(1)} <span style={{ color: 'var(--text-muted)' }}>×{l.n}</span>
@@ -1550,10 +1550,10 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
 function Stat({ label: lab, value, unit, tone }) {
   const color = tone === 'neg' ? 'var(--neg, #ef4444)' : tone === 'pos' ? 'var(--pos, #22c55e)' : 'var(--text)';
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 'var(--subrow) var(--gu)' }}>
-      <div style={{ ...label, marginBottom: 'var(--space-2xs)', height: 16 }}>{lab}</div>
-      <div style={{ fontSize: '1.1rem', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-        {value}{unit ? <span style={{ fontSize: '0.66rem', fontWeight: 400, color: 'var(--text-muted)' }}> {unit}</span> : null}
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
+      <div style={{ ...label, marginBottom: 'var(--space-2xs)', height: 'calc(var(--subrow) * 2)' }}>{lab}</div>
+      <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
+        {value}{unit ? <span style={{ fontSize: 'calc(var(--gu) * 0.972)', fontWeight: 400, color: 'var(--text-muted)' }}> {unit}</span> : null}
       </div>
     </div>
   );
@@ -1579,10 +1579,10 @@ function PerRoundStrip({ perRound, game }) {
     const op = v > 0.01 ? 1 : 0.5;
     cells.push(
       <div key={i} title={`${catOf(game) === 'draw' ? DRAW_BET_NAMES[i] : STREET_NAMES[i]}: −${v.toFixed(2)}`}
-        style={{ flex: 1, height: 6, background: bg, opacity: op, borderRadius: 2 }} />
+        style={{ flex: 1, height: 'calc(var(--subrow) * 0.75)', background: bg, opacity: op, borderRadius: 'calc(var(--subrow) * 0.25)' }} />
     );
   }
-  return <div style={{ display: 'flex', gap: 3, width: 70, flex: '0 0 auto' }}>{cells}</div>;
+  return <div style={{ display: 'flex', gap: 'calc(var(--subrow) * 0.375)', width: 'calc(var(--subrow) * 8.75)', flex: '0 0 auto' }}>{cells}</div>;
 }
 
 // Durable per-hand history for the current game (DB-backed). Collapsed by
@@ -1629,7 +1629,7 @@ function TrainerHistory({ game, gameName, rev }) {
   }, [expandedId, game]);
 
   return (
-    <div style={{ ...panel, marginTop: 14, background: 'var(--surface2)' }}>
+    <div style={{ ...panel, marginTop: 'calc(var(--subrow) * 1.75)', background: 'var(--surface2)' }}>
       <button onClick={() => setOpen((o) => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1638,47 +1638,47 @@ function TrainerHistory({ game, gameName, rev }) {
         <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>
           {gameName ? `${gameName} history` : 'Hand history'}
         </span>
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{open ? 'Hide ▲' : 'Show ▼'}</span>
+        <span style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)' }}>{open ? 'Hide ▲' : 'Show ▼'}</span>
       </button>
 
       {open && (
         <div style={{ marginTop: 'var(--subrow)' }}>
           {loading && hands == null ? (
-            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Loading history…</div>
+            <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>Loading history…</div>
           ) : error ? (
-            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Couldn’t load history (offline?). Played hands are saved when you’re back online.</div>
+            <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>Couldn’t load history (offline?). Played hands are saved when you’re back online.</div>
           ) : hands && hands.length === 0 ? (
-            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>No saved hands yet — play one to start your history.</div>
+            <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>No saved hands yet — play one to start your history.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
               {(hands || []).map((h) => {
                 const isOpen = expandedId === h.id;
                 return (
-                  <div key={h.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div key={h.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                     <button onClick={() => toggleRow(h.id)}
                       style={{
-                        width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--space-ml)', padding: 'var(--space-md) var(--space-ml)',
                         background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                       }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>
                         {fmtPlayedAt(h.played_at)}
                       </span>
                       <PerRoundStrip perRound={h.per_round} game={game} />
                       <span style={{ flex: 1 }} />
-                      <span style={{ fontSize: '0.78rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: lossColor(+h.ev_loss_total || 0), flex: '0 0 auto' }}>
+                      <span style={{ fontSize: 'calc(var(--gu) * 1.149)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: lossColor(+h.ev_loss_total || 0), flex: '0 0 auto' }}>
                         {(+h.ev_loss_total || 0) <= 0.01 ? 'optimal' : `−${(+h.ev_loss_total || 0).toFixed(2)}`}
                       </span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flex: '0 0 auto' }}>{isOpen ? '▲' : '▼'}</span>
+                      <span style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', flex: '0 0 auto' }}>{isOpen ? '▲' : '▼'}</span>
                     </button>
 
                     {isOpen && (
-                      <div style={{ padding: '0 10px 10px', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ padding: '0 var(--space-ml) var(--space-ml)', borderTop: '1px solid var(--border)' }}>
                         {detailLoading || !detail || detail.id !== h.id ? (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', padding: '8px 0' }}>Loading hand…</div>
+                          <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', padding: 'var(--space-md) 0' }}>Loading hand…</div>
                         ) : !detail.hand || !Array.isArray(detail.hand.grades) || detail.hand.grades.length === 0 ? (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', padding: '8px 0' }}>No recorded decisions for this hand.</div>
+                          <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', padding: 'var(--space-md) 0' }}>No recorded decisions for this hand.</div>
                         ) : (
-                          <div style={{ marginTop: 10 }}>
+                          <div style={{ marginTop: 'var(--space-ml)' }}>
                             {detail.hand.grades.map((g, i) => <GradeCard key={i} g={g} game={game} />)}
                           </div>
                         )}
