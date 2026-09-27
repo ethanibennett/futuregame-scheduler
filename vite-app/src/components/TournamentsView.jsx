@@ -1236,6 +1236,7 @@ export default function TournamentsView({
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
   const importBtnRef = useRef(null);
   const [dateBreakTop, setDateBreakTop] = useState(0);
+  const dateBreakTopRef = useRef(0);
   const scrollAnchorRef = useRef(null);
   const fabContainerRef = useRef(null);
   const [collapsedDates, setCollapsedDates] = useState(() => {
@@ -1340,7 +1341,15 @@ export default function TournamentsView({
       const h = el.getBoundingClientRect().height;
       const style = getComputedStyle(el);
       const mt = parseFloat(style.marginTop) || 0;
-      setDateBreakTop(h + mt);
+      const v = h + mt;
+      // Only commit a real change (>0.5px). This lets the scroll listener below
+      // run every frame without ever re-rendering unless the height actually
+      // moved — so a stale mount value self-corrects on the first scroll (the
+      // exact moment pinning starts to matter) at zero steady-state cost.
+      if (Math.abs(v - dateBreakTopRef.current) > 0.5) {
+        dateBreakTopRef.current = v;
+        setDateBreakTop(v);
+      }
     };
     // The date-break pins at this height. On a WKWebView the filter block reaches
     // its full height AFTER first layout (the checkbox row and the safe-area
@@ -1348,19 +1357,24 @@ export default function TournamentsView({
     // it at ~6r — half its real 12r — and the pill pinned that far too high, up
     // inside the filters, with its top clipped. Measured live on device:
     // sf 8.01->20.02r (12r) but db pinned at 14.11r, ~6r above where it should.
-    // A ResizeObserver tracks the true height however late it settles; the rAFs
-    // and timeouts cover the first frames before the observer is wired.
+    // Three independent safety nets so no timing quirk can bring it back: a
+    // ResizeObserver tracks the true height however late it settles, settle-frame
+    // passes cover the first frames, and a guarded scroll listener re-checks the
+    // instant the user scrolls (when the pin first matters).
     measure();
     const rafs = [requestAnimationFrame(() => { measure(); requestAnimationFrame(measure); })];
     const timers = [setTimeout(measure, 150), setTimeout(measure, 500), setTimeout(measure, 1200)];
     let ro;
     if ('ResizeObserver' in window) { ro = new ResizeObserver(measure); ro.observe(el); }
+    const ca = document.querySelector('.content-area');
+    if (ca) ca.addEventListener('scroll', measure, { passive: true });
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
     return () => {
       rafs.forEach(cancelAnimationFrame);
       timers.forEach(clearTimeout);
       if (ro) ro.disconnect();
+      if (ca) ca.removeEventListener('scroll', measure);
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
     };
