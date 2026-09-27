@@ -2097,9 +2097,9 @@
 
     .top-bar-title {
       /* A 2-track grid from the bar top: the wordmark's trimmed baseline lands on
-         4r, the season's on 6r (align-items:end per track). No nudge. */
+         3r, the season's on 5r (align-items:end per track). No nudge. */
       display: grid;
-      grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2);
+      grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 2);
       align-items: end;
     }
     .top-bar-title h1 { text-box-trim: trim-both; text-box-edge: cap alphabetic; }
@@ -7005,7 +7005,10 @@
     html[data-platform^="ios"] .top-bar-actions {
       position: absolute;
       left: 50%;
-      transform: translateX(-50%);
+      /* Centre the three icons on the 4r line (the bar's vertical middle) — the
+         line the wordmark used to rest on — not just horizontally. */
+      top: 50%;
+      transform: translate(-50%, -50%);
       width: 125px;
       justify-content: space-between;
       gap: 0;
