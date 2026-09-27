@@ -7587,7 +7587,7 @@
          derive from the measured filters height, so they follow it. Horizontal
          padding is one grid unit so the row is 35g on the rails and its
          children land on g-lines. */
-      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) var(--space-xl);
+      padding: calc(var(--space-lg) + var(--subrow)) var(--gu) calc(var(--subrow) * 2);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
          card was peeking over the header. Promoting the sticky to its own GPU
@@ -7671,7 +7671,7 @@
     .filter-chip-square {
       width: calc(var(--gu) * 3); /* 3g wide; the location chip (flex:1) absorbs
                                      the rest so the gaps stay 1g */
-      height: 32px;
+      height: calc(var(--subrow) * 4); /* 4r, a whole-r control box */
       padding: 0;
       border-radius: var(--radius-sm);
     }

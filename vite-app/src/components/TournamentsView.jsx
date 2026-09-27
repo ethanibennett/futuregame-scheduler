@@ -164,28 +164,28 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             Online was on); it is gone from the UI — see the note on
             onlyAvailableOnline in DEFAULT_FILTERS. */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%'}}>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSatellites}
               onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
-              style={{margin:0,width:'16px',height:'16px'}}
+              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Satellites
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideRestarts}
               onChange={e => setFiltersRaw(f => ({...f, hideRestarts:!e.target.checked}))}
-              style={{margin:0,width:'16px',height:'16px'}}
+              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Restarts
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSideEvents}
               onChange={e => setFiltersRaw(f => ({...f, hideSideEvents:!e.target.checked}))}
-              style={{margin:0,width:'16px',height:'16px'}}
+              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Side Events
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'16px',gap:'3px',fontSize:'0.78rem',lineHeight:'16px',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={filters.showOnline !== false}
               onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
-              style={{margin:0,width:'16px',height:'16px'}}
+              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Online
           </label>
         </div>
@@ -1585,7 +1585,7 @@ export default function TournamentsView({
             ref={locationBtnRef}
             className={`filter-chip ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
-            style={{flex:1,minWidth:0,height:'32px',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'8px',padding:'0 10px'}}
+            style={{flex:1,minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'8px',padding:'0 10px'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
               ? LOCATION_REGIONS[filters.locationRegion].label
               : filters.userLocation && filters.maxDistance
