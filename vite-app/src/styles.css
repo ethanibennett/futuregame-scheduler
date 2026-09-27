@@ -315,7 +315,8 @@
          where the label below was being cut. 40 gives the 35 the content needs
          plus symmetric breathing room. */
       --tab-h:     40px;
-      --header-h:  64px;  /* 8 subrows */
+      --header-h:  calc(var(--subrow) * 8);  /* 8 subrows, in r so the content
+                        below the bar starts on an exact overlay r-line */
       /* Single source of truth for nav height — used by .bottom-nav for
          its own height AND by .replayer-bottom-fixed for `bottom` so the
          two positions can never drift relative to each other. */
@@ -2078,7 +2079,10 @@
       background: transparent;
       border-bottom: 1px solid var(--border);
       display: flex;
-      align-items: center;
+      /* flex-start, not center: the title and user chip each seat their own
+         baseline on an r-line from the bar top (see below). Centering floated
+         the block and forced a nudge. */
+      align-items: flex-start;
       position: relative;
       justify-content: space-between;
       /* Gutter to gutter: the header sits on the same 1g rails as the content
@@ -2090,15 +2094,13 @@
     }
 
     .top-bar-title {
-      display: flex;
-      flex-direction: column;
-      /* Seat on the grid. align-items:center floats the block, landing the
-         wordmark baseline 4.14px above the 32 line and the season the same above
-         48; the two are already 16px (2 subrows) apart, so one shift seats both.
-         A measured seat, per the standing baseline rule. */
-      position: relative;
-      top: 4.14px;
+      /* A 2-track grid from the bar top: the wordmark's trimmed baseline lands on
+         4r, the season's on 6r (align-items:end per track). No nudge. */
+      display: grid;
+      grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2);
+      align-items: end;
     }
+    .top-bar-title h1 { text-box-trim: trim-both; text-box-edge: cap alphabetic; }
 
     /* The splash sets this wordmark at 1.6rem/-0.02em; the bar set it at
        15.2px/-0.05em, tight enough at that size to close the gap between the
@@ -2140,6 +2142,7 @@
     .top-bar-title small {
       font-size: var(--fs-xs);
       color: var(--text-muted);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* Three icon buttons (notifications, broadcast, theme). On iOS this group
@@ -2151,10 +2154,13 @@
        room to let them sit in normal right-aligned flow. */
     .top-bar-actions {
       display: flex; align-items: center; gap: var(--space-sm);
-      position: absolute; left: 50%; transform: translateX(-50%); margin-left: 0;
+      /* Centred in the 8r bar (its own centre on the 4r line). The bar is now
+         align-items:flex-start, so this absolute group sets its own vertical
+         centre rather than inheriting the old align-items:center. */
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin-left: 0;
     }
     @media (min-width: 640px) {
-      .top-bar-actions { position: static; transform: none; margin-left: auto; }
+      .top-bar-actions { position: static; top: auto; transform: none; margin-left: auto; align-self: center; }
     }
     .top-bar-actions .btn-icon {
       width: 32px; height: 32px; min-width: 32px;
@@ -2170,12 +2176,6 @@
     .username-chip {
       font-size: var(--fs-sm);
       color: var(--text-muted);
-      /* Seat the name on the wordmark's 32 line. Measured against the real
-         (self-hosted) fonts: the chip's natural baseline is 31.5 from the bar
-         top, so +0.5 lands it on 32. (The old -4.5 was calibrated against a
-         fallback font in a harness that didn't render the real UI face.) */
-      position: relative;
-      top: 0.5px;
       max-width: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -2184,6 +2184,9 @@
       transition: color var(--dur-fast);
       font-family: inherit;
     }
+    /* Trim the name so its box bottom is its baseline; the chip is align-items:
+       flex-end in a 4r cell, so that baseline lands on 4r — the wordmark's line. */
+    .username-chip span { text-box-trim: trim-both; text-box-edge: cap alphabetic; }
     @media (hover: hover) and (pointer: fine) {
       .username-chip:hover { color: var(--text); }
     }
