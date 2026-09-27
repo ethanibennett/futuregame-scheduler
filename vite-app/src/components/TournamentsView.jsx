@@ -1218,11 +1218,19 @@ export default function TournamentsView({
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
-    const stickyEl = container.querySelector('.sticky-filters');
-    const filtersH = stickyEl ? stickyEl.getBoundingClientRect().height : 0;
-    const cTop = container.getBoundingClientRect().top;
-    const groupAbsTop = dateGroupEl.getBoundingClientRect().top - cTop + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH + 4), behavior });
+    // Land the group's date-break exactly on the sticky filter block's bottom
+    // r-line, measured from the bar top (the overlay origin) — all in r, no pixel
+    // filtersH and no +4 fudge (that was seating the whole day ~4px above the
+    // grid, which floated the pill and every card off every overlay line).
+    const bar = document.querySelector('.top-bar');
+    const barTop = bar ? bar.getBoundingClientRect().top : container.getBoundingClientRect().top;
+    const r = (window.innerWidth / 37) * 0.71;
+    const stickyEl = container.querySelector('.sticky-filters') || container.querySelector('.schedule-sticky-header');
+    const stickyBottomR = stickyEl ? Math.round((stickyEl.getBoundingClientRect().bottom - barTop) / r) : 8;
+    const desiredTop = barTop + stickyBottomR * r;
+    const delta = dateGroupEl.getBoundingClientRect().top - desiredTop;
+    if (Math.abs(delta) < 1) return;
+    container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior });
   }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);
@@ -1328,7 +1336,10 @@ export default function TournamentsView({
         const h = stickyFiltersRef.current.getBoundingClientRect().height;
         const style = getComputedStyle(stickyFiltersRef.current);
         const mt = parseFloat(style.marginTop) || 0;
-        setDateBreakTop(h + mt);
+        // Store the sticky offset in WHOLE r, not px: the date-break's CSS `top`
+        // is then calc(var(--subrow) * N) so it pins on an exact r-line.
+        const r = (window.innerWidth / 37) * 0.71;
+        setDateBreakTop(Math.round((h + mt) / r));
       }
     };
     measure();
@@ -1721,7 +1732,7 @@ export default function TournamentsView({
               const dayEventCount = group.events.filter(t => !t.is_restart).length;
               const isCollapsed = collapsedDates.has(group.date);
               return (
-                <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
+                <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'var(--subrow)'}}>
                   <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />
                   {!isCollapsed && group.events.map(t => {
                     const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id;

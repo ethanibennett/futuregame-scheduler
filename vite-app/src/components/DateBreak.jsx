@@ -51,7 +51,7 @@ export default function DateBreak({
   return (
     <div
       className={`schedule-date-break${isToday ? ' is-today' : ''}`}
-      style={{ top: top + 'px' }}
+      style={{ top: `calc(var(--subrow) * ${top})` }}
       {...(collapsible ? { onClick: onToggle } : {})}
     >
       {onPillClick ? (
