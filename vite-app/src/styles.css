@@ -3344,7 +3344,7 @@
     .gto-action-icon {
       font-size: var(--fs-xl);
       line-height: 1;
-      height: 1.2rem;
+      height: var(--icon-lg);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -6927,8 +6927,8 @@
       opacity: 1;
     }
     .ptr-spinner {
-      width: calc(var(--subrow) * 2.5);
-      height: calc(var(--subrow) * 2.5);
+      width: calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 3);
       border: calc(var(--subrow) * 0.25) solid var(--border);
       border-top-color: var(--accent);
       border-radius: var(--radius-circle);
@@ -6953,7 +6953,7 @@
        compensate for that, and pushed them further down. */
     .bottom-nav {
       height: calc(var(--tab-h) + var(--sa-b));
-      min-height: calc(var(--subrow) * 5.5);
+      min-height: var(--tab-h);
       padding-bottom: var(--sa-b);
       /* Mirrors the header: deepest at the very bottom of the screen, settling to --surface where
          the content meets it. --nav-h already includes safe-area-inset-bottom, so unlike the
@@ -7282,7 +7282,7 @@
       border-radius: var(--radius-sm);
     }
     .skeleton-text {
-      height: 0.8rem;
+      height: calc(var(--subrow) * 1.66);
       margin-bottom: var(--space-sm);
       border-radius: var(--radius-xs);
     }
@@ -7659,7 +7659,12 @@
       align-items: center;
       justify-content: center;
       gap: var(--space-sm);
-      padding: var(--space-sm) var(--space-lg);
+      /* Seated to a whole 4r: the 0.75r vertical padding + line-height put the
+         box at ~3.85r, off the grid. Fixed height + horizontal-only padding
+         lands the chip on an r-line; box-sizing keeps the 1px border inside it. */
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      padding: 0 var(--space-lg);
       background: var(--surface);
       border: var(--bw-1) solid var(--border);
       border-radius: var(--radius-lg);
@@ -9145,20 +9150,32 @@
       transition-delay: 0.06s;
     }
 
+    /* The expanded detail is seated to a whole-r rhythm: 2r top/bottom padding,
+       whole-r gaps between blocks, and each block a whole-r height, so a card
+       with no free-text prose sums to an integer number of r. The box-shadow is
+       the inset top divider; it sits on the whole r-line the bar ends on. */
     .cal-event-detail {
       box-shadow: inset 0 var(--bw-1) 0 var(--border);
-      padding: var(--space-lg) var(--space-lg) var(--space-md);
+      padding: var(--space-xl) var(--space-lg) var(--space-xl);
     }
 
     .cal-detail-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
+      /* whole-r row gap (1r) so stacked detail rows stay on the grid */
       gap: var(--space-md) var(--space-lg);
-      margin-bottom: var(--space-ml);
+      margin-bottom: var(--space-md);
     }
 
-    .cal-detail-item { display: flex; flex-direction: column; gap: var(--nudge-1); }
-    .cal-detail-label { font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps); font-weight: var(--fw-bold); }
+    /* Each detail cell is a fixed 5r: a 2r label track and a 3r value track,
+       both baseline-seated with text-box-trim so the caps label lands on r2 and
+       the value baseline on r5 (the cell bottom). */
+    .cal-detail-item {
+      display: grid;
+      grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 5);
+    }
+    .cal-detail-label { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps); font-weight: var(--fw-bold); }
     /* ── Admin editor: override + validation affordances ── */
     /* Marks a field an admin has pinned. Greys reuse the values already used by .conflict-badge
        so this joins the existing badge family rather than starting another one. */
@@ -9192,13 +9209,13 @@
     }
     .admin-revert-btn:disabled { opacity: var(--state-disabled); cursor: default; }
 
-    .cal-detail-value { font-family: var(--serif); font-size: var(--fs-sm); color: var(--text); font-weight: var(--fw-regular); }
+    .cal-detail-value { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; font-family: var(--serif); font-size: var(--fs-sm); color: var(--text); font-weight: var(--fw-regular); }
 
     .cal-detail-badges {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: var(--space-xs) var(--space-lg);
-      margin-bottom: var(--space-ml);
+      margin-bottom: var(--space-md);
       align-items: start;
     }
     .cal-badges-left { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
@@ -9358,12 +9375,12 @@
     .cal-action-icon, .cal-entries-stepper {
       font-size: var(--fs-lg);
       line-height: 1;
-      height: 1rem;
+      height: var(--icon-md);
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .cal-action-icon svg { width: 1rem; height: 1rem; }
+    .cal-action-icon svg { width: var(--icon-md); height: var(--icon-md); }
     .cal-action-label {
       font-family: inherit;
       font-size: var(--fs-2xs);
@@ -9382,7 +9399,7 @@
     .cal-entries-stepper {
       width: 100%;
       position: relative;
-      height: 1rem;
+      height: var(--icon-md);
     }
     .cal-entries-display {
       display: flex;

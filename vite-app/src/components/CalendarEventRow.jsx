@@ -696,7 +696,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       </div>
                     </div>
                   ) : (
-                    <p style={{fontSize:'calc(var(--gu) * 1.252)', color:'var(--text-muted)', marginBottom:'calc(var(--subrow) * 1.5)'}}>
+                    <p style={{fontSize:'calc(var(--gu) * 1.252)', color:'var(--text-muted)', marginBottom:'var(--space-md)'}}>
                       {tournament.event_name === 'Travel Day'
                         ? (tournament.notes || 'Travel day \u2014 no tournaments planned')
                         : 'Day off \u2014 rest and recover'}
@@ -798,7 +798,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </div>
 
                   {conditions && conditions.length > 0 && (
-                    <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', flexWrap:'wrap', marginBottom:'calc(var(--subrow) * 1.25)'}}>
+                    <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', flexWrap:'wrap', marginBottom:'var(--space-md)'}}>
                       {conditions.map((c, ci) => (
                         <span key={ci} className="badge badge-condition">
                           {formatConditionBadge(c, allTournaments)}
@@ -808,7 +808,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   )}
 
                   {tournament.notes && (
-                    <p style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', marginBottom:'calc(var(--subrow) * 1.25)'}}>
+                    <p style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', lineHeight:'calc(var(--subrow) * 2)', marginBottom:'var(--space-md)'}}>
                       {tournament.notes}
                     </p>
                   )}
