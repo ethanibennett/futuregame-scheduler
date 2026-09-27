@@ -49,37 +49,28 @@ function scrollBelowSticky(el) {
   // Calendar, with offsetHeight = 0. Scope the lookup to the row's
   // own tab-panel so we measure the visible sticky on every view.
   const scope = el.closest('.tab-panel') || container;
+  let filtersH = 0;
   const sticky = scope.querySelector('.sticky-filters')
               || scope.querySelector('.schedule-sticky-header');
+  if (sticky) filtersH = sticky.getBoundingClientRect().height;
+  let dateBreakH = 0;
   const dateGroup = el.closest('[data-date-group]');
-  const hasDateBreak = !!(dateGroup && dateGroup.querySelector('.schedule-date-break'));
-
-  // Everything on this surface is built on the r sub-grid measured from the bar
-  // top (the overlay origin), so the scroll target is defined in r too — not by
-  // summing pixel heights (which is what let the card's top edge tuck under the
-  // sticky stack on device). The pinned sticky stack's bottom sits a whole number
-  // of r below the bar top by the grid:
-  //   Schedule / My Schedule: header 8r + filter block 12r + date-break 5r = 25r
-  //   Calendar (no date-break): header 8r + its sticky header, rounded to r.
-  const bar = document.querySelector('.top-bar');
-  const barTop = bar ? bar.getBoundingClientRect().top : caTop;
+  if (dateGroup) {
+    const db = dateGroup.querySelector('.schedule-date-break');
+    if (db) dateBreakH = db.getBoundingClientRect().height;
+  }
+  const elAbsTop = el.getBoundingClientRect().top - caTop + container.scrollTop;
+  // Land the card's top EXACTLY on the bottom edge of the sticky rows. filtersH +
+  // dateBreakH are the rows' real rendered heights (the DOM reports layout only in
+  // px — that is not a hardcoded grid dimension, it is reading where the grid
+  // actually landed, which is immune to any device viewport quirk). Calendar has
+  // no date-break and its page-sticky draws a box-shadow half a subrow below its
+  // rect; add that back so its stop matches, in r.
   const r = (window.innerWidth / 37) * 0.71;
-  // The sticky filter/header block bottom sits a whole number of r below the bar
-  // top; the date-break (when present) pins directly under it and adds its own
-  // whole-r height. Measure each and express in r (round away sub-pixel), so this
-  // adapts across Schedule (25r), My Schedule and Calendar without a magic number.
-  const stickyBottomR = sticky ? Math.round((sticky.getBoundingClientRect().bottom - barTop) / r) : 8;
-  const dbEl = hasDateBreak ? dateGroup.querySelector('.schedule-date-break') : null;
-  const dbR = dbEl ? Math.round(dbEl.getBoundingClientRect().height / r) : 0;
-  const stackBottomR = stickyBottomR + dbR;
-  // Land the card's top edge one subrow below the stack, on an r-line, so it is
-  // always visible (never tucked under the sticky) and rests on the grid. Target
-  // an absolute position from the bar top and scroll by the delta, so it is
-  // correct regardless of safe-area insets or momentum state.
-  const desiredCardTop = barTop + (stackBottomR + 2) * r;
-  const delta = el.getBoundingClientRect().top - desiredCardTop;
-  if (Math.abs(delta) <= 2) return;
-  container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: 'smooth' });
+  const stickyShadowComp = (dateBreakH === 0) ? r * 0.5 : 0;
+  const target = elAbsTop - filtersH - dateBreakH - stickyShadowComp;
+  if (Math.abs(container.scrollTop - target) <= 2) return;
+  container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 }
 
 // ── Late Reg Bar (expanded view) ──

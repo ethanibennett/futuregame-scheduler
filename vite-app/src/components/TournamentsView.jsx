@@ -1218,19 +1218,18 @@ export default function TournamentsView({
   const scrollDateGroupToTop = useCallback((dateGroupEl, behavior = 'smooth') => {
     const container = document.querySelector('.content-area');
     if (!container || !dateGroupEl) return;
-    // Land the group's date-break exactly on the sticky filter block's bottom
-    // r-line, measured from the bar top (the overlay origin) — all in r, no pixel
-    // filtersH and no +4 fudge (that was seating the whole day ~4px above the
-    // grid, which floated the pill and every card off every overlay line).
-    const bar = document.querySelector('.top-bar');
-    const barTop = bar ? bar.getBoundingClientRect().top : container.getBoundingClientRect().top;
-    const r = (window.innerWidth / 37) * 0.71;
-    const stickyEl = container.querySelector('.sticky-filters') || container.querySelector('.schedule-sticky-header');
-    const stickyBottomR = stickyEl ? Math.round((stickyEl.getBoundingClientRect().bottom - barTop) / r) : 8;
-    const desiredTop = barTop + stickyBottomR * r;
-    const delta = dateGroupEl.getBoundingClientRect().top - desiredTop;
-    if (Math.abs(delta) < 1) return;
-    container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior });
+    // Self-measuring landing that worked on device for months: read the actual
+    // sticky height from the DOM and land the group's top 2px below it. Robust to
+    // whatever the real device layout/safe-area produces (a computed r-target was
+    // not, and floated the whole day off the grid on device).
+    const stickyEl = container.querySelector('.sticky-filters');
+    const filtersH = stickyEl ? stickyEl.getBoundingClientRect().height : 0;
+    const cTop = container.getBoundingClientRect().top;
+    const groupAbsTop = dateGroupEl.getBoundingClientRect().top - cTop + container.scrollTop;
+    // Stop the group's top EXACTLY on the bottom edge of the sticky filter rows —
+    // filtersH is that block's real rendered height, so the stop is the exact
+    // grid line the CSS drew, on any device. No fudge pixels.
+    container.scrollTo({ top: Math.max(0, groupAbsTop - filtersH), behavior });
   }, []);
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const locationBtnRef = useRef(null);
@@ -1337,13 +1336,10 @@ export default function TournamentsView({
         // the filter block is exactly 12r = 92.57px, and rounding it to 93px pinned
         // the date-break a subpixel below its r-line, floating the whole pill off
         // the grid.
-        const h = stickyFiltersRef.current.getBoundingClientRect().height;
+        const h = stickyFiltersRef.current.offsetHeight;
         const style = getComputedStyle(stickyFiltersRef.current);
         const mt = parseFloat(style.marginTop) || 0;
-        // Store the sticky offset in WHOLE r, not px: the date-break's CSS `top`
-        // is then calc(var(--subrow) * N) so it pins on an exact r-line.
-        const r = (window.innerWidth / 37) * 0.71;
-        setDateBreakTop(Math.round((h + mt) / r));
+        setDateBreakTop(h + mt);
       }
     };
     measure();
