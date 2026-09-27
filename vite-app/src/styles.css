@@ -2168,9 +2168,12 @@
     .username-chip {
       font-size: var(--fs-sm);
       color: var(--text-muted);
-      /* Seat the name on the wordmark's 32 line; centered it sat 4.5px below. */
+      /* Seat the name on the wordmark's 32 line. Measured against the real
+         (self-hosted) fonts: the chip's natural baseline is 31.5 from the bar
+         top, so +0.5 lands it on 32. (The old -4.5 was calibrated against a
+         fallback font in a harness that didn't render the real UI face.) */
       position: relative;
-      top: -4.5px;
+      top: 0.5px;
       max-width: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
