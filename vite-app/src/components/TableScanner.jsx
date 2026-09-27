@@ -470,7 +470,7 @@ export default function TableScanner() {
 
       {state === 'idle' && (
         <button className="cal-structure-link" onClick={() => fileRef.current?.click()}
-          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',height:40,boxSizing:'border-box',background:'none',border:'1px solid var(--accent)',borderRadius:'6px',padding:'0 12px',cursor:'pointer',color:'var(--accent)',font:'inherit',fontSize:'0.78rem',width:'100%'}}>
+          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'var(--space-sm)',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',background:'none',border:'var(--bw-hair) solid var(--accent)',borderRadius:'calc(var(--subrow) * 0.75)',padding:'0 var(--space-lg)',cursor:'pointer',color:'var(--accent)',font:'inherit',fontSize:'calc(var(--gu) * 1.149)',width:'100%'}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
@@ -491,10 +491,10 @@ export default function TableScanner() {
 
       {state === 'tableSelect' && availableTables && (
         <div className="table-scanner-table-select">
-          <div style={{fontWeight:700,fontSize:'0.9rem',color:'var(--text)',marginBottom:'8px'}}>
+          <div style={{fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',color:'var(--text)',marginBottom:'var(--space-md)'}}>
             Multiple tables detected — select yours:
           </div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:'8px'}}>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-md)'}}>
             {(() => {
               var heroP = (allParsedPlayers || []).find(function(p) { return p.isHero; });
               var heroTbl = heroP && heroP.seat && heroP.seat.includes('-') ? heroP.seat.split('-')[0] : null;
@@ -503,7 +503,7 @@ export default function TableScanner() {
                 return (
                   <button key={tbl}
                     className={isHeroTable ? 'btn btn-accent btn-sm' : 'btn btn-primary btn-sm'}
-                    style={{minWidth:'60px',padding:'8px 16px', border: isHeroTable ? '2px solid var(--accent)' : undefined}}
+                    style={{minWidth:'calc(var(--subrow) * 7.5)',padding:'var(--space-md) var(--space-xl)', border: isHeroTable ? 'calc(var(--subrow) * 0.25) solid var(--accent)' : undefined}}
                     onClick={() => {
                       var tablePlayers = availableTables[tbl];
                       setPlayers(tablePlayers);
@@ -517,23 +517,23 @@ export default function TableScanner() {
               });
             })()}
           </div>
-          <button className="btn btn-ghost btn-sm" style={{marginTop:'8px'}} onClick={() => { setState('idle'); setAvailableTables(null); }}>Cancel</button>
+          <button className="btn btn-ghost btn-sm" style={{marginTop:'var(--space-md)'}} onClick={() => { setState('idle'); setAvailableTables(null); }}>Cancel</button>
         </div>
       )}
 
       {state === 'results' && (
         <div className="table-scanner-results">
           <div className="table-scanner-results-header">
-            <span style={{fontWeight: 'var(--fw-bold)',fontSize:'0.82rem',color:'var(--text)',flex:1,minWidth:0}}>
+            <span style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 1.208)',color:'var(--text)',flex:1,minWidth:0}}>
               {eventTitle ? `${eventTitle}: ` : ''}{players.length} player{players.length !== 1 ? 's' : ''} found
             </span>
-            <button className="table-scanner-rescan" onClick={() => setPortrait(p => !p)} style={{padding:'4px 6px',marginRight:'4px'}} title={portrait ? 'Landscape' : 'Portrait'}>
+            <button className="table-scanner-rescan" onClick={() => setPortrait(p => !p)} style={{padding:'var(--space-xs) var(--space-sm)',marginRight:'var(--space-xs)'}} title={portrait ? 'Landscape' : 'Portrait'}>
               {portrait
                 ? <svg width="16" height="10" viewBox="0 0 24 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1" width="22" height="12" rx="6"/></svg>
                 : <svg width="10" height="16" viewBox="0 0 14 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1" width="12" height="22" rx="6"/></svg>
               }
             </button>
-            <button className="table-scanner-rescan" onClick={handleExport} style={{padding:'4px 6px',marginRight:'4px'}} title="Export as PNG">
+            <button className="table-scanner-rescan" onClick={handleExport} style={{padding:'var(--space-xs) var(--space-sm)',marginRight:'var(--space-xs)'}} title="Export as PNG">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
             <button className="table-scanner-rescan" onClick={() => { if (fileRef.current) fileRef.current.value = ''; fileRef.current?.click(); }}>
@@ -544,7 +544,7 @@ export default function TableScanner() {
             const { display, seats, autoPortrait } = getDisplayPlayers(players);
             const isPortrait = autoPortrait || portrait;
             return (
-              <div className="table-scanner-oval" ref={ovalRef} style={isPortrait ? {aspectRatio:'4 / 5', width:'92%', maxHeight:'62vh', margin:'4px auto'} : undefined}>
+              <div className="table-scanner-oval" ref={ovalRef} style={isPortrait ? {aspectRatio:'4 / 5', width:'92%', maxHeight:'62vh', margin:'var(--space-xs) auto'} : undefined}>
                 <label className="table-scanner-felt" title="Change felt colour"
                   style={{
                     background: `radial-gradient(ellipse at ${isPortrait ? '40% 50%' : '50% 40%'}, ${feltColor}cc 0%, ${feltColor} 100%)`,
@@ -567,7 +567,7 @@ export default function TableScanner() {
                       style={{left: pos[0] + '%', top: pos[1] + '%'}}>
                       <button className="table-scanner-link"
                         disabled={isNickname}
-                        style={{...(isNickname ? {cursor:'default'} : {}), ...(player.isHero ? {outline:'2px solid var(--accent)',outlineOffset:'2px'} : {})}}
+                        style={{...(isNickname ? {cursor:'default'} : {}), ...(player.isHero ? {outline:'calc(var(--subrow) * 0.25) solid var(--accent)',outlineOffset:'calc(var(--subrow) * 0.25)'} : {})}}
                         onClick={isNickname ? undefined : () => window.open(`/api/hendon-redirect?name=${encodeURIComponent(player.name)}`, '_blank', 'noopener,noreferrer')}>
                         <span className="table-scanner-name-stack">
                           <span>{player.name}</span>
@@ -590,7 +590,7 @@ export default function TableScanner() {
         </div>
       )}
 
-      {error && <div style={{fontSize:'0.78rem',color:'#ef4444',marginTop:4}}>{error}</div>}
+      {error && <div style={{fontSize:'calc(var(--gu) * 1.149)',color:'#ef4444',marginTop:'var(--space-xs)'}}>{error}</div>}
     </div>
   );
 }
