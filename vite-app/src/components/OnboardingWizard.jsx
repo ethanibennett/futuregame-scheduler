@@ -107,16 +107,16 @@ export default function OnboardingWizard({ token, onDone }) {
       type="button"
       onClick={onClick}
       style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px',
-        width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: '10px',
-        border: `1.5px solid ${active ? 'var(--brand)' : 'var(--border)'}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--space-2xs)',
+        width: '100%', textAlign: 'left', padding: 'var(--space-lg) calc(var(--subrow) * 1.75)', borderRadius: 'calc(var(--subrow) * 1.25)',
+        border: `var(--bw-1) solid ${active ? 'var(--brand)' : 'var(--border)'}`,
         background: active ? 'var(--surface)' : 'var(--bg)',
-        boxShadow: active ? '0 0 0 1px var(--brand)' : 'none',
+        boxShadow: active ? '0 0 0 calc(var(--subrow) * 0.125) var(--brand)' : 'none',
         color: 'var(--text)', cursor: 'pointer', font: 'inherit',
       }}
     >
-      <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{main}</span>
-      {sub && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sub}</span>}
+      <span style={{ fontSize: 'calc(var(--gu) * 1.399)', fontWeight: 600 }}>{main}</span>
+      {sub && <span style={{ fontSize: 'calc(var(--gu) * 1.104)', color: 'var(--text-muted)' }}>{sub}</span>}
     </button>
   );
 
@@ -124,49 +124,49 @@ export default function OnboardingWizard({ token, onDone }) {
     <div className="modal-backdrop">
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         {/* header: step dots + skip */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
             {STEPS.map((_, i) => (
-              <span key={i} style={{ width: i === step ? '20px' : '7px', height: '7px', borderRadius: '4px', background: i <= step ? 'var(--brand)' : 'var(--border)', transition: 'width .15s' }} />
+              <span key={i} style={{ width: i === step ? 'calc(var(--subrow) * 2.5)' : 'calc(var(--subrow) * 0.875)', height: 'calc(var(--subrow) * 0.875)', borderRadius: 'var(--radius-xs)', background: i <= step ? 'var(--brand)' : 'var(--border)', transition: 'width .15s' }} />
             ))}
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={skip} style={{ marginRight: '-6px' }}>Skip</button>
+          <button className="btn btn-ghost btn-sm" onClick={skip} style={{ marginRight: 'calc(var(--subrow) * -0.75)' }}>Skip</button>
         </div>
 
         {step === 0 && (
           <>
-            <h3 style={{ marginBottom: '4px' }}>Where do you play?</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            <h3 style={{ marginBottom: 'var(--space-xs)' }}>Where do you play?</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.252)', marginBottom: 'calc(var(--subrow) * 1.75)' }}>
               We'll show live events near you. You can change this anytime from the location button.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
               {regions.map(([key, { label }]) => optBtn(locChoice === key, () => { setLocChoice(key); setCoords(null); }, label))}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
               {optBtn(locChoice === 'current', useMyLocation, locating ? 'Locating…' : (locChoice === 'current' ? 'Using my location ✓' : '📍 Use my location'), locChoice === 'current' ? 'within 100 miles' : null)}
               {optBtn(locChoice === 'everywhere', () => { setLocChoice('everywhere'); setCoords(null); }, 'Everywhere / I travel', 'no location filter')}
             </div>
-            {locError && <div style={{ color: 'var(--danger, #d66)', fontSize: '0.8rem', marginTop: '8px' }}>{locError}</div>}
+            {locError && <div style={{ color: 'var(--danger, #d66)', fontSize: 'calc(var(--gu) * 1.178)', marginTop: 'var(--space-md)' }}>{locError}</div>}
           </>
         )}
 
         {step === 1 && (
           <>
-            <h3 style={{ marginBottom: '4px' }}>Do you play online?</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            <h3 style={{ marginBottom: 'var(--space-xs)' }}>Do you play online?</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.252)', marginBottom: 'calc(var(--subrow) * 1.75)' }}>
               Online events have no location, so they're shown separately.
             </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
               <div style={{ flex: 1 }}>{optBtn(playsOnline === true, () => setPlaysOnline(true), 'Yes')}</div>
               <div style={{ flex: 1 }}>{optBtn(playsOnline === false, () => setPlaysOnline(false), 'No')}</div>
             </div>
             {playsOnline === true && (
-              <div style={{ marginTop: '14px' }}>
-                <label htmlFor="ob-state" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+              <div style={{ marginTop: 'calc(var(--subrow) * 1.75)' }}>
+                <label htmlFor="ob-state" style={{ display: 'block', fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
                   Which state are you in? <span style={{ color: 'var(--text-faint, var(--text-muted))' }}>(so we can show which sites are available to you)</span>
                 </label>
                 <select id="ob-state" value={jurisdiction} onChange={e => setJurisdiction(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.95rem', boxSizing: 'border-box' }}>
+                  style={{ width: '100%', padding: 'var(--space-ml) var(--space-lg)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', boxSizing: 'border-box' }}>
                   <option value="">Select your state…</option>
                   {US_STATES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
                 </select>
@@ -177,11 +177,11 @@ export default function OnboardingWizard({ token, onDone }) {
 
         {step === 2 && (
           <>
-            <h3 style={{ marginBottom: '4px' }}>What do you play?</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            <h3 style={{ marginBottom: 'var(--space-xs)' }}>What do you play?</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.252)', marginBottom: 'calc(var(--subrow) * 1.75)' }}>
               Sets your game filter — loosen it anytime.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
               {GAME_CHOICES.map(c => optBtn(games === c.key, () => setGames(c.key), c.label, c.sub))}
             </div>
           </>
@@ -189,18 +189,18 @@ export default function OnboardingWizard({ token, onDone }) {
 
         {step === 3 && (
           <>
-            <h3 style={{ marginBottom: '4px' }}>Typical buy-in?</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '14px' }}>
+            <h3 style={{ marginBottom: 'var(--space-xs)' }}>Typical buy-in?</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.252)', marginBottom: 'calc(var(--subrow) * 1.75)' }}>
               We'll focus the list on your range.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
               {BUYIN_CHOICES.map(c => optBtn(buyin === c.key, () => setBuyin(c.key), c.label))}
             </div>
           </>
         )}
 
         {/* footer nav */}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '18px', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'calc(var(--subrow) * 2.25)', justifyContent: 'space-between' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} style={{ visibility: step === 0 ? 'hidden' : 'visible' }}>Back</button>
           {step < 3
             ? <button className="btn btn-primary btn-sm" onClick={() => setStep(s => s + 1)} disabled={!canAdvance}>Next</button>

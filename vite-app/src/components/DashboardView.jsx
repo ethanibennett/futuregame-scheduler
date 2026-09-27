@@ -456,10 +456,10 @@ export default function DashboardView({
       >
         {/* The Up Next banner shows the FULL venue name, never the strip
             abbreviation — abbr stays only for the brand colour + WSOP casing. */}
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em', padding: '0 12px'}}>{venueInfo.longName || venueInfo.abbr}</div>
+        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em', padding: '0 var(--space-lg)'}}>{venueInfo.longName || venueInfo.abbr}</div>
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {!isConditionalOnPlaying && (
-          <div style={{display:'flex',flexWrap:'wrap',gap:'4px',alignItems:'center'}}>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-xs)',alignItems:'center'}}>
             {event._type === 'bagged' && (
               <span className="dash-event-tag bagged">Bagged — Day {event._bagUpdate?.bag_day || '?'}</span>
             )}
@@ -857,7 +857,7 @@ export default function DashboardView({
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 12px 12px', margin:'0 -12px -12px'}}
+              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--space-lg) var(--space-lg)', margin:'0 calc(var(--subrow) * -1.5) calc(var(--subrow) * -1.5)'}}
             >
               <div
                 className="dash-carousel-track"
@@ -948,7 +948,7 @@ export default function DashboardView({
       {/* Table Scanner */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Table Scanner <span style={{fontWeight:400,fontSize:'0.7rem',color:'var(--text-muted)'}}>(WSOP Live / PokerStars Live)</span></div>
+          <div className="dashboard-section-title">Table Scanner <span style={{fontWeight:400,fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>(WSOP Live / PokerStars Live)</span></div>
         </div>
         <TableScanner />
       </div>
@@ -965,16 +965,16 @@ export default function DashboardView({
             <div className="dashboard-section-title">Results</div>
             {plData.count > 0 && onResetResults && (
               resetConfirmOpen ? (
-                <span style={{display:'inline-flex',alignItems:'center',gap:'6px'}}>
+                <span style={{display:'inline-flex',alignItems:'center',gap:'var(--space-sm)'}}>
                   <button
                     onClick={() => { onResetResults(); setResetConfirmOpen(false); }}
-                    style={{fontSize:'0.7rem',fontWeight:700,padding:'3px 8px',border:'1px solid #b91c1c',borderRadius:'5px',background:'#b91c1c',color:'#fff',cursor:'pointer'}}
+                    style={{fontSize:'calc(var(--gu) * 1.031)',fontWeight:700,padding:'calc(var(--subrow) * 0.375) var(--space-md)',border:'var(--bw-hair) solid #b91c1c',borderRadius:'calc(var(--subrow) * 0.625)',background:'#b91c1c',color:'#fff',cursor:'pointer'}}
                   >
                     Confirm
                   </button>
                   <button
                     onClick={() => setResetConfirmOpen(false)}
-                    style={{fontSize:'0.7rem',padding:'3px 8px',border:'1px solid var(--border)',borderRadius:'5px',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
+                    style={{fontSize:'calc(var(--gu) * 1.031)',padding:'calc(var(--subrow) * 0.375) var(--space-md)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.625)',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
                   >
                     Cancel
                   </button>
@@ -983,7 +983,7 @@ export default function DashboardView({
                 <button
                   onClick={() => setResetConfirmOpen(true)}
                   title="Clear all logged results"
-                  style={{fontSize:'0.7rem',fontWeight: 'var(--fw-bold)',padding:'3px 8px',border:'1px solid var(--border)',borderRadius:'5px',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
+                  style={{fontSize:'calc(var(--gu) * 1.031)',fontWeight: 'var(--fw-bold)',padding:'calc(var(--subrow) * 0.375) var(--space-md)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.625)',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
                 >
                   Reset
                 </button>
@@ -994,7 +994,7 @@ export default function DashboardView({
           <div style={{justifySelf:'end', alignSelf:'center'}}>
             {plData.count > 0 && dashRates && (
               <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)}
-                style={{fontSize:'0.65rem',padding:'2px 4px',border:'1px solid var(--border)',borderRadius:'5px',
+                style={{fontSize:'calc(var(--gu) * 0.957)',padding:'var(--space-2xs) var(--space-xs)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.625)',
                   background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
                 <option value="NATIVE">Native</option>
                 {Object.keys(CURRENCY_CONFIG).map(c => (

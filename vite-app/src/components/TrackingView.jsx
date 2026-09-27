@@ -57,13 +57,13 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
   };
 
   return (
-    <form onSubmit={handleSubmit} className="tracking-card" style={{padding:'16px',marginBottom:'12px'}}>
-      <div style={{fontSize:'0.9rem',fontWeight:700,color:'var(--text)',marginBottom:'12px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+    <form onSubmit={handleSubmit} className="tracking-card" style={{padding:'var(--space-xl)',marginBottom:'var(--space-lg)'}}>
+      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',marginBottom:'var(--space-lg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
         {isEdit ? `Edit: ${tournamentLabel}` : 'Log Tournament Result'}
       </div>
 
       {!isEdit && (
-        <div className="filter-group" style={{marginBottom:'12px'}}>
+        <div className="filter-group" style={{marginBottom:'var(--space-lg)'}}>
           <label>Tournament</label>
           <select value={tournamentId} onChange={e => setTournamentId(e.target.value)} required>
             <option value="">Select event...</option>
@@ -84,12 +84,12 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
         </div>
         <div className="filter-group">
           <label>Cashed?</label>
-          <div style={{display:'flex',gap:'8px',marginTop:'4px',alignItems:'center'}}>
+          <div style={{display:'flex',gap:'var(--space-md)',marginTop:'var(--space-xs)',alignItems:'center'}}>
             <button type="button" className={`filter-chip ${!cashed ? 'active' : ''}`}
               onClick={() => { setCashed(false); setShowLfg(false); }}>No</button>
             <button type="button" className={`filter-chip ${cashed ? 'active' : ''}`}
               onClick={() => { if (!cashed) { setCashed(true); setShowLfg(true); setTimeout(() => setShowLfg(false), 1000); } }}>Yes</button>
-            {showLfg && <span className="lfg-burst" style={{fontSize:'0.9rem',marginLeft:'4px'}}>lfg!</span>}
+            {showLfg && <span className="lfg-burst" style={{fontSize:'calc(var(--gu) * 1.325)',marginLeft:'var(--space-xs)'}}>lfg!</span>}
           </div>
         </div>
       </div>
@@ -110,27 +110,27 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
       )}
 
       {showFieldSize && (
-        <div className="filter-group" style={{marginBottom:'12px'}}>
+        <div className="filter-group" style={{marginBottom:'var(--space-lg)'}}>
           <label>Field Size (total entries)</label>
           <input type="number" min="1" value={totalFieldSize}
             onChange={e => setTotalFieldSize(e.target.value)} placeholder="e.g. 8500"
-            style={{padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
-              background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.9rem',width:'100%'}} />
-          <span style={{fontSize:'0.7rem',color:'var(--text-muted)',marginTop:'2px',display:'block'}}>
+            style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
+              background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
+          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',marginTop:'var(--space-2xs)',display:'block'}}>
             Used for POY points calculation
           </span>
         </div>
       )}
 
-      <div className="filter-group" style={{marginBottom:'14px'}}>
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 1.75)'}}>
         <label>Notes (optional)</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Optional notes about this session"
-          style={{padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
-            background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.9rem',width:'100%'}} />
+          style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
+            background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
       </div>
 
-      <div style={{display:'flex',gap:'8px'}}>
+      <div style={{display:'flex',gap:'var(--space-md)'}}>
         <button type="submit" className="btn btn-primary btn-sm">
           {isEdit ? 'Save Changes' : 'Log Result'}
         </button>
@@ -178,24 +178,24 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 
   return (
     <div className="tracking-card">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'6px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'var(--space-sm)'}}>
         <div>
-          <div style={{fontSize:'0.72rem',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
+          <div style={{fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
             {entry.date} \u00b7 #{entry.event_number}
           </div>
-          <div style={{fontSize:'0.88rem',fontWeight: 'var(--fw-bold)',color:'var(--text)',marginTop:'2px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+          <div style={{fontSize:'calc(var(--gu) * 1.296)',fontWeight: 'var(--fw-bold)',color:'var(--text)',marginTop:'var(--space-2xs)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             {entry.event_name}
           </div>
         </div>
         <div style={{textAlign:'right',flexShrink:0}}>
-          <div style={{fontFamily:"var(--serif)",fontSize:'1rem',fontWeight:700}}
+          <div style={{fontFamily:"var(--serif)",fontSize:'calc(var(--gu) * 1.473)',fontWeight:700}}
             className={profit >= 0 && entry.cashed ? 'tracking-profit-pos' : 'tracking-profit-neg'}>
             {fmtSigned(profit)}
           </div>
         </div>
       </div>
 
-      <div className="cal-detail-grid" style={{marginBottom:'8px'}}>
+      <div className="cal-detail-grid" style={{marginBottom:'var(--space-md)'}}>
         <div className="cal-detail-item">
           <span className="cal-detail-label">Cost</span>
           <span className="cal-detail-value">{fmt(cv(totalCost))}</span>
@@ -232,16 +232,16 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
       </div>
 
       {poyEligible && !entry.total_entries && (
-        <p style={{fontSize:'0.72rem',color:'#d97706',marginBottom:'4px'}}>
+        <p style={{fontSize:'calc(var(--gu) * 1.060)',color:'#d97706',marginBottom:'var(--space-xs)'}}>
           \u2691 Edit to add field size for POY points
         </p>
       )}
 
       {entry.notes && (
-        <p style={{fontSize:'0.78rem',color:'var(--text-muted)',fontStyle:'italic',marginBottom:'8px'}}>{entry.notes}</p>
+        <p style={{fontSize:'calc(var(--gu) * 1.149)',color:'var(--text-muted)',fontStyle:'italic',marginBottom:'var(--space-md)'}}>{entry.notes}</p>
       )}
 
-      <div style={{display:'flex',gap:'8px'}}>
+      <div style={{display:'flex',gap:'var(--space-md)'}}>
         <button className="btn btn-ghost btn-sm" onClick={onEdit}>Edit</button>
         <button className="btn btn-ghost btn-sm" style={{color:'var(--accent2)'}} onClick={onDelete}>Delete</button>
       </div>
@@ -320,7 +320,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
     <div>
       <div className="section-header">
         <h2>Tracking</h2>
-        <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+        <div style={{display:'flex',gap:'var(--space-md)',alignItems:'center'}}>
           {trackingData.length > 0 && (
             <button className="btn-share-overlay" onClick={() => setShowShareMenu(true)} title="Share & Social">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -334,12 +334,12 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
       </div>
 
       {trackingData.length > 0 && (
-        <div className="tracking-card" style={{padding:'16px',marginBottom:'12px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
-            <span style={{fontSize:'0.7rem',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Summary</span>
+        <div className="tracking-card" style={{padding:'var(--space-xl)',marginBottom:'var(--space-lg)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-ml)'}}>
+            <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Summary</span>
             {exchangeRates && (
               <select value={displayCurrency} onChange={e => onCurrencyChange(e.target.value)}
-                style={{fontSize:'0.7rem',padding:'3px 6px',border:'1px solid var(--border)',borderRadius:'6px',
+                style={{fontSize:'calc(var(--gu) * 1.031)',padding:'calc(var(--subrow) * 0.375) var(--space-sm)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
                   background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
                 <option value="NATIVE">Native</option>
                 {(exchangeRates ? Object.keys(CURRENCY_CONFIG) : ['USD','EUR']).map(c => (
@@ -385,7 +385,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
             convert={(v) => convertAmount(v, 'USD', displayCurrency === 'NATIVE' ? 'USD' : displayCurrency, exchangeRates)}
             format={fmtStat}
           />
-          <p style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:'8px'}}>
+          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginTop:'var(--space-md)'}}>
             {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} played \u00b7 {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''}
             {stats.poyEventCount > 0 && <> \u00b7 {stats.poyEventCount} POY event{stats.poyEventCount !== 1 ? 's' : ''}</>}
             {displayCurrency !== 'NATIVE' && exchangeRates && (
@@ -396,20 +396,20 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
       )}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
-        <div className="tracking-card" style={{padding:'14px', marginBottom:'12px', border:'1.5px dashed var(--accent)'}}>
+        <div className="tracking-card" style={{padding:'calc(var(--subrow) * 1.75)', marginBottom:'var(--space-lg)', border:'var(--bw-1) dashed var(--accent)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'0.7rem', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.031)', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
                 {pendingEvent.date} \u00b7 #{pendingEvent.event_number?.replace(/^[A-Za-z]+-/, '')}
               </div>
-              <div style={{fontSize:'0.85rem', fontWeight: 'var(--fw-bold)', color:'var(--text)', marginTop:'2px', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.252)', fontWeight: 'var(--fw-bold)', color:'var(--text)', marginTop:'var(--space-2xs)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                 {pendingEvent.event_name}
               </div>
-              <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'2px'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.060)', color:'var(--text-muted)', marginTop:'var(--space-2xs)'}}>
                 Awaiting result
               </div>
             </div>
-            <button className="btn btn-primary btn-sm" style={{flexShrink:0, marginLeft:'12px'}}
+            <button className="btn btn-primary btn-sm" style={{flexShrink:0, marginLeft:'var(--space-lg)'}}
               onClick={() => setPendingFormId(pendingEvent.id)}>
               Log Result
             </button>

@@ -36,72 +36,72 @@ export default function SwapModal({ buddy, tournament, token, onClose }) {
   return createPortal(
     <div style={{position:'fixed',inset:0,zIndex:9999,overflowY:'auto',WebkitOverflowScrolling:'touch'}} onClick={onClose}>
       <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)'}} />
-      <div style={{position:'relative',minHeight:'100%',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 16px'}}>
-      <div style={{position:'relative',width:'100%',maxWidth:380,background:'var(--surface)',borderRadius:16,padding:'16px 20px'}} onClick={e => e.stopPropagation()}>
-        <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'12px'}}>
+      <div style={{position:'relative',minHeight:'100%',display:'flex',alignItems:'center',justifyContent:'center',padding:'var(--space-3xl) var(--space-xl)'}}>
+      <div style={{position:'relative',width:'100%',maxWidth:'calc(var(--subrow) * 47.5)',background:'var(--surface)',borderRadius:'var(--radius-lg)',padding:'var(--space-xl) var(--space-2xl)'}} onClick={e => e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',gap:'var(--space-ml)',marginBottom:'var(--space-lg)'}}>
           <Avatar src={buddy.avatar} username={buddy.username} size={32} />
           <div>
-            <div style={{fontWeight:700,color:'var(--text)',fontSize:'0.9rem'}}>{dn(buddy)}</div>
-            <div style={{color:'var(--text-muted)',fontSize:'0.72rem'}}>@{buddy.username}</div>
+            <div style={{fontWeight:700,color:'var(--text)',fontSize:'calc(var(--gu) * 1.325)'}}>{dn(buddy)}</div>
+            <div style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>@{buddy.username}</div>
           </div>
         </div>
-        <div style={{background:'var(--surface2)',borderRadius:8,padding:'8px 12px',marginBottom:'12px',fontSize:'0.82rem'}}>
+        <div style={{background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'var(--space-md) var(--space-lg)',marginBottom:'var(--space-lg)',fontSize:'calc(var(--gu) * 1.208)'}}>
           <div style={{color:'var(--text)',fontWeight: 'var(--fw-bold)'}}>{tournament.event_name}</div>
-          <div style={{color:'var(--text-muted)',fontSize:'0.72rem',marginTop:2}}>{tournament.date} · {tournament.time} · {formatBuyin(tournament.buyin, tournament.venue)}</div>
+          <div style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)',marginTop:'var(--space-2xs)'}}>{tournament.date} · {tournament.time} · {formatBuyin(tournament.buyin, tournament.venue)}</div>
         </div>
-        <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+        <div style={{display:'flex',gap:'var(--space-md)',marginBottom:'var(--space-lg)'}}>
           {['swap', 'crossbook'].map(t => (
             <button key={t} onClick={() => setType(t)} style={{
-              flex:1,padding:'8px',borderRadius:8,border:'1px solid var(--border)',
+              flex:1,padding:'var(--space-md)',borderRadius:'var(--radius-sm)',border:'var(--bw-hair) solid var(--border)',
               background: type === t ? 'var(--accent)' : 'var(--surface)',
               color: type === t ? 'var(--bg)' : 'var(--text)',
-              fontWeight: 'var(--fw-bold)',fontSize:'0.85rem',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',cursor:'pointer'
+              fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 1.252)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',cursor:'pointer'
             }}>{t}</button>
           ))}
         </div>
         {type === 'swap' ? (
-          <div style={{display:'flex',gap:'12px',marginBottom:'12px'}}>
+          <div style={{display:'flex',gap:'var(--space-lg)',marginBottom:'var(--space-lg)'}}>
             <div style={{flex:1}}>
-              <label style={{fontSize:'0.7rem',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:4}}>You give</label>
-              <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:'var(--space-xs)'}}>You give</label>
+              <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
                 <input type="number" min="1" max="100" value={myPct} onChange={e => setMyPct(e.target.value)}
-                  style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
+                  style={{width:'100%',padding:'var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
             </div>
             <div style={{flex:1}}>
-              <label style={{fontSize:'0.7rem',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:4}}>They give</label>
-              <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:'var(--space-xs)'}}>They give</label>
+              <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
                 <input type="number" min="1" max="100" value={theirPct} onChange={e => setTheirPct(e.target.value)}
-                  style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
+                  style={{width:'100%',padding:'var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
             </div>
           </div>
         ) : (
-          <div style={{display:'flex',gap:'12px',marginBottom:'12px'}}>
+          <div style={{display:'flex',gap:'var(--space-lg)',marginBottom:'var(--space-lg)'}}>
             <div style={{flex:1}}>
-              <label style={{fontSize:'0.7rem',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:4}}>Percentage</label>
-              <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:'var(--space-xs)'}}>Percentage</label>
+              <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
                 <input type="number" min="1" max="100" value={cbPct} onChange={e => setCbPct(e.target.value)}
-                  style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
+                  style={{width:'100%',padding:'var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>%</span>
               </div>
             </div>
             <div style={{flex:1}}>
-              <label style={{fontSize:'0.7rem',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:4}}>Cap (optional)</label>
-              <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <label style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'0.05em',display:'block',marginBottom:'var(--space-xs)'}}>Cap (optional)</label>
+              <div style={{display:'flex',alignItems:'center',gap:'var(--space-xs)'}}>
                 <input type="number" min="0" value={cbCap} onChange={e => setCbCap(e.target.value)} placeholder={'\u2014'}
-                  style={{width:'100%',padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'1rem',textAlign:'center'}} />
+                  style={{width:'100%',padding:'var(--space-md)',background:'var(--surface2)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.473)',textAlign:'center'}} />
                 <span style={{color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>{currencySymbol(tournament.venue)}</span>
               </div>
             </div>
           </div>
         )}
-        {msg && <div style={{textAlign:'center',fontSize:'0.82rem',color: msg === 'Sent!' ? '#22c55e' : '#ef4444',marginBottom:6}}>{msg}</div>}
+        {msg && <div style={{textAlign:'center',fontSize:'calc(var(--gu) * 1.208)',color: msg === 'Sent!' ? '#22c55e' : '#ef4444',marginBottom:'var(--space-sm)'}}>{msg}</div>}
         <button onClick={handleSend} disabled={sending} style={{
-          width:'100%',padding:'10px',borderRadius:10,border:'none',
-          background:'var(--accent)',color:'var(--bg)',fontWeight:700,fontSize:'0.9rem',
+          width:'100%',padding:'var(--space-ml)',borderRadius:'calc(var(--subrow) * 1.25)',border:'none',
+          background:'var(--accent)',color:'var(--bg)',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',
           fontFamily:'Univers Condensed, Univers, sans-serif',cursor: sending ? 'wait' : 'pointer',opacity: sending ? 0.6 : 1
         }}>
           {sending ? 'Sending...' : `Send ${type === 'swap' ? 'Swap' : 'Crossbook'} Offer`}

@@ -75,9 +75,9 @@ export default function AdminView({ token, onNavigate }) {
     <div style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
       {[0,1,2,3,4,5].map(i => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-          <div className="skeleton skeleton-circle" style={{ width: 24, height: 24, animationDelay: `${i * 80}ms` }} />
-          <div className="skeleton skeleton-text" style={{ flex: 1, height: 12, animationDelay: `${i * 80 + 40}ms` }} />
-          <div className="skeleton skeleton-text" style={{ width: 70, height: 12, animationDelay: `${i * 80 + 80}ms` }} />
+          <div className="skeleton skeleton-circle" style={{ width: 'calc(var(--subrow) * 3)', height: 'calc(var(--subrow) * 3)', animationDelay: `${i * 80}ms` }} />
+          <div className="skeleton skeleton-text" style={{ flex: 1, height: 'calc(var(--subrow) * 1.5)', animationDelay: `${i * 80 + 40}ms` }} />
+          <div className="skeleton skeleton-text" style={{ width: 'calc(var(--subrow) * 8.75)', height: 'calc(var(--subrow) * 1.5)', animationDelay: `${i * 80 + 80}ms` }} />
         </div>
       ))}
     </div>
@@ -85,12 +85,12 @@ export default function AdminView({ token, onNavigate }) {
 
 return (
     <div style={{padding:'calc(var(--subrow) * 2) 0',maxWidth:'100%'}}>
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',height:'calc(var(--subrow) * 4)',marginBottom:'calc(var(--subrow) * 2)',position:'relative',top:'2.5px'}}>
-        <h2 className="screen-title" style={{fontSize:'1.2rem',lineHeight:'calc(var(--subrow) * 3)',margin:0}}>
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',height:'calc(var(--subrow) * 4)',marginBottom:'calc(var(--subrow) * 2)',position:'relative',top:'calc(var(--subrow) * 0.375)'}}>
+        <h2 className="screen-title" style={{fontSize:'calc(var(--gu) * 1.767)',lineHeight:'calc(var(--subrow) * 3)',margin:0}}>
           ADMIN &mdash; {users.length} Users
         </h2>
         {onNavigate && (
-          <button onClick={() => onNavigate('hands')} style={{height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 4)',padding:'0 var(--gu)',boxSizing:'border-box',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'0.78rem',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
+          <button onClick={() => onNavigate('hands')} style={{height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 4)',padding:'0 var(--gu)',boxSizing:'border-box',borderRadius:'var(--radius-sm)',border:'var(--bw-hair) solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.149)',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
             Hand Replayer
           </button>
         )}
@@ -100,10 +100,10 @@ return (
         placeholder="Filter by username, name, or email..."
         value={filter}
         onChange={e => setFilter(e.target.value)}
-        style={{width:'100%',height:'calc(var(--subrow) * 5)',lineHeight:'calc(var(--subrow) * 3)',padding:'0 var(--gu) 6px',marginBottom:'calc(var(--subrow) * 2)',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'0.85rem',boxSizing:'border-box'}}
+        style={{width:'100%',height:'calc(var(--subrow) * 5)',lineHeight:'calc(var(--subrow) * 3)',padding:'0 var(--gu) var(--space-sm)',marginBottom:'calc(var(--subrow) * 2)',background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.252)',boxSizing:'border-box'}}
       />
       <div style={{overflowX:'auto'}}>
-        <table className="admin-table" style={{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:'0.8rem'}}>
+        <table className="admin-table" style={{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:'calc(var(--gu) * 1.178)'}}>
           <colgroup>
             <col style={{width:'calc(var(--gu) * 9)'}} />
             <col style={{width:'calc(var(--gu) * 6)'}} />
@@ -149,7 +149,7 @@ return (
           </tbody>
         </table>
       </div>
-      {sorted.length === 0 && <div style={{height:'calc(var(--subrow) * 9)',lineHeight:'calc(var(--subrow) * 3)',padding:'21.5px var(--gu) 0',boxSizing:'border-box',textAlign:'center',color:'var(--text-muted)'}}>No users found</div>}
+      {sorted.length === 0 && <div style={{height:'calc(var(--subrow) * 9)',lineHeight:'calc(var(--subrow) * 3)',padding:'calc(var(--subrow) * 2.75) var(--gu) 0',boxSizing:'border-box',textAlign:'center',color:'var(--text-muted)'}}>No users found</div>}
     </div>
   );
 }

@@ -12,30 +12,30 @@ import React from 'react';
  */
 export default function SkeletonSchedule() {
   return (
-    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+    <div style={{display: 'flex', flexDirection: 'column', gap: 'var(--space-md)'}}>
       {[0,1,2].map(g => (
         <div key={g}>
-          <div style={{display: 'flex', alignItems: 'baseline', gap: 4, padding: '12px 12px 16px 2px'}}>
-            <div className="skeleton" style={{width: 62, height: 30, borderRadius: 'var(--radius-pill)'}} />
-            <div className="skeleton skeleton-text" style={{width: 28, height: 12}} />
+          <div style={{display: 'flex', alignItems: 'baseline', gap: 'var(--space-xs)', padding: 'var(--space-lg) var(--space-lg) var(--space-xl) var(--space-2xs)'}}>
+            <div className="skeleton" style={{width: 'calc(var(--subrow) * 7.75)', height: 'calc(var(--subrow) * 3.75)', borderRadius: 'var(--radius-pill)'}} />
+            <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 3.5)', height: 'calc(var(--subrow) * 1.5)'}} />
           </div>
           {[0,1,2].map(i => (
             <div
               key={i}
               style={{
                 display: 'flex',
-                height: 88,
-                marginBottom: 6,
+                height: 'calc(var(--subrow) * 11)',
+                marginBottom: 'var(--space-sm)',
                 borderRadius: 'var(--radius-sm)',
                 overflow: 'hidden',
                 background: 'var(--surface)',
                 boxShadow: 'var(--elev-1)',
               }}
             >
-              <div className="skeleton" style={{width: 26, flex: 'none', borderRadius: 0, animationDelay: `${i * 90}ms`}} />
-              <div style={{flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center'}}>
-                <div className="skeleton skeleton-text" style={{width: '38%', height: 11, animationDelay: `${i * 90 + 60}ms`}} />
-                <div className="skeleton skeleton-text" style={{width: '64%', height: 13, animationDelay: `${i * 90 + 120}ms`}} />
+              <div className="skeleton" style={{width: 'calc(var(--subrow) * 3.25)', flex: 'none', borderRadius: 0, animationDelay: `${i * 90}ms`}} />
+              <div style={{flex: 1, padding: 'var(--space-lg) calc(var(--subrow) * 1.75)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', justifyContent: 'center'}}>
+                <div className="skeleton skeleton-text" style={{width: '38%', height: 'calc(var(--subrow) * 1.375)', animationDelay: `${i * 90 + 60}ms`}} />
+                <div className="skeleton skeleton-text" style={{width: '64%', height: 'calc(var(--subrow) * 1.625)', animationDelay: `${i * 90 + 120}ms`}} />
               </div>
             </div>
           ))}

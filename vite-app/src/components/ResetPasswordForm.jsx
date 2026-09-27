@@ -44,7 +44,7 @@ export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'8px'}}>
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
           <button className="btn btn-ghost btn-sm" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
@@ -70,12 +70,12 @@ export default function ResetPasswordForm({ resetToken, theme, toggleTheme }) {
                 placeholder="Repeat your password" required minLength="8" autoComplete="new-password" />
             </div>
             <button type="submit" className="btn btn-primary btn-full"
-              style={{marginTop:'8px'}} disabled={loading}>
+              style={{marginTop:'var(--space-md)'}} disabled={loading}>
               {loading ? 'Updating...' : 'Set New Password'}
             </button>
           </form>
         ) : (
-          <button onClick={goToLogin} className="btn btn-primary btn-full" style={{marginTop:'8px'}}>
+          <button onClick={goToLogin} className="btn btn-primary btn-full" style={{marginTop:'var(--space-md)'}}>
             Go to Sign In
           </button>
         )}

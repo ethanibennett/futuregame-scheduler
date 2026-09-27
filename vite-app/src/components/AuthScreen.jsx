@@ -10,7 +10,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'8px'}}>
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
           <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
@@ -45,13 +45,13 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
             <input type="password" name="password" placeholder={isRegister ? 'Min. 6 characters' : 'Your password'} required minLength="6" autoComplete={isRegister ? 'new-password' : 'current-password'} />
           </div>
           {!isRegister && (
-            <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.8rem',color:'var(--text-muted)',marginTop:'10px',cursor:'pointer'}}>
+            <label style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',marginTop:'var(--space-ml)',cursor:'pointer'}}>
               <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)}
                 style={{accentColor:'var(--accent)',cursor:'pointer'}} />
               Keep me signed in
             </label>
           )}
-          <button type="submit" className="btn btn-primary btn-full" style={{marginTop:'8px'}}>
+          <button type="submit" className="btn btn-primary btn-full" style={{marginTop:'var(--space-md)'}}>
             {isRegister ? 'Create Account' : 'Sign In'}
           </button>
         </form>
@@ -78,7 +78,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
             >
             Continue as Guest
           </button>
-          <p style={{textAlign:'center',marginTop:'8px',fontSize:'0.72rem',color:'var(--text-muted)',opacity:0.7}}>
+          <p style={{textAlign:'center',marginTop:'var(--space-md)',fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',opacity:0.7}}>
             Browse tournaments without an account
           </p>
         </div>

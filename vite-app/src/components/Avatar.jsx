@@ -29,7 +29,7 @@ export default function Avatar({ src, username, size = 28, style }) {
       width: size, height: size, borderRadius: 'var(--radius-circle)', flexShrink: 0,
       background: `hsl(${hue}, 42%, 42%)`, color: '#fff',
       // Without an edge a dark-hued avatar dissolves into --surface.
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14)',
+      boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.14)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size >= 28 ? 'var(--fs-sm)' : 'var(--fs-2xs)',
       fontWeight: 'var(--fw-bold)', lineHeight: 1,
