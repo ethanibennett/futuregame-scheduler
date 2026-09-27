@@ -1594,7 +1594,11 @@
          (rows → date break → section header). */
       z-index: 5;
       display: flex;
-      align-items: baseline;
+      /* align-items:end + a 1r bottom padding lands every child's trimmed
+         baseline on the 4r line (the pill's bottom edge) with no nudge — the
+         count and weekday on the pill's baseline, exactly as asked. */
+      align-items: end;
+      box-sizing: border-box;
       /* No flex gap: the count carries its own 1g left margin, so it lands
          exactly on the col-2 line (pill ends at 9g + 1g = 10g) with the
          col-1/col-2 gutter immediately to its left. The sort control on the
@@ -1621,7 +1625,7 @@
          under the date). The event count seats on the pill's bottom edge (192)
          rather than the day's text baseline — see .date-break-count. */
       height: calc(var(--subrow) * 5);
-      padding: 0;
+      padding: 0 0 var(--subrow); /* 1r under the 4r pill: the block is 5r */
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
@@ -1653,14 +1657,20 @@
        mark for today while letting the rest of the list share its object. */
     .date-break-pill {
       display: inline-flex;
-      align-items: baseline;
+      /* 4r tall, with 1r of its own bottom padding: align-items:end lands the
+         day/month trimmed baselines on the 3r line (inside the pill), so the
+         number sits with a subrow of space below it rather than crammed on the
+         pill's edge. The pill box itself stays a 4r × 4-subcol grid object. */
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      align-items: end;
       /* Exactly one column wide — a grid object, not a content-hugging badge. Its
          right edge is on the 9g column line at every width (8.000g, not the 7.89g
          a hug happened to sum to). The date type is sized in g (see
          .date-break-day/-mon), so "DD Mon" is a constant ~5.85g and fits inside
          the 6g content area (8g − 2×1g padding) on every screen, left-aligned. */
       width: var(--col);
-      padding: 0 var(--gu);
+      padding: 0 var(--gu) var(--subrow);
       border-radius: var(--radius-pill);
       background: color-mix(in srgb, var(--n-8) 10%, transparent);
       /* No fixed height: a fixed height with align-items:baseline made the pill's
@@ -1690,55 +1700,43 @@
          is on the grid; only the glyph inside scales. */
       font-size: calc(var(--gu) * 2.5814);
       font-weight: var(--fw-regular);
-      line-height: calc(var(--subrow) * 4); /* one primary row */
+      line-height: calc(var(--subrow) * 3);
       font-variant-numeric: var(--num-tabular);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .date-break-mon {
       font-family: var(--font-display);
       font-size: calc(var(--gu) * 1.2907); /* 15px (--fs-md) at 430pt, in g */
-      line-height: 16px; /* 2 subrows */
+      line-height: calc(var(--subrow) * 2);
       text-transform: capitalize;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .date-break-count {
       font-size: var(--fs-2xs);
       font-family: var(--font-condensed);
-      line-height: 16px; /* 2 subrows */
+      line-height: calc(var(--subrow) * 2);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
       margin-left: var(--gu); /* one gutter, so the count starts on the col-2 line */
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .date-break-end {
       margin-left: auto;
       display: inline-flex;
-      /* Baseline, not center: centering the weekday inside its own 32px box put
-         its baseline at 186, floating six px above the count on 192 and on no
-         grid line. Baseline-aligned, the box hands the weekday's baseline to the
-         block's align-items:baseline like every other child, and the chevron
-         (an icon, baseline = its bottom edge) sits on the same line. */
-      align-items: baseline;
+      /* end, not baseline: the block's align-items:end already lands this box's
+         bottom on the 4r line, and end here hands the weekday's trimmed baseline
+         and the chevron's bottom edge to that same line — no nudge. */
+      align-items: end;
       justify-content: flex-end;
       width: calc(var(--subcol) * 2); /* 2 subcolumns, right edge on the rail */
-      height: 32px; /* 4 subrows */
       gap: var(--space-md);
-    }
-    /* Everything OUTSIDE the pill sits on the PILL's baseline — the pill box's
-       bottom edge (block-top + 32, a fixed 4 subrows) — not on the "25" text
-       baseline. align-items:baseline lands these on the day glyph baseline, which
-       sits 16 + (asc−desc)/2 below the line-box top; the drop to the box bottom
-       is 32 − that = 16px − (asc−desc)/2. With the day now sized in g, (asc−desc)/2
-       scales with it: 0.9035g == the old 10.5px at 430pt (where the drop is 5.5).
-       So the drop tracks the type and the count/weekday stay on the pill's bottom
-       edge (192 when pinned) at every width, not just 430. */
-    .date-break-count,
-    .date-break-end {
-      position: relative;
-      top: calc(16px - var(--gu) * 0.9035);
     }
     .date-break-dow {
       font-family: var(--font-display);
       font-size: var(--fs-md);
-      line-height: 16px; /* 2 subrows */
+      line-height: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .date-break-chev {
       display: inline-flex;
