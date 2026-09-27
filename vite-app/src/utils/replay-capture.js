@@ -24,7 +24,7 @@ export function beginCapture(tableEl) {
   // 83: the top seat's cards overflow the table box. The GIF path knew this
   // and padded for it; the video path captured the same element unpadded and
   // sheared the opponent's hole cards off the top of every clip.
-  tableEl.style.paddingTop = '50px';
+  tableEl.style.paddingTop = '50px'; /* px: capture-only overflow compensation, sized to the rendered table's device px (fed to domToCanvas) — not page layout */
   tableEl.style.marginTop = '0px';
   // 88 / 90 / 91 — see the [data-capturing] rules in styles.css.
   tableEl.setAttribute('data-capturing', '1');

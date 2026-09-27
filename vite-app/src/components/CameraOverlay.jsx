@@ -301,7 +301,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
       <div className="camera-overlay">
         <div className="camera-error">
           <div>
-            <div style={{fontSize:'2rem',marginBottom:'12px'}}>📷</div>
+            <div style={{fontSize:'calc(var(--gu) * 2.945)',marginBottom:'var(--space-lg)'}}>📷</div>
             <div>{error}</div>
           </div>
         </div>
@@ -334,7 +334,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
       const history = (stackHistory || []).filter(u => u.stack && Number(u.stack) > 0);
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.65rem',letterSpacing:'1px'}}>STACK GRAPH</div>
+          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 0.957)',letterSpacing:'1px'}}>STACK GRAPH</div>
           <div className="tournament-name">{tournamentName}</div>
           <div className="stats-line">{history.length} update{history.length !== 1 ? 's' : ''} tracked</div>
         </div>
@@ -345,23 +345,23 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
       const oppGroups = (handData.opponents || []).map(h => h ? parseCardNotation(h) : []);
       const bCards = handData.boardCards ? parseCardNotation(handData.boardCards) : [];
       const cardImg = (c, i) => c.suit !== 'x'
-        ? React.createElement('img', { key: i, src: '/cards/cards_gui_' + c.rank + c.suit + '.svg', alt: c.rank + c.suit, style: { height: '22px', borderRadius: '2px' } })
-        : React.createElement('span', { key: i, style: { display: 'inline-block', width: '16px', height: '22px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px', textAlign: 'center', fontSize: '0.55rem', lineHeight: '22px', color: 'rgba(255,255,255,0.5)' } }, '?');
+        ? React.createElement('img', { key: i, src: '/cards/cards_gui_' + c.rank + c.suit + '.svg', alt: c.rank + c.suit, style: { height: 'calc(var(--subrow) * 2.75)', borderRadius: 'calc(var(--subrow) * 0.25)' } })
+        : React.createElement('span', { key: i, style: { display: 'inline-block', width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2.75)', background: 'rgba(255,255,255,0.15)', borderRadius: 'calc(var(--subrow) * 0.25)', textAlign: 'center', fontSize: 'calc(var(--gu) * 0.810)', lineHeight: 'calc(var(--subrow) * 2.75)', color: 'rgba(255,255,255,0.5)' } }, '?');
       const results = Array.isArray(handData.handResult) ? handData.handResult : [];
       return (
         React.createElement('div', { className: 'camera-stats-bar' },
-          React.createElement('div', { style: { fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontFamily: "'Univers Condensed','Univers',sans-serif", marginBottom: '2px' } }, handData.activeGame),
-          React.createElement('div', { style: { display: 'flex', gap: '2px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '2px' } },
+          React.createElement('div', { style: { fontSize: 'calc(var(--gu) * 0.884)', color: 'rgba(255,255,255,0.5)', fontFamily: "'Univers Condensed','Univers',sans-serif", marginBottom: 'var(--space-2xs)' } }, handData.activeGame),
+          React.createElement('div', { style: { display: 'flex', gap: 'var(--space-2xs)', alignItems: 'center', flexWrap: 'wrap', marginBottom: 'var(--space-2xs)' } },
             hCards.map(cardImg),
-            bCards.length > 0 && React.createElement('span', { key: 'sep', style: { margin: '0 4px', color: 'rgba(255,255,255,0.3)', fontSize: '0.6rem' } }, '|'),
+            bCards.length > 0 && React.createElement('span', { key: 'sep', style: { margin: '0 var(--space-xs)', color: 'rgba(255,255,255,0.3)', fontSize: 'calc(var(--gu) * 0.884)' } }, '|'),
             bCards.map((c, i) => cardImg(c, 'b' + i)),
             ...oppGroups.flatMap((oCards, oi) => oCards.length > 0 ? [
-              React.createElement('span', { key: 'vs' + oi, style: { margin: '0 4px', color: 'rgba(255,255,255,0.4)', fontSize: '0.55rem', fontFamily: "'Univers Condensed','Univers',sans-serif" } }, 'vs'),
+              React.createElement('span', { key: 'vs' + oi, style: { margin: '0 var(--space-xs)', color: 'rgba(255,255,255,0.4)', fontSize: 'calc(var(--gu) * 0.810)', fontFamily: "'Univers Condensed','Univers',sans-serif" } }, 'vs'),
               ...oCards.map((c, ci) => cardImg(c, 'o' + oi + '_' + ci))
             ] : [])
           ),
           results.length > 0 && results.map((r, ri) =>
-            React.createElement('div', { key: ri, style: { fontSize: '0.65rem', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: r.result.color === 'green' ? '#4ade80' : r.result.color === 'red' ? '#f87171' : '#facc15' } },
+            React.createElement('div', { key: ri, style: { fontSize: 'calc(var(--gu) * 0.957)', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: r.result.color === 'green' ? '#4ade80' : r.result.color === 'red' ? '#f87171' : '#facc15' } },
               (results.length > 1 ? 'vs Opp ' + (r.index + 1) + ': ' : '') + r.result.text
             )
           )
@@ -378,17 +378,17 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
         <div className="camera-stats-bar">
           <div className="tournament-name">{tournamentName}</div>
           <div className="stats-line">{posNum}{typeof posNum === 'number' ? ordinalSuffix(posNum) : ''} of {totalNum}</div>
-          <div style={{marginTop:'4px',height:'6px',borderRadius:'3px',background:'rgba(255,255,255,0.15)',overflow:'hidden'}}>
-            <div style={{height:'100%',width:pct+'%',background:'#22c55e',borderRadius:'3px'}} />
+          <div style={{marginTop:'var(--space-xs)',height:'calc(var(--subrow) * 0.75)',borderRadius:'calc(var(--subrow) * 0.375)',background:'rgba(255,255,255,0.15)',overflow:'hidden'}}>
+            <div style={{height:'100%',width:pct+'%',background:'#22c55e',borderRadius:'calc(var(--subrow) * 0.375)'}} />
           </div>
-          {updateData.stack && <div style={{marginTop:'2px',fontSize:'0.7rem',color:'#22c55e',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>{formatChips(updateData.stack)} chips</div>}
+          {updateData.stack && <div style={{marginTop:'var(--space-2xs)',fontSize:'calc(var(--gu) * 1.031)',color:'#22c55e',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>{formatChips(updateData.stack)} chips</div>}
         </div>
       );
     }
     if (overlayType === 'finaltable') {
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#f59e0b',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.9rem'}}>🏆 FINAL TABLE</div>
+          <div style={{color:'#f59e0b',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)'}}>🏆 FINAL TABLE</div>
           <div className="tournament-name">{tournament?.buyin ? '$' + Number(tournament.buyin).toLocaleString() + ' ' : ''}{tournamentName}</div>
           <div className="stats-line">
             {updateData.placesLeft ? updateData.placesLeft + ' remain' : ''}
@@ -401,7 +401,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
     if (overlayType === 'countdown') {
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.65rem',letterSpacing:'1px'}}>NEXT UP</div>
+          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 0.957)',letterSpacing:'1px'}}>NEXT UP</div>
           <div className="tournament-name">{tournament?.buyin ? '$' + Number(tournament.buyin).toLocaleString() + ' ' : ''}{tournamentName}</div>
           <div className="stats-line">in {countdownText}</div>
         </div>
@@ -585,7 +585,7 @@ export function RegistrationCameraFlow({ tournament, guarantee, joiningSb, joini
   if (error) {
     return (
       <div className="camera-overlay">
-        <div className="camera-error"><div><div style={{fontSize:'2rem',marginBottom:'12px'}}>📷</div><div>{error}</div></div></div>
+        <div className="camera-error"><div><div style={{fontSize:'calc(var(--gu) * 2.945)',marginBottom:'var(--space-lg)'}}>📷</div><div>{error}</div></div></div>
         <input type="file" accept="image/*" ref={fileInputRef} style={{display:'none'}} onChange={handleGalleryPick} />
         <div className="camera-actions">
           <button className="camera-btn-close" onClick={handleClose}>Close</button>
