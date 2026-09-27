@@ -6882,11 +6882,9 @@
          the sub-grid rails. Top pad is one subrow, so with the 64px (8-subrow)
          header the content origin sits at 72px = 9 subrows. Bottom clears the
          tab bar. */
-      /* 1.5r top pad matched by the sticky filter block's -1.5r bleed margin, so
-         the block sits flush at the content top in flow (net zero) while the bleed
-         still tucks its cover up under the header. Side is one grid unit; bottom
-         clears the tab bar. */
-      padding: calc(var(--subrow) * 1.5) var(--gu) calc(var(--nav-h) + var(--subrow) * 2);
+      /* No top padding — the sticky filter block provides its own top space.
+         Side is one grid unit; bottom clears the tab bar. */
+      padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2);
       background: var(--bg);
     }
     /* When the replayer tab is active, lock scrolling on the content area.
@@ -7590,17 +7588,14 @@
     /* ── Search & filters ── */
     .sticky-filters {
       position: sticky;
-      /* Bleeds 1.5r UP under the header (top and margin both -1.5r), matched by a
-         1.5r content-area top pad so the FLOW position is unchanged (block still
-         8r->20r, day on 23r). The bleed does two jobs the flat top:0 lost: it
-         tucks an opaque cover under the transparent header so momentum-scrolled
-         cards can't peek through the gap, and — via the date-break's top =
-         filtersOffsetHeight + this margin — it pins the date-break exactly on the
-         filter block's bottom edge so the pill's top isn't clipped. */
-      top: calc(var(--subrow) * -1.5);
+      /* Pins flush at the content top (bar bottom); flow and pinned match, block
+         is 8r->20r, day on 23r. (The pill-clip / header-peek fix does not belong
+         here — a bleed margin here broke the working scroll; that is being
+         diagnosed with a live on-device readout instead of guessed.) */
+      top: 0;
       z-index: var(--z-sticky);
       background: var(--bg);
-      margin: calc(var(--subrow) * -1.5) calc(-1 * var(--gu)) 0;
+      margin: 0 calc(-1 * var(--gu)) 0;
       padding: calc(var(--subrow) * 2) var(--gu) calc(var(--subrow) * 2);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
