@@ -1330,21 +1330,40 @@ export default function TournamentsView({
   }, [filters]);
 
   useEffect(() => {
+    const el = stickyFiltersRef.current;
+    if (!el) return;
     const measure = () => {
-      if (stickyFiltersRef.current) {
-        // getBoundingClientRect().height (fractional), not offsetHeight (integer):
-        // the filter block is exactly 12r = 92.57px, and rounding it to 93px pinned
-        // the date-break a subpixel below its r-line, floating the whole pill off
-        // the grid.
-        const h = stickyFiltersRef.current.offsetHeight;
-        const style = getComputedStyle(stickyFiltersRef.current);
-        const mt = parseFloat(style.marginTop) || 0;
-        setDateBreakTop(h + mt);
-      }
+      // getBoundingClientRect().height (fractional), not offsetHeight (integer):
+      // the filter block is exactly 12r = 92.57px, and rounding it to 93px pinned
+      // the date-break a subpixel below its r-line, floating the whole pill off
+      // the grid.
+      const h = el.getBoundingClientRect().height;
+      const style = getComputedStyle(el);
+      const mt = parseFloat(style.marginTop) || 0;
+      setDateBreakTop(h + mt);
     };
+    // The date-break pins at this height. On a WKWebView the filter block reaches
+    // its full height AFTER first layout (the checkbox row and the safe-area
+    // inset both settle a beat late), so a single mount-time measurement caught
+    // it at ~6r — half its real 12r — and the pill pinned that far too high, up
+    // inside the filters, with its top clipped. Measured live on device:
+    // sf 8.01->20.02r (12r) but db pinned at 14.11r, ~6r above where it should.
+    // A ResizeObserver tracks the true height however late it settles; the rAFs
+    // and timeouts cover the first frames before the observer is wired.
     measure();
+    const rafs = [requestAnimationFrame(() => { measure(); requestAnimationFrame(measure); })];
+    const timers = [setTimeout(measure, 150), setTimeout(measure, 500), setTimeout(measure, 1200)];
+    let ro;
+    if ('ResizeObserver' in window) { ro = new ResizeObserver(measure); ro.observe(el); }
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      rafs.forEach(cancelAnimationFrame);
+      timers.forEach(clearTimeout);
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
   }, [filters, search]);
 
   const buyinOptions = useMemo(() =>
