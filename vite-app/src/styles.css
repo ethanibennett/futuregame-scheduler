@@ -842,14 +842,16 @@
          each figure's trimmed box bottom — its baseline — lands on that cell's
          bottom r-line: the buy-in on 6r (the same r-line as the time to its
          left), the guarantee on 4r, two lines up. Both grid-snapped, no nudge. */
+      grid-column: 2;
+      grid-row: 1 / span 2;
       display: grid;
-      grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 2);
+      grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2);
       align-items: end;
       justify-items: end;
       text-align: right;
     }
-    .cal-event-gtd { grid-row: 1; }
-    .cal-event-buyin { grid-row: 2; }
+    .cal-event-buyin { grid-row: 1; } /* r4, on the time's line */
+    .cal-event-gtd { grid-row: 2; }   /* r6, below the buy-in */
     .cal-event-buyin, .cal-event-gtd { display: block; }
     .cal-event-gtd {
       font-family: var(--font-condensed);
@@ -8705,9 +8707,12 @@
          above the line box centre for this face — lands on the first major row
          (time/buy-in at 32) and the second (name at 64). Sums with row1 (32) +
          row2 (24) to 80, + the 16px chevron = 96 (3 major rows). */
-      /* Whole r: 2r top, 1r bottom, 1g sides. Baselines land on r-lines via
-         text-box-trim on the text + align-items:end on the rows — no nudges. */
-      padding: calc(var(--subrow) * 2) var(--gu) var(--subrow);
+      /* No vertical padding, 1g sides. The card anatomy is set by whole-r grid
+         tracks: row1 (6r) seats time + buy-in on r4 and the guarantee on r6;
+         row2 seats the title on r8 (and, on a flight card, the flight line on
+         r10); a 2r bottom pad then the 2r chevron close a 12r card (14r with a
+         flight). Baselines land by text-box-trim + align-items:end — no nudges. */
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
       cursor: pointer;
       position: relative;
       user-select: none;
@@ -8750,14 +8755,17 @@
        an accolade is a property of the EVENT, --brand is the app talking, and
        two undeclared golds 20px apart is a system with no owner. */
     .cal-accolades {
-      /* One-subcolumn cell at the right of row 2, its icons centred on the
-         title line (a 24px / 3-subrow box). */
+      /* One-subcolumn cell at the right of row 2, its icons centred on the title
+         line (a 2-subrow box). align-self:start pins it to the top of row 2 so on
+         a flight card (row 2 is 4r) it stays on the title line r8 rather than
+         dropping to the flight line r10 under the row's align-items:end. */
       display: flex;
       align-items: center;
       justify-content: flex-end;
       gap: var(--space-xs);
       width: var(--subcol);
       height: var(--cal-title-line);
+      align-self: start;
       flex-shrink: 0;
       pointer-events: none;
     }
@@ -8797,16 +8805,17 @@
     }
 
     .cal-bar-row1 {
-      /* Sized to the grid, not just aligned: the money block is the last
-         column (its right edge on the 418 rail, its left edge on the 326 line);
-         the time fills the columns to its left, so its box runs line-to-line
-         (35 → 326) with the label left-aligned inside it. */
+      /* Two whole-r rows: track 1 (4r) holds the time (col 1) and buy-in (col 2),
+         each seated on r4; track 2 (2r) holds the guarantee (col 2) on r6. The
+         money cell spans both tracks. align-items:end + text-box-trim land the
+         trimmed baselines on each track's bottom r-line. */
       display: grid;
       grid-template-columns: 1fr calc(var(--subcol) * 3);
-      align-items: end; /* trimmed box bottom = baseline; end puts it on the row's bottom r-line */
-      height: calc(var(--subrow) * 4); /* one Row */
+      grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2);
+      align-items: end;
       gap: 0;
     }
+    .cal-event-time { grid-column: 1; grid-row: 1; }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
        "- Flight A" on a second line, which doubles the row height and used to
@@ -8821,15 +8830,14 @@
       grid-template-columns: 1fr auto;
       align-items: end;
       gap: 0;
-      --cal-title-line: calc(var(--subrow) * 3);
+      --cal-title-line: calc(var(--subrow) * 2);
     }
-    /* Single-line name: give the cell a whole 3-subrow line box and bottom-align
-       it, so the name's trimmed box bottom (its baseline) lands on exactly 9r
-       from the card top (6r Row + 3r) with no nudge — a full line below the time,
-       not crammed against it. A stage card ("- Flight A" on a second line) keeps
-       its natural height; :has() guards it. */
+    /* Single-line name: a 2-subrow cell, bottom-aligned, lands the title's
+       trimmed baseline on r8 (row1 is 6r, + 2r) with no nudge — a line below the
+       guarantee. A flight card ("- Flight A" on a second line) keeps its natural
+       height (title r8, flight r10); :has() guards it. */
     .cal-bar-row2:not(:has(.cal-event-stage)) {
-      height: calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 2);
     }
 
     .cal-event-time {
@@ -8856,9 +8864,9 @@
        so a name that carries one is deterministically 48px (two lines) — the
        card lands on an exact 120px (15 cells) instead of a rounded 121. */
     .cal-event-base {
-      /* The name's own line in a stage card, wrapped so it can be trimmed apart
-         from the Flight/Day line. 3-subrow box, trimmed baseline on 9r — the same
-         r-line a single-line name sits on. */
+      /* The name's own line in a flight card, wrapped so it can be trimmed apart
+         from the Flight/Day line. 2-subrow box, trimmed baseline on r8 — the same
+         r-line a single-line title sits on. */
       display: block;
       line-height: var(--cal-title-line);
       white-space: nowrap;
@@ -8870,9 +8878,9 @@
       display: block;
       font-size: 0.78em;
       opacity: 0.7;
-      /* 2-subrow line box directly under the name; its trimmed baseline lands on
-         11r (2r below the name's 9r), no nudge. Card: 6r Row + 3r name + 2r
-         stage + 1r pad + 2r chevron = exactly 14r. */
+      /* 2-subrow line box directly under the title; its trimmed baseline lands on
+         r10 (2r below the title's r8), no nudge. Card: 6r row1 + 2r title + 2r
+         flight + 2r pad + 2r chevron = exactly 14r. */
       line-height: calc(var(--subrow) * 2);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
@@ -8886,11 +8894,11 @@
       text-overflow: ellipsis;
       overflow: hidden;
     }
-    /* A stage card carries the name on line 1 (.cal-event-base) and "- Flight A"
+    /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
        eats the line-height leading, so two stacked would butt together — instead
-       give the name its own 2-track grid (3r then 2r) with align-items:end, so
-       each line's baseline lands on its track's bottom r-line (9r, then 11r),
+       give the name its own 2-track grid (2r then 2r) with align-items:end, so
+       each line's baseline lands on its track's bottom r-line (r8, then r10),
        exactly as row 1 seats the time. */
     .cal-event-row:not(.open) .cal-bar-row2:has(.cal-event-stage) .cal-event-name {
       display: grid;
