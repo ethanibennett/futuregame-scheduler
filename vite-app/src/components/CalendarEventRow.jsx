@@ -250,7 +250,7 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
   return (
     <div
       className="buddy-avatar-row"
-      style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px', alignItems: 'center' }}
+      style={{ display: 'flex', gap: 'calc(var(--subrow) * 0.75)', flexWrap: 'wrap', marginBottom: 'calc(var(--subrow) * 1.25)', alignItems: 'center' }}
     >
       {buddies.map((b, i) => {
         const name = b.username || b.real_name || '?';
@@ -262,12 +262,12 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
               cursor: onBuddyClick ? 'pointer' : 'default',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '3px 10px 3px 3px',
+              gap: 'calc(var(--subrow) * 0.75)',
+              padding: 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.25) calc(var(--subrow) * 0.375) calc(var(--subrow) * 0.375)',
               borderRadius: '999px',
               background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              fontSize: '0.78rem',
+              border: 'var(--bw-hair) solid var(--border)',
+              fontSize: 'calc(var(--gu) * 1.149)',
               color: 'var(--text)',
               userSelect: 'none',
             }}
@@ -355,15 +355,15 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
     >
       <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0}}>#{t.event_number}</span>
       <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
-      <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'0.72rem'}}>${t.buyin}</span>
+      <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>${t.buyin}</span>
     </div>
   );
 
   const checkboxStyle = {
-    width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer'
+    width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', accentColor: 'var(--accent)', cursor: 'pointer'
   };
   const sectionLabelStyle = {
-    fontSize: '0.82rem', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px'
+    fontSize: 'calc(var(--gu) * 1.208)', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)'
   };
 
   return (
@@ -371,14 +371,14 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       <div className="condition-picker-title">Set Conditions</div>
 
       {/* Satellites checkbox */}
-      <label style={{...sectionLabelStyle, marginBottom: satEnabled ? '8px' : '12px'}}>
+      <label style={{...sectionLabelStyle, marginBottom: satEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
         <input type="checkbox" checked={satEnabled} onChange={e => setSatEnabled(e.target.checked)} style={checkboxStyle} />
         Satellites
       </label>
 
       {satEnabled && (
-        <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-          <div className="condition-type-row" style={{marginBottom:'8px'}}>
+        <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
+          <div className="condition-type-row" style={{marginBottom:'calc(var(--subrow) * 1)'}}>
             <button className={`condition-type-btn ${satType === 'IF_WIN_SEAT' ? 'active' : ''}`} onClick={() => setSatType('IF_WIN_SEAT')}>
               If I win a seat
             </button>
@@ -389,7 +389,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
           {suggestedSatellites.length > 0 && (
             <>
-              <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
                 Related Satellites
               </div>
               <div className="condition-sat-list">
@@ -398,7 +398,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
             </>
           )}
 
-          <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+          <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
             {suggestedSatellites.length > 0 ? 'Or search any event' : 'Search for an event'}
           </div>
           <input
@@ -416,14 +416,14 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       )}
 
       {/* Profit / Loss checkbox */}
-      <label style={{...sectionLabelStyle, marginBottom: profitEnabled ? '8px' : '12px'}}>
+      <label style={{...sectionLabelStyle, marginBottom: profitEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
         <input type="checkbox" checked={profitEnabled} onChange={e => setProfitEnabled(e.target.checked)} style={checkboxStyle} />
         Profit / Loss
       </label>
 
       {profitEnabled && (
-        <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-          <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+        <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
+          <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
             Profit threshold ($)
           </div>
           <input
@@ -433,7 +433,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
             value={profitAmount}
             onChange={e => setProfitAmount(e.target.value)}
           />
-          <span style={{fontSize:'0.7rem',color:'var(--text-muted)',display:'block',marginTop:'2px'}}>
+          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',display:'block',marginTop:'calc(var(--subrow) * 0.25)'}}>
             I'll play this event if I'm up at least this amount
           </span>
         </div>
@@ -442,14 +442,14 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       {/* If I Bust checkbox */}
       {bustEvents.length > 0 && (
         <>
-        <label style={{...sectionLabelStyle, marginBottom: bustEnabled ? '8px' : '12px'}}>
+        <label style={{...sectionLabelStyle, marginBottom: bustEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
           <input type="checkbox" checked={bustEnabled} onChange={e => setBustEnabled(e.target.checked)} style={checkboxStyle} />
           If I Bust
         </label>
 
         {bustEnabled && (
-          <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-            <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+          <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
+            <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
               I'll play this if I bust from:
             </div>
             <div className="condition-sat-list">
@@ -459,9 +459,9 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
                   className={`condition-sat-item ${selectedBustId === t.id ? 'selected' : ''}`}
                   onClick={() => setSelectedBustId(t.id === selectedBustId ? null : t.id)}
                 >
-                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'0.72rem',color:'var(--text-muted)'}}>{t.time}</span>
+                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)'}}>{t.time}</span>
                   <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
-                  <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'0.72rem'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
+                  <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -473,14 +473,14 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       {/* If I Bag checkbox */}
       {bagEvents.length > 0 && (
         <>
-        <label style={{...sectionLabelStyle, marginBottom: bagEnabled ? '8px' : '12px'}}>
+        <label style={{...sectionLabelStyle, marginBottom: bagEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
           <input type="checkbox" checked={bagEnabled} onChange={e => setBagEnabled(e.target.checked)} style={checkboxStyle} />
           If I Bag
         </label>
 
         {bagEnabled && (
-          <div style={{paddingLeft:'24px',marginBottom:'12px'}}>
-            <div style={{fontSize:'0.68rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'4px'}}>
+          <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
+            <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
               I'll play this if I bag from:
             </div>
             <div className="condition-sat-list">
@@ -490,9 +490,9 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
                   className={`condition-sat-item ${selectedBagId === t.id ? 'selected' : ''}`}
                   onClick={() => setSelectedBagId(t.id === selectedBagId ? null : t.id)}
                 >
-                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'0.72rem',color:'var(--text-muted)'}}>#{t.event_number}</span>
+                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)'}}>#{t.event_number}</span>
                   <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
-                  <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'0.72rem'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
+                  <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -503,18 +503,18 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
       {/* Public toggle */}
       <div
-        style={{display:'flex',alignItems:'center',gap:'8px',marginTop:'4px',fontSize:'0.75rem',fontFamily:"'Univers Condensed','Univers',sans-serif",color:'var(--text-muted)',cursor:'pointer',userSelect:'none'}}
+        style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',marginTop:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.104)',fontFamily:"'Univers Condensed','Univers',sans-serif",color:'var(--text-muted)',cursor:'pointer',userSelect:'none'}}
         onClick={() => setIsPublic(p => !p)}
       >
         <div style={{
-          width:'32px',height:'18px',borderRadius:'9px',
+          width:'calc(var(--subrow) * 4)',height:'calc(var(--subrow) * 2.25)',borderRadius:'calc(var(--subrow) * 1.125)',
           background: isPublic ? 'var(--accent)' : 'var(--border)',
           position:'relative',transition:'background 0.2s'
         }}>
           <div style={{
-            width:'14px',height:'14px',borderRadius:'50%',background:'#fff',
-            position:'absolute',top:'2px',
-            left: isPublic ? '16px' : '2px',
+            width:'calc(var(--subrow) * 1.75)',height:'calc(var(--subrow) * 1.75)',borderRadius:'50%',background:'#fff',
+            position:'absolute',top:'calc(var(--subrow) * 0.25)',
+            left: isPublic ? 'calc(var(--subrow) * 2)' : 'calc(var(--subrow) * 0.25)',
             transition:'left 0.2s'
           }} />
         </div>
@@ -522,7 +522,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       </div>
 
       {/* Action buttons */}
-      <div style={{display:'flex',gap:'8px',marginTop:'8px'}}>
+      <div style={{display:'flex',gap:'calc(var(--subrow) * 1)',marginTop:'calc(var(--subrow) * 1)'}}>
         <button
           className="condition-type-btn active"
           style={{flex:1,opacity:canSubmit ? 1 : 0.4,pointerEvents:canSubmit ? 'auto' : 'none'}}
@@ -537,7 +537,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
 
       {conditions.length > 0 && (
         <button
-          style={{marginTop:'8px',background:'none',border:'none',color:'var(--accent2)',fontSize:'0.75rem',cursor:'pointer',padding:'4px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}
+          style={{marginTop:'calc(var(--subrow) * 1)',background:'none',border:'none',color:'var(--accent2)',fontSize:'calc(var(--gu) * 1.104)',cursor:'pointer',padding:'calc(var(--subrow) * 0.5) 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}
           onClick={onRemove}
         >
           Remove All Conditions
@@ -631,12 +631,12 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
         {/* Collapsed bar -- always visible */}
         <div className="cal-event-bar" onClick={() => setOpen(o => !o)} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}>
           {tournament.venue === 'Personal' ? (
-            <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'8px'}}>
-              <span className="cal-event-name" style={{fontSize:'0.88rem'}}>
+            <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
+              <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
                 {tournament.event_name === 'Travel Day' ? '\u2708\uFE0F' : '\uD83C\uDFD6\uFE0F'} {tournament.event_name}
               </span>
               {tournament.notes && (
-                <span style={{fontSize:'0.78rem', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                   \u2014 {tournament.notes}
                 </span>
               )}
@@ -686,9 +686,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
               {tournament.venue === 'Personal' ? (
                 <>
                   {tournament.event_name === 'Travel Day' && !readOnly && onUpdatePersonalEvent ? (
-                    <div style={{marginBottom:'12px'}}>
-                      <label style={{fontSize:'0.78rem', color:'var(--text-muted)', display:'block', marginBottom:'4px'}}>Travel details</label>
-                      <div style={{display:'flex', gap:'6px', alignItems:'center'}}>
+                    <div style={{marginBottom:'calc(var(--subrow) * 1.5)'}}>
+                      <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', display:'block', marginBottom:'calc(var(--subrow) * 0.5)'}}>Travel details</label>
+                      <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', alignItems:'center'}}>
                         <input
                           type="text"
                           value={travelNotes}
@@ -697,15 +697,15 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); }}}
                           placeholder="e.g. 6h flight LAX \u2192 LAS"
                           style={{
-                            flex:1, padding:'6px 10px', fontSize:'0.83rem',
-                            borderRadius:'6px', border:'1px solid var(--border)',
+                            flex:1, padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.222)',
+                            borderRadius:'calc(var(--subrow) * 0.75)', border:'var(--bw-hair) solid var(--border)',
                             background:'var(--surface)', color:'var(--text)', outline:'none'
                           }}
                         />
                       </div>
                     </div>
                   ) : (
-                    <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'12px'}}>
+                    <p style={{fontSize:'calc(var(--gu) * 1.252)', color:'var(--text-muted)', marginBottom:'calc(var(--subrow) * 1.5)'}}>
                       {tournament.event_name === 'Travel Day'
                         ? (tournament.notes || 'Travel day \u2014 no tournaments planned')
                         : 'Day off \u2014 rest and recover'}
@@ -807,7 +807,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </div>
 
                   {conditions && conditions.length > 0 && (
-                    <div style={{display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'10px'}}>
+                    <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', flexWrap:'wrap', marginBottom:'calc(var(--subrow) * 1.25)'}}>
                       {conditions.map((c, ci) => (
                         <span key={ci} className="badge badge-condition">
                           {formatConditionBadge(c, allTournaments)}
@@ -817,7 +817,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   )}
 
                   {tournament.notes && (
-                    <p style={{fontSize:'0.78rem', color:'var(--text-muted)', fontStyle:'italic', marginBottom:'10px'}}>
+                    <p style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', marginBottom:'calc(var(--subrow) * 1.25)'}}>
                       {tournament.notes}
                     </p>
                   )}
@@ -889,10 +889,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       const next = { ...prev }; delete next[key]; return next;
                     });
                     const inputStyle = key => ({
-                      width:'100%', fontSize:'0.83rem', padding:'4px 8px', borderRadius:'6px',
+                      width:'100%', fontSize:'calc(var(--gu) * 1.222)', padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)',
                       // Inline rather than a CSS class: the base border is inline too, so a class
                       // would lose the specificity fight and silently do nothing.
-                      border:`1px solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`,
+                      border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`,
                       background:'var(--surface)', color:'var(--text)', outline:'none',
                     });
                     const field = (label, key, type) => (
@@ -911,7 +911,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         ) : type === 'select-category' ? (
                           <select value={f[key] || ''}
                             onChange={e => { clearFieldError(key); setEditFields(p => ({...p, [key]: e.target.value})); }}
-                            style={{fontSize:'0.83rem', padding:'4px 8px', borderRadius:'6px', border:`1px solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, background:'var(--surface)', color:'var(--text)'}}>
+                            style={{fontSize:'calc(var(--gu) * 1.222)', padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, background:'var(--surface)', color:'var(--text)'}}>
                             <option value="primary">Primary</option>
                             <option value="side">Side</option>
                           </select>
@@ -924,10 +924,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       </div>
                     );
                     return (
-                      <div className="admin-edit-panel" onClick={e => e.stopPropagation()} style={{marginBottom:'10px', padding:'10px', borderRadius:'8px', background:'var(--surface)', border:'1px solid var(--border)'}}>
-                        <div style={{fontSize:'0.75rem', fontWeight:700, color:'var(--accent)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px'}}>Admin Edit</div>
-                        {formError && <div className="admin-field-error" style={{marginBottom:'8px'}}>{formError}</div>}
-                        <div className="cal-detail-grid" style={{gap:'8px'}}>
+                      <div className="admin-edit-panel" onClick={e => e.stopPropagation()} style={{marginBottom:'calc(var(--subrow) * 1.25)', padding:'calc(var(--subrow) * 1.25)', borderRadius:'calc(var(--subrow) * 1)', background:'var(--surface)', border:'var(--bw-hair) solid var(--border)'}}>
+                        <div style={{fontSize:'calc(var(--gu) * 1.104)', fontWeight:700, color:'var(--accent)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'calc(var(--subrow) * 1)'}}>Admin Edit</div>
+                        {formError && <div className="admin-field-error" style={{marginBottom:'calc(var(--subrow) * 1)'}}>{formError}</div>}
+                        <div className="cal-detail-grid" style={{gap:'calc(var(--subrow) * 1)'}}>
                           {field('Event Name', 'event_name')}
                           {field('Event #', 'event_number')}
                           {field('Buy-in', 'buyin', 'number')}
@@ -943,7 +943,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           {field('Notes', 'notes')}
                         </div>
                         {feedOwned && (
-                          <div style={{fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'8px', lineHeight:1.4}}>
+                          <div style={{fontSize:'calc(var(--gu) * 1.031)', color:'var(--text-muted)', marginTop:'calc(var(--subrow) * 1)', lineHeight:1.4}}>
                             Venue and Event # are the feed&rsquo;s match key &mdash; correct them in mtt-series-watcher.
                             Everything else is pinned here and survives the hourly sync.
                           </div>
@@ -952,7 +952,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                             the strip-color picker below it writes immediately, so it must not look
                             like part of the pending edit. */}
                         {overridden.size > 0 && onClearOverrides && (
-                          <div style={{marginTop:'8px'}}>
+                          <div style={{marginTop:'calc(var(--subrow) * 1)'}}>
                             <button className="admin-revert-btn" disabled={saving || clearing} onClick={async () => {
                               const n = overridden.size;
                               const plural = n === 1 ? '' : 's';
@@ -976,8 +976,8 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           const computed = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
                           const currentColor = computed || stripColor;
                           return (
-                            <div style={{marginTop:'10px', display:'flex', alignItems:'center', gap:'10px'}}>
-                              <label style={{fontSize:'0.78rem', color:'var(--text-muted)', whiteSpace:'nowrap'}}>Strip Color ({abbr})</label>
+                            <div style={{marginTop:'calc(var(--subrow) * 1.25)', display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1.25)'}}>
+                              <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', whiteSpace:'nowrap'}}>Strip Color ({abbr})</label>
                               <input type="color" defaultValue={currentColor}
                                 onChange={async (e) => {
                                   const color = e.target.value;
@@ -991,11 +991,11 @@ The feed's own values return at the next hourly sync — your edits stay visible
                                     });
                                   } catch (err) { console.error('Failed to save venue color', err); }
                                 }}
-                                style={{width:'36px', height:'28px', padding:0, border:'1px solid var(--border)', borderRadius:'4px', cursor:'pointer', background:'transparent'}} />
+                                style={{width:'calc(var(--subrow) * 4.5)', height:'calc(var(--subrow) * 3.5)', padding:0, border:'var(--bw-hair) solid var(--border)', borderRadius:'calc(var(--subrow) * 0.5)', cursor:'pointer', background:'transparent'}} />
                             </div>
                           );
                         })()}
-                        <div style={{display:'flex', gap:'8px', marginTop:'10px'}}>
+                        <div style={{display:'flex', gap:'calc(var(--subrow) * 1)', marginTop:'calc(var(--subrow) * 1.25)'}}>
                           <button disabled={saving} onClick={async () => {
                             if (Object.keys(editFields).length === 0) { setEditing(false); return; }
                             setSaving(true);
@@ -1016,12 +1016,12 @@ The feed's own values return at the next hourly sync — your edits stay visible
                               toast.error(e.message);
                             }
                             setSaving(false);
-                          }} style={{flex:1, padding:'8px', borderRadius:'6px', border:'none', background:'var(--accent)', color:'#fff', fontWeight: 'var(--fw-bold)', fontSize:'0.83rem', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
+                          }} style={{flex:1, padding:'calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:'none', background:'var(--accent)', color:'#fff', fontWeight: 'var(--fw-bold)', fontSize:'calc(var(--gu) * 1.222)', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
                             {saving ? 'Saving\u2026' : 'Save'}
                           </button>
                           <button disabled={saving}
                             onClick={() => { setEditing(false); setEditFields({}); setFieldErrors({}); setFormError(''); }}
-                            style={{padding:'8px 16px', borderRadius:'6px', border:'1px solid var(--border)', background:'transparent', color:'var(--text)', fontSize:'0.83rem', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
+                            style={{padding:'calc(var(--subrow) * 1) calc(var(--subrow) * 2)', borderRadius:'calc(var(--subrow) * 0.75)', border:'var(--bw-hair) solid var(--border)', background:'transparent', color:'var(--text)', fontSize:'calc(var(--gu) * 1.222)', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
                             Cancel
                           </button>
                         </div>
@@ -1162,12 +1162,12 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         <div className="cal-event-bar" onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}>
           {tournament.venue === 'Personal' ? (
-            <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'8px'}}>
-              <span className="cal-event-name" style={{fontSize:'0.88rem'}}>
+            <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
+              <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
                 {tournament.event_name === 'Travel Day' ? '✈️' : '🏖️'} {tournament.event_name}
               </span>
               {tournament.notes && (
-                <span style={{fontSize:'0.78rem', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                <span style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                   {'—'} {tournament.notes}
                 </span>
               )}

@@ -59,7 +59,7 @@ export default function FilterPanel({
           </div>
           {openSection === 'date' && (
             <div className="filter-section-body">
-              <div style={{display:'flex',gap:'8px'}}>
+              <div style={{display:'flex',gap:'calc(var(--subrow) * 1)'}}>
                 <div className="form-field" style={{flex:1}}>
                   <label>From</label>
                   <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
@@ -117,7 +117,7 @@ export default function FilterPanel({
           </div>
           {openSection === 'buyin' && (
             <div className="filter-section-body">
-              <div style={{display:'flex',gap:'8px'}}>
+              <div style={{display:'flex',gap:'calc(var(--subrow) * 1)'}}>
                 <div className="form-field" style={{flex:1}}>
                   <label>Min $</label>
                   <input type="number" value={buyinMin} onChange={e => setBuyinMin(e.target.value)} placeholder="0" />

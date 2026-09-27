@@ -160,42 +160,42 @@ export default function ScheduleExportModal({ events, onClose }) {
             <h3>Export Schedule</h3>
 
             {/* Document title input */}
-            <div className="filter-group" style={{ marginBottom: '12px' }}>
+            <div className="filter-group" style={{ marginBottom: 'calc(var(--subrow) * 1.5)' }}>
               <label>Document Title</label>
               <input
                 type="text"
                 value={docTitle}
                 onChange={e => setDocTitle(e.target.value)}
                 placeholder="MY SCHEDULE"
-                style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}
+                style={{ padding: 'calc(var(--subrow) * 1) calc(var(--subrow) * 1.5)', border: 'var(--bw-1) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.325)', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
 
             {/* Series filter checkboxes */}
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Include Series</label>
+            <div style={{ marginBottom: 'calc(var(--subrow) * 1.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'calc(var(--subrow) * 1)' }}>
+                <label style={{ fontSize: 'calc(var(--gu) * 1.149)', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Include Series</label>
                 <button
                   onClick={toggleAll}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 'calc(var(--gu) * 1.104)', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
                 >{allSelected ? 'None' : 'All'}</button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(var(--subrow) * 0.75)', maxHeight: 'calc(var(--subrow) * 17.5)', overflowY: 'auto' }}>
                 {venueList.map(([abbr, info]) => (
                   <label
                     key={abbr}
-                    style={{ fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-condensed)', fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    style={{ fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-condensed)', fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)' }}
                   >
                     <input
                       type="checkbox"
                       checked={selectedVenues.has(abbr)}
                       onChange={() => toggleVenue(abbr)}
-                      style={{ width: '16px', height: '16px', accentColor: 'var(--brand)', cursor: 'pointer' }}
+                      style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', accentColor: 'var(--brand)', cursor: 'pointer' }}
                     />
                     {/* Venue colour as a bar, never as type. These hexes were
                         chosen to sit BEHIND white strip text, so used as a text
                         colour on --surface five of them measured under 1.5:1. */}
-                    <span aria-hidden="true" style={{ width: '3px', alignSelf: 'stretch', minHeight: '14px', borderRadius: 'var(--radius-pill)', background: info.color, flex: 'none' }} />
+                    <span aria-hidden="true" style={{ width: 'calc(var(--subrow) * 0.375)', alignSelf: 'stretch', minHeight: 'calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-pill)', background: info.color, flex: 'none' }} />
                     {info.longName}
                   </label>
                 ))}
@@ -203,56 +203,56 @@ export default function ScheduleExportModal({ events, onClose }) {
             </div>
 
             {/* Exclude satellites + event count */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'calc(var(--subrow) * 1.5)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)', fontSize: 'calc(var(--gu) * 1.208)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={excludeSatellites}
                   onChange={e => setExcludeSatellites(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                  style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', accentColor: 'var(--accent)', cursor: 'pointer' }}
                 />
                 Exclude Satellites
               </label>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)' }}>
                 {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
               </span>
             </div>
 
             {/* Light mode toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', marginBottom: '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)', fontSize: 'calc(var(--gu) * 1.208)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', marginBottom: 'calc(var(--subrow) * 1.5)' }}>
               <input
                 type="checkbox"
                 checked={lightMode}
                 onChange={e => setLightMode(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', accentColor: 'var(--accent)', cursor: 'pointer' }}
               />
               Export in Light Mode
             </label>
 
             {/* Group by buy-in range toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', marginBottom: groupByBuyin ? '8px' : '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)', fontSize: 'calc(var(--gu) * 1.208)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontWeight: 'var(--fw-regular)', color: 'var(--text)', cursor: 'pointer', marginBottom: groupByBuyin ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)' }}>
               <input
                 type="checkbox"
                 checked={groupByBuyin}
                 onChange={e => setGroupByBuyin(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', accentColor: 'var(--accent)', cursor: 'pointer' }}
               />
               Group by Buy-in Range
             </label>
 
             {/* Buy-in range editor */}
             {groupByBuyin && (
-              <div style={{ marginBottom: '12px', padding: '10px 12px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Ranges</span>
+              <div style={{ marginBottom: 'calc(var(--subrow) * 1.5)', padding: 'calc(var(--subrow) * 1.25) calc(var(--subrow) * 1.5)', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'calc(var(--subrow) * 1)' }}>
+                  <span style={{ fontSize: 'calc(var(--gu) * 1.060)', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Ranges</span>
                   <button
                     onClick={() => setBuyinRanges(prev => [...prev, { min: 0, max: 0, label: '' }])}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 'calc(var(--gu) * 1.104)', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
                   >+ Add Range</button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(var(--subrow) * 0.75)' }}>
                   {buyinRanges.map((range, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 0.75)' }}>
                       <input
                         type="text"
                         value={range.label}
@@ -262,7 +262,7 @@ export default function ScheduleExportModal({ events, onClose }) {
                           setBuyinRanges(next);
                         }}
                         placeholder="Label"
-                        style={{ flex: 1, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: '0.78rem' }}
+                        style={{ flex: 1, padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)' }}
                       />
                       <input
                         type="number"
@@ -273,9 +273,9 @@ export default function ScheduleExportModal({ events, onClose }) {
                           setBuyinRanges(next);
                         }}
                         placeholder="Min"
-                        style={{ width: '55px', padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: '0.78rem', textAlign: 'right' }}
+                        style={{ width: 'calc(var(--subrow) * 6.875)', padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)', textAlign: 'right' }}
                       />
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{'\u2013'}</span>
+                      <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)' }}>{'\u2013'}</span>
                       <input
                         type="text"
                         value={range.max === Infinity ? '' : range.max}
@@ -286,12 +286,12 @@ export default function ScheduleExportModal({ events, onClose }) {
                           setBuyinRanges(next);
                         }}
                         placeholder={'\u221E'}
-                        style={{ width: '55px', padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: '0.78rem', textAlign: 'right' }}
+                        style={{ width: 'calc(var(--subrow) * 6.875)', padding: 'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif", fontSize: 'calc(var(--gu) * 1.149)', textAlign: 'right' }}
                       />
                       {buyinRanges.length > 1 && (
                         <button
                           onClick={() => setBuyinRanges(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0 2px', lineHeight: 1 }}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.325)', padding: '0 calc(var(--subrow) * 0.25)', lineHeight: 1 }}
                         >{'\u00D7'}</button>
                       )}
                     </div>
@@ -299,16 +299,16 @@ export default function ScheduleExportModal({ events, onClose }) {
                 </div>
                 <button
                   onClick={() => setBuyinRanges(DEFAULT_BUYIN_RANGES)}
-                  style={{ marginTop: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.68rem', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
+                  style={{ marginTop: 'calc(var(--subrow) * 0.75)', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.001)', cursor: 'pointer', fontFamily: "'Univers Condensed', 'Univers', sans-serif", padding: 0 }}
                 >Reset to Defaults</button>
               </div>
             )}
 
             {/* Total max buyins */}
             {totalMax > 0 && (
-              <div style={{ marginBottom: '12px', padding: '10px 12px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Total Maximum Buy-ins</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>{'$' + totalMax.toLocaleString()}</div>
+              <div style={{ marginBottom: 'calc(var(--subrow) * 1.5)', padding: 'calc(var(--subrow) * 1.25) calc(var(--subrow) * 1.5)', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)' }}>
+                <div style={{ fontSize: 'calc(var(--gu) * 1.060)', fontWeight: 'var(--fw-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'calc(var(--subrow) * 0.5)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>Total Maximum Buy-ins</div>
+                <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color: 'var(--text)', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>{'$' + totalMax.toLocaleString()}</div>
               </div>
             )}
 
@@ -329,7 +329,7 @@ export default function ScheduleExportModal({ events, onClose }) {
                 </div>
               </button>
             </div>
-            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+            <div style={{ textAlign: 'center', marginTop: 'calc(var(--subrow) * 1.5)' }}>
               <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
             </div>
           </>
@@ -347,13 +347,13 @@ export default function ScheduleExportModal({ events, onClose }) {
                 ))}
               </div>
             )}
-            <div style={{ textAlign: 'center', margin: '12px 0' }}>
+            <div style={{ textAlign: 'center', margin: 'calc(var(--subrow) * 1.5) 0' }}>
               <canvas
                 ref={previewRef}
-                style={{ width: '200px', height: '356px', borderRadius: '8px', border: '1px solid var(--border)' }}
+                style={{ width: 'calc(var(--subrow) * 25)', height: 'calc(var(--subrow) * 44.5)', borderRadius: 'calc(var(--subrow) * 1)', border: 'var(--bw-hair) solid var(--border)' }}
               />
             </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 'calc(var(--subrow) * 1)', justifyContent: 'center' }}>
               <button className="btn btn-primary btn-sm" onClick={handleShareSlide}>
                 {canvases.length > 1 ? 'Share This Page' : 'Share Image'}
               </button>

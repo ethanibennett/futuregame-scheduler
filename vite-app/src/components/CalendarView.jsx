@@ -122,91 +122,91 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
   return (
     <>
-      <div className="filter-row" style={{gap:'8px',marginBottom:'0',width:'100%',alignItems:'center'}}>
-        <div style={{flex:1,display:'flex',alignItems:'center',gap:'8px',justifyContent:'flex-end'}}>
+      <div className="filter-row" style={{gap:'calc(var(--subrow) * 1)',marginBottom:'0',width:'100%',alignItems:'center'}}>
+        <div style={{flex:1,display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',justifyContent:'flex-end'}}>
           {filters.selectedGames.length > 0 && (
             <span className="filter-chip active">
               {filters.selectedGames.length === 1 ? filters.selectedGames[0] : `${filters.selectedGames.length} games`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, selectedGames:[]}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, selectedGames:[]}))}>&#10005;</span>
             </span>
           )}
           {filters.buyinRanges && filters.buyinRanges.length > 0 && (
             <span className="filter-chip active">
               {filters.buyinRanges.length === 1 ? ({'0-500':'< $500','500-1500':'$500\u2013$1.5K','1500-5000':'$1.5K\u2013$5K','5000-10000':'$5K\u2013$10K','10000+':'$10K+'})[filters.buyinRanges[0]] : `${filters.buyinRanges.length} buy-ins`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, buyinRanges:[]}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, buyinRanges:[]}))}>&#10005;</span>
             </span>
           )}
           {filters.rakeRanges && filters.rakeRanges.length > 0 && (
             <span className="filter-chip active">
               {filters.rakeRanges.length === 1 ? ({'0-5':'< 5%','5-8':'5\u20138%','8-10':'8\u201310%','10-13':'10\u201313%','13+':'13%+'})[filters.rakeRanges[0]] : `${filters.rakeRanges.length} rake ranges`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, rakeRanges:[]}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, rakeRanges:[]}))}>&#10005;</span>
             </span>
           )}
           {filters.bountyOnly && (
             <span className="filter-chip active">
               Bounty
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, bountyOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, bountyOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.mysteryBountyOnly && (
             <span className="filter-chip active">
               Mystery Bounty
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mysteryBountyOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mysteryBountyOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.headsUpOnly && (
             <span className="filter-chip active">
               Heads Up
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, headsUpOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, headsUpOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.tagTeamOnly && (
             <span className="filter-chip active">
               Tag Team
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, tagTeamOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, tagTeamOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.employeesOnly && (
             <span className="filter-chip active">
               Employees
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, employeesOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, employeesOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.hiddenVenues && filters.hiddenVenues.length > 0 && (
             <span className="filter-chip active">
               {availableVenues.length - filters.hiddenVenues.filter(v => availableVenues.some(av => av.venue === v)).length} of {availableVenues.length} venues
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, hiddenVenues:[]}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, hiddenVenues:[]}))}>&#10005;</span>
             </span>
           )}
           {filters.ladiesOnly && (
             <span className="filter-chip active">
               Ladies Only
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, ladiesOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, ladiesOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.seniorsOnly && (
             <span className="filter-chip active">
               Seniors Only
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, seniorsOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, seniorsOnly:false}))}>&#10005;</span>
             </span>
           )}
           {filters.mixedOnly && (
             <span className="filter-chip active">
               Mixed
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mixedOnly:false}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mixedOnly:false}))}>&#10005;</span>
             </span>
           )}
           {(filters.dateFrom || filters.dateTo) && (
             <span className="filter-chip active">
               {filters.dateFrom && filters.dateTo ? `${fmtShortDate(filters.dateFrom)} \u2014 ${fmtShortDate(filters.dateTo)}` : filters.dateFrom ? `From ${fmtShortDate(filters.dateFrom)}` : `Until ${fmtShortDate(filters.dateTo)}`}
-              <span style={{marginLeft:'4px',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, dateFrom:'', dateTo:''}))}>&#10005;</span>
+              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, dateFrom:'', dateTo:''}))}>&#10005;</span>
             </span>
           )}
           <button
             ref={toggleRef}
             className={`filter-chip ${open ? 'active' : ''}`}
             onClick={() => setOpen(o => !o)}
-            style={{flexShrink:0,height:'28px'}}
+            style={{flexShrink:0,height:'calc(var(--subrow) * 3.5)'}}
           >
             <Icon.filter />
           </button>
@@ -239,7 +239,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 toggle: () => setFilters(f => ({ ...f, seniorsOnly: !f.seniorsOnly })) },
             ];
             return (
-              <div style={{display:'flex',gap:'6px',marginBottom:'10px',gridColumn:'1 / -1'}}>
+              <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',marginBottom:'calc(var(--subrow) * 1.25)',gridColumn:'1 / -1'}}>
                 {quickFilters.map(qf => (
                   <button key={qf.label} className={`filter-chip ${qf.isActive ? 'active' : ''}`}
                     style={{flex:'1 1 0',minWidth:0,justifyContent:'center',textAlign:'center'}}
@@ -252,19 +252,19 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
           {/* Search */}
           {/* Search — full-width row above the 4-col section row */}
-          <div className="filter-group filter-row" style={{marginBottom:'6px'}}>
-            <div className="search-bar" style={{marginBottom:0,height:'32px'}}>
+          <div className="filter-group filter-row" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
+            <div className="search-bar" style={{marginBottom:0,height:'calc(var(--subrow) * 4)'}}>
               <Icon.search />
               <input
                 type="text"
                 placeholder={"Search events, games\u2026"}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{padding:'4px 0'}}
+                style={{padding:'calc(var(--subrow) * 0.5) 0'}}
               />
               {search && (
                 <button onClick={() => setSearch('')}
-                  style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'1rem',padding:'0 2px'}}>&#10005;</button>
+                  style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.473)',padding:'0 calc(var(--subrow) * 0.25)'}}>&#10005;</button>
               )}
             </div>
           </div>
@@ -279,9 +279,9 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
             const pctL = (fromIdx / totalDays) * 100;
             const pctR = (toIdx / totalDays) * 100;
             return (
-              <div className="filter-group filter-row" style={{marginBottom:'6px'}}>
-                <label style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'6px',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
-                <div style={{padding:'0 6px'}}>
+              <div className="filter-group filter-row" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
+                <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'calc(var(--subrow) * 0.75)',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
+                <div style={{padding:'0 calc(var(--subrow) * 0.75)'}}>
                   <div className="date-slider-wrap">
                     <div className="date-slider-track" />
                     <div className="date-slider-fill" style={{left: pctL + '%', right: (100 - pctR) + '%'}} />
@@ -329,30 +329,30 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
           {/* Series */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setWhereOpen(w => !w)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhereOpen(w => !w)}>
               Series
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
-            {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-              <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+            {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.75)'}}>
+              <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                 <input type="checkbox"
                   checked={!filters.hiddenVenues || filters.hiddenVenues.length === 0}
                   ref={el => { if (el) el.indeterminate = filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.length < availableVenues.length; }}
                   onChange={e => setFilters(f => ({...f, hiddenVenues: e.target.checked ? [] : availableVenues.map(v => v.venue)}))}
-                  style={{marginTop:'1px'}}
+                  style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                 /> All
               </label>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)'}}>
                 {availableVenues.map(({ venue, series, count }) => {
                   const hidden = (filters.hiddenVenues || []).includes(venue);
                   return (
-                    <label key={venue} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <label key={venue} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                       <input type="checkbox" checked={!hidden}
                         onChange={e => setFilters(f => {
                           const hv = f.hiddenVenues || [];
                           return {...f, hiddenVenues: e.target.checked ? hv.filter(v => v !== venue) : [...hv, venue]};
                         })}
-                        style={{marginTop:'1px',flexShrink:0}}
+                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                       />
                       <span style={{lineHeight:1.3}}>{series}</span>
                     </label>
@@ -364,9 +364,9 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
           {/* Buy-in / Rake */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setHowMuchOpen(h => !h)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setHowMuchOpen(h => !h)}>
               Buy-in / Rake
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {howMuchOpen && (() => {
               const buyinOpts = [
@@ -386,40 +386,40 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
               const toggleArr = (arr, key) => arr.includes(key) ? arr.filter(k => k !== key) : [...arr, key];
               const allBuyinChecked = (filters.buyinRanges || []).length === 0;
               const allRakeChecked = (filters.rakeRanges || []).length === 0;
-              return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 12px'}}>
-                <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Buy-in</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 calc(var(--subrow) * 1.5)'}}>
+                <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
+                  <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'calc(var(--subrow) * 0.25)'}}>Buy-in</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allBuyinChecked}
                       onChange={() => setFilters(f => ({...f, buyinRanges: [], minBuyin: '', maxBuyin: ''}))}
-                      style={{marginTop:'1px',flexShrink:0}}
+                      style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                     />
                     <span>All</span>
                   </label>
                   {buyinOpts.map(opt => (
-                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                       <input type="checkbox" checked={(filters.buyinRanges || []).includes(opt.key)}
                         onChange={() => setFilters(f => ({...f, buyinRanges: toggleArr(f.buyinRanges || [], opt.key), minBuyin: '', maxBuyin: ''}))}
-                        style={{marginTop:'1px',flexShrink:0}}
+                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                       />
                       <span>{opt.label}</span>
                     </label>
                   ))}
                 </div>
-                <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Rake</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
+                  <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'calc(var(--subrow) * 0.25)'}}>Rake</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allRakeChecked}
                       onChange={() => setFilters(f => ({...f, rakeRanges: []}))}
-                      style={{marginTop:'1px',flexShrink:0}}
+                      style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                     />
                     <span>All</span>
                   </label>
                   {rakeOpts.map(opt => (
-                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                       <input type="checkbox" checked={(filters.rakeRanges || []).includes(opt.key)}
                         onChange={() => setFilters(f => ({...f, rakeRanges: toggleArr(f.rakeRanges || [], opt.key)}))}
-                        style={{marginTop:'1px',flexShrink:0}}
+                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                       />
                       <span>{opt.label}</span>
                     </label>
@@ -431,23 +431,23 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
           {/* Variant */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setWhichOpen(w => !w)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhichOpen(w => !w)}>
               Variant
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: whichOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whichOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {whichOpen && (() => {
               const allSelected = filters.selectedGames.length === 0;
               const toggleVariant = (v, checked) => {
                 setFilters(f => ({...f, selectedGames: checked ? [...f.selectedGames, v] : f.selectedGames.filter(g => g !== v)}));
               };
-              return (<div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              return (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={allSelected}
                     onChange={() => setFilters(f => ({...f, selectedGames:[]}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> All
                 </label>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',paddingLeft:'21px'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)',paddingLeft:'calc(var(--subrow) * 2.625)'}}>
                 {GAME_GROUPS.map(group => {
                   const availVars = group.variants.filter(v => availableGameVariants.has(v));
                   if (availVars.length === 0) return null;
@@ -457,18 +457,18 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   if (isSingle) {
                     const v = availVars[0];
                     return (
-                      <label key={group.label} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)',marginBottom:'6px'}}>
+                      <label key={group.label} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)',marginBottom:'calc(var(--subrow) * 0.75)'}}>
                         <input type="checkbox" checked={filters.selectedGames.includes(v)}
                           onChange={e => toggleVariant(v, e.target.checked)}
-                          style={{marginTop:'1px'}}
+                          style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                         /> {group.label}
                       </label>
                     );
                   }
                   const needsTopGap = group.label === 'Draw' || group.label === 'Mixed';
                   return (
-                    <div key={group.label} style={needsTopGap ? {marginTop:'6px'} : undefined}>
-                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <div key={group.label} style={needsTopGap ? {marginTop:'calc(var(--subrow) * 0.75)'} : undefined}>
+                      <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                         <input type="checkbox" checked={groupChecked}
                           ref={el => { if (el) el.indeterminate = groupPartial; }}
                           onChange={e => {
@@ -478,15 +478,15 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                               return {...f, selectedGames: checked ? [...without, ...availVars] : without};
                             });
                           }}
-                          style={{marginTop:'1px'}}
+                          style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                         /> {group.label}
                       </label>
-                      <div style={{display:'flex',flexDirection:'column',gap:'2px',paddingLeft:'21px',marginTop:'2px'}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)',paddingLeft:'calc(var(--subrow) * 2.625)',marginTop:'calc(var(--subrow) * 0.25)'}}>
                         {availVars.map(v => (
-                          <label key={v} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text-muted)'}}>
+                          <label key={v} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.149)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text-muted)'}}>
                             <input type="checkbox" checked={filters.selectedGames.includes(v)}
                               onChange={e => toggleVariant(v, e.target.checked)}
-                              style={{marginTop:'1px'}}
+                              style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                             /> {v}
                           </label>
                         ))}
@@ -501,52 +501,52 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
 
           {/* Special */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setSpecialOpen(s => !s)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setSpecialOpen(s => !s)}>
               Special
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: specialOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: specialOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {specialOpen && (
-              <div style={{display:'flex',flexDirection:'column',gap:'4px',marginTop:'4px'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)',marginTop:'calc(var(--subrow) * 0.5)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={!!filters.ladiesOnly}
                     onChange={() => setFilters(f => ({...f, ladiesOnly:!f.ladiesOnly}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Ladies
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={!!filters.seniorsOnly}
                     onChange={() => setFilters(f => ({...f, seniorsOnly:!f.seniorsOnly}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Seniors
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={filters.bountyOnly}
                     onChange={e => setFilters(f => ({...f, bountyOnly:e.target.checked}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Bounty
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={filters.mysteryBountyOnly}
                     onChange={e => setFilters(f => ({...f, mysteryBountyOnly:e.target.checked}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Mystery Bounty
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={filters.headsUpOnly}
                     onChange={e => setFilters(f => ({...f, headsUpOnly:e.target.checked}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Heads Up
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={filters.tagTeamOnly}
                     onChange={e => setFilters(f => ({...f, tagTeamOnly:e.target.checked}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Tag Team
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={filters.employeesOnly}
                     onChange={e => setFilters(f => ({...f, employeesOnly:e.target.checked}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> Casino Employees
                 </label>
               </div>
@@ -554,7 +554,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
           </div>
 
           {/* Clear all + Save & Close */}
-          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
+          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'calc(var(--subrow) * 1)',justifyContent:'flex-end',alignItems:'center',marginTop:'calc(var(--subrow) * 0.5)'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
                 setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
@@ -1142,31 +1142,31 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       </div>
 
       {sortedEvents.length === 0 ? (
-        <div className="empty-state" style={{padding:'40px 24px'}}>
+        <div className="empty-state" style={{padding:'calc(var(--subrow) * 5) calc(var(--subrow) * 3)'}}>
           <Icon.empty />
           <h3>No events on this date</h3>
           <p>Other dates in this range have events — try moving forward or back.</p>
         </div>
       ) : showMySection ? (
-        <div style={{minHeight:'100vh', paddingTop:'6px', paddingBottom:'100vh'}}>
-          <div className="section-header" style={{marginTop:'8px'}}>
+        <div style={{minHeight:'100vh', paddingTop:'calc(var(--subrow) * 0.75)', paddingBottom:'100vh'}}>
+          <div className="section-header" style={{marginTop:'calc(var(--subrow) * 1)'}}>
             <h2>My Events</h2>
-            <span style={{fontSize:'0.82rem',color:'var(--text-muted)'}}>{myEvents.length} event{myEvents.length !== 1 ? 's' : ''}</span>
+            <span style={{fontSize:'calc(var(--gu) * 1.208)',color:'var(--text-muted)'}}>{myEvents.length} event{myEvents.length !== 1 ? 's' : ''}</span>
           </div>
           {myEvents.map(renderEvent)}
 
           {otherEvents.length > 0 && (
             <React.Fragment>
-              <div className="section-header" style={{marginTop:'16px'}}>
+              <div className="section-header" style={{marginTop:'calc(var(--subrow) * 2)'}}>
                 <h2>All Events</h2>
-                <span style={{fontSize:'0.82rem',color:'var(--text-muted)'}}>{otherEvents.length} event{otherEvents.length !== 1 ? 's' : ''}</span>
+                <span style={{fontSize:'calc(var(--gu) * 1.208)',color:'var(--text-muted)'}}>{otherEvents.length} event{otherEvents.length !== 1 ? 's' : ''}</span>
               </div>
               {otherEvents.map(renderEvent)}
             </React.Fragment>
           )}
         </div>
       ) : (
-        <div style={{minHeight:'100vh', paddingTop:'6px', paddingBottom:'100vh'}}>
+        <div style={{minHeight:'100vh', paddingTop:'calc(var(--subrow) * 0.75)', paddingBottom:'100vh'}}>
           {sortedEvents.map(renderEvent)}
         </div>
       )}
