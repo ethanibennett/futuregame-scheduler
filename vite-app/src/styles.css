@@ -8383,10 +8383,11 @@
       background: var(--surface);
       border: none;
       border-radius: var(--radius-sm);
-      /* One subrow (8px) gap between cards. The baseline grid is internal to
-         each card (relative to its own top), so the pitch need not be a whole
-         major row. */
-      margin-bottom: var(--space-md);
+      /* Exactly one subrow between cards. Each card is a whole number of r, so a
+         1r gap keeps every following card's top on an overlay r-line too — the
+         list stays on the global grid all the way down. (A fixed 8px was 1.04r
+         and drifted the list a little further off with every card.) */
+      margin-bottom: var(--subrow);
       overflow: hidden;
       box-shadow: var(--elev-1);
       transition: border-color var(--dur-snap) var(--ease-out),
