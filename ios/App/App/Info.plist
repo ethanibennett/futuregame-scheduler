@@ -56,6 +56,13 @@
 	<array>
 		<string>armv7</string>
 	</array>
+	<!-- Portrait-only. App Store validation rejects a restricted iPad orientation
+	     set unless the app opts out of iPad multitasking (Split View / Slide Over),
+	     which requires all four orientations. UIRequiresFullScreen=true is that
+	     opt-out, and is what lets the ~ipad array below stay portrait-only. Ignored
+	     on Mac Catalyst, whose window is resizable regardless. -->
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
