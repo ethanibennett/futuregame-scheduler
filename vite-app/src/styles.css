@@ -8853,17 +8853,26 @@
     /* The Flight/Day sub-line as a block with a fixed 24px (3-subrow) line box,
        so a name that carries one is deterministically 48px (two lines) — the
        card lands on an exact 120px (15 cells) instead of a rounded 121. */
+    .cal-event-base {
+      /* The name's own line in a stage card, wrapped so it can be trimmed apart
+         from the Flight/Day line. 3-subrow box, trimmed baseline on 9r — the same
+         r-line a single-line name sits on. */
+      display: block;
+      line-height: var(--cal-title-line);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
     .cal-event-stage {
       display: block;
       font-size: 0.78em;
       opacity: 0.7;
-      /* 16px (2 subrows), not 24: the Flight/Day line rides one subrow higher, on
-         the 80px line, so a stage-card is 112px (14 cells) instead of 120. In the
-         16px box the face's natural baseline is 82.5 (from the card top); -2.5px
-         seats it on 80. */
-      line-height: 16px;
-      position: relative;
-      top: -2.5px;
+      /* 2-subrow line box directly under the name; its trimmed baseline lands on
+         11r (2r below the name's 9r), no nudge. Card: 6r Row + 3r name + 2r
+         stage + 1r pad + 2r chevron = exactly 14r. */
+      line-height: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* A single-line name (no Flight/Day sub-line) truncates with an ellipsis.
        Plain overflow (not -webkit-box) is deliberate: -webkit-box silently
@@ -8875,15 +8884,20 @@
       text-overflow: ellipsis;
       overflow: hidden;
     }
-    /* A stage card carries the name on line 1 and "- Flight A" on line 2, so it
-       keeps the two-line clamp; its baseline is handled by the stage block. */
+    /* A stage card carries the name on line 1 (.cal-event-base) and "- Flight A"
+       on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
+       eats the line-height leading, so two stacked would butt together — instead
+       give the name its own 2-track grid (3r then 2r) with align-items:end, so
+       each line's baseline lands on its track's bottom r-line (9r, then 11r),
+       exactly as row 1 seats the time. */
     .cal-event-row:not(.open) .cal-bar-row2:has(.cal-event-stage) .cal-event-name {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      text-overflow: ellipsis;
+      display: grid;
+      grid-template-rows: var(--cal-title-line) calc(var(--subrow) * 2);
+      align-items: end;
       overflow: hidden;
     }
+    .cal-event-base { grid-row: 1; min-width: 0; }
+    .cal-event-stage { grid-row: 2; min-width: 0; }
     [data-serif="univers"] .cal-event-name {
       font-family: 'Univers', sans-serif;
       font-weight: var(--fw-bold);

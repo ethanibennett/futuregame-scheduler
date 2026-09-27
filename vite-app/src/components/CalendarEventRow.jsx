@@ -26,7 +26,7 @@ function formatEventName(name) {
   if (!stage) return name;
   return (
     <>
-      {base}
+      <span className="cal-event-base">{base}</span>
       <span className="cal-event-stage">{stage}</span>
     </>
   );
