@@ -6882,10 +6882,11 @@
          the sub-grid rails. Top pad is one subrow, so with the 64px (8-subrow)
          header the content origin sits at 72px = 9 subrows. Bottom clears the
          tab bar. */
-      /* No top padding: the sticky filter block provides its own top space in r,
-         and a fixed px here would push everything below off the r-grid. Side is
-         one grid unit; bottom clears the tab bar. */
-      padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2);
+      /* 1.5r top pad matched by the sticky filter block's -1.5r bleed margin, so
+         the block sits flush at the content top in flow (net zero) while the bleed
+         still tucks its cover up under the header. Side is one grid unit; bottom
+         clears the tab bar. */
+      padding: calc(var(--subrow) * 1.5) var(--gu) calc(var(--nav-h) + var(--subrow) * 2);
       background: var(--bg);
     }
     /* When the replayer tab is active, lock scrolling on the content area.
@@ -7589,18 +7590,17 @@
     /* ── Search & filters ── */
     .sticky-filters {
       position: sticky;
-      /* All in r, no pixel bleed. Pins flush at the content top (the bar bottom,
-         8r), so its flow and pinned positions match — no jump on scroll — and the
-         whole block lands on the r-grid measured from the bar top: 2r top pad puts
-         the location chip on 10r, the block is 12r tall (2r pad + 4r chip + 2r gap
-         + 2r checkbox row + 2r pad) so its bottom is on 20r, and the date-break
-         pins directly under it at 20r → the day on 23r. The old -12px top/-12px
-         margin/8px content-pad summed to a fraction of r and floated the whole
-         pill off every overlay line. */
-      top: 0;
+      /* Bleeds 1.5r UP under the header (top and margin both -1.5r), matched by a
+         1.5r content-area top pad so the FLOW position is unchanged (block still
+         8r->20r, day on 23r). The bleed does two jobs the flat top:0 lost: it
+         tucks an opaque cover under the transparent header so momentum-scrolled
+         cards can't peek through the gap, and — via the date-break's top =
+         filtersOffsetHeight + this margin — it pins the date-break exactly on the
+         filter block's bottom edge so the pill's top isn't clipped. */
+      top: calc(var(--subrow) * -1.5);
       z-index: var(--z-sticky);
       background: var(--bg);
-      margin: 0 calc(-1 * var(--gu)) 0;
+      margin: calc(var(--subrow) * -1.5) calc(-1 * var(--gu)) 0;
       padding: calc(var(--subrow) * 2) var(--gu) calc(var(--subrow) * 2);
       /* Own compositing layer. On iOS/WKWebView a position:sticky element with a
          negative top lets rows bleed THROUGH it during momentum scroll — the
@@ -8883,12 +8883,12 @@
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      /* text-box-trim ends the box at the baseline; clip (not hidden) plus a clip
-         margin lets descenders render a third of an em past the box without
-         shifting the baseline off its r-line — works in every state (open,
-         collapsed, flight) and keeps the ellipsis. */
-      overflow: clip;
-      overflow-clip-margin: 0.35em;
+      /* text-box-trim ends the box at the baseline. Clip only the INLINE axis
+         (keeps the ellipsis) and leave the block axis visible, so descenders
+         render below the baseline instead of being cut at the grid line — with no
+         padding/margin, the baseline stays exactly on its r-line. */
+      overflow-x: clip;
+      overflow-y: visible;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* The Flight/Day sub-line as a block with a fixed 24px (3-subrow) line box,
@@ -8901,8 +8901,8 @@
       display: block;
       line-height: var(--cal-title-line);
       white-space: nowrap;
-      overflow: clip;
-      overflow-clip-margin: 0.35em; /* descender room, no baseline shift */
+      overflow-x: clip;
+      overflow-y: visible; /* descenders render below the baseline, no clip */
       text-overflow: ellipsis;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
@@ -8933,12 +8933,14 @@
        give the name its own 2-track grid (2r then 2r) with align-items:end, so
        each line's baseline lands on its track's bottom r-line (r8, then r10),
        exactly as row 1 seats the time. */
-    .cal-event-row:not(.open) .cal-bar-row2:has(.cal-event-stage) .cal-event-name {
+    /* Not scoped to :not(.open): the open card shows the same title + flight rows,
+       so it needs the same grid or the two trimmed lines overlap. */
+    .cal-bar-row2:has(.cal-event-stage) .cal-event-name {
       display: grid;
       grid-template-rows: var(--cal-title-line) calc(var(--subrow) * 2);
       align-items: end;
-      overflow: clip;
-      overflow-clip-margin: 0.35em;
+      overflow-x: clip;
+      overflow-y: visible;
     }
     .cal-event-base { grid-row: 1; min-width: 0; }
     .cal-event-stage { grid-row: 2; min-width: 0; }
