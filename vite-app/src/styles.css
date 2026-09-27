@@ -8727,6 +8727,13 @@
     .cal-event-row:not(.open) .cal-event-bar {
       min-height: 0;
     }
+    /* Flight card + late-reg bar = 18r. Fix the bar at 16r (the 2r chevron closes
+       the card); the late-reg bar's margin-top:auto then drops it to the bar's
+       bottom, seating its label on r16 — a whole-r footer below the flight (r10). */
+    .cal-event-row:not(.open):has(.cal-event-stage):has(.mini-late-reg) .cal-event-bar {
+      height: calc(var(--subrow) * 16);
+      padding-bottom: 0;
+    }
     .cal-event-row:not(.open) {
       overflow: hidden;
     }
@@ -9467,12 +9474,14 @@
     /* ── Mini late-reg bar (collapsed calendar row) ── */
     .mini-late-reg {
       display: flex;
-      align-items: center;
+      align-items: end;    /* trimmed label baseline lands on the bar's bottom r-line */
       gap: var(--space-sm);
       padding: 0;
-      height: 16px;        /* 2 subrows */
-      margin-top: 0;       /* was 16px; dropped so a late-reg card is two subrows
-                              shorter — the bar now adds one major row, not two */
+      height: calc(var(--subrow) * 2);   /* 2r */
+      /* auto pushes the bar to the bottom of a fixed-height card (flight+late-reg
+         cards set that height); on an auto-height late-reg card there is no free
+         space so it collapses to 0 and the bar sits right under the content. */
+      margin-top: auto;
       justify-content: flex-start;
     }
     /* DashboardView renders .mini-late-reg-label and the stylesheet defined
@@ -9497,11 +9506,12 @@
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
-      line-height: 16px;
+      line-height: calc(var(--subrow) * 2);
       letter-spacing: var(--track-tight);
       color: var(--text-muted);
       flex-shrink: 0;
       white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .mini-late-reg-track {
       flex: 1;
