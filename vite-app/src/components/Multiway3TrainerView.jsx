@@ -24,9 +24,9 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 //   POST /api/solver/trainer3/razz3/step  { seed, heroActions:[id] } -> { state, legalActions|null, handOver, result?, grades?, profile? }
 
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: '16px' };
+const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
 // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
+const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
 const STREET_NAMES = ['3rd', '4th', '5th', '6th', '7th'];
 const POS = 'var(--pos, #22c55e)';
 
@@ -154,16 +154,16 @@ export default function Multiway3TrainerView() {
   const totalEvLoss = useMemo(() => (grades || []).reduce((a, g) => a + Math.max(0, +g.evLoss || 0), 0), [grades]);
 
   return (
-    <div className="trainer-shell" style={{ height: '100%', overflowY: 'auto', padding: '0 0 80px', maxWidth: 620, margin: '0 auto', fontFamily: FONT }}>
+    <div className="trainer-shell" style={{ height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 77.5)', margin: '0 auto', fontFamily: FONT }}>
       {/* Full-width top band (header + subtitle + error). Spans above the two
           columns on wide screens; top of the stack on narrow. */}
       <div className="trainer-top">
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 8, columnGap: 'var(--gu)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 'var(--space-md)', columnGap: 'var(--gu)' }}>
         {/* Grid: title box 4 subrows, baseline seated on T12. */}
-        <h2 className="screen-title" style={{ fontSize: '1.2rem', margin: 0, height: 32, boxSizing: 'border-box', lineHeight: '32px', paddingTop: 1 }}>3-Way Razz Trainer</h2>
-        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', lineHeight: '32px' }}>MVP · multiway</span>
+        <h2 className="screen-title" style={{ fontSize: 'calc(var(--gu) * 1.767)', margin: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', lineHeight: 'calc(var(--subrow) * 4)', paddingTop: 'calc(var(--subrow) * 0.125)' }}>3-Way Razz Trainer</h2>
+        <span style={{ fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 4)' }}>MVP · multiway</span>
       </div>
-      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 calc(var(--subrow) * 2)', lineHeight: '24px' }}>
+      <p style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', margin: '0 0 calc(var(--subrow) * 2)', lineHeight: 'calc(var(--subrow) * 3)' }}>
         You are the hero against two seats playing a fixed blueprint <b>profile</b>. Grades are the
         certified EV-loss <b>versus that stated profile</b> — 3-player razz is general-sum, so there is
         no single correct strategy. 7th-street decisions are graded by an exact oracle; earlier streets
@@ -172,7 +172,7 @@ export default function Multiway3TrainerView() {
 
       {error && (
         <div style={{ ...panel, borderColor: 'var(--neg, #ef4444)', marginBottom: 'var(--subrow)' }}>
-          <span style={{ color: 'var(--neg, #ef4444)', fontSize: '0.8rem', lineHeight: '24px' }}>
+          <span style={{ color: 'var(--neg, #ef4444)', fontSize: 'calc(var(--gu) * 1.178)', lineHeight: 'calc(var(--subrow) * 3)' }}>
             {error.offline ? 'Trainer unavailable on this server. ' : ''}{error.message}
           </span>
         </div>
@@ -192,11 +192,11 @@ export default function Multiway3TrainerView() {
       {heroOnTurn && legalActions && (
         <div style={{ ...panel, marginTop: 'var(--subrow)' }}>
           <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Your action</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
             {legalActions.map((a) => (
               <button key={a.id} onClick={() => pickAction(a.id)} disabled={stepping}
                 style={{
-                  height: 40, boxSizing: 'border-box', padding: '0 18px', borderRadius: 10, fontFamily: 'inherit', fontSize: '0.82rem',
+                  height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 2.25)', borderRadius: 'calc(var(--subrow) * 1.25)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.208)',
                   fontWeight: 'var(--fw-bold)', cursor: stepping ? 'default' : 'pointer', color: 'var(--on-brand)',
                   border: '1px solid var(--brand)', background: 'var(--brand)', opacity: stepping ? 0.5 : 1,
                 }}>
@@ -208,7 +208,7 @@ export default function Multiway3TrainerView() {
       )}
 
       {(loading || stepping) && !handOver && (
-        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '10px 0' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.104)', padding: 'var(--space-ml) 0' }}>
           {stepping ? 'replaying + grading…' : 'dealing…'}
         </div>
       )}
@@ -230,7 +230,7 @@ export default function Multiway3TrainerView() {
           {profile && (
             <div style={{ ...panel, marginTop: 'var(--subrow)', padding: 'var(--subrow) var(--gu)' }}>
               <span style={label}>Grading basis</span>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text)', marginTop: 'var(--space-2xs)', lineHeight: '16px' }}>
+              <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text)', marginTop: 'var(--space-2xs)', lineHeight: 'calc(var(--subrow) * 2)' }}>
                 {profile.label} — the two opponents play a fixed blueprint profile; this is a general-sum
                 game with no single correct strategy. The exploitability bars below are per-seat <b>lower bounds</b>.
               </div>
@@ -239,9 +239,9 @@ export default function Multiway3TrainerView() {
 
           {grades && grades.length > 0 && (
             <div style={{ marginTop: 'var(--subrow)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 24, marginBottom: 'var(--subrow)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
                 <span style={{ ...label, letterSpacing: '0.12em', fontWeight: 700 }}>Per-decision grade</span>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: lossColor(totalEvLoss) }}>
+                <span style={{ fontSize: 'calc(var(--gu) * 1.178)', fontWeight: 700, color: lossColor(totalEvLoss) }}>
                   hand EV-loss {totalEvLoss.toFixed(2)} chips
                 </span>
               </div>
@@ -249,7 +249,7 @@ export default function Multiway3TrainerView() {
             </div>
           )}
           {grades && grades.length === 0 && (
-            <div style={{ ...panel, marginTop: 'var(--subrow)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+            <div style={{ ...panel, marginTop: 'var(--subrow)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.104)' }}>
               No hero decisions to grade this hand.
             </div>
           )}
@@ -257,10 +257,10 @@ export default function Multiway3TrainerView() {
       )}
 
       {/* next hand */}
-      <div style={{ marginTop: 'calc(var(--subrow) * 2)', display: 'flex', gap: 10 }}>
+      <div style={{ marginTop: 'calc(var(--subrow) * 2)', display: 'flex', gap: 'var(--space-ml)' }}>
         <button onClick={deal} disabled={loading || stepping}
           style={{
-            flex: 1, height: 40, boxSizing: 'border-box', padding: '0 14px', borderRadius: 10, fontFamily: 'inherit', fontSize: '0.85rem',
+            flex: 1, height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'calc(var(--subrow) * 1.25)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)',
             fontWeight: 700, cursor: (loading || stepping) ? 'default' : 'pointer',
             border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
             opacity: (loading || stepping) ? 0.5 : 1,
@@ -287,8 +287,8 @@ function Felt3({ state, heroSeat, handOver, result }) {
   const resultSeats = handOver && result && Array.isArray(result.seats) ? result.seats : null;
   return (
     <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 24, marginBottom: 'var(--subrow)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.95rem', lineHeight: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
+        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
           {STREET_NAMES[state.street] || `street ${state.street}`} street
         </span>
         <span style={label}>
@@ -302,23 +302,23 @@ function Felt3({ state, heroSeat, handOver, result }) {
         const isToAct = state.toAct === s.seat && !handOver;
         return (
           <div key={s.seat} style={{
-            marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)', borderRadius: 10,
+            marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)', borderRadius: 'calc(var(--subrow) * 1.25)',
             border: '1px solid ' + (s.isHero ? POS : 'var(--border)'),
             background: s.isHero ? 'color-mix(in srgb, var(--pos, #22c55e) 8%, transparent)' : 'transparent',
             opacity: s.folded ? 0.5 : 1,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 16, marginBottom: 'var(--subrow)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
               <span style={{ ...label, color: s.isHero ? POS : 'var(--text-muted)', fontWeight: 700 }}>
                 {s.isHero ? 'You' : `Seat ${s.seat}`}
               </span>
-              {s.folded && <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>folded</span>}
+              {s.folded && <span style={{ fontSize: 'calc(var(--gu) * 0.854)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>folded</span>}
               {isToAct && (
-                <span style={{ fontSize: '0.6rem', color: s.isHero ? POS : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
+                <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: s.isHero ? POS : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
               )}
-              <span style={{ marginLeft: 'auto', fontSize: '0.62rem', color: 'var(--text-muted)' }}>in {s.contrib}</span>
-              {rs && rs.lowRank && <span style={{ fontSize: '0.62rem', color: 'var(--text)', fontWeight: 700 }}>{rs.lowRank}</span>}
+              <span style={{ marginLeft: 'auto', fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)' }}>in {s.contrib}</span>
+              {rs && rs.lowRank && <span style={{ fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text)', fontWeight: 700 }}>{rs.lowRank}</span>}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 48, paddingTop: 'calc(var(--subrow) * 2)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 6)', paddingTop: 'calc(var(--subrow) * 2)' }}>
               {/* 2 hole cards: hero always face-up; opponents hidden until showdown */}
               {s.isHero
                 ? (s.down || []).slice(0, 2).map((c, i) => <Card key={'d' + i} str={c} size="sm" />)
@@ -339,7 +339,7 @@ function Felt3({ state, heroSeat, handOver, result }) {
       })}
 
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '16px', maxHeight: 128, overflowY: 'auto' }}>
+        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
           {state.log.map((e, i) => (
             <div key={i}>
               <b style={{ color: e.seat === heroSeat ? POS : 'var(--accent)' }}>
@@ -363,8 +363,8 @@ function ResultBanner3({ result, heroSeat }) {
   const text = won ? 'You win' : split ? 'Split pot' : 'You lose';
   return (
     <div style={{ ...panel, borderColor: color, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ fontWeight: 700, color, fontSize: '0.95rem' }}>{text}</span>
-      <span style={{ fontSize: '0.8rem', color: 'var(--text)' }}>
+      <span style={{ fontWeight: 700, color, fontSize: 'calc(var(--gu) * 1.399)' }}>{text}</span>
+      <span style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)' }}>
         {result.endType === 'fold' ? 'by fold' : 'at showdown'} · net {result.heroDelta > 0 ? '+' : ''}{result.heroDelta} chips
       </span>
     </div>
@@ -381,12 +381,12 @@ function ProvenanceBadge({ g }) {
     ? (g.exactPath === 'snapshot-exact' ? 'mid-round exact' : 'certificate')
     : 'MC vs profile';
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--subrow) * 0.625)' }}>
       <span style={{
-        fontSize: '0.56rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-        color: '#fff', background: bg, borderRadius: 6, padding: '2px 6px',
+        fontSize: 'calc(var(--gu) * 0.825)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+        color: '#fff', background: bg, borderRadius: 'calc(var(--subrow) * 0.75)', padding: 'var(--space-2xs) var(--space-sm)',
       }}>{txt}</span>
-      <span style={{ fontSize: '0.56rem', color: 'var(--text-muted)' }}>{sub}</span>
+      <span style={{ fontSize: 'calc(var(--gu) * 0.825)', color: 'var(--text-muted)' }}>{sub}</span>
     </span>
   );
 }
@@ -396,20 +396,20 @@ function ExploitBar({ bar, heroSeat }) {
   if (!Array.isArray(bar) || !bar.length) return null;
   const max = Math.max(0.01, ...bar.map(b => Math.abs(b.exploitLowerBound || 0)));
   return (
-    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
-      <div style={{ ...label, marginBottom: 5 }}>Per-seat exploitability (lower bound, chips)</div>
+    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px dashed var(--border)' }}>
+      <div style={{ ...label, marginBottom: 'calc(var(--subrow) * 0.625)' }}>Per-seat exploitability (lower bound, chips)</div>
       {bar.map((b) => {
         const v = Math.abs(b.exploitLowerBound || 0);
         const isHero = b.seat === heroSeat;
         return (
-          <div key={b.seat} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-            <span style={{ fontSize: '0.62rem', width: 46, color: isHero ? POS : 'var(--text-muted)', fontWeight: isHero ? 700 : 400 }}>
+          <div key={b.seat} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'calc(var(--subrow) * 0.375)' }}>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.913)', width: 'calc(var(--subrow) * 5.75)', color: isHero ? POS : 'var(--text-muted)', fontWeight: isHero ? 700 : 400 }}>
               {isHero ? 'You' : `Seat ${b.seat}`}
             </span>
-            <div style={{ flex: 1, height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ flex: 1, height: 'calc(var(--subrow) * 1)', background: 'var(--border)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
               <div style={{ width: `${Math.min(100, (v / max) * 100)}%`, height: '100%', background: isHero ? POS : 'var(--accent)' }} />
             </div>
-            <span style={{ fontSize: '0.62rem', width: 44, textAlign: 'right', color: 'var(--text)' }}>≥ {v.toFixed(2)}</span>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.913)', width: 'calc(var(--subrow) * 5.5)', textAlign: 'right', color: 'var(--text)' }}>≥ {v.toFixed(2)}</span>
           </div>
         );
       })}
@@ -428,9 +428,9 @@ function GradeCard3({ g, heroSeat }) {
   const best = g.bestActionId;
   const rightChoice = chose === best;
   return (
-    <div style={{ ...panel, marginBottom: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.82rem' }}>{g.streetName} street</span>
+    <div style={{ ...panel, marginBottom: 'var(--space-md)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.208)' }}>{g.streetName} street</span>
         <ProvenanceBadge g={g} />
       </div>
 
@@ -453,7 +453,7 @@ function GradeCard3({ g, heroSeat }) {
       />
 
       {/* verdict */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'calc(var(--gu) * 1.090)' }}>
         <span style={{ color: 'var(--text-muted)' }}>
           You chose <b style={{ color: 'var(--text)' }}>{g.heroActionLabel}</b>
           {!rightChoice && <> · best <b style={{ color: 'var(--text)' }}>{labels[actions.indexOf(best)] || best}</b></>}
@@ -462,7 +462,7 @@ function GradeCard3({ g, heroSeat }) {
           EV-loss {evLoss.toFixed(2)}{g.evLossSE != null ? ` ±${(+g.evLossSE).toFixed(2)}` : ''} chips
         </span>
       </div>
-      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: 3 }}>
+      <div style={{ fontSize: 'calc(var(--gu) * 0.854)', color: 'var(--text-muted)', marginTop: 'calc(var(--subrow) * 0.375)' }}>
         {g.certified}
       </div>
 
@@ -477,11 +477,11 @@ function SessionScoreboard3({ session, onReset }) {
   const s = session || emptySession();
   const avg = s.hands ? s.totalEvLoss / s.hands : 0;
   return (
-    <div style={{ ...panel, marginTop: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 24, marginBottom: 'var(--subrow)' }}>
+    <div style={{ ...panel, marginTop: 'var(--space-xl)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
         <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>Session scoreboard</span>
         <button onClick={onReset}
-          style={{ fontFamily: 'inherit', fontSize: '0.6rem', color: 'var(--text-muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, height: 24, boxSizing: 'border-box', padding: '0 8px', cursor: 'pointer' }}>
+          style={{ fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-md)', cursor: 'pointer' }}>
           reset
         </button>
       </div>
@@ -494,16 +494,16 @@ function SessionScoreboard3({ session, onReset }) {
       {s.byStreet.map((v, i) => {
         const max = Math.max(0.01, ...s.byStreet.map(x => x || 0));
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 16 }}>
-            <span style={{ fontSize: '0.62rem', width: 34, color: 'var(--text-muted)' }}>{STREET_NAMES[i]}</span>
-            <div style={{ flex: 1, height: 7, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)' }}>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.913)', width: 'calc(var(--subrow) * 4.25)', color: 'var(--text-muted)' }}>{STREET_NAMES[i]}</span>
+            <div style={{ flex: 1, height: 'calc(var(--subrow) * 0.875)', background: 'var(--border)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
               <div style={{ width: `${Math.min(100, ((v || 0) / max) * 100)}%`, height: '100%', background: i === 4 ? POS : 'var(--accent)' }} />
             </div>
-            <span style={{ fontSize: '0.6rem', width: 44, textAlign: 'right', color: 'var(--text-muted)' }}>{(v || 0).toFixed(1)}</span>
+            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', width: 'calc(var(--subrow) * 5.5)', textAlign: 'right', color: 'var(--text-muted)' }}>{(v || 0).toFixed(1)}</span>
           </div>
         );
       })}
-      <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: 'var(--subrow)', lineHeight: '16px' }}>
+      <div style={{ fontSize: 'calc(var(--gu) * 0.854)', color: 'var(--text-muted)', marginTop: 'var(--subrow)', lineHeight: 'calc(var(--subrow) * 2)' }}>
         {s.exactGraded7th} of your 7th-street decisions this session were graded by the exact multiway
         oracle. Earlier-street numbers are Monte-Carlo estimates vs the profile. Stored on this device only.
       </div>
@@ -514,7 +514,7 @@ function SessionScoreboard3({ session, onReset }) {
 function Stat({ label: l, value, unit, color }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: color || 'var(--text)', lineHeight: '24px' }}>{value}</div>
+      <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color: color || 'var(--text)', lineHeight: 'calc(var(--subrow) * 3)' }}>{value}</div>
       <div style={{ ...label, marginTop: 'var(--space-2xs)' }}>{l}{unit ? ` (${unit})` : ''}</div>
     </div>
   );

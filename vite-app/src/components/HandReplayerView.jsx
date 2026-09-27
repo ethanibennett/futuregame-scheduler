@@ -672,7 +672,7 @@ function ChipStack({ amount }) {
     // discs advancing 5px apiece. On the felt that read as coins with daylight
     // between them rather than as a stack, so both are reverted: one column,
     // 18x6, overlapped to a 2px advance.
-    <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'3px', verticalAlign:'middle' }}>
+    <div className="chip-stack-visual" style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', marginRight:'calc(var(--subrow) * 0.375)', verticalAlign:'middle' }}>
       {chips.map((color, i) => (
         /* Size, radius and overlap all live in .chip-disc now, shared with
            the pot's chips — these were two drawings of one object. Only the
@@ -1716,12 +1716,12 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             <div className="replayer-settings-row is-stacked">
               <div className="replayer-settings-label">Splay Amount</div>
               <div className="replayer-settings-sublabel">How wide the hole-card fan opens</div>
-              <div style={{display:'flex', alignItems:'center', gap:'10px', width:'100%', marginTop:'6px'}}>
+              <div style={{display:'flex', alignItems:'center', gap:'var(--space-ml)', width:'100%', marginTop:'var(--space-sm)'}}>
                 <SplayPreview scale={(Number(settings.splayAmount) || 0) / 100} />
                 <input type="range" className="gto-raise-slider" min={0} max={175} step={5}
                   value={Number(settings.splayAmount) || 0} aria-label="Splay amount"
                   onChange={e => onUpdate('splayAmount', Number(e.target.value))} style={{flex:'1 1 auto'}} />
-                <span style={{fontFamily:'var(--font-condensed)', fontVariantNumeric:'tabular-nums', minWidth:'36px', textAlign:'right', color:'var(--text-muted)', fontSize:'0.8rem'}}>{Number(settings.splayAmount) || 0}%</span>
+                <span style={{fontFamily:'var(--font-condensed)', fontVariantNumeric:'tabular-nums', minWidth:'calc(var(--subrow) * 4.5)', textAlign:'right', color:'var(--text-muted)', fontSize:'calc(var(--gu) * 1.178)'}}>{Number(settings.splayAmount) || 0}%</span>
                 <button className="btn btn-ghost btn-sm" onClick={() => onUpdate('splayAmount', 100)} title="Reset splay to default">Reset</button>
               </div>
             </div>
@@ -1983,8 +1983,8 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
     <div className="replayer-entry">
       <div className="replayer-section">
         <div className="replayer-section-title">Players & Blinds</div>
-        <div className="replayer-row" style={{marginBottom:'8px'}}>
-          <div className="replayer-field" style={{flex:'0 0 70px'}}>
+        <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
+          <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
             <label>Players</label>
             <select value={hand.players.length} onChange={e => setNumPlayers(Number(e.target.value))}>
               {[2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
@@ -1997,8 +1997,8 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
         {hand.players.map((p, i) => (
           <div key={i} className="replayer-player-row">
             <span className="replayer-player-pos">{p.position}</span>
-            <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
-            <div className="replayer-field" style={{flex:'0 0 80px'}}><input type="text" inputMode="decimal" value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>
+            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 10)'}}><input type="text" value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
+            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 10)'}}><input type="text" inputMode="decimal" value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" /></div>
           </div>
         ))}
       </div>
@@ -2015,7 +2015,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
             and no message — the input looked accepted and the saved hand was
             quietly wrong. checkCardText reports what the parser could not
             use, which is information the parser already has. */}
-        <div className="replayer-field" style={{marginBottom:'6px'}}>
+        <div className="replayer-field" style={{marginBottom:'var(--space-sm)'}}>
           <label>Hero Cards</label>
           <input type="text" className={checkCardText(currentStreet.cards.hero) ? 'is-invalid' : undefined}
             placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
@@ -2023,7 +2023,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
           <CardRow text={currentStreet.cards.hero} stud={gameCfg.isStud} max={gameCfg.heroCards} />
         </div>
         {category === 'community' && currentStreetIdx > 0 && (
-          <div className="replayer-field" style={{marginBottom:'6px'}}>
+          <div className="replayer-field" style={{marginBottom:'var(--space-sm)'}}>
             <label>Board ({currentStreet.name})</label>
             <input type="text" className={checkCardText(currentStreet.cards.board) ? 'is-invalid' : undefined}
               placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
@@ -2032,7 +2032,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
           </div>
         )}
         {hand.players.slice(1).map((p, oi) => (
-          <div key={oi} className="replayer-field" style={{marginBottom:'4px'}}>
+          <div key={oi} className="replayer-field" style={{marginBottom:'var(--space-xs)'}}>
             <label>{p.name} Cards</label>
             <input type="text" className={checkCardText((currentStreet.cards.opponents || [])[oi] || '') ? 'is-invalid' : undefined}
               placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
@@ -2048,16 +2048,16 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
               const discardCount = draw ? draw.discarded : 0;
               const isPatText = discardCount === 0 && draw ? ' (Stand Pat)' : '';
               return (
-                <div key={pi} className="replayer-draw-player-block" style={{marginBottom:'6px',padding:'4px 0',borderBottom:'1px solid var(--border)'}}>
-                  <div className="replayer-row" style={{marginBottom:'2px',alignItems:'center'}}>
-                    <span style={{fontSize:'0.65rem',color:'var(--text-muted)',minWidth:'55px',fontWeight: 'var(--fw-bold)'}}>{p.name}{isPatText}</span>
-                    <div className="replayer-field" style={{flex:'0 0 45px'}}>
-                      <label style={{fontSize:'0.55rem'}}>Discard</label>
+                <div key={pi} className="replayer-draw-player-block" style={{marginBottom:'var(--space-sm)',padding:'var(--space-xs) 0',borderBottom:'1px solid var(--border)'}}>
+                  <div className="replayer-row" style={{marginBottom:'var(--space-2xs)',alignItems:'center'}}>
+                    <span style={{fontSize:'calc(var(--gu) * 0.957)',color:'var(--text-muted)',minWidth:'calc(var(--subrow) * 6.875)',fontWeight: 'var(--fw-bold)'}}>{p.name}{isPatText}</span>
+                    <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 5.625)'}}>
+                      <label style={{fontSize:'calc(var(--gu) * 0.810)'}}>Discard</label>
                       <input type="number" min="0" max={gameCfg.heroCards || 5} value={draw ? draw.discarded : ''} onChange={e => updateDrawDiscard(currentStreetIdx, pi, e.target.value)} placeholder="0" />
                     </div>
                   </div>
                   {discardCount > 0 && (
-                    <div className="replayer-row" style={{marginTop:'2px',gap:'4px'}}>
+                    <div className="replayer-row" style={{marginTop:'var(--space-2xs)',gap:'var(--space-xs)'}}>
                       <div className="replayer-field" style={{flex:1}}>
                         {/* 74: an 8.8px label overriding a field-label rule that
                             is already tokenised at a readable size. */}
@@ -2088,8 +2088,8 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
           ))}
         </div>
         {bettingContext.betting !== 'fl' && (
-          <div className="replayer-row" style={{marginTop:'6px',gap:'4px'}}>
-            <div className="replayer-field" style={{flex:'0 0 80px'}}>
+          <div className="replayer-row" style={{marginTop:'var(--space-sm)',gap:'var(--space-xs)'}}>
+            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 10)'}}>
               <input type="text" inputMode="decimal" placeholder={bettingContext.betting === 'pl' ? (bettingContext.facingBet ? 'Raise to (max ' + formatChipAmount(bettingContext.potRaiseAmount) + ')' : 'Bet (max ' + formatChipAmount(bettingContext.betAmount) + ')') : 'Amount'} value={actionAmount} onChange={e => setActionAmount(e.target.value)} />
             </div>
             {bettingContext.betting === 'pl' && (
@@ -2119,7 +2119,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
       </div>
       <div className="replayer-section">
         <div className="replayer-section-title">Result (optional)</div>
-        <div style={{display:'flex',flexWrap:'wrap',gap:'4px'}}>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-xs)'}}>
           {hand.players.map((p, pi) => {
             const winners = hand.result?.winners || [];
             const isWinner = winners.some(w => w.playerIdx === pi && !w.split);
@@ -2151,7 +2151,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
         </div>
         <div className="replayer-field-hint">{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}</div>
       </div>
-      <div style={{display:'flex',gap:'6px',justifyContent:'flex-end'}}>
+      <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end'}}>
         <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
         <button className="btn btn-primary btn-sm" onClick={() => onDone(hand)}>Save & Replay</button>
       </div>
@@ -2635,8 +2635,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">{isOfc ? 'Players' : 'Players & Blinds'}</div>
-          <div className="replayer-row" style={{marginBottom:'8px'}}>
-            <div className="replayer-field" style={{flex:'0 0 70px'}}>
+          <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
+            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
               <label>Players</label>
               {isOfc ? (
                 <select value={hand.players.length} onChange={e => setNumPlayersOfc(Number(e.target.value))}>
@@ -2664,7 +2664,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             {!isOfc && isLimitGame && <div className="replayer-field"><label>Cap</label><input type="text" inputMode="decimal" value={betCap||''} onChange={e => setBlind('betCap', Number(e.target.value)||0)} /></div>}
           </div>
           {!isOfc && isLimitGame && (
-            <div className="replayer-settings-row" style={{padding:'6px 0'}}>
+            <div className="replayer-settings-row" style={{padding:'var(--space-sm) 0'}}>
               <div>
                 <div className="replayer-settings-label">Uncapped heads-up{category === 'stud' ? ' on 7th' : ' on the river'}</div>
                 <div className="replayer-settings-sublabel">Two players left on the last street keep raising past the cap</div>
@@ -2689,7 +2689,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             }}));
             return (
               <>
-                <div className="replayer-settings-row" style={{padding:'6px 0'}}>
+                <div className="replayer-settings-row" style={{padding:'var(--space-sm) 0'}}>
                   <div>
                     <div className="replayer-settings-label">Straddle</div>
                     <div className="replayer-settings-sublabel">
@@ -2709,7 +2709,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     }} />
                 </div>
                 {on && nSeats < 4 && (
-                  <div className="replayer-field-hint" style={{marginBottom:'6px'}}>
+                  <div className="replayer-field-hint" style={{marginBottom:'var(--space-sm)'}}>
                     Nobody can straddle {nSeats}-handed &mdash; the button, small blind and big blind account for every seat, and a blind cannot straddle itself.
                   </div>
                 )}
@@ -2748,7 +2748,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   </div>
                 )}
                 {on && live.length > 0 && (
-                  <div className="replayer-field-hint" style={{marginBottom:'6px'}}>
+                  <div className="replayer-field-hint" style={{marginBottom:'var(--space-sm)'}}>
                     {live.length > 1 ? 'Each straddle doubles the one before it. ' : ''}
                     Preflop action starts on {hand.players[(closer + 1) % nSeats]?.position || 'the next seat'} and
                     {' '}{hand.players[closer]?.position || 'the straddler'} closes.
@@ -2758,11 +2758,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             );
           })()}
           {category === 'stud' && (
-            <div style={{fontSize:'0.68rem',color:'var(--text-muted)',marginBottom:'6px'}}>
+            <div style={{fontSize:'calc(var(--gu) * 1.001)',color:'var(--text-muted)',marginBottom:'var(--space-sm)'}}>
               Every player antes, the low door card brings it in, and the big bet is bet from 5th street on. Stacks default to {STUD_STACK_BB} big bets; a street allows {betCap} bets.
             </div>
           )}
-          {!isOfc && <div style={{marginBottom:'4px',display:'flex'}}><span style={{fontSize:'0.65rem',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'32px',textAlign:'center'}}>Hero</span></div>}
+          {!isOfc && <div style={{marginBottom:'var(--space-xs)',display:'flex'}}><span style={{fontSize:'calc(var(--gu) * 0.957)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',width:'calc(var(--subrow) * 4)',textAlign:'center'}}>Hero</span></div>}
           {hand.players.map((p, i) => {
             const isHero = i === heroIdx;
             // With a straddle on, the seat next to act after the BB (the frontmost
@@ -2780,10 +2780,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   onPointerUp={endSeatDrag}
                   onPointerCancel={endSeatDrag}
                 >{posLabel}</span>}
-                <div className="replayer-field" style={{flex:'1 1 80px'}}><input type="text" style={{textAlign:'left'}} value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
-                {!isOfc && <div className="replayer-field" style={{flex:'0 0 88px'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'2px'}}>
-                    {hand.gameMode === 'cash' && <span style={{fontSize:'0.8rem', color:'var(--text-muted)', flex:'0 0 auto'}}>{currencySymbol(hand)}</span>}
+                <div className="replayer-field" style={{flex:'1 1 calc(var(--subrow) * 10)'}}><input type="text" style={{textAlign:'left'}} value={p.name} onChange={e => updatePlayerField(i, 'name', e.target.value)} placeholder="Name" /></div>
+                {!isOfc && <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 11)'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'var(--space-2xs)'}}>
+                    {hand.gameMode === 'cash' && <span style={{fontSize:'calc(var(--gu) * 1.178)', color:'var(--text-muted)', flex:'0 0 auto'}}>{currencySymbol(hand)}</span>}
                     {/* Clicking a stack selects it, so the first digit typed
                         replaces the default depth instead of appending to it. */}
                     <input type="text" inputMode="decimal" style={{textAlign:'right', flex:'1 1 auto', minWidth:0}} value={p.startingStack} onFocus={e => e.target.select()} onChange={e => updatePlayerField(i, 'startingStack', e.target.value)} placeholder="Stack" />
@@ -2794,9 +2794,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           })}
         </div></div>
         {!isOfc && (
-          <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 0',flexWrap:'wrap'}}>
-            <span style={{fontSize:'0.68rem',fontWeight:'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Buy-in cap</span>
-            <div className="replayer-field" style={{flex:'0 0 100px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'var(--space-md)',padding:'var(--space-sm) 0',flexWrap:'wrap'}}>
+            <span style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight:'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Buy-in cap</span>
+            <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 12.5)'}}>
               <input type="text" inputMode="decimal" value={buyinCap}
                 onChange={e => { setBuyinCap(e.target.value); try { localStorage.setItem('replayerBuyinCap', e.target.value); } catch { /* ignore */ } }}
                 placeholder="Cap" style={{textAlign:'right'}} />
@@ -2805,7 +2805,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             <button className="btn btn-ghost btn-sm" onClick={resetNames} title="Hero keeps your name; everyone else becomes Opp 1, 2, …">Reset names</button>
           </div>
         )}
-        <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
+        <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) 0'}}>
           <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
           {/* Stud went straight to the door cards from here, which meant
               nothing ever asked hero for 3rd street: the door-card phase
@@ -2890,7 +2890,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">OFC Card Placement</div>
-          <div style={{fontSize:'0.65rem',color:'var(--text-muted)',marginBottom:'10px'}}>
+          <div style={{fontSize:'calc(var(--gu) * 0.957)',color:'var(--text-muted)',marginBottom:'var(--space-ml)'}}>
             Place 13 cards per player into 3 rows: Top (3), Middle (5), Bottom (5). Tap a row to open the card picker.
           </div>
           {hand.players.map((p, pi) => {
@@ -2938,8 +2938,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             );
           })}
         </div></div>
-        {ofcValidMsg && <div style={{fontSize:'0.65rem',color:'#ef4444',padding:'4px 0'}}>{ofcValidMsg}</div>}
-        <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
+        {ofcValidMsg && <div style={{fontSize:'calc(var(--gu) * 0.957)',color:'#ef4444',padding:'var(--space-xs) 0'}}>{ofcValidMsg}</div>}
+        <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) 0'}}>
           <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button>
           <button className="btn btn-primary btn-sm" disabled={!ofcValid} onClick={() => onDone(hand)}>Done</button>
         </div>
@@ -3008,7 +3008,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div>
         </div>
         <div className="gto-street-card">
-          <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
+          <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) var(--space-lg)'}}>
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('setup')}>Back</button>
             <button className="btn btn-primary btn-sm" onClick={() => setPhase(gameCfg.isStud ? 'door_cards' : 'action')}>
               {gameCfg.isStud ? 'Enter Door Cards' : 'Start Action'}
@@ -3052,11 +3052,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-phase-card">
           <div className="replayer-section" style={{textAlign:'center'}}>
             <div className="gto-street-label">Deal the {streetName}</div>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'12px',margin:'8px 0'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'var(--space-lg)',margin:'var(--space-md) 0'}}>
               {cumulativeBoard && <CardRow text={cumulativeBoard} max={5} />}
               {boardVal && <CardRow text={boardVal} max={maxCards} />}
             </div>
-            <div className="replayer-field" style={{marginTop:'8px'}}>
+            <div className="replayer-field" style={{marginTop:'var(--space-md)'}}>
               <label>{streetName} Cards</label>
               <input type="text" placeholder={nextStreet === 1 ? 'Qh7d2c' : 'Ts'} value={boardVal} onChange={e => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === nextStreet ? { ...s, cards: { ...s.cards, board: e.target.value } } : s) }))} />
             </div>
@@ -3076,7 +3076,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             </div>
           </div>
         </div>
-        <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
+        <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) 0'}}>
           <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
           <button className="btn btn-primary btn-sm" disabled={parseCardNotation(boardVal).filter(c => c.suit !== 'x').length < maxCards} onClick={() => { setCurrentStreetIdx(nextStreet); setPhase('action'); }}>Continue</button>
         </div>
@@ -3121,7 +3121,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-phase-card">
           <div className="replayer-section" style={{textAlign:'center'}}>
             <div className="gto-street-label">Showdown</div>
-            {cumulativeBoard && <div style={{margin:'8px 0'}}><CardRow text={cumulativeBoard} max={5} /></div>}
+            {cumulativeBoard && <div style={{margin:'var(--space-md) 0'}}><CardRow text={cumulativeBoard} max={5} /></div>}
           </div>
         </div>
         {showdownPlayers.map((o, si) => {
@@ -3204,17 +3204,17 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           };
 
           return (
-            <div key={o.idx} className="gto-phase-card" style={{marginTop:'6px', opacity: isComplete ? 0.6 : 1}}>
+            <div key={o.idx} className="gto-phase-card" style={{marginTop:'var(--space-sm)', opacity: isComplete ? 0.6 : 1}}>
               <div className="replayer-section">
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
-                  <div><span className="replayer-player-pos" style={{marginRight:'6px'}}>{o.player.position}</span><span style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.8rem',fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{o.player.name}</span></div>
-                  {isMucked ? <button className="gto-undo-btn" onClick={clearOppCards} style={{fontSize:'0.6rem'}}>Undo Muck</button> : isComplete ? <button className="gto-undo-btn" onClick={clearOppCards} style={{fontSize:'0.6rem'}}>Clear</button> : <button className="gto-undo-btn" onClick={setMuck} style={{fontSize:'0.6rem'}}>Muck</button>}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-sm)'}}>
+                  <div><span className="replayer-player-pos" style={{marginRight:'var(--space-sm)'}}>{o.player.position}</span><span style={{fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.178)',fontWeight: 'var(--fw-bold)',color:'var(--text)'}}>{o.player.name}</span></div>
+                  {isMucked ? <button className="gto-undo-btn" onClick={clearOppCards} style={{fontSize:'calc(var(--gu) * 0.884)'}}>Undo Muck</button> : isComplete ? <button className="gto-undo-btn" onClick={clearOppCards} style={{fontSize:'calc(var(--gu) * 0.884)'}}>Clear</button> : <button className="gto-undo-btn" onClick={setMuck} style={{fontSize:'calc(var(--gu) * 0.884)'}}>Muck</button>}
                 </div>
-                {isMucked ? <div style={{textAlign:'center',padding:'8px 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.75rem',color:'var(--text-muted)',fontStyle:'italic'}}>Mucked</div> : (
+                {isMucked ? <div style={{textAlign:'center',padding:'var(--space-md) 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontStyle:'italic'}}>Mucked</div> : (
                   <>
-                    {oppParsed.length > 0 && <div style={{margin:'4px 0'}}>
+                    {oppParsed.length > 0 && <div style={{margin:'var(--space-xs) 0'}}>
                       <CardRow text={oppCardStr} stud={isStudShowdown} max={sdMaxCards} />
-                      {isStudShowdown && studMissingCount > 0 && <div style={{fontSize:'0.6rem',color:'var(--text-muted)',marginTop:'2px'}}>
+                      {isStudShowdown && studMissingCount > 0 && <div style={{fontSize:'calc(var(--gu) * 0.884)',color:'var(--text-muted)',marginTop:'var(--space-2xs)'}}>
                         {studKnownCount} known card{studKnownCount !== 1 ? 's' : ''}, {studMissingCount} hidden card{studMissingCount !== 1 ? 's' : ''} remaining
                       </div>}
                     </div>}
@@ -3240,7 +3240,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             </div>
           );
         })}
-        <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 0'}}>
+        <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) 0'}}>
           <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
           <button className="btn btn-primary btn-sm" onClick={() => {
             // Auto-evaluate showdown winners
@@ -3304,13 +3304,13 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           <div className="replayer-section">
             <div className="replayer-section-title">Result</div>
             {autoWinner >= 0 ? (
-              <div style={{textAlign:'center',padding:'12px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-                <div style={{fontSize:'0.9rem',color:'#4ade80',fontWeight:700}}>{hand.players[autoWinner].name} wins</div>
-                <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginTop:'4px'}}>All opponents folded</div>
+              <div style={{textAlign:'center',padding:'var(--space-lg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+                <div style={{fontSize:'calc(var(--gu) * 1.325)',color:'#4ade80',fontWeight:700}}>{hand.players[autoWinner].name} wins</div>
+                <div style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',marginTop:'var(--space-xs)'}}>All opponents folded</div>
               </div>
             ) : (
               <>
-                <div style={{display:'flex',flexWrap:'wrap',gap:'4px'}}>
+                <div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-xs)'}}>
                   {hand.players.filter((_, i) => !foldedSet.has(i)).map(p => {
                     const pi = hand.players.indexOf(p);
                     const winners = (hand.result && hand.result.winners) || [];
@@ -3318,8 +3318,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     const isSplit = winners.some(w => w.playerIdx === pi && w.split);
                     return (
                       <button key={pi} style={{
-                        flex:'1 1 0',padding:'8px 14px',borderRadius:'6px',border:'1.5px solid',cursor:'pointer',
-                        fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.75rem',fontWeight: 'var(--fw-bold)',transition:'all 0.15s',
+                        flex:'1 1 0',padding:'var(--space-md) calc(var(--subrow) * 1.75)',borderRadius:'calc(var(--subrow) * 0.75)',border:'1.5px solid',cursor:'pointer',
+                        fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.104)',fontWeight: 'var(--fw-bold)',transition:'all 0.15s',
                         background: isWinner ? 'rgba(74,222,128,0.15)' : isSplit ? 'rgba(250,204,21,0.15)' : 'transparent',
                         borderColor: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--border)',
                         color: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--text-muted)',
@@ -3339,7 +3339,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     );
                   })}
                 </div>
-                <div style={{fontSize:'0.55rem',color:'var(--text-muted)',marginTop:'4px',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+                <div style={{fontSize:'calc(var(--gu) * 0.810)',color:'var(--text-muted)',marginTop:'var(--space-xs)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
                   {(hand.result?.winners?.length) ? 'Auto-evaluated. ' : ''}{'Tap to cycle: none \u2192 win \u2192 split \u2192 none'}
                 </div>
               </>
@@ -3347,7 +3347,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div>
         </div>
         <div className="gto-street-card">
-          <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
+          <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) var(--space-lg)'}}>
             <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
             <button className="btn btn-primary btn-sm" onClick={() => {
               const savedHand = { ...hand, heroIdx };
@@ -3388,7 +3388,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">Opponent Door Cards</div>
-          <p style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'8px'}}>Enter each opponent's face-up 3rd street card.</p>
+          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'var(--space-md)'}}>Enter each opponent's face-up 3rd street card.</p>
           {hand.players.map((p, pi) => {
             if (pi === heroIdxDC) return null;
             const oppSlot = pi < heroIdxDC ? pi : pi - 1;
@@ -3396,11 +3396,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             const parsedCurrent = parseCardNotation(currentCard).filter(c => c.suit !== 'x');
             const selectedCard = parsedCurrent.length ? parsedCurrent[0].rank + parsedCurrent[0].suit : '';
             return (
-              <div key={pi} style={{marginBottom:'12px'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                  <span style={{fontWeight:700,fontSize:'0.8rem'}}>{p.name}</span>
-                  <span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{p.position}</span>
-                  {selectedCard ? <CardRow text={selectedCard} max={1} /> : <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontStyle:'italic'}}>? unknown</span>}
+              <div key={pi} style={{marginBottom:'var(--space-lg)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'var(--space-md)',marginBottom:'var(--space-xs)'}}>
+                  <span style={{fontWeight:700,fontSize:'calc(var(--gu) * 1.178)'}}>{p.name}</span>
+                  <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>{p.position}</span>
+                  {selectedCard ? <CardRow text={selectedCard} max={1} /> : <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontStyle:'italic'}}>? unknown</span>}
                 </div>
               </div>
             );
@@ -3425,7 +3425,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div>
         </div></div>
         <div className="gto-street-card">
-          <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
+          <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) var(--space-lg)'}}>
             {/* Back goes to the step before this one, which is now hero's own
                 3rd street. Only stud reaches the door cards at all. */}
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('hero_cards')}>Back</button>
@@ -3472,7 +3472,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
         <div className="gto-entry">
           <div className="gto-phase-card"><div className="replayer-section">
             <div className="replayer-section-title">{'Card Details \u2014 ' + (currentStreet.name || 'Draw')}</div>
-            <p style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'10px'}}>Optionally specify which cards were discarded and drawn. Skip to continue.</p>
+            <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'var(--space-ml)'}}>Optionally specify which cards were discarded and drawn. Skip to continue.</p>
             {drawActivePlayers.map(pi => {
               const p = hand.players[pi];
               const de = (currentStreet.draws || []).find(d => d.player === pi);
@@ -3481,10 +3481,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               const isHeroDraw = pi === (hand.heroIdx != null ? hand.heroIdx : 0);
               const curHand = isHeroDraw ? getDrawPlayerHand(pi) : null;
               return (
-                <div key={pi} style={{marginBottom:'10px',padding:'8px 10px',background:'var(--surface2)',borderRadius:'6px'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom: isHeroDraw ? '6px' : '0'}}>
-                    <span style={{fontWeight:700,fontSize:'0.78rem'}}>{p.name}</span>
-                    <span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{p.position}</span>
+                <div key={pi} style={{marginBottom:'var(--space-ml)',padding:'var(--space-md) var(--space-ml)',background:'var(--surface2)',borderRadius:'calc(var(--subrow) * 0.75)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'var(--space-md)',marginBottom: isHeroDraw ? 'var(--space-sm)' : '0'}}>
+                    <span style={{fontWeight:700,fontSize:'calc(var(--gu) * 1.149)'}}>{p.name}</span>
+                    <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>{p.position}</span>
                     {isPat && <span className="replayer-draw-pat-badge">Stand Pat</span>}
                     {!isPat && <span className="replayer-draw-count-badge">Discards {de.discarded}</span>}
                   </div>
@@ -3506,11 +3506,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       updateDrawCardsFn(pi, 'discardedCards', newDiscarded);
                     };
                     return (
-                      <div style={{marginBottom:'4px'}}>
-                        <span style={{fontSize:'0.6rem',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.03em'}}>
+                      <div style={{marginBottom:'var(--space-xs)'}}>
+                        <span style={{fontSize:'calc(var(--gu) * 0.884)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.03em'}}>
                           {isPat ? 'Current Hand' : 'Tap to select discards'}
                         </span>
-                        <div className="card-row" style={{gap:'2px',flexWrap:'nowrap'}}>
+                        <div className="card-row" style={{gap:'var(--space-2xs)',flexWrap:'nowrap'}}>
                           {handCards.map((c, ci) => {
                             const isDiscarded = discardedSet.has(c.rank + c.suit);
                             return <img key={ci} className={'card-img draw-selectable' + (isDiscarded ? ' draw-discarded' : '')}
@@ -3522,12 +3522,12 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     );
                   })()}
                   {isHeroDraw && !isPat && (
-                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'4px'}}>
-                      <div className="replayer-field" style={{flex:1,minWidth:'80px'}}>
-                        <label style={{fontSize:'0.55rem'}}>Discarded</label>
+                    <div style={{display:'flex',gap:'var(--space-md)',flexWrap:'wrap',marginTop:'var(--space-xs)'}}>
+                      <div className="replayer-field" style={{flex:1,minWidth:'calc(var(--subrow) * 10)'}}>
+                        <label style={{fontSize:'calc(var(--gu) * 0.810)'}}>Discarded</label>
                         <input type="text" placeholder="e.g. 7h3c" value={de.discardedCards || ''} onChange={e => updateDrawCardsFn(pi, 'discardedCards', e.target.value)} />
                       </div>
-                      <div className="replayer-field" style={{flex:1,minWidth:'80px'}}>
+                      <div className="replayer-field" style={{flex:1,minWidth:'calc(var(--subrow) * 10)'}}>
                         <label>New Cards</label>
                         <input type="text" placeholder="e.g. Ah5s" value={de.newCards || ''} onChange={e => updateDrawCardsFn(pi, 'newCards', e.target.value)} />
                         {de.newCards && <CardRow text={de.newCards} max={de.discarded} />}
@@ -3539,7 +3539,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             })}
           </div></div>
           <div className="gto-street-card">
-            <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
+            <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) var(--space-lg)'}}>
               <button className="btn btn-ghost btn-sm" onClick={() => setPhase('draw_discard')}>Back</button>
               <button className="btn btn-primary btn-sm" onClick={() => { setCurrentStreetIdx(nextDrawStreet); setPhase('action'); }}>Continue</button>
             </div>
@@ -3552,7 +3552,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">Draw Round</div>
-          <p style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'10px'}}>Each player declares how many cards to discard.</p>
+          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'var(--space-ml)'}}>Each player declares how many cards to discard.</p>
           {drawActivePlayers.map(pi => {
             const p = hand.players[pi];
             const existingDraw = (currentStreet.draws || []).find(d => d.player === pi);
@@ -3568,7 +3568,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               if (pastDraw) drawHistory.push(pastDraw.discarded === 0 ? 'Pat' : 'D' + pastDraw.discarded);
             }
             return (
-              <div key={pi} className={'gto-seat' + (isCurrentTarget ? ' active' : '') + (isDeclared ? ' gto-draw-declared' : '')} style={{marginBottom:'6px'}}>
+              <div key={pi} className={'gto-seat' + (isCurrentTarget ? ' active' : '') + (isDeclared ? ' gto-draw-declared' : '')} style={{marginBottom:'var(--space-sm)'}}>
                 <div className="gto-seat-strip">{p.position}</div>
                 <div className="gto-seat-content">
                   <div className="gto-seat-bar">
@@ -3579,7 +3579,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     </div>
                     {drawHistory.length > 0 && <div className="gto-seat-draw-history">{drawHistory.join(' / ')}</div>}
                   </div>
-                  {curHand && <div style={{padding:'4px 10px'}}><CardRow text={curHand} max={gameCfg.heroCards || 5} /></div>}
+                  {curHand && <div style={{padding:'var(--space-xs) var(--space-ml)'}}><CardRow text={curHand} max={gameCfg.heroCards || 5} /></div>}
                   {isCurrentTarget && !isDeclared && (
                     <div className="gto-draw-buttons">
                       <button className="gto-draw-btn pat" onClick={() => addDraw(pi, 0)}>Stand Pat</button>
@@ -3594,7 +3594,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           })}
         </div></div>
         <div className="gto-street-card">
-          <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
+          <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) var(--space-lg)'}}>
             {(currentStreet.draws || []).length > 0 && <button className="gto-undo-btn" onClick={undoLastDraw}>Undo</button>}
             <button className="btn btn-ghost btn-sm" onClick={() => {
               // Clear draws on this street and undo the last betting action to return to action phase
@@ -3682,15 +3682,15 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       <div className="gto-entry">
         <div className="gto-phase-card"><div className="replayer-section">
           <div className="replayer-section-title">Deal {studStreetName}</div>
-          <p style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'8px'}}>Tap a player, then tap a card.</p>
+          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'var(--space-md)'}}>Tap a player, then tap a card.</p>
           {sdActivePlayers.map(pi => {
             const p = hand.players[pi];
             const cardStr = getStudCardForPlayer(pi);
             const isTarget = studDealTarget === pi;
             return (
-              <div key={pi} style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px',padding:'6px 8px',borderRadius:'6px',cursor:'pointer',background:isTarget?'var(--accent-bg, rgba(34,197,94,0.1))':'transparent',border:isTarget?'1.5px solid var(--accent)':'1.5px solid transparent'}} onClick={() => setStudDealTarget(pi)}>
-                <span style={{fontWeight:700,fontSize:'0.8rem',minWidth:'100px'}}>{p.name}</span>
-                {cardStr ? <CardRow text={cardStr} max={1} /> : <span style={{fontSize:'0.7rem',color:'var(--text-muted)',fontStyle:'italic'}}>--</span>}
+              <div key={pi} style={{display:'flex',alignItems:'center',gap:'var(--space-md)',marginBottom:'var(--space-sm)',padding:'var(--space-sm) var(--space-md)',borderRadius:'calc(var(--subrow) * 0.75)',cursor:'pointer',background:isTarget?'var(--accent-bg, rgba(34,197,94,0.1))':'transparent',border:isTarget?'1.5px solid var(--accent)':'1.5px solid transparent'}} onClick={() => setStudDealTarget(pi)}>
+                <span style={{fontWeight:700,fontSize:'calc(var(--gu) * 1.178)',minWidth:'calc(var(--subrow) * 12.5)'}}>{p.name}</span>
+                {cardStr ? <CardRow text={cardStr} max={1} /> : <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontStyle:'italic'}}>--</span>}
               </div>
             );
           })}
@@ -3720,7 +3720,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
           </div>
         </div></div>
         <div className="gto-street-card">
-          <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',padding:'10px 12px'}}>
+          <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'flex-end',padding:'var(--space-ml) var(--space-lg)'}}>
             <button className="btn btn-ghost btn-sm" onClick={() => setPhase('action')}>Back</button>
             <button className="btn btn-primary btn-sm" disabled={enteredCount < sdActivePlayers.length} onClick={() => { setCurrentStreetIdx(nextStudStreet); setPhase('action'); }}>Continue</button>
           </div>
@@ -3732,7 +3732,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
   // ── ACTION PHASE ──
   const stickySlot = document.getElementById('gto-sticky-slot');
   const streetCardEl = (
-    <div className="gto-street-card" style={{marginTop:'6px'}}>
+    <div className="gto-street-card" style={{marginTop:'var(--space-sm)'}}>
       <div className="gto-street-bar">
         <span className="gto-street-name">{currentStreet.name}</span>
         {category === 'community' && cumulativeBoard && <span className="gto-board-inline"><CardRow text={cumulativeBoard} max={5} /></span>}
@@ -3789,7 +3789,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                         if (oppVisible.length === 0) return null;
                         return (
                           <span className="gto-seat-hero-cards" style={dimStyle}>
-                            <div className="card-row" style={{gap:'2px',flexWrap:'nowrap'}}>
+                            <div className="card-row" style={{gap:'var(--space-2xs)',flexWrap:'nowrap'}}>
                               {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />)}
                             </div>
                           </span>
@@ -3798,11 +3798,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       const downAfter = currentStreetIdx >= 4 ? 1 : 0;
                       return (
                         <span className="gto-seat-hero-cards">
-                          <div className="card-row" style={{gap:'2px',flexWrap:'nowrap'}}>
-                            <div className="card-unknown" style={{marginTop:8}} />
-                            <div className="card-unknown" style={{marginTop:8}} />
+                          <div className="card-row" style={{gap:'var(--space-2xs)',flexWrap:'nowrap'}}>
+                            <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
+                            <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />
                             {oppVisible.map((c, ci) => <img key={ci} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />)}
-                            {downAfter > 0 && <div className="card-unknown" style={{marginTop:8}} />}
+                            {downAfter > 0 && <div className="card-unknown" style={{marginTop:'var(--space-md)'}} />}
                           </div>
                         </span>
                       );
@@ -3852,11 +3852,11 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       });
                     };
                     return (
-                      <div style={{padding:'6px 8px',borderBottom: heroHasCards ? '1px solid var(--border)' : 'none'}}>
-                        <div style={{fontSize:'0.65rem',fontWeight:700,color:'var(--text-muted)',marginBottom:'4px',fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
+                      <div style={{padding:'var(--space-sm) var(--space-md)',borderBottom: heroHasCards ? '1px solid var(--border)' : 'none'}}>
+                        <div style={{fontSize:'calc(var(--gu) * 0.957)',fontWeight:700,color:'var(--text-muted)',marginBottom:'var(--space-xs)',fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
                           {heroHasCards ? 'Edit Cards' : 'Select Your Cards'}
                         </div>
-                        <div className="card-picker-grid" style={{gap:'3px'}}>
+                        <div className="card-picker-grid" style={{gap:'calc(var(--subrow) * 0.375)'}}>
                           {hcSuits.map(suit => (
                             <React.Fragment key={suit.key}>
                               {hcRanks.map(rank => {
@@ -3971,7 +3971,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       {createPortal(
         <div className="gto-sticky-footer">
           <div className="gto-street-card">
-            <div style={{display:'flex',gap:'6px',alignItems:'center',padding:'10px 12px'}}>
+            <div style={{display:'flex',gap:'var(--space-sm)',alignItems:'center',padding:'var(--space-ml) var(--space-lg)'}}>
               <button className="gto-undo-btn" onClick={undoLastAction}>Undo</button>
               {/* Back to the seat setup to fix names / stacks / positions without
                   losing the hand — everything entered so far is kept in state. */}
@@ -3997,9 +3997,9 @@ class ReplayErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{padding:'24px',color:'var(--text-muted)',textAlign:'center'}}>
-          <div style={{fontSize:'0.85rem',marginBottom:'8px',color:'var(--danger,#f87171)'}}>Error loading replay</div>
-          <div style={{fontSize:'0.7rem',fontFamily:'monospace',wordBreak:'break-all',maxWidth:'400px',margin:'0 auto 12px',opacity:0.7}}>
+        <div style={{padding:'var(--space-3xl)',color:'var(--text-muted)',textAlign:'center'}}>
+          <div style={{fontSize:'calc(var(--gu) * 1.252)',marginBottom:'var(--space-md)',color:'var(--danger,#f87171)'}}>Error loading replay</div>
+          <div style={{fontSize:'calc(var(--gu) * 1.031)',fontFamily:'monospace',wordBreak:'break-all',maxWidth:'calc(var(--subrow) * 50)',margin:'0 auto var(--space-lg)',opacity:0.7}}>
             {this.state.error.message}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => { this.setState({ error: null }); this.props.onBack(); }}>
@@ -4412,11 +4412,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         <div className="gto-sticky-header">
           <div className="replayer-header"><h2>New Hand</h2></div>
           {/* Form / Text toggle */}
-          <div className="live-update-tabs" style={{marginBottom:'8px'}}>
+          <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
             <button className={entryTab === 'form' ? 'active' : ''} onClick={() => setEntryTab('form')}>Form</button>
             <button className={entryTab === 'text' ? 'active' : ''} onClick={() => setEntryTab('text')}>Text</button>
           </div>
-          {entryTab === 'form' && currentHand.gameType !== 'OFC' && <div className="live-update-tabs" style={{marginBottom:'8px'}}>
+          {entryTab === 'form' && currentHand.gameType !== 'OFC' && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
             <button className={entryMode === 'gto' ? 'active' : ''} onClick={() => setEntryMode('gto')}>GTO Style</button>
             <button className={entryMode === 'classic' ? 'active' : ''} onClick={() => setEntryMode('classic')}>Classic</button>
           </div>}
@@ -4424,7 +4424,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             {/* Tournament or cash. A cash game is money, so its stacks and pots
                 carry a currency symbol; a straddle is a cash-game wager, so
                 switching it on down in the blinds flips this to Cash for you. */}
-            <div className="replayer-row" style={{marginBottom:'8px', alignItems:'flex-end'}}>
+            <div className="replayer-row" style={{marginBottom:'var(--space-md)', alignItems:'flex-end'}}>
               <div className="replayer-field" style={{flex:'1 1 auto'}}>
                 <label>Game</label>
                 <div className="live-update-tabs" style={{margin:0}}>
@@ -4435,7 +4435,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 </div>
               </div>
               {currentHand.gameMode === 'cash' && (
-                <div className="replayer-field" style={{flex:'0 0 96px'}}>
+                <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 12)'}}>
                   <label>Currency</label>
                   <select value={currentHand.currency || 'USD'}
                     onChange={e => setCurrentHand(h => ({ ...h, currency: e.target.value }))}>
@@ -4444,7 +4444,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 </div>
               )}
             </div>
-            <div className="replayer-row" style={{marginBottom:'8px'}}>
+            <div className="replayer-row" style={{marginBottom:'var(--space-md)'}}>
               <div className="replayer-field">
                 <label>Title</label>
                 <input type="text" placeholder="e.g. Huge pot with AA" value={title} onChange={e => setTitle(e.target.value)} />
@@ -4469,12 +4469,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           <div id="gto-sticky-slot"></div>
         </div>
         {entryTab === 'text' ? (
-          <div style={{padding:'12px'}}>
+          <div style={{padding:'var(--space-lg)'}}>
             <textarea
               placeholder={'25/50\nUTG: AhKd  HJ: 9c8c  BTN: raise 3x  SB: fold  BB: call\n/ Qh Jc 2d  check  bet 50  fold\n/ 7s  bet 200  fold'}
-              style={{width:'100%', minHeight:140, fontFamily:'monospace', fontSize:'0.8rem',
+              style={{width:'100%', minHeight:'calc(var(--subrow) * 17.5)', fontFamily:'monospace', fontSize:'calc(var(--gu) * 1.178)',
                       background:'var(--surface)', color:'var(--text)', border:'1px solid var(--border)',
-                      borderRadius:6, padding:8, resize:'vertical', boxSizing:'border-box'}}
+                      borderRadius:'calc(var(--subrow) * 0.75)', padding:'var(--space-md)', resize:'vertical', boxSizing:'border-box'}}
               value={shorthandText}
               onChange={e => setShorthandText(e.target.value)}
             />
@@ -4487,7 +4487,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 {shorthandErrors.map((e,i) => <div key={i}>&#9888; {e}</div>)}
               </div>
             )}
-            <button className="create-group-submit" style={{marginTop:8, width:'100%'}}
+            <button className="create-group-submit" style={{marginTop:'var(--space-md)', width:'100%'}}
               onClick={handleParseShorthand}>
               Parse Hand
             </button>
@@ -4521,25 +4521,25 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     return (
       <div className="replayer-view">
         <div className="replayer-header"><h2>Hand Replayer</h2></div>
-        <div className="replayer-section" style={{marginBottom:'12px'}}>
-          <div className="skeleton skeleton-text" style={{width: 96, height: 13, marginBottom: 12}} />
-          <div style={{display:'flex', gap: 6, flexWrap:'wrap'}}>
-            {[64, 78, 58, 70].map((w, i) => (
-              <div key={i} className="skeleton" style={{width: w, height: 28, borderRadius: 'var(--radius-sm)'}} />
+        <div className="replayer-section" style={{marginBottom:'var(--space-lg)'}}>
+          <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 12)', height: 'calc(var(--subrow) * 1.625)', marginBottom: 'var(--space-lg)'}} />
+          <div style={{display:'flex', gap: 'var(--space-sm)', flexWrap:'wrap'}}>
+            {['calc(var(--subrow) * 8)', 'calc(var(--subrow) * 9.75)', 'calc(var(--subrow) * 7.25)', 'calc(var(--subrow) * 8.75)'].map((w, i) => (
+              <div key={i} className="skeleton" style={{width: w, height: 'calc(var(--subrow) * 3.5)', borderRadius: 'var(--radius-sm)'}} />
             ))}
           </div>
         </div>
-        <div className="skeleton skeleton-text" style={{width: 86, height: 13, marginBottom: 10}} />
+        <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 10.75)', height: 'calc(var(--subrow) * 1.625)', marginBottom: 'var(--space-ml)'}} />
         <div className="replayer-hand-list">
           {[0, 1, 2].map(i => (
             <div key={i} className="replayer-hand-card is-row">
               <div className="replayer-hand-card-content">
                 <div className="replayer-hand-card-cards">
-                  <div className="skeleton" style={{width: 30, height: 30, borderRadius: 'var(--radius-xs)'}} />
+                  <div className="skeleton" style={{width: 'calc(var(--subrow) * 3.75)', height: 'calc(var(--subrow) * 3.75)', borderRadius: 'var(--radius-xs)'}} />
                 </div>
                 <div className="replayer-hand-card-body">
-                  <div className="skeleton skeleton-text" style={{width: i === 1 ? 150 : 116, height: 12}} />
-                  <div className="skeleton skeleton-text" style={{width: 74, height: 10}} />
+                  <div className="skeleton skeleton-text" style={{width: i === 1 ? 'calc(var(--subrow) * 18.75)' : 'calc(var(--subrow) * 14.5)', height: 'calc(var(--subrow) * 1.5)'}} />
+                  <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 9.25)', height: 'calc(var(--subrow) * 1.25)'}} />
                 </div>
               </div>
             </div>
@@ -4565,7 +4565,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       <div className="replayer-section" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',height:'calc(var(--subrow) * 3)'}}>
           <div className="replayer-section-title" style={{marginBottom:0}}>New Hand</div>
-          <span style={{fontSize:'0.7rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--accent2)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}>{variantDisplayName}</span>
+          <span style={{fontSize:'calc(var(--gu) * 1.031)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--accent2)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}>{variantDisplayName}</span>
         </div>
         {/* Favorites row — above the full picker */}
         <div className="game-subheading">Favorites</div>
@@ -4618,16 +4618,16 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 onClick={disabled ? undefined : onToggle}
               >
                 <div style={{
-                  width:'13px', height:'13px', borderRadius:'3px', flexShrink:0,
+                  width:'calc(var(--subrow) * 1.625)', height:'calc(var(--subrow) * 1.625)', borderRadius:'calc(var(--subrow) * 0.375)', flexShrink:0,
                   border:`1.5px solid ${checked ? 'var(--accent2)' : 'var(--border)'}`,
                   background: checked ? 'var(--accent2)' : 'transparent',
                   display:'flex', alignItems:'center', justifyContent:'center',
                   transition:'background 0.15s,border-color 0.15s',
                 }}>
-                  {checked && <span style={{color:'#fff',fontSize:'9px',lineHeight:1,fontWeight:700}}>✓</span>}
+                  {checked && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
                 </div>
                 <span className={`game-check-row-label${checked ? ' selected' : ''}`}
-                  style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'0.68rem',letterSpacing:'0.5px'}}
+                  style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'calc(var(--gu) * 1.001)',letterSpacing:'0.5px'}}
                 >{label}</span>
               </div>
             );
@@ -4700,7 +4700,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                       {bettingStructure === s && <div className="game-check-radio-dot"/>}
                     </div>
                     <span className={`game-check-row-label${bettingStructure === s ? ' selected' : ''}`}
-                      style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'0.7rem',letterSpacing:'0.4px'}}
+                      style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'calc(var(--gu) * 1.031)',letterSpacing:'0.4px'}}
                     >{s}</span>
                   </div>
                 ))}
@@ -5077,8 +5077,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   // Guard against old/incomplete hand records with no streets
   if (!hand.streets || hand.streets.length === 0) {
     return (
-      <div style={{padding:'32px',textAlign:'center',color:'var(--text-muted)'}}>
-        <div style={{marginBottom:'12px',fontSize:'0.85rem'}}>This hand has no recorded streets.</div>
+      <div style={{padding:'var(--space-4xl)',textAlign:'center',color:'var(--text-muted)'}}>
+        <div style={{marginBottom:'var(--space-lg)',fontSize:'calc(var(--gu) * 1.252)'}}>This hand has no recorded streets.</div>
         <button className="btn btn-ghost btn-sm" onClick={onBack}>← Back to list</button>
       </div>
     );
@@ -6393,14 +6393,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           <span className="ofc-street-name">{ofcStreetNames[streetIdx] || 'Final'}</span>
           <span className="ofc-street-count">{streetIdx + 1} / {ofcTotalStreets}</span>
         </div>
-        <div className="replayer-controls" style={{marginTop:'8px'}}>
+        <div className="replayer-controls" style={{marginTop:'var(--space-md)'}}>
           <button className="btn btn-ghost btn-sm" disabled={streetIdx === 0 && !showResult} onClick={() => { if (showResult) setShowResult(false); else if (streetIdx > 0) setStreetIdx(streetIdx - 1); }}>Prev</button>
           <button className="btn btn-ghost btn-sm" disabled={showResult} onClick={() => { if (streetIdx < ofcTotalStreets - 1) setStreetIdx(streetIdx + 1); else setShowResult(true); }}>Next</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowResult(!showResult)}>{showResult ? 'Hide All' : 'Show All'}</button>
         </div>
-        <div style={{display:'flex',gap:'6px',justifyContent:'space-between',marginTop:'12px'}}>
+        <div style={{display:'flex',gap:'var(--space-sm)',justifyContent:'space-between',marginTop:'var(--space-lg)'}}>
           <button className="btn btn-ghost btn-sm" onClick={onBack}>Back to List</button>
-          <div style={{display:'flex',gap:'6px'}}>
+          <div style={{display:'flex',gap:'var(--space-sm)'}}>
             <button className="btn btn-ghost btn-sm" onClick={copyShareLink}>{shareLinkCopied ? 'Copied!' : 'Share Link'}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowSettings(!showSettings)}>Settings</button>
             <button className="btn btn-primary btn-sm" onClick={onEdit}>Edit</button>
@@ -7916,35 +7916,35 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           style={{display:'flex',alignItems:'center',justifyContent:'center'}}
           onClick={closeIgDraft}>
           <div onClick={e => e.stopPropagation()}
-            style={{background:'#14141c',borderRadius:'14px',padding:'16px',width:'min(92vw,320px)',boxShadow:'0 20px 60px rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-            <div style={{color:'#fff',fontSize:'1rem',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'10px',textAlign:'center'}}>Instagram Story</div>
+            style={{background:'#14141c',borderRadius:'calc(var(--subrow) * 1.75)',padding:'var(--space-xl)',width:'min(92vw,320px)',boxShadow:'0 20px 60px rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+            <div style={{color:'#fff',fontSize:'calc(var(--gu) * 1.472)',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'var(--space-ml)',textAlign:'center'}}>Instagram Story</div>
             <div ref={igBoxRef}
               onPointerDown={igPointerDown} onPointerMove={igPointerMove}
               onPointerUp={igPointerUp} onPointerCancel={igPointerUp}
-              style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'10px',overflow:'hidden',background:'#000',margin:'0 auto',touchAction:'none',cursor:'grab'}}>
+              style={{position:'relative',width:'100%',aspectRatio:'9 / 16',borderRadius:'calc(var(--subrow) * 1.25)',overflow:'hidden',background:'#000',margin:'0 auto',touchAction:'none',cursor:'grab'}}>
               <img src={igDraft.photoUrl} alt="" draggable={false} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} />
               {igDraft.stillUrl && (
                 <img src={igDraft.stillUrl} alt="" draggable={false}
                   style={{position:'absolute',left:(igPos.x*100)+'%',top:(igPos.y*100)+'%',transform:'translate(-50%,-50%)',width:(igScale*100)+'%',height:'auto',pointerEvents:'none'}} />
               )}
             </div>
-            <div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.62rem',letterSpacing:'0.04em',textAlign:'center',marginTop:'6px'}}>Drag to move · pinch to resize</div>
-            <div style={{marginTop:'14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{color:'rgba(255,255,255,0.6)',fontSize:'0.7rem',letterSpacing:'0.05em',textTransform:'uppercase'}}>Speed</span>
-              <div style={{display:'flex',gap:'6px'}}>
+            <div style={{color:'rgba(255,255,255,0.4)',fontSize:'calc(var(--gu) * 0.913)',letterSpacing:'0.04em',textAlign:'center',marginTop:'var(--space-sm)'}}>Drag to move · pinch to resize</div>
+            <div style={{marginTop:'calc(var(--subrow) * 1.75)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{color:'rgba(255,255,255,0.6)',fontSize:'calc(var(--gu) * 1.031)',letterSpacing:'0.05em',textTransform:'uppercase'}}>Speed</span>
+              <div style={{display:'flex',gap:'var(--space-sm)'}}>
                 {[1000,500,250,125,60].map((ms, i) => (
                   <button key={ms} onClick={() => setIgSpeed(ms)}
-                    style={{padding:'5px 8px',borderRadius:'7px',border:'1px solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'0.72rem',cursor:'pointer'}}>
+                    style={{padding:'calc(var(--subrow) * 0.625) var(--space-md)',borderRadius:'calc(var(--subrow) * 0.875)',border:'1px solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'calc(var(--gu) * 1.060)',cursor:'pointer'}}>
                     {['1x','2x','4x','8x','16x'][i]}
                   </button>
                 ))}
               </div>
             </div>
-            <div style={{marginTop:'16px',display:'flex',gap:'10px'}}>
+            <div style={{marginTop:'var(--space-xl)',display:'flex',gap:'var(--space-ml)'}}>
               <button onClick={closeIgDraft}
-                style={{flex:1,padding:'10px',borderRadius:'9px',border:'1px solid rgba(255,255,255,0.25)',background:'transparent',color:'#fff',fontSize:'0.85rem',cursor:'pointer'}}>Cancel</button>
+                style={{flex:1,padding:'var(--space-ml)',borderRadius:'calc(var(--subrow) * 1.125)',border:'1px solid rgba(255,255,255,0.25)',background:'transparent',color:'#fff',fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer'}}>Cancel</button>
               <button onClick={handleCreateInstagramStory}
-                style={{flex:2,padding:'10px',borderRadius:'9px',border:'none',background:'#fff',color:'#14141c',fontSize:'0.85rem',fontWeight:600,cursor:'pointer'}}>Create Story</button>
+                style={{flex:2,padding:'var(--space-ml)',borderRadius:'calc(var(--subrow) * 1.125)',border:'none',background:'#fff',color:'#14141c',fontSize:'calc(var(--gu) * 1.252)',fontWeight:600,cursor:'pointer'}}>Create Story</button>
             </div>
           </div>
         </div>,
@@ -7954,13 +7954,13 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       {/* Video export progress overlay */}
       {videoExporting && createPortal(
         <div className="replayer-export-overlay">
-          <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
+          <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.620)',marginBottom:'var(--space-xs)',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             {videoKind === 'igstory' ? 'Building Instagram Story…'
               : videoKind === 'story' ? 'Building Story…'
               : videoKind === 'greenscreen' ? 'Recording Greenscreen…'
               : 'Recording Overlay…'}
           </div>
-          <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
+          <div style={{color:'rgba(255,255,255,0.45)',fontSize:'calc(var(--gu) * 0.957)',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'calc(var(--subrow) * 1.75)',letterSpacing:'0.05em'}}>
             {videoKind === 'igstory' ? '9:16 MP4 · over your photo'
               : videoKind === 'story' ? '9:16 MP4 · ready to post'
               : videoKind === 'greenscreen' ? 'MP4 · chroma key for editing'
@@ -7973,12 +7973,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           <div className="replayer-export-bar">
             <div style={{width:videoProgress+'%'}} />
           </div>
-          <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+          <div style={{color:'rgba(255,255,255,0.5)',fontSize:'calc(var(--gu) * 1.060)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {videoStep} of {videoTotal}
           </div>
           {/* 94: this said "will download automatically" on a platform where
               the outcome is usually a share sheet. */}
-          <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
+          <div style={{color:'rgba(255,255,255,0.3)',fontSize:'calc(var(--gu) * 0.957)',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'var(--space-sm)',maxWidth:'calc(var(--subrow) * 25)',textAlign:'center'}}>
             {videoKind === 'igstory' ? 'Instagram will open when it is ready'
               : canNativeShare ? 'The share sheet will open when it is ready'
               : 'It will download when complete'}
@@ -7990,10 +7990,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       {/* GIF export progress overlay */}
       {gifExporting && createPortal(
         <div className="replayer-export-overlay">
-          <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'1.1rem',marginBottom:'4px',letterSpacing:'0.08em',textTransform:'uppercase'}}>
+          <div style={{color:'#fff',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.620)',marginBottom:'var(--space-xs)',letterSpacing:'0.08em',textTransform:'uppercase'}}>
             Building GIF…
           </div>
-          <div style={{color:'rgba(255,255,255,0.45)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'14px',letterSpacing:'0.05em'}}>
+          <div style={{color:'rgba(255,255,255,0.45)',fontSize:'calc(var(--gu) * 0.957)',fontFamily:"'Univers Condensed','Univers',sans-serif",marginBottom:'calc(var(--subrow) * 1.75)',letterSpacing:'0.05em'}}>
             {/* 94: this said "upload to GIPHY" while the code auto-opens
                 Instagram wherever it can. */}
             {canInstagram ? 'Transparent \u00b7 opens in Instagram Stories' : 'Transparent \u00b7 upload to GIPHY for an Instagram sticker'}
@@ -8004,10 +8004,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           <div className="replayer-export-bar">
             <div style={{width:gifProgress+'%'}} />
           </div>
-          <div style={{color:'rgba(255,255,255,0.5)',fontSize:'0.72rem',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+          <div style={{color:'rgba(255,255,255,0.5)',fontSize:'calc(var(--gu) * 1.060)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             Step {gifStep} of {gifTotal}
           </div>
-          <div style={{color:'rgba(255,255,255,0.3)',fontSize:'0.65rem',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'6px',maxWidth:'200px',textAlign:'center'}}>
+          <div style={{color:'rgba(255,255,255,0.3)',fontSize:'calc(var(--gu) * 0.957)',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'var(--space-sm)',maxWidth:'calc(var(--subrow) * 25)',textAlign:'center'}}>
             {canInstagram ? 'Instagram will open when it is ready'
               : canNativeShare ? 'The share sheet will open when it is ready'
               : 'It will download when complete'}
