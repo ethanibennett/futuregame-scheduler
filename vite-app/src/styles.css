@@ -8734,6 +8734,13 @@
       height: calc(var(--subrow) * 13);
       padding-bottom: 0;
     }
+    /* Standard card (no flight) + late-reg bar = 14r. Bar fixed at 12r (2r chevron
+       closes the card); margin-top:auto drops the late-reg bar to the bottom,
+       seating its label on r12 — a whole-r footer below the title (r8). */
+    .cal-event-row:not(.open):not(:has(.cal-event-stage)):has(.mini-late-reg) .cal-event-bar {
+      height: calc(var(--subrow) * 12);
+      padding-bottom: 0;
+    }
     .cal-event-row:not(.open) {
       overflow: hidden;
     }
