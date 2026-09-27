@@ -1296,11 +1296,15 @@ export default function TournamentsView({
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
+    // rootMargin is an IntersectionObserver API value — the spec requires an
+    // absolute px/% length and rejects calc()/var(), so derive the 150-subrow
+    // pre-load buffer from r in JS and emit it as the px the API demands.
+    const r = (window.innerWidth / 37) * 0.71;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setRenderedGroupCount(prev => prev + 30);
       }
-    }, { rootMargin: 'calc(var(--subrow) * 150)' });
+    }, { rootMargin: `${Math.round(r * 150)}px` });
     observer.observe(el);
     return () => observer.disconnect();
   }, [renderedGroupCount]);
