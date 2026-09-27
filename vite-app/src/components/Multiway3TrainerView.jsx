@@ -26,7 +26,7 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
 const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
 // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
+const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
 const STREET_NAMES = ['3rd', '4th', '5th', '6th', '7th'];
 const POS = 'var(--pos, #22c55e)';
 
@@ -198,7 +198,7 @@ export default function Multiway3TrainerView() {
                 style={{
                   height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 2.25)', borderRadius: 'calc(var(--subrow) * 1.25)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.208)',
                   fontWeight: 'var(--fw-bold)', cursor: stepping ? 'default' : 'pointer', color: 'var(--on-brand)',
-                  border: '1px solid var(--brand)', background: 'var(--brand)', opacity: stepping ? 0.5 : 1,
+                  border: 'var(--bw-hair) solid var(--brand)', background: 'var(--brand)', opacity: stepping ? 0.5 : 1,
                 }}>
                 {a.label}
               </button>
@@ -262,7 +262,7 @@ export default function Multiway3TrainerView() {
           style={{
             flex: 1, height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'calc(var(--subrow) * 1.25)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)',
             fontWeight: 700, cursor: (loading || stepping) ? 'default' : 'pointer',
-            border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
+            border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
             opacity: (loading || stepping) ? 0.5 : 1,
           }}>
           {handOver ? 'Deal next hand' : 'New hand'}
@@ -286,7 +286,7 @@ function Felt3({ state, heroSeat, handOver, result }) {
   const seats = state.seats || [];
   const resultSeats = handOver && result && Array.isArray(result.seats) ? result.seats : null;
   return (
-    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' }}>
+    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
         <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
           {STREET_NAMES[state.street] || `street ${state.street}`} street
@@ -303,7 +303,7 @@ function Felt3({ state, heroSeat, handOver, result }) {
         return (
           <div key={s.seat} style={{
             marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)', borderRadius: 'calc(var(--subrow) * 1.25)',
-            border: '1px solid ' + (s.isHero ? POS : 'var(--border)'),
+            border: 'var(--bw-hair) solid ' + (s.isHero ? POS : 'var(--border)'),
             background: s.isHero ? 'color-mix(in srgb, var(--pos, #22c55e) 8%, transparent)' : 'transparent',
             opacity: s.folded ? 0.5 : 1,
           }}>
@@ -339,7 +339,7 @@ function Felt3({ state, heroSeat, handOver, result }) {
       })}
 
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
+        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
           {state.log.map((e, i) => (
             <div key={i}>
               <b style={{ color: e.seat === heroSeat ? POS : 'var(--accent)' }}>
@@ -396,7 +396,7 @@ function ExploitBar({ bar, heroSeat }) {
   if (!Array.isArray(bar) || !bar.length) return null;
   const max = Math.max(0.01, ...bar.map(b => Math.abs(b.exploitLowerBound || 0)));
   return (
-    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px dashed var(--border)' }}>
+    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: 'var(--bw-hair) dashed var(--border)' }}>
       <div style={{ ...label, marginBottom: 'calc(var(--subrow) * 0.625)' }}>Per-seat exploitability (lower bound, chips)</div>
       {bar.map((b) => {
         const v = Math.abs(b.exploitLowerBound || 0);
@@ -481,7 +481,7 @@ function SessionScoreboard3({ session, onReset }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
         <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>Session scoreboard</span>
         <button onClick={onReset}
-          style={{ fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-md)', cursor: 'pointer' }}>
+          style={{ fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted)', background: 'transparent', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-md)', cursor: 'pointer' }}>
           reset
         </button>
       </div>

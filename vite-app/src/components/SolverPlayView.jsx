@@ -13,7 +13,7 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
 const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
 // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
+const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
 
 // One strategy row: action label, frequency bar, percentage. The
 // sampled action is accented and check-marked.
@@ -22,7 +22,7 @@ function StrategyRow({ action, chosen }) {
   const isChosen = action.id === chosen;
   return (
     <div style={{ position: 'relative', overflow: 'hidden', padding: 'var(--space-md) var(--space-ml)', borderRadius: 'var(--radius-sm)', marginBottom: 'calc(var(--subrow) * 0.625)',
-      border: '1px solid ' + (isChosen ? 'var(--accent)' : 'var(--border)') }}>
+      border: 'var(--bw-hair) solid ' + (isChosen ? 'var(--accent)' : 'var(--border)') }}>
       <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`,
         background: isChosen ? 'rgba(74,158,255,0.20)' : 'rgba(128,128,128,0.12)' }} />
       <span style={{ position: 'relative', display: 'flex', justifyContent: 'space-between',
@@ -120,7 +120,7 @@ export default function SolverPlayView() {
     <button onClick={onClick} disabled={disabled} style={{
       height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', padding: '0 var(--space-lg)', borderRadius: 'var(--radius-sm)', fontFamily: FONT, fontSize: 'calc(var(--gu) * 1.149)', fontWeight: 700,
       cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1,
-      border: '1px solid ' + (primary ? 'var(--accent)' : 'var(--border)'),
+      border: 'var(--bw-hair) solid ' + (primary ? 'var(--accent)' : 'var(--border)'),
       background: primary ? 'var(--brand)' : 'transparent', color: primary ? 'var(--on-brand)' : 'var(--text)',
     }}>{txt}</button>
   );
@@ -136,7 +136,7 @@ export default function SolverPlayView() {
         {(games || []).map(g => (
           <button key={g.id} onClick={() => setGameId(g.id)} disabled={!g.trained}
             style={{ height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', padding: '0 var(--space-lg)', borderRadius: 'var(--radius-lg)', cursor: g.trained ? 'pointer' : 'default',
-              border: '1px solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
+              border: 'var(--bw-hair) solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
               background: g.id === gameId ? 'var(--accent)' : 'transparent',
               color: g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
               fontFamily: FONT, fontSize: 'calc(var(--gu) * 1.104)', fontWeight: 'var(--fw-bold)', opacity: g.trained ? 1 : 0.5 }}>
@@ -199,7 +199,7 @@ export default function SolverPlayView() {
               {/* One ribbon instead of a row per action: the mix now sums to 100% by construction. */}
               <StrategyRibbon actions={step.actions.map(a => ({ id: a.id, label: a.label, prob: a.prob, ev: a.ev }))} chosen={step.chosen} best={step.best} showEv />
               {step.explain && (
-                <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)',
+                <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)',
                   fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 3)' }}>
                   <span style={{ ...label, color: 'var(--accent)', marginRight: 'var(--space-sm)' }}>Why</span>
                   {step.explain}

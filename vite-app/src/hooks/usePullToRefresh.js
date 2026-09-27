@@ -33,7 +33,7 @@ export default function usePullToRefresh(scrollRef, onRefresh) {
     if (dy >= threshold && !refreshing) {
       setRefreshing(true);
       if (ptrIndicator.current) {
-        ptrIndicator.current.style.transform = 'translateX(-50%) translateY(40px)';
+        ptrIndicator.current.style.transform = 'translateX(-50%) translateY(calc(var(--subrow) * 5))';
         ptrIndicator.current.classList.add('visible');
       }
       try { await onRefresh(); } catch (e) { console.error('Refresh failed:', e); }

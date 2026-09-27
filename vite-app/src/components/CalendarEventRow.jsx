@@ -264,7 +264,7 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
               alignItems: 'center',
               gap: 'calc(var(--subrow) * 0.75)',
               padding: 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.25) calc(var(--subrow) * 0.375) calc(var(--subrow) * 0.375)',
-              borderRadius: '999px',
+              borderRadius: 'calc(var(--subrow) * 128)',
               background: 'var(--surface)',
               border: 'var(--bw-hair) solid var(--border)',
               fontSize: 'calc(var(--gu) * 1.149)',

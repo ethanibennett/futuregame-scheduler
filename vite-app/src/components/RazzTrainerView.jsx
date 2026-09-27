@@ -22,7 +22,7 @@ import Card from './SolverCard.jsx';
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
 const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
 // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
+const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
 
 // ── explicit-discard encoding (mirrors solver/draw-trainer/play.js) ────────
 // FULL DISCARD CONTROL: the hero's draw action is a STATELESS string
@@ -412,7 +412,7 @@ export default function RazzTrainerView() {
       ) : (
         <div style={{
           fontSize: 'calc(var(--gu) * 1.090)', lineHeight: 1.45, margin: '0 0 var(--space-lg)', padding: 'var(--space-md) var(--space-ml)',
-          borderRadius: 'var(--radius-sm)', border: '1px solid var(--warn, #f59e0b)',
+          borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--warn, #f59e0b)',
           background: 'rgba(245,158,11,.10)', color: 'var(--text)',
           display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)',
         }}>
@@ -431,7 +431,7 @@ export default function RazzTrainerView() {
       {error && (
         <div style={{
           ...panel, marginBottom: 'var(--space-lg)', color: 'var(--neg, #ef4444)',
-          border: '1px solid var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)', fontSize: 'calc(var(--gu) * 1.178)', lineHeight: 1.5,
+          border: 'var(--bw-hair) solid var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)', fontSize: 'calc(var(--gu) * 1.178)', lineHeight: 1.5,
         }}>
           {error.offline
             ? <><b>Trainer offline.</b> The {gameName} trainer backend isn’t reachable. {error.message ? `(${error.message})` : ''}</>
@@ -475,7 +475,7 @@ export default function RazzTrainerView() {
                 style={{
                   touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
                   flex: '1 1 auto', minWidth: 'calc(var(--subrow) * 12)', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-sm)',
-                  cursor: stepping ? 'wait' : 'pointer', border: '1px solid var(--accent)',
+                  cursor: stepping ? 'wait' : 'pointer', border: 'var(--bw-hair) solid var(--accent)',
                   background: 'transparent', color: 'var(--text)', fontFamily: 'inherit',
                   fontSize: 'calc(var(--gu) * 1.325)', fontWeight: 700, opacity: stepping ? 0.6 : 1,
                 }}>
@@ -521,7 +521,7 @@ export default function RazzTrainerView() {
                   style={{
                     marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: '1px solid var(--accent)', color: 'var(--accent)',
+                    border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
                   }}>
                   pro · true-GTO {catOf(game) === 'draw' ? 'final' : '7th'}
                 </span>
@@ -534,7 +534,7 @@ export default function RazzTrainerView() {
                   style={{
                     marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: '1px dashed var(--accent)', color: 'var(--accent)',
+                    border: 'var(--bw-hair) dashed var(--accent)', color: 'var(--accent)',
                   }}>
                   pro · certified net ~0.06 SB
                 </span>
@@ -547,7 +547,7 @@ export default function RazzTrainerView() {
                   style={{
                     marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
+                    border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
                   }}>
                   pro · 6th approx
                 </span>
@@ -557,7 +557,7 @@ export default function RazzTrainerView() {
                   style={{
                     marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
                     textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
+                    border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
                   }}>
                   pro · 5th laddered
                 </span>
@@ -613,7 +613,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
   const isDraw = catOf(game) === 'draw';
   return (
     <div style={{
-      ...panel, margin: '0 0 calc(var(--subrow) * 2)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)',
+      ...panel, margin: '0 0 calc(var(--subrow) * 2)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))',
       display: 'flex', alignItems: 'center', gap: 'var(--gu)',
       borderColor: on ? 'var(--accent)' : 'var(--border)',
       background: on ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
@@ -625,7 +625,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
           <span style={{
             padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
             textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-            border: '1px solid var(--accent)', color: 'var(--accent)',
+            border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
           }}>
             true GTO
           </span>
@@ -646,7 +646,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
         title={on ? `Pro mode ON — ${streetLbl} decisions graded by exact GTO re-solve` : 'Pro mode OFF — blueprint grading (fast)'}
         style={{
           flex: '0 0 auto', position: 'relative', width: 'calc(var(--subrow) * 5.5)', height: 'calc(var(--subrow) * 3)', borderRadius: 'var(--radius-pill)',
-          border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border)'),
+          border: 'var(--bw-hair) solid ' + (on ? 'var(--accent)' : 'var(--border)'),
           background: on ? 'var(--accent)' : 'var(--surface2)',
           cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
           padding: 0, transition: 'background .18s ease, border-color .18s ease',
@@ -655,7 +655,7 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
         <span style={{
           position: 'absolute', top: 'var(--space-2xs)', left: on ? 'calc(var(--subrow) * 2.75)' : 'var(--space-2xs)', width: 'calc(var(--subrow) * 2.25)', height: 'calc(var(--subrow) * 2.25)', borderRadius: '50%',
           background: '#fff', transition: 'left .18s cubic-bezier(.4,0,.2,1)',
-          boxShadow: '0 1px 2px rgba(0,0,0,.3)',
+          boxShadow: '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,.3)',
         }} />
       </button>
     </div>
@@ -668,7 +668,7 @@ const gamePill = (active, disabled) => ({
   height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
   padding: '0 var(--space-lg)', borderRadius: 'var(--radius-pill)', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
   fontSize: 'calc(var(--gu) * 1.060)', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
-  border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
+  border: 'var(--bw-hair) solid ' + (active ? 'var(--text)' : 'var(--border)'),
   background: active ? 'var(--text)' : 'transparent',
   color: active ? 'var(--bg)' : 'var(--text-muted)',
   opacity: disabled && !active ? 0.5 : 1,
@@ -683,7 +683,7 @@ function StudTable({ state, heroSeat, handOver, result }) {
   const deadCards = Array.isArray(state.deadCards) ? state.deadCards : [];
 
   return (
-    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' }}>
+    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
         <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
           {STREET_NAMES[state.street] || `street ${state.street}`} street
@@ -699,7 +699,7 @@ function StudTable({ state, heroSeat, handOver, result }) {
         <div style={{
           marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)',
           background: 'color-mix(in srgb, var(--surface) 70%, #000)',
-          border: '1px dashed var(--border)', borderRadius: 'calc(var(--subrow) * 1.25)',
+          border: 'var(--bw-hair) dashed var(--border)', borderRadius: 'calc(var(--subrow) * 1.25)',
         }}>
           <div style={{ marginBottom: 'var(--subrow)', height: 'calc(var(--subrow) * 2)' }}>
             <span style={label}>Dead (folded): {deadCards.length} {deadCards.length === 1 ? 'card' : 'cards'}</span>
@@ -755,7 +755,7 @@ function StudTable({ state, heroSeat, handOver, result }) {
 
       {/* Action log */}
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
+        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
           {state.log.map((e, i) => (
             <div key={i}>
               <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
@@ -820,7 +820,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
   const phaseTag = state.phase === 'draw' ? 'draw' : 'bet';
 
   return (
-    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' }}>
+    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
         <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
           {roundLabel}
@@ -886,10 +886,10 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
                   display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
                   padding: 'var(--space-2xs)', borderRadius: 'calc(var(--subrow) * 0.875)', margin: '0 calc(var(--subrow) * 0.125)',
                   cursor: picking ? (drawDecision.stepping ? 'wait' : 'pointer') : 'default',
-                  border: '2px solid ' + ring,
+                  border: 'calc(var(--subrow) * 0.25) solid ' + ring,
                   background: bg,
                   transition: 'border-color .12s ease, background .12s ease, transform .08s ease',
-                  transform: selThrown ? 'translateY(3px)' : 'none',
+                  transform: selThrown ? 'translateY(calc(var(--subrow)*0.375))' : 'none',
                 }}>
                 <Card str={c} size="sm" dim={isThrow} />
                 {(picking || previewing) && (
@@ -917,7 +917,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
           lights up which cards IT would throw). The submitted action is the
           explicit string 'd:' + sorted thrown 2-char codes. */}
       {drawDecision && (
-        <div style={{ marginTop: 'calc(var(--subrow) * 1.75)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ marginTop: 'calc(var(--subrow) * 1.75)', paddingTop: 'var(--space-lg)', borderTop: 'var(--bw-hair) solid var(--border)' }}>
           <div style={{ ...label, marginBottom: 'var(--space-md)' }}>
             Choose your discard {drawDecision.stepping ? '· …' : ''}
             <span style={{ textTransform: 'none', marginLeft: 'var(--space-sm)', color: 'var(--text-muted)' }}>
@@ -945,7 +945,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
               style={{
                 flex: '0 0 auto', minWidth: 'calc(var(--subrow) * 13.75)', padding: 'calc(var(--subrow) * 1.375) var(--space-xl)', borderRadius: 'var(--radius-sm)',
                 cursor: drawDecision.stepping ? 'wait' : (throwCount === 0 ? 'default' : 'pointer'),
-                border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
+                border: 'var(--bw-hair) solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
                 fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 700,
                 opacity: drawDecision.stepping || throwCount === 0 ? 0.55 : 1,
               }}>
@@ -978,7 +978,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
 
       {/* Action log (shared shape with StudTable; draw rounds included). */}
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
+        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
           {state.log.map((e, i) => (
             <div key={i}>
               <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
@@ -1027,7 +1027,7 @@ function SolverDrawHint({ legalActions, gtoMix, heroCards, onHover }) {
   return (
     <div style={{
       marginTop: 'var(--space-xs)', padding: 'var(--space-md) var(--space-ml)', borderRadius: 'var(--radius-sm)',
-      background: 'var(--surface2)', border: '1px solid var(--border)',
+      background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)',
       fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)', lineHeight: 1.5,
     }}>
       <span style={{ ...label, marginRight: 'var(--space-sm)' }}>Solver</span>
@@ -1152,7 +1152,7 @@ function Stud8Boards({ sd }) {
   const loQualifies = !!(lo.winner && lo.winner !== 'none');
   return (
     <div style={{ marginTop: 'var(--space-ml)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
-      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
+      <div style={{ background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
         <div style={{ ...label, marginBottom: 'var(--space-xs)' }}>High · {sideWinnerLabel(hi.winner)}</div>
         <div style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)', lineHeight: 1.4 }}>
           {hi.hand ? <b>{hi.hand}</b> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
@@ -1164,7 +1164,7 @@ function Stud8Boards({ sd }) {
           </div>
         )}
       </div>
-      <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
+      <div style={{ background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
         <div style={{ ...label, marginBottom: 'var(--space-xs)' }}>Low · {loQualifies ? sideWinnerLabel(lo.winner) : 'no qualifier'}</div>
         {loQualifies ? (
           <>
@@ -1280,7 +1280,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px solid var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
+                border: 'var(--bw-hair) solid var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
               range-degraded · low confidence
             </span>
@@ -1292,7 +1292,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px solid var(--accent)', color: 'var(--accent)',
+                border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
               }}>
               true GTO
             </span>
@@ -1302,7 +1302,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px solid var(--accent)', color: 'var(--accent)',
+                border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
               }}>
               certified net · ~{certSB.toFixed(2)} SB
             </span>
@@ -1312,7 +1312,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
+                border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
               6th oracle · approx ~{oracle6thChips.toFixed(1)}ch
             </span>
@@ -1322,7 +1322,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
+                border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
               5th oracle · laddered
             </span>
@@ -1332,7 +1332,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
+                border: 'var(--bw-hair) solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
               }}>
               {netEligibleStreet ? 'net unavailable · blueprint grade' : 'oracle unavailable · blueprint grade'}
             </span>
@@ -1342,7 +1342,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px solid var(--border)', color: 'var(--text-muted)',
+                border: 'var(--bw-hair) solid var(--border)', color: 'var(--text-muted)',
               }}>
               blueprint
             </span>
@@ -1352,7 +1352,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
+                border: 'var(--bw-hair) solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
               }}>
               unconverged
             </span>
@@ -1362,7 +1362,7 @@ function GradeCard({ g, game }) {
               style={{
                 marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: '1px dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
+                border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
               }}>
               range-sensitive · {notCharged ? 'shown, not charged' : 'shown'}
             </span>
@@ -1408,7 +1408,7 @@ function GradeCard({ g, game }) {
           play, and the note (recommended keep vs non-standard / off-book). */}
       {isExplicit && (
         <div style={{
-          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)',
+          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: 'var(--bw-hair) solid var(--border)',
           fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)', lineHeight: 1.5,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-sm)', marginBottom: thrownCards.length ? 'var(--space-xs)' : 0 }}>
@@ -1443,7 +1443,7 @@ function GradeCard({ g, game }) {
           skipped on the fast path, so it's usually present only on fallback/debug). */}
       {isOracleGrade && (
         <div style={{
-          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border)',
+          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: 'var(--bw-hair) solid var(--border)',
           fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5,
         }}>
           <span style={{ ...label, marginRight: 'var(--space-sm)' }}>Oracle</span>
@@ -1490,7 +1490,7 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
         <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>{gameName ? `${gameName} scoreboard` : 'Session scoreboard'}</span>
         <button onClick={onReset}
           style={{
-            height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-ml)', borderRadius: 'calc(var(--subrow) * 0.75)', border: '1px solid var(--border)', background: 'transparent',
+            height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-ml)', borderRadius: 'calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', background: 'transparent',
             color: 'var(--text-muted)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.972)', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em',
           }}>
           Reset session
@@ -1550,7 +1550,7 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
 function Stat({ label: lab, value, unit, tone }) {
   const color = tone === 'neg' ? 'var(--neg, #ef4444)' : tone === 'pos' ? 'var(--pos, #22c55e)' : 'var(--text)';
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
+    <div style={{ background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
       <div style={{ ...label, marginBottom: 'var(--space-2xs)', height: 'calc(var(--subrow) * 2)' }}>{lab}</div>
       <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
         {value}{unit ? <span style={{ fontSize: 'calc(var(--gu) * 0.972)', fontWeight: 400, color: 'var(--text-muted)' }}> {unit}</span> : null}
@@ -1654,7 +1654,7 @@ function TrainerHistory({ game, gameName, rev }) {
               {(hands || []).map((h) => {
                 const isOpen = expandedId === h.id;
                 return (
-                  <div key={h.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                  <div key={h.id} style={{ background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                     <button onClick={() => toggleRow(h.id)}
                       style={{
                         width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--space-ml)', padding: 'var(--space-md) var(--space-ml)',
@@ -1672,7 +1672,7 @@ function TrainerHistory({ game, gameName, rev }) {
                     </button>
 
                     {isOpen && (
-                      <div style={{ padding: '0 var(--space-ml) var(--space-ml)', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ padding: '0 var(--space-ml) var(--space-ml)', borderTop: 'var(--bw-hair) solid var(--border)' }}>
                         {detailLoading || !detail || detail.id !== h.id ? (
                           <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', padding: 'var(--space-md) 0' }}>Loading hand…</div>
                         ) : !detail.hand || !Array.isArray(detail.hand.grades) || detail.hand.grades.length === 0 ? (

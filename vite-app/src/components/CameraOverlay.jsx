@@ -334,7 +334,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
       const history = (stackHistory || []).filter(u => u.stack && Number(u.stack) > 0);
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 0.957)',letterSpacing:'1px'}}>STACK GRAPH</div>
+          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 0.957)',letterSpacing:'calc(var(--subrow) * 0.125)'}}>STACK GRAPH</div>
           <div className="tournament-name">{tournamentName}</div>
           <div className="stats-line">{history.length} update{history.length !== 1 ? 's' : ''} tracked</div>
         </div>
@@ -401,7 +401,7 @@ export function CameraOverlay({ updateData, tournamentName, tournament, stackHis
     if (overlayType === 'countdown') {
       return (
         <div className="camera-stats-bar">
-          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 0.957)',letterSpacing:'1px'}}>NEXT UP</div>
+          <div style={{color:'#22c55e',fontWeight: 'var(--fw-bold)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 0.957)',letterSpacing:'calc(var(--subrow) * 0.125)'}}>NEXT UP</div>
           <div className="tournament-name">{tournament?.buyin ? '$' + Number(tournament.buyin).toLocaleString() + ' ' : ''}{tournamentName}</div>
           <div className="stats-line">in {countdownText}</div>
         </div>

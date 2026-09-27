@@ -26,7 +26,7 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 
 const FONT = "'Univers Condensed', 'Univers', sans-serif";
 const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' };
-const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'var(--space-lg) calc(var(--subrow) * 1.75)' };
+const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'var(--space-lg) calc(var(--subrow) * 1.75)' };
 
 // Split a free-text holding/upcard string ("As4s3d2c" / "Kc Kd 2h")
 // into individual two-char card tokens for the SolverCard preview.
@@ -215,7 +215,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
     width: '100%', height: CTRL_H, boxSizing: 'border-box',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     fontSize: 'calc(var(--gu) * 1.149)', padding: '0 var(--space-ml)', borderRadius: 'var(--radius-sm)',
-    border: '1px solid var(--border)', background: 'var(--surface2)',
+    border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface2)',
     color: 'var(--text)', letterSpacing: '0.02em',
   };
   const fieldLab = { ...label, display: 'flex', alignItems: 'flex-end', height: 'calc(var(--subrow) * 3)', marginBottom: 0, lineHeight: 1 };
@@ -224,7 +224,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
     height: CTRL_H, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
     padding: '0 var(--space-lg)', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontFamily: 'inherit',
     fontSize: 'calc(var(--gu) * 1.060)', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
-    border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
+    border: 'var(--bw-hair) solid ' + (active ? 'var(--text)' : 'var(--border)'),
     background: active ? 'var(--text)' : 'transparent',
     color: active ? 'var(--bg)' : 'var(--text-muted)',
   });
@@ -271,7 +271,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
       {handoffNote && (
         <div style={{
           ...full, padding: 'var(--space-lg)', borderRadius: 'calc(var(--subrow) * 1.25)',
-          background: 'var(--surface2)', border: '1px solid var(--accent)',
+          background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--accent)',
           fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text)', lineHeight: 1.5,
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-ml)', marginBottom: handoffNote.notes.length ? 'var(--space-md)' : 0 }}>
@@ -294,7 +294,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             style={{
               height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 'calc(var(--gu) * 1.090)', fontWeight: 'var(--fw-bold)',
-              border: '1px solid ' + (mode === id ? 'var(--accent)' : 'var(--border)'),
+              border: 'var(--bw-hair) solid ' + (mode === id ? 'var(--accent)' : 'var(--border)'),
               background: mode === id ? 'var(--surface2)' : 'var(--surface)',
               color: mode === id ? 'var(--text)' : 'var(--text-muted)',
             }}>
@@ -370,7 +370,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
                   <span key={i} style={{
                     fontSize: 'calc(var(--gu) * 1.001)', fontVariantNumeric: 'tabular-nums', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box',
                     display: 'inline-flex', alignItems: 'center', padding: '0 calc(var(--subrow) * 1.125)', borderRadius: 'calc(var(--subrow) * 0.75)',
-                    background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
+                    background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)', color: 'var(--text)',
                   }}>{h}</span>
                 ))}
               </div>
@@ -432,7 +432,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
 
         {solving && (
           <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.208)', color: 'var(--text-muted)', lineHeight: 1.55, animation: 'none' }}>
-            <span style={{ display: 'inline-block', width: 'var(--icon-xs)', height: 'var(--icon-xs)', marginRight: 'var(--space-md)', borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'middle' }} />
+            <span style={{ display: 'inline-block', width: 'var(--icon-xs)', height: 'var(--icon-xs)', marginRight: 'var(--space-md)', borderRadius: '50%', border: 'calc(var(--subrow) * 0.25) solid var(--border)', borderTopColor: 'var(--accent)', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'middle' }} />
             Solving the subgame… range-form CFR+ over the {game} tree.
             <style>{'@keyframes fgspin{to{transform:rotate(360deg)}}'}</style>
           </div>
@@ -441,7 +441,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         {error && !solving && (
           <div style={{
             ...full, fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)',
-            border: '1px solid var(--neg, #ef4444)', borderRadius: 'var(--radius-sm)', padding: 'calc(var(--subrow) * 1.125) calc(var(--subrow) * 1.375)', lineHeight: 1.5,
+            border: 'var(--bw-hair) solid var(--neg, #ef4444)', borderRadius: 'var(--radius-sm)', padding: 'calc(var(--subrow) * 1.125) calc(var(--subrow) * 1.375)', lineHeight: 1.5,
           }}>
             {error.offline
               ? <><b>Solver offline.</b> Start it with <code style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 'calc(var(--gu) * 1.060)' }}>cd solver/neural &amp;&amp; python3 solve_server.py</code>, then Solve again.</>
@@ -450,7 +450,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         )}
 
         {!solving && !error && !result && (
-          <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 3)', borderLeft: '2px solid var(--accent)', paddingLeft: 'calc(var(--gu) - 2px)' }}>
+          <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 3)', borderLeft: 'calc(var(--subrow) * 0.25) solid var(--accent)', paddingLeft: 'calc(var(--gu) - calc(var(--subrow)*0.25))' }}>
             Edit the spot on the left and hit <b style={{ color: 'var(--text)' }}>Solve spot</b> to run it live.
           </div>
         )}
@@ -474,7 +474,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
                 const badge = (txt) => (
                   <span key={txt} style={{
                     fontSize: 'calc(var(--gu) * 0.972)', padding: 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.125)', borderRadius: 'var(--radius-pill)', background: 'var(--surface2)',
-                    border: '1px solid var(--border)', color: 'var(--text-muted)', letterSpacing: '0.03em',
+                    border: 'var(--bw-hair) solid var(--border)', color: 'var(--text-muted)', letterSpacing: '0.03em',
                   }}>{txt}</span>
                 );
                 const badges = [badge(`${result.game || game} · ${n} ${mode === 'exact' ? 'holdings' : 'buckets'}`)];
@@ -486,7 +486,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             </div>
 
             {/* Auto-summary */}
-            <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 1.55, borderLeft: '2px solid var(--border)', paddingLeft: 'var(--space-lg)' }}>
+            <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 1.55, borderLeft: 'calc(var(--subrow) * 0.25) solid var(--border)', paddingLeft: 'var(--space-lg)' }}>
               You are <b style={{ color: 'var(--text)' }}>{sum.lead}</b> for <b style={{ color: 'var(--text)' }}>{sum.ev >= 0 ? '+' : ''}{sum.ev.toFixed(2)}</b> chips.{sum.act}
             </div>
 

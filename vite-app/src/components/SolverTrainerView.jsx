@@ -66,7 +66,7 @@ export default function SolverTrainerView() {
 
   const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
   // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-  const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - 1px) calc(var(--gu) - 1px)' };
+  const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 70)', margin: '0 auto', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>
@@ -80,7 +80,7 @@ export default function SolverTrainerView() {
           <button key={g.id} onClick={() => setGameId(g.id)} disabled={!g.trained}
             style={{
               height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', padding: '0 var(--space-lg)', borderRadius: 'var(--radius-lg)', cursor: g.trained ? 'pointer' : 'default',
-              border: '1px solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
+              border: 'var(--bw-hair) solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
               background: g.id === gameId ? 'var(--accent)' : 'transparent',
               color: g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
               fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.104)', fontWeight: 'var(--fw-bold)', opacity: g.trained ? 1 : 0.5,
@@ -140,7 +140,7 @@ export default function SolverTrainerView() {
 
             {/* Action log */}
             {d.log.length > 0 && (
-              <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - 1px)', borderTop: '1px solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)' }}>
+              <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)' }}>
                 {d.log.map((e, i) => <div key={i}><b style={{ color: e.who === 'Hero' ? 'var(--accent)' : 'inherit' }}>{e.who}</b> {e.what}</div>)}
               </div>
             )}
@@ -159,7 +159,7 @@ export default function SolverTrainerView() {
                       position: 'relative', overflow: 'hidden', textAlign: 'left',
                       display: 'flex', alignItems: 'center', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box',
                       padding: '0 var(--space-lg)', borderRadius: 'var(--radius-sm)', cursor: picked ? 'default' : 'pointer',
-                      border: '1px solid ' + (isPick ? 'var(--accent)' : isBest ? '#22c55e' : 'var(--border)'),
+                      border: 'var(--bw-hair) solid ' + (isPick ? 'var(--accent)' : isBest ? '#22c55e' : 'var(--border)'),
                       background: 'transparent', color: 'var(--text)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 'var(--fw-bold)',
                     }}>
                     {picked && (

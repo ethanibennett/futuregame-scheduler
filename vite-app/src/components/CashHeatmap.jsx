@@ -104,7 +104,7 @@ export default function CashHeatmap({ token }) {
     String(catalog.vNames[a] || a).localeCompare(String(catalog.vNames[b] || b))) : [];
   const gamesForVenue = (catalog && sel && catalog.byVenue[sel.venue]) || [];
 
-  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--space-md, 16px)' };
+  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--space-md, calc(var(--subrow) * 2))' };
   const selectStyle = { background: 'var(--surface, #1a1a1a)', color: 'var(--text, #fff)', border: 'var(--bw-hair) solid var(--border, #333)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm) var(--space-md)', fontSize: 'calc(var(--gu) * 1.178)', maxWidth: '100%' };
 
   if (status === 'error') {

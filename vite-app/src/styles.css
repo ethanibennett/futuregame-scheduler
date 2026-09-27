@@ -306,8 +306,8 @@
          had to be reasoned about instead of measured. Set --sa-b to 34px in
          devtools and the whole bottom of the app lays out as it does on an
          iPhone. The default keeps production behaviour identical. */
-      --sa-b:      env(safe-area-inset-bottom, 0px);
-      --sa-t:      env(safe-area-inset-top, 0px);
+      --sa-b:      env(safe-area-inset-bottom, 0);
+      --sa-t:      env(safe-area-inset-top, 0);
       /* MEASURED, not chosen: a tab is a 20px icon, a --nudge-1 gap and a
          --fs-2xs label, which needs 35px. At 30 the content overflowed its box
          by exactly 5px (measured), and since the nav centres a taller child in
@@ -479,7 +479,7 @@
          corner minus the padding between them. */
       --radius-xs:     calc(var(--subrow) * 0.5);
       --radius-lg:     calc(var(--subrow) * 2);
-      --radius-pill:   999px;   /* sentinel for "fully rounded capsule", not a measurement */
+      --radius-pill:   calc(var(--subrow) * 128);   /* sentinel for "fully rounded capsule", not a measurement */
       --radius-circle: 50%;
       --radius-nest:   calc(var(--radius) - var(--space-xs));
 
@@ -1179,7 +1179,7 @@
         radial-gradient(ellipse at 50% 35%,
           rgba(255,255,255,0.30), rgba(255,255,255,0.06) 60%, rgba(0,0,0,0.12) 100%),
         var(--chip);
-      box-shadow: inset 0 0 0 max(1px, calc(var(--disc-w) * 0.03)) rgba(255,255,255,0.22);
+      box-shadow: inset 0 0 0 max(calc(var(--subrow) * 0.125), calc(var(--disc-w) * 0.03)) rgba(255,255,255,0.22);
     }
     /* One chip's edge showing. The element is E + h tall, so offsetting the
        next by h means pulling it up by E. */
@@ -1563,13 +1563,13 @@
     }
     /* Username cell clears the avatar with a fixed indent (1g rail + 24px avatar
        + 1 subrow gap). */
-    .admin-table td.admin-user-cell { position: relative; padding-left: calc(var(--gu) + 24px + var(--space-md)); }
+    .admin-table td.admin-user-cell { position: relative; padding-left: calc(var(--gu) + calc(var(--subrow) * 3) + var(--space-md)); }
     /* Avatar is pulled out of flow and centred in the 5-subrow row: (40-24)/2 =
        8px = exactly 1 subrow, so its box spans the lines 8 -> 32 within the row. */
     .admin-avatar {
       position: absolute;
       left: var(--gu);
-      top: calc((var(--subrow) * 5 - 24px) / 2);
+      top: calc((var(--subrow) * 5 - calc(var(--subrow) * 3)) / 2);
       width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
       border-radius: var(--radius-circle);
       object-fit: cover;
@@ -2233,7 +2233,7 @@
       max-width: calc(var(--subrow) * 52.5); width: 100%; max-height: 90vh; overflow-y: auto;
       background: var(--surface);
       border: var(--bw-1) solid var(--border);
-      border-radius: var(--radius-lg, 14px);
+      border-radius: var(--radius-lg, calc(var(--subrow) * 1.75));
       padding: var(--space-2xl);
       box-shadow: 0 calc(var(--subrow) * 1.25) calc(var(--subrow) * 5) rgba(0,0,0,0.5);
     }
@@ -2424,21 +2424,21 @@
     /* Grid: separator via inset shadow so row height stays 3 subrows (buttons), not 3sr+1px. */
     .game-faves-row { display:flex; gap:0; margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 var(--border); }
     /* Grid: 3-subrow tall tab (border-box) = 22px line-box + 2px active underline. */
-    .game-fave-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; line-height: calc(var(--subrow) * 3 - 2px); transition:color var(--dur-fast),background var(--dur-fast); border-bottom:calc(var(--subrow) * 0.25) solid transparent; }
+    .game-fave-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; line-height: calc(var(--subrow) * 3 - calc(var(--subrow) * 0.25)); transition:color var(--dur-fast),background var(--dur-fast); border-bottom:calc(var(--subrow) * 0.25) solid transparent; }
     .game-fave-btn.active { border:none; border-bottom:calc(var(--subrow) * 0.25) solid var(--accent2); background:transparent; color:var(--accent2); font-weight: var(--fw-bold); }
     .game-tab-bar { display:flex; border-bottom:var(--bw-hair) solid var(--border); background:var(--surface2); }
     /* Grid: 3-subrow tall tab (border-box). */
-    .game-tab-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-bottom:calc(var(--subrow) * 0.25) solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; margin-bottom:calc(var(--subrow) * -0.125); transition:color var(--dur-fast),border-color var(--dur-fast); line-height: calc(var(--subrow) * 3 - 2px); }
+    .game-tab-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-bottom:calc(var(--subrow) * 0.25) solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; margin-bottom:calc(var(--subrow) * -0.125); transition:color var(--dur-fast),border-color var(--dur-fast); line-height: calc(var(--subrow) * 3 - calc(var(--subrow) * 0.25)); }
     .game-tab-btn.active { color:var(--accent2); border-bottom-color:var(--accent2); font-weight: var(--fw-bold); }
     /* Grid: 4-subrow tall row; left padding absorbs the 2px indicator border so the label lands on 3g. */
-    .game-check-row { display:flex; align-items:center; gap: var(--space-ml); height: calc(var(--subrow) * 4); box-sizing:border-box; padding: 0 var(--gu) 0 calc(var(--gu) - 2px); cursor:pointer; transition:background var(--dur-fast),border-left-color var(--dur-fast); border-bottom:none; border-left: var(--bw-2) solid transparent; }
+    .game-check-row { display:flex; align-items:center; gap: var(--space-ml); height: calc(var(--subrow) * 4); box-sizing:border-box; padding: 0 var(--gu) 0 calc(var(--gu) - calc(var(--subrow) * 0.25)); cursor:pointer; transition:background var(--dur-fast),border-left-color var(--dur-fast); border-bottom:none; border-left: var(--bw-2) solid transparent; }
     @media (hover: hover) and (pointer: fine) {
       .game-check-row:hover { background:var(--surface2); }
     }
     .game-check-row.selected { background:rgba(136,136,136,0.08); border-left-color:var(--accent2); }
     .game-check-radio { display:none; }
     .game-check-radio-dot { display:none; }
-    .game-check-more-row { display:flex; align-items:center; justify-content:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; border-top:var(--bw-hair) solid var(--border); border-left:none; padding: 0 calc(var(--gu) - 1px); background:transparent; }
+    .game-check-more-row { display:flex; align-items:center; justify-content:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; border-top:var(--bw-hair) solid var(--border); border-left:none; padding: 0 calc(var(--gu) - calc(var(--subrow) * 0.125)); background:transparent; }
     @media (hover: hover) and (pointer: fine) {
       .game-check-more-row:hover { background:transparent; }
     }
@@ -2449,7 +2449,7 @@
     /* Grid: line-height 4sr + 2px top seats the baseline 3 subrows below the row top (a grid line). */
     .game-check-row-label { font-size: var(--fs-sm); color:var(--text-muted); flex:1; align-self:flex-start; line-height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 0.375); transition:color var(--dur-fast); }
     .game-check-row-label.selected { color:var(--text); font-weight: var(--fw-regular); }
-    .game-check-section-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); line-height: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) - 1px); }
+    .game-check-section-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); line-height: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) - calc(var(--subrow) * 0.125)); }
 
     /* ── Card row ── */
     .card-row { display:flex; gap: var(--space-2xs); align-items:center; min-height:calc(var(--subrow) * 4); flex-wrap:wrap; }
@@ -2462,7 +2462,7 @@
     .card-row.card-row-splay {
       gap:0; align-items:flex-end; position:relative; overflow:visible;
       height: clamp(30px, 17cqmin, 168px);
-      min-width: min(180px, 22cqmin);
+      min-width: min(calc(var(--subrow) * 22.5), 22cqmin);
     }
     /* 7.1% not 2px: the artwork's own corner is rx=18 on a 252-tall viewBox,
        so a percentage tracks it at every size (2px at 28px, 3.1px at 44px).
@@ -2517,7 +2517,7 @@
       justify-content: center;
       font-family: 'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
       font-weight: 700;
-      font-size: var(--back-mark, 15px);
+      font-size: var(--back-mark, calc(var(--subrow) * 1.875));
       letter-spacing: -0.05em;
       color: rgba(255,255,255,0.20);
       pointer-events: none;
@@ -2780,7 +2780,7 @@
       box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,236,200,0.4), 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.5);
     }
     .replayer-settings-thumb .thumb-back {
-      width: calc(var(--subrow) * 7.5); height: calc(var(--subrow) * 4.75); border-radius: var(--r-object, 6px);
+      width: calc(var(--subrow) * 7.5); height: calc(var(--subrow) * 4.75); border-radius: var(--r-object, calc(var(--subrow) * 0.75));
       display: flex; align-items: center; justify-content: center;
       background: rgba(0,0,0,0.35);
       box-shadow: inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.5);
@@ -2868,10 +2868,10 @@
       padding: var(--space-xl);
     }
     .replayer-export-frame {
-      width: min(70vw, 240px); aspect-ratio: 3 / 4.5;
+      width: min(70vw, calc(var(--subrow) * 30)); aspect-ratio: 3 / 4.5;
       display: flex; align-items: center; justify-content: center;
       margin-bottom: var(--space-ml);
-      border-radius: var(--r-object, 6px);
+      border-radius: var(--r-object, calc(var(--subrow) * 0.75));
       background: repeating-conic-gradient(rgba(255,255,255,0.05) 0 25%, transparent 0 50%) 0 0 / calc(var(--subrow) * 1.5) calc(var(--subrow) * 1.5);
       overflow: hidden;
     }
@@ -2889,7 +2889,7 @@
     .replayer-entry { display:flex; flex-direction:column; gap: var(--space-ml); }
     .replayer-step-label { font-size: var(--fs-2xs); color:var(--accent2); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); margin-bottom: var(--space-2xs); }
     /* Grid: 1px border absorbed into padding so inner content lands on 2g..35g / subrow lines. */
-    .replayer-section { background:var(--surface); border:var(--bw-hair) solid var(--border); border-radius:var(--radius-sm); padding: calc(var(--subrow) - 1px) calc(var(--gu) - 1px); }
+    .replayer-section { background:var(--surface); border:var(--bw-hair) solid var(--border); border-radius:var(--radius-sm); padding: calc(var(--subrow) - calc(var(--subrow) * 0.125)) calc(var(--gu) - calc(var(--subrow) * 0.125)); }
     .replayer-section-title { font-size: var(--fs-xs); font-weight: var(--fw-regular); color:var(--text); line-height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); font-family: var(--font-sans); }
 
     .replayer-field { display:flex; flex-direction:column; gap: var(--space-2xs); flex:1; }
@@ -3635,8 +3635,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: var(--sa-t) env(safe-area-inset-right, 0px)
-               var(--sa-b) env(safe-area-inset-left, 0px);
+      padding: var(--sa-t) env(safe-area-inset-right, 0)
+               var(--sa-b) env(safe-area-inset-left, 0);
       box-sizing: border-box;
     }
     /* Scoped to the ACTIVE tab panel. Tab panels stay mounted behind
@@ -3677,14 +3677,14 @@
          the real bar is ~150px, so the strips sat behind it and were clipped.
          --bar-h rather than --transport-h because landscape declares its own
          --transport-h and the observer would overwrite it. */
-      bottom: var(--bar-h, 104px);
+      bottom: var(--bar-h, calc(var(--subrow) * 13));
       /* A declared height again, but for a different reason than before: this
          cannot resize the table any more, it just has to stay off the bottom
          seat. Left to its content it grew to ~200px and sat on the hero. */
       /* This out-specifies the short-screen media query below, so it carries
          its own scaling: on a 667pt phone a flat 96px reaches up past the
          bottom seat, because the table is shorter but the strip is not. */
-      height: min(96px, 8.1vh);
+      height: min(calc(var(--subrow) * 12), 8.1vh);
       padding: var(--space-sm) var(--space-md) var(--space-2xs);
       background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
@@ -3702,8 +3702,8 @@
       z-index: var(--z-modal);
       background: var(--bg);
       overflow: hidden;
-      padding-left: env(safe-area-inset-left, 0px);
-      padding-right: env(safe-area-inset-right, 0px);
+      padding-left: env(safe-area-inset-left, 0);
+      padding-right: env(safe-area-inset-right, 0);
       box-sizing: border-box;
     }
     /* 25 + 16: in landscape the phone is being held for exactly this, and
@@ -3830,7 +3830,7 @@
        name the app ships with. */
     .replayer-landscape .replayer-seat-name,
     .replayer-landscape .replayer-seat.seat-right .replayer-seat-name {
-      max-width: min(420px, 32cqmin);
+      max-width: min(calc(var(--subrow) * 52.5), 32cqmin);
       /* 3.0, not the 3.2 that portrait's headroom suggested. Landscape's
          plaque box is 57.9px where portrait's is 81.1, and at 3.2 the widest
          house form measured 56.8px in it — a 1.1px margin, which is not a
@@ -3910,7 +3910,7 @@
          had a third of the screen. The strips annotate the table; they do not
          outrank it. Still a declared height — nothing here can resize the
          table — and what does not fit scrolls. */
-      height: min(24%, 96px);
+      height: min(24%, calc(var(--subrow) * 12));
       /* The reserved-but-empty strips would otherwise stack at the TOP of the
          region, putting ~120px of nothing between the table and the timeline
          and reading as a void. Bottom-aligned, that space joins the table's
@@ -3932,7 +3932,7 @@
        overlapping pairs. The strips give way first: they scroll, the table
        cannot. */
     @media (max-height: 720px) {
-      .replayer-under { height: min(22%, 76px); }
+      .replayer-under { height: min(22%, calc(var(--subrow) * 9.5)); }
     }
     /* Landscape is the cinema view: the table is the screen, and the strips
        float over the bottom of the felt on a scrim rather than taking a share
@@ -3941,7 +3941,7 @@
     .replayer-landscape .replayer-under {
       position: absolute;
       left: 0; right: 0; bottom: var(--transport-h);
-      height: min(61px, 9vh);
+      height: min(calc(var(--subrow) * 7.625), 9vh);
       padding: var(--space-lg) var(--space-md) var(--space-xs);
       background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
       z-index: var(--z-flight, 60);
@@ -4002,7 +4002,7 @@
          one. Measured at -28px: 375x667 clears by 4, 402x874 by 24, 430x932 by
          26. The small phone sets the number, as it did before. */
       width: min(100cqw, calc(100cqh * var(--table-ar-max)));
-      height: min(calc(100cqh - 28px), calc(100cqw / var(--table-ar-min)));
+      height: min(calc(100cqh - calc(var(--subrow) * 3.5)), calc(100cqw / var(--table-ar-min)));
       max-width: 100%;
       margin: var(--space-xs) 0 0;
 
@@ -4044,7 +4044,7 @@
          function now: the same angle, the same blur ratio, alpha scaled by
          how far above the felt the object sits. --cast-x/-y/-blur come from
          the seat's own position (see castStyle in HandReplayerView). */
-      --cast-x: 0px;
+      --cast-x: 0;
       --cast-y: calc(var(--subrow) * 0.25);
       --cast-blur: calc(var(--subrow) * 0.5);
 
@@ -4117,7 +4117,7 @@
          A floor is a legibility limit, not a layout: 24px is the smallest a
          rank and suit stay readable at, and above that the table decides. */
       /* The plaque's own width, so the two cannot drift apart. */
-      --plaque-w: min(200px, 25cqmin);
+      --plaque-w: min(calc(var(--subrow) * 25), 25cqmin);
       /* Cards are a fraction of the plaque rather than of the table. They were
          sized off cqmin independently, which is why the ratio came out at 0.85
          of the plaque's height in landscape and 1.02 in portrait — the same
@@ -4348,7 +4348,7 @@
          one most able to reach a top seat's plaque on a small table. */
       /* 73 Black Extended. The pot got its presence from being bigger than
          everything else; width gives it the same weight at the same size. */
-      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: var(--fw-bold); color: var(--pot-text, #fff); text-shadow: var(--pot-shadow, 0 1px 3px rgba(0,0,0,0.55));
+      z-index: var(--z-pot); text-align:center; font-size: clamp(11px, 4.4cqmin, 54px); font-weight: var(--fw-bold); color: var(--pot-text, #fff); text-shadow: var(--pot-shadow, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.55));
       /* Condensed Bold, not Expanded Black. Two weights means the pot cannot
          have a weight of its own, so its presence has to come from size — and
          4.4cqmin against the stack's 3.6 is the 1.22 ratio the scheme was
@@ -4587,7 +4587,7 @@
     .replayer-seat.seat-left .replayer-seat-info,
     .replayer-seat.seat-right .replayer-seat-info { min-width: 0; }
     .replayer-seat.seat-left .replayer-seat-name,
-    .replayer-seat.seat-right .replayer-seat-name { max-width: min(200px, 15cqmin); }
+    .replayer-seat.seat-right .replayer-seat-name { max-width: min(calc(var(--subrow) * 25), 15cqmin); }
     /* Folded/mucked. opacity:0.5 faded the NAME AND STACK along with the plaque, losing the
        information at the moment you are scanning who is left. Desaturating and stepping the plaque
        back says "out of the hand" while keeping it readable. */
@@ -4765,7 +4765,7 @@
          cards. Measured, it lands on this floor in both orientations — 74px on
          a 296-tall landscape table, 96px on a 382-wide portrait one — so it is
          a real dimension rather than a limit that never binds. */
-      min-width: var(--plaque-w, min(200px, 25cqmin));   /* 4 cells */
+      min-width: var(--plaque-w, min(calc(var(--subrow) * 25), 25cqmin));   /* 4 cells */
       box-shadow: none;
       transition: border-color var(--dur-snap), box-shadow var(--dur-base), transform var(--dur-snap);
     }
@@ -4876,7 +4876,7 @@
          of each other. A share of the table, capped where it stops being
          worth more. The JSX shortens to fit this budget (see shortenName), so
          the ellipsis stays a backstop rather than the mechanism. */
-      max-width: min(300px, 21.875cqmin);   /* 3.5 cells */
+      max-width: min(calc(var(--subrow) * 37.5), 21.875cqmin);   /* 3.5 cells */
     }
     /* The position badge is gone: the dealer button is on the table, and
        every other position is derived from it — so the badge was repeating
@@ -5012,7 +5012,7 @@
          a phone — four pixels of room. white-space: pre cannot wrap, so a
          longer name would spill past its own background rather than reflow.
          The ellipsis bounds that: still one line, just a truncated one. */
-      max-width: min(150px, 34cqmin);
+      max-width: min(calc(var(--subrow) * 18.75), 34cqmin);
       overflow: hidden;
       text-overflow: ellipsis;
       box-shadow: var(--elev-1);
@@ -5116,7 +5116,7 @@
       /* Above the plaque rather than below it, which puts it over the fan —
          an action bubble hovering on the cards, and it clears the chip delta
          and the hand name that both hang off the bottom edge. */
-      bottom: calc(100% + 2px);
+      bottom: calc(100% + calc(var(--subrow) * 0.25));
       left: 50%;
       transform: translateX(-50%);
       /* Its parent plaque already paints over the tucked-in cards; this keeps
@@ -5773,8 +5773,8 @@
       max-width: calc(var(--subrow) * 52.5); margin-left: auto; margin-right: auto;
       background: linear-gradient(180deg, rgba(24,21,32,0.96), rgba(12,10,17,0.96));
       border: none;
-      border-radius: var(--r-object, 6px);
-      box-shadow: var(--plate-bevel, 0 1px 2px rgba(0,0,0,0.55));
+      border-radius: var(--r-object, calc(var(--subrow) * 0.75));
+      box-shadow: var(--plate-bevel, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55));
     }
     .replayer-commentary::before {
       content: '';
@@ -5860,7 +5860,7 @@
     /* ── Running Chip Count ── */
     .replayer-chip-delta {
       font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold);
-      margin-top:0px; text-align:center;
+      margin-top:0; text-align:center;
     }
     .replayer-chip-delta.positive { color:#4ade80; }
     .replayer-chip-delta.negative { color:#f87171; }
@@ -5895,9 +5895,9 @@
 
     /* ── Cinematic Card Deal Animation (preflop) ── */
     @keyframes cinematicDeal {
-      0% { opacity:0; transform:translate(var(--deal-dx,40px),var(--deal-dy,-60px)) scale(0.2); }
+      0% { opacity:0; transform:translate(var(--deal-dx,calc(var(--subrow) * 5)),var(--deal-dy,calc(var(--subrow) * -7.5))) scale(0.2); }
       30% { opacity:0.6; }
-      70% { transform:translate(calc(var(--deal-dx,40px)*0.1),calc(var(--deal-dy,-60px)*0.1)) scale(0.95); }
+      70% { transform:translate(calc(var(--deal-dx,calc(var(--subrow) * 5))*0.1),calc(var(--deal-dy,calc(var(--subrow) * -7.5))*0.1)) scale(0.95); }
       85% { transform:translate(0,0) scale(1.03); }
       100% { opacity:1; transform:none; }
     }
@@ -5970,7 +5970,7 @@
 
     /* ── Chip Bet Animation (slide from seat toward pot) ── */
     @keyframes chipSlideToPot {
-      0% { opacity:0; transform:translate(calc(-50% + var(--chip-start-dx,0px)),calc(-50% + var(--chip-start-dy,0px))) scale(0.4); }
+      0% { opacity:0; transform:translate(calc(-50% + var(--chip-start-dx,0)),calc(-50% + var(--chip-start-dy,0))) scale(0.4); }
       30% { opacity:1; }
       100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
     }
@@ -5984,7 +5984,7 @@
     /* ── Pot Collection Animation (chips slide to winner) ── */
     @keyframes potCollect {
       0% { opacity:1; transform:translate(-50%,-50%) scale(1); }
-      100% { opacity:0; transform:translate(calc(-50% + var(--win-dx,0px)),calc(-50% + var(--win-dy,0px))) scale(0.3); }
+      100% { opacity:0; transform:translate(calc(-50% + var(--win-dx,0)),calc(-50% + var(--win-dy,0))) scale(0.3); }
     }
     .replayer-pot-display.anim-pot-collect {
       animation:potCollect var(--dur-slow) var(--ease-leave) forwards;
@@ -6112,7 +6112,7 @@
     @keyframes flyChipToPot {
       0%   { opacity:1; transform:translate(0,0) scale(0.6); }
       14%  { transform:translate(calc(var(--fly-dx) * -0.07), calc(var(--fly-dy) * -0.06)) scale(0.54); }
-      60%  { transform:translate(calc(var(--fly-dx) * 0.6), calc(var(--fly-dy) * 0.6 - 15px)) scale(0.92); }
+      60%  { transform:translate(calc(var(--fly-dx) * 0.6), calc(var(--fly-dy) * 0.6 - calc(var(--subrow) * 1.875))) scale(0.92); }
       100% { opacity:0.8; transform:translate(var(--fly-dx), var(--fly-dy)) scale(1); }
     }
     .replayer-flying-chip.to-winner {
@@ -6121,7 +6121,7 @@
     }
     @keyframes flyChipToWinner {
       0%   { opacity:1; transform:translate(0,0) scale(1); }
-      55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - 16px)) scale(0.8); }
+      55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - calc(var(--subrow) * 2))) scale(0.8); }
       100% { opacity:0; transform:translate(var(--fly-dx), var(--fly-dy)) scale(0.4); }
     }
 
@@ -6163,7 +6163,7 @@
       /* Room to read as a row of stacks sitting on the cloth rather than a
          glyph crammed between the label and the number. */
       margin: var(--space-2xs) 0 calc(var(--subrow) * 0.375);
-      min-height: calc(var(--disc-w, 16px) * 1.1);
+      min-height: calc(var(--disc-w, calc(var(--subrow) * 2)) * 1.1);
     }
     .replayer-pot-chip-stack { display:flex; flex-direction:column; align-items:center; }
     /* A cell of the row, not a block above it. Above the row the stacks were
@@ -6187,7 +6187,7 @@
          side even once they were on a line of their own. Out of flow the row
          is one cell wide — the figure and its plaque, which is exactly what
          the pot was before it became a row. */
-      position: absolute; left: 50%; bottom: calc(100% + 3px);
+      position: absolute; left: 50%; bottom: calc(100% + calc(var(--subrow) * 0.375));
       transform: translateX(-50%);
     }
 
@@ -6285,7 +6285,7 @@
        cushion — and the strip floated across the felt boundary instead of
        tracing it. All three layers mirror the shape now. */
     .replayer-table:has(.shape-round) .replayer-table-rail {
-      inset: calc(12% - 20px) calc(22% - 20px);
+      inset: calc(12% - calc(var(--subrow) * 2.5)) calc(22% - calc(var(--subrow) * 2.5));
       border-radius: var(--radius-circle);
     }
     .replayer-table:has(.shape-round) .replayer-light-strip {
@@ -6318,7 +6318,7 @@
       opacity: 0.82;
     }
     .replayer-table:has(.shape-octagon) .replayer-table-rail {
-      inset: calc(8% - 20px) calc(18% - 20px);
+      inset: calc(8% - calc(var(--subrow) * 2.5)) calc(18% - calc(var(--subrow) * 2.5));
       border-radius: 0;
       clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
     }
@@ -6435,12 +6435,12 @@
        kept a 9-max desktop table's names at phone width. */
     .replayer-table[data-players="9"] .replayer-seat-info,
     .replayer-table[data-players="10"] .replayer-seat-info {
-      min-width: min(56px, 20cqmin);
+      min-width: min(calc(var(--subrow) * 7), 20cqmin);
       padding: var(--space-xs) min(var(--space-sm), 2.5cqmin);
     }
     .replayer-table[data-players="9"] .replayer-seat-name,
     .replayer-table[data-players="10"] .replayer-seat-name {
-      max-width: min(56px, 17cqmin);
+      max-width: min(calc(var(--subrow) * 7), 17cqmin);
     }
 
     /* 45: the plaque is the densest object on the felt and had no hover or
@@ -6705,7 +6705,7 @@
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
     .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqmin, 200px); }  /* 2.5 cells */
     .replayer-seat.is-hero .replayer-seat-info {
-      min-width: min(220px, 27cqmin);
+      min-width: min(calc(var(--subrow) * 27.5), 27cqmin);
       padding: var(--nudge-1) min(var(--space-ml), 4cqmin);
       border-color: rgba(242,166,59,0.5);
     }
@@ -6842,7 +6842,7 @@
        by player. */
     .replayer-seat-info { cursor: pointer; }
     .replayer-seat-line {
-      position: absolute; left: 50%; top: calc(100% + 4px);
+      position: absolute; left: 50%; top: calc(100% + calc(var(--subrow) * 0.5));
       transform: translateX(-50%);
       z-index: var(--z-flight);
       min-width: calc(var(--subrow) * 16.5); max-width: calc(var(--subrow) * 23.75);
@@ -7209,7 +7209,7 @@
     /* ── Toasts ── */
     .toast-container {
       position: fixed;
-      bottom: calc(var(--tab-h) + 12px);
+      bottom: calc(var(--tab-h) + calc(var(--subrow) * 1.5));
       left: 50%;
       transform: translateX(-50%);
       z-index: var(--z-toast);
@@ -7217,7 +7217,7 @@
       flex-direction: column-reverse;
       gap: var(--space-md);
       pointer-events: none;
-      width: calc(100% - 24px);
+      width: calc(100% - calc(var(--subrow) * 3));
       max-width: calc(var(--subrow) * 50);
     }
     .toast {
@@ -8283,7 +8283,7 @@
          medium (≥640px):  pad 20 each side = 40                       → -76
          large  (≥1024px): pad 32 each side = 64                       → -100 */
     .cal-date-btn {
-      flex: 0 0 calc((100vw - 60px) / 7);
+      flex: 0 0 calc((100vw - calc(var(--subrow) * 7.5)) / 7);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -8297,10 +8297,10 @@
       transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     }
     @media (min-width: 640px) {
-      .cal-date-btn { flex-basis: calc((100vw - 76px) / 7); }
+      .cal-date-btn { flex-basis: calc((100vw - calc(var(--subrow) * 9.5)) / 7); }
     }
     @media (min-width: 1024px) {
-      .cal-date-btn { flex-basis: calc((100vw - 100px) / 7); }
+      .cal-date-btn { flex-basis: calc((100vw - calc(var(--subrow) * 12.5)) / 7); }
     }
 
     .cal-date-btn.active { background: var(--brand); border-color: var(--brand); animation: date-bounce var(--dur-slow) var(--ease-spring) both; }
@@ -8827,7 +8827,7 @@
     .cal-bar-row2 > .cal-bracelet-icon {
       margin-left: auto;
       align-self: flex-start;
-      margin-top: calc((var(--cal-title-line) - 18px) / 2);
+      margin-top: calc((var(--cal-title-line) - calc(var(--subrow) * 2.25)) / 2);
     }
 
     .cal-bar-row1 {
@@ -9083,7 +9083,7 @@
          Mirror the nav's height formula exactly so Safari's max()
          parsing can't drop the safe-area term, then add a 22px gap
          (was 16px) and a final +6px hedge for iOS hairline rounding. */
-      bottom: calc(max(44px, calc(var(--tab-h) + var(--sa-b))) + 28px);
+      bottom: calc(max(calc(var(--subrow) * 5.5), calc(var(--tab-h) + var(--sa-b))) + calc(var(--subrow) * 3.5));
       left: 50%;
       z-index: var(--z-fab);
       background: var(--accent);
@@ -9754,7 +9754,7 @@
       /* 32px reserved above the content (24px strip + 8px gap = 4 subrows),
          less the 1px border so the content-top lands on a subrow line. The
          playing state (2px border) subtracts 2px — see below. */
-      padding-top: calc(var(--space-4xl) - 1px);
+      padding-top: calc(var(--space-4xl) - calc(var(--subrow) * 0.125));
       padding-left: var(--space-xl);
       box-shadow: var(--elev-2);
     }
@@ -9886,7 +9886,7 @@
     .dash-event-card.playing {
       border-width: calc(var(--subrow) * 0.25);
       /* 2px border → subtract 2px from the 32px reserve so content stays on grid */
-      padding-top: calc(var(--space-4xl) - 2px);
+      padding-top: calc(var(--space-4xl) - calc(var(--subrow) * 0.25));
     }
 
     .dash-card-content {
@@ -10371,7 +10371,7 @@
          the value (3-subrow line) and label (2-subrow line) sit at the same
          grid rows across all three cards. */
       min-height: calc(var(--subrow) * 9);
-      padding: calc(var(--space-md) - 1px) var(--space-lg) 0;
+      padding: calc(var(--space-md) - calc(var(--subrow) * 0.125)) var(--space-lg) 0;
       text-align: center;
       /* these are <button> now, so undo the UA defaults */
       font: inherit;
@@ -10651,8 +10651,8 @@
       left: 50%;
       transform: translateX(-50%);
     }
-    .dash-conn-dropdown.above { bottom: calc(100% + 4px); }
-    .dash-conn-dropdown.below { top: calc(100% + 4px); }
+    .dash-conn-dropdown.above { bottom: calc(100% + calc(var(--subrow) * 0.5)); }
+    .dash-conn-dropdown.below { top: calc(100% + calc(var(--subrow) * 0.5)); }
     .dash-conn-dropdown-name {
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
@@ -11267,7 +11267,7 @@
     .staking-modal {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--surface); border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius); width: min(400px, 90vw); max-height: 85vh;
+      border-radius: var(--radius); width: min(calc(var(--subrow) * 50), 90vw); max-height: 85vh;
       overflow-y: auto; z-index: var(--z-modal);
     }
     .staking-modal-header {
@@ -11365,10 +11365,10 @@
        anchored to - and over-reported max-height by the same amount. */
     .notif-panel {
       position: fixed;
-      top: calc(var(--sa-t) + var(--header-h, 60px) + var(--space-xs));
-      right: max(var(--space-lg), env(safe-area-inset-right, 0px));
-      width: min(360px, calc(100vw - 24px));
-      max-height: calc(100vh - var(--sa-t) - var(--header-h, 60px) - var(--nav-h) - var(--space-xl));
+      top: calc(var(--sa-t) + var(--header-h, calc(var(--subrow) * 7.5)) + var(--space-xs));
+      right: max(var(--space-lg), env(safe-area-inset-right, 0));
+      width: min(calc(var(--subrow) * 45), calc(100vw - calc(var(--subrow) * 3)));
+      max-height: calc(100vh - var(--sa-t) - var(--header-h, calc(var(--subrow) * 7.5)) - var(--nav-h) - var(--space-xl));
       overflow-y: auto;
       background: var(--surface);
       border: var(--bw-hair) solid var(--border);
@@ -11898,7 +11898,7 @@
     /* ── Solver self-play table (reuses the replayer's oval felt + seats) ── */
     .solver-table {
       position: relative;
-      width: min(100%, 440px);
+      width: min(100%, calc(var(--subrow) * 55));
       aspect-ratio: 3 / 2.5;
       margin: var(--space-sm) auto var(--space-lg);
     }
@@ -11957,7 +11957,7 @@
         position: sticky;
         top: 0;
         align-self: start;
-        max-height: calc(100vh - var(--header-h, 60px) - var(--nav-h, 44px) - 20px);
+        max-height: calc(100vh - var(--header-h, calc(var(--subrow) * 7.5)) - var(--nav-h, calc(var(--subrow) * 5.5)) - calc(var(--subrow) * 2.5));
         overflow-y: auto;
       }
     }
@@ -12007,8 +12007,8 @@
           transparent calc(var(--subrow) * 0.125), transparent 25%),
         repeating-linear-gradient(to right,
           transparent 0, transparent 12.5%,
-          color-mix(in srgb, #e0a458 32%, transparent) 12.5%, color-mix(in srgb, #e0a458 32%, transparent) calc(12.5% + 1px),
-          transparent calc(12.5% + 1px), transparent 25%),
+          color-mix(in srgb, #e0a458 32%, transparent) 12.5%, color-mix(in srgb, #e0a458 32%, transparent) calc(12.5% + calc(var(--subrow) * 0.125)),
+          transparent calc(12.5% + calc(var(--subrow) * 0.125)), transparent 25%),
         color-mix(in srgb, #35a0b3 8%, transparent);
       border-left: var(--bw-hair) solid color-mix(in srgb, #35a0b3 55%, transparent);
       border-right: var(--bw-hair) solid color-mix(in srgb, #35a0b3 55%, transparent);
@@ -12019,7 +12019,7 @@
     /* Floating admin toggle for the grid overlay. */
     .grid-dev-toggle {
       position: fixed; right: calc(var(--subrow) * 1.5);
-      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(calc(var(--subrow) * 9.5) + env(safe-area-inset-bottom, 0));
       z-index: 9999; width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); border-radius: var(--radius-circle);
       display: flex; align-items: center; justify-content: center;
       border: var(--bw-hair) solid var(--border); box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.25) rgba(0,0,0,0.3);

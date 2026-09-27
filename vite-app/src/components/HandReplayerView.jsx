@@ -1552,7 +1552,7 @@ function SplayPreview({ scale }) {
           <div key={i} style={{
             width: '13px', height: '19px', borderRadius: '2px',
             background: 'linear-gradient(155deg, #f6f3ec, #d9d3c5)',
-            boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.28)',
+            boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.0625) rgba(0,0,0,0.28)',
             ...st,
           }} />
         );
@@ -2048,7 +2048,7 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
               const discardCount = draw ? draw.discarded : 0;
               const isPatText = discardCount === 0 && draw ? ' (Stand Pat)' : '';
               return (
-                <div key={pi} className="replayer-draw-player-block" style={{marginBottom:'var(--space-sm)',padding:'var(--space-xs) 0',borderBottom:'1px solid var(--border)'}}>
+                <div key={pi} className="replayer-draw-player-block" style={{marginBottom:'var(--space-sm)',padding:'var(--space-xs) 0',borderBottom:'var(--bw-hair) solid var(--border)'}}>
                   <div className="replayer-row" style={{marginBottom:'var(--space-2xs)',alignItems:'center'}}>
                     <span style={{fontSize:'calc(var(--gu) * 0.957)',color:'var(--text-muted)',minWidth:'calc(var(--subrow) * 6.875)',fontWeight: 'var(--fw-bold)'}}>{p.name}{isPatText}</span>
                     <div className="replayer-field" style={{flex:'0 0 calc(var(--subrow) * 5.625)'}}>
@@ -3318,7 +3318,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     const isSplit = winners.some(w => w.playerIdx === pi && w.split);
                     return (
                       <button key={pi} style={{
-                        flex:'1 1 0',padding:'var(--space-md) calc(var(--subrow) * 1.75)',borderRadius:'calc(var(--subrow) * 0.75)',border:'1.5px solid',cursor:'pointer',
+                        flex:'1 1 0',padding:'var(--space-md) calc(var(--subrow) * 1.75)',borderRadius:'calc(var(--subrow) * 0.75)',border:'var(--bw-1) solid',cursor:'pointer',
                         fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.104)',fontWeight: 'var(--fw-bold)',transition:'all 0.15s',
                         background: isWinner ? 'rgba(74,222,128,0.15)' : isSplit ? 'rgba(250,204,21,0.15)' : 'transparent',
                         borderColor: isWinner ? '#4ade80' : isSplit ? '#facc15' : 'var(--border)',
@@ -3688,7 +3688,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             const cardStr = getStudCardForPlayer(pi);
             const isTarget = studDealTarget === pi;
             return (
-              <div key={pi} style={{display:'flex',alignItems:'center',gap:'var(--space-md)',marginBottom:'var(--space-sm)',padding:'var(--space-sm) var(--space-md)',borderRadius:'calc(var(--subrow) * 0.75)',cursor:'pointer',background:isTarget?'var(--accent-bg, rgba(34,197,94,0.1))':'transparent',border:isTarget?'1.5px solid var(--accent)':'1.5px solid transparent'}} onClick={() => setStudDealTarget(pi)}>
+              <div key={pi} style={{display:'flex',alignItems:'center',gap:'var(--space-md)',marginBottom:'var(--space-sm)',padding:'var(--space-sm) var(--space-md)',borderRadius:'calc(var(--subrow) * 0.75)',cursor:'pointer',background:isTarget?'var(--accent-bg, rgba(34,197,94,0.1))':'transparent',border:isTarget?'var(--bw-1) solid var(--accent)':'var(--bw-1) solid transparent'}} onClick={() => setStudDealTarget(pi)}>
                 <span style={{fontWeight:700,fontSize:'calc(var(--gu) * 1.178)',minWidth:'calc(var(--subrow) * 12.5)'}}>{p.name}</span>
                 {cardStr ? <CardRow text={cardStr} max={1} /> : <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',fontStyle:'italic'}}>--</span>}
               </div>
@@ -3852,7 +3852,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       });
                     };
                     return (
-                      <div style={{padding:'var(--space-sm) var(--space-md)',borderBottom: heroHasCards ? '1px solid var(--border)' : 'none'}}>
+                      <div style={{padding:'var(--space-sm) var(--space-md)',borderBottom: heroHasCards ? 'var(--bw-hair) solid var(--border)' : 'none'}}>
                         <div style={{fontSize:'calc(var(--gu) * 0.957)',fontWeight:700,color:'var(--text-muted)',marginBottom:'var(--space-xs)',fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
                           {heroHasCards ? 'Edit Cards' : 'Select Your Cards'}
                         </div>
@@ -4473,7 +4473,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             <textarea
               placeholder={'25/50\nUTG: AhKd  HJ: 9c8c  BTN: raise 3x  SB: fold  BB: call\n/ Qh Jc 2d  check  bet 50  fold\n/ 7s  bet 200  fold'}
               style={{width:'100%', minHeight:'calc(var(--subrow) * 17.5)', fontFamily:'monospace', fontSize:'calc(var(--gu) * 1.178)',
-                      background:'var(--surface)', color:'var(--text)', border:'1px solid var(--border)',
+                      background:'var(--surface)', color:'var(--text)', border:'var(--bw-hair) solid var(--border)',
                       borderRadius:'calc(var(--subrow) * 0.75)', padding:'var(--space-md)', resize:'vertical', boxSizing:'border-box'}}
               value={shorthandText}
               onChange={e => setShorthandText(e.target.value)}
@@ -4619,7 +4619,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
               >
                 <div style={{
                   width:'calc(var(--subrow) * 1.625)', height:'calc(var(--subrow) * 1.625)', borderRadius:'calc(var(--subrow) * 0.375)', flexShrink:0,
-                  border:`1.5px solid ${checked ? 'var(--accent2)' : 'var(--border)'}`,
+                  border:`var(--bw-1) solid ${checked ? 'var(--accent2)' : 'var(--border)'}`,
                   background: checked ? 'var(--accent2)' : 'transparent',
                   display:'flex', alignItems:'center', justifyContent:'center',
                   transition:'background 0.15s,border-color 0.15s',
@@ -4627,7 +4627,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                   {checked && <span style={{color:'#fff',fontSize:'calc(var(--subrow) * 1.125)',lineHeight:1,fontWeight:700}}>✓</span>}
                 </div>
                 <span className={`game-check-row-label${checked ? ' selected' : ''}`}
-                  style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'calc(var(--gu) * 1.001)',letterSpacing:'0.5px'}}
+                  style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'calc(var(--gu) * 1.001)',letterSpacing:'calc(var(--subrow)*0.0625)'}}
                 >{label}</span>
               </div>
             );
@@ -4661,7 +4661,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                     </div>
                   ))}
                   {selectedCategory === 'Stud' && (
-                    <div style={{borderTop:'1px solid var(--border)'}}>
+                    <div style={{borderTop:'var(--bw-hair) solid var(--border)'}}>
                       {checkboxRow('Super', studSuper, () => setStudSuper(p => !p), false)}
                       {checkboxRow('Action', studAction, () => setStudAction(p => !p), !RAZZ_VARIANTS.includes(selectedGame))}
                     </div>
@@ -4689,7 +4689,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
             );
             return (
               <>
-                <div className="game-check-section-label" style={{borderTop:'1px solid var(--border)'}}>Structure</div>
+                <div className="game-check-section-label" style={{borderTop:'var(--bw-hair) solid var(--border)'}}>Structure</div>
                 {['No Limit', 'Pot Limit', 'Limit'].map(s => (
                   <div key={s}
                     className={`game-check-row${bettingStructure === s ? ' selected' : ''}`}
@@ -4700,7 +4700,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                       {bettingStructure === s && <div className="game-check-radio-dot"/>}
                     </div>
                     <span className={`game-check-row-label${bettingStructure === s ? ' selected' : ''}`}
-                      style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'calc(var(--gu) * 1.031)',letterSpacing:'0.4px'}}
+                      style={{fontFamily:"'Univers Condensed','Univers',sans-serif",textTransform:'uppercase',fontSize:'calc(var(--gu) * 1.031)',letterSpacing:'calc(var(--subrow)*0.05)'}}
                     >{s}</span>
                   </div>
                 ))}
@@ -6808,7 +6808,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     // Always white, with a dark drop shadow — legible on any felt colour the
     // picker lands on, light or dark, rather than flipping to black on a pale
     // felt (Ethan). The shadow is what carries the contrast on a light cloth.
-    return { '--pot-text': '#ffffff', '--pot-shadow': '0 1px 2px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.55)' };
+    return { '--pot-text': '#ffffff', '--pot-shadow': '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.9), 0 0 calc(var(--subrow) * 0.625) rgba(0,0,0,0.55)' };
   })();
 
   // A street's draw lands AFTER its betting — the same instant the d1/d2/pat
@@ -7916,7 +7916,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           style={{display:'flex',alignItems:'center',justifyContent:'center'}}
           onClick={closeIgDraft}>
           <div onClick={e => e.stopPropagation()}
-            style={{background:'#14141c',borderRadius:'calc(var(--subrow) * 1.75)',padding:'var(--space-xl)',width:'min(92vw,320px)',boxShadow:'0 20px 60px rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+            style={{background:'#14141c',borderRadius:'calc(var(--subrow) * 1.75)',padding:'var(--space-xl)',width:'min(92vw, calc(var(--subrow) * 40))',boxShadow:'0 calc(var(--subrow) * 2.5) calc(var(--subrow) * 7.5) rgba(0,0,0,0.55)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             <div style={{color:'#fff',fontSize:'calc(var(--gu) * 1.472)',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'var(--space-ml)',textAlign:'center'}}>Instagram Story</div>
             <div ref={igBoxRef}
               onPointerDown={igPointerDown} onPointerMove={igPointerMove}
@@ -7934,7 +7934,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               <div style={{display:'flex',gap:'var(--space-sm)'}}>
                 {[1000,500,250,125,60].map((ms, i) => (
                   <button key={ms} onClick={() => setIgSpeed(ms)}
-                    style={{padding:'calc(var(--subrow) * 0.625) var(--space-md)',borderRadius:'calc(var(--subrow) * 0.875)',border:'1px solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'calc(var(--gu) * 1.060)',cursor:'pointer'}}>
+                    style={{padding:'calc(var(--subrow) * 0.625) var(--space-md)',borderRadius:'calc(var(--subrow) * 0.875)',border:'var(--bw-hair) solid '+(igSpeed===ms?'#fff':'rgba(255,255,255,0.25)'),background:igSpeed===ms?'rgba(255,255,255,0.15)':'transparent',color:'#fff',fontSize:'calc(var(--gu) * 1.060)',cursor:'pointer'}}>
                     {['1x','2x','4x','8x','16x'][i]}
                   </button>
                 ))}
@@ -7942,7 +7942,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             </div>
             <div style={{marginTop:'var(--space-xl)',display:'flex',gap:'var(--space-ml)'}}>
               <button onClick={closeIgDraft}
-                style={{flex:1,padding:'var(--space-ml)',borderRadius:'calc(var(--subrow) * 1.125)',border:'1px solid rgba(255,255,255,0.25)',background:'transparent',color:'#fff',fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer'}}>Cancel</button>
+                style={{flex:1,padding:'var(--space-ml)',borderRadius:'calc(var(--subrow) * 1.125)',border:'var(--bw-hair) solid rgba(255,255,255,0.25)',background:'transparent',color:'#fff',fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer'}}>Cancel</button>
               <button onClick={handleCreateInstagramStory}
                 style={{flex:2,padding:'var(--space-ml)',borderRadius:'calc(var(--subrow) * 1.125)',border:'none',background:'#fff',color:'#14141c',fontSize:'calc(var(--gu) * 1.252)',fontWeight:600,cursor:'pointer'}}>Create Story</button>
             </div>
