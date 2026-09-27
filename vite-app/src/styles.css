@@ -298,8 +298,8 @@
       /* Screen/page titles are always Baskerville, independent of the
          [data-serif] body-text preference that can swap --serif to Univers. */
       --font-title: 'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
-      --radius:    12px;
-      --radius-sm: 8px;
+      --radius:    calc(var(--subrow) * 1.5);
+      --radius-sm: calc(var(--subrow) * 1);
       /* The safe-area insets go through custom properties so the layout can be
          MEASURED off a device. env() cannot be emulated in a desktop browser,
          which is why a bottom-inset bug could only ever be seen on a phone and
@@ -314,13 +314,13 @@
          a shorter box the icons rode up against the top edge — 3px below it,
          where the label below was being cut. 40 gives the 35 the content needs
          plus symmetric breathing room. */
-      --tab-h:     40px;
+      --tab-h:     calc(var(--subrow) * 5);   /* 5 subrows */
       --header-h:  calc(var(--subrow) * 8);  /* 8 subrows, in r so the content
                         below the bar starts on an exact overlay r-line */
       /* Single source of truth for nav height — used by .bottom-nav for
          its own height AND by .replayer-bottom-fixed for `bottom` so the
          two positions can never drift relative to each other. */
-      --nav-h:     max(44px, calc(var(--tab-h) + var(--sa-b)));
+      --nav-h:     max(calc(var(--subrow) * 6), calc(var(--tab-h) + var(--sa-b)));
       /* Venue brand colors — muted for dark mode */
       --venue-wsop:          #a63030;
       --venue-wsop-cond:     #999;
@@ -374,15 +374,19 @@
          "on the scale" while reading as noise. The 32 sites below 9px
          snap UP to --fs-2xs: a deliberate legibility fix, not a rounding.
          --fs-3xs is retired. */
-      --fs-2xs:  0.625rem;    /* 10px   - caps micro-labels ONLY, never lowercase */
-      --fs-xs:   0.71875rem;  /* 11.5px - dense row secondary */
-      --fs-sm:   0.8125rem;   /* 13px   - dense row primary, the app's real base */
-      --fs-md:   0.9375rem;   /* 15px */
-      --fs-lg:   1.09375rem;  /* 17.5px */
-      --fs-xl:   1.3125rem;   /* 21px */
-      --fs-2xl:  1.5625rem;   /* 25px */
-      --fs-3xl:  1.875rem;    /* 30px */
-      --fs-hero: 3rem;        /* 48px   - empty-state glyph only */
+      /* The type scale is g, not rem/px: font sizes are a fraction of the column
+         unit so text scales with the grid like everything else (and cap heights
+         stay a constant fraction of r). Factors are set so each size equals its
+         old value at 402pt (g=10.865): 1.1965g = 13px = --fs-sm, etc. */
+      --fs-2xs:  calc(var(--gu) * 0.9204);  /* caps micro-labels ONLY, never lowercase */
+      --fs-xs:   calc(var(--gu) * 1.0585);  /* dense row secondary */
+      --fs-sm:   calc(var(--gu) * 1.1965);  /* dense row primary, the app's real base */
+      --fs-md:   calc(var(--gu) * 1.3806);
+      --fs-lg:   calc(var(--gu) * 1.6107);
+      --fs-xl:   calc(var(--gu) * 1.9328);
+      --fs-2xl:  calc(var(--gu) * 2.3010);
+      --fs-3xl:  calc(var(--gu) * 2.7612);
+      --fs-hero: calc(var(--gu) * 4.4179);  /* empty-state glyph only */
 
       --lh-tight: 1.15;
       --lh-snug:  1.35;
@@ -425,17 +429,21 @@
          --space-ml (10px) exists because 10px was used 76 times off the
          scale, sitting exactly between md and lg - the scale had skipped
          a real step rather than the app being sloppy. */
-      --space-2xs: 2px;
-      --space-xs:  4px;
-      --space-sm:  6px;
-      --space-md:  8px;
-      --space-ml:  10px;
-      --space-lg:  12px;
-      --space-xl:  16px;
-      --space-2xl: 20px;
-      --space-3xl: 24px;
-      --space-4xl: 32px;
-      --space-5xl: 48px;
+      /* The spacing scale is r, not px: every gap/pad/margin is a fraction or
+         multiple of the subrow so it lands on the grid and scales with g. Values
+         chosen to sit closest to the old px scale at 402pt (r=7.71): 1r≈8, 1.5r≈12,
+         2r≈16 … so the app looks the same but is now grid-relative everywhere. */
+      --space-2xs: calc(var(--subrow) * 0.25);
+      --space-xs:  calc(var(--subrow) * 0.5);
+      --space-sm:  calc(var(--subrow) * 0.75);
+      --space-md:  calc(var(--subrow) * 1);
+      --space-ml:  calc(var(--subrow) * 1.25);
+      --space-lg:  calc(var(--subrow) * 1.5);
+      --space-xl:  calc(var(--subrow) * 2);
+      --space-2xl: calc(var(--subrow) * 2.5);
+      --space-3xl: calc(var(--subrow) * 3);
+      --space-4xl: calc(var(--subrow) * 4);
+      --space-5xl: calc(var(--subrow) * 6);
 
       /* --- Layout sub-grid ---------------------------------------------
          The responsive grid every element is sized to. The screen is 37
@@ -454,9 +462,9 @@
                                            (Was a fixed 8px, which is NOT the grid at
                                            any real width.) */
 
-      /* Sub-pixel optical corrections are NOT spacing. */
-      --nudge-half: 0.5px;
-      --nudge-1:    1px;
+      /* Sub-subrow optical corrections (fractions of r, never px). */
+      --nudge-half: calc(var(--subrow) * 0.0625);
+      --nudge-1:    calc(var(--subrow) * 0.125);
 
       /* One multiplier, so the calendar and the dashboard share a scale
          instead of each spawning its own literals. */
@@ -469,18 +477,20 @@
          and on a non-square element it silently draws an ellipse.
          --radius-nest states the law: an inner corner equals the outer
          corner minus the padding between them. */
-      --radius-xs:     4px;
-      --radius-lg:     16px;
-      --radius-pill:   999px;
+      --radius-xs:     calc(var(--subrow) * 0.5);
+      --radius-lg:     calc(var(--subrow) * 2);
+      --radius-pill:   999px;   /* sentinel for "fully rounded capsule", not a measurement */
       --radius-circle: 50%;
       --radius-nest:   calc(var(--radius) - var(--space-xs));
 
       /* --- Border width -------------------------------------------------
          1.5px was used 38 times and 1px 138 times with nothing recording
          which was the card outline and which the divider. */
-      --bw-hair: 1px;
-      --bw-1:    1.5px;
-      --bw-2:    3px;
+      /* Stroke widths as fractions of r so even hairlines scale with the grid
+         (≈1 / 1.5 / 3px at 402pt). Nothing is px. */
+      --bw-hair: calc(var(--subrow) * 0.13);
+      --bw-1:    calc(var(--subrow) * 0.195);
+      --bw-2:    calc(var(--subrow) * 0.39);
 
       /* --- Overlay + scrim ----------------------------------------------
          Black appeared at 16 alphas and white at 25, including
@@ -656,14 +666,14 @@
          rest inherited SVG's default of 1 - a 0.58px stroke at 14px,
          about half the weight of the Feather originals, sitting beside
          solid filled paths in the same row. */
-      --icon-xs:     12px;
-      --icon-sm:     14px;
-      --icon-md:     16px;
-      --icon-lg:     20px;
-      --icon-xl:     24px;
-      --icon-2xl:    40px;
-      --icon-hero:   48px;
-      --icon-stroke: 1.75;
+      --icon-xs:     calc(var(--subrow) * 1.5);
+      --icon-sm:     calc(var(--subrow) * 1.75);
+      --icon-md:     calc(var(--subrow) * 2);
+      --icon-lg:     calc(var(--subrow) * 2.5);
+      --icon-xl:     calc(var(--subrow) * 3);
+      --icon-2xl:    calc(var(--subrow) * 5);
+      --icon-hero:   calc(var(--subrow) * 6);
+      --icon-stroke: 1.75;   /* unitless stroke-width multiplier, not a length */
 
       /* --- Focus --------------------------------------------------------
          One ring for every interactive element. Never `outline: none`
@@ -6875,7 +6885,7 @@
       /* No top padding: the sticky filter block provides its own top space in r,
          and a fixed px here would push everything below off the r-grid. Side is
          one grid unit; bottom clears the tab bar. */
-      padding: 0 var(--gu) 80px;
+      padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2);
       background: var(--bg);
     }
     /* When the replayer tab is active, lock scrolling on the content area.
@@ -9563,9 +9573,9 @@
 
     /* ── Responsive tweaks for desktop ── */
     @media (min-width: 640px) {
-      .content-area { padding: 16px var(--gu) 80px; }
-      .sticky-filters { margin: -16px calc(-1 * var(--gu)) 0; padding: var(--space-4xl) var(--space-2xl) var(--space-sm); top: -16px; }
-      .schedule-sticky-header { margin: -16px calc(-1 * var(--gu)) 0; padding: var(--space-4xl) var(--space-2xl) var(--space-sm); top: -16px; }
+      .content-area { padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2); }
+      .sticky-filters { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-2xl) calc(var(--subrow) * 2); top: 0; }
+      .schedule-sticky-header { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-2xl) calc(var(--subrow) * 2); top: 0; }
 
       .tournament-list {
         display: grid;
@@ -9590,9 +9600,9 @@
     }
 
     @media (min-width: 1024px) {
-      .content-area { padding: 20px var(--gu) 80px; }
-      .sticky-filters { margin: -20px calc(-1 * var(--gu)) 0; padding: var(--space-5xl) var(--space-4xl) var(--space-sm); top: -20px; }
-      .schedule-sticky-header { margin: -20px calc(-1 * var(--gu)) 0; padding: var(--space-5xl) var(--space-4xl) var(--space-sm); top: -20px; }
+      .content-area { padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2); }
+      .sticky-filters { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-4xl) calc(var(--subrow) * 2); top: 0; }
+      .schedule-sticky-header { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-4xl) calc(var(--subrow) * 2); top: 0; }
 
       .tournament-list {
         grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
