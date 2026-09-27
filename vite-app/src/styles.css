@@ -835,27 +835,28 @@
     /* The money column. The guarantee sits under the buy-in rather than in a
        badge, because it is a fact about the event and not a scored value. */
     .cal-event-money {
-      /* Fills its 8g column (grid item, no shrink) with the figures
-         right-aligned to the rail, so the block IS the column rather than a
-         text-width island floating at the right. One subrow between the buy-in
-         and the guarantee. */
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
+      /* Fills its 3-subcol column (a 4r grid cell, bottom-aligned in row 1) with
+         the figures right-aligned to the rail. Two 2r rows: the guarantee owns
+         the top one, the buy-in the bottom one. Each cell is align-items:end, so
+         each figure's trimmed box bottom — its baseline — lands on that cell's
+         bottom r-line: the buy-in on 6r (the same r-line as the time to its
+         left), the guarantee on 4r, two lines up. Both grid-snapped, no nudge. */
+      display: grid;
+      grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 2);
+      align-items: end;
+      justify-items: end;
       text-align: right;
-      gap: 1px; /* lands the guarantee baseline on the 48px subrow line (two
-                   subrows below the buy-in), so it rests on a line rather than
-                   the line cutting through it — ~a subrow of visible space */
-      line-height: var(--lh-tight);
     }
-    .cal-event-buyin, .cal-event-gtd { display: block; width: 100%; }
+    .cal-event-gtd { grid-row: 1; }
+    .cal-event-buyin { grid-row: 2; }
+    .cal-event-buyin, .cal-event-gtd { display: block; }
     .cal-event-gtd {
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       letter-spacing: var(--track-tight);
-      line-height: 16px;
-      margin-top: 0;
+      line-height: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* Event number and game variants were grey pills, distinguishable from
@@ -8820,6 +8821,14 @@
       gap: 0;
       --cal-title-line: calc(var(--subrow) * 3);
     }
+    /* Single-line name: give the cell a whole 3-subrow line box and bottom-align
+       it, so the name's trimmed box bottom (its baseline) lands on exactly 9r
+       from the card top (6r Row + 3r) with no nudge — a full line below the time,
+       not crammed against it. A stage card ("- Flight A" on a second line) keeps
+       its natural height; :has() guards it. */
+    .cal-bar-row2:not(:has(.cal-event-stage)) {
+      height: calc(var(--subrow) * 3);
+    }
 
     .cal-event-time {
       font-size: var(--fs-sm);
@@ -8856,8 +8865,19 @@
       position: relative;
       top: -2.5px;
     }
-    /* Truncate long names on one line, but allow the Flight/Day sub-line block */
-    .cal-event-row:not(.open) .cal-bar-row2 .cal-event-name {
+    /* A single-line name (no Flight/Day sub-line) truncates with an ellipsis.
+       Plain overflow (not -webkit-box) is deliberate: -webkit-box silently
+       disables text-box-trim, leaving the font's descent in the box so the
+       baseline floats ~0.9 subrow off the grid line. Without it, the trimmed
+       box bottom IS the baseline and lands on the row's bottom r-line (9r). */
+    .cal-event-row:not(.open) .cal-bar-row2:not(:has(.cal-event-stage)) .cal-event-name {
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    /* A stage card carries the name on line 1 and "- Flight A" on line 2, so it
+       keeps the two-line clamp; its baseline is handled by the stage block. */
+    .cal-event-row:not(.open) .cal-bar-row2:has(.cal-event-stage) .cal-event-name {
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
@@ -8872,11 +8892,10 @@
     .cal-event-buyin {
       font-family: var(--serif);
       font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 3);
+      line-height: calc(var(--subrow) * 2);
       font-weight: var(--fw-bold);
       color: var(--accent);
       flex-shrink: 0;
-      margin-left: auto;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
@@ -8988,7 +9007,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 16px;
+      /* 2 subrows, not a fixed 16px: the collapsed card is 2r pad + 4r row1 +
+         3r row2 + 1r pad + this = exactly 12r. A fixed 16px overran it by 0.07r. */
+      height: calc(var(--subrow) * 2);
       color: var(--text-muted);
       transition: transform var(--dur-snap);
       cursor: pointer;
