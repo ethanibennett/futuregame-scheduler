@@ -79,15 +79,15 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       // var(--z-panel), not a 999 literal: an off-scale number is what the
       // layer tokens were introduced to end, and this one only happened to be
       // above the scrim.
-      zIndex:'var(--z-panel)', background:'var(--surface)', border:'1px solid var(--border)',
-      borderRadius:'var(--radius)', padding:'6px 0', minWidth:'240px', maxWidth:'320px',
+      zIndex:'var(--z-panel)', background:'var(--surface)', border:'var(--bw-hair) solid var(--border)',
+      borderRadius:'var(--radius)', padding:'calc(var(--subrow) * 0.75) 0', minWidth:'calc(var(--subrow) * 30)', maxWidth:'calc(var(--subrow) * 40)',
       boxShadow:'var(--elev-2)',
     }}>
-      <div style={{padding:'6px 10px 8px'}}>
-        <div style={{display:'flex',gap:'6px',alignItems:'center',marginBottom:'6px'}}>
+      <div style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25) calc(var(--subrow) * 1)'}}>
+        <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',alignItems:'center',marginBottom:'calc(var(--subrow) * 0.75)'}}>
           <input type="text" value={geoQuery} onChange={e => onQueryChange(e.target.value)}
             placeholder="City or postal code..." autoFocus
-            style={{flex:1,padding:'6px 8px',fontSize:'0.82rem',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)',outline:'none',minWidth:0}} />
+            style={{flex:1,padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',outline:'none',minWidth:0}} />
           <input type="number" value={radius}
             onChange={e => {
               setRadius(e.target.value);
@@ -95,17 +95,17 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
                 setFilters(f => ({...f, maxDistance: e.target.value}));
               }
             }}
-            style={{width:'50px',padding:'6px 4px',fontSize:'0.82rem',textAlign:'center',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)'}}
+            style={{width:'calc(var(--subrow) * 6.25)',padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.208)',textAlign:'center',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)'}}
             min="1" placeholder="100" />
-          <span style={{fontSize:'0.75rem',color:'var(--text-muted)',flexShrink:0}}>mi</span>
+          <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',flexShrink:0}}>mi</span>
         </div>
-        {geoLoading && <div style={{fontSize:'0.75rem',color:'var(--text-muted)',padding:'2px 0'}}>Searching...</div>}
+        {geoLoading && <div style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',padding:'calc(var(--subrow) * 0.25) 0'}}>Searching...</div>}
         {geoResults.length > 0 && (
-          <div style={{maxHeight:'150px',overflowY:'auto'}}>
+          <div style={{maxHeight:'calc(var(--subrow) * 18.75)',overflowY:'auto'}}>
             {geoResults.map((r, i) => (
               <button key={i} onClick={() => selectGeoResult(r)} style={{
-                display:'block',width:'100%',padding:'6px 4px',background:'none',border:'none',
-                color:'var(--text)',fontSize:'0.78rem',cursor:'pointer',textAlign:'left',borderRadius:'4px',
+                display:'block',width:'100%',padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)',background:'none',border:'none',
+                color:'var(--text)',fontSize:'calc(var(--gu) * 1.149)',cursor:'pointer',textAlign:'left',borderRadius:'calc(var(--subrow) * 0.5)',
               }}>
                 {r.short || r.display}
               </button>
@@ -113,7 +113,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           </div>
         )}
       </div>
-      <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
+      <div style={{height:1,background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
       <button onClick={() => {
         if (filters.userLocation && !filters.locationRegion) {
           setFilters(f => ({...f, userLocation: null, maxDistance: '', locationRegion: null, locationLabel: null}));
@@ -134,31 +134,31 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           }
         }
       }} style={{
-        display:'flex',alignItems:'center',gap:'8px',width:'100%',
+        display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',width:'100%',
         padding:'var(--space-lg) var(--space-xl)',background:'none',border:'none',
         color: (filters.userLocation && !filters.locationRegion) ? 'var(--accent)' : 'var(--text)',
         fontWeight: (filters.userLocation && !filters.locationRegion) ? 700 : 400,
-        fontSize:'0.85rem',cursor:'pointer',textAlign:'left',
+        fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer',textAlign:'left',
       }}>
-        <span style={{width:'16px',height:'16px',flexShrink:0}}><Icon.mapPin /></span>
+        <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
         Current Location
-        {(filters.userLocation && !filters.locationRegion) && <span style={{marginLeft:'auto',fontSize:'0.75rem'}}>{'✓'}</span>}
+        {(filters.userLocation && !filters.locationRegion) && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
       </button>
-      <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
+      <div style={{height:1,background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
       {!pointOnly && Object.entries(LOCATION_REGIONS).map(([key, { label }]) => (
         <button key={key} onClick={() => {
           setFilters(f => ({...f, locationRegion: f.locationRegion === key ? null : key, userLocation: null, maxDistance: '', locationLabel: null}));
           onClose();
         }} style={{
-          display:'flex',alignItems:'center',gap:'8px',width:'100%',
+          display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',width:'100%',
           padding:'var(--space-lg) var(--space-xl)',background:'none',border:'none',
           color: filters.locationRegion === key ? 'var(--accent)' : 'var(--text)',
           fontWeight: filters.locationRegion === key ? 700 : 400,
-          fontSize:'0.85rem',cursor:'pointer',textAlign:'left',
+          fontSize:'calc(var(--gu) * 1.252)',cursor:'pointer',textAlign:'left',
         }}>
-          <span style={{width:'16px',height:'16px',flexShrink:0}}><Icon.mapPin /></span>
+          <span style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)',flexShrink:0}}><Icon.mapPin /></span>
           {label}
-          {filters.locationRegion === key && <span style={{marginLeft:'auto',fontSize:'0.75rem'}}>{'✓'}</span>}
+          {filters.locationRegion === key && <span style={{marginLeft:'auto',fontSize:'calc(var(--gu) * 1.104)'}}>{'✓'}</span>}
         </button>
       ))}
       {/* Jurisdiction. Physically separate from the region buttons above it
@@ -168,11 +168,11 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           override exists. Hidden in pointOnly mode (Cash) — the cash location is
           a single poll point for the watcher, not a jurisdiction question. */}
       {!pointOnly && (<>
-      <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
+      <div style={{height:1,background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
       <div style={{padding:'var(--space-lg) var(--space-xl)'}}>
         <label htmlFor="jurisdiction-select" style={{
-          display:'block',fontSize:'0.7rem',letterSpacing:'0.06em',textTransform:'uppercase',
-          color:'var(--text-muted)',marginBottom:'6px',
+          display:'block',fontSize:'calc(var(--gu) * 1.031)',letterSpacing:'0.06em',textTransform:'uppercase',
+          color:'var(--text-muted)',marginBottom:'calc(var(--subrow) * 0.75)',
         }}>
           Your state {filters.jurisdiction && !filters.jurisdictionManual && (
             <span style={{textTransform:'none',letterSpacing:0}}>· from location</span>
@@ -184,8 +184,8 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
             setFilters(f => ({ ...f, jurisdiction: v, jurisdictionManual: !!v }));
           }}
           style={{
-            width:'100%',padding:'6px 8px',fontSize:'0.82rem',background:'var(--bg)',
-            color:'var(--text)',border:'1px solid var(--border)',
+            width:'100%',padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',background:'var(--bg)',
+            color:'var(--text)',border:'var(--bw-hair) solid var(--border)',
             borderRadius:'var(--radius)',outline:'none',
           }}>
           <option value="">Not set</option>
@@ -193,31 +193,31 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
             <option key={code} value={code}>{name}</option>
           ))}
         </select>
-        <div style={{fontSize:'0.7rem',color:'var(--text-muted)',marginTop:'6px',lineHeight:1.4}}>
+        <div style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',marginTop:'calc(var(--subrow) * 0.75)',lineHeight:1.4}}>
           Decides which online rooms are marked available to you.
         </div>
       </div>
       </>)}
       {(filters.locationRegion || filters.userLocation) && (
         <>
-          <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />
+          <div style={{height:1,background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
           <button onClick={() => {
             setFilters(f => ({...f, locationRegion: null, userLocation: null, maxDistance: '', locationLabel: null}));
             onClose();
           }} style={{
             display:'block',width:'100%',padding:'var(--space-lg) var(--space-xl)',
             background:'none',border:'none',color:'var(--text-muted)',
-            fontSize:'0.8rem',cursor:'pointer',textAlign:'left',
+            fontSize:'calc(var(--gu) * 1.178)',cursor:'pointer',textAlign:'left',
           }}>
             Clear location filter
           </button>
         </>
       )}
-      {!pointOnly && <div style={{height:1,background:'var(--border)',margin:'2px 0'}} />}
+      {!pointOnly && <div style={{height:1,background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />}
       {!pointOnly && <button onClick={() => { window.dispatchEvent(new Event('reopen-onboarding')); onClose(); }} style={{
         display:'block',width:'100%',padding:'var(--space-lg) var(--space-xl)',
         background:'none',border:'none',color:'var(--text-muted)',
-        fontSize:'0.8rem',cursor:'pointer',textAlign:'left',
+        fontSize:'calc(var(--gu) * 1.178)',cursor:'pointer',textAlign:'left',
       }}>
         Re-run filter setup
       </button>}

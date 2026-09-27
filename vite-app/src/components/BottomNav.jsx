@@ -27,9 +27,9 @@ export default function BottomNav({ current, onChange, scheduleCount, newShareCo
           {tab.label}
           {tab.badge > 0 && (
             <span style={{
-              position:'absolute', top:'4px', right:'50%', marginRight:'-16px',
-              background:'#ef4444', color:'#fff', fontSize:'0.55rem', fontWeight:700,
-              width:'14px', height:'14px', borderRadius:'50%',
+              position:'absolute', top:'calc(var(--subrow) * 0.5)', right:'50%', marginRight:'calc(var(--subrow) * -2)',
+              background:'#ef4444', color:'#fff', fontSize:'calc(var(--gu) * 0.810)', fontWeight:700,
+              width:'calc(var(--subrow) * 1.75)', height:'calc(var(--subrow) * 1.75)', borderRadius:'50%',
               display:'flex', alignItems:'center', justifyContent:'center',
               lineHeight:1
             }}>{tab.badge}</span>

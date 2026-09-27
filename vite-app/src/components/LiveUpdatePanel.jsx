@@ -593,7 +593,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       ITM?
                     </label>
                     {isItm && (
-                      <div className="live-update-field" style={{flex:'0 0 100px'}}>
+                      <div className="live-update-field" style={{flex:'0 0 calc(var(--subrow) * 12.5)'}}>
                         <label>Locked $</label>
                         <input type="number" placeholder="5000" value={lockedAmount} onChange={e => setLockedAmount(e.target.value)} />
                       </div>
@@ -606,7 +606,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       Bagged
                     </label>
                     {isBagged && (
-                      <div className="live-update-field bag-highlight" style={{flex:'0 0 70px'}}>
+                      <div className="live-update-field bag-highlight" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
                         <label>For Day #</label>
                         <input type="number" placeholder="2" value={bagDay} onChange={e => setBagDay(e.target.value)} min="1" />
                       </div>
@@ -621,11 +621,11 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       </label>
                       {isFinalTable && (
                         <>
-                          <div className="live-update-field" style={{flex:'0 0 70px'}}>
+                          <div className="live-update-field" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
                             <label>Places Left</label>
                             <input type="number" placeholder="6" value={placesLeft} onChange={e => setPlacesLeft(e.target.value)} min="1" />
                           </div>
-                          <div className="live-update-field" style={{flex:'0 0 90px'}}>
+                          <div className="live-update-field" style={{flex:'0 0 calc(var(--subrow) * 11.25)'}}>
                             <label>1st Prize $</label>
                             <input type="number" placeholder="50000" value={firstPlacePrize} onChange={e => setFirstPlacePrize(e.target.value)} />
                           </div>
@@ -642,11 +642,11 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       </label>
                       {isDeal && (
                         <>
-                          <div className="live-update-field" style={{flex:'0 0 70px'}}>
+                          <div className="live-update-field" style={{flex:'0 0 calc(var(--subrow) * 8.75)'}}>
                             <label>Place</label>
                             <input type="number" placeholder="3" value={dealPlace} onChange={e => setDealPlace(e.target.value)} min="1" />
                           </div>
-                          <div className="live-update-field" style={{flex:'0 0 90px'}}>
+                          <div className="live-update-field" style={{flex:'0 0 calc(var(--subrow) * 11.25)'}}>
                             <label>Payout $</label>
                             <input type="number" placeholder="25000" value={dealPayout} onChange={e => setDealPayout(e.target.value)} />
                           </div>
@@ -702,7 +702,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       </div>
                       <div className="live-update-field">
                         <label>Additional Opponents</label>
-                        <div style={{display:'flex',gap:'6px',marginTop:'4px'}}>
+                        <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',marginTop:'calc(var(--subrow) * 0.5)'}}>
                           {[2, 3, 4, 5].map(n => (
                             <button key={n} type="button" className={`filter-chip ${numOpponents === n ? 'active' : ''}`} onClick={() => setNumOpponents(numOpponents === n ? 1 : n)}>
                               {n}
@@ -749,7 +749,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                       <label>Note (optional)</label>
                       <input type="text" placeholder="AK < QQ all in pre" value={bustNote} onChange={e => setBustNote(e.target.value)} />
                     </div>
-                    <div className="live-update-field" style={{flex:'0 0 90px'}}>
+                    <div className="live-update-field" style={{flex:'0 0 calc(var(--subrow) * 11.25)'}}>
                       <label>Total Entries</label>
                       <input type="number" placeholder="1234" value={totalEntries} onChange={e => setTotalEntries(e.target.value)} />
                     </div>
@@ -765,15 +765,15 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
               )}
 
               {/* ── Bottom row: camera + share + post ── */}
-              <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',marginTop:'4px',gap:'6px'}}>
+              <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',marginTop:'calc(var(--subrow) * 0.5)',gap:'calc(var(--subrow) * 0.75)'}}>
                 {updateType === 'hand' && parseCardNotation(heroHand).length > 0 && (
                   <button
                     className="btn btn-ghost btn-sm"
                     onClick={shareHandImage}
                     title="Share hand image"
-                    style={{padding:'6px'}}
+                    style={{padding:'calc(var(--subrow) * 0.75)'}}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" style={{width:'16px',height:'16px'}}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}>
                       <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                       <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
                     </svg>
@@ -784,7 +784,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                   onClick={openCamera}
                   disabled={!selectedTournamentId}
                   title="Camera overlay"
-                  style={{padding:'6px'}}
+                  style={{padding:'calc(var(--subrow) * 0.75)'}}
                 >
                   <Icon.camera />
                 </button>

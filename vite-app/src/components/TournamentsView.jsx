@@ -164,25 +164,25 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             Online was on); it is gone from the UI — see the note on
             onlyAvailableOnline in DEFAULT_FILTERS. */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%'}}>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSatellites}
               onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
               style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Satellites
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideRestarts}
               onChange={e => setFiltersRaw(f => ({...f, hideRestarts:!e.target.checked}))}
               style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Restarts
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={!filters.hideSideEvents}
               onChange={e => setFiltersRaw(f => ({...f, hideSideEvents:!e.target.checked}))}
               style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
             /> Side Events
           </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'3px',fontSize:'0.78rem',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
+          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
             <input type="checkbox" checked={filters.showOnline !== false}
               onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
               style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
@@ -228,7 +228,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               return true;
             });
             return (
-              <div style={{display:'flex',gap:'6px',marginBottom:'10px',gridColumn:'1 / -1'}}>
+              <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',marginBottom:'calc(var(--subrow) * 1.25)',gridColumn:'1 / -1'}}>
                 {quickFilters.map(qf => (
                   <button key={qf.label} className={`filter-chip ${qf.isActive ? 'active' : ''}`}
                     style={{flex:'1 1 0',minWidth:0,justifyContent:'center',textAlign:'center'}}
@@ -240,12 +240,12 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
           })()}
 
           {/* Search — desktop pairs with Date Range via .filter-row layout */}
-          <div className="filter-group filter-row filter-search-cell" style={{marginBottom:'6px'}}>
-            <div className="search-bar" style={{marginBottom:0,height:'32px'}}>
+          <div className="filter-group filter-row filter-search-cell" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
+            <div className="search-bar" style={{marginBottom:0,height:'calc(var(--subrow) * 4)'}}>
               <Icon.search />
-              <input type="text" placeholder={"Search events, games\u2026"} value={search} onChange={e => setSearch(e.target.value)} style={{padding:'4px 0'}} />
+              <input type="text" placeholder={"Search events, games\u2026"} value={search} onChange={e => setSearch(e.target.value)} style={{padding:'calc(var(--subrow) * 0.5) 0'}} />
               {search && (
-                <button onClick={() => setSearch('')} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'1rem',padding:'0 2px'}}>&#10005;</button>
+                <button onClick={() => setSearch('')} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.473)',padding:'0 calc(var(--subrow) * 0.25)'}}>&#10005;</button>
               )}
             </div>
           </div>
@@ -260,9 +260,9 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             const pctL = (fromIdx / totalDays) * 100;
             const pctR = (toIdx / totalDays) * 100;
             return (
-              <div className="filter-group filter-row filter-daterange-cell" style={{marginBottom:'6px'}}>
-                <label style={{fontSize:'0.75rem',color:'var(--text-muted)',marginBottom:'6px',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
-                <div style={{padding:'0 6px'}}>
+              <div className="filter-group filter-row filter-daterange-cell" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
+                <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'calc(var(--subrow) * 0.75)',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
+                <div style={{padding:'0 calc(var(--subrow) * 0.75)'}}>
                   <div className="date-slider-wrap">
                     <div className="date-slider-track" />
                     <div className="date-slider-fill" style={{left: pctL + '%', right: (100 - pctR) + '%'}} />
@@ -312,20 +312,20 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               one that cannot change anything reads as broken. */}
           {filters.showOnline !== false && onlineSitesInPool.length > 0 && (
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setOnlineOpen(o => !o)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setOnlineOpen(o => !o)}>
               Online rooms
               {activeSiteRuleCount > 0 && (
-                <span style={{fontSize:'0.7rem',color:'var(--accent)',textTransform:'none',letterSpacing:0}}>
+                <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--accent)',textTransform:'none',letterSpacing:0}}>
                   {activeSiteRuleCount} set
                 </span>
               )}
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: onlineOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'▼'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: onlineOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'▼'}</span>
             </label>
-            {onlineOpen && (<div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-              <div style={{fontSize:'0.7rem',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,lineHeight:1.4}}>
+            {onlineOpen && (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 1)'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'none',letterSpacing:0,lineHeight:1.4}}>
                 One buy-in floor cannot fit every room — these run from $1 to $25,500.
               </div>
-              <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.78rem',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.149)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                 <input type="checkbox"
                   checked={onlineSitesInPool.every(s => !(filters.siteRules || {})[s.key]?.hidden)}
                   ref={el => { if (el) {
@@ -351,7 +351,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               <div style={{
                 display:'grid',
                 gridTemplateColumns:'minmax(0,1fr) auto auto',
-                alignItems:'center', columnGap:'10px', rowGap:'8px',
+                alignItems:'center', columnGap:'calc(var(--subrow) * 1.25)', rowGap:'calc(var(--subrow) * 1)',
               }}>
                 {/* Column headers, so "min $" and "series only" are said ONCE
                     rather than on every row. Repeating them cost ~100px of width
@@ -359,11 +359,11 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                     which is the opposite of the point: the name is the thing you
                     are looking for. */}
                 <span />
-                <span style={{fontSize:'0.68rem',color:'var(--text-muted)',letterSpacing:'0.04em',textAlign:'right'}}>MIN $</span>
+                <span style={{fontSize:'calc(var(--gu) * 1.001)',color:'var(--text-muted)',letterSpacing:'0.04em',textAlign:'right'}}>MIN $</span>
                 {/* Centred over its column, because the checkboxes below it are
                     centred — a left-aligned header over centred boxes is two
                     different columns wearing one heading. */}
-                <span style={{fontSize:'0.68rem',color:'var(--text-muted)',letterSpacing:'0.04em',justifySelf:'center'}}>SERIES</span>
+                <span style={{fontSize:'calc(var(--gu) * 1.001)',color:'var(--text-muted)',letterSpacing:'0.04em',justifySelf:'center'}}>SERIES</span>
               {onlineSitesInPool.map(({ key, name, count }) => {
                 const rule = (filters.siteRules && filters.siteRules[key]) || {};
                 const setRule = (patch) => setFilters(f => {
@@ -380,11 +380,11 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                   <React.Fragment key={key}>
                     {/* The room switch itself. Its label is the room name, so the
                         whole name is the hit target rather than a bare box. */}
-                    <label style={{display:'flex',alignItems:'center',gap:'6px',cursor:'pointer',minWidth:0}}>
+                    <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',cursor:'pointer',minWidth:0}}>
                       <input type="checkbox" checked={on}
                         onChange={e => setRule({ hidden: !e.target.checked })}
                         style={{margin:0,flexShrink:0}} />
-                      <span style={{fontSize:'0.82rem',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color: on ? 'var(--text)' : 'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      <span style={{fontSize:'calc(var(--gu) * 1.208)',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color: on ? 'var(--text)' : 'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                         {name}
                         <span style={{color:'var(--text-muted)',fontWeight:400}}> {count}</span>
                       </span>
@@ -400,7 +400,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                       placeholder="any"
                       aria-label={`Minimum buy-in for ${name}`}
                       onChange={e => setRule({ minBuyin: e.target.value })}
-                      style={{width:'62px',padding:'4px 6px',fontSize:'0.8rem',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'var(--radius)',opacity: on ? 1 : 0.4}} />
+                      style={{width:'calc(var(--subrow) * 7.75)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.178)',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',opacity: on ? 1 : 0.4}} />
                     {/* The header names this column, so the box carries the label
                         for anyone not reading it visually. */}
                     <input type="checkbox" checked={!!rule.seriesOnly} disabled={!on}
@@ -414,7 +414,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               {activeSiteRuleCount > 0 && (
                 <button onClick={() => setFilters(f => ({ ...f, siteRules: {} }))} style={{
                   alignSelf:'flex-start',background:'none',border:'none',color:'var(--text-muted)',
-                  fontSize:'0.78rem',cursor:'pointer',padding:0,textTransform:'none',letterSpacing:0,
+                  fontSize:'calc(var(--gu) * 1.149)',cursor:'pointer',padding:0,textTransform:'none',letterSpacing:0,
                 }}>
                   Clear room rules
                 </button>
@@ -425,30 +425,30 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
 
           {/* Series */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setWhereOpen(w => !w)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhereOpen(w => !w)}>
               Series
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
-            {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-              <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+            {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.75)'}}>
+              <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                 <input type="checkbox"
                   checked={!filters.hiddenVenues || filters.hiddenVenues.length === 0}
                   ref={el => { if (el) el.indeterminate = filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.length < availableVenues.length; }}
                   onChange={e => setFilters(f => ({...f, hiddenVenues: e.target.checked ? [] : availableVenues.map(v => v.venue)}))}
-                  style={{marginTop:'1px'}}
+                  style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                 /> All
               </label>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)'}}>
                 {availableVenues.map(({ venue, series }) => {
                   const hidden = (filters.hiddenVenues || []).includes(venue);
                   return (
-                    <label key={venue} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <label key={venue} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                       <input type="checkbox" checked={!hidden}
                         onChange={e => setFilters(f => {
                           const hv = f.hiddenVenues || [];
                           return {...f, hiddenVenues: e.target.checked ? hv.filter(v => v !== venue) : [...hv, venue]};
                         })}
-                        style={{marginTop:'1px',flexShrink:0}}
+                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                       />
                       <span style={{lineHeight:1.3}}>{series}</span>
                     </label>
@@ -460,9 +460,9 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
 
           {/* Buy-in / Rake */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setHowMuchOpen(h => !h)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setHowMuchOpen(h => !h)}>
               Buy-in / Rake
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {howMuchOpen && (() => {
               /* Only bands that exist here — see poolFacts. */
@@ -483,37 +483,37 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               const toggleArr = (arr, key) => arr.includes(key) ? arr.filter(k => k !== key) : [...arr, key];
               const allBuyinChecked = (filters.buyinRanges || []).length === 0;
               const allRakeChecked = (filters.rakeRanges || []).length === 0;
-              return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 12px'}}>
-                <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Buy-in</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 calc(var(--subrow) * 1.5)'}}>
+                <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
+                  <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'calc(var(--subrow) * 0.25)'}}>Buy-in</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allBuyinChecked}
                       onChange={() => setFilters(f => ({...f, buyinRanges: [], minBuyin: '', maxBuyin: ''}))}
-                      style={{marginTop:'1px',flexShrink:0}}
+                      style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                     /><span>All</span>
                   </label>
                   {buyinOpts.map(opt => (
-                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                       <input type="checkbox" checked={(filters.buyinRanges || []).includes(opt.key)}
                         onChange={() => setFilters(f => ({...f, buyinRanges: toggleArr(f.buyinRanges || [], opt.key), minBuyin: '', maxBuyin: ''}))}
-                        style={{marginTop:'1px',flexShrink:0}}
+                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                       /><span>{opt.label}</span>
                     </label>
                   ))}
                 </div>
-                <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                  <label style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px'}}>Rake</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
+                  <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'calc(var(--subrow) * 0.25)'}}>Rake</label>
+                  <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={allRakeChecked}
                       onChange={() => setFilters(f => ({...f, rakeRanges: []}))}
-                      style={{marginTop:'1px',flexShrink:0}}
+                      style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                     /><span>All</span>
                   </label>
                   {rakeOpts.map(opt => (
-                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                       <input type="checkbox" checked={(filters.rakeRanges || []).includes(opt.key)}
                         onChange={() => setFilters(f => ({...f, rakeRanges: toggleArr(f.rakeRanges || [], opt.key)}))}
-                        style={{marginTop:'1px',flexShrink:0}}
+                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
                       /><span>{opt.label}</span>
                     </label>
                   ))}
@@ -524,23 +524,23 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
 
           {/* Variant */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setWhichOpen(w => !w)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhichOpen(w => !w)}>
               Variant
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: whichOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whichOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {whichOpen && (() => {
               const allSelected = filters.selectedGames.length === 0;
               const toggleVariant = (v, checked) => {
                 setFilters(f => ({...f, selectedGames: checked ? [...f.selectedGames, v] : f.selectedGames.filter(g => g !== v)}));
               };
-              return (<div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+              return (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                   <input type="checkbox" checked={allSelected}
                     onChange={() => setFilters(f => ({...f, selectedGames:[]}))}
-                    style={{marginTop:'1px'}}
+                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                   /> All
                 </label>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',paddingLeft:'21px'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)',paddingLeft:'calc(var(--subrow) * 2.625)'}}>
                 {GAME_GROUPS.map(group => {
                   const availVars = group.variants.filter(v => availableGameVariants.has(v));
                   if (availVars.length === 0) return null;
@@ -550,18 +550,18 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                   if (isSingle) {
                     const v = availVars[0];
                     return (
-                      <label key={group.label} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)',marginBottom:'6px'}}>
+                      <label key={group.label} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)',marginBottom:'calc(var(--subrow) * 0.75)'}}>
                         <input type="checkbox" checked={filters.selectedGames.includes(v)}
                           onChange={e => toggleVariant(v, e.target.checked)}
-                          style={{marginTop:'1px'}}
+                          style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                         /> {group.label}
                       </label>
                     );
                   }
                   const needsTopGap = group.label === 'Draw' || group.label === 'Mixed';
                   return (
-                    <div key={group.label} style={needsTopGap ? {marginTop:'6px'} : undefined}>
-                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                    <div key={group.label} style={needsTopGap ? {marginTop:'calc(var(--subrow) * 0.75)'} : undefined}>
+                      <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                         <input type="checkbox" checked={groupChecked}
                           ref={el => { if (el) el.indeterminate = groupPartial; }}
                           onChange={e => {
@@ -571,15 +571,15 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                               return {...f, selectedGames: checked ? [...without, ...availVars] : without};
                             });
                           }}
-                          style={{marginTop:'1px'}}
+                          style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                         /> {group.label}
                       </label>
-                      <div style={{display:'flex',flexDirection:'column',gap:'2px',paddingLeft:'21px',marginTop:'2px'}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)',paddingLeft:'calc(var(--subrow) * 2.625)',marginTop:'calc(var(--subrow) * 0.25)'}}>
                         {availVars.map(v => (
-                          <label key={v} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.78rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text-muted)'}}>
+                          <label key={v} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.149)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text-muted)'}}>
                             <input type="checkbox" checked={filters.selectedGames.includes(v)}
                               onChange={e => toggleVariant(v, e.target.checked)}
-                              style={{marginTop:'1px'}}
+                              style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                             /> {v}
                           </label>
                         ))}
@@ -594,12 +594,12 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
 
           {/* Special */}
           <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setSpecialOpen(s => !s)}>
+            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setSpecialOpen(s => !s)}>
               Special
-              <span style={{fontSize:'0.7rem',transition:'transform 0.15s',transform: specialOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
+              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: specialOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
             </label>
             {specialOpen && (
-              <div style={{display:'flex',flexDirection:'column',gap:'4px',marginTop:'4px'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)',marginTop:'calc(var(--subrow) * 0.5)'}}>
                 {[
                   ['ladiesOnly', 'Ladies'],
                   ['seniorsOnly', 'Seniors'],
@@ -609,10 +609,10 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                   ['tagTeamOnly', 'Tag Team'],
                   ['employeesOnly', 'Casino Employees'],
                 ].map(([key, label]) => (
-                  <label key={key} style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'0.82rem',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
+                  <label key={key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
                     <input type="checkbox" checked={!!filters[key]}
                       onChange={() => setFilters(f => ({...f, [key]: !f[key]}))}
-                      style={{marginTop:'1px'}}
+                      style={{marginTop:'calc(var(--subrow) * 0.125)'}}
                     /> {label}
                   </label>
                 ))}
@@ -620,7 +620,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             )}
           </div>
 
-          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'8px',justifyContent:'flex-end',alignItems:'center',marginTop:'4px'}}>
+          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'calc(var(--subrow) * 1)',justifyContent:'flex-end',alignItems:'center',marginTop:'calc(var(--subrow) * 0.5)'}}>
             {hasActive && (
               <button className="btn btn-ghost btn-sm" onClick={() =>
                 setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,jurisdiction:f.jurisdiction,jurisdictionManual:f.jurisdictionManual,showOnline:true,onlyAvailableOnline:false,siteRules:{}}))
@@ -851,35 +851,35 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
     <>
       <div style={{position:'fixed',inset:0,zIndex:998}} onClick={() => { if (!visionParsing && !visionImporting) onClose(); }} />
       <div style={{
-        position:'fixed',top:'64px',left:'50%',transform:'translateX(-50%)',
-        zIndex:999,background:'var(--surface)',border:'1px solid var(--border)',
-        borderRadius:'var(--radius)',padding:'12px',width:'min(380px, calc(100vw - 24px))',
-        boxShadow:'0 8px 24px rgba(0,0,0,0.3)',maxHeight:'calc(100vh - 80px)',overflowY:'auto',
+        position:'fixed',top:'calc(var(--subrow) * 8)',left:'50%',transform:'translateX(-50%)',
+        zIndex:999,background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',
+        borderRadius:'var(--radius)',padding:'calc(var(--subrow) * 1.5)',width:'min(calc(var(--subrow) * 47.5), calc(100vw - calc(var(--subrow) * 3)))',
+        boxShadow:'0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.3)',maxHeight:'calc(100vh - calc(var(--subrow) * 10))',overflowY:'auto',
       }}>
-        <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 1)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'0.9rem',color:'var(--text)'}}>Import Schedule</span>
-            <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'1rem',padding:'0 2px'}}>&#10005;</button>
+            <span style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',color:'var(--text)'}}>Import Schedule</span>
+            <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.473)',padding:'0 calc(var(--subrow) * 0.25)'}}>&#10005;</button>
           </div>
-          <p style={{fontSize:'0.75rem',color:'var(--text-muted)',lineHeight:1.4,margin:0}}>
+          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',lineHeight:1.4,margin:0}}>
             Upload a PDF/image or paste a web link. AI extracts event data automatically.
           </p>
           <input type="text" placeholder="Venue (optional -- auto-detected from document)"
             value={visionVenue} onChange={e => setVisionVenue(e.target.value)}
-            style={{padding:'6px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'0.8rem',width:'100%',boxSizing:'border-box'}} />
+            style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)',borderRadius:'calc(var(--subrow) * 0.75)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.178)',width:'100%',boxSizing:'border-box'}} />
           <input type="file" id="vision-schedule-upload-dropdown" className="file-input"
             accept=".pdf,.png,.jpg,.jpeg,.webp" multiple onChange={handleVisionUpload} disabled={visionParsing} />
           <label htmlFor="vision-schedule-upload-dropdown" className="btn btn-ghost btn-sm"
-            style={{alignSelf:'flex-start',display:'inline-flex',alignItems:'center',gap:'6px',opacity:visionParsing?0.5:1,pointerEvents:visionParsing?'none':'auto'}}>
+            style={{alignSelf:'flex-start',display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',opacity:visionParsing?0.5:1,pointerEvents:visionParsing?'none':'auto'}}>
             <Icon.upload /> {visionParsing ? 'Scanning...' : 'Upload File(s)'}
           </label>
-          <div style={{display:'flex',alignItems:'center',gap:'8px',width:'100%'}}>
-            <span style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>or</span>
+          <div style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',width:'100%'}}>
+            <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)'}}>or</span>
             <input type="text" placeholder="Paste schedule URL..." value={visionUrl}
               onChange={e => setVisionUrl(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && visionUrl.trim()) handleVisionUrl(); }}
               disabled={visionParsing}
-              style={{flex:1,padding:'6px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'0.8rem',opacity:visionParsing?0.5:1}} />
+              style={{flex:1,padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)',borderRadius:'calc(var(--subrow) * 0.75)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.178)',opacity:visionParsing?0.5:1}} />
             <button className="btn btn-ghost btn-sm" onClick={handleVisionUrl}
               disabled={visionParsing || !visionUrl.trim()}
               style={{whiteSpace:'nowrap',opacity:(visionParsing||!visionUrl.trim())?0.5:1}}>
@@ -888,87 +888,87 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
           </div>
 
           {visionParsing && (
-            <div style={{padding:'12px',background:'var(--bg)',borderRadius:'8px',border:'1px solid var(--border)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
-                <span style={{fontSize:'0.8rem',color:'var(--text-muted)'}}>{visionStage}</span>
-                <span style={{fontSize:'0.75rem',color:'var(--text-muted)',fontVariantNumeric:'tabular-nums'}}>{visionProgress}%</span>
+            <div style={{padding:'calc(var(--subrow) * 1.5)',background:'var(--bg)',borderRadius:'calc(var(--subrow) * 1)',border:'var(--bw-hair) solid var(--border)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'calc(var(--subrow) * 0.75)'}}>
+                <span style={{fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)'}}>{visionStage}</span>
+                <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontVariantNumeric:'tabular-nums'}}>{visionProgress}%</span>
               </div>
-              <div style={{height:'6px',background:'var(--border)',borderRadius:'3px',overflow:'hidden'}}>
+              <div style={{height:'calc(var(--subrow) * 0.75)',background:'var(--border)',borderRadius:'calc(var(--subrow) * 0.375)',overflow:'hidden'}}>
                 <div style={{
                   height:'100%',width:visionProgress+'%',
                   background:'linear-gradient(90deg, var(--accent), var(--accent-hover, var(--accent)))',
-                  borderRadius:'3px',transition:visionProgress===100?'width 0.3s ease':'width 0.4s ease-out',
+                  borderRadius:'calc(var(--subrow) * 0.375)',transition:visionProgress===100?'width 0.3s ease':'width 0.4s ease-out',
                 }} />
               </div>
             </div>
           )}
 
           {visionError && (
-            <div style={{padding:'8px 12px',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.3)',borderRadius:'6px',color:'#ef4444',fontSize:'0.8rem'}}>
+            <div style={{padding:'calc(var(--subrow) * 1) calc(var(--subrow) * 1.5)',background:'rgba(220,38,38,0.1)',border:'var(--bw-hair) solid rgba(220,38,38,0.3)',borderRadius:'calc(var(--subrow) * 0.75)',color:'#ef4444',fontSize:'calc(var(--gu) * 1.178)'}}>
               {visionError}
             </div>
           )}
 
           {visionResults && visionResults.events.length > 0 && (
-            <div style={{marginTop:'4px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+            <div style={{marginTop:'calc(var(--subrow) * 0.5)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'calc(var(--subrow) * 1)'}}>
                 <div>
-                  <span style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'0.9rem',color:'var(--text)'}}>
+                  <span style={{fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight:700,fontSize:'calc(var(--gu) * 1.325)',color:'var(--text)'}}>
                     {visionResults.eventCount} Events Found
                   </span>
                   {visionResults.detectedVenue && (
-                    <span style={{fontSize:'0.75rem',color:'var(--text-muted)',marginLeft:'8px'}}>
+                    <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginLeft:'calc(var(--subrow) * 1)'}}>
                       at {visionResults.detectedVenue}
                     </span>
                   )}
                 </div>
-                <span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>
+                <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>
                   {visionResults.pageCount} page{visionResults.pageCount !== 1 ? 's' : ''} scanned
                 </span>
               </div>
 
               {visionResults.warnings && visionResults.warnings.length > 0 && (
-                <div style={{padding:'6px 10px',background:'rgba(234,179,8,0.1)',border:'1px solid rgba(234,179,8,0.3)',borderRadius:'6px',marginBottom:'8px',fontSize:'0.75rem',color:'#eab308'}}>
+                <div style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)',background:'rgba(234,179,8,0.1)',border:'var(--bw-hair) solid rgba(234,179,8,0.3)',borderRadius:'calc(var(--subrow) * 0.75)',marginBottom:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.104)',color:'#eab308'}}>
                   {visionResults.warnings.length} warning{visionResults.warnings.length !== 1 ? 's' : ''}: {visionResults.warnings.slice(0,3).map(w => w.warnings.join(', ')).join('; ')}{visionResults.warnings.length > 3 ? ` (+${visionResults.warnings.length - 3} more)` : ''}
                 </div>
               )}
 
-              <div style={{maxHeight:'300px',overflowY:'auto',border:'1px solid var(--border)',borderRadius:'8px'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.75rem'}}>
+              <div style={{maxHeight:'calc(var(--subrow) * 37.5)',overflowY:'auto',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 1)'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'calc(var(--gu) * 1.104)'}}>
                   <thead>
-                    <tr style={{borderBottom:'2px solid var(--border)',position:'sticky',top:0,background:'var(--bg)'}}>
-                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Date</th>
-                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Time</th>
-                      <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Event</th>
-                      <th style={{padding:'6px 8px',textAlign:'right',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'0.65rem',textTransform:'uppercase'}}>Buy-in</th>
-                      <th style={{padding:'6px 4px',textAlign:'center',width:'30px'}}></th>
+                    <tr style={{borderBottom:'calc(var(--subrow) * 0.25) solid var(--border)',position:'sticky',top:0,background:'var(--bg)'}}>
+                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Date</th>
+                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Time</th>
+                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'left',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Event</th>
+                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'right',color:'var(--text-muted)',fontFamily:'Univers Condensed, Univers, sans-serif',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Buy-in</th>
+                      <th style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)',textAlign:'center',width:'calc(var(--subrow) * 3.75)'}}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {visionResults.events.map((ev, i) => (
                       <React.Fragment key={i}>
                         <tr
-                          style={{borderBottom:'1px solid var(--border)',cursor:'pointer',background:visionEditIdx===i?'var(--surface)':'transparent'}}
+                          style={{borderBottom:'var(--bw-hair) solid var(--border)',cursor:'pointer',background:visionEditIdx===i?'var(--surface)':'transparent'}}
                           onClick={() => setVisionEditIdx(visionEditIdx === i ? -1 : i)}>
-                          <td style={{padding:'6px 8px',whiteSpace:'nowrap',color:'var(--text)',fontSize:'0.73rem'}}>{ev.date ? ev.date.replace(/, \d{4}$/, '') : '?'}</td>
-                          <td style={{padding:'6px 8px',whiteSpace:'nowrap',color:'var(--text-muted)',fontSize:'0.73rem'}}>{ev.time || '?'}</td>
-                          <td style={{padding:'6px 8px',color:'var(--text)',fontSize:'0.73rem',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                            {ev.is_satellite && <span style={{fontSize:'0.6rem',padding:'1px 4px',borderRadius:'3px',background:'rgba(139,92,246,0.2)',color:'#a78bfa',marginRight:'4px',fontWeight: 'var(--fw-bold)'}}>SAT</span>}
-                            {ev.is_restart && <span style={{fontSize:'0.6rem',padding:'1px 4px',borderRadius:'3px',background:'rgba(234,179,8,0.2)',color:'#eab308',marginRight:'4px',fontWeight: 'var(--fw-bold)'}}>Restart</span>}
+                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',whiteSpace:'nowrap',color:'var(--text)',fontSize:'calc(var(--gu) * 1.075)'}}>{ev.date ? ev.date.replace(/, \d{4}$/, '') : '?'}</td>
+                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',whiteSpace:'nowrap',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.075)'}}>{ev.time || '?'}</td>
+                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.075)',maxWidth:'calc(var(--subrow) * 20)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                            {ev.is_satellite && <span style={{fontSize:'calc(var(--gu) * 0.884)',padding:'calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.5)',borderRadius:'calc(var(--subrow) * 0.375)',background:'rgba(139,92,246,0.2)',color:'#a78bfa',marginRight:'calc(var(--subrow) * 0.5)',fontWeight: 'var(--fw-bold)'}}>SAT</span>}
+                            {ev.is_restart && <span style={{fontSize:'calc(var(--gu) * 0.884)',padding:'calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.5)',borderRadius:'calc(var(--subrow) * 0.375)',background:'rgba(234,179,8,0.2)',color:'#eab308',marginRight:'calc(var(--subrow) * 0.5)',fontWeight: 'var(--fw-bold)'}}>Restart</span>}
                             {ev.event_name || '(unnamed)'}
-                            {ev._warnings && ev._warnings.length > 0 && <span style={{color:'#eab308',marginLeft:'4px'}} title={ev._warnings.join(', ')}>!</span>}
+                            {ev._warnings && ev._warnings.length > 0 && <span style={{color:'#eab308',marginLeft:'calc(var(--subrow) * 0.5)'}} title={ev._warnings.join(', ')}>!</span>}
                           </td>
-                          <td style={{padding:'6px 8px',textAlign:'right',color:'var(--text)',fontWeight: 'var(--fw-bold)',fontSize:'0.73rem'}}>{ev.buyin != null ? `$${ev.buyin.toLocaleString()}` : '\u2014'}</td>
-                          <td style={{padding:'6px 4px',textAlign:'center'}}>
+                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1)',textAlign:'right',color:'var(--text)',fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 1.075)'}}>{ev.buyin != null ? `$${ev.buyin.toLocaleString()}` : '\u2014'}</td>
+                          <td style={{padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)',textAlign:'center'}}>
                             <button onClick={(e) => { e.stopPropagation(); removeVisionEvent(i); }}
-                              style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:'0.7rem',padding:'2px 4px',lineHeight:1}}
+                              style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.031)',padding:'calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.5)',lineHeight:1}}
                               title="Remove event">x</button>
                           </td>
                         </tr>
                         {visionEditIdx === i && (
-                          <tr style={{borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
-                            <td colSpan={5} style={{padding:'8px'}}>
-                              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px',fontSize:'0.75rem'}}>
+                          <tr style={{borderBottom:'var(--bw-hair) solid var(--border)',background:'var(--surface)'}}>
+                            <td colSpan={5} style={{padding:'calc(var(--subrow) * 1)'}}>
+                              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.104)'}}>
                                 {[
                                   ['Event Name', 'event_name', 'text'],
                                   ['Variant', 'game_variant', 'text'],
@@ -982,33 +982,33 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
                                   ['Re-entry', 'reentry', 'text'],
                                   ['Event #', 'event_number', 'text'],
                                 ].map(([label, field, type]) => (
-                                  <label key={field} style={{display:'flex',flexDirection:'column',gap:'2px'}}>
-                                    <span style={{color:'var(--text-muted)',fontSize:'0.65rem',textTransform:'uppercase'}}>{label}</span>
+                                  <label key={field} style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)'}}>
+                                    <span style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>{label}</span>
                                     <input type={type} value={ev[field] || (type === 'number' ? 0 : '')}
                                       onChange={e => updateVisionEvent(i, field, type === 'number' ? (parseInt(e.target.value) || (field === 'buyin' ? 0 : null)) : e.target.value)}
-                                      style={{padding:'4px 6px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'0.75rem'}} />
+                                      style={{padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)',borderRadius:'calc(var(--subrow) * 0.5)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.104)'}} />
                                   </label>
                                 ))}
-                                <label key="category" style={{display:'flex',flexDirection:'column',gap:'2px'}}>
-                                  <span style={{color:'var(--text-muted)',fontSize:'0.65rem',textTransform:'uppercase'}}>Category</span>
+                                <label key="category" style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)'}}>
+                                  <span style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 0.957)',textTransform:'uppercase'}}>Category</span>
                                   <select value={ev.category || ''} onChange={e => updateVisionEvent(i, 'category', e.target.value || null)}
-                                    style={{padding:'4px 6px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'0.75rem'}}>
+                                    style={{padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)',borderRadius:'calc(var(--subrow) * 0.5)',border:'var(--bw-hair) solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.104)'}}>
                                     <option value="">{'\u2014'}</option>
                                     <option value="main">Main Event</option>
                                     <option value="side">Side Event</option>
                                   </select>
                                 </label>
                               </div>
-                              <div style={{display:'flex',flexWrap:'wrap',gap:'12px',marginTop:'8px',fontSize:'0.75rem'}}>
-                                <label style={{display:'flex',alignItems:'center',gap:'4px',cursor:'pointer',color:'var(--text-muted)'}}>
+                              <div style={{display:'flex',flexWrap:'wrap',gap:'calc(var(--subrow) * 1.5)',marginTop:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.104)'}}>
+                                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',cursor:'pointer',color:'var(--text-muted)'}}>
                                   <input type="checkbox" checked={!!ev.is_satellite} onChange={e => { updateVisionEvent(i, 'is_satellite', e.target.checked); if (e.target.checked) updateVisionEvent(i, 'is_restart', false); }} />
                                   Satellite
                                 </label>
-                                <label style={{display:'flex',alignItems:'center',gap:'4px',cursor:'pointer',color:'var(--text-muted)'}}>
+                                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',cursor:'pointer',color:'var(--text-muted)'}}>
                                   <input type="checkbox" checked={!!ev.is_restart} onChange={e => { updateVisionEvent(i, 'is_restart', e.target.checked); if (e.target.checked) { updateVisionEvent(i, 'is_satellite', false); updateVisionEvent(i, 'buyin', 0); } }} />
                                   Restart (Day 2+)
                                 </label>
-                                <label style={{display:'flex',alignItems:'center',gap:'4px',cursor:'pointer',color:'var(--text-muted)'}}>
+                                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',cursor:'pointer',color:'var(--text-muted)'}}>
                                   <input type="checkbox" checked={!!ev.is_multi_flight} onChange={e => updateVisionEvent(i, 'is_multi_flight', e.target.checked)} />
                                   Multi-flight
                                 </label>
@@ -1022,11 +1022,11 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
                 </table>
               </div>
 
-              <div style={{display:'flex',gap:'8px',marginTop:'12px',justifyContent:'flex-end'}}>
+              <div style={{display:'flex',gap:'calc(var(--subrow) * 1)',marginTop:'calc(var(--subrow) * 1.5)',justifyContent:'flex-end'}}>
                 <button className="btn btn-ghost btn-sm" onClick={() => { setVisionResults(null); setVisionFile(null); }}>Cancel</button>
                 <button className="btn btn-primary btn-sm" onClick={handleVisionImport}
                   disabled={visionImporting || !visionResults.events.length}
-                  style={{display:'inline-flex',alignItems:'center',gap:'6px'}}>
+                  style={{display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}}>
                   {visionImporting ? 'Importing...' : `Add ${visionResults.events.length} Events`}
                 </button>
               </div>
@@ -1034,10 +1034,10 @@ function ImportSchedulePanel({ isOpen, onClose, token, onRefreshTournaments }) {
           )}
 
           {visionResults && visionResults.events.length === 0 && (
-            <div style={{padding:'12px',background:'var(--bg)',borderRadius:'8px',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:'0.8rem',textAlign:'center'}}>
+            <div style={{padding:'calc(var(--subrow) * 1.5)',background:'var(--bg)',borderRadius:'calc(var(--subrow) * 1)',border:'var(--bw-hair) solid var(--border)',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.178)',textAlign:'center'}}>
               No tournament events found. Try a different file or check that it contains a tournament schedule.
               {visionResults.pageErrors && visionResults.pageErrors.length > 0 && (
-                <div style={{marginTop:'8px',fontSize:'0.75rem',color:'var(--accent)',textAlign:'left'}}>
+                <div style={{marginTop:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.104)',color:'var(--accent)',textAlign:'left'}}>
                   {visionResults.pageErrors.map((pe, i) => <div key={i}>{'\u26A0'} {pe.error}</div>)}
                 </div>
               )}
@@ -1292,7 +1292,7 @@ export default function TournamentsView({
       if (entry.isIntersecting) {
         setRenderedGroupCount(prev => prev + 30);
       }
-    }, { rootMargin: '1200px' });
+    }, { rootMargin: 'calc(var(--subrow) * 150)' });
     observer.observe(el);
     return () => observer.disconnect();
   }, [renderedGroupCount]);
@@ -1490,7 +1490,7 @@ export default function TournamentsView({
     const fab = document.createElement('button');
     fab.className = 'back-to-today-fab';
     fab.dataset.dir = 'up';
-    fab.innerHTML = '<svg class="fab-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="18 15 12 9 6 15"/></svg><svg class="fab-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="6 9 12 15 18 9"/></svg>' + fabLabel;
+    fab.innerHTML = '<svg class="fab-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="18 15 12 9 6 15"/></svg><svg class="fab-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="6 9 12 15 18 9"/></svg>' + fabLabel;
     fab.addEventListener('click', () => {
       const target = findTarget();
       if (target) scrollDateGroupToTop(target);
@@ -1581,7 +1581,7 @@ export default function TournamentsView({
         {/* wrap + rowGap: on a narrow phone the event-kind switches drop to their
             own line below the icon buttons instead of overflowing and clipping
             "Side Events" off the right edge. */}
-        <div style={{display:'flex',gap:'var(--gu)',alignItems:'center',flexWrap:'wrap',rowGap:'8px'}}>
+        <div style={{display:'flex',gap:'var(--gu)',alignItems:'center',flexWrap:'wrap',rowGap:'calc(var(--subrow) * 1)'}}>
           {/* Location chip expands to fill the row and carries the current
               location indicator inside it; the other tools stay square at the
               right. */}
@@ -1589,7 +1589,7 @@ export default function TournamentsView({
             ref={locationBtnRef}
             className={`filter-chip ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
-            style={{flex:1,minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'8px',padding:'0 10px'}}
+            style={{flex:1,minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'calc(var(--subrow) * 1)',padding:'0 calc(var(--subrow) * 1.25)'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
               ? LOCATION_REGIONS[filters.locationRegion].label
               : filters.userLocation && filters.maxDistance
@@ -1597,7 +1597,7 @@ export default function TournamentsView({
                 : 'All Locations'}
           >
             <Icon.mapPin />
-            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'0.78rem',fontFamily:'var(--font-condensed)',lineHeight:'16px'}}>
+            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'calc(var(--gu) * 1.149)',fontFamily:'var(--font-condensed)',lineHeight:'calc(var(--subrow) * 2)'}}>
               {filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
                 ? LOCATION_REGIONS[filters.locationRegion].label
                 : filters.userLocation && filters.maxDistance
@@ -1721,12 +1721,12 @@ export default function TournamentsView({
               const dayEventCount = group.events.filter(t => !t.is_restart).length;
               const isCollapsed = collapsedDates.has(group.date);
               return (
-                <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : '8px'}}>
+                <div key={group.date} ref={needsRef ? todayScrollRef : undefined} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'calc(var(--subrow) * 1)'}}>
                   <DateBreak date={group.date} top={dateBreakTop} isToday={isToday} eventCount={dayEventCount} collapsed={isCollapsed} onToggle={() => toggleDateCollapsed(group.date)} onPillClick={(e) => { e.stopPropagation(); const grp = e.currentTarget.closest('[data-date-group]'); if (grp) scrollDateGroupToTop(grp); }} />
                   {!isCollapsed && group.events.map(t => {
                     const needsFull = isToday || activatedIds.has(t.id) || focusEventId === t.id;
                     return (
-                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto 104px'}}>
+                    <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
                       {needsFull ? (
                         <CalendarEventRow
                           tournament={t}

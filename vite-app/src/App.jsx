@@ -49,7 +49,7 @@ const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
 const CashView = lazy(() => import('./components/CashView.jsx'));
 
-const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'0.85rem'}}>Loading…</div>;
+const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.252)'}}>Loading…</div>;
 
 // Detect shared schedule URL: /shared/:token
 const SHARED_MATCH = window.location.pathname.match(/^\/shared\/([a-f0-9]+)$/);
@@ -1390,15 +1390,15 @@ export default function App() {
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
         </div>
-        <div className="top-bar-user" style={{position:'relative',minWidth:0,flexShrink:1,display:'flex',alignItems:'flex-end',height:'calc(var(--subrow) * 5 + 6.3px)'}}>
-          <button className="username-chip" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',padding:0,cursor:'pointer',maxWidth:'100%',overflow:'hidden'}}>
+        <div className="top-bar-user" style={{position:'relative',minWidth:0,flexShrink:1,display:'flex',alignItems:'flex-end',height:'calc(var(--subrow) * 5.75)'}}>
+          <button className="username-chip" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',background:'none',border:'none',padding:0,cursor:'pointer',maxWidth:'100%',overflow:'hidden'}}>
             <Avatar src={avatar} username={username} size={22} style={{flexShrink:0}} />
             <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameMode === 'username' ? username : (realName || username)}</span>
           </button>
           {showUserMenu && createPortal(
             <>
               <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={() => setShowUserMenu(false)} />
-              <div style={{position:'fixed',top:'52px',right:'12px',zIndex:9999,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'8px',padding:'4px 0',minWidth:'180px',boxShadow:'0 8px 24px rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+              <div style={{position:'fixed',top:'calc(var(--subrow) * 6.5)',right:'calc(var(--subrow) * 1.5)',zIndex:9999,background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 1)',padding:'calc(var(--subrow) * 0.5) 0',minWidth:'calc(var(--subrow) * 22.5)',boxShadow:'0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
                 <button onClick={() => {
                   setShowUserMenu(false);
                   setCurrentView('schedule');
@@ -1414,32 +1414,32 @@ export default function App() {
                     c.scrollTop = Math.max(0, groupAbsTop - stickyH);
                   });
                 }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
+                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   My Schedule
                 </button>
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('tracking'); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
+                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Results &amp; Tracking
                 </button>
                 {handReplayerAccess && !isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('hands'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
+                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     Hand Replayer
                   </button>
                 )}
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('settings'); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
+                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Settings
                 </button>
                 {isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('admin'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'0.85rem'}}>
+                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     Admin
                   </button>
                 )}
-                <div style={{height:'1px',background:'var(--border)',margin:'2px 0'}} />
+                <div style={{height:'calc(var(--subrow) * 0.125)',background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
                 <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'0.85rem'}}>
+                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Sign Out
                 </button>
               </div>
@@ -1452,10 +1452,10 @@ export default function App() {
       {isGuest && (
         /* Classed so the full-bleed replayer can hide it: a banner about
            saving schedules has nothing to say over a hand replay. */
-        <div className="guest-banner" style={{background:'var(--accent)',color:'#000',padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'0.8rem',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+        <div className="guest-banner" style={{background:'var(--accent)',color:'#000',padding:'calc(var(--subrow) * 1) calc(var(--subrow) * 2)',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'calc(var(--gu) * 1.178)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
           <span>Guest mode -- your schedule won't be saved. Register to keep it!</span>
           <button onClick={() => { handleLogout(); setAuthView('register'); }}
-            style={{background:'rgba(0,0,0,0.2)',color:'#000',border:'none',borderRadius:'4px',padding:'4px 12px',cursor:'pointer',fontSize:'0.75rem',fontWeight: 'var(--fw-bold)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+            style={{background:'rgba(0,0,0,0.2)',color:'#000',border:'none',borderRadius:'calc(var(--subrow) * 0.5)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.104)',fontWeight: 'var(--fw-bold)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
             Register
           </button>
         </div>
@@ -1643,9 +1643,9 @@ export default function App() {
                     : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} /></Suspense>}
                 </div>
               </div>
-            : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center'}}>
-                <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'1.3rem',fontWeight:700,color:'var(--text)',margin:'0 0 8px'}}>Hand Replayer</h2>
-                <p style={{color:'var(--text-muted)',fontSize:'0.9rem',margin:0}}>Coming Soon</p>
+            : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
+                <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Hand Replayer</h2>
+                <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
               </div>
         )}
         </div>
@@ -1709,9 +1709,9 @@ export default function App() {
         {visitedTabs.has('staking') && (
           isAdmin
             ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={mySchedule} /></Suspense>
-            : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center'}}>
-                <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'1.3rem',fontWeight:700,color:'var(--text)',margin:'0 0 8px'}}>Staking</h2>
-                <p style={{color:'var(--text-muted)',fontSize:'0.9rem',margin:0}}>Coming Soon</p>
+            : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
+                <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Staking</h2>
+                <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
               </div>
         )}
         </div>
@@ -1759,11 +1759,11 @@ export default function App() {
           the footer, and it stays put as the tool content scrolls under it. */}
       {/* Grid: rail is 5 subrows tall (3sr pills + 1sr padding each side), 1g side gutter, 1g gaps. */}
       {currentView === 'hands' && isAdmin && (
-        <div style={{display:'flex',gap:'var(--gu)',padding:'var(--subrow) var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'1px solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+        <div style={{display:'flex',gap:'var(--gu)',padding:'var(--subrow) var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'var(--bw-hair) solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
           {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
             <button key={id} onClick={() => setHandsTool(id)}
-              style={{flex:'0 0 auto',height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:'0 var(--space-ml)',borderRadius:12,fontFamily:'inherit',fontSize:'0.7rem',fontWeight:'var(--fw-bold)',cursor:'pointer',
-                border:'1px solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
+              style={{flex:'0 0 auto',height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:'0 var(--space-ml)',borderRadius:12,fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
+                border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
                 background: handsTool === id ? 'var(--accent)' : 'transparent',
                 color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>
               {lbl}
