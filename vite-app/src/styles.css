@@ -448,7 +448,10 @@
       --gu:     calc(100vw / 37);     /* base unit g = gutter = margin = ½ subcolumn */
       --subcol: calc(var(--gu) * 2);  /* one subcolumn */
       --col:    calc(var(--gu) * 8);  /* one column = 4 subcolumns */
-      --subrow: 8px;                  /* vertical baseline unit */
+      --subrow: calc(var(--gu) * 0.625); /* r — the vertical unit. r:g = 1:1.6, so
+                                            r scales with the screen exactly like g.
+                                            4r = 1 Row = 2.5g. (Was a fixed 8px,
+                                            which is NOT the grid at any real width.) */
 
       /* Sub-pixel optical corrections are NOT spacing. */
       --nudge-half: 0.5px;
@@ -11892,13 +11895,16 @@
     .grid-dev-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9997; }
     .grid-dev-baseline {
       position: absolute; inset: 0;
+      /* Lines every r (subrow = 0.625g) with every 4th (a Row) stronger — the
+         REAL grid, which scales with g. (Was fixed 8px/32px, a ruler that only
+         matched the grid on a screen that does not exist.) */
       background-image:
         repeating-linear-gradient(to bottom,
           color-mix(in srgb, #35a0b3 22%, transparent) 0, color-mix(in srgb, #35a0b3 22%, transparent) 1px,
-          transparent 1px, transparent 8px),
+          transparent 1px, transparent var(--subrow)),
         repeating-linear-gradient(to bottom,
           color-mix(in srgb, #35a0b3 42%, transparent) 0, color-mix(in srgb, #35a0b3 42%, transparent) 1px,
-          transparent 1px, transparent 32px);
+          transparent 1px, transparent calc(var(--subrow) * 4));
     }
     .grid-dev-cols {
       position: absolute; inset: 0;
