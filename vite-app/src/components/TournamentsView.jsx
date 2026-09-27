@@ -1331,41 +1331,39 @@ export default function TournamentsView({
   }, [filters]);
 
   useEffect(() => {
-    const el = stickyFiltersRef.current;
-    if (!el) return;
+    // Measure the filter block off the LIVE DOM, never a React ref. This view is
+    // rendered with key={debugTimeKey} and behind a visited/dataLoaded gate, so
+    // it can remount and re-create its .sticky-filters node; a ref captured in
+    // this effect can freeze on the old, detached node and keep reporting its
+    // half-height (~6r) forever, which is exactly what pinned the date-break up
+    // inside the filters with its top clipped (device readout: sf 12r but the
+    // pill at ~6r). Querying the panel's current .sticky-filters every time — the
+    // same element the grid overlay's own readout measures correctly at 12r —
+    // and reading its real BOTTOM edge relative to the scroll container is
+    // always the true pin position.
     const measure = () => {
-      // getBoundingClientRect().height (fractional), not offsetHeight (integer):
-      // the filter block is exactly 12r = 92.57px, and rounding it to 93px pinned
-      // the date-break a subpixel below its r-line, floating the whole pill off
-      // the grid.
-      const h = el.getBoundingClientRect().height;
-      const style = getComputedStyle(el);
-      const mt = parseFloat(style.marginTop) || 0;
-      const v = h + mt;
-      // Only commit a real change (>0.5px). This lets the scroll listener below
-      // run every frame without ever re-rendering unless the height actually
-      // moved — so a stale mount value self-corrects on the first scroll (the
-      // exact moment pinning starts to matter) at zero steady-state cost.
-      if (Math.abs(v - dateBreakTopRef.current) > 0.5) {
+      const el = document.querySelector('.tab-panel[data-tab="tournaments"] .sticky-filters')
+        || document.querySelector('.sticky-filters');
+      const ca = document.querySelector('.content-area');
+      if (!el || !ca) return;
+      const v = el.getBoundingClientRect().bottom - ca.getBoundingClientRect().top;
+      // Only commit a real change (>0.5px) so the scroll listener can run every
+      // frame for free; a stale value self-corrects on the first scroll.
+      if (v > 0 && Math.abs(v - dateBreakTopRef.current) > 0.5) {
         dateBreakTopRef.current = v;
         setDateBreakTop(v);
       }
     };
-    // The date-break pins at this height. On a WKWebView the filter block reaches
-    // its full height AFTER first layout (the checkbox row and the safe-area
-    // inset both settle a beat late), so a single mount-time measurement caught
-    // it at ~6r — half its real 12r — and the pill pinned that far too high, up
-    // inside the filters, with its top clipped. Measured live on device:
-    // sf 8.01->20.02r (12r) but db pinned at 14.11r, ~6r above where it should.
-    // Three independent safety nets so no timing quirk can bring it back: a
-    // ResizeObserver tracks the true height however late it settles, settle-frame
-    // passes cover the first frames, and a guarded scroll listener re-checks the
-    // instant the user scrolls (when the pin first matters).
+    // Four nets so no remount or layout-timing quirk can bring the clip back:
+    // settle-frame passes, a ResizeObserver on the live node, a guarded scroll
+    // listener (re-checks the instant the pin matters), and resize/orientation.
     measure();
     const rafs = [requestAnimationFrame(() => { measure(); requestAnimationFrame(measure); })];
     const timers = [setTimeout(measure, 150), setTimeout(measure, 500), setTimeout(measure, 1200)];
     let ro;
-    if ('ResizeObserver' in window) { ro = new ResizeObserver(measure); ro.observe(el); }
+    const roEl = document.querySelector('.tab-panel[data-tab="tournaments"] .sticky-filters')
+      || document.querySelector('.sticky-filters');
+    if (roEl && 'ResizeObserver' in window) { ro = new ResizeObserver(measure); ro.observe(roEl); }
     const ca = document.querySelector('.content-area');
     if (ca) ca.addEventListener('scroll', measure, { passive: true });
     window.addEventListener('resize', measure);

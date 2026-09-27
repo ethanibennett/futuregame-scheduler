@@ -48,11 +48,20 @@ export default function GridOverlay() {
           .filter(r => r.top > barTop - 5 && r.top < barTop + 400)
           .sort((a, b) => a.top - b.top)[0];
         const R = v => (v == null ? '—' : (v / cssR).toFixed(2));
+        // Every .sticky-filters height (or 'none' if display:none) and the
+        // date-break's actual pinned `top`, to prove where the pill is told to sit.
+        const sfList = [...document.querySelectorAll('.sticky-filters')].map(x => {
+          try { return getComputedStyle(x).display === 'none' ? 'none' : (x.getBoundingClientRect().height / cssR).toFixed(1); }
+          catch (e) { return '?'; }
+        }).join(',');
+        const dbEl0 = document.querySelector('.schedule-date-break');
+        const dbTopR = dbEl0 ? (parseFloat(getComputedStyle(dbEl0).top) / cssR).toFixed(2) : '—';
         setDbg(
           `iw=${window.innerWidth} cssR=${cssR.toFixed(3)} jsR=${jsR.toFixed(3)}` +
           ` | bar=${barTop.toFixed(1)} ca=${caTop.toFixed(1)} scroll=${ca ? ca.scrollTop.toFixed(0) : '—'}` +
           ` | sf ${sfr ? R(sfr.top - barTop) + '→' + R(sfr.bottom - barTop) + 'r' : '—'}` +
-          ` | db ${db ? R(db.top - barTop) + '→' + R(db.bottom - barTop) + 'r' : '—'}`
+          ` | db ${db ? R(db.top - barTop) + '→' + R(db.bottom - barTop) + 'r' : '—'}` +
+          ` | sfs=[${sfList}] top=${dbTopR}r`
         );
       } catch (e) { setDbg('dbg err: ' + e.message); }
     };
