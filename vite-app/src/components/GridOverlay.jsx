@@ -32,10 +32,23 @@ export default function GridOverlay() {
       const pad = shell ? parseFloat(getComputedStyle(shell).paddingTop) || 0 : 0;
       setTop(shell ? shell.getBoundingClientRect().top + pad : 0);
     };
+    // Measure now, then again after layout settles. A WKWebView applies the
+    // safe-area inset AFTER first layout, so a single mount-time measurement
+    // catches the top-bar before it has been pushed down and the whole ruler
+    // ends up offset — which reads as "everything is off the grid". Re-measure
+    // across a few frames/timeouts and whenever the bar actually moves.
     measure();
+    const rafs = [requestAnimationFrame(() => { measure(); requestAnimationFrame(measure); })];
+    const timers = [setTimeout(measure, 150), setTimeout(measure, 500), setTimeout(measure, 1200)];
+    const bar = document.querySelector('.top-bar');
+    let ro;
+    if (bar && 'ResizeObserver' in window) { ro = new ResizeObserver(measure); ro.observe(bar); }
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
     return () => {
+      rafs.forEach(cancelAnimationFrame);
+      timers.forEach(clearTimeout);
+      if (ro) ro.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
     };
