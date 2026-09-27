@@ -1701,7 +1701,7 @@
          == the old 30px (--fs-3xl) at 430pt; it scales down on narrower phones
          (28px @ 402, 26px @ 375). Line-height stays a fixed 4 subrows — the box
          is on the grid; only the glyph inside scales. */
-      font-size: calc(var(--gu) * 2.5814);
+      font-size: calc(var(--gu) * 2.3);
       font-weight: var(--fw-regular);
       line-height: calc(var(--subrow) * 3);
       font-variant-numeric: var(--num-tabular);
@@ -8874,7 +8874,12 @@
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      overflow: hidden;
+      /* text-box-trim ends the box at the baseline; clip (not hidden) plus a clip
+         margin lets descenders render a third of an em past the box without
+         shifting the baseline off its r-line — works in every state (open,
+         collapsed, flight) and keeps the ellipsis. */
+      overflow: clip;
+      overflow-clip-margin: 0.35em;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* The Flight/Day sub-line as a block with a fixed 24px (3-subrow) line box,
@@ -8887,13 +8892,10 @@
       display: block;
       line-height: var(--cal-title-line);
       white-space: nowrap;
-      overflow: hidden;
+      overflow: clip;
+      overflow-clip-margin: 0.35em; /* descender room, no baseline shift */
       text-overflow: ellipsis;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
-      /* descent room so overflow:hidden doesn't clip the title's descenders;
-         the negative margin keeps the baseline on its r-line (see .cal-event-name). */
-      padding-bottom: 0.3em;
-      margin-bottom: -0.3em;
     }
     .cal-event-stage {
       display: block;
@@ -8913,13 +8915,8 @@
     .cal-event-row:not(.open) .cal-bar-row2:not(:has(.cal-event-stage)) .cal-event-name {
       white-space: nowrap;
       text-overflow: ellipsis;
-      overflow: hidden;
-      /* text-box-trim ends the box at the baseline, so overflow:hidden (needed
-         for the ellipsis) would clip descenders. Drop the clip region a descent
-         below the baseline with padding, and pull it back with an equal negative
-         margin so align-items:end still lands the baseline on its r-line. */
-      padding-bottom: 0.3em;
-      margin-bottom: -0.3em;
+      /* overflow:clip inherits from the base rule; its clip-margin gives the
+         descenders room without moving the baseline. */
     }
     /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
@@ -8931,7 +8928,8 @@
       display: grid;
       grid-template-rows: var(--cal-title-line) calc(var(--subrow) * 2);
       align-items: end;
-      overflow: hidden;
+      overflow: clip;
+      overflow-clip-margin: 0.35em;
     }
     .cal-event-base { grid-row: 1; min-width: 0; }
     .cal-event-stage { grid-row: 2; min-width: 0; }
