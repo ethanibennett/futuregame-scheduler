@@ -279,9 +279,9 @@ function GroupDetailView({
       {/* Header */}
       <div className="group-detail-header">
         <button className="group-back-btn" onClick={onBack}>&larr;</button>
-        <div style={{flex:1}}>
-          <div className="social-buddy-name" style={{fontSize:16}}>{group.name}</div>
-          <div style={{fontSize:12,color:'var(--text-secondary)'}}>{group.member_count} member{group.member_count !== 1 ? 's' : ''}{group.owner_name ? ` \u00b7 Owner: ${group.owner_name}` : ''}</div>
+        <div style={{flex:1,position:'relative',top:'-1px'}}>
+          <div className="social-buddy-name" style={{fontSize:16,lineHeight:'calc(var(--subrow) * 2)'}}>{group.name}</div>
+          <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',marginTop:'1.5px',color:'var(--text-secondary)'}}>{group.member_count} member{group.member_count !== 1 ? 's' : ''}{group.owner_name ? ` \u00b7 Owner: ${group.owner_name}` : ''}</div>
         </div>
         {isOwner ? (
           <button onClick={handleDeleteGroup} style={{background:'none',border:'none',color:'var(--text-secondary)',fontSize:13,cursor:'pointer'}}>Delete</button>
@@ -318,7 +318,7 @@ function GroupDetailView({
               </div>
             ) : groupFeed.map((item, i) => (
               <div key={item.id || i} className={`group-feed-item ${item.type}`}>
-                <Avatar src={item.avatar} username={item.username || '?'} size={28} />
+                <Avatar src={item.avatar} username={item.username || '?'} size={32} />
                 <div className="group-feed-item-body">
                   <div className="group-feed-item-header">
                     <span className="group-feed-item-name">{displayName(item)}</span>
@@ -362,15 +362,15 @@ function GroupDetailView({
             <div key={t.id} className="group-schedule-card">
               <div className="group-schedule-card-top">
                 <div>
-                  <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{t.event_name}</div>
-                  <div style={{fontSize:12,color:'var(--text-secondary)'}}>{t.date} \u00b7 {t.time} \u00b7 ${Number(t.buyin).toLocaleString()}</div>
+                  <div style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{t.event_name}</div>
+                  <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-secondary)'}}>{t.date} \u00b7 {t.time} \u00b7 ${Number(t.buyin).toLocaleString()}</div>
                 </div>
-                <div style={{fontSize:11,color:'var(--text-secondary)'}}>{getVenueInfo(t.venue, t.property).abbr}</div>
+                <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-secondary)'}}>{getVenueInfo(t.venue, t.property).abbr}</div>
               </div>
               <div className="group-schedule-members">
                 {t.members.map(m => (
                   <div key={m.id} className="group-schedule-member" title={displayName(m)}>
-                    <Avatar src={m.avatar} username={m.username} size={22} />
+                    <Avatar src={m.avatar} username={m.username} size={24} />
                   </div>
                 ))}
                 <span style={{fontSize:11,color:'var(--text-secondary)',marginLeft:4}}>
@@ -396,13 +396,13 @@ function GroupDetailView({
             const maxAbsNet = Math.max(...leaderboardData.map(m => Math.abs(m.net_pl || 0)), 1);
             return leaderboardData.map((m, i) => (
               <div key={m.id} className="leaderboard-card">
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{display:'flex',alignItems:'center',gap:'var(--gu)'}}>
                   <div className="leaderboard-rank">
                     {i === 0 ? '\ud83c\udfc6' : `#${i + 1}`}
                   </div>
                   <Avatar src={m.avatar} username={m.username} size={32} />
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{displayName(m)}</div>
+                    <div style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{displayName(m)}</div>
                     <div className="leaderboard-stats">
                       <span className={m.net_pl >= 0 ? 'leaderboard-net-pos' : 'leaderboard-net-neg'}>
                         {m.net_pl >= 0 ? '+' : ''}{formatBuyin(m.net_pl)} net
@@ -421,7 +421,7 @@ function GroupDetailView({
                         style={{width: `${Math.min(50, Math.max(Math.abs(m.net_pl) / (maxAbsNet || 1) * 50, 1))}%`}}
                       />
                     </div>
-                    <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
+                    <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:'calc(var(--subrow) * 2)',marginTop:'var(--space-2xs)'}}>
                       {formatBuyin(m.total_won)} won \u00b7 {m.events_played} event{m.events_played !== 1 ? 's' : ''}
                     </div>
                   </div>
@@ -463,15 +463,15 @@ function GroupDetailView({
             )}
           </div>
 
-          <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'Univers Condensed, Univers, sans-serif',marginBottom:6}}>
+          <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'Univers Condensed, Univers, sans-serif',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-md)'}}>
             Members ({members.length || group.member_count})
           </div>
           {members.map(m => (
             <div key={m.id} className="group-member-card">
-              <Avatar src={m.avatar} username={m.username} size={28} />
+              <Avatar src={m.avatar} username={m.username} size={32} />
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight: 'var(--fw-regular)'}}>{displayName(m)}</div>
-                {m.role === 'owner' && <div style={{fontSize:11,color:'var(--accent)'}}>Owner</div>}
+                <div style={{fontSize:13,lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-regular)'}}>{displayName(m)}</div>
+                {m.role === 'owner' && <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--accent)'}}>Owner</div>}
               </div>
               {isOwner && m.role !== 'owner' && (
                 <button onClick={() => handleRemoveMember(m.id)} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:11}}>Remove</button>
@@ -482,15 +482,15 @@ function GroupDetailView({
           {/* Pending invites */}
           {pendingInvites.length > 0 && (
             <div style={{marginBottom:12}}>
-              <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'Univers Condensed, Univers, sans-serif',marginBottom:6}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'Univers Condensed, Univers, sans-serif',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-md)'}}>
                 Pending Invites
               </div>
               {pendingInvites.map(inv => (
                 <div key={inv.id} className="group-member-card" style={{opacity:0.6}}>
-                  <Avatar src={inv.avatar} username={inv.username} size={28} />
+                  <Avatar src={inv.avatar} username={inv.username} size={32} />
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,fontWeight: 'var(--fw-regular)'}}>{displayName(inv)}</div>
-                    <div style={{fontSize:11,color:'var(--text-muted)'}}>Invited by {inv.invited_by_real_name || inv.invited_by_username}</div>
+                    <div style={{fontSize:13,lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-regular)'}}>{displayName(inv)}</div>
+                    <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>Invited by {inv.invited_by_real_name || inv.invited_by_username}</div>
                   </div>
                   <span style={{fontSize:11,color:'var(--text-muted)',fontStyle:'italic'}}>Pending</span>
                 </div>
@@ -501,7 +501,7 @@ function GroupDetailView({
           {/* Owner settings */}
           {isOwner && (
             <div className="leaderboard-toggle-section">
-              <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'Univers Condensed, Univers, sans-serif',marginBottom:8}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'Univers Condensed, Univers, sans-serif',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-md)'}}>
                 Owner Settings
               </div>
               <div className="leaderboard-toggle-row">
@@ -659,17 +659,17 @@ export default function SocialView({
   const hasGroups = myGroups && myGroups.length > 0;
 
   const searchBar = (
-    <div style={{position:'relative',marginBottom:'16px'}}>
+    <div style={{position:'relative',marginBottom:'var(--space-xl)'}}>
       <input
         type="text"
         placeholder="Search by username or name..."
         value={searchQuery}
         onChange={e => handleSearchChange(e.target.value)}
         style={{
-          width:'100%',height:40,boxSizing:'border-box',padding:'0 12px',
+          width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',padding:'0 var(--gu)',
           border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',
           background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",
-          fontSize:'0.82rem',outline:'none',
+          fontSize:'0.82rem',outline:'none',lineHeight:'calc(var(--subrow) * 2)',
         }}
       />
       {searchMsg && (
@@ -691,7 +691,7 @@ export default function SocialView({
               display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px',
               borderBottom:'1px solid var(--border)',cursor:'default',
             }}>
-              <Avatar src={u.avatar} username={u.username} size={28} />
+              <Avatar src={u.avatar} username={u.username} size={32} />
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:'0.78rem',fontWeight: 'var(--fw-bold)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                   {u.real_name || u.username}
@@ -720,14 +720,14 @@ export default function SocialView({
 
   const shareSection = (
     <>
-      <div className="dashboard-section-header" style={{marginBottom:'8px',marginTop:16}}>
+      <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)',marginTop:'var(--space-xl)'}}>
         <div className="dashboard-section-title">Share</div>
       </div>
       <div style={{
         background:'var(--surface)',boxShadow:'inset 0 0 0 1px var(--border)',
-        borderRadius:'var(--radius-sm)',padding:'16px 14px',
+        borderRadius:'var(--radius-sm)',padding:'var(--space-xl) var(--gu)',
         textAlign:'center',color:'var(--text-muted)',fontSize:'0.78rem',
-        lineHeight:'24px',
+        lineHeight:'calc(var(--subrow) * 3)',
       }}>
         Social media integrations coming soon
       </div>
@@ -737,11 +737,11 @@ export default function SocialView({
   if (!hasBuddies && !hasGroups) {
     return (
       <div style={{maxWidth:'600px',margin:'0 auto'}}>
-        <div className="dashboard-section-header" style={{marginBottom:'8px'}}>
+        <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)'}}>
           <div className="dashboard-section-title">Connections</div>
         </div>
         {searchBar}
-        <div style={{textAlign:'left',color:'var(--text-muted)',fontSize:'0.82rem',lineHeight:'24px',padding:'16px 0 24px'}}>
+        <div style={{textAlign:'left',color:'var(--text-muted)',fontSize:'0.82rem',lineHeight:'calc(var(--subrow) * 3)',padding:'var(--space-xl) 0 var(--space-3xl)'}}>
           No connections yet. Search for friends above to get started.
         </div>
         {shareSection}
@@ -761,12 +761,12 @@ export default function SocialView({
   return (
     <div className="social-view">
       {/* Groups section */}
-      <div className="dashboard-section-header" style={{marginBottom:'8px'}}>
+      <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)'}}>
         <div className="dashboard-section-title">Groups</div>
         {hasBuddies && (
           <button
             className="dashboard-section-badge"
-            style={{cursor:'pointer',background:'var(--brand)',color:'var(--on-brand)',border:'none',borderRadius:12,padding:'2px 10px',fontSize:12,fontWeight:700}}
+            style={{cursor:'pointer',background:'var(--brand)',color:'var(--on-brand)',border:'none',borderRadius:'var(--radius-pill)',padding:'0 var(--gu)',height:'calc(var(--subrow) * 2)',lineHeight:'calc(var(--subrow) * 2)',fontSize:12,fontWeight:700}}
             onClick={() => setShowCreateGroup(true)}
           >+ New</button>
         )}
@@ -802,7 +802,7 @@ export default function SocialView({
       )}
 
       {/* Connections section */}
-      <div className="dashboard-section-header" style={{marginBottom:'8px',marginTop:12}}>
+      <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)',marginTop:'var(--space-xl)'}}>
         <div className="dashboard-section-title">Connections</div>
         {hasBuddies && <span className="dashboard-section-badge">{shareBuddies.length} friend{shareBuddies.length !== 1 ? 's' : ''}</span>}
       </div>
@@ -819,7 +819,7 @@ export default function SocialView({
                 className={`social-buddy-card${isLive ? ' live' : ''}`}
               >
                 <div className="social-buddy-row" onClick={() => toggleBuddy(buddy.id)} style={{cursor:'pointer'}}>
-                  <Avatar src={buddy.avatar} username={buddy.username} size={36} />
+                  <Avatar src={buddy.avatar} username={buddy.username} size={40} />
                   <div className="social-buddy-info">
                     <div className="social-buddy-name">{displayName(buddy)}</div>
                     {isLive ? (
@@ -940,7 +940,7 @@ export default function SocialView({
                   );
                 })()}
                 {isExpanded && (
-                  <div style={{borderTop:'1px solid var(--border)',marginTop:'4px',padding:'8px 12px',display:'flex',flexDirection:'column',gap:'6px'}}>
+                  <div style={{boxShadow:'inset 0 1px 0 0 var(--border)',marginTop:'var(--space-xs)',padding:'var(--space-md) var(--gu)',display:'flex',flexDirection:'column',gap:'var(--space-md)'}}>
                     {myGroups && myGroups.length > 0 && (
                       addToGroupBuddyId === buddy.id ? (
                         <div>
@@ -975,7 +975,7 @@ export default function SocialView({
                         <button
                           onClick={(e) => { e.stopPropagation(); setAddToGroupBuddyId(buddy.id); }}
                           style={{background:'none',border:'1px solid var(--border)',borderRadius:'6px',
-                            color:'var(--text)',cursor:'pointer',fontSize:'0.8rem',padding:'6px 12px',width:'100%',
+                            color:'var(--text)',cursor:'pointer',fontSize:'0.8rem',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--gu)',width:'100%',
                             fontFamily:'Univers Condensed, Univers, sans-serif'}}
                         >+ Add to Group</button>
                       )
@@ -1000,7 +1000,7 @@ export default function SocialView({
                       <button
                         onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(buddy.id); }}
                         style={{background:'none',border:'1px solid var(--border)',borderRadius:'6px',
-                          color:'#b91c1c',cursor:'pointer',fontSize:'0.8rem',padding:'6px 12px',width:'100%',
+                          color:'#b91c1c',cursor:'pointer',fontSize:'0.8rem',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--gu)',width:'100%',
                           fontFamily:'Univers Condensed, Univers, sans-serif'}}
                       >Remove Connection</button>
                     )}
