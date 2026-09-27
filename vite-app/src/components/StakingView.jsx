@@ -109,13 +109,13 @@ function StakingSettings({ token, tournaments, onBack }) {
   if (loading) return <div style={{textAlign:'center',padding:40,color:'var(--text-muted)'}}>Loading&hellip;</div>;
 
   return (
-    <div style={{padding:'0 0 20px'}}>
-      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 16px 8px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <button className="btn btn-ghost btn-sm" onClick={onBack} style={{fontSize:16,padding:'4px 8px'}}>&larr;</button>
-          <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:1,fontSize:14,margin:0,color:'var(--text-muted)'}}>Sell & Markup Settings</h2>
+    <div style={{padding:'0 0 var(--space-2xl)'}}>
+      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:'var(--gu)'}}>
+          <button className="btn btn-ghost btn-sm" onClick={onBack} style={{fontSize:16,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)'}}>&larr;</button>
+          <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:1,fontSize:14,lineHeight:'calc(var(--subrow) * 4)',whiteSpace:'nowrap',margin:0,color:'var(--text-muted)'}}>Sell & Markup Settings</h2>
         </div>
-        <button className="create-group-submit" style={{fontSize:12,padding:'6px 14px'}} onClick={handleSave} disabled={saving}>
+        <button className="create-group-submit" style={{width:'auto',fontSize:12,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-ml)'}} onClick={handleSave} disabled={saving}>
           {saving ? 'Saving\u2026' : 'Save'}
         </button>
       </div>
@@ -123,7 +123,7 @@ function StakingSettings({ token, tournaments, onBack }) {
       <div style={{display:'flex',gap:0,borderBottom:'1px solid var(--border)',margin:'0 16px 12px'}}>
         {[{k:'sell',l:'Default Sell %'},{k:'markup',l:'Default Markup'}].map(t => (
           <button key={t.k}
-            style={{flex:1,padding:'10px 0',fontSize:12,fontWeight:tab === t.k ? 600 : 400,
+            style={{flex:1,padding:'var(--space-md) 0',fontSize:12,fontWeight:tab === t.k ? 600 : 400,
               color: tab === t.k ? 'var(--accent)' : 'var(--text-muted)',
               borderBottom: tab === t.k ? '2px solid var(--accent)' : '2px solid transparent',
               background:'none',border:'none',cursor:'pointer'}}
@@ -131,22 +131,22 @@ function StakingSettings({ token, tournaments, onBack }) {
         ))}
       </div>
 
-      <div style={{padding:'0 16px'}}>
+      <div style={{padding:'0'}}>
         {tab === 'sell' && (
           <div>
-            <p style={{fontSize:11,color:'var(--text-muted)',margin:'0 0 12px'}}>
+            <p style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',margin:'0 0 12px'}}>
               Set default sell percentages by buyin tier or game type. These are used when creating new agreements.
             </p>
             <div style={{marginBottom:16}}>
               <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Buyin Tier</div>
               {BUYIN_TIERS.map(tier => (
-                <div key={tier.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+                <div key={tier.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-md) 0',boxShadow:'inset 0 -1px 0 0 var(--border)'}}>
                   <span style={{fontSize:12}}>{tier.label}</span>
                   <div style={{display:'flex',alignItems:'center',gap:4}}>
                     <input type="number" value={getSellPct('buyin_tier', tier.key)} onChange={e => setSellPct('buyin_tier', tier.key, e.target.value)}
                       placeholder="\u2014" min="0" max="100" step="5"
-                      style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
-                    <span style={{fontSize:11,color:'var(--text-muted)'}}>%</span>
+                      style={{width:'calc(var(--subrow) * 8)',height:'calc(var(--subrow) * 4)',textAlign:'right',fontSize:12,lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-sm)',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
+                    <span style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>%</span>
                   </div>
                 </div>
               ))}
@@ -155,13 +155,13 @@ function StakingSettings({ token, tournaments, onBack }) {
               <div>
                 <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Game Type</div>
                 {GAME_PRESETS.map(game => (
-                  <div key={game} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+                  <div key={game} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-md) 0',boxShadow:'inset 0 -1px 0 0 var(--border)'}}>
                     <span style={{fontSize:12}}>{game}</span>
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
                       <input type="number" value={getSellPct('game_type', game)} onChange={e => setSellPct('game_type', game, e.target.value)}
                         placeholder="\u2014" min="0" max="100" step="5"
-                        style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
-                      <span style={{fontSize:11,color:'var(--text-muted)'}}>%</span>
+                        style={{width:'calc(var(--subrow) * 8)',height:'calc(var(--subrow) * 4)',textAlign:'right',fontSize:12,lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-sm)',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
+                      <span style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>%</span>
                     </div>
                   </div>
                 ))}
@@ -172,19 +172,19 @@ function StakingSettings({ token, tournaments, onBack }) {
 
         {tab === 'markup' && (
           <div>
-            <p style={{fontSize:11,color:'var(--text-muted)',margin:'0 0 12px'}}>
+            <p style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',margin:'0 0 12px'}}>
               Set default markup multipliers by buyin tier or game type. 1.0 = no markup, 1.1 = 10% markup.
             </p>
             <div style={{marginBottom:16}}>
               <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Buyin Tier</div>
               {BUYIN_TIERS.map(tier => (
-                <div key={tier.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+                <div key={tier.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-md) 0',boxShadow:'inset 0 -1px 0 0 var(--border)'}}>
                   <span style={{fontSize:12}}>{tier.label}</span>
                   <div style={{display:'flex',alignItems:'center',gap:4}}>
                     <input type="number" value={getMarkup('buyin_tier', tier.key)} onChange={e => setMarkupVal('buyin_tier', tier.key, e.target.value)}
                       placeholder="\u2014" min="1" max="3" step="0.05"
-                      style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
-                    <span style={{fontSize:11,color:'var(--text-muted)'}}>&times;</span>
+                      style={{width:'calc(var(--subrow) * 8)',height:'calc(var(--subrow) * 4)',textAlign:'right',fontSize:12,lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-sm)',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
+                    <span style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>&times;</span>
                   </div>
                 </div>
               ))}
@@ -193,13 +193,13 @@ function StakingSettings({ token, tournaments, onBack }) {
               <div>
                 <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',marginBottom:8,color:'var(--text-muted)'}}>By Game Type</div>
                 {GAME_PRESETS.map(game => (
-                  <div key={game} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)'}}>
+                  <div key={game} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-md) 0',boxShadow:'inset 0 -1px 0 0 var(--border)'}}>
                     <span style={{fontSize:12}}>{game}</span>
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
                       <input type="number" value={getMarkup('game_type', game)} onChange={e => setMarkupVal('game_type', game, e.target.value)}
                         placeholder="\u2014" min="1" max="3" step="0.05"
-                        style={{width:60,textAlign:'right',fontSize:12,padding:'4px 6px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
-                      <span style={{fontSize:11,color:'var(--text-muted)'}}>&times;</span>
+                        style={{width:'calc(var(--subrow) * 8)',height:'calc(var(--subrow) * 4)',textAlign:'right',fontSize:12,lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-sm)',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text)'}} />
+                      <span style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>&times;</span>
                     </div>
                   </div>
                 ))}
@@ -298,14 +298,14 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onB
   if (loading) return <div style={{textAlign:'center',padding:40,color:'var(--text-muted)'}}>Loading&hellip;</div>;
 
   return (
-    <div style={{padding:'0 0 20px'}}>
-      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 16px 8px'}}>
-        <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:1,fontSize:14,margin:0,color:'var(--text-muted)'}}>Staking</h2>
-        <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-ghost btn-sm" style={{fontSize:12,padding:'6px 10px',color:'var(--text-muted)'}} onClick={onSettings} title="Sell & Markup Settings">{'\u2699'}</button>
-          <button className="create-group-submit" style={{fontSize:12,padding:'6px 14px',background:'transparent',color:'var(--accent)',border:'1px solid var(--accent)'}} onClick={onBackerSummary}>Summary</button>
-          <button className="create-group-submit" style={{fontSize:12,padding:'6px 14px',background:'transparent',color:'var(--accent)',border:'1px solid var(--accent)'}} onClick={onBackers}>Backers</button>
-          <button className="create-group-submit" style={{fontSize:12,padding:'6px 14px'}} onClick={onCreate}>+ Series</button>
+    <div style={{padding:'0 0 var(--space-2xl)'}}>
+      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
+        <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:1,fontSize:14,lineHeight:'calc(var(--subrow) * 4)',margin:0,color:'var(--text-muted)'}}>Staking</h2>
+        <div style={{display:'flex',gap:'var(--space-sm)'}}>
+          <button className="btn btn-ghost btn-sm" style={{fontSize:12,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)',color:'var(--text-muted)'}} onClick={onSettings} title="Sell & Markup Settings">{'\u2699'}</button>
+          <button className="create-group-submit" style={{fontSize:12,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)',background:'transparent',color:'var(--accent)',border:'1px solid var(--accent)'}} onClick={onBackerSummary}>Summary</button>
+          <button className="create-group-submit" style={{fontSize:12,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)',background:'transparent',color:'var(--accent)',border:'1px solid var(--accent)'}} onClick={onBackers}>Backers</button>
+          <button className="create-group-submit" style={{fontSize:12,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)'}} onClick={onCreate}>+ Series</button>
         </div>
       </div>
 
@@ -321,10 +321,10 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onB
         <button key={s.id} className="staking-series-card" onClick={() => onSelect(s)}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
             <div style={{minWidth:0,flex:1}}>
-              <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{s.name}</div>
-              {s.venue && <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{s.venue}</div>}
+              <div style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{s.name}</div>
+              {s.venue && <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{s.venue}</div>}
               {(s.start_date || s.end_date) && (
-                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
+                <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>
                   {s.start_date && new Date(s.start_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})}
                   {s.start_date && s.end_date && ' \u2013 '}
                   {s.end_date && new Date(s.end_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})}
@@ -491,14 +491,14 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
     <div>
       <div className="group-detail-header">
         <button className="group-back-btn" onClick={onBack}>&larr;</button>
-        <div style={{flex:1}}><div className="social-buddy-name" style={{fontSize:16}}>Backers</div></div>
-        <button className="create-group-submit" style={{fontSize:12,padding:'6px 14px'}} onClick={() => { resetForm(); setShowForm(!showForm); }}>
+        <div style={{flex:1}}><div className="social-buddy-name" style={{fontSize:16,lineHeight:'calc(var(--subrow) * 5)'}}>Backers</div></div>
+        <button className="create-group-submit" style={{width:'auto',fontSize:12,height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-ml)'}} onClick={() => { resetForm(); setShowForm(!showForm); }}>
           {showForm ? 'Cancel' : '+ Add'}
         </button>
       </div>
 
       {showForm && (
-        <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border)'}}>
+        <div style={{padding:'var(--space-md) 0',boxShadow:'inset 0 -1px 0 0 var(--border)'}}>
           {error && <div style={{color:'#ef4444',fontSize:12,marginBottom:8}}>{error}</div>}
           <label className="staking-field"><span>Name *</span>
             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Backer name" />
@@ -518,7 +518,7 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
         </div>
       )}
 
-      <div style={{padding:'12px 16px'}}>
+      <div style={{padding:'var(--space-md) 0'}}>
         {backers.length === 0 ? (
           <FirstRun
             icon="people"
@@ -528,10 +528,10 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
         ) : backers.map(b => (
           <div key={b.id} className="staking-backer-card">
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{b.name}</div>
-              {b.email && <div style={{fontSize:12,color:'var(--text-muted)'}}>{b.email}</div>}
-              {b.phone && <div style={{fontSize:12,color:'var(--text-muted)'}}>{b.phone}</div>}
-              {b.notes && <div style={{fontSize:11,color:'var(--text-muted)',fontStyle:'italic',marginTop:2}}>{b.notes}</div>}
+              <div style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{b.name}</div>
+              {b.email && <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{b.email}</div>}
+              {b.phone && <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{b.phone}</div>}
+              {b.notes && <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',fontStyle:'italic'}}>{b.notes}</div>}
             </div>
             <div style={{display:'flex',gap:6}}>
               <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)} style={{fontSize:11}}>Edit</button>
@@ -572,8 +572,8 @@ function BackerSummaryView({ token, onBack, onManage }) {
   if (loading) return <div style={{textAlign:'center',padding:40,color:'var(--text-muted)'}}>Loading&hellip;</div>;
 
   return (
-    <div style={{padding:'0 0 20px'}}>
-      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 16px 8px'}}>
+    <div style={{padding:'0 0 var(--space-2xl)'}}>
+      <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <button className="btn btn-ghost btn-sm" onClick={onBack} style={{fontSize:16,padding:'4px 8px'}}>&larr;</button>
           <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:1,fontSize:14,margin:0,color:'var(--text-muted)'}}>Backer Summary</h2>
@@ -597,7 +597,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div style={{minWidth:0,flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                  <span style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{b.name}</span>
+                  <span style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{b.name}</span>
                   {badge && (
                     <span style={{
                       fontSize:10,fontWeight: 'var(--fw-bold)',color:'#fff',padding:'2px 8px',borderRadius:999,
@@ -610,32 +610,32 @@ function BackerSummaryView({ token, onBack, onManage }) {
                     </span>
                   )}
                 </div>
-                {b.email && <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{b.email}</div>}
-                {b.phone && <div style={{fontSize:12,color:'var(--text-muted)'}}>{b.phone}</div>}
+                {b.email && <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{b.email}</div>}
+                {b.phone && <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{b.phone}</div>}
               </div>
               <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
-                <div style={{fontSize:13,fontWeight:700,color: b.net_pl >= 0 ? '#22c55e' : '#ef4444'}}>
+                <div style={{fontSize:13,lineHeight:'calc(var(--subrow) * 2)',fontWeight:700,color: b.net_pl >= 0 ? '#22c55e' : '#ef4444'}}>
                   {b.net_pl >= 0 ? '+' : ''}{formatBuyin(b.net_pl)}
                 </div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>net P&amp;L</div>
+                <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>net P&amp;L</div>
               </div>
             </div>
 
             {/* Stats row */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginTop:10,paddingTop:8,borderTop:'1px solid var(--border)'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'var(--gu)',marginTop:'var(--space-md)',paddingTop:'var(--space-md)',boxShadow:'inset 0 1px 0 0 var(--border)'}}>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)'}}>{formatBuyin(b.total_invested)}</div>
-                <div style={{fontSize:10,color:'var(--text-muted)'}}>Invested</div>
+                <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)'}}>{formatBuyin(b.total_invested)}</div>
+                <div style={{fontSize:10,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>Invested</div>
               </div>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:12,fontWeight: 'var(--fw-bold)'}}>{formatBuyin(b.total_returned)}</div>
-                <div style={{fontSize:10,color:'var(--text-muted)'}}>Returned</div>
+                <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)'}}>{formatBuyin(b.total_returned)}</div>
+                <div style={{fontSize:10,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>Returned</div>
               </div>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:12,fontWeight: 'var(--fw-bold)',color: b.ytd_winnings > 0 ? '#f59e0b' : 'var(--text-muted)'}}>
                   {formatBuyin(b.ytd_winnings)}
                 </div>
-                <div style={{fontSize:10,color:'var(--text-muted)'}}>YTD</div>
+                <div style={{fontSize:10,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>YTD</div>
               </div>
             </div>
 
@@ -649,7 +649,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
                     padding:'5px 0',borderBottom:'1px solid var(--border)',fontSize:12}}>
                     <div style={{minWidth:0,flex:1}}>
                       <span style={{fontWeight: 'var(--fw-regular)'}}>{ag.series_name}</span>
-                      <span style={{marginLeft:6,fontSize:11,color:'var(--text-muted)'}}>{BACKER_TYPE_LABELS[ag.backer_type] || ag.backer_type}</span>
+                      <span style={{marginLeft:6,fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{BACKER_TYPE_LABELS[ag.backer_type] || ag.backer_type}</span>
                     </div>
                     <span style={{color:'var(--accent)',fontWeight: 'var(--fw-bold)',flexShrink:0,marginLeft:8}}>{ag.pct}%</span>
                   </div>
@@ -657,7 +657,7 @@ function BackerSummaryView({ token, onBack, onManage }) {
               </div>
             )}
             {isExpanded && b.agreements && b.agreements.length === 0 && (
-              <div style={{marginTop:10,paddingTop:8,borderTop:'1px solid var(--border)',fontSize:12,color:'var(--text-muted)'}}>
+              <div style={{marginTop:10,paddingTop:8,borderTop:'1px solid var(--border)',fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>
                 No active agreements
               </div>
             )}
@@ -712,7 +712,7 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
         <button className="group-back-btn" onClick={onBack}>&larr;</button>
         <div style={{flex:1}}>
           <div className="social-buddy-name" style={{fontSize:16}}>{series.name}</div>
-          <div style={{fontSize:12,color:'var(--text-muted)'}}>
+          <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>
             {agreements.length} agreement{agreements.length !== 1 ? 's' : ''} &middot; {totalPct}% sold
           </div>
         </div>
@@ -801,7 +801,7 @@ function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements,
   };
 
   return (
-    <div style={{padding:'12px 16px'}}>
+    <div style={{padding:'var(--space-md) 0'}}>
       <button className="create-group-submit" style={{fontSize:13,padding:'8px 16px',marginBottom:12,width:'100%'}} onClick={onAdd}>
         + Add Agreement
       </button>
@@ -814,17 +814,17 @@ function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements,
         <div key={ag.id} className={`staking-agreement-card${ag.is_active ? '' : ' inactive'}`}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
             <div style={{minWidth:0,flex:1}}>
-              <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{ag.backer_name}</div>
+              <div style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{ag.backer_name}</div>
               <div style={{display:'flex',gap:6,alignItems:'center',marginTop:4,flexWrap:'wrap'}}>
                 <span className="staking-type-badge">{BACKER_TYPE_LABELS[ag.backer_type] || ag.backer_type}</span>
                 {ag.backer_type !== 'profit_share_only' && ag.percentage > 0 && (
-                  <span style={{fontSize:12,color:'var(--text-muted)'}}>{ag.percentage}%</span>
+                  <span style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{ag.percentage}%</span>
                 )}
                 {ag.markup > 1 && <span style={{fontSize:12,color:'var(--accent)'}}>{ag.markup}x markup</span>}
-                {ag.backer_type === 'profit_share_only' && <span style={{fontSize:12,color:'var(--text-muted)'}}>{ag.percentage}% of profit</span>}
+                {ag.backer_type === 'profit_share_only' && <span style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{ag.percentage}% of profit</span>}
               </div>
               {(ag.buyin_range_min || ag.buyin_range_max) && (
-                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
+                <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',marginTop:2}}>
                   Buyin range: {ag.buyin_range_min ? formatBuyin(ag.buyin_range_min) : '$0'} &ndash; {ag.buyin_range_max ? formatBuyin(ag.buyin_range_max) : '\u221E'}
                 </div>
               )}
@@ -844,7 +844,7 @@ function AgreementsList({ agreements, token, seriesId, backers, fetchAgreements,
               )}
             </div>
             <div style={{display:'flex',gap:4,alignItems:'center'}}>
-              <label className="toggle-switch" style={{width:32,height:18}} title={ag.is_active ? 'Active' : 'Inactive'}>
+              <label className="toggle-switch" title={ag.is_active ? 'Active' : 'Inactive'}>
                 <input type="checkbox" checked={!!ag.is_active} onChange={() => toggleActive(ag)} />
                 <span className="toggle-slider" />
               </label>
@@ -962,7 +962,7 @@ function AgreementForm({ token, seriesId, backers, onClose, onSaved, tournaments
             </label>
           </div>
 
-          <button className="btn btn-ghost btn-sm" style={{fontSize:11,color:'var(--text-muted)',marginTop:4,padding:'4px 0'}} onClick={() => setShowAdvanced(!showAdvanced)}>
+          <button className="btn btn-ghost btn-sm" style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',marginTop:4,padding:'4px 0'}} onClick={() => setShowAdvanced(!showAdvanced)}>
             {showAdvanced ? '\u25BE Hide Advanced' : '\u25B8 Advanced Options'}
           </button>
 
@@ -1083,11 +1083,11 @@ function StakingEventTracking({ seriesId, agreements, eventStatuses, tournaments
   }
 
   return (
-    <div style={{padding:'12px 16px'}}>
+    <div style={{padding:'var(--space-md) 0'}}>
       {seriesEvents.map(t => (
         <div key={t.id} className="staking-event-card">
           <div style={{fontWeight: 'var(--fw-bold)',fontSize:13}}>{t.event_name}</div>
-          <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>{t.date} &middot; {t.time} &middot; {formatBuyin(t.buyin)}</div>
+          <div style={{fontSize:11,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',marginBottom:6}}>{t.date} &middot; {t.time} &middot; {formatBuyin(t.buyin)}</div>
           {activeAgreements.map(ag => {
             const key = `${t.id}_${ag.id}`;
             const status = statusMap[key];
@@ -1220,7 +1220,7 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
   const backerReturnRows = Object.values(backerReturnMap);
 
   return (
-    <div style={{padding:'12px 16px'}}>
+    <div style={{padding:'var(--space-md) 0'}}>
       {settlements.map((s, i) => {
         const netPl = (s.gross_return || s.grossReturn || 0) - (s.gross_investment || s.grossInvestment || 0);
         const amtOwed = s.amount_owed || s.amountOwed || 0;
@@ -1228,23 +1228,23 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
           <div key={s.backer_id || s.backerId || i} className="staking-settlement-card">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div>
-                <div style={{fontWeight: 'var(--fw-bold)',fontSize:14}}>{s.backer_name || s.backerName || 'Backer'}</div>
-                <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{BACKER_TYPE_LABELS[s.backer_type || s.backerType] || s.backer_type || s.backerType || ''} &middot; {s.percentage || 0}%</div>
+                <div style={{fontWeight: 'var(--fw-bold)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)'}}>{s.backer_name || s.backerName || 'Backer'}</div>
+                <div style={{fontSize:12,lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{BACKER_TYPE_LABELS[s.backer_type || s.backerType] || s.backer_type || s.backerType || ''} &middot; {s.percentage || 0}%</div>
               </div>
               {s.id && (
-                <label className="toggle-switch" style={{width:32,height:18}} title={s.is_paid ? 'Paid' : 'Unpaid'}>
+                <label className="toggle-switch" title={s.is_paid ? 'Paid' : 'Unpaid'}>
                   <input type="checkbox" checked={!!s.is_paid} onChange={() => handleMarkPaid(s.id, s.is_paid)} />
                   <span className="toggle-slider" />
                 </label>
               )}
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4,marginTop:8,fontSize:12}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4,marginTop:'var(--space-md)',fontSize:12,lineHeight:'calc(var(--subrow) * 2)'}}>
               <div>Invested: <strong>{formatBuyin(s.gross_investment || s.grossInvestment || 0)}</strong></div>
               <div>Returned: <strong>{formatBuyin(s.gross_return || s.grossReturn || 0)}</strong></div>
               {(s.markup_amount || s.markupAmount) > 0 && <div>Markup: <strong>{formatBuyin(s.markup_amount || s.markupAmount || 0)}</strong></div>}
               <div>Owed: <strong className={amtOwed >= 0 ? 'staking-pnl-pos' : 'staking-pnl-neg'}>{formatBuyin(Math.abs(amtOwed))}</strong></div>
             </div>
-            <div style={{marginTop:6,fontSize:14,fontWeight:700}} className={netPl >= 0 ? 'staking-pnl-pos' : 'staking-pnl-neg'}>
+            <div style={{marginTop:'var(--space-md)',fontSize:14,lineHeight:'calc(var(--subrow) * 2)',fontWeight:700}} className={netPl >= 0 ? 'staking-pnl-pos' : 'staking-pnl-neg'}>
               {netPl >= 0 ? '+' : ''}{formatBuyin(netPl)} net
             </div>
             {s.is_paid && <div style={{fontSize:11,color:'#22c55e',marginTop:4}}>{'\u2713'} Paid{s.paid_at ? ` \u00b7 ${new Date(s.paid_at).toLocaleDateString()}` : ''}</div>}

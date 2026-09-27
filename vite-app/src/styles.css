@@ -10555,9 +10555,13 @@
       flex-direction: column;
       gap: 0;
       background: var(--surface);
-      border: 1px solid var(--border);
+      /* Hairline as inset shadow, not border, so it stays out of the box model:
+         outer height = 2×8 padding + 40 row = 56 (7 subrows), on grid. */
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border);
       border-radius: var(--radius);
-      padding: var(--space-ml) var(--space-lg);
+      /* 1 subrow vertical (collapsed row is 40 → card 56 = 7 subrows), 1g horizontal */
+      padding: var(--subrow) var(--gu);
       cursor: pointer;
       transition: background var(--dur-fast);
       text-align: left;
@@ -10568,23 +10572,30 @@
     @media (hover: hover) and (pointer: fine) {
       .social-buddy-card:hover { background: var(--hover-overlay); }
     }
-    .social-buddy-card.live { border-color: var(--accent); }
+    .social-buddy-card.live { box-shadow: inset 0 0 0 1px var(--accent); }
 
     .social-buddy-row {
       display: flex;
       align-items: center;
-      gap: var(--space-ml);
+      gap: var(--gu); /* one gutter */
+      min-height: calc(var(--subrow) * 5); /* 40px = avatar height, keeps row on grid */
     }
 
     .social-buddy-info {
       flex: 1;
       min-width: 0;
+      /* Seat the name baseline on a subrow line. The 32px text block is centered
+         in the 40px row (+4 offset); this nudge lands the first baseline on a
+         line and, with the 1.5px pair-gap below, the second baseline too. */
+      position: relative;
+      top: -0.8px;
     }
 
     .social-buddy-name {
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       font-size: var(--fs-md);
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
     }
 
     .social-buddy-status {
@@ -10593,11 +10604,13 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
+      margin-top: 1.5px; /* pair-gap: makes the two baselines exactly 16px (2 subrows) apart */
     }
     .social-buddy-status.live {
       color: #22c55e;
       display: flex;
-      align-items: center;
+      align-items: baseline; /* hand the text baseline to the grid like the block status */
       gap: var(--space-sm);
     }
     .social-buddy-status.busted { color: #ef4444; }
@@ -10618,17 +10631,18 @@
     .social-buddy-detail {
       margin-top: var(--space-md);
       padding-top: var(--space-md);
-      border-top: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 0 var(--border); /* top divider out of the box model */
       display: flex;
       flex-direction: column;
-      gap: var(--space-xs);
+      gap: 0;
     }
 
     .social-detail-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: baseline;
       font-size: var(--fs-xs);
+      line-height: calc(var(--subrow) * 2); /* 16px rows */
     }
 
     .social-detail-label {
@@ -10651,9 +10665,10 @@
       display: flex;
       flex-direction: column;
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border); /* hairline out of the box model */
       border-radius: var(--radius);
-      padding: var(--space-ml) var(--space-lg);
+      padding: var(--subrow) var(--gu); /* matches buddy card: 56px box */
       cursor: pointer;
       transition: background var(--dur-fast);
       text-align: left;
@@ -10666,7 +10681,7 @@
     }
 
     .social-group-avatar {
-      width: 36px; height: 36px;
+      width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); /* 40px square = 5 subrows */
       border-radius: var(--radius);
       background: var(--accent);
       color: #fff;
@@ -10685,6 +10700,8 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
+      margin-top: 1.5px; /* pair-gap: two baselines exactly 16px (2 subrows) apart */
     }
 
     /* ── Group Detail View ── */
@@ -10697,10 +10714,13 @@
     .group-detail-header {
       display: flex;
       align-items: center;
-      gap: var(--space-ml);
-      padding-bottom: var(--space-lg);
-      border-bottom: 1px solid var(--border);
-      margin-bottom: var(--space-md);
+      gap: var(--gu); /* one gutter */
+      min-height: calc(var(--subrow) * 5); /* 40px content row */
+      padding: 0 0 var(--subrow); /* 1 subrow below → 48px box (6 subrows) */
+      /* Divider as a shadow at the box bottom, out of the box model, so the
+         header occupies exactly 48px and the segments below stay on grid. */
+      box-shadow: 0 1px 0 0 var(--border);
+      margin-bottom: var(--space-md); /* 1 subrow */
     }
 
     .group-back-btn {
@@ -10708,8 +10728,9 @@
       border: none;
       color: var(--accent);
       font-size: var(--fs-xl);
+      line-height: calc(var(--subrow) * 5); /* 40px, on grid */
       cursor: pointer;
-      padding: var(--space-xs) var(--space-md) var(--space-xs) 0;
+      padding: 0 var(--space-md) 0 0;
       font-family: inherit;
     }
 
@@ -10718,14 +10739,15 @@
       gap: 0;
       background: var(--surface);
       border-radius: var(--radius);
-      border: 1px solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border); /* hairline out of the box model */
       overflow: hidden;
-      margin-bottom: var(--space-lg);
+      margin-bottom: var(--space-xl); /* 2 subrows */
     }
 
     .group-segment-btn {
       flex: 1;
-      padding: var(--space-md) 0;
+      padding: var(--subrow) 0; /* 8/8 → 32px button (4 subrows) with 16px line */
       background: none;
       border: none;
       color: var(--text-muted);
@@ -10733,6 +10755,7 @@
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       font-size: var(--fs-xs);
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
       font-weight: var(--fw-regular);
       cursor: pointer;
       transition: background var(--dur-fast), color var(--dur-fast);
@@ -10785,18 +10808,20 @@
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
     }
 
     .group-feed-item-time {
       font-size: var(--fs-2xs);
       color: var(--text-muted);
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
     }
 
     .group-feed-item-text {
       font-size: var(--fs-sm);
       color: var(--text);
       word-break: break-word;
-      line-height: 1.4;
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
     }
 
     .group-feed-item.live-update .group-feed-item-text {
@@ -10806,29 +10831,33 @@
 
     .group-feed-input {
       display: flex;
-      gap: var(--space-md);
-      padding-top: var(--space-md);
-      border-top: 1px solid var(--border);
+      gap: var(--gu); /* one gutter */
+      padding-top: var(--space-md); /* 1 subrow */
+      box-shadow: 0 -1px 0 0 var(--border); /* divider out of the box model */
     }
 
     .group-feed-input input {
       flex: 1;
+      height: calc(var(--subrow) * 5); /* 40px, 5 subrows */
+      box-sizing: border-box;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--text);
-      padding: var(--space-md) var(--space-lg);
+      padding: 0 var(--gu);
       font-family: inherit;
       font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 2);
     }
     .group-feed-input input:focus { border-color: var(--brand-line); }
 
     .group-feed-input button {
+      height: calc(var(--subrow) * 5); /* 40px, 5 subrows */
       background: var(--accent);
       color: #fff;
       border: none;
       border-radius: var(--radius);
-      padding: var(--space-md) var(--space-xl);
+      padding: 0 var(--gu);
       font-family: var(--font-condensed);
       text-transform: uppercase;
       font-weight: var(--fw-bold);
@@ -10847,9 +10876,10 @@
 
     .group-schedule-card {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border);
       border-radius: var(--radius);
-      padding: var(--space-ml) var(--space-lg);
+      padding: var(--subrow) var(--gu);
     }
 
     .group-schedule-card-top {
@@ -10890,9 +10920,10 @@
 
     .create-group-panel {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border);
       border-radius: var(--radius);
-      padding: var(--space-2xl);
+      padding: var(--space-xl); /* 2 subrows all round */
       width: 100%;
       max-width: 360px;
       max-height: 80vh;
@@ -10912,20 +10943,23 @@
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       font-size: var(--fs-xs);
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
       font-weight: var(--fw-regular);
       color: var(--text-muted);
-      margin-bottom: var(--space-xs);
+      margin-bottom: var(--space-md);
     }
 
     .create-group-input {
       width: 100%;
+      height: calc(var(--subrow) * 5); /* 40px, 5 subrows */
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--text);
-      padding: var(--space-md) var(--space-lg);
+      padding: 0 var(--gu);
       font-family: inherit;
       font-size: var(--fs-md);
+      line-height: calc(var(--subrow) * 2);
       box-sizing: border-box;
     }
     .create-group-input:focus { border-color: var(--brand-line); }
@@ -10941,23 +10975,26 @@
     .create-group-buddy-btn {
       display: flex;
       align-items: center;
-      gap: var(--space-md);
-      padding: var(--space-sm) var(--space-ml);
+      gap: var(--gu); /* one gutter */
+      height: calc(var(--subrow) * 5); /* 40px row with a 24px avatar */
+      padding: 0 var(--gu);
       background: var(--bg);
-      border: 1px solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border);
       border-radius: var(--radius);
       color: var(--text);
       cursor: pointer;
       font-family: inherit;
       font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 2);
       text-align: left;
       width: 100%;
-      transition: border-color var(--dur-fast);
+      transition: box-shadow var(--dur-fast);
     }
     @media (hover: hover) and (pointer: fine) {
-      .create-group-buddy-btn:hover { border-color: var(--accent); }
+      .create-group-buddy-btn:hover { box-shadow: inset 0 0 0 1px var(--accent); }
     }
-    .create-group-buddy-btn.selected { border-color: var(--accent); background: var(--hover-overlay); }
+    .create-group-buddy-btn.selected { box-shadow: inset 0 0 0 1px var(--accent); background: var(--hover-overlay); }
 
     .create-group-submit {
       width: 100%;
@@ -10966,11 +11003,14 @@
       color: var(--on-brand);
       border: none;
       border-radius: var(--radius);
-      padding: var(--space-ml) 0;
+      /* 8px vertical + 16px line = 32px (4 subrows) when a caller doesn't
+         override padding; compact callers override with their own grid padding. */
+      padding: var(--subrow) var(--gu);
       font-family: var(--font-condensed);
       text-transform: uppercase;
       font-weight: var(--fw-bold);
       font-size: var(--fs-md);
+      line-height: calc(var(--subrow) * 2);
       letter-spacing: var(--track-caps);
       cursor: pointer;
     }
@@ -10978,27 +11018,30 @@
 
     /* ── Leaderboard ── */
     .group-leaderboard {
-      padding: var(--space-lg) var(--space-xl);
+      padding: var(--space-md) 0; /* 1 subrow vertical, cards on the 1g rail */
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
     }
     .leaderboard-card {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 1px var(--border); /* hairline out of the box model */
       border-radius: var(--radius);
-      padding: var(--space-lg);
+      padding: var(--subrow) var(--gu); /* 1 subrow vertical, 1g horizontal */
     }
     .leaderboard-rank {
       font-weight: var(--fw-bold);
       font-size: var(--fs-lg);
-      min-width: min(32px, 9cqmin);
+      line-height: calc(var(--subrow) * 4); /* 32px, matches avatar */
+      min-width: calc(var(--subrow) * 4); /* 32px */
       text-align: center;
       color: var(--text-muted);
     }
     .leaderboard-stats {
       font-size: var(--fs-xs);
       color: var(--text-muted);
+      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
       margin-top: var(--space-2xs);
     }
     .leaderboard-net-pos { color: #22c55e; font-weight: var(--fw-bold); }
@@ -11031,8 +11074,8 @@
     .toggle-switch {
       position: relative;
       display: inline-block;
-      width: 40px;
-      height: 22px;
+      width: calc(var(--subrow) * 5); /* 40px */
+      height: calc(var(--subrow) * 3); /* 24px = 3 subrows */
     }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
@@ -11048,20 +11091,21 @@
       position: absolute;
       width: 16px;
       height: 16px;
-      left: 3px;
-      bottom: 3px;
+      left: 4px;
+      bottom: 4px;
       background: #fff;
       border-radius: var(--radius-circle);
       transition: var(--dur-snap);
     }
     .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
-    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }
 
     /* ── Staking ── */
     .staking-series-card {
       display: block; width: 100%; text-align: left;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: var(--space-lg) var(--space-xl); margin: 0 var(--space-xl) var(--space-md);
+      background: var(--surface); border: 0;
+      box-shadow: inset 0 0 0 1px var(--border);
+      border-radius: var(--radius); padding: var(--subrow) var(--gu); margin: 0 0 var(--space-md);
       cursor: pointer; color: var(--text);
       font-family: inherit; font-size: inherit;
       box-sizing: border-box;
@@ -11071,7 +11115,9 @@
     }
     .staking-badge {
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase;
-      padding: var(--space-2xs) var(--space-md); border-radius: var(--radius-pill); letter-spacing: var(--track-caps);
+      height: calc(var(--subrow) * 2); line-height: calc(var(--subrow) * 2); box-sizing: border-box;
+      display: inline-flex; align-items: center;
+      padding: 0 var(--space-md); border-radius: var(--radius-pill); letter-spacing: var(--track-caps);
       border: 1px solid;
     }
     .staking-badge-pre { color: var(--text-muted); border-color: var(--border); }
@@ -11079,7 +11125,9 @@
     .staking-badge-settled { color: #22c55e; border-color: #22c55e; }
     .staking-type-badge {
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase;
-      padding: var(--space-2xs) var(--space-sm); border-radius: var(--radius-xs); letter-spacing: var(--track-tight);
+      height: calc(var(--subrow) * 2); line-height: calc(var(--subrow) * 2); box-sizing: border-box;
+      display: inline-flex; align-items: center;
+      padding: 0 var(--space-sm); border-radius: var(--radius-xs); letter-spacing: var(--track-tight);
       background: var(--border); color: var(--text-muted);
     }
     .staking-modal {
@@ -11090,30 +11138,31 @@
     }
     .staking-modal-header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: var(--space-xl) var(--space-xl); border-bottom: 1px solid var(--border);
+      padding: var(--space-xl) var(--gu); box-shadow: inset 0 -1px 0 0 var(--border);
     }
-    .staking-modal-body { padding: var(--space-xl); }
+    .staking-modal-body { padding: var(--space-xl) var(--gu); }
     .staking-modal-footer {
-      display: flex; align-items: center; gap: var(--space-md);
-      padding: var(--space-lg) var(--space-xl); border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: var(--gu);
+      padding: var(--space-xl) var(--gu); box-shadow: inset 0 1px 0 0 var(--border);
     }
     .staking-field {
-      display: block; margin-bottom: var(--space-ml); font-size: var(--fs-xs); color: var(--text-muted);
+      display: block; margin-bottom: var(--space-md); font-size: var(--fs-xs); color: var(--text-muted);
     }
-    .staking-field span { display: block; margin-bottom: var(--space-xs); font-weight: var(--fw-regular); }
+    .staking-field span { display: block; line-height: calc(var(--subrow) * 2); margin-bottom: var(--space-xs); font-weight: var(--fw-regular); }
     .staking-field input, .staking-field select {
-      width: 100%; padding: var(--space-md) var(--space-ml); border: 1px solid var(--border);
+      width: 100%; height: calc(var(--subrow) * 5); padding: 0 var(--gu); border: 1px solid var(--border);
       border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
-      font-size: var(--fs-sm); font-family: inherit; box-sizing: border-box;
+      font-size: var(--fs-sm); line-height: calc(var(--subrow) * 2); font-family: inherit; box-sizing: border-box;
     }
     .staking-field input:focus, .staking-field select:focus {
       border-color: var(--brand-line);
     }
     .staking-backer-card, .staking-agreement-card, .staking-event-card, .staking-settlement-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: var(--space-lg); margin-bottom: var(--space-md);
+      background: var(--surface); border: 0;
+      box-shadow: inset 0 0 0 1px var(--border);
+      border-radius: var(--radius); padding: var(--subrow) var(--gu); margin-bottom: var(--space-md);
     }
-    .staking-backer-card { display: flex; align-items: flex-start; gap: var(--space-ml); }
+    .staking-backer-card { display: flex; align-items: flex-start; gap: var(--gu); }
     .staking-agreement-card.inactive { opacity: 0.5; }
     .staking-pnl-pos { color: #22c55e; }
     .staking-pnl-neg { color: #ef4444; }
@@ -11255,11 +11304,11 @@
     .group-member-card {
       display: flex;
       align-items: center;
-      gap: var(--space-md);
-      padding: var(--space-md) 0;
-      border-bottom: 1px solid var(--border);
+      gap: var(--gu); /* one gutter */
+      padding: var(--space-md) 0; /* 1 subrow each → 48px row with a 32px avatar */
+      box-shadow: 0 1px 0 0 var(--border); /* divider out of the box model */
     }
-    .group-member-card:last-child { border-bottom: none; }
+    .group-member-card:last-child { box-shadow: none; }
 
     /* Quick Actions pill bar */
     .dash-actions-bar {
