@@ -8727,11 +8727,11 @@
     .cal-event-row:not(.open) .cal-event-bar {
       min-height: 0;
     }
-    /* Flight card + late-reg bar = 18r. Fix the bar at 16r (the 2r chevron closes
+    /* Flight card + late-reg bar = 16r. Fix the bar at 14r (the 2r chevron closes
        the card); the late-reg bar's margin-top:auto then drops it to the bar's
-       bottom, seating its label on r16 — a whole-r footer below the flight (r10). */
+       bottom, seating its label on r14 — a whole-r footer below the flight (r10). */
     .cal-event-row:not(.open):has(.cal-event-stage):has(.mini-late-reg) .cal-event-bar {
-      height: calc(var(--subrow) * 16);
+      height: calc(var(--subrow) * 14);
       padding-bottom: 0;
     }
     .cal-event-row:not(.open) {
@@ -8880,6 +8880,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      /* descent room so overflow:hidden doesn't clip the title's descenders;
+         the negative margin keeps the baseline on its r-line (see .cal-event-name). */
+      padding-bottom: 0.3em;
+      margin-bottom: -0.3em;
     }
     .cal-event-stage {
       display: block;
@@ -8900,6 +8904,12 @@
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
+      /* text-box-trim ends the box at the baseline, so overflow:hidden (needed
+         for the ellipsis) would clip descenders. Drop the clip region a descent
+         below the baseline with padding, and pull it back with an equal negative
+         margin so align-items:end still lands the baseline on its r-line. */
+      padding-bottom: 0.3em;
+      margin-bottom: -0.3em;
     }
     /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
