@@ -8727,11 +8727,11 @@
     .cal-event-row:not(.open) .cal-event-bar {
       min-height: 0;
     }
-    /* Flight card + late-reg bar = 16r. Fix the bar at 14r (the 2r chevron closes
+    /* Flight card + late-reg bar = 15r. Fix the bar at 13r (the 2r chevron closes
        the card); the late-reg bar's margin-top:auto then drops it to the bar's
-       bottom, seating its label on r14 — a whole-r footer below the flight (r10). */
+       bottom, seating its label on r13 — a whole-r footer below the flight (r10). */
     .cal-event-row:not(.open):has(.cal-event-stage):has(.mini-late-reg) .cal-event-bar {
-      height: calc(var(--subrow) * 14);
+      height: calc(var(--subrow) * 13);
       padding-bottom: 0;
     }
     .cal-event-row:not(.open) {
