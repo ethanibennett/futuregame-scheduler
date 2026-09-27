@@ -1321,7 +1321,11 @@ export default function TournamentsView({
   useEffect(() => {
     const measure = () => {
       if (stickyFiltersRef.current) {
-        const h = stickyFiltersRef.current.offsetHeight;
+        // getBoundingClientRect().height (fractional), not offsetHeight (integer):
+        // the filter block is exactly 12r = 92.57px, and rounding it to 93px pinned
+        // the date-break a subpixel below its r-line, floating the whole pill off
+        // the grid.
+        const h = stickyFiltersRef.current.getBoundingClientRect().height;
         const style = getComputedStyle(stickyFiltersRef.current);
         const mt = parseFloat(style.marginTop) || 0;
         setDateBreakTop(h + mt);
