@@ -1631,13 +1631,13 @@
       height: calc(var(--subrow) * 5);
       padding: 0 0 var(--subrow);
       color: var(--text);
-      /* Solid, opaque: the boundary is the fill, not a line. This plus the
-         compositing layer below is what keeps rows from showing through as they
-         scroll under during momentum (the "header peek"). */
+      /* Solid, opaque fill — the boundary is the fill, not a line, and it is what
+         covers rows scrolling under the pinned pill. NO transform / translateZ /
+         will-change here: iOS WKWebView refuses to pin a sticky element that has a
+         transformed descendant, not just a transformed self, so a compositing
+         layer anywhere in this subtree re-breaks the pin. The opaque background
+         alone does the covering. */
       background: var(--bg);
-      /* Compositing layer to stop the momentum-scroll bleed. Safe HERE (it broke
-         the pin only when it sat on the sticky element itself). */
-      transform: translateZ(0);
     }
     .schedule-date-break[onclick],
     .schedule-date-break.is-collapsible { cursor: pointer; }
