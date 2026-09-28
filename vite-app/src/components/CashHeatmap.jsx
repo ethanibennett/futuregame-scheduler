@@ -156,45 +156,44 @@ export default function CashHeatmap({ token }) {
         <div style={{ color: 'var(--text-muted,#aaa)', padding: 'var(--space-2xl)', textAlign: 'center' }}>Not enough history yet — this fills in after about two weeks of collection.</div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ minWidth: 'calc(var(--subrow) * 70)' }}>
-              {/* Hour axis */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(24, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 0.375)' }}>
-                <div />
-                {Array.from({ length: 24 }, (_, h) => (
-                  <div key={h} style={{ fontSize: 'calc(var(--gu) * 0.736)', color: 'var(--text-muted,#888)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                    {h % 6 === 0 ? hourLabel(h) : ''}
-                  </div>
-                ))}
-              </div>
+          {/* Vertical orientation: hours run DOWN as rows, the 7 days ACROSS as
+              columns. Seven columns fit the phone width, so no horizontal scroll —
+              the grid grows downward instead. */}
+          <div>
+            {/* Day axis (column headers) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 0.375)' }}>
+              <div />
               {DOW.map((day, d) => (
-                <div key={d} style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(24, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'var(--space-2xs)' }}>
-                  <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', fontFamily: UNIVERS, textTransform: 'uppercase' }}>{day}</div>
-                  {Array.from({ length: 24 }, (_, h) => {
-                    const c = cellMap.get(`${d}-${h}`);
-                    const hasData = !!(c && c.samples > 0);
-                    const intensity = !hasData ? 0 : metric === 'reliability' ? (c.ranFraction || 0) : (c.meanTables || 0) / maxMean;
-                    const active = pick && pick.dow === d && pick.hour === h;
-                    const val = !hasData ? '' : metric === 'reliability' ? String(Math.round((c.ranFraction || 0) * 100)) : fmtTables(c.meanTables);
-                    return (
-                      <button key={h}
-                        className={'cash-heat-cell' + (hasData ? '' : ' no-data')}
-                        onClick={() => setPick(hasData ? { dow: d, hour: h, ...c } : null)}
-                        onMouseEnter={() => { if (hasData) setPick({ dow: d, hour: h, ...c }); }}
-                        title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
-                        style={{
-                          position: 'relative',
-                          aspectRatio: '1 / 1', minHeight: 'calc(var(--subrow) * 2.5)', border: active ? 'var(--bw-hair) solid var(--text,#fff)' : 'var(--bw-hair) solid transparent',
-                          borderRadius: 'calc(var(--subrow) * 0.25)', background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 'calc(var(--gu) * 0.736)', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-                          color: 'rgba(255,255,255,0.92)', textShadow: '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.55)',
-                        }}>{val}</button>
-                    );
-                  })}
-                </div>
+                <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase' }}>{day}</div>
               ))}
             </div>
+            {Array.from({ length: 24 }, (_, h) => (
+              <div key={h} style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'var(--space-2xs)' }}>
+                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--space-2xs)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
+                {DOW.map((day, d) => {
+                  const c = cellMap.get(`${d}-${h}`);
+                  const hasData = !!(c && c.samples > 0);
+                  const intensity = !hasData ? 0 : metric === 'reliability' ? (c.ranFraction || 0) : (c.meanTables || 0) / maxMean;
+                  const active = pick && pick.dow === d && pick.hour === h;
+                  const val = !hasData ? '' : metric === 'reliability' ? String(Math.round((c.ranFraction || 0) * 100)) : fmtTables(c.meanTables);
+                  return (
+                    <button key={d}
+                      className={'cash-heat-cell' + (hasData ? '' : ' no-data')}
+                      onClick={() => setPick(hasData ? { dow: d, hour: h, ...c } : null)}
+                      onMouseEnter={() => { if (hasData) setPick({ dow: d, hour: h, ...c }); }}
+                      title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: '1 / 1', minHeight: 'calc(var(--subrow) * 2.5)', border: active ? 'var(--bw-hair) solid var(--text,#fff)' : 'var(--bw-hair) solid transparent',
+                        borderRadius: 'calc(var(--subrow) * 0.25)', background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 'calc(var(--gu) * 0.736)', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+                        color: 'rgba(255,255,255,0.92)', textShadow: '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.55)',
+                      }}>{val}</button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
 
           {/* Legend + tapped-cell readout */}
