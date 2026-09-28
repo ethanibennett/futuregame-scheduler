@@ -1643,7 +1643,13 @@
          boundary (an inset hairline used to sit here and read as a stray rule
          under the date). The event count seats on the pill's bottom edge (192)
          rather than the day's text baseline — see .date-break-count. */
-      height: calc(var(--subrow) * 5);
+      /* NO explicit height. An explicit height on a position:sticky element stops
+         it pinning on iOS WKWebView — the pill just scrolls under the filters,
+         cut off (desktop WebKit ignores the bug, so the harness never showed it).
+         Confirmed on-device: height:auto makes it stick. The block is still a
+         clean 5r without the property: the pill inside is 4r and this 1r
+         bottom-padding sits under it (4r + 1r = 5r), and align-items:end seats
+         the count and weekday on the 4r line exactly as before. */
       padding: 0 0 var(--subrow); /* 1r under the 4r pill: the block is 5r */
       color: var(--text);
       /* Solid, not a fade to transparent. The old 6px transparent tail was a
