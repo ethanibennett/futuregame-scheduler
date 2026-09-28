@@ -16,7 +16,7 @@ import {
   matchesOnline,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
-  fetchServerLocation, sameLocation, readLocalFilters } from '../utils/location-prefs.js';
+  fetchServerLocation, sameLocation, readLocalFilters, writeLocalFilters } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
@@ -1144,6 +1144,24 @@ export default function TournamentsView({
     // picked on the desktop does not exist on the phone.
     pushServerLocation(token, loc);
   }, [filters.userLocation, filters.locationRegion, filters.maxDistance, filters.locationLabel, filters.jurisdiction, filters.jurisdictionManual]);
+  // Persist the standing-preference filters — the online toggle and per-site room
+  // rules especially, plus the filter-bar checkboxes and the wizard's game/buy-in
+  // answers — so a selection made in the bar survives a reload, not just one made
+  // in the onboarding wizard. Only non-default fields are stored (matching the
+  // wizard), so the saved blob stays small and a field reset to default really
+  // clears. Location has its own persistence above; onlyAvailableOnline is forced
+  // and never stored; a one-look date range stays session-only.
+  useEffect(() => {
+    const KEYS = ['showOnline', 'siteRules', 'hideSatellites', 'hideRestarts',
+      'hideSideEvents', 'selectedGames', 'mixedOnly', 'buyinRanges'];
+    const out = {};
+    for (const k of KEYS) {
+      const v = filters[k];
+      if (v !== undefined && JSON.stringify(v) !== JSON.stringify(DEFAULT_FILTERS[k])) out[k] = v;
+    }
+    writeLocalFilters(out);
+  }, [filters.showOnline, filters.siteRules, filters.hideSatellites, filters.hideRestarts,
+    filters.hideSideEvents, filters.selectedGames, filters.mixedOnly, filters.buyinRanges]);
   /* The account's copy, once we have a token. localStorage has already painted
      so there is no flash; this only corrects it when the choice was made on
      another device.

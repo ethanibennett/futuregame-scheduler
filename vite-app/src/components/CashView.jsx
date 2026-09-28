@@ -266,7 +266,7 @@ export default function CashView({ token }) {
     .sort((a, b) => (b._totalTables - a._totalTables) || String(a.name).localeCompare(String(b.name)));
 
   return (
-    <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0 }}>
+    <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
         <h2 className="screen-title" style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 'calc(var(--subrow) * 4)' }}>
           {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
@@ -293,7 +293,11 @@ export default function CashView({ token }) {
         ))}
       </div>
 
-      {mode === 'heatmap' && <CashHeatmap token={token} />}
+      {mode === 'heatmap' && (
+        <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <CashHeatmap token={token} />
+        </div>
+      )}
 
       {mode === 'live' && (<>
 

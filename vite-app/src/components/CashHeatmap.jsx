@@ -104,7 +104,9 @@ export default function CashHeatmap({ token }) {
     String(catalog.vNames[a] || a).localeCompare(String(catalog.vNames[b] || b))) : [];
   const gamesForVenue = (catalog && sel && catalog.byVenue[sel.venue]) || [];
 
-  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--space-md, calc(var(--subrow) * 2))' };
+  // Fill the height CashView hands us (heatmap mode is a flex-fill column) so the
+  // 24 hour-rows scale to fit the screen instead of overflowing into a scroll.
+  const wrap = { maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 'var(--space-md, calc(var(--subrow) * 2))', width: '100%', flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' };
   const selectStyle = { background: 'var(--surface, #1a1a1a)', color: 'var(--text, #fff)', border: 'var(--bw-hair) solid var(--border, #333)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm) var(--space-md)', fontSize: 'calc(var(--gu) * 1.178)', maxWidth: '100%' };
 
   if (status === 'error') {
@@ -159,16 +161,16 @@ export default function CashHeatmap({ token }) {
           {/* Vertical orientation: hours run DOWN as rows, the 7 days ACROSS as
               columns. Seven columns fit the phone width, so no horizontal scroll —
               the grid grows downward instead. */}
-          <div>
+          <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {/* Day axis (column headers) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 0.375)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 0.375)', flexShrink: 0 }}>
               <div />
               {DOW.map((day, d) => (
                 <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase' }}>{day}</div>
               ))}
             </div>
             {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'var(--space-2xs)' }}>
+              <div key={h} style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'var(--space-2xs)', flex: '1 1 0', minHeight: 0 }}>
                 <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--space-2xs)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
                 {DOW.map((day, d) => {
                   const c = cellMap.get(`${d}-${h}`);
@@ -184,7 +186,9 @@ export default function CashHeatmap({ token }) {
                       title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                       style={{
                         position: 'relative',
-                        aspectRatio: '1 / 1', minHeight: 'calc(var(--subrow) * 2.5)', border: active ? 'var(--bw-hair) solid var(--text,#fff)' : 'var(--bw-hair) solid transparent',
+                        /* No fixed square: the cell stretches to fill its row, and the
+                           rows share the grid's height so all 24 fit without scroll. */
+                        minHeight: 0, border: active ? 'var(--bw-hair) solid var(--text,#fff)' : 'var(--bw-hair) solid transparent',
                         borderRadius: 'calc(var(--subrow) * 0.25)', background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 'calc(var(--gu) * 0.736)', lineHeight: 1, fontVariantNumeric: 'tabular-nums',

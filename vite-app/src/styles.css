@@ -2097,9 +2097,10 @@
 
     .top-bar-title {
       /* A 2-track grid from the bar top: the wordmark's trimmed baseline lands on
-         3r, the season's on 5r (align-items:end per track). No nudge. */
+         4r, the season's on 6r (align-items:end per track). Both were dropped one
+         subrow from 3r/5r on request; the 2r spacing between them is unchanged. */
       display: grid;
-      grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 2);
+      grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2);
       align-items: end;
     }
     .top-bar-title h1 { text-box-trim: trim-both; text-box-edge: cap alphabetic; }
@@ -8861,12 +8862,13 @@
        drag centred icons down beside the flight. --cal-title-line is the first
        line's box (name font-size x line-height); each icon centres on it. */
     .cal-bar-row2 {
-      /* Grid like row 1: the name fills the columns to the left, the accolade
-         cluster is a fixed one-subcolumn cell at the right edge, so both are
-         sized to the grid whether or not an accolade is present (the auto track
-         collapses to 0 when it is absent, giving the name the full width). */
+      /* Columns identical to row 1 (1fr + a 3-subcol/6g cell): the name fills the
+         left column and STOPS where the money column begins on row 1 — the third
+         column's right edge — so a long title wraps there instead of running the
+         full card width under the buy-in. The accolade cluster occupies the same
+         right cell as the money, under it. */
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr calc(var(--subcol) * 3);
       align-items: end;
       gap: 0;
       --cal-title-line: calc(var(--subrow) * 2);
@@ -8935,10 +8937,15 @@
        baseline floats ~0.9 subrow off the grid line. Without it, the trimmed
        box bottom IS the baseline and lands on the row's bottom r-line (9r). */
     .cal-event-row:not(.open) .cal-bar-row2:not(:has(.cal-event-stage)) .cal-event-name {
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      /* overflow:clip inherits from the base rule; its clip-margin gives the
-         descenders room without moving the baseline. */
+      /* Wrap to a second line instead of truncating: the title is flex:1 up to
+         the buy-in (which sits in the 4th column), so it fills to ~the third
+         column's right edge and wraps there. Each title line is 2r, so a
+         two-line card grows a clean whole 2r (12r → 14r). Clamped at 2 lines. */
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      white-space: normal;
+      overflow: hidden;
     }
     /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
@@ -9748,7 +9755,11 @@
       border-radius: var(--radius);
       /* Top padding clears the venue bar; sides stay symmetrical so the
          conditional variant's negative margins cancel exactly. */
-      padding: calc(var(--subrow) * 3.5) var(--space-xl) calc(var(--subrow) * 1.75);
+      /* Horizontal padding = 2g LESS the border. The border sits inside the
+         border-box, so a flat 2g put content at 3.14g (border + 2g); subtracting
+         the hairline lands the content edges exactly on 3g and 34g. (Was space-xl
+         ≈ 1.47g, which started every child at the off-grid 2.55g.) */
+      padding: calc(var(--subrow) * 3.5) calc(var(--gu) * 2 - var(--bw-hair)) calc(var(--subrow) * 1.75);
       display: flex;
       flex-direction: column;
       gap: var(--space-md); /* 1 subrow — was 6px, off-grid */
@@ -9812,7 +9823,7 @@
          less the 1px border so the content-top lands on a subrow line. The
          playing state (2px border) subtracts 2px — see below. */
       padding-top: calc(var(--space-4xl) - calc(var(--subrow) * 0.125));
-      padding-left: var(--space-xl);
+      padding-left: calc(var(--gu) * 2 - var(--bw-hair)); /* matches the base card padding (2g less the border) */
       box-shadow: var(--elev-2);
     }
 
@@ -10086,7 +10097,9 @@
 
     .dash-event-stats {
       display: flex;
-      gap: var(--space-md);
+      /* 2g gutters (one subcolumn): with 31g content the three flex boxes come to
+         9g each and every box edge lands on a g-line (3–12, 14–23, 25–34). */
+      gap: var(--subcol);
     }
 
     .dash-stat-box {
@@ -10140,7 +10153,9 @@
          below it start on a grid line. Two wrapped tags stay a whole multiple. */
       height: calc(var(--subrow) * 2);
       box-sizing: border-box;
-      padding: 0 var(--space-md);
+      /* 1g horizontal padding so the tag text sits on a g-line (the tag box's
+         left edge is already on one via the card's whole-g padding). */
+      padding: 0 var(--gu);
       border-radius: var(--radius-xs);
     }
 
@@ -10275,7 +10290,7 @@
     }
     .dash-status-stack .dash-action-row {
       display: flex;
-      gap: var(--space-sm);
+      gap: var(--subcol); /* 2g gutters — same 9g-box rhythm as the stat boxes */
     }
     .dash-status-stack .dash-action-row > button {
       flex: 1;
