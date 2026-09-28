@@ -5,11 +5,11 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-09-25 (23:15 UTC, from Windows). The newest section is
-2026-09-25, the Schedule grid sweep — 35 commits, shipped to TestFlight. Below it
-the dated sections run back through 2026-08-30; "Seams to the dashboard" and "The
-build pipeline" were added from the wsop-console side and verified against both
-live services.
+Last updated: 2026-09-28 (from Windows). The newest section is 2026-09-28, the
+Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
+Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
+2026-08-30; "Seams to the dashboard" and "The build pipeline" were added from the
+wsop-console side and verified against both live services.
 
 ---
 
@@ -27,6 +27,70 @@ to the account and readable with WebFetch.
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
+
+---
+
+## 2026-09-28 (Windows) — the Dashboard on the grid + Schedule header-peek fix
+
+`df32787` on master (`b57ffef..df32787`), pushed; Render auto-deployed the web;
+iOS TestFlight build requested from the Mac (`ios-testflight.sh`). Production Vite
+build passed clean. Four files: `styles.css`, `DashboardView.jsx`, `App.jsx`,
+`GridOverlay.jsx`.
+
+**Method — this is how the Dashboard got measured.** The Mac ran the native app
+on an iPhone 17 Pro sim (admin login, Capacitor live-reload against the Windows
+dev server `100.69.155.34:5199`). The Mac CANNOT run JS in the native WKWebView,
+so the grid overlay (`GridOverlay.jsx`, admin-gated) was extended to PRINT the
+numbers — a debug panel that scans every dashboard text element and lists the
+off-grid ones, per-card row heights (`R[...]`), card chrome, section tops
+(`S[...]`), and a stat-cell probe — and the Mac read them off 3x screenshots.
+That loop (edit CSS → HMR → Mac hard-reloads + reads panel) is the only way to
+measure iOS-specific line-box flooring; the Windows harness (WebKit) does NOT
+reproduce it. Safari/safaridriver was banned mid-session — native app only.
+
+**What seated (verified per-pixel on real iOS):** the whole common-path Dashboard.
+Up Next playing card (tag pill 2r, stat box 6r, action buttons 4r, badge stack
+10r), busted card (finished-badge 5r, rebuy nowrap), Friends chips (8r, three
+exact 2r cells), Connections avatars (4r avatar + 2r name = 6r column), all
+section titles/badges, the carousel counter. `ALL SEATED`.
+
+**The recipe that worked** (memory `text-box-trim-inert-under-flex` has it in
+full): iOS WebKit floors every line box to whole px but keeps
+height/min-height/margin/padding sub-px. So seat single-line text in an
+EXACT-HEIGHT CELL — `height: N*r` + `line-height: N*r` + `box-sizing: border-box`
+— never let a line box size a block. Padding-driven buttons get fixed `height` +
+`min-height:0` (+ `nowrap` on long labels — flexbox min-height:auto otherwise
+lets the label wrap and blow past the height). `text-box-trim` is INERT under
+`display:flex` and unsupported on the iOS 15 target — do not rely on it. A card
+lands whole only if its chrome (padding+border+gaps) sums whole AND every row is
+whole. The overlay OFF list is DOCUMENT-WIDE: `.stat-value[3..5]` are the SECOND
+card's cells, not the active one's — cost ~3 rounds of confusion.
+
+**Header peek (Schedule filter bar):** `.sticky-filters::after`, 0.5r of `--bg`
+over the momentum-scroll seam above the pinned date break (background, not
+box-shadow — a late-resolving var fails transparent, not the black currentColor
+the old shadow hit). Raising the date break's z-index ABOVE the bar fixed the
+seam but regressed the scroll-up transit (break painted over the checkboxes), so
+the break stays z-index 5 (below the bar). Pixel-proven flat at rest and across 8
+momentum frames.
+
+**2-line hero names:** a `useLayoutEffect` in `DashboardView` measures each hero
+name's rendered line count and pins `min-height` to `lines*3r` — `:has(br)` only
+catches explicit `<br>`, not width wraps.
+
+**Kept, admin-only (Ethan's call):** the `D` demo-states toggle (injects a
+playing/busted/2-line/anchor card + demo friends/connections, so the live states
+render for grid measurement without live data) and the expanded overlay
+diagnostics. Reusable for the ongoing ~3,900-literal → token migration.
+
+**NOT done (rare, Ethan deferred):** the conditional-on-playing card VARIANT's
+`~0.30r` residue (negative-margin dashed-edge chrome; cards 1/2/3 at 22.33 /
+24.29 / 12.32r). It only renders when another event is actively playing; real
+cards are whole. Card 2 there also carries the 2-line-hero wrap.
+
+**Loose end:** pre-existing seeded test events in the `ham5` account from earlier
+harness work (before this session) may still be present — this session used the
+client-side demo toggle, seeded nothing new, but an old cleanup is worth a pass.
 
 ---
 
