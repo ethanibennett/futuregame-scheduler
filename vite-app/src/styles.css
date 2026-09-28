@@ -9454,6 +9454,10 @@
       height: calc(var(--subrow) * 2);
       margin-bottom: var(--space-2xs);
     }
+    /* Pending ("Until Start") has no progress bar under it, so the 0.25r margin
+       that spaces the bar dangles and makes the block 3.25r. Zero it there: the
+       block is then a clean 3r (1r pad + 2r label row). */
+    .late-reg-wrap:has(.late-reg-label.pending) .late-reg-label-row { margin-bottom: 0; }
 
     .late-reg-label {
       font-size: var(--fs-xs);
