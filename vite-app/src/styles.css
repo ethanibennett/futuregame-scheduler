@@ -7598,26 +7598,12 @@
          to currentColor (dark text), producing a thin black band below
          the sticky. The negative margin already extends the bg edge. */
     }
-    /* Cover the sub-pixel seam where the pinned date break butts the bar's bottom
-       (the two stickies meet at ~0.46px; pixel-sampling showed flat --bg at rest
-       with this hairline, pill intact). MUST stay a hairline: the date break sits
-       BELOW the bar in z-order (z-index 5 < --z-sticky) so anything taller here
-       paints OVER the pill's top and clips it — a 0.5r cover clipped it ~0.44r.
-       A pseudo-element (not padding) so the bar's box height — which the date
-       break's `top` is measured from — never changes; background (not box-shadow)
-       so a late-resolving --bg fails to transparent, not the dark currentColor
-       the old shadow hit. Momentum-scroll bleed through this seam is a thin
-       transient and far preferable to a statically clipped pill. */
-    .sticky-filters::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 100%;
-      height: var(--bw-hair);
-      background: var(--bg);
-      pointer-events: none;
-    }
+    /* No ::after seam-cover here. The date break sits BELOW the bar in z-order,
+       so ANY cover painted below the bar's box overlaps the pill's top and clips
+       it. The seam is closed at the source instead: the date break's sticky `top`
+       is now measured from the bar's FRACTIONAL height (getBoundingClientRect in
+       TournamentsView), so the pill pins flush against the bar with no sub-pixel
+       gap and nothing clipping it. */
 
     .search-bar {
       display: flex;

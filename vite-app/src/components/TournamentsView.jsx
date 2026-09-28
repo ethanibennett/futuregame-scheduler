@@ -1331,13 +1331,15 @@ export default function TournamentsView({
 
   useEffect(() => {
     // The date-break pins under the filter block, so its sticky `top` is the
-    // filter block's height. This is the exact measurement that worked for
-    // months — offsetHeight on mount and resize. The value was never the
-    // problem; a transform:translateZ on .schedule-date-break was breaking the
-    // pin on iOS (see the CSS note there). Kept simple deliberately.
+    // filter block's height. Use the FRACTIONAL height (getBoundingClientRect),
+    // not offsetHeight: the bar's real height is sub-pixel (~91.5px from r-based
+    // padding), and offsetHeight rounds it to an integer, so the pill pinned ~0.5px
+    // off the bar's true bottom — leaving a hairline seam that any cover painted
+    // over the pill's top (the clip). Pinning to the exact fractional bottom seats
+    // the pill flush against the bar: no gap to cover, nothing clipping the pill.
     const measure = () => {
       if (stickyFiltersRef.current) {
-        const h = stickyFiltersRef.current.offsetHeight;
+        const h = stickyFiltersRef.current.getBoundingClientRect().height;
         const style = getComputedStyle(stickyFiltersRef.current);
         const mt = parseFloat(style.marginTop) || 0;
         setDateBreakTop(h + mt);

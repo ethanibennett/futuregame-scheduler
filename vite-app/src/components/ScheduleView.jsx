@@ -154,10 +154,12 @@ export default function ScheduleView({
     const measure = () => {
       const el = schedHeaderRef.current;
       if (!el) return;
-      // Mirror TournamentsView: offsetHeight + marginTop (margin-top is negative,
-      // matching the sticky top: offset, giving the visible header height).
+      // Mirror TournamentsView: FRACTIONAL height (getBoundingClientRect) +
+      // marginTop, so the date break pins flush against the sub-pixel bar bottom.
+      // offsetHeight rounds to an integer and leaves a hairline seam that clips
+      // the pill's top (see the TournamentsView note).
       const mt = parseFloat(getComputedStyle(el).marginTop) || 0;
-      setSchedDateTop(Math.max(0, el.offsetHeight + mt));
+      setSchedDateTop(Math.max(0, el.getBoundingClientRect().height + mt));
     };
     measure();
     const t = setTimeout(measure, 60);
