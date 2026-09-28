@@ -1629,6 +1629,14 @@
       border: 0;
       padding: 0;
       width: calc(var(--subcol) * 4); /* one column (4 subcolumns): holds the today-pill highlight, right edge on the col-1 line */
+      /* Flex, not inline-block: a button lays its child out in a line box, and the
+         line-height leading around the 4r pill makes the button taller than 4r on
+         iOS (the harness doesn't show it). That extra height pushed the whole
+         block below 5r and dropped every baseline below its gridline. As a flex
+         box the button hugs the pill exactly at 4r. align-items:end keeps the pill
+         seated on the 4r line like the block's other children. */
+      display: flex;
+      align-items: flex-end;
       text-align: left;
       cursor: pointer;
       font: inherit;
