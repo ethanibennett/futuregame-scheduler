@@ -454,7 +454,13 @@
          and outer margin are 1 g (½ subcolumn), a subcolumn is 2 g, and a
          column is 8 g. Widths are whole subcolumns; the gutter is the
          half. Height stays on the fixed 8px subrow (--subrow). */
-      --gu:     calc(100vw / 37);     /* base unit g = gutter = margin = ½ subcolumn */
+      /* g = screenWidth / 37, but the g/r grid is a MOBILE system: on a phone it
+         scales with the viewport, above phone width it must FREEZE, or the whole
+         layout balloons on desktop (every size is a multiple of g). Capping the
+         width fed to g at 430px (the widest phone, iPhone Pro Max) keeps phones
+         fluid and holds desktop at phone proportions. The app column is centered
+         at that width by .app-shell below. */
+      --gu:     calc(min(100vw, 430px) / 37);  /* base unit g = gutter = margin = ½ subcolumn */
       --subcol: calc(var(--gu) * 2);  /* one subcolumn */
       --col:    calc(var(--gu) * 8);  /* one column = 4 subcolumns */
       --subrow: calc(var(--gu) * 0.71); /* r — the vertical unit, scales with the
@@ -2077,6 +2083,13 @@
     .app-shell {
       display: flex; flex-direction: column; overflow: hidden;
       flex: 1;
+      /* The g/r grid freezes at 430px (see --gu). On a wider desktop viewport the
+         app is that fixed-width column, centered, instead of a full-width sheet of
+         phone-sized elements stranded on the left. On a phone 37g == 100vw, so
+         this is a no-op there. */
+      width: 100%;
+      max-width: calc(var(--gu) * 37);
+      margin-inline: auto;
       /* Only pad top for safe area — bottom is handled inside .bottom-nav itself */
       padding-top: var(--sa-t);
       /* Header gradient, painted HERE rather than on .top-bar so it starts at the true top of the
