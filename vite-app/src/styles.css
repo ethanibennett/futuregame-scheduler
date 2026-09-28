@@ -7598,26 +7598,23 @@
          to currentColor (dark text), producing a thin black band below
          the sticky. The negative margin already extends the bg edge. */
     }
-    /* Extend the filter bar's opaque edge down half a subrow past its box, to
-       cover the seam where the pinned date break sits. Pixel-sampling showed no
-       peek at rest (the two stickies butt to 0.46px), but under momentum scroll
-       the GPU-promoted bar and the CPU-painted date break repaint a frame apart
-       and a row can bleed through that seam; half a subrow of overlap absorbs
-       that lag. A pseudo-element (not padding) so the bar's box height — which
-       the date break's `top` is measured from — never changes; background (not
-       box-shadow) so a late-resolving --bg fails to transparent, not the dark
-       currentColor the old shadow hit; and it rides the bar's own GPU layer, so
-       it stays opaque over the scrolled rows. It can be this tall without
-       clipping the date pill because the break now paints ABOVE the bar
-       (z-index) and covers this where they overlap; in the side gutters, where
-       the break doesn't reach, there is no content to bleed anyway. */
+    /* Cover the sub-pixel seam where the pinned date break butts the bar's bottom
+       (the two stickies meet at ~0.46px; pixel-sampling showed flat --bg at rest
+       with this hairline, pill intact). MUST stay a hairline: the date break sits
+       BELOW the bar in z-order (z-index 5 < --z-sticky) so anything taller here
+       paints OVER the pill's top and clips it — a 0.5r cover clipped it ~0.44r.
+       A pseudo-element (not padding) so the bar's box height — which the date
+       break's `top` is measured from — never changes; background (not box-shadow)
+       so a late-resolving --bg fails to transparent, not the dark currentColor
+       the old shadow hit. Momentum-scroll bleed through this seam is a thin
+       transient and far preferable to a statically clipped pill. */
     .sticky-filters::after {
       content: '';
       position: absolute;
       left: 0;
       right: 0;
       top: 100%;
-      height: calc(var(--subrow) * 0.5);
+      height: var(--bw-hair);
       background: var(--bg);
       pointer-events: none;
     }

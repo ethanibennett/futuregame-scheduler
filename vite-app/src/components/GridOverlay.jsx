@@ -79,8 +79,14 @@ export default function GridOverlay() {
           '.dash-pl-value', '.dash-pl-label', '.dash-pl-roi',
           '.conn-name', '.dash-collapsed-countdown', '.mini-late-reg-label', '.mini-late-reg-time',
         ];
+        // Only scan when the Dashboard tab is active. Several of these selectors
+        // (late-reg-label/time, mini-late-reg-time) also exist on the Schedule,
+        // where there are hundreds of them — scanning there floods the panel with
+        // OFF(299) over the whole screen. Off the dashboard, show only the base
+        // line below.
+        const isDash = !!document.querySelector('.tab-panel.tab-active .dashboard-view');
         const offs = [];
-        for (const s of dashSels) {
+        if (isDash) for (const s of dashSels) {
           const els = document.querySelectorAll(s);
           els.forEach((e, i) => {
             const r = e.getBoundingClientRect();
@@ -119,10 +125,12 @@ export default function GridOverlay() {
           const interesting = (st && st !== 'next-up') || Math.abs(h - 18) >= 0.06;
           return interesting ? (i + ':' + (st || 'plain') + '/' + h.toFixed(2)) : null;
         }).filter(Boolean).join(' ');
-        // Wrap OFF across lines (4 per line) and print ALL of them — the list is
-        // document-wide (every card is in the DOM), so one read is the full set.
+        // Wrap OFF across lines (4 per line), capped so the panel can't grow into
+        // a wall of text over the content — worst-first, with a "+N more" tail.
+        const offShown = offs.slice(0, 12);
         const offLines = [];
-        for (let i = 0; i < offs.length; i += 4) offLines.push(offs.slice(i, i + 4).join(' '));
+        for (let i = 0; i < offShown.length; i += 4) offLines.push(offShown.slice(i, i + 4).join(' '));
+        if (offs.length > 12) offLines.push('… +' + (offs.length - 12) + ' more');
         // Per-row heights inside the active card — every direct child of
         // .dash-card-content, class + height in r, "!" if not within 0.04 of a
         // whole r. The non-whole rows are exactly what leaves the card off-grid.
@@ -145,7 +153,7 @@ export default function GridOverlay() {
             ' strip' + (strip ? (strip.getBoundingClientRect().height / cssR).toFixed(2) : '-') +
             ' bord' + (parseFloat(cardCs.borderTopWidth) / cssR).toFixed(3)
           : '';
-        const cardStr = (cardEl
+        const cardStr = !isDash ? '' : (cardEl
           ? 'card[' + cardIdx + '] ' + frac((cardEl.getBoundingClientRect().top - barTop) / cssR) + 't/' +
             ((cardEl.getBoundingClientRect().height) / cssR).toFixed(2) + 'h\n' : '') +
           (offs.length ? 'OFF(' + offs.length + '):\n' + offLines.join('\n') : 'ALL SEATED') +
@@ -176,7 +184,7 @@ export default function GridOverlay() {
           ` | sf ${sfr ? R(sfr.top - barTop) + '→' + R(sfr.bottom - barTop) + 'r' : '—'}` +
           ` | db ${db ? R(db.top - barTop) + '→' + R(db.bottom - barTop) + 'r' : '—'}` +
           ` | sfs=[${sfList}] top=${dbTopR}r` +
-          `\n${cardStr}`
+          (cardStr ? `\n${cardStr}` : '')
         );
       } catch (e) { setDbg('dbg err: ' + e.message); }
     };
@@ -219,7 +227,7 @@ export default function GridOverlay() {
   }, []);
   return (
     <div aria-hidden="true" className="grid-dev-overlay">
-      <div style={{ position: 'fixed', left: 0, right: 0, top: 'calc(env(safe-area-inset-top, 0px) + var(--subrow) * 9)', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>
+      <div style={{ position: 'fixed', left: 0, right: 'calc(var(--subrow) * 7.5)', bottom: 'calc(var(--nav-h) + var(--subrow))', maxHeight: '42vh', overflow: 'hidden', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>
       <div className="grid-dev-baseline" style={{ top }} />
       <div className="grid-dev-cols">
         <span className="grid-dev-col" />
