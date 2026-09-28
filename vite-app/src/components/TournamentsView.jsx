@@ -1236,7 +1236,6 @@ export default function TournamentsView({
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
   const importBtnRef = useRef(null);
   const [dateBreakTop, setDateBreakTop] = useState(0);
-  const dateBreakTopRef = useRef(0);
   const scrollAnchorRef = useRef(null);
   const fabContainerRef = useRef(null);
   const [collapsedDates, setCollapsedDates] = useState(() => {
@@ -1331,51 +1330,22 @@ export default function TournamentsView({
   }, [filters]);
 
   useEffect(() => {
-    // Measure the filter block off the LIVE DOM, never a React ref. This view is
-    // rendered with key={debugTimeKey} and behind a visited/dataLoaded gate, so
-    // it can remount and re-create its .sticky-filters node; a ref captured in
-    // this effect can freeze on the old, detached node and keep reporting its
-    // half-height (~6r) forever, which is exactly what pinned the date-break up
-    // inside the filters with its top clipped (device readout: sf 12r but the
-    // pill at ~6r). Querying the panel's current .sticky-filters every time — the
-    // same element the grid overlay's own readout measures correctly at 12r —
-    // and reading its real BOTTOM edge relative to the scroll container is
-    // always the true pin position.
+    // The date-break pins under the filter block, so its sticky `top` is the
+    // filter block's height. This is the exact measurement that worked for
+    // months — offsetHeight on mount and resize. The value was never the
+    // problem; a transform:translateZ on .schedule-date-break was breaking the
+    // pin on iOS (see the CSS note there). Kept simple deliberately.
     const measure = () => {
-      const el = document.querySelector('.tab-panel[data-tab="tournaments"] .sticky-filters')
-        || document.querySelector('.sticky-filters');
-      const ca = document.querySelector('.content-area');
-      if (!el || !ca) return;
-      const v = el.getBoundingClientRect().bottom - ca.getBoundingClientRect().top;
-      // Only commit a real change (>0.5px) so the scroll listener can run every
-      // frame for free; a stale value self-corrects on the first scroll.
-      if (v > 0 && Math.abs(v - dateBreakTopRef.current) > 0.5) {
-        dateBreakTopRef.current = v;
-        setDateBreakTop(v);
+      if (stickyFiltersRef.current) {
+        const h = stickyFiltersRef.current.offsetHeight;
+        const style = getComputedStyle(stickyFiltersRef.current);
+        const mt = parseFloat(style.marginTop) || 0;
+        setDateBreakTop(h + mt);
       }
     };
-    // Four nets so no remount or layout-timing quirk can bring the clip back:
-    // settle-frame passes, a ResizeObserver on the live node, a guarded scroll
-    // listener (re-checks the instant the pin matters), and resize/orientation.
     measure();
-    const rafs = [requestAnimationFrame(() => { measure(); requestAnimationFrame(measure); })];
-    const timers = [setTimeout(measure, 150), setTimeout(measure, 500), setTimeout(measure, 1200)];
-    let ro;
-    const roEl = document.querySelector('.tab-panel[data-tab="tournaments"] .sticky-filters')
-      || document.querySelector('.sticky-filters');
-    if (roEl && 'ResizeObserver' in window) { ro = new ResizeObserver(measure); ro.observe(roEl); }
-    const ca = document.querySelector('.content-area');
-    if (ca) ca.addEventListener('scroll', measure, { passive: true });
     window.addEventListener('resize', measure);
-    window.addEventListener('orientationchange', measure);
-    return () => {
-      rafs.forEach(cancelAnimationFrame);
-      timers.forEach(clearTimeout);
-      if (ro) ro.disconnect();
-      if (ca) ca.removeEventListener('scroll', measure);
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('orientationchange', measure);
-    };
+    return () => window.removeEventListener('resize', measure);
   }, [filters, search]);
 
   const buyinOptions = useMemo(() =>

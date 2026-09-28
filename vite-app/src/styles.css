@@ -1644,10 +1644,14 @@
          hole a card scrolling under showed THROUGH — the peek Ethan flagged as
          "this can never happen" — so the background now covers the whole box. */
       background: var(--bg);
-      /* Own compositing layer, the same fix .sticky-filters carries: an iOS
-         sticky element without one lets rows bleed over it during momentum
-         scroll. Opaque bg alone did not stop it; the layer does. */
-      transform: translateZ(0);
+      /* NO transform / translateZ here. A transform on a position:sticky element
+         breaks its pinning on iOS WKWebView (desktop WebKit tolerates it, which
+         is why the harness never reproduced the clip): the pill kept pinning at
+         ~half its `top`, up inside the filters, no matter how the top was
+         measured. This element pinned correctly for months WITHOUT a compositing
+         layer here; the layer was added as a momentum-bleed band-aid and is what
+         broke the pin. The opaque background is what keeps rows from showing
+         through. */
       user-select: none;
     }
     .schedule-date-break[onclick],
