@@ -1602,42 +1602,24 @@
        because both sticky ancestors above this one deleted their shadows
        when the variable resolved late.
        ================================================================== */
-    /* The sticky element is deliberately BARE: position, z-index, nothing else.
-       iOS WKWebView refuses to pin a sticky element that carries an explicit
-       height OR a transform (desktop WebKit tolerates both, which is why the
-       harness never reproduced the clip and every earlier fix missed). So the
-       height, background, compositing layer and flex layout all live on
-       .date-break-inner instead — that element is not the sticky one, so none of
-       them break the pin. z-index MUST stay below .schedule-sticky-header /
-       .gto-sticky-header (z 6), the section headers the day groups scroll under. */
+    /* Layout lives directly on the sticky element (no inner wrapper). CRITICAL for
+       iOS WKWebView: NO explicit height and NO transform anywhere in this subtree,
+       or the pill stops pinning and slides under the filters cut off. The 5r box
+       comes from content: the pill inside is 4r and this 1r bottom-padding sits
+       under it (4r + 1r = 5r); align-items:end seats the count and weekday on the
+       4r line. The opaque background covers rows scrolling under. z-index MUST stay
+       below .schedule-sticky-header / .gto-sticky-header (z 6). */
     .schedule-date-break {
       position: sticky;
       z-index: 5;
-      user-select: none;
-    }
-    .date-break-inner {
       display: flex;
-      /* align-items:end + the 1r bottom padding lands every child's trimmed
-         baseline on the 4r line (the pill's bottom edge) with no nudge — the
-         count and weekday on the pill's baseline. */
       align-items: end;
       box-sizing: border-box;
-      /* No flex gap: the count carries its own 1g left margin (lands on the col-2
-         line) and the sort control uses margin-left:auto. */
       gap: 0;
-      /* A fixed 5r box: the pill is a 4r line box flush at the top, the 1r bottom
-         padding is the gap before the edge cards disappear behind. Height here is
-         fine — this element is not the sticky one. */
-      height: calc(var(--subrow) * 5);
       padding: 0 0 var(--subrow);
       color: var(--text);
-      /* Solid, opaque fill — the boundary is the fill, not a line, and it is what
-         covers rows scrolling under the pinned pill. NO transform / translateZ /
-         will-change here: iOS WKWebView refuses to pin a sticky element that has a
-         transformed descendant, not just a transformed self, so a compositing
-         layer anywhere in this subtree re-breaks the pin. The opaque background
-         alone does the covering. */
       background: var(--bg);
+      user-select: none;
     }
     .schedule-date-break[onclick],
     .schedule-date-break.is-collapsible { cursor: pointer; }
