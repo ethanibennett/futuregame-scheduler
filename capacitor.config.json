@@ -8,7 +8,8 @@
   "ios": {
     "contentInset": "never",
     "backgroundColor": "#111111",
-    "preferredContentMode": "mobile"
+    "preferredContentMode": "mobile",
+    "webContentsDebuggingEnabled": true
   },
   "android": {
     "backgroundColor": "#111111"
