@@ -54,24 +54,31 @@ export default function DateBreak({
       style={{ top: top + 'px' }}
       {...(collapsible ? { onClick: onToggle } : {})}
     >
-      {onPillClick ? (
-        <button type="button" className="date-break-pill-btn" onClick={onPillClick} aria-label={`Scroll to ${monthAbbr} ${dayNum}`}>
-          {pill}
-        </button>
-      ) : pill}
+      {/* The sticky element itself must stay bare — no height, no transform — or
+          iOS WKWebView refuses to pin it. The 5r box, the opaque background and
+          the compositing layer that blocks momentum-scroll bleed all live on this
+          inner wrapper, which is not the sticky element, so none of them break
+          the pin. */}
+      <div className="date-break-inner">
+        {onPillClick ? (
+          <button type="button" className="date-break-pill-btn" onClick={onPillClick} aria-label={`Scroll to ${monthAbbr} ${dayNum}`}>
+            {pill}
+          </button>
+        ) : pill}
 
-      {eventCount !== null && (
-        <span className="date-break-count">{eventCount} event{eventCount !== 1 ? 's' : ''}</span>
-      )}
-
-      <span className="date-break-end">
-        <span className="date-break-dow">{dayOfWeek}</span>
-        {collapsible && (
-          <span className={`date-break-chev${collapsed ? '' : ' open'}`} aria-hidden="true">
-            {Icon.chevRight ? Icon.chevRight() : null}
-          </span>
+        {eventCount !== null && (
+          <span className="date-break-count">{eventCount} event{eventCount !== 1 ? 's' : ''}</span>
         )}
-      </span>
+
+        <span className="date-break-end">
+          <span className="date-break-dow">{dayOfWeek}</span>
+          {collapsible && (
+            <span className={`date-break-chev${collapsed ? '' : ' open'}`} aria-hidden="true">
+              {Icon.chevRight ? Icon.chevRight() : null}
+            </span>
+          )}
+        </span>
+      </div>
     </div>
   );
 }

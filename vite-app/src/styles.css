@@ -1602,69 +1602,42 @@
        because both sticky ancestors above this one deleted their shadows
        when the variable resolved late.
        ================================================================== */
+    /* The sticky element is deliberately BARE: position, z-index, nothing else.
+       iOS WKWebView refuses to pin a sticky element that carries an explicit
+       height OR a transform (desktop WebKit tolerates both, which is why the
+       harness never reproduced the clip and every earlier fix missed). So the
+       height, background, compositing layer and flex layout all live on
+       .date-break-inner instead — that element is not the sticky one, so none of
+       them break the pin. z-index MUST stay below .schedule-sticky-header /
+       .gto-sticky-header (z 6), the section headers the day groups scroll under. */
     .schedule-date-break {
       position: sticky;
-      /* MUST stay below .schedule-sticky-header and .gto-sticky-header, which
-         are z-index 6 — those are the section headers the day groups scroll
-         UNDER. This was inline zIndex 5 before the component existed; moving it
-         onto --z-raised (10) put the date breaks on top of the header, which
-         read as the header falling behind the scroll. The app-level --z-*
-         ladder is for portalled layers, not for this local three-step stack
-         (rows → date break → section header). */
       z-index: 5;
+      user-select: none;
+    }
+    .date-break-inner {
       display: flex;
-      /* align-items:end + a 1r bottom padding lands every child's trimmed
+      /* align-items:end + the 1r bottom padding lands every child's trimmed
          baseline on the 4r line (the pill's bottom edge) with no nudge — the
-         count and weekday on the pill's baseline, exactly as asked. */
+         count and weekday on the pill's baseline. */
       align-items: end;
       box-sizing: border-box;
-      /* No flex gap: the count carries its own 1g left margin, so it lands
-         exactly on the col-2 line (pill ends at 9g + 1g = 10g) with the
-         col-1/col-2 gutter immediately to its left. The sort control on the
-         right uses margin-left:auto, so it needs no gap either. */
+      /* No flex gap: the count carries its own 1g left margin (lands on the col-2
+         line) and the sort control uses margin-left:auto. */
       gap: 0;
-      /* The date belongs to the events under it, so it should sit closer to
-         them than to the day above. It was 12px above and 16px BELOW, against
-         6px between cards — so the biggest gap in the group fell between the
-         date and its own first event, and the date read as floating between
-         two days rather than heading one.
-
-         Below is now the same 6px that separates two cards. Above is 16px on
-         top of the previous card's own 6px margin, so a day boundary is a
-         22px break and everything inside a day is a 6px rhythm. */
-      /* Flush to the content rails (no side padding) so the date pill sits on
-         the col-1 line and the weekday/chevron on the right margin. The block is
-         a fixed 40px (5 subrows) and sticks flush under the sticky filters, whose
-         bottom edge is on the 160 line (the 5th primary row) — so the block
-         spans 160→200, both edges on subrow lines. No top padding: the pill (a
-         32px = 4-subrow line box) sits flush at the block top, 160→192. The one
-         subrow beneath it (192→200) is the gap before the edge cards disappear
-         behind. That edge draws NO line: the solid background alone is the
-         boundary (an inset hairline used to sit here and read as a stray rule
-         under the date). The event count seats on the pill's bottom edge (192)
-         rather than the day's text baseline — see .date-break-count. */
-      /* NO explicit height. An explicit height on a position:sticky element stops
-         it pinning on iOS WKWebView — the pill just scrolls under the filters,
-         cut off (desktop WebKit ignores the bug, so the harness never showed it).
-         Confirmed on-device: height:auto makes it stick. The block is still a
-         clean 5r without the property: the pill inside is 4r and this 1r
-         bottom-padding sits under it (4r + 1r = 5r), and align-items:end seats
-         the count and weekday on the 4r line exactly as before. */
-      padding: 0 0 var(--subrow); /* 1r under the 4r pill: the block is 5r */
+      /* A fixed 5r box: the pill is a 4r line box flush at the top, the 1r bottom
+         padding is the gap before the edge cards disappear behind. Height here is
+         fine — this element is not the sticky one. */
+      height: calc(var(--subrow) * 5);
+      padding: 0 0 var(--subrow);
       color: var(--text);
-      /* Solid, not a fade to transparent. The old 6px transparent tail was a
-         hole a card scrolling under showed THROUGH — the peek Ethan flagged as
-         "this can never happen" — so the background now covers the whole box. */
+      /* Solid, opaque: the boundary is the fill, not a line. This plus the
+         compositing layer below is what keeps rows from showing through as they
+         scroll under during momentum (the "header peek"). */
       background: var(--bg);
-      /* NO transform / translateZ here. A transform on a position:sticky element
-         breaks its pinning on iOS WKWebView (desktop WebKit tolerates it, which
-         is why the harness never reproduced the clip): the pill kept pinning at
-         ~half its `top`, up inside the filters, no matter how the top was
-         measured. This element pinned correctly for months WITHOUT a compositing
-         layer here; the layer was added as a momentum-bleed band-aid and is what
-         broke the pin. The opaque background is what keeps rows from showing
-         through. */
-      user-select: none;
+      /* Compositing layer to stop the momentum-scroll bleed. Safe HERE (it broke
+         the pin only when it sat on the sticky element itself). */
+      transform: translateZ(0);
     }
     .schedule-date-break[onclick],
     .schedule-date-break.is-collapsible { cursor: pointer; }
