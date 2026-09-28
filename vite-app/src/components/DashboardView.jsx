@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -180,7 +180,7 @@ export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, shareBuddies,
   buddyLiveUpdates, buddyEvents, displayName, onPost, onDeleteUpdate,
   onAddTracking, onResetResults, onNavigate, tournaments, onToggle, onRefresh,
-  onOpenInSchedule
+  onOpenInSchedule, demoStates = false
 }) {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
@@ -297,6 +297,34 @@ export default function DashboardView({
 
   // Combined "What's Next" list
   const whatsNextEvents = useMemo(() => {
+    // Dev-only fixtures for grid measurement on iOS. The admin "D" toggle
+    // (demoStates) injects the conditional card states — playing, busted,
+    // expanded stats — that Ethan's all-future schedule never renders, so the
+    // grid overlay can measure them in the native app. The ?democard URL path
+    // stays as the single seated anchor card (safaridriver use).
+    const demo = demoStates || (typeof window !== 'undefined' && window.location.search.includes('democard'));
+    if (demo) {
+      const mk = (o) => {
+        const d = new Date(); d.setDate(d.getDate() + (o.days ?? 11));
+        return {
+          id: o.id, event_name: o.name, buyin: o.buyin ?? 500, venue: 'WSOP.COM',
+          date: d.toISOString().slice(0, 10), time: o.time ?? '18:30',
+          _type: o._type ?? 'anchor', _future: (o.days ?? 11) > 0,
+          prize_pool: o.prize_pool ?? null, game_variant: 'PLO', starting_chips: 20000,
+          level_duration: o.level_duration ?? null, late_reg_end: o.late_reg_end ?? null,
+          reentry: o.reentry,
+        };
+      };
+      if (!demoStates) return [mk({ id: 'demo-1', name: 'PLO 6-Max' })];
+      // Playing (badge + action buttons + stats), busted (rebuy/finished),
+      // a long 2-line name to exercise the wrap seat, and a seated anchor.
+      return [
+        mk({ id: 'demo-playing', name: 'PLO 6-Max', days: -1, time: '12:00', level_duration: '40 min' }),
+        mk({ id: 'demo-busted', name: 'NLH Mystery Bounty', days: -1, time: '12:00', level_duration: '40 min', reentry: 'unlimited' }),
+        mk({ id: 'demo-stats', name: 'PLO $200K GTD Mystery Bounty 6-Max', days: -1, time: '12:00', level_duration: '40 min' }),
+        mk({ id: 'demo-anchor', name: 'PLO 6-Max', days: 11 }),
+      ];
+    }
     const events = [...baggedEvents, ...activePrevDayEvents];
     if (baggedEvents.length > 0) {
       events.push(...todayEvents.map(t => ({
@@ -331,7 +359,25 @@ export default function DashboardView({
       });
 
     return [...events, ...later];
-  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO]);
+  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates]);
+
+  // Seat multi-line hero event names on the grid. A single line is held at 3r by
+  // CSS min-height, and an explicit "- Day 1" <br> is caught by :has(br) → 6r,
+  // but a name that WRAPS on width carries no <br>, and two floored 23px lines
+  // come to 5.97r rather than a whole 6r — leaving the card fractionally tall.
+  // CSS can't count wrapped lines, so measure the rendered content and pin
+  // min-height to that many whole 3r rows. Runs after layout, before paint.
+  useLayoutEffect(() => {
+    const subrow = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--subrow')) || 0;
+    if (!subrow) return;
+    document.querySelectorAll(
+      '.dash-event-card.playing .dash-event-name, .dash-event-card.next-up .dash-event-name, .dash-event-card.manually-expanded .dash-event-name'
+    ).forEach((el) => {
+      el.style.minHeight = '0px';               // collapse to natural content to count lines
+      const lines = Math.max(1, Math.round(el.scrollHeight / (subrow * 3)));
+      el.style.minHeight = `calc(var(--subrow) * ${lines * 3})`;
+    });
+  }, [whatsNextEvents, selectedUpNextIdx]);
 
   // Next upcoming event (when nothing today)
   function parseLevelDuration(t) {
@@ -352,8 +398,9 @@ export default function DashboardView({
     (myActiveUpdates || []).forEach(u => {
       if (!u.is_busted && !u.is_bagged) map[u.tournament_id] = u;
     });
+    if (demoStates) map['demo-playing'] = { tournament_id: 'demo-playing', stack: '42000', is_busted: 0, is_bagged: 0 };
     return map;
-  }, [myActiveUpdates]);
+  }, [myActiveUpdates, demoStates]);
 
   // Busted event map
   const bustedEventMap = useMemo(() => {
@@ -361,8 +408,9 @@ export default function DashboardView({
     (myActiveUpdates || []).forEach(u => {
       if (u.is_busted) map[u.tournament_id] = u;
     });
+    if (demoStates) map['demo-busted'] = { tournament_id: 'demo-busted', is_busted: 1, bust_count: 1 };
     return map;
-  }, [myActiveUpdates]);
+  }, [myActiveUpdates, demoStates]);
 
   const hasActivePlaying = useMemo(() =>
     whatsNextEvents.some(e => !!activeEventMap[e.id]),
@@ -770,6 +818,14 @@ export default function DashboardView({
 
   // Friends currently playing
   const activeFriends = useMemo(() => {
+    if (demoStates) {
+      return [
+        { id: 'demo-f1', username: 'demo_alice', display_name: 'Alice D.', avatar: null,
+          liveUpdate: { stack: '85000', sb: '500', bb: '1000', bbAnte: '1000', eventName: 'PLO 6-Max Day 1', isBusted: false } },
+        { id: 'demo-f2', username: 'demo_bob', display_name: 'Bob R.', avatar: null,
+          liveUpdate: { stack: '32000', bb: '800', eventName: 'NLH Championship', isBusted: false } },
+      ];
+    }
     if (!shareBuddies || !buddyLiveUpdates) return [];
     return shareBuddies
       .filter(b => {
@@ -780,7 +836,7 @@ export default function DashboardView({
         ...b,
         liveUpdate: buddyLiveUpdates[b.id],
       }));
-  }, [shareBuddies, buddyLiveUpdates]);
+  }, [shareBuddies, buddyLiveUpdates, demoStates]);
 
   // Friends with events scheduled today
   const scheduledFriends = useMemo(() => {
@@ -1094,7 +1150,7 @@ export default function DashboardView({
                 onClick={() => setConnDropdownId(connDropdownId === f.id ? null : f.id)}
                 ref={connDropdownId === f.id ? connDropdownRef : undefined}
               >
-                <Avatar src={f.avatar} username={f.username} size={32} />
+                <Avatar src={f.avatar} username={f.username} size="calc(var(--subrow) * 4)" />
                 {f.isPlaying && <span className="playing-dot" />}
                 <span className="conn-name">{displayName(f)}</span>
                 {connDropdownId === f.id && (() => {

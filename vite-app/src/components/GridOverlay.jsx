@@ -56,12 +56,127 @@ export default function GridOverlay() {
         }).join(',');
         const dbEl0 = document.querySelector('.schedule-date-break');
         const dbTopR = dbEl0 ? (parseFloat(getComputedStyle(dbEl0).top) / cssR).toFixed(2) : '—';
+        // Dashboard card seating: each element's bottom-edge distance off the
+        // nearest whole r (its baseline, since these are text-box-trimmed). ~0
+        // means seated. Printed so a sim screenshot shows the truth with no JS
+        // console — the whole point of measuring in the native app.
+        const frac = (v) => { const n = v - Math.round(v); return (n >= 0 ? '+' : '') + n.toFixed(2); };
+        // Dashboard sweep scanner: measure every text-bearing dashboard element's
+        // bottom-edge drift off the nearest whole r and list only the ones that
+        // are off (|frac| >= 0.07 — above the ~0.03 origin rounding every element
+        // carries). One sim screenshot = the whole worklist; the list shrinks as
+        // rows get seated. A short label + [i] when a selector has many.
+        const dashSels = [
+          '.dashboard-section-title', '.dashboard-section-badge',
+          '.dash-event-name', '.dash-event-buyin', '.dash-event-meta', '.dash-event-tag',
+          '.late-reg-label', '.late-reg-time',
+          '.dash-stat-value', '.dash-stat-label',
+          '.dash-upnext-counter', '.dash-upnext-pos', '.dash-upnext-step',
+          '.dash-start-btn', '.dash-update-btn', '.dash-bag-btn', '.dash-bust-btn',
+          '.dash-rebuy-btn', '.dash-no-rebuy', '.dash-playing-badge', '.dash-finished-badge',
+          '.dash-restart-badge', '.dash-status-row',
+          '.dash-friend-chip', '.friend-name', '.friend-event', '.friend-stack',
+          '.dash-pl-value', '.dash-pl-label', '.dash-pl-roi',
+          '.conn-name', '.dash-collapsed-countdown', '.mini-late-reg-label', '.mini-late-reg-time',
+        ];
+        const offs = [];
+        for (const s of dashSels) {
+          const els = document.querySelectorAll(s);
+          els.forEach((e, i) => {
+            const r = e.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0) return; // hidden / absent
+            const f = ((r.bottom - barTop) / cssR); const fr = f - Math.round(f);
+            if (Math.abs(fr) >= 0.07) {
+              offs.push(s.replace('.dashboard-', '.').replace('.dash-', '.') +
+                (els.length > 1 ? '[' + i + ']' : '') + ':' + (fr >= 0 ? '+' : '') + fr.toFixed(2));
+            }
+          });
+        }
+        offs.sort((a, b) => Math.abs(parseFloat(b.split(':')[1])) - Math.abs(parseFloat(a.split(':')[1])));
+        // Section block heights in r — a non-whole one is what pushes the section
+        // below it off-grid. Flag any that aren't within 0.05 of a whole r.
+        const secStr = [...document.querySelectorAll('.dashboard-section')].map((s) => {
+          const r = s.getBoundingClientRect();
+          const t = (r.top - barTop) / cssR; const h = r.height / cssR;
+          const tf = t - Math.round(t);
+          // topFrac@height — a non-whole top (prefixed !) means the gap/margin
+          // above this section is off; a non-whole height means the section body.
+          return (Math.abs(tf) >= 0.05 ? '!' : '') + (tf >= 0 ? '+' : '') + tf.toFixed(2) + '@' + h.toFixed(2);
+        }).join(' ');
+        // Measure the ACTIVE carousel card (the visible one), not card[0], and
+        // rescan on swipe (the 500ms interval already re-runs this).
+        const track = document.querySelector('.dash-carousel-track');
+        const cardIdx = track ? (parseInt(track.dataset.idx, 10) || 0) : 0;
+        const cards = document.querySelectorAll('.dash-event-card');
+        const cardEl = cards[cardIdx] || cards[0];
+        // Per-card state + height: list only the cards that differ from the plain
+        // next-up/18r default (a 2-line title makes a taller card; playing/busted
+        // /bagged/conditional/reg-closed change the body) so 2-line wraps and any
+        // live states surface without dumping all 20.
+        const cStr = [...cards].map((c, i) => {
+          const st = c.className.replace('dash-event-card', '').trim().replace(/\s+/g, '.');
+          const h = c.getBoundingClientRect().height / cssR;
+          const interesting = (st && st !== 'next-up') || Math.abs(h - 18) >= 0.06;
+          return interesting ? (i + ':' + (st || 'plain') + '/' + h.toFixed(2)) : null;
+        }).filter(Boolean).join(' ');
+        // Wrap OFF across lines (4 per line) and print ALL of them — the list is
+        // document-wide (every card is in the DOM), so one read is the full set.
+        const offLines = [];
+        for (let i = 0; i < offs.length; i += 4) offLines.push(offs.slice(i, i + 4).join(' '));
+        // Per-row heights inside the active card — every direct child of
+        // .dash-card-content, class + height in r, "!" if not within 0.04 of a
+        // whole r. The non-whole rows are exactly what leaves the card off-grid.
+        const cc = cardEl && cardEl.querySelector('.dash-card-content');
+        const rowStr = cc ? [...cc.children].map((ch) => {
+          const h = ch.getBoundingClientRect().height / cssR;
+          const cls = (typeof ch.className === 'string' && ch.className.split(' ')[0]) || ch.tagName.toLowerCase();
+          return (Math.abs(h - Math.round(h)) >= 0.04 ? '!' : '') + cls.replace('dash-', '') + '/' + h.toFixed(2);
+        }).join(' ') : 'no-cc';
+        // Card chrome in r: the inter-row gap, the card's own top/bottom padding,
+        // the venue strip height, the border — the non-row space that must also
+        // sum to whole for the card to land on grid.
+        const cs = cc ? getComputedStyle(cc) : null;
+        const cardCs = cardEl ? getComputedStyle(cardEl) : null;
+        const strip = cardEl && cardEl.querySelector('.dash-venue-strip');
+        const chromeStr = (cs && cardCs)
+          ? 'gap' + (parseFloat(cs.rowGap) / cssR).toFixed(2) +
+            ' padT' + (parseFloat(cardCs.paddingTop) / cssR).toFixed(2) +
+            ' padB' + (parseFloat(cardCs.paddingBottom) / cssR).toFixed(2) +
+            ' strip' + (strip ? (strip.getBoundingClientRect().height / cssR).toFixed(2) : '-') +
+            ' bord' + (parseFloat(cardCs.borderTopWidth) / cssR).toFixed(3)
+          : '';
+        const cardStr = (cardEl
+          ? 'card[' + cardIdx + '] ' + frac((cardEl.getBoundingClientRect().top - barTop) / cssR) + 't/' +
+            ((cardEl.getBoundingClientRect().height) / cssR).toFixed(2) + 'h\n' : '') +
+          (offs.length ? 'OFF(' + offs.length + '):\n' + offLines.join('\n') : 'ALL SEATED') +
+          `\nS[${secStr}]` +
+          (cStr ? `\nC[${cStr}]` : '') +
+          `\nR[${rowStr}]` +
+          (chromeStr ? `\n${chromeStr}` : '') +
+          // Locate the persistent stat −0.47: the first stat-value's absolute
+          // top/bottom frac AND its position INSIDE its own box. If inbox reads
+          // 1.00-3.00 the cell is seated and the offset is the box's position
+          // above it; if it reads e.g. 1.47-3.47 the cell itself is mis-seated.
+          (() => {
+            const sv = cardEl && cardEl.querySelector('.dash-stat-value');
+            if (!sv) return '';
+            const r = sv.getBoundingClientRect();
+            const bt = (r.top - barTop) / cssR, bb = (r.bottom - barTop) / cssR;
+            const box = sv.closest('.dash-stat-box');
+            const boxr = box && box.getBoundingClientRect();
+            const es = cardEl.querySelector('.dash-event-stats');
+            const esr = es && es.getBoundingClientRect();
+            return '\nSV abs ' + frac(bt) + '/' + frac(bb) +
+              (boxr ? ' inbox ' + ((r.top - boxr.top) / cssR).toFixed(2) + '-' + ((r.bottom - boxr.top) / cssR).toFixed(2) : '') +
+              (esr ? ' esTop ' + frac((esr.top - barTop) / cssR) : '');
+          })();
         setDbg(
           `iw=${window.innerWidth} cssR=${cssR.toFixed(3)} jsR=${jsR.toFixed(3)}` +
           ` | bar=${barTop.toFixed(1)} ca=${caTop.toFixed(1)} scroll=${ca ? ca.scrollTop.toFixed(0) : '—'}` +
           ` | sf ${sfr ? R(sfr.top - barTop) + '→' + R(sfr.bottom - barTop) + 'r' : '—'}` +
           ` | db ${db ? R(db.top - barTop) + '→' + R(db.bottom - barTop) + 'r' : '—'}` +
-          ` | sfs=[${sfList}] top=${dbTopR}r`
+          ` | sfs=[${sfList}] top=${dbTopR}r` +
+          `\n${cardStr}`
         );
       } catch (e) { setDbg('dbg err: ' + e.message); }
     };
@@ -104,7 +219,7 @@ export default function GridOverlay() {
   }, []);
   return (
     <div aria-hidden="true" className="grid-dev-overlay">
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(var(--nav-h) + var(--subrow))', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.82)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all' }}>{dbg}</div>
+      <div style={{ position: 'fixed', left: 0, right: 0, top: 'calc(env(safe-area-inset-top, 0px) + var(--subrow) * 9)', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>
       <div className="grid-dev-baseline" style={{ top }} />
       <div className="grid-dev-cols">
         <span className="grid-dev-col" />

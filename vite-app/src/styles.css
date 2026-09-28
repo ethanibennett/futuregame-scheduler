@@ -1611,6 +1611,10 @@
        below .schedule-sticky-header / .gto-sticky-header (z 6). */
     .schedule-date-break {
       position: sticky;
+      /* Below the sticky filter bar (--z-sticky = 100): a break scrolling up out
+         of view must disappear BEHIND the filters, so it cannot outrank them.
+         (Raising it above to close the momentum seam regressed exactly this —
+         the break painted over the checkboxes while transiting up.) */
       z-index: 5;
       display: flex;
       align-items: end;
@@ -7594,6 +7598,29 @@
          to currentColor (dark text), producing a thin black band below
          the sticky. The negative margin already extends the bg edge. */
     }
+    /* Extend the filter bar's opaque edge down half a subrow past its box, to
+       cover the seam where the pinned date break sits. Pixel-sampling showed no
+       peek at rest (the two stickies butt to 0.46px), but under momentum scroll
+       the GPU-promoted bar and the CPU-painted date break repaint a frame apart
+       and a row can bleed through that seam; half a subrow of overlap absorbs
+       that lag. A pseudo-element (not padding) so the bar's box height — which
+       the date break's `top` is measured from — never changes; background (not
+       box-shadow) so a late-resolving --bg fails to transparent, not the dark
+       currentColor the old shadow hit; and it rides the bar's own GPU layer, so
+       it stays opaque over the scrolled rows. It can be this tall without
+       clipping the date pill because the break now paints ABOVE the bar
+       (z-index) and covers this where they overlap; in the side gutters, where
+       the break doesn't reach, there is no content to bleed anyway. */
+    .sticky-filters::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      height: calc(var(--subrow) * 0.5);
+      background: var(--bg);
+      pointer-events: none;
+    }
 
     .search-bar {
       display: flex;
@@ -9462,7 +9489,10 @@
     .late-reg-label-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      /* flex-end, not center: the label/time line boxes (15px) are shorter than
+         the 2r row, so bottom-aligning them seats both bottoms on the row's 2r
+         grid line. The divider keeps itself centered via align-self below. */
+      align-items: flex-end;
       gap: var(--space-md);
       height: calc(var(--subrow) * 2);
       margin-bottom: var(--space-2xs);
@@ -9477,6 +9507,13 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
+      /* Label (fs-xs) and time (fs-sm) are different sizes, so centering them in
+         the 2r row left their bottoms mismatched and off-grid (+0.07 / +0.20).
+         Force both line boxes to a whole 2r — floors to 15px, which fits inside
+         the 15.42px row — and bottom-align the row (below), so both bottoms land
+         on the same 2r line. No text-box-trim: it's a no-op on a flex item and
+         unsupported on the iOS 15 deploy target, so line-height carries it. */
+      line-height: calc(var(--subrow) * 2);
     }
 
     /* The ramp used to run open #b0b0b0 -> soon #909090 -> urgent #707070:
@@ -9490,11 +9527,14 @@
     .late-reg-label.closed { color: var(--text-muted); }
     .late-reg-label.pending { color: var(--text-muted); }
     .late-reg-time.pending  { color: var(--text-muted); }
-    .late-reg-sep { flex: 1; height: calc(var(--subrow) * 0.125); background: var(--border); }
+    .late-reg-sep { flex: 1; height: calc(var(--subrow) * 0.125); background: var(--border); align-self: center; }
 
     .late-reg-time {
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
+      /* Same whole-2r line box as the label so both bottoms share the row's
+         lower 2r line (see .late-reg-label). */
+      line-height: calc(var(--subrow) * 2);
     }
 
     .late-reg-time.open   { color: var(--text-muted); }
@@ -9793,6 +9833,17 @@
       box-shadow: var(--elev-2);
     }
 
+    /* The card box was 17.875r: content-top lands on 4r, content is 12r, but the
+       base 1.75r bottom padding + the 1px (0.125r) bottom border = 1.875r below
+       the content, leaving it 0.125r short of a whole 18r. Bump the bottom
+       padding to 1.875r for the 1px-border states so bottom padding + border =
+       2.0r and the card is a whole 18r. The playing state is excluded: its 2px
+       (0.25r) border already makes 1.75r + 0.25r = 2.0r, so it is whole as-is. */
+    .dash-event-card.next-up,
+    .dash-event-card.manually-expanded {
+      padding-bottom: calc(var(--subrow) * 1.875);
+    }
+
     @media (hover: hover) and (pointer: fine) {
       .dash-event-card:hover {
         background: var(--hover-overlay);
@@ -9980,17 +10031,26 @@
     .dash-event-card.manually-expanded .dash-event-name {
       font-size: var(--fs-lg);
       line-height: calc(var(--subrow) * 3); /* 3 subrows per line */
-      /* Seat both name baselines on subrow lines (display font sits 2px below
-         the line at this size); transform doesn't shift the meta/buyin below. */
-      transform: translateY(calc(var(--subrow) * -0.25));
+      /* Seat the alphabetic baseline on the 3r line without a nudge: iOS floors
+         a 3r line box to 23px (0.14px short of the grid), so instead of leaning
+         on line-height, trim the box to cap height and bottom-align it inside a
+         min-height that holds at a whole r (min-height resolves sub-px on iOS;
+         line boxes floor to integer px). The last line's baseline then lands on
+         the grid line whatever the font's own line metrics are. */
+      min-height: calc(var(--subrow) * 3);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-box-trim: trim-both;
+      text-box-edge: cap alphabetic;
     }
-    /* A two-line name (base + "- Day 1" stage) carries ~1.5px of display-font
-       line-gap below its last line, which would push the stats/actions off the
-       grid. Pull it back so everything below the header stays on subrow lines. */
+    /* A two-line name (base + "- Day 1" stage) is two 3r line boxes. The
+       min-height carries to 6r so the bottom-aligned, trimmed box still seats
+       its last baseline on the grid — no negative-margin nudge. */
     .dash-event-card.playing .dash-event-name:has(br),
     .dash-event-card.next-up .dash-event-name:has(br),
     .dash-event-card.manually-expanded .dash-event-name:has(br) {
-      margin-bottom: calc(var(--subrow) * -0.25);
+      min-height: calc(var(--subrow) * 6);
     }
 
     /* Was --accent, which is grey — the figure receded on a card built around
@@ -10004,6 +10064,15 @@
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
       line-height: calc(var(--subrow) * 3); /* match the event name's first line box */
+      /* Same baseline-seating as the hero name: trim to cap + bottom-align in a
+         whole-r min-height, so the figure's baseline lands on the same 3r line
+         as the name instead of floating on a floored line box. */
+      min-height: calc(var(--subrow) * 3);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-box-trim: trim-both;
+      text-box-edge: cap alphabetic;
     }
 
     .dash-event-meta {
@@ -10013,6 +10082,11 @@
       font-size: var(--fs-xs);
       color: var(--text-muted);
       line-height: calc(var(--subrow) * 2); /* 2 subrows */
+      /* Hold the meta row at a whole 2r (its line box floors to 1.947r on iOS)
+         and bottom-align the icon+label pairs, so the header column below the
+         name stays whole-r and the meta baseline sits at the low grid line. */
+      min-height: calc(var(--subrow) * 2);
+      align-items: flex-end;
     }
 
     .dash-event-meta span {
@@ -10036,8 +10110,11 @@
       flex: 1 1 0;
       background: var(--surface2);
       border-radius: var(--radius-sm);
-      /* 1 subrow padding + 2-subrow value line + 2-subrow label line + 1 subrow
-         padding = 6 subrows (48px), edges on the grid. */
+      /* Fixed 6r box (was padding + two floored 2r lines = ~5.89r). Block flow,
+         not flex: two exact 2r cells (value, label) stack under the 1r top pad,
+         so value's box bottom lands on the 3r line and label's on the 5r line. */
+      height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
       padding: var(--space-md) var(--space-sm);
       text-align: center;
       min-width: 0;
@@ -10048,7 +10125,11 @@
       font-size: var(--fs-md);
       font-weight: var(--fw-bold);
       color: var(--text);
-      line-height: calc(var(--subrow) * 2); /* 2 subrows */
+      /* Exact 2r cell (height, not min-height — the floored line fits inside and
+         the cell bottom stays on the grid line). */
+      height: calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
     }
 
     .dash-stat-label {
@@ -10056,7 +10137,9 @@
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      line-height: calc(var(--subrow) * 2); /* 2 subrows */
+      height: calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
     }
 
     .dash-event-tag {
@@ -10067,7 +10150,14 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      padding: var(--space-2xs) var(--space-md);
+      /* A whole-r pill box (was 2.446r from line + vertical padding, which
+         floored to a fraction and pushed the whole card body off the grid).
+         Height held at 2r via min-height; vertical padding zeroed and the text
+         centered, so the row this pill sits in is a whole r and the name/buyin
+         below it start on a grid line. Two wrapped tags stay a whole multiple. */
+      height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
+      padding: 0 var(--space-md);
       border-radius: var(--radius-xs);
     }
 
@@ -10213,7 +10303,14 @@
     }
 
     .dash-bag-btn, .dash-bust-btn, .dash-update-btn {
-      padding: var(--space-md) var(--space-xl);
+      /* Fixed 4r box (was 1r padding + a floored line = ~4.34r, which left the
+         status stack — badge 5r + gap 1r + this — at 10.34r and the card off). */
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-xl);
       border-radius: var(--radius-sm);
       font-family: var(--font-condensed);
       font-size: var(--fs-xs);
@@ -10247,7 +10344,18 @@
     }
 
     .dash-rebuy-btn {
-      padding: var(--space-md) var(--space-xl);
+      /* Fixed 4r box, matching the bag/bust/update buttons. nowrap + min-height:0
+         so the long "Rebuys: Unlimited" label can't wrap to two lines and, via
+         flexbox's default min-height:auto, override the 4r height (it grew to
+         ~5.76r and threw the busted card's status row off). */
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      white-space: nowrap;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-xl);
       border-radius: var(--radius-sm);
       font-family: var(--font-condensed);
       font-size: var(--fs-xs);
@@ -10278,7 +10386,12 @@
       justify-content: center;
       gap: var(--space-md);
       width: 100%;
-      padding: var(--space-md) var(--space-xl);
+      /* Fixed 5r box (was 1r padding + a floored line ≈ 5.3r, the last non-whole
+         row on the busted card). */
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 var(--space-xl);
       border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-sm);
       background: var(--surface2);
@@ -10316,9 +10429,12 @@
       border: var(--bw-hair) solid rgba(160,160,160,0.40);
       border-radius: var(--radius-circle);
       color: var(--accent);
-      width: calc(var(--subrow) * 3.5);
-      height: calc(var(--subrow) * 3.5);
-      min-width: calc(var(--subrow) * 3.5);
+      /* 3r, not 3.5r: on a name-only header (no meta row) this button was the
+         tallest child and forced the header to 3.5r. At 3r it matches the name
+         line; the ::after inset keeps the tap target large. */
+      width: calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 3);
+      min-width: calc(var(--subrow) * 3);
       font-size: var(--fs-xs);
       display: flex;
       align-items: center;
@@ -10345,9 +10461,10 @@
       border: var(--bw-hair) solid rgba(34,197,94,0.40);
       border-radius: var(--radius-circle);
       color: #22c55e;
-      width: calc(var(--subrow) * 3.5);
-      height: calc(var(--subrow) * 3.5);
-      min-width: calc(var(--subrow) * 3.5);
+      /* 3r to match .dash-undo-x — see note there. */
+      width: calc(var(--subrow) * 3);
+      height: calc(var(--subrow) * 3);
+      min-width: calc(var(--subrow) * 3);
       font-size: var(--fs-xs);
       display: flex;
       align-items: center;
@@ -10383,7 +10500,12 @@
       display: grid;
       grid-template-columns: var(--pl-cols);
       gap: var(--gu);
-      align-items: center;
+      /* end, not center: the standard .dashboard-section-header bottom-aligns its
+         3r box so the title's line box seats on the 3r line (Up Next / Table
+         Scanner read clean this way). This header overrode it to center for the
+         P&L-column grid and floated the title +0.10 off. end restores the seat;
+         the grid columns still align the header to the P&L cards horizontally. */
+      align-items: end;
     }
     .dash-results-header > .dash-results-head-left {
       display: flex;
@@ -10530,7 +10652,9 @@
        box (was 1.25r top pad + content ≈ 3.77r, off-grid — the same bug the dots
        had, but this is the variant long schedules hit). */
     .dash-upnext-counter {
-      display: flex; align-items: center; justify-content: center;
+      /* flex-end so the counter's text/arrows seat their line boxes on the 3r
+         bottom line instead of floating centered (was pos +0.47, arrows -0.40). */
+      display: flex; align-items: flex-end; justify-content: center;
       gap: var(--space-sm); height: calc(var(--subrow) * 3); box-sizing: border-box; padding: 0;
     }
     .dash-upnext-pos {
@@ -10541,10 +10665,11 @@
       font-variant-numeric: tabular-nums;
       min-width: 4.5ch;
       text-align: center;
+      line-height: calc(var(--subrow) * 2); /* whole 2r box, floored, bottom-seated */
     }
     .dash-upnext-step {
       background: none; border: none; cursor: pointer; padding: 0 var(--space-xs);
-      color: var(--text-muted); font-size: var(--fs-lg); line-height: 1;
+      color: var(--text-muted); font-size: var(--fs-lg); line-height: calc(var(--subrow) * 2);
       transition: color var(--dur-fast) var(--ease-out);
     }
     @media (hover: hover) and (pointer: fine) {
@@ -10564,17 +10689,19 @@
       display: flex;
       gap: var(--space-md);
       overflow: hidden;
-      padding: var(--space-2xs) 0;
+      /* No vertical padding: the column is a whole 6r (4r avatar + 2r name cell),
+         so the Connections row and the name baseline land on the grid. */
+      padding: 0;
     }
 
     .dash-conn-avatar {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: var(--space-2xs);
+      gap: 0;
       width: calc(var(--subrow) * 5.5);
       cursor: pointer;
-      padding: var(--space-2xs);
+      padding: 0;
       border-radius: var(--radius-sm);
       transition: background var(--dur-fast);
       border: none;
@@ -10591,6 +10718,10 @@
       font-family: var(--font-condensed);
       color: var(--text-muted);
       text-align: center;
+      /* Exact 2r cell under the 4r avatar → whole 6r column, name on the grid. */
+      height: calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
       max-width: calc(var(--subrow) * 5.5);
       overflow: hidden;
       text-overflow: ellipsis;
@@ -10630,7 +10761,10 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      padding: var(--space-2xs) 0;
+      /* No vertical padding: the scroll height is the chip's 8r, so the section
+         (header 3r + gap 1r + scroll 8r) lands on a whole 12r and stops nudging
+         the section titles below it. */
+      padding: 0;
     }
     .dash-friends-scroll::-webkit-scrollbar { display: none; }
     .dash-friend-chip {
@@ -10638,6 +10772,11 @@
       align-items: center;
       gap: var(--space-md);
       flex-shrink: 0;
+      /* Fixed 8r box: 1r pad + three exact 2r text cells + 1r pad. The three
+         chip lines were floored-line heights of three different sizes, each
+         losing a different fraction; exact 2r cells (below) seat each baseline. */
+      height: calc(var(--subrow) * 8);
+      box-sizing: border-box;
       padding: var(--space-md) var(--space-lg);
       background: var(--surface2);
       border: var(--bw-hair) solid var(--border);
@@ -10653,7 +10792,7 @@
     .dash-friend-chip .friend-info {
       display: flex;
       flex-direction: column;
-      gap: var(--nudge-1);
+      gap: 0; /* the three 2r cells stack to exactly 6r, no inter-line gap */
       min-width: 0;
     }
     .dash-friend-chip .friend-name {
@@ -10661,6 +10800,9 @@
       font-size: var(--fs-xs);
       font-weight: var(--fw-bold);
       color: var(--text);
+      height: calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -10669,12 +10811,18 @@
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       color: var(--text-muted);
+      height: calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .dash-friend-chip .friend-stack {
       font-family: var(--font-condensed);
+      height: calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
       font-size: var(--fs-2xs);
       color: #22c55e;
       white-space: nowrap;

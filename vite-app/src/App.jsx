@@ -248,7 +248,22 @@ export default function App() {
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
   // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
-  const [gridOverlay, setGridOverlay] = useState(() => localStorage.getItem('gridOverlay') === 'on');
+  const [gridOverlay, setGridOverlay] = useState(() => {
+    // ?gridOverlay=1 forces it on so it can be activated in the native WKWebView
+    // without a JS console (the sim can't drive Safari's inspector). The admin
+    // '#' toggle still works and persists to localStorage.
+    try {
+      if (typeof window !== 'undefined' &&
+          new URLSearchParams(window.location.search).get('gridOverlay') === '1') return true;
+    } catch { /* URLSearchParams unavailable — fall through to storage */ }
+    return localStorage.getItem('gridOverlay') === 'on';
+  });
+  // Admin-only demo-states toggle: injects representative playing / busted /
+  // expanded-stats cards and demo friends into the Dashboard so the grid overlay
+  // can measure conditional UI that Ethan's real (all-future, empty) data never
+  // renders. Tap-activated (the native WKWebView can't set a URL param or
+  // localStorage), never persisted — off on every load.
+  const [demoStates, setDemoStates] = useState(false);
   // 'bahnschrift' was retired as a display-font option; anyone still holding it
   // in localStorage lands back on the default rather than an unstyled data-serif.
   const [serifFont, setSerifFont] = useState(() => {
@@ -1497,6 +1512,7 @@ export default function App() {
         {visitedTabs.has('dashboard') && (!dataLoaded ? <SkeletonDashboard /> :
           <DashboardView
             key={debugTimeKey}
+            demoStates={demoStates}
             onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
             mySchedule={mySchedule}
             myActiveUpdates={myActiveUpdates}
@@ -1827,6 +1843,16 @@ export default function App() {
           aria-pressed={gridOverlay}
           onClick={() => setGridOverlay(g => { const next = !g; localStorage.setItem('gridOverlay', next ? 'on' : 'off'); return next; })}
         >#</button>
+      )}
+      {isAdmin && (
+        <button
+          type="button"
+          className={'grid-dev-toggle' + (demoStates ? ' is-on' : '')}
+          title={`${demoStates ? 'Hide' : 'Show'} demo dashboard states (admin)`}
+          aria-pressed={demoStates}
+          onClick={() => setDemoStates(d => !d)}
+          style={{ bottom: 'calc(calc(var(--subrow) * 15.5) + env(safe-area-inset-bottom, 0))' }}
+        >D</button>
       )}
     </div>
     </DisplayNameProvider>
