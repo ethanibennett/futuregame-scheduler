@@ -599,7 +599,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     io.observe(el);
     return () => io.disconnect();
   }, [showMiniLateReg]);
-  const startMsForClock = showMiniLateReg && tournament.venue !== 'Personal' ? parseTournamentTime(tournament) : NaN;
+  // Bravo and PokerAtlas clock live rooms only; an online event never has one to ask for.
+  const startMsForClock = showMiniLateReg && tournament.venue !== 'Personal' && !tournament.is_online ? parseTournamentTime(tournament) : NaN;
   const clockCandidate = onScreen && Number.isInteger(tournament.id) && Number.isFinite(startMsForClock)
     && startMsForClock <= Date.now() && Date.now() - startMsForClock < 18 * 60 * 60 * 1000;
   useEffect(() => {

@@ -375,7 +375,7 @@ export default function DashboardView({
     if (demoStates) return '';
     const DAY = 24 * 60 * 60 * 1000;
     return JSON.stringify(whatsNextEvents
-      .filter(e => e._type !== 'bagged' && Number.isInteger(e.id))
+      .filter(e => e._type !== 'bagged' && Number.isInteger(e.id) && !e.is_online) // online rooms have no Bravo/Atlas clock
       .filter(e => {
         const s = parseTournamentTime(e), t = nowMinute * 60000;
         if (s <= t) return t - s < DAY;
