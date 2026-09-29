@@ -8795,15 +8795,17 @@
        an accolade is a property of the EVENT, --brand is the app talking, and
        two undeclared golds 20px apart is a system with no owner. */
     .cal-accolades {
-      /* One-subcolumn cell at the right of row 2, its icons centred on the title
-         line (a 2-subrow box). align-self:start pins it to the top of row 2 so on
-         a flight card (row 2 is 4r) it stays on the title line r8 rather than
-         dropping to the flight line r10 under the row's align-items:end. */
+      /* Sits in row 2's right (money) column, pinned to its RIGHT edge
+         (justify-self:end) so the icons align with the buy-in above — the column
+         is 6g (3 subcols) so without this the 2g-wide cell floated at the column's
+         left, dropping the ring ~2g inside the buy-in. Its icons are right-aligned
+         and centred on the title line; align-self:start keeps it on the title line
+         (r8) on a flight card (row 2 is 4r) rather than the flight line. */
       display: flex;
       align-items: center;
       justify-content: flex-end;
       gap: var(--space-xs);
-      width: var(--subcol);
+      justify-self: end;
       height: var(--cal-title-line);
       align-self: start;
       flex-shrink: 0;
