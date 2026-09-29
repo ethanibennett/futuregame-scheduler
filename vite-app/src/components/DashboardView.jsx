@@ -61,7 +61,7 @@ function CountdownClock({ startMs }) {
 }
 
 // ── Late Reg Bar ──
-function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue }) {
+function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, startAt }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
@@ -69,8 +69,9 @@ function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue }) {
   }, []);
 
   // Pre-start countdown
-  if (date) {
-    const startMs = venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM');
+  // startAt: the room's own clock start (PokerAtlas), when it has one, over the published time.
+  if (date || startAt) {
+    const startMs = startAt ?? (venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM'));
     if (now < startMs) {
       const totalSec = Math.floor((startMs - now) / 1000);
       const d = Math.floor(totalSec / 86400);
@@ -138,15 +139,15 @@ function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue }) {
 }
 
 // ── Mini Late Reg Bar ──
-function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) {
+function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, startAt }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
     return () => clearInterval(id);
   }, []);
 
-  if (date) {
-    const startMs = venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM');
+  if (date || startAt) {
+    const startMs = startAt ?? (venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM'));
     if (now < startMs) {
       if (openOnly) return null;
       return (
@@ -374,7 +375,13 @@ export default function DashboardView({
     const DAY = 24 * 60 * 60 * 1000;
     return JSON.stringify(whatsNextEvents
       .filter(e => e._type !== 'bagged' && Number.isInteger(e.id))
-      .filter(e => { const s = parseTournamentTime(e); return s <= nowMinute * 60000 && nowMinute * 60000 - s < DAY; })
+      .filter(e => {
+        const s = parseTournamentTime(e), t = nowMinute * 60000;
+        if (s <= t) return t - s < DAY;
+        // A PokerAtlas clock is worth asking for before the start too: the room's own countdown
+        // replaces the published time when it has one.
+        return !!e.clock_ref && s - t < 6 * 60 * 60 * 1000;
+      })
       .slice(0, 12)
       .map(e => { const c = getVenueCoords(e.venue, e.property); return { id: e.id, lat: c?.lat, lng: c?.lng }; }));
   }, [whatsNextEvents, nowMinute, demoStates]);
@@ -428,6 +435,14 @@ export default function DashboardView({
   /* The event's clock while it is actually running (or paused): a clock that has not started, or
      no clock at all, is null and the card keeps its estimate. remainingSecs is aged from when the
      answer arrived, and only while the clock runs. */
+  /** The room's own start time from a clock that has not started yet (PokerAtlas), or null. */
+  function clockStartMs(t) {
+    const c = liveClocks[t.id];
+    if (!c || c.state !== 'not-started' || !c.startsAt) return null;
+    const ms = Date.parse(c.startsAt);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
   function liveClockFor(t) {
     const c = liveClocks[t.id];
     if (!c || c.level == null || (c.state !== 'running' && c.state !== 'paused')) return null;
@@ -518,7 +533,8 @@ export default function DashboardView({
 
   // Render a single event card
   function renderEventCard(event) {
-    const startMs = parseTournamentTime(event);
+    const clockStart = clockStartMs(event);
+    const startMs = clockStart ?? parseTournamentTime(event);
     const started = now >= startMs;
     const regClosed = isLateRegClosed(event);
     const levelDuration = parseLevelDuration(event);
@@ -825,6 +841,7 @@ export default function DashboardView({
         {event._type !== 'bagged' && !isBustedDone && !(isConditionalOnPlaying && regClosed) && (
           (bustedEventMap[event.id] || isConditionalOnPlaying) ? (
             <MiniLateRegBar
+              startAt={clockStart}
               lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
               time={event.time}
@@ -832,6 +849,7 @@ export default function DashboardView({
             />
           ) : (
             <LateRegBar
+              startAt={clockStart}
               lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
               time={event.time}

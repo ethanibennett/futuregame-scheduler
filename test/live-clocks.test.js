@@ -71,6 +71,7 @@ const p = normalizePaClock(pre, Date.parse('2026-09-29T22:15:00Z'));
 eq('before the start it is not started', p.state, 'not-started');
 eq('with no remaining time', p.remainingSecs, null);
 eq('registration end is exact', p.regEndsAt, '2026-09-30T00:45:00.000Z');
+eq('the clock own start', normalizePaClock({ ...pre, StartTime: '2026-09-29T23:15:00Z' }).startsAt, '2026-09-29T23:15:00.000Z');
 const run = normalizePaClock({ ...pre, Status: 1, CurrentLevel: 3, LevelSmallBlind: 100, LevelBigBlind: 200,
   LevelAnte: 200, LevelEndDateTime: '2026-09-29T22:20:00Z', LevelDuration: '00:20:00' }, Date.parse('2026-09-29T22:15:00Z'));
 eq('running: level and blinds', [run.state, run.level, run.sb, run.bb, run.ante], ['running', 3, 100, 200, 200]);
