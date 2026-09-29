@@ -454,7 +454,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 // only its own feed. Registered before the console gate + the SPA catch-all so
 // these win.
 const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
-const { clockForEvent } = require('./lib/live-clocks');
+const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3815,10 +3815,10 @@ app.post('/api/upload-schedule', authenticateToken, requireRegistered, upload.si
 // Live tournament clocks for the dashboard (lib/live-clocks.js): the real level, blinds, time left
 // and registration close, in place of estimateBlindLevel(). The client names the started events on
 // its dashboard and the venue coordinates it already knows (getVenueCoords), which is how a Bravo
-// room is found; a PokerAtlas event carries its own clock_ref from the feed. Capped at 12 events a
+// room is found; a PokerAtlas event carries its own clock_ref from the feed. Capped at 40 events a
 // call, and upstream answers are cached per clock, so polling is cheap however many are open.
 app.post('/api/live-clocks', authenticateToken, async (req, res) => {
-  const list = Array.isArray(req.body && req.body.events) ? req.body.events.slice(0, 12) : [];
+  const list = Array.isArray(req.body && req.body.events) ? req.body.events.slice(0, 40) : [];
   const clocks = {};
   await Promise.all(list.map(async (e) => {
     const id = Number(e && e.id);
@@ -3839,6 +3839,18 @@ app.post('/api/live-clocks', authenticateToken, async (req, res) => {
     }
   }));
   res.json({ clocks, serverNow: Date.now() });
+});
+
+// Reachability probe for the two clock providers, FROM WHEREVER THIS RUNS. Bravo sits behind
+// Cloudflare, which answered the Windows box but may treat Render's datacentre addresses
+// differently, and nothing else would say so: a blocked provider just reads as "no clock". Gated
+// like the feed seam (x-sync-token), and it returns only counts and states, never payloads.
+app.get('/api/admin/live-clocks/probe', async (req, res) => {
+  const expected = process.env.SYNC_TOKEN;
+  if (!expected || req.get('x-sync-token') !== expected) return res.status(403).json({ error: 'Forbidden' });
+  const casino = String(req.query.casino || 'JCIN').slice(0, 12);
+  const tc = String(req.query.tc || '').slice(0, 64);
+  res.json(await probeProviders(casino, tc || null));
 });
 
 // Get all tournaments with filters

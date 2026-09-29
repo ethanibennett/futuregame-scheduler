@@ -98,6 +98,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   feed empties the other (it would have taken 1,798 live rows). `feedStableId` takes a prefix
   per feed (`MTT-` / `ONL-`) because `stable_id` is UNIQUE and two feeds can carry a series
   whose sanitised name and event_number coincide.
+- **Live tournament clocks (in, on demand)**: `lib/live-clocks.js` behind `POST /api/live-clocks`.
+  The dashboard polls it every 15 s for selected events past their start (and PokerAtlas-clocked
+  events up to 6 h before) and drives the Level/Clock stats and the late-reg bar from the room's
+  real clock instead of `estimateBlindLevel()`. Two providers, neither needing a login:
+  PokerAtlas/TableCaptain over `wss://tourn-clock.pokeratlas.com` by the event's `clock_ref`
+  (`pa:<tc_id>`, carried by the MTT feed since 2026-09-29), and Bravo's
+  `GetClocksByCasinoDetailID`, with the room found from the venue's coordinates in Bravo's
+  roster and the event matched by event number. Recon and payloads:
+  mtt-series-watcher `docs/pokeratlas-clock.md` and `docs/bravo-tournaments-blocker.md`.
 - **Backer surface stays here**: `/b/:token` public pages, Sunday weekly digest, backer
   web-push (`backer_push_subs`), `console_records` store='backers' (fed by seam #3).
 

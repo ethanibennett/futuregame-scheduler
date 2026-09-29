@@ -11,8 +11,9 @@ import {
   getIfIBustEvents, getIfIBagEvents, getGamePills, calculateCountdown, haptic,
   currencySymbol, nativeCurrency, CURRENCY_CONFIG, formatCurrencyAmount,
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
-  HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage,
+  HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords,
 } from '../utils/utils.js';
+import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -225,6 +226,33 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
       <div className="mini-late-reg-track">
         <div className={`mini-late-reg-fill ${critical ? 'critical' : ''}`} style={{ width: `${pct}%`, background: critical ? undefined : brandColor }} />
       </div>
+    </div>
+  );
+}
+
+// ── Live clock footer (collapsed view, running events) ──
+// Replaces the mini late-reg bar while the room's clock is running: level, blinds, time left and
+// players, then the late-reg track timed from that clock. Same .mini-late-reg box, so the card
+// heights that seat the footer on the grid apply unchanged.
+function LiveClockFooter({ live, regEnd, date, venueAbbr }) {
+  const stakes = live.onBreak ? 'Break'
+    : `L${live.level} ${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
+  const parts = [stakes, live.state === 'paused' ? `${fmtClock(live.remaining)} paused` : fmtClock(live.remaining)];
+  if (live.playersLeft != null && live.entries != null) parts.push(`${live.playersLeft}/${live.entries}`);
+  const endMs = regEnd ? parseLateRegEnd(regEnd, date) : NaN;
+  const diffMs = Number.isFinite(endMs) ? endMs - Date.now() : NaN;
+  const windowMs = 12 * 60 * 60 * 1000;
+  const pct = diffMs > 0 ? Math.min(100, Math.max(0, (diffMs / windowMs) * 100)) : 0;
+  const critical = diffMs > 0 && pct <= 15;
+  return (
+    <div className="mini-late-reg live" title="Live tournament clock">
+      <span className="mini-late-reg-time live">{parts.join(' · ')}</span>
+      {diffMs > 0 && (
+        <div className="mini-late-reg-track">
+          <div className={`mini-late-reg-fill ${critical ? 'critical' : ''}`}
+               style={{ width: `${pct}%`, background: critical ? undefined : getVenueBrandColor(venueAbbr) }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -561,6 +589,27 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const displayName = useDisplayName();
   const rowRef = useRef(null);
 
+  /* Live clock (utils/live-clocks.js). A card asks only while it is on screen and its event is
+     today's and past its start, so a day of 150 events costs the dozen the user can see. */
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!showMiniLateReg || !el || typeof IntersectionObserver !== 'function') return undefined;
+    const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting), { rootMargin: '200px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [showMiniLateReg]);
+  const startMsForClock = showMiniLateReg && tournament.venue !== 'Personal' ? parseTournamentTime(tournament) : NaN;
+  const clockCandidate = onScreen && Number.isInteger(tournament.id) && Number.isFinite(startMsForClock)
+    && startMsForClock <= Date.now() && Date.now() - startMsForClock < 18 * 60 * 60 * 1000;
+  useEffect(() => {
+    if (!clockCandidate) return undefined;
+    return registerClock(tournament.id, getVenueCoords(tournament.venue, tournament.property));
+  }, [clockCandidate, tournament.id]);
+  const clockStore = useClockStore();
+  const live = clockCandidate ? liveView(clockStore[tournament.id]) : null;
+  useSecondTick(!!live && live.state === 'running' && !open);
+
   // Auto-expand when programmatically focused (e.g. navigating to a
   // related satellite).
   useEffect(() => {
@@ -655,7 +704,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </span>
                 )}
               </div>
-              {showMiniLateReg && !open && <MiniLateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
+              {showMiniLateReg && !open && (live
+                ? <LiveClockFooter live={live} regEnd={clockRegEnd(tournament, live) || tournament.late_reg_end} date={tournament.date} venueAbbr={venue.abbr} />
+                : <MiniLateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />)}
             </>
           )}
         </div>

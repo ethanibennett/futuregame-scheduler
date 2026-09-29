@@ -9604,6 +9604,12 @@
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* A running room clock (LiveClockFooter): real data, so full --text, not the muted
+       schedule-meta colour the late-reg estimate uses. Same box and seat as the time above. */
+    .mini-late-reg-time.live {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
     .mini-late-reg-track {
       flex: 1;
       height: calc(var(--subrow) * 0.375);
