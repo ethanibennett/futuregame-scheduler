@@ -8875,10 +8875,12 @@
     }
     /* Single-line name: a 2-subrow cell, bottom-aligned, lands the title's
        trimmed baseline on r8 (row1 is 6r, + 2r) with no nudge — a line below the
-       guarantee. A flight card ("- Flight A" on a second line) keeps its natural
-       height (title r8, flight r10); :has() guards it. */
+       guarantee. min-height (not height) so a title that WRAPS to a second line
+       grows the row to 4r (its 2r lines seated on r8 and r10) rather than clipping
+       the second line under a fixed 2r; the gap from the time to the first title
+       line stays two subrows either way. A flight card keeps its own grid. */
     .cal-bar-row2:not(:has(.cal-event-stage)) {
-      height: calc(var(--subrow) * 2);
+      min-height: calc(var(--subrow) * 2);
     }
 
     .cal-event-time {
