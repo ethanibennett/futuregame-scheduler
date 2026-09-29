@@ -454,6 +454,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 // only its own feed. Registered before the console gate + the SPA catch-all so
 // these win.
 const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
+const { clockForEvent } = require('./lib/live-clocks');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3061,6 +3062,15 @@ async function initDatabase() {
       }
     },
     {
+      // 'pa:<tc_id>': the event's PokerAtlas/TableCaptain live clock, carried by the MTT feed.
+      // The dashboard reads the real clock through /api/live-clocks instead of estimating one.
+      name: 'tournaments-clock-ref-2026-09',
+      fn: () => {
+        db.run('ALTER TABLE tournaments ADD COLUMN clock_ref TEXT');
+        console.log('Added tournaments.clock_ref');
+      }
+    },
+    {
       // The feed's `venue` is a SERIES title; `property` is the hosting poker room's name
       // (from the watcher's PokerAtlas directory data). The venue strip shows it for series
       // with no curated VENUE_MAP entry, instead of abbreviating the series title.
@@ -3800,6 +3810,35 @@ app.post('/api/upload-schedule', authenticateToken, requireRegistered, upload.si
     }
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
+});
+
+// Live tournament clocks for the dashboard (lib/live-clocks.js): the real level, blinds, time left
+// and registration close, in place of estimateBlindLevel(). The client names the started events on
+// its dashboard and the venue coordinates it already knows (getVenueCoords), which is how a Bravo
+// room is found; a PokerAtlas event carries its own clock_ref from the feed. Capped at 12 events a
+// call, and upstream answers are cached per clock, so polling is cheap however many are open.
+app.post('/api/live-clocks', authenticateToken, async (req, res) => {
+  const list = Array.isArray(req.body && req.body.events) ? req.body.events.slice(0, 12) : [];
+  const clocks = {};
+  await Promise.all(list.map(async (e) => {
+    const id = Number(e && e.id);
+    if (!Number.isInteger(id)) return;
+    let row = null;
+    const sel = db.prepare('SELECT id, event_number, event_name, property, clock_ref FROM tournaments WHERE id = ?');
+    sel.bind([id]);
+    if (sel.step()) row = sel.getAsObject();
+    sel.free();
+    if (!row) return;
+    const lat = Number(e.lat), lng = Number(e.lng);
+    const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+    try {
+      const c = await clockForEvent(row, coords);
+      if (c) clocks[id] = c;
+    } catch (err) {
+      console.error('[LiveClocks]', id, err.message);
+    }
+  }));
+  res.json({ clocks, serverNow: Date.now() });
 });
 
 // Get all tournaments with filters
@@ -10274,6 +10313,8 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
              notes = ?, category = ?, is_satellite = ?, is_restart = ?, prize_pool = ?,
              house_fee = ?, opt_add_on = ?, rake_pct = ?, rake_dollars = ?, is_deepstack = ?,
              property = ?, is_online = ?, site = ?,
+             -- A clock id only ever arrives; a snapshot without one must not erase it.
+             clock_ref = COALESCE(?, clock_ref),
              source_pdf = ?, stable_id = COALESCE(stable_id, ?),
              -- COALESCE, not a plain overwrite: the feed only has a structure sheet for
              -- about a sixth of events, and a locally attached one (admin edit, or a PDF
@@ -10286,6 +10327,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            t.notes, t.category, t.is_satellite || 0, t.is_restart || 0, t.prize_pool,
            t.house_fee, t.opt_add_on, t.rake_pct, t.rake_dollars, t.is_deepstack || 0,
            t.property || null, t.is_online || 0, t.site || null,
+           t.clock_ref || null,
            t.source_pdf || tag, feedStableId(t, idPrefix), t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
@@ -10296,15 +10338,15 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            game_variant, venue, notes, category, is_satellite, target_event,
            is_restart, parent_event, prize_pool, house_fee, opt_add_on,
            rake_pct, rake_dollars, source_pdf, is_deepstack, stable_id, structure_sheet_path, property,
-           is_online, site)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           is_online, site, clock_ref)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [t.event_number || '', t.event_name, t.date, t.time, t.buyin,
            t.starting_chips, t.level_duration, t.reentry, t.late_reg, t.late_reg_end,
            t.game_variant, t.venue, t.notes, t.category, t.is_satellite || 0, t.target_event,
            t.is_restart || 0, t.parent_event, t.prize_pool, t.house_fee, t.opt_add_on,
            t.rake_pct, t.rake_dollars, t.source_pdf, t.is_deepstack || 0, feedStableId(t, idPrefix),
            t.structure_sheet_path || null, t.property || null,
-           t.is_online || 0, t.site || null]
+           t.is_online || 0, t.site || null, t.clock_ref || null]
         );
         inserts++;
         } catch (rowErr) {
@@ -12272,8 +12314,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
     sel.free();
 
     db.run(
-      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property, is_online, site)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, late_reg_end, game_variant, venue, notes, category, is_satellite, target_event, is_restart, parent_event, day_length, prize_pool, house_fee, opt_add_on, rake_pct, rake_dollars, is_deepstack, source_pdf, structure_sheet_path, property, is_online, site, clock_ref)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(stable_id) DO UPDATE SET
          event_number=excluded.event_number, event_name=excluded.event_name, date=excluded.date,
          time=excluded.time, buyin=excluded.buyin, starting_chips=excluded.starting_chips,
@@ -12284,7 +12326,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
          day_length=excluded.day_length, prize_pool=excluded.prize_pool, house_fee=excluded.house_fee,
          opt_add_on=excluded.opt_add_on, rake_pct=excluded.rake_pct, rake_dollars=excluded.rake_dollars,
          is_deepstack=excluded.is_deepstack, structure_sheet_path=excluded.structure_sheet_path,
-         property=excluded.property, is_online=excluded.is_online, site=excluded.site`,
+         property=excluded.property, is_online=excluded.is_online, site=excluded.site,
+         clock_ref=COALESCE(excluded.clock_ref, tournaments.clock_ref)`,
       [
         t.stable_id, t.event_number || '', t.event_name, t.date, t.time || '12:00 PM',
         t.buyin || 0, t.starting_chips || null, t.level_duration || null,
@@ -12295,7 +12338,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
         t.prize_pool || null, t.house_fee || null, t.opt_add_on || null,
         t.rake_pct || null, t.rake_dollars || null, t.is_deepstack ? 1 : 0,
         t.source_pdf || null, t.structure_sheet_path || null, t.property || null,
-        t.is_online ? 1 : 0, t.site || null
+        t.is_online ? 1 : 0, t.site || null, t.clock_ref || null
       ]
     );
     if (existing) updated++; else inserted++;

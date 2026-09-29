@@ -24,7 +24,8 @@
     "solve:range": "cd solver/neural && .venv/bin/python solve_range.py",
     "query": "node solver/query.js",
     "test:hilo": "node test/hilo-split-awards.mjs",
-    "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js"
+    "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js",
+    "test:clocks": "node test/live-clocks.test.js"
   },
   "keywords": [],
   "author": "",
@@ -56,5 +57,8 @@
   },
   "devDependencies": {
     "esbuild": "^0.27.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

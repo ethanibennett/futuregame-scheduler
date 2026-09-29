@@ -8,11 +8,11 @@ import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
   formatBuyin, currencySymbol, nativeCurrency, haptic, fmtShortDate,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
-  getMaxEntries, getVenueTzAbbr,
+  getMaxEntries, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
   convertAmount, formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
-import { API_URL } from '../utils/api.js';
+import { API_URL, fetchApi } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
@@ -361,6 +361,45 @@ export default function DashboardView({
     return [...events, ...later];
   }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates]);
 
+  /* Live tournament clocks (server: lib/live-clocks.js). For every selected event that has
+     passed its scheduled start, ask for the real clock — PokerAtlas by the event's own clock id,
+     Bravo by the room at the venue's coordinates — every 15 s, which is the rate Bravo's own app
+     polls at. The stats and late-reg bar use it in place of estimateBlindLevel() when it answers;
+     an event with no clock, or whose clock has not started, keeps the estimate and its "Until
+     Start" countdown to the scheduled time. Keyed by the id list so the poll restarts only when
+     the set of started events changes, not every second. */
+  const nowMinute = Math.floor(now / 60000);
+  const clockTargetsKey = useMemo(() => {
+    if (demoStates) return '';
+    const DAY = 24 * 60 * 60 * 1000;
+    return JSON.stringify(whatsNextEvents
+      .filter(e => e._type !== 'bagged' && Number.isInteger(e.id))
+      .filter(e => { const s = parseTournamentTime(e); return s <= nowMinute * 60000 && nowMinute * 60000 - s < DAY; })
+      .slice(0, 12)
+      .map(e => { const c = getVenueCoords(e.venue, e.property); return { id: e.id, lat: c?.lat, lng: c?.lng }; }));
+  }, [whatsNextEvents, nowMinute, demoStates]);
+  const [liveClocks, setLiveClocks] = useState({});
+  useEffect(() => {
+    const targets = clockTargetsKey ? JSON.parse(clockTargetsKey) : [];
+    if (!targets.length) { setLiveClocks({}); return; }
+    let cancelled = false;
+    const poll = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      try {
+        const res = await fetchApi('/live-clocks', { method: 'POST', body: { events: targets } });
+        if (!res.ok || cancelled) return;
+        const { clocks } = await res.json();
+        const receivedAt = Date.now();
+        const next = {};
+        for (const [id, c] of Object.entries(clocks || {})) next[id] = { ...c, receivedAt };
+        setLiveClocks(next);
+      } catch (_) { /* keep the last answer; the estimate covers a clock we never got */ }
+    };
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [clockTargetsKey]);
+
   // Seat multi-line hero event names on the grid. A single line is held at 3r by
   // CSS min-height, and an explicit "- Day 1" <br> is caught by :has(br) → 6r,
   // but a name that WRAPS on width carries no <br>, and two floored 23px lines
@@ -386,9 +425,44 @@ export default function DashboardView({
     return match ? parseInt(match[1]) : null;
   }
 
+  /* The event's clock while it is actually running (or paused): a clock that has not started, or
+     no clock at all, is null and the card keeps its estimate. remainingSecs is aged from when the
+     answer arrived, and only while the clock runs. */
+  function liveClockFor(t) {
+    const c = liveClocks[t.id];
+    if (!c || c.level == null || (c.state !== 'running' && c.state !== 'paused')) return null;
+    if (c.remainingSecs == null) return null; // a clock we cannot time is no better than the estimate
+    const aged = c.state === 'running' ? (Date.now() - c.receivedAt) / 1000 : 0;
+    return { ...c, remaining: Math.max(0, Math.round((c.remainingSecs ?? 0) - aged)) };
+  }
+
+  /* When late registration closes, from the real clock. PokerAtlas publishes the instant; Bravo
+     does not, so it is counted forward from the current level to the event's late-reg level —
+     the feed's number means "until the START of Level N" unless the notes say "end of"/"through".
+     Levels ahead are timed at the event's level length (breaks between them are not published). */
+  function clockRegEnd(t, live) {
+    if (!live) return null;
+    if (live.regEndsAt) return live.regEndsAt;
+    const n = /^\s*(\d{1,2})\s*$/.exec(String(t.late_reg_end ?? ''));
+    if (!n) return null;
+    const closeAt = Number(n[1]) + (/(end of|through)\s*level/i.test(t.reentry || '') ? 1 : 0);
+    const levelSecs = (parseLevelDuration(t) || 0) * 60 || (!live.onBreak && live.levelSecs) || null;
+    // `remaining` runs to the start of level+1 whether a level or a break is on: during a break
+    // Bravo keeps `level` at the level just played (JCIN Mini Main: "A" L4, then "B" L4).
+    if (live.level >= closeAt) return new Date(Date.now() - 1000).toISOString();
+    if (!levelSecs) return null;
+    const secs = live.remaining + (closeAt - live.level - 1) * levelSecs;
+    return new Date(Date.now() + secs * 1000).toISOString();
+  }
+
+  function effectiveLateRegEnd(t) {
+    return clockRegEnd(t, liveClockFor(t)) || t.late_reg_end;
+  }
+
   function isLateRegClosed(t) {
-    if (!t.late_reg_end) return false;
-    const endMs = parseLateRegEnd(t.late_reg_end, t.date);
+    const end = effectiveLateRegEnd(t);
+    if (!end) return false;
+    const endMs = parseLateRegEnd(end, t.date);
     return !isNaN(endMs) && now > endMs;
   }
 
@@ -448,7 +522,12 @@ export default function DashboardView({
     const started = now >= startMs;
     const regClosed = isLateRegClosed(event);
     const levelDuration = parseLevelDuration(event);
-    const blindInfo = started && levelDuration ? estimateBlindLevel(startMs, levelDuration) : null;
+    const live = started ? liveClockFor(event) : null;
+    const blindInfo = live
+      ? { level: live.level, sb: live.sb, bb: live.bb, ante: live.ante,
+          remainingMin: Math.floor(live.remaining / 60), remainingSec: live.remaining % 60,
+          live: true, onBreak: live.onBreak, paused: live.state === 'paused' }
+      : (started && levelDuration ? estimateBlindLevel(startMs, levelDuration) : null);
     const startingChips = event.starting_chips || 20000;
 
     const currentStack = (activeEventMap[event.id]?.stack) ? Number(activeEventMap[event.id].stack) : startingChips;
@@ -559,7 +638,7 @@ export default function DashboardView({
               <div className="dash-stat-value">
                 {blindInfo.remainingMin}:{String(blindInfo.remainingSec).padStart(2, '0')}
               </div>
-              <div className="dash-stat-label">Clock</div>
+              <div className="dash-stat-label">{blindInfo.live ? (blindInfo.paused ? 'Paused' : blindInfo.onBreak ? 'Break' : 'Live') : 'Clock'}</div>
             </div>
           </div>
         )}
@@ -746,14 +825,14 @@ export default function DashboardView({
         {event._type !== 'bagged' && !isBustedDone && !(isConditionalOnPlaying && regClosed) && (
           (bustedEventMap[event.id] || isConditionalOnPlaying) ? (
             <MiniLateRegBar
-              lateRegEnd={event.late_reg_end}
+              lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
               time={event.time}
               venueAbbr={getVenueInfo(event.venue, event.property).abbr}
             />
           ) : (
             <LateRegBar
-              lateRegEnd={event.late_reg_end}
+              lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
               time={event.time}
               venueAbbr={getVenueInfo(event.venue, event.property).abbr}
