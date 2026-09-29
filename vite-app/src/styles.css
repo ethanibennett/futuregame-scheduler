@@ -8858,6 +8858,26 @@
       gap: 0;
     }
     .cal-event-time { grid-column: 1; grid-row: 1; }
+    /* The room's running clock (CalendarEventRow clockLine), sharing the time's cell: right-
+       aligned to the right edge of the THIRD primary column (27g). The cell ends on the money
+       column's edge (29g), so one subcolumn of margin brings it in. Seated like the guarantee —
+       a 2r trimmed box, align-items:end — so its baseline lands on r4 with the time's and the
+       buy-in's. Real data, so full --text rather than the muted meta colour. */
+    .cal-event-clock {
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: end;
+      margin-right: var(--subcol);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-tight);
+      line-height: calc(var(--subrow) * 2);
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
        "- Flight A" on a second line, which doubles the row height and used to
@@ -9603,12 +9623,6 @@
       flex-shrink: 0;
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    /* A running room clock (LiveClockFooter): real data, so full --text, not the muted
-       schedule-meta colour the late-reg estimate uses. Same box and seat as the time above. */
-    .mini-late-reg-time.live {
-      color: var(--text);
-      font-variant-numeric: tabular-nums;
     }
     .mini-late-reg-track {
       flex: 1;

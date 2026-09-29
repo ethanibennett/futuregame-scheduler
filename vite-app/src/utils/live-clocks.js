@@ -150,7 +150,9 @@ export function clockRegEnd(t, live) {
   const levelSecs = (levelMinutes(t) || 0) * 60 || (!live.onBreak && live.levelSecs) || null;
   // `remaining` runs to the start of level+1 whether a level or a break is on: during a break
   // Bravo keeps `level` at the level just played (JCIN Mini Main: "A" L4, then "B" L4).
-  if (live.level >= closeAt) return new Date(Date.now() - 1000).toISOString();
+  // Already closed: WHEN is unknown, and "a second ago" read as "0m left" on a bar whose own
+  // clock refreshes every 30 s (seen 2026-09-29). An instant firmly in the past reads as closed.
+  if (live.level >= closeAt) return new Date(0).toISOString();
   if (!levelSecs) return null;
   const secs = live.remaining + (closeAt - live.level - 1) * levelSecs;
   return new Date(Date.now() + secs * 1000).toISOString();

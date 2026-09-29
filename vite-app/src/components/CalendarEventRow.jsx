@@ -230,31 +230,15 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
   );
 }
 
-// ── Live clock footer (collapsed view, running events) ──
-// Replaces the mini late-reg bar while the room's clock is running: level, blinds, time left and
-// players, then the late-reg track timed from that clock. Same .mini-late-reg box, so the card
-// heights that seat the footer on the grid apply unchanged.
-function LiveClockFooter({ live, regEnd, date, venueAbbr }) {
+// ── Live clock line (running events) ──
+// Level and blinds (or Break), time left, players left/entries — shown on the card's top line
+// between the start time and the buy-in while the room's clock is running.
+function clockLine(live) {
   const stakes = live.onBreak ? 'Break'
     : `L${live.level} ${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
   const parts = [stakes, live.state === 'paused' ? `${fmtClock(live.remaining)} paused` : fmtClock(live.remaining)];
   if (live.playersLeft != null && live.entries != null) parts.push(`${live.playersLeft}/${live.entries}`);
-  const endMs = regEnd ? parseLateRegEnd(regEnd, date) : NaN;
-  const diffMs = Number.isFinite(endMs) ? endMs - Date.now() : NaN;
-  const windowMs = 12 * 60 * 60 * 1000;
-  const pct = diffMs > 0 ? Math.min(100, Math.max(0, (diffMs / windowMs) * 100)) : 0;
-  const critical = diffMs > 0 && pct <= 15;
-  return (
-    <div className="mini-late-reg live" title="Live tournament clock">
-      <span className="mini-late-reg-time live">{parts.join(' · ')}</span>
-      {diffMs > 0 && (
-        <div className="mini-late-reg-track">
-          <div className={`mini-late-reg-fill ${critical ? 'critical' : ''}`}
-               style={{ width: `${pct}%`, background: critical ? undefined : getVenueBrandColor(venueAbbr) }} />
-        </div>
-      )}
-    </div>
-  );
+  return parts.join(' · ');
 }
 
 // ── Buddy Avatar Row ──
@@ -609,7 +593,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   }, [clockCandidate, tournament.id]);
   const clockStore = useClockStore();
   const live = clockCandidate ? liveView(clockStore[tournament.id]) : null;
-  useSecondTick(!!live && live.state === 'running' && !open);
+  useSecondTick(!!live && live.state === 'running');
 
   // Auto-expand when programmatically focused (e.g. navigating to a
   // related satellite).
@@ -686,6 +670,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
+                {live && <span className="cal-event-clock" title="Live tournament clock">{clockLine(live)}</span>}
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
                   {Number(tournament.prize_pool) > 0 && (
@@ -705,9 +690,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </span>
                 )}
               </div>
-              {showMiniLateReg && !open && (live
-                ? <LiveClockFooter live={live} regEnd={clockRegEnd(tournament, live) || tournament.late_reg_end} date={tournament.date} venueAbbr={venue.abbr} />
-                : <MiniLateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />)}
+              {showMiniLateReg && !open && <MiniLateRegBar lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
             </>
           )}
         </div>

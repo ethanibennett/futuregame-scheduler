@@ -72,10 +72,21 @@ eq('before the start it is not started', p.state, 'not-started');
 eq('with no remaining time', p.remainingSecs, null);
 eq('registration end is exact', p.regEndsAt, '2026-09-30T00:45:00.000Z');
 eq('the clock own start', normalizePaClock({ ...pre, StartTime: '2026-09-29T23:15:00Z' }).startsAt, '2026-09-29T23:15:00.000Z');
-const run = normalizePaClock({ ...pre, Status: 1, CurrentLevel: 3, LevelSmallBlind: 100, LevelBigBlind: 200,
-  LevelAnte: 200, LevelEndDateTime: '2026-09-29T22:20:00Z', LevelDuration: '00:20:00' }, Date.parse('2026-09-29T22:15:00Z'));
-eq('running: level and blinds', [run.state, run.level, run.sb, run.bb, run.ante], ['running', 3, 100, 200, 200]);
-eq('running: remaining from the level end', Math.round(run.remainingSecs), 327);
+// The running shape seen at Wind Creek 2026-09-29 23:16Z: Status 1, CurrentLevel/RemainingTime
+// still null, the level in LevelLevel, and every instant on a venue clock 2m11.7s fast — corrected
+// by the envelope's true-clock `Updated` (here the pre-start pair: 22:12:21.038 true vs 22:14:32.732).
+const running = { ...pre, Status: 1, CurrentLevel: null, RemainingTime: null, LevelLevel: 2, LevelName: 'Level 2',
+  LevelSmallBlind: 100, LevelBigBlind: 200, LevelAnte: null, LevelDuration: '00:20:00',
+  ServerTime: '2026-09-29T22:14:32.732Z', LevelEndDateTime: '2026-09-29T22:30:00Z',
+  RegistrationEndTime: '2026-09-29T23:40:00Z', NextSmallBlind10K: '200', NextBigBlind10K: '400', Entries: 40, EntriesRemaining: 39 };
+const run = normalizePaClock(running, Date.parse('2026-09-29T22:20:00Z'), '2026-09-29T22:12:21.038Z');
+eq('running: state, level from LevelLevel, blinds', [run.state, run.level, run.sb, run.bb, run.ante], ['running', 2, 100, 200, null]);
+eq('running: remaining corrected for the venue clock (not 600 s)', Math.round(run.remainingSecs), 468);
+eq('running: registration end corrected too', run.regEndsAt, '2026-09-29T23:37:48.306Z');
 eq('running: level length', run.levelSecs, 1200);
+eq('running: next blinds', run.nextBlinds, '200 - 400');
+eq('running: field', [run.entries, run.playersLeft], [40, 39]);
+eq('no Updated means no correction', Math.round(normalizePaClock(running, Date.parse('2026-09-29T22:20:00Z')).remainingSecs), 600);
+eq('level from LevelName when LevelLevel is absent', normalizePaClock({ ...running, LevelLevel: null }, Date.parse('2026-09-29T22:20:00Z')).level, 2);
 
 console.log(`live-clocks.test.js — ${passed} assertions passed`);
