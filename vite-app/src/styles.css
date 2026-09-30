@@ -10420,6 +10420,16 @@
     .cal-bracelet-icon > svg {
       display: block;
     }
+    /* The cell's bottom is on the title's line, but each glyph's painted art
+       stops short of its 24-unit viewBox, so it floated above the line. Each
+       drops by its own measured shortfall (raster-scanned at the 1.75 stroke;
+       the cell is 2r, so 12 units = 1r): ring 21.00 -> 0.25r, crosshairs 20.86
+       -> 0.262r, bracelet 10.45 -> 1.129r, restart 21.89 -> 0.176r; satellite
+       reaches 24 and stays. */
+    .cal-accolades svg[data-icon="ring"] { transform: translateY(calc(var(--subrow) * 0.25)); }
+    .cal-accolades svg[data-icon="crosshairs"] { transform: translateY(calc(var(--subrow) * 0.262)); }
+    .cal-accolades svg[data-icon="bracelet"] { transform: translateY(calc(var(--subrow) * 1.129)); }
+    .cal-accolades svg[data-icon="restart"] { transform: translateY(calc(var(--subrow) * 0.176)); }
 
 
     .cal-bounty-icon { color: var(--text); opacity: 0.5; }
