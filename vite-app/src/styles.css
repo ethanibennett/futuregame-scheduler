@@ -4220,29 +4220,6 @@
     .replayer-draw-section { margin-top: var(--space-sm); padding: var(--space-sm) var(--space-md); background:var(--surface2); border-radius:var(--radius-xs); }
     .replayer-draw-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; margin-bottom: var(--space-sm); letter-spacing: var(--track-tight); }
 
-    /* Draw info bar in replay mode */
-    .replayer-draw-info-bar {
-      text-align: center; padding: var(--space-sm) var(--space-ml); background: var(--surface2); border-radius: var(--radius-sm);
-      font-family: var(--font-condensed);
-      /* Fixed, and it scrolls: the items grow when they carry the discarded and
-         the new cards, and the table above is sized from what is left of the
-         column, so a growing bar is a shrinking table. */
-      height: calc(var(--subrow) * 7.75); overflow: auto; scrollbar-width: none;
-    }
-    .replayer-draw-info-bar::-webkit-scrollbar { display: none; }
-    .replayer-draw-info-label {
-      font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps);
-      color: var(--text-muted); margin-bottom: var(--space-xs); font-weight: var(--fw-bold);
-    }
-    .replayer-draw-info-players {
-      display: flex; flex-wrap: nowrap; gap: var(--space-md); justify-content: center;
-    }
-    .replayer-draw-info-item {
-      display: flex; align-items: center; gap: var(--space-xs); font-size: var(--fs-xs);
-    }
-    .replayer-draw-info-name {
-      font-weight: var(--fw-bold); color: var(--text);
-    }
     .replayer-draw-pat-badge {
       display: inline-block; padding: var(--nudge-1) var(--space-sm); border-radius: var(--radius-xs); font-size: var(--fs-2xs);
       background: rgba(136,136,136,0.15); color: var(--text-muted); font-weight: var(--fw-bold);
@@ -6525,47 +6502,6 @@
       margin: 0;
     }
     .replayer-fullbleed .replayer-under > *:first-child { margin-top: auto; }
-    /* Draw bar, 7r: the street label on a 2r line (baseline 2r), the 4r
-       player row, 1r under it. */
-    .replayer-fullbleed .replayer-draw-info-bar {
-      height: calc(var(--subrow) * 7);
-      padding: 0 var(--gu) var(--subrow);
-      display: flex; flex-direction: column;
-      overflow: hidden;
-    }
-    .replayer-fullbleed .replayer-draw-info-label {
-      margin: 0; line-height: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .replayer-fullbleed .replayer-draw-info-players {
-      height: calc(var(--subrow) * 4); align-items: stretch;
-    }
-    /* Each player: name and badge seated 3r down the 4r row; the cards fill
-       it. The badges were --fs-2xs in mixed case, which the scale reserves
-       for capitals. */
-    .replayer-fullbleed .replayer-draw-info-item { align-items: flex-end; height: calc(var(--subrow) * 4); }
-    .replayer-fullbleed .replayer-draw-info-name,
-    .replayer-fullbleed .replayer-draw-pat-badge,
-    .replayer-fullbleed .replayer-draw-count-badge {
-      display: block; align-self: flex-end;
-      line-height: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-      margin-bottom: var(--subrow);
-    }
-    /* The badge is a 3r pill; its caps sit 2r down it, 1r above its foot. */
-    .replayer-fullbleed .replayer-draw-pat-badge,
-    .replayer-fullbleed .replayer-draw-count-badge {
-      text-transform: uppercase;
-      box-sizing: border-box; height: calc(var(--subrow) * 3);
-      padding: calc(var(--subrow) * 2 - 1cap) var(--space-sm) var(--subrow);
-      margin-bottom: 0;
-    }
-    /* The thrown and drawn cards fill the 4r row as 2g x 4r cards (they were
-       3.5r, centred 0.25r down in a 4r min-height row). */
-    .replayer-fullbleed .replayer-draw-info-item .card-row { align-self: stretch; align-items: stretch; min-height: 0; height: calc(var(--subrow) * 4); }
-    .replayer-fullbleed .replayer-draw-info-item .card-row > * { width: calc(var(--gu) * 2); height: calc(var(--subrow) * 4); min-width: 0; }
     /* Commentary lower third, 5r: street on the 2r line, the call on the 4r
        line, 1r under. Full width, 1..36g; the accent is an inset shadow so
        the text column starts on x = 3g. */

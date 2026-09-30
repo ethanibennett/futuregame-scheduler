@@ -545,40 +545,8 @@ function feltStops(hex, bright) {
   };
 }
 
-/* 66 + 67: the pot swapped three digits in a single frame and a player's
-   stack dropped the instant they bet — while their chips were still animating
-   toward a pot that had already been paid. The money left the stack before it
-   arrived, and neither event was connected to the other. Conservation is the
-   whole point of animating chips: watching the same quantity leave one place
-   and arrive at another.
-
-   This tweens a displayed value toward its target over the flight's duration.
-   A counting number is one of the few places where motion carries information
-   rather than decoration — it shows the SIZE of the change, not just the
-   result. Scrubbing (a jump of more than one step, or backwards) snaps. */
-function useCountUp(target, enabled) {
-  const [shown, setShown] = useState(target);
-  const fromRef = useRef(target);
-  const rafRef = useRef(0);
-  useEffect(() => {
-    cancelAnimationFrame(rafRef.current);
-    const from = fromRef.current;
-    if (!enabled || from === target) { fromRef.current = target; setShown(target); return; }
-    const t0 = performance.now();
-    const DUR = 420;
-    const tick = (now) => {
-      const p = Math.min(1, (now - t0) / DUR);
-      // ease-out: the count decelerates into its landing, like the chips do.
-      const e = 1 - Math.pow(1 - p, 3);
-      setShown(Math.round(from + (target - from) * e));
-      if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      else fromRef.current = target;
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, enabled]);
-  return shown;
-}
+/* Pot and stack figures show their value directly. They used to count toward
+   it over 420ms (useCountUp); removed 2026-09-30 at the user's request. */
 
 // ── Formatting helpers ──
 /* 44: this was a hand-rolled divide-and-suffix with a hardcoded '.' decimal
@@ -851,11 +819,6 @@ function nameBudgetFor(tableW, tableH, landscape) {
   return Math.max(6, Math.min(30, Math.round(box / (px * 0.445))));
 }
 
-/* One counter per seat: a hook cannot be called inside the seat map, so the
-   count lives in a leaf component that gets remounted with the seat. */
-function CountedChips({ value, fmt, live }) {
-  return fmt(useCountUp(value, live));
-}
 
 // ── Player name helpers ──
 const DEFAULT_OPP_NAMES = ['Jason Blodgett', 'Keith McCormack', 'Alex Charron', 'Kevin DiPasquale', 'Cristian Gutierrez', 'Derek Nold', 'Anthony Hall', 'Aidan Long'];
@@ -5502,7 +5465,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   }, [allPotLayers, displayPot, folded, hand]);
   /* 66: the pot counts toward its new value over the chips' flight. It snaps
      while scrubbing, because a rewind is not a payment. */
-  const countedPot = useCountUp(displayPot, rSettings.animateChips && !rewinding);
 
   // "Solve this spot" → Solver handoff. Enabled only when the hand's
   // game maps to a solver-supported stud game (Stud 8 / Razz).
@@ -5741,9 +5703,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      commentary and the export are all computed from; this is the same array
      with the award added, and it is what the seat renders. An all-in player
      who wins is no longer marked ALL-IN either, because they are not: the
-     mark reads this array too. useCountUp then counts the stack UP to its new
-     total, which is the one piece of motion at showdown that is showing
-     something rather than decorating it. */
+     mark reads this array too. The seat shows the new total directly (the
+     count-up animation was removed 2026-09-30). */
   const shownStacks = useMemo(() => (
     (showResult && potAwards) ? stacks.map((v, i) => v + (potAwards[i] || 0) + (settled.uncalled[i] || 0)) : stacks
   ), [showResult, potAwards, stacks, settled]);
@@ -7092,7 +7053,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   <span className="replayer-pot-cell-label">
                     {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
-                  {fmtChips(countedPot)}
+                  {fmtChips(displayPot)}
                 </div>
               </div>
             </div>
@@ -7536,7 +7497,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   } : {})}>
                   {allIn.has(pi) && shownStacks[pi] <= 0
                     ? <span className="replayer-allin-mark">ALL-IN</span>
-                    : <CountedChips value={shownStacks[pi]} fmt={fmtChips} live={rSettings.animateChips && !rewinding} />}
+                    : fmtChips(shownStacks[pi])}
                 </div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
@@ -7769,31 +7730,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           resize when the banner appeared at showdown; with nothing to reserve,
           the height it was holding goes back to the table. evalResult itself
           stays - the bookend, the export image and the seat labels read it. */}
-
-      {/* Draw info bar — rendered for every step of a draw game, empty on the
-          steps with no draws to report, so it does not resize the table when a
-          draw round starts. Fixed height (see styles.css) because its items
-          grow when they carry the discarded and the new cards. */}
-      {(category === 'draw_triple' || category === 'draw_single') && (
-        <div className={'replayer-draw-info-bar' + (currentStreet.draws?.length > 0 ? '' : ' is-reserved')}
-             aria-hidden={currentStreet.draws?.length > 0 ? undefined : true}>
-          <div className="replayer-draw-info-label">{currentStreet.name || 'Draw'}</div>
-          <div className="replayer-draw-info-players">
-            {(currentStreet.draws || []).map(d => {
-              const pName = hand.players[d.player]?.name || '?';
-              const isPat = d.discarded === 0;
-              return (
-                <div key={d.player} className={'replayer-draw-info-item' + (isPat ? ' pat' : '')}>
-                  <span className="replayer-draw-info-name">{pName}</span>
-                  {isPat ? <span className="replayer-draw-pat-badge">Stand Pat</span> : <span className="replayer-draw-count-badge">{d.discarded === 1 ? 'draws 1' : 'draws ' + d.discarded}</span>}
-                  {d.discardedCards && !isPat && <span className="replayer-draw-discarded-cards"><CardRow text={d.discardedCards} max={d.discarded} /></span>}
-                  {d.newCards && !isPat && <span className="replayer-draw-new-cards"><CardRow text={d.newCards} max={d.discarded} /></span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* 46: the dot strip, its hover and current states, six action classes,
           the street markers and the street label are all finished CSS, the
