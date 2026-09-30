@@ -6399,6 +6399,35 @@
        foot rather than taking height), so the table is that height less 4r:
        93r at 402x874 (bar top 97r - 4r, top at 0). No top margin. The width (33g) is set from the slot, not from this. */
     .replayer-fullbleed .replayer-table { height: calc(100cqh - calc(var(--subrow) * 4)); margin-top: 0; }
+    /* Dead cards (stud, draw) in the 4r between the table and the navigation:
+       2g..35g, pinned to the slot's foot, above the strip region that overlaps
+       it. A 4g label seated 2r down, 1g, then 4r cards. */
+    .replayer-fullbleed .replayer-table-slot { position: relative; }
+    .replayer-dead-strip {
+      position: absolute; left: calc(var(--gu) * 2); right: calc(var(--gu) * 2); bottom: 0;
+      height: calc(var(--subrow) * 4);
+      display: flex; align-items: stretch; gap: var(--gu);
+      z-index: calc(var(--z-raised) + 1);
+      pointer-events: none;
+    }
+    .replayer-dead-strip-label {
+      flex: 0 0 calc(var(--gu) * 4);
+      display: flex; align-items: flex-end;
+      padding-bottom: calc(var(--subrow) * 2); box-sizing: border-box;
+    }
+    .replayer-dead-strip-label > span {
+      display: block; line-height: 1;
+      font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-2xs);
+      letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-dead-strip-cards { flex: 1 1 auto; min-width: 0; display: flex; align-items: stretch; }
+    .replayer-dead-strip-cards > * {
+      flex: none; height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857);
+      border-radius: 7.1%; opacity: 0.85;
+      box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.30);
+    }
+    .replayer-dead-strip-cards > *:not(:first-child) { margin-left: calc(var(--gu) * var(--dead-ml, 0.2214)); }
     .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }
 
     /* Bar: 1r pad, the 6r transport, 1r, the 5r action row, [the 2r note],

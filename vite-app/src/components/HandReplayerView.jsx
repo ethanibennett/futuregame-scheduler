@@ -7275,8 +7275,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         })()}
 
 
-        {/* Known dead cards, in the board's slot (stud and draw have no board). */}
-        {deadCards.length > 0 && (
+        {/* Known dead cards, in the board's slot (stud and draw have no board).
+            Landscape only: portrait shows them in the 4r strip under the table. */}
+        {isLandscape && deadCards.length > 0 && (
           <div className="replayer-board-area replayer-dead-area" aria-label={'Dead cards: ' + deadCards.join(' ')}>
             <div className="replayer-dead-label">Dead</div>
             <div className="card-row replayer-dead-row">
@@ -7826,6 +7827,29 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           });
         })}
       </div>
+      {/* Dead cards in the 4r under the table (portrait): a 4g label, then 4r
+          cards on a 2.25g pitch that tightens when the list would pass 28g, so a
+          long stud list still fits 2g..35g. */}
+      {!isLandscape && deadCards.length > 0 && (() => {
+        const CARD_G = 2.0286;   // 4r at the artwork's 0.7143 ratio, in g
+        const n = deadCards.length;
+        const pitch = n > 1 ? Math.min(2.25, (28 - CARD_G) / (n - 1)) : 0;
+        return (
+          <div className="replayer-dead-strip" aria-label={'Dead cards: ' + deadCards.join(' ')}>
+            <span className="replayer-dead-strip-label"><span>Dead</span></span>
+            <div className="replayer-dead-strip-cards" style={{ '--dead-ml': (pitch - CARD_G).toFixed(4) }}>
+              {deadCards.map(k => cardTheme === 'classic' ? (
+                <div key={k} className={'card-classic card-classic-' + k[1]}>
+                  <span className="card-classic-rank">{k[0].toUpperCase()}</span>
+                  <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[k[1]] || ''}</span>
+                </div>
+              ) : (
+                <img key={k} src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       </div>
 
       {/* Everything below the table shares one region of fixed height and
