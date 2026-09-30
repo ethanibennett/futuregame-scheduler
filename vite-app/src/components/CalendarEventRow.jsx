@@ -692,10 +692,11 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   ].filter(Boolean).join(' ');
 
   const stripColor = getVenueBrandColor(venue.abbr);
-  // Opaque, not 0.85. The venue palette is tuned so WHITE text clears 4.5:1
-  // on every swatch; the alpha cost ~0.6:1 and bought nothing, and because it
-  // was set inline it silently beat the stylesheet rule that removed it.
-  const stripTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff';
+  // The venue strip is ALWAYS white — every brand swatch is a mid/dark colour (WSOP is #a63030),
+  // and a uniform strip reads as one control. The event-number badge keeps its own contrast-aware
+  // colour (badgeTextColor) since it can sit on a lighter tint.
+  const stripTextColor = '#ffffff';
+  const badgeTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff';
 
   return (
     <div ref={rowRef} className={rowClasses} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
@@ -815,7 +816,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           those into "#bounty" and "#WSOP_COM". */}
                       {shortEventNumber(tournament.event_number) && (
                         <span className="badge badge-event"
-                              style={{ background: stripColor, color: stripTextColor }}>
+                              style={{ background: stripColor, color: badgeTextColor }}>
                           #{shortEventNumber(tournament.event_number)}
                         </span>
                       )}
@@ -1216,7 +1217,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   // Opaque, not 0.85. The venue palette is tuned so WHITE text clears 4.5:1
   // on every swatch; the alpha cost ~0.6:1 and bought nothing, and because it
   // was set inline it silently beat the stylesheet rule that removed it.
-  const stripTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff';
+  const stripTextColor = '#ffffff'; // venue strip is always white (see the full row)
   const bracelet = isBraceletEvent(tournament);
   const isBounty = /bounty|mystery millions/i.test(tournament.event_name);
   const isSat = !!tournament.is_satellite;

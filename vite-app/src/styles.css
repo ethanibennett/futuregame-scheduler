@@ -7719,6 +7719,16 @@
       -webkit-tap-highlight-color: transparent;
     }
     .kind-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
+    /* Precise centring: trim the label to its cap box (uppercase glyphs otherwise ride high in a
+       line box because of font descent space) so the button's flex-center centres the visible caps,
+       not the line box. text-indent balances the trailing letter-spacing so the caps are centred
+       horizontally too, not shifted left by one gap. */
+    .kind-toggle-label {
+      display: block;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      text-indent: var(--track-caps);
+    }
 
     /* Square icon-only chip variant: 32x32 rounded square (instead of
        the pill shape). Used for the location/calendar/filter/import
@@ -8861,7 +8871,11 @@
          and centred on the title line; align-self:start keeps it on the title line
          (r8) on a flight card (row 2 is 4r) rather than the flight line. */
       display: flex;
-      align-items: center;
+      /* Rest the icon BOTTOM on the title's baseline grid line: the box is title-line tall and
+         align-self:start seats its bottom on that line, so flex-end drops each icon's bottom edge
+         onto it (the 2.25r icon grows upward into the gap above the title). Was center, which left
+         the icon ~0.125r below the line. */
+      align-items: flex-end;
       justify-content: flex-end;
       gap: var(--space-xs);
       justify-self: end;

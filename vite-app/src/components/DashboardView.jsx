@@ -526,7 +526,7 @@ export default function DashboardView({
 
     const venueInfo = getVenueInfo(event.venue, event.property);
     const venueColor = getVenueBrandColor(venueInfo.abbr);
-    const venueStripText = venueInfo.abbr === 'WSOP' ? 'var(--bg)' : 'rgba(255,255,255,0.85)';
+    const venueStripText = '#ffffff'; // venue strip text is always white
 
     const cardClass = [
       'dash-event-card',
