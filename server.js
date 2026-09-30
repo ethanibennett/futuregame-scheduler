@@ -10274,6 +10274,60 @@ function feedRefGuardSql() {
     .join('');
 }
 
+// A stale feed row someone saved used to be kept forever beside the event that replaced it — the
+// same event listed twice, the saved copy under a title the feed no longer uses (seen 2026-09-30:
+// WSOP.com's "PLO8 8 or Better" at Turning Stone, saved while that source was emitted as its own
+// series, sitting beside the merged PokerAtlas "PLO 8 or Better"). Before a prune deletes stale
+// rows, each one that is referenced gets its references moved to its ONE live twin, and is then
+// free to go. A twin: another row of the same feed, same date, start time and buy-in, that
+// `isLive` says the feed still carries, at the same room — the two rows' venue+property strings
+// share a distinctive word ("turning", "gran"). No twin, or more than one, and nothing moves: the
+// row stays exactly as before, which is the safe failure.
+const ROOM_STOPWORDS = new Set(['wsop', 'wsopc', 'circuit', 'international', 'series', 'fall',
+  'spring', 'summer', 'winter', 'casino', 'poker', 'room', 'club', 'resort', 'hotel', 'the',
+  'and', 'online', 'event', 'events', 'championship', 'classic', 'open', 'tour', 'stop']);
+function roomTokens(row) {
+  return new Set(String(`${row.venue || ''} ${row.property || ''}`).toLowerCase()
+    .split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !/^\d+$/.test(w) && !ROOM_STOPWORDS.has(w)));
+}
+function remapStaleReferences(staleWhereSql, staleParams, tag, isLive, label) {
+  const present = FEED_REF_TABLES.filter(name => db.exec(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [name]).length);
+  if (!present.length) return 0;
+  const referenced = present.map(t => `EXISTS (SELECT 1 FROM ${t} r WHERE r.tournament_id = tournaments.id)`).join(' OR ');
+  const staleRes = db.exec(
+    `SELECT id, venue, property, date, time, buyin FROM tournaments
+      WHERE source_pdf = ? AND ${staleWhereSql} AND (${referenced})`, [tag, ...staleParams]);
+  if (!staleRes.length) return 0;
+  let moved = 0;
+  for (const [id, venue, property, date, time, buyin] of staleRes[0].values) {
+    const cand = db.exec(
+      `SELECT id, venue, property, event_number FROM tournaments
+        WHERE source_pdf = ? AND date = ? AND time = ? AND buyin = ? AND id != ?`,
+      [tag, date, time, buyin, id]);
+    const mine = roomTokens({ venue, property });
+    const twins = (cand.length ? cand[0].values : [])
+      .map(([tid, tv, tp, te]) => ({ id: tid, venue: tv, property: tp, event_number: te }))
+      .filter(t => isLive(t) && [...roomTokens(t)].some(w => mine.has(w)));
+    if (twins.length !== 1) continue;
+    const twin = twins[0].id;
+    for (const t of present) {
+      // OR IGNORE: where the person already has the twin (UNIQUE(user_id, tournament_id) and the
+      // like), their row for the stale copy stays behind and is dealt with below.
+      db.run(`UPDATE OR IGNORE ${t} SET tournament_id = ? WHERE tournament_id = ?`, [twin, id]);
+    }
+    if (present.includes('schedule_conditions')) {
+      db.run('UPDATE schedule_conditions SET depends_on_tournament_id = ? WHERE depends_on_tournament_id = ?', [twin, id]);
+    }
+    // A saved-schedule row left behind is a duplicate save of an event already saved: drop it.
+    // Anything else left behind (a result, an override) stays, and the guard keeps the row for it.
+    if (present.includes('user_schedules')) db.run('DELETE FROM user_schedules WHERE tournament_id = ?', [id]);
+    moved++;
+    console.log(`[${label}] moved saved references from stale #${id} (${venue}) to #${twin} (${twins[0].venue})`);
+  }
+  return moved;
+}
+
 // Delete feed-managed rows whose series is no longer in `keepVenues`. Shared by the local
 // ingest and the production feed-sync endpoint so both databases prune by the same rule.
 // Returns {pruned, skipped} — skipped counts rows kept only because of the guard above.
@@ -10288,8 +10342,10 @@ function pruneFeedVenues(keepVenues, label, tag = 'mtt-feed') {
   if (!distinct.length) return { pruned: 0, skipped: 0 };
   const guard = feedRefGuardSql();
   let pruned = 0, skipped = 0;
+  const liveByVenue = t => keep.has(t.venue);
   for (const [venue] of distinct[0].values) {
     if (keep.has(venue)) continue;
+    remapStaleReferences('venue = ?', [venue], tag, liveByVenue, label);
     const before = db.exec(
       "SELECT COUNT(*) FROM tournaments WHERE source_pdf = ? AND venue = ?",
       [tag, venue]
@@ -10324,6 +10380,10 @@ function reconcileFeedSeries(seenByVenue, label, tag) {
     if (!seen || seen.size === 0) continue; // no rows this run for this series — leave it untouched
     const nums = [...seen];
     const ph = nums.map(() => '?').join(', ');
+    // Live twin: a row the feed carried this run (its venue reconciled with its number seen),
+    // or a row of a series this run did not touch.
+    const isLive = t => { const sv = seenByVenue.get(t.venue); return sv ? sv.has(t.event_number) : true; };
+    remapStaleReferences(`venue = ? AND event_number NOT IN (${ph})`, [venue, ...nums], tag, isLive, label);
     const before = db.exec(
       `SELECT COUNT(*) FROM tournaments WHERE source_pdf = ? AND venue = ? AND event_number NOT IN (${ph})`,
       [tag, venue, ...nums]
