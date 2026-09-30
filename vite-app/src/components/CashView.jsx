@@ -267,10 +267,15 @@ export default function CashView({ token }) {
 
   return (
     <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
-        <h2 className="screen-title" style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 'calc(var(--subrow) * 4)' }}>
-          {mode === 'heatmap' ? 'Cash Heatmaps' : 'Live Cash Games'}
-        </h2>
+      {/* Live mode's title moved to the top-bar subtitle ("live cash games"); the row stays for
+          the heatmap title and the Refresh button. In live mode only the button remains, so it
+          keeps its right-hand seat via justify-content:flex-end. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: mode === 'heatmap' ? 'space-between' : 'flex-end', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
+        {mode === 'heatmap' && (
+          <h2 className="screen-title" style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 'calc(var(--subrow) * 4)' }}>
+            Cash Heatmaps
+          </h2>
+        )}
         {mode === 'live' && (
           <button onClick={load}
             style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>

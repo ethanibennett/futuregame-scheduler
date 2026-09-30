@@ -1381,7 +1381,9 @@ export default function App() {
       <header className="top-bar">
         <div className="top-bar-title">
           <h1>futurega.me</h1>
-          {seasonLabel ? <small>{seasonLabel}</small> : null}
+          {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
+              season's date range. The h2 inside CashView is dropped in favour of this. */}
+          {currentView === 'cash' ? <small>live cash games</small> : (seasonLabel ? <small>{seasonLabel}</small> : null)}
         </div>
         <div className="top-bar-actions">
           <button
