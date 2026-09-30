@@ -1820,7 +1820,7 @@
     .tracking-profit-pos, .tracking-profit-neg,
     .leaderboard-net-pos, .leaderboard-net-neg,
     .staking-pnl-pos, .staking-pnl-neg,
-    .replayer-bet-chip, .replayer-hand-strength-pct, .replayer-equity-pct,
+    .replayer-bet-chip, .replayer-equity-pct,
     .replayer-split-share,
     .replayer-seat-stack, .replayer-pot-display, .replayer-chip-delta,
     .late-reg-time, .mini-late-reg-time, .countdown-pill {
@@ -5717,7 +5717,8 @@
          corner. Above the plaque in the stacking order: .replayer-seat-info
          carries z-index 1, which is what hid this when it was a sibling rather
          than a child. The showdown hand name sits under it (below). */
-      position:absolute; bottom:0; left:50%; top:auto; right:auto;
+      /* --badge-drop (set by DrawBadge, in r) lowers it onto the next grid line. */
+      position:absolute; bottom: calc(var(--subrow) * var(--badge-drop, 0) * -1); left:50%; top:auto; right:auto;
       transform: translate(-50%, 75%);
       z-index: 2;
       display:flex; align-items:center; justify-content:center;
@@ -5740,7 +5741,7 @@
        below the plaque's bottom edge, so the name starts 2.5r below that edge:
        1.5r to clear the badge, 1r of air. */
     .replayer-seat:has(.replayer-seat-draw-badge) .replayer-seat-hand-name {
-      margin-top: calc(var(--subrow) * 2.5);
+      margin-top: calc(var(--subrow) * (2.5 + var(--badge-drop, 0)));
     }
 
     /* Felt color picker & card theme */
@@ -6597,20 +6598,6 @@
     /* The line clips (ellipsis), and a trimmed box that clips cuts its
        descenders: give them the room back outside the box. */
     .replayer-fullbleed .replayer-commentary-line { padding-bottom: 0.3em; margin-bottom: -0.3em; }
-    /* Hand strength, 3r: label and figure on the 2r line, the bar 1..2r. */
-    .replayer-fullbleed .replayer-hand-strength {
-      height: calc(var(--subrow) * 3); align-items: flex-start;
-      padding: 0 calc(var(--gu) * 2); border: 0;
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-    }
-    .replayer-fullbleed .replayer-hand-strength-label,
-    .replayer-fullbleed .replayer-hand-strength-pct {
-      line-height: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .replayer-fullbleed .replayer-hand-strength-pct { min-width: calc(var(--gu) * 3); }
-    .replayer-fullbleed .replayer-hand-strength-bar { height: var(--subrow); margin-top: var(--subrow); }
     /* Pot odds, 3r, full width; icon on the text line (0..2r). */
     .replayer-fullbleed .replayer-pot-odds {
       display: flex; justify-content: center; align-items: flex-start;
@@ -6973,23 +6960,6 @@
       font-size: var(--fs-2xs); font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps); text-transform: uppercase;
       color: var(--brand); margin-bottom: calc(var(--subrow) * 0.125);
-    }
-    /* ── Hand Strength Meter ── */
-    .replayer-hand-strength {
-      display:flex; align-items:center; gap: var(--space-sm); margin-top: var(--space-xs); padding: var(--space-xs) var(--space-md);
-      background:var(--surface); border:var(--bw-hair) solid var(--border); border-radius:calc(var(--subrow) * 0.75);
-    }
-    .replayer-hand-strength-label {
-      font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed);
-      text-transform:uppercase; letter-spacing: var(--track-tight); white-space:nowrap;
-    }
-    .replayer-hand-strength-bar {
-      flex:1; height:calc(var(--subrow) * 0.75); background:var(--surface2); border-radius:calc(var(--subrow) * 0.375); overflow:hidden;
-    }
-    .replayer-hand-strength-fill { height:100%; border-radius:calc(var(--subrow) * 0.375); transition:width var(--dur-slow) ease-out; }
-    .replayer-hand-strength-pct {
-      font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
-      min-width:calc(var(--subrow) * 4); text-align:right;
     }
 
     /* ── Pot Odds Display ── */

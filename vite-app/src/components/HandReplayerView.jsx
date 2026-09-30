@@ -130,6 +130,24 @@ function sortDrawHand(cardStr, gameType) {
 // In lowball the cards thrown are the high ones — the FRONT of a rank-ordered hand.
 function drawThrowsFromTop(gameType) { return !HIGH_DRAW.has(drawBase(gameType)); }
 
+/* The dead-card list: rank first, then suit (spades high). High games run
+   high→low; lowball runs low→high, so the cards that matter most to a low hand
+   lead — every draw game but 5-card high, and the razz family. The ace is low
+   in the A-5 games (A-5 TD, Badugi, Badacy, Razz, Razzdugi) and high in 2-7.
+   Stud 8 is a split game and keeps the high order. */
+const LOWBALL_STUD = new Set(['Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy']);
+const ACE_LOW_STUD = new Set(['Razz', 'Razzdugi']);
+function sortDeadCards(keys, gameType, category) {
+  const base = drawBase(gameType);
+  const isDraw = category === 'draw_triple' || category === 'draw_single';
+  const lowball = isDraw ? !HIGH_DRAW.has(base) : LOWBALL_STUD.has(base);
+  const aceLow = isDraw ? ACE_LOW_DRAW.has(base) : ACE_LOW_STUD.has(base);
+  const rank = (r) => (r === 'A' && aceLow) ? 1 : (RANK_SORT[r] || 0);
+  const dir = lowball ? 1 : -1;
+  return keys.slice().sort((a, b) =>
+    dir * (rank(a[0]) - rank(b[0])) || (SUIT_SORT[b[1]] || 0) - (SUIT_SORT[a[1]] || 0));
+}
+
 /* A folded seat's plaque shrinks AWAY from the table's centre: its scale origin
    is the point on its own box that faces out, i.e. the unit direction from the
    table centre (50%, 50%) to the seat, mapped onto the box (0..100%). A side
@@ -1055,45 +1073,6 @@ function generateCommentary(hand, streetIdx, actionIdx, pot, stacks) {
   }
 }
 
-// ── Hand strength helpers ──
-function calcHandStrength(heroCardsStr, boardCardsStr, gameType) {
-  if (!heroCardsStr) return null;
-  const gameEval = GAME_EVAL[gameType];
-  if (!gameEval) return null;
-  const hCards = parseCardNotation(heroCardsStr).filter(c => c.suit !== 'x');
-  const bCards = boardCardsStr ? parseCardNotation(boardCardsStr).filter(c => c.suit !== 'x') : [];
-  if (hCards.length < 2) return null;
-  if (bCards.length === 0) {
-    const r1 = '23456789TJQKA'.indexOf(hCards[0].rank);
-    const r2 = hCards.length > 1 ? '23456789TJQKA'.indexOf(hCards[1].rank) : 0;
-    const suited = hCards.length > 1 && hCards[0].suit === hCards[1].suit;
-    const paired = hCards.length > 1 && hCards[0].rank === hCards[1].rank;
-    let base = (r1 + r2) / 24 * 60;
-    if (paired) base = 50 + (r1 / 12) * 50;
-    if (suited) base += 8;
-    if (Math.abs(r1 - r2) <= 2 && !paired) base += 5;
-    return Math.min(100, Math.max(5, Math.round(base)));
-  }
-  try {
-    const allCards = hCards.concat(bCards);
-    let ev;
-    if (gameEval.method === 'omaha') ev = bestOmahaHigh(hCards, bCards);
-    else ev = bestHighHand(allCards);
-    if (!ev) return 30;
-    const rankMap = { 'High Card':15, 'Pair':30, 'Two Pair':45, 'Three of a Kind':55, 'Straight':65, 'Flush':75, 'Full House':82, 'Four of a Kind':92, 'Straight Flush':97, 'Royal Flush':100 };
-    let baseStr = 30;
-    for (const k in rankMap) { if (ev.name && ev.name.indexOf(k) >= 0) { baseStr = rankMap[k]; break; } }
-    return Math.min(100, Math.max(5, Math.round(baseStr)));
-  } catch { return 30; }
-}
-
-function getStrengthColor(pct) {
-  if (pct >= 75) return '#4ade80';
-  if (pct >= 50) return '#facc15';
-  if (pct >= 25) return '#f59e0b';
-  return '#ef4444';
-}
-
 function getStreetColorClass(streetName) {
   if (!streetName) return 'street-preflop';
   const lower = streetName.toLowerCase();
@@ -1106,6 +1085,10 @@ function getStreetColorClass(streetName) {
 // ── Additional analysis helpers ──
 function calcSPR(hand, streetIdx) {
   if (streetIdx <= 0) return null;
+  // Not in a limit game: with the bet fixed, the stack-to-pot ratio decides nothing.
+  const gt = String(hand.gameType || '');
+  const cfg = HAND_CONFIG[gt] || HAND_CONFIG[gt.replace(/^Super /, '')];
+  if (cfg && cfg.betting === 'fl') return null;
   const prevStreet = hand.streets[streetIdx - 1];
   const prevActionCount = prevStreet && prevStreet.actions ? prevStreet.actions.length - 1 : -1;
   const result = calcPotsAndStacks(hand, streetIdx - 1, prevActionCount);
@@ -1433,6 +1416,60 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
    how many points of the arc it is sampled at. The sample count only has to
    make the path read as a curve at card scale; 16 chords of a <=30deg arc
    deviate from it by well under a pixel. */
+/* The D1/PAT run under a draw-game plaque. It hangs from the plaque's bottom
+   edge (overlapping it by 0.5r), and the plaques sit wherever the table's
+   geometry puts them, so the natural top is almost never on a grid line. This
+   drops the badge to the NEXT whole-r line below that: --badge-drop, in r, on
+   the seat, so the showdown hand name under the badge moves with it. The grid
+   origin is the grid overlay's: the top bar's top, else the shell's content top. */
+function DrawBadge({ history }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const seat = el && el.closest('.replayer-seat');
+
+    if (!seat) return undefined;
+    const snap = () => {
+      // r from a 100r probe: WebKit keeps lengths in 1/64 px, so one r (or the
+      // badge's 2r) is truncated, and that error times ~90 rows is a visible miss.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;height:calc(var(--subrow) * 100);width:0;visibility:hidden';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+      if (!(r > 0)) return;
+      const bar = document.querySelector('.top-bar');
+      let origin = 0;
+      if (bar) origin = bar.getBoundingClientRect().top;
+      else {
+        const shell = document.querySelector('.app-shell');
+        if (shell) origin = shell.getBoundingClientRect().top + (parseFloat(getComputedStyle(shell).paddingTop) || 0);
+      }
+      // Natural top, measured with the drop cleared. The pop-in scales about
+      // the centre, which the scale leaves in place, so centre - 1r is the top
+      // at any point of the animation.
+      seat.style.setProperty('--badge-drop', '0');
+      const b = el.getBoundingClientRect();
+      const t = ((b.top + b.bottom) / 2 - r - origin) / r;
+      const frac = t - Math.floor(t);
+      const drop = frac < 0.02 || frac > 0.98 ? 0 : 1 - frac;
+      seat.style.setProperty('--badge-drop', drop.toFixed(4));
+    };
+    snap();
+    // Again once the step's own transitions have settled: a plaque can still be
+    // moving a fraction of an r when the badge first mounts.
+    const settle = setTimeout(snap, 450);
+    window.addEventListener('resize', snap);
+    return () => { clearTimeout(settle); window.removeEventListener('resize', snap); seat.style.removeProperty('--badge-drop'); };
+  });
+  return (
+    <div ref={ref} className="replayer-seat-draw-badge"
+      title={history.map(h => h === 'PAT' ? 'stood pat' : 'drew ' + h.slice(1)).join(', then ')}>
+      {history.join('/')}
+    </div>
+  );
+}
+
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
@@ -1767,6 +1804,7 @@ function TableQuickSettings({ anchorRef, onClose, settings, onUpdate }) {
       {feltLocked && <div className="replayer-settings-sublabel rs-cell rs-note"><span className="rs-t">Felt colour applies to the Default theme</span></div>}
       <SettingToggleRow label="Bright felt" on={settings.feltBright} onToggle={v => onUpdate('feltBright', v)} />
       <SettingToggleRow label="Rail light strip" on={settings.lightStrip} onToggle={v => onUpdate('lightStrip', v)} />
+      <SettingToggleRow label="Stacks in BB" on={settings.stacksInBB} onToggle={v => onUpdate('stacksInBB', v)} />
       <SettingToggleRow label="Splay" ariaLabel="Splay hole cards" on={settings.cardSplay} onToggle={v => onUpdate('cardSplay', v)} />
       {settings.cardSplay
         ? <SplayAmountSlider value={settings.splayAmount} onChange={v => onUpdate('splayAmount', v)} />
@@ -1842,42 +1880,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
         </div>
         <div className="replayer-settings-group">
           {groupTitle('Cards')}
-          <div className="replayer-settings-row is-stacked">
-            <div className="replayer-settings-label rs-cell"><span className="rs-t">Card Back Design</span></div>
-            <div className="replayer-settings-pills">
-              {/* 79: same argument. A card back is a picture. */}
-              {REPLAYER_CARD_BACKS.map(cb => (
-                <button key={cb.id} className={'replayer-settings-thumb' + (settings.cardBack === cb.id ? ' active' : '')}
-                  aria-pressed={settings.cardBack === cb.id}
-                  onClick={() => onUpdate('cardBack', cb.id)}>
-                  <span className="thumb-back" aria-hidden="true">
-                    <span className={'replayer-table'} data-cardback={cb.id}>
-                      <span className="card-row"><span className="card-unknown" /></span>
-                    </span>
-                  </span>
-                  <span className="thumb-label rs-cell"><span className="rs-t">{cb.label}</span></span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {settings.cardBack === 'custom' && (
-            <div className="replayer-settings-row">
-              <div className="replayer-settings-label rs-cell"><span className="rs-t">Custom Card Back Color</span></div>
-              <span className="felt-color-custom" title="Custom card back color">
-                <input type="color" value={settings.cardBackColor} aria-label="Custom card back color"
-                  onChange={e => onUpdate('cardBackColor', e.target.value)} />
-              </span>
-            </div>
-          )}
-          <div className="replayer-settings-row is-stacked">
-            <div className="replayer-settings-label rs-cell"><span className="rs-t">Card Front Style</span></div>
-            <div className="replayer-settings-pills is-text">
-              {[{ id: 'default', label: 'Standard' }, { id: 'classic', label: 'Classic' }].map(ct => (
-                <button key={ct.id} className={'replayer-settings-pill' + (settings.cardTheme === ct.id ? ' active' : '')}
-                  onClick={() => onUpdate('cardTheme', ct.id)}><span className="rs-t">{ct.label}</span></button>
-              ))}
-            </div>
-          </div>
           {/* 70: only the high-contrast toggle three rows up had aria-pressed
               and a label. Every other switch in this panel — Splay, Rail
               Light, seven Display rows and five Animation rows — was a bare
@@ -1914,9 +1916,7 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
               the felt, and what is analysis laid over it. */}
           {rows([
             { key:'showChipStacks', label:'Pot Chip Stacks', sub:'Chips in the pot, by denomination' },
-            { key:'showCommentary', label:'Commentator Mode', sub:'A play-by-play line under the table' },
             { key:'showPlayerStats', label:'Player Stats', sub:'A stats chip on each seat' },
-            { key:'stacksInBB', label:'Stacks in BB', sub:'Big blinds — or big bets in a limit game. Tapping any stack on the table toggles this too' },
             { key:'hideOppNames', label:'Hide Opponent Names', sub:'Show opponents as Opponent 1, 2, … — your name stays' },
           ])}
         </div>
@@ -1926,7 +1926,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
         <details className="replayer-settings-group replayer-settings-fold">
           <summary className="replayer-settings-group-title"><span className="rs-cell"><span className="rs-t">Analysis overlays</span></span></summary>
           {rows([
-            { key:'showHandStrength', label:'Hand Strength Meter', sub:'A gauge of relative hand strength' },
             { key:'showPotOdds', label:'Pot Odds', sub:'The price you are being laid, when facing a bet' },
             { key:'showNutsHighlight', label:'Highlight the Nuts', sub:'A glow when you hold the best hand' },
             { key:'showSPR', label:'Stack-to-Pot Ratio', sub:'SPR under the pot, from the flop on' },
@@ -1947,21 +1946,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
             { key:'animateFold', label:'Fold & Muck', sub:'Folded cards slide away to the muck' },
             { key:'animateChips', label:'Chip Animation', sub:'The pot ships to the winner' },
             { key:'animateBoard', label:'Board Flip', sub:'Board cards flip face-up' },
-            { key:'animateWinner', label:'Winner Effects', sub:'Bounce and glow on winning hand' },
-          ])}
-        </div>
-        {/* 99: four disabled rows labelled "Coming Soon", on screen long
-            enough to have accumulated their own accessibility treatment — a
-            promise the interface kept making and never kept. The four are
-            synthesised rather than sampled: no asset, no licence, nothing
-            added to the bundle, and no cold start on the first card. */}
-        <div className="replayer-settings-group">
-          {groupTitle('Sound')}
-          {rows([
-            { key:'soundDeal', label:'Card Deal', sub:'A short hiss as each card lands' },
-            { key:'soundChips', label:'Chips', sub:'Clay on clay, when a wager moves' },
-            { key:'soundFold', label:'Fold', sub:'Cards pushed away' },
-            { key:'soundAllIn', label:'All-In', sub:'The one moment that earns a pitch' },
           ])}
         </div>
       </div>
@@ -4996,7 +4980,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   // felt, so they fall back to the viewer's stored preference. Not persisted —
   // viewing someone's link must not overwrite your own felt.
   const [feltColor, setFeltColor] = useState(() => (hand && hand.feltColor) || localStorage.getItem('replayerFeltColor') || '#6b5b8a');
-  const [cardTheme, setCardTheme] = useState(() => localStorage.getItem('replayerCardTheme') || 'default');
+  // The classic card style was removed (2026-09-30); every card uses the standard faces.
+  const [cardTheme, setCardTheme] = useState('default');
   const prevStreetRef = useRef(0);
   const tableRef = useRef(null);
   /* The one thing on the table that cannot be sized in cqw is the text, so
@@ -5153,16 +5138,19 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _animFold = useReplayerSetting('AnimateFold', true);
 
   const rSettings = {
-    theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
-    highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
-    showPotOdds: _showPotOdds[0], showCommentary: _showCommentary[0],
+    theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor, cardBack: 'default', cardBackColor: _cardBackColor[0],
+    highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: false,
+    /* Removed from the UI 2026-09-30 and pinned off, so a value saved before then
+       cannot keep a hidden feature running: commentator mode, sounds, winner
+       effects, card-back designs, the classic card style. */
+    showPotOdds: _showPotOdds[0], showCommentary: false,
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
     showSPR: _showSPR[0], showBetSizing: _showBetSizing[0],
     showRanges: _showRanges[0], showChipDelta: _showChipDelta[0],
     showEquity: _showEquity[0], stacksInBB: _stacksInBB[0], hideOppNames: _hideOppNames[0],
-    soundDeal: _soundDeal[0], soundChips: _soundChips[0],
-    soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
-    animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
+    soundDeal: false, soundChips: false,
+    soundFold: false, soundAllIn: false,
+    animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: false,
     animateFold: _animFold[0],
     cardTheme, cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], cardOverlap: _cardOverlap[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
   };
@@ -6973,7 +6961,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      folded. Draw - each recorded discard, from the moment its draw is announced
      (the end of the street it is recorded on), and the hero's hand if the hero
      folded; an opponent's discards count only where the hand records them.
-     Face-down cards ('x') are never dead-known. Chronological, de-duplicated. */
+     Face-down cards ('x') are never dead-known. De-duplicated, then sorted by
+     rank and suit (sortDeadCards: low to high in lowball). */
   const deadCards = (() => {
     if (category !== 'stud' && !isDrawGame) return [];
     const out = []; const seen = new Set();
@@ -6990,7 +6979,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         add(pi === replayHeroIdx ? heroCards : opponentCards[pi]);
       });
     }
-    return out;
+    return sortDeadCards(out, hand.gameType, category);
   })();
 
   return (
@@ -7697,9 +7686,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                     .sort((a, b) => a - b)
                     .map(si => byStreet[si].discarded === 0 ? 'PAT' : 'D' + byStreet[si].discarded);
                   if (!history.length) return null;
-                  return <div className="replayer-seat-draw-badge"
-                    title={history.map(h => h === 'PAT' ? 'stood pat' : 'drew ' + h.slice(1)).join(', then ')}>
-                    {history.join('/')}</div>;
+                  return <DrawBadge history={history} />;
                 })()}
               </div>
               {inspecting === pi && (
@@ -7898,28 +7885,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           </div>
         </div>
       )}
-
-      {/* Hand strength */}
-      {rSettings.showHandStrength && category === 'community' && (() => {
-        const strength = calcHandStrength(heroCards, boardCards, hand.gameType);
-        /* Preflop there is nothing to measure, but the strip still holds its
-           place — otherwise the table shrinks the moment the flop lands. */
-        if (strength === null) return (
-          <div className="replayer-hand-strength is-reserved" aria-hidden="true">
-            <div className="replayer-hand-strength-label">Strength</div>
-            <div className="replayer-hand-strength-bar"><div className="replayer-hand-strength-fill" style={{width: 0}} /></div>
-            <div className="replayer-hand-strength-pct">0%</div>
-          </div>
-        );
-        const col = getStrengthColor(strength);
-        return (
-          <div className="replayer-hand-strength">
-            <div className="replayer-hand-strength-label">Strength</div>
-            <div className="replayer-hand-strength-bar"><div className="replayer-hand-strength-fill" style={{width: strength + '%', background: col}} /></div>
-            <div className="replayer-hand-strength-pct" style={{color: col}}>{strength}%</div>
-          </div>
-        );
-      })()}
 
       {/* Pot odds */}
       {rSettings.showPotOdds && (() => {
