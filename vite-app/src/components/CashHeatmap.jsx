@@ -56,14 +56,20 @@ export default function CashHeatmap({ token }) {
         const g = await gRes.json();
         const vNames = {};
         if (vRes && vRes.ok) { try { const v = await vRes.json(); (v.venues || []).forEach(x => { vNames[x.slug] = x.name; }); } catch { /* names optional */ } }
+        /* /cash/games is every (venue, game, stakes) the watcher has EVER recorded, but names
+           come only from /cash/venues, its ACTIVE list — so rooms it sampled for a day or two and
+           dropped (pa-9319, maryland-live, ...) surfaced as bare slugs. Only active venues are
+           offered; if the venue list didn't load at all, fall back to everything. */
+        const named = Object.keys(vNames).length > 0;
+        const rows = (g.games || []).filter(row => !named || vNames[row.venueSlug]);
         const byVenue = {};
-        (g.games || []).forEach(row => { (byVenue[row.venueSlug] = byVenue[row.venueSlug] || []).push(row); });
+        rows.forEach(row => { (byVenue[row.venueSlug] = byVenue[row.venueSlug] || []).push(row); });
         for (const k of Object.keys(byVenue)) byVenue[k].sort((a, b) => (b.samples || 0) - (a.samples || 0));
         if (!live) return;
         setCatalog({ vNames, byVenue });
         setSel(prev => {
           if (prev && byVenue[prev.venue] && byVenue[prev.venue].some(x => x.gameType === prev.gameType && x.stakes === prev.stakes)) return prev;
-          const best = (g.games || []).slice().sort((a, b) => (b.samples || 0) - (a.samples || 0))[0];
+          const best = rows.slice().sort((a, b) => (b.samples || 0) - (a.samples || 0))[0];
           return best ? { venue: best.venueSlug, gameType: best.gameType, stakes: best.stakes } : null;
         });
         setStatus('ready');
