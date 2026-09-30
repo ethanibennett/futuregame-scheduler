@@ -25,9 +25,12 @@ const STREET_DEFS = {
 };
 
 // ── Draw hand computation ──
-function computeDrawHand(originalCards, draws, upToStreetIdx) {
+/* A draw hand is always shown in rank order — before the first draw and after
+   every draw, not in the order cards were entered or arrived — so "7 6 5 3 2"
+   reads as a hand instead of "7 6 3 2 5". See sortDrawHand. */
+function computeDrawHand(originalCards, draws, upToStreetIdx, gameType = '') {
   if (!originalCards) return '';
-  let current = originalCards;
+  let current = sortDrawHand(originalCards, gameType);
   for (let si = 0; si <= upToStreetIdx; si++) {
     if (!draws || !draws[si]) continue;
     const draw = draws[si];
@@ -45,11 +48,15 @@ function computeDrawHand(originalCards, draws, upToStreetIdx) {
       });
       current = remaining.map(c => c.rank + c.suit).join('');
     } else {
+      // No specific cards recorded: throw the cards a player of this game would
+      // throw — the HIGHEST in lowball, the lowest in high draw. `current` is in
+      // rank order, so that is one end of it (drawThrowsFromTop).
       const parsed = parseCardNotation(current);
-      const keep = Math.max(0, parsed.length - draw.discarded);
-      current = parsed.slice(0, keep).map(c => c.rank + c.suit).join('');
+      const n = Math.min(parsed.length, draw.discarded);
+      const kept = drawThrowsFromTop(gameType) ? parsed.slice(n) : parsed.slice(0, parsed.length - n);
+      current = kept.map(c => c.rank + c.suit).join('');
     }
-    if (draw.newCards) current += draw.newCards;
+    if (draw.newCards) current = sortDrawHand(current + draw.newCards, gameType);
   }
   return current;
 }
@@ -104,6 +111,24 @@ function sortHandByRank(cardStr) {
     (SUIT_SORT[b.suit] || 0) - (SUIT_SORT[a.suit] || 0)
   ).map(c => c.rank + c.suit).join('');
 }
+
+/* Draw games sort high→low too, but the ace plays LOW in the A-5 family, so a
+   wheel reads "5 4 3 2 A" there and "A K Q J T" in 2-7 or high draw. Face-down
+   backs rank 0 and sit at the end, after every known card. */
+const ACE_LOW_DRAW = new Set(['A-5 TD', 'Badugi', 'Badacy']);
+const HIGH_DRAW = new Set(['PL 5CD Hi']);
+const drawBase = (gameType) => String(gameType || '').replace(/^Super /, '');
+function sortDrawHand(cardStr, gameType) {
+  const cards = parseCardNotation(cardStr || '');
+  if (cards.length < 2) return cardStr || '';
+  const aceLow = ACE_LOW_DRAW.has(drawBase(gameType));
+  const rank = (r) => (r === 'A' && aceLow) ? 1 : (RANK_SORT[r] || 0);
+  return cards.slice().sort((a, b) =>
+    rank(b.rank) - rank(a.rank) || (SUIT_SORT[b.suit] || 0) - (SUIT_SORT[a.suit] || 0)
+  ).map(c => c.rank + c.suit).join('');
+}
+// In lowball the cards thrown are the high ones — the FRONT of a rank-ordered hand.
+function drawThrowsFromTop(gameType) { return !HIGH_DRAW.has(drawBase(gameType)); }
 
 // ── Position labels ──
 function getPositionLabels(numPlayers) {
@@ -3247,7 +3272,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             const playerHands = [];
             let heroCardStr;
             if (isStudShowdown) heroCardStr = getStudHeroAllCards();
-            else if (isDrawShowdown) { const heroBase = hand.streets[0].cards.hero || ''; heroCardStr = computeDrawHand(heroBase, getPlayerDrawsByStreet(hand, heroIdx), hand.streets.length - 1); }
+            else if (isDrawShowdown) { const heroBase = hand.streets[0].cards.hero || ''; heroCardStr = computeDrawHand(heroBase, getPlayerDrawsByStreet(hand, heroIdx), hand.streets.length - 1, hand.gameType); }
             else heroCardStr = hand.streets[0].cards.hero || '';
             const heroParsed = parseCardNotation(heroCardStr).filter(c => c.suit !== 'x');
             if (heroParsed.length > 0) playerHands.push({ idx: heroIdx, cards: heroParsed });
@@ -3459,7 +3484,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
       const dhi = hand.heroIdx != null ? hand.heroIdx : 0;
       const oppSlot = pi > dhi ? pi - 1 : pi;
       const base = pi === dhi ? (hand.streets[0]?.cards.hero || '') : (hand.streets[0]?.cards.opponents?.[oppSlot] || '');
-      return computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), currentStreetIdx - 1);
+      return computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), currentStreetIdx - 1, hand.gameType);
     };
     const drawPlayerQueue = drawActivePlayers.filter(pi => !(currentStreet.draws || []).find(d => d.player === pi));
     const currentDrawPlayer = drawPlayerQueue.length > 0 ? drawPlayerQueue[0] : -1;
@@ -3767,7 +3792,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     const baseCards = hand.streets[0]?.cards.hero || '';
                     if (!baseCards) return null;
                     const isDrawGameLocal = category === 'draw_triple' || category === 'draw_single';
-                    const displayCards = isDrawGameLocal ? computeDrawHand(baseCards, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1) : baseCards;
+                    const displayCards = isDrawGameLocal ? computeDrawHand(baseCards, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : baseCards;
                     return <span className="gto-seat-hero-cards"><CardRow text={displayCards} max={gameCfg.heroCards || 2} /></span>;
                   })()}
                   {gameCfg.isStud && (() => {
@@ -3831,7 +3856,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                   {i === heroIdx && isActive && !gameCfg.isStud && (() => {
                     const hcBase = (hand.streets[0] && hand.streets[0].cards.hero) || '';
                     const isDrawGameLocal = category === 'draw_triple' || category === 'draw_single';
-                    const hcDisplay = isDrawGameLocal ? computeDrawHand(hcBase, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1) : hcBase;
+                    const hcDisplay = isDrawGameLocal ? computeDrawHand(hcBase, getPlayerDrawsByStreet(hand, i), currentStreetIdx - 1, hand.gameType) : hcBase;
                     const hcParsed = parseCardNotation(hcDisplay);
                     const hcSet = new Set(hcParsed.map(c => c.rank + c.suit));
                     const hcMaxCards = gameCfg.heroCards || 2;
@@ -5227,7 +5252,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     if (isDrawGame) {
       const base = hand.streets[0]?.cards.hero || '';
       const heroDraws = getPlayerDrawsByStreet(hand, replayHeroIdx);
-      return computeDrawHand(base, heroDraws, streetIdx - 1);
+      return computeDrawHand(base, heroDraws, streetIdx - 1, hand.gameType);
     }
     return hand.streets[0]?.cards.hero || '';
   }, [hand, streetIdx, category, isDrawGame, replayHeroIdx]);
@@ -7181,6 +7206,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           const pos = seats[pi] || [50, 50];
           const rawCards = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
           let cards = (pi === replayHeroIdx || showResult) ? (rawCards === 'MUCK' ? '' : rawCards) : '';
+          // Draw hands in rank order, BEFORE discardIdx below indexes into them.
+          if (isDrawGame && cards) cards = sortDrawHand(cards, hand.gameType);
           /* Draw discards: the moment this street's draw is announced (the same
              instant the d1/d2/pat badge appears), flag the cards being thrown so
              CardRow lifts them like a stud up-card and dims them. `cards` is the
@@ -7198,8 +7225,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                 parseCardNotation(sd.discardedCards).forEach(c => { const key = c.rank + c.suit; need[key] = (need[key] || 0) + 1; });
                 shown.forEach((c, i) => { const key = c.rank + c.suit; if (need[key] > 0) { need[key]--; set.add(i); } });
               } else {
-                // No specific cards recorded — computeDrawHand throws the last N.
-                for (let i = Math.max(0, shown.length - sd.discarded); i < shown.length; i++) set.add(i);
+                // No specific cards recorded — lift the same cards computeDrawHand
+                // throws: the top N of the rank-ordered hand in lowball, the bottom N
+                // in high draw.
+                const n = Math.min(shown.length, sd.discarded);
+                if (drawThrowsFromTop(hand.gameType)) { for (let i = 0; i < n; i++) set.add(i); }
+                else { for (let i = shown.length - n; i < shown.length; i++) set.add(i); }
               }
               if (set.size) discardIdx = set;
             }
