@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Admin-only layout-grid overlay. Draws the app's real content grid faintly
@@ -22,14 +22,18 @@ import React, { useLayoutEffect, useState } from 'react';
  * getBoundingClientRect().top is the origin by construction — no computation to
  * drift. Falls back to the shell's content top if the bar isn't present.
  */
-export default function GridOverlay() {
+export default function GridOverlay({ showReadout = true }) {
   const [top, setTop] = useState(0);
   const [dbg, setDbg] = useState('');
+  // Read through a ref: the effect below mounts once, and the readout toggle must not remount it.
+  const readoutOn = useRef(showReadout);
+  readoutOn.current = showReadout;
   useLayoutEffect(() => {
     // Live device readout: prints the actual numbers the pill/scroll math depends
     // on, measured on THIS device, so a screenshot shows the truth instead of a
     // Windows-WebKit guess. Reads r from a probe styled with the real --subrow.
     const readDbg = () => {
+      if (!readoutOn.current) return; // readout hidden — skip the DOM measuring
       try {
         const probe = document.createElement('div');
         probe.style.cssText = 'position:absolute;height:var(--subrow);width:0;visibility:hidden';
@@ -227,7 +231,7 @@ export default function GridOverlay() {
   }, []);
   return (
     <div aria-hidden="true" className="grid-dev-overlay">
-      <div style={{ position: 'fixed', left: 0, right: 'calc(var(--subrow) * 7.5)', bottom: 'calc(var(--nav-h) + var(--subrow))', maxHeight: '42vh', overflow: 'hidden', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>
+      {showReadout && <div style={{ position: 'fixed', left: 0, right: 'calc(var(--subrow) * 7.5)', bottom: 'calc(var(--nav-h) + var(--subrow))', maxHeight: '42vh', overflow: 'hidden', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>}
       <div className="grid-dev-baseline" style={{ top }} />
       <div className="grid-dev-cols">
         <span className="grid-dev-col" />

@@ -264,6 +264,9 @@ export default function App() {
   // renders. Tap-activated (the native WKWebView can't set a URL param or
   // localStorage), never persisted — off on every load.
   const [demoStates, setDemoStates] = useState(false);
+  // The grid overlay's live numeric readout (the cyan box) can be switched off on
+  // its own, leaving the grid lines. Persists; on by default, as it always was.
+  const [gridReadout, setGridReadout] = useState(() => localStorage.getItem('gridReadout') !== 'off');
   // 'bahnschrift' was retired as a display-font option; anyone still holding it
   // in localStorage lands back on the default rather than an unstyled data-serif.
   const [serifFont, setSerifFont] = useState(() => {
@@ -1840,7 +1843,17 @@ export default function App() {
       {/* Admin-only layout grid: a faint overlay of the real content grid plus a
           floating toggle, so alignment can be checked live and layout fixes made
           by eye. Gated on isAdmin; state persists in localStorage. */}
-      {isAdmin && gridOverlay && <GridOverlay />}
+      {isAdmin && gridOverlay && <GridOverlay showReadout={gridReadout} />}
+      {isAdmin && gridOverlay && (
+        <button
+          type="button"
+          className={'grid-dev-toggle' + (gridReadout ? ' is-on' : '')}
+          title={`${gridReadout ? 'Hide' : 'Show'} grid readout (admin)`}
+          aria-pressed={gridReadout}
+          onClick={() => setGridReadout(v => { const next = !v; localStorage.setItem('gridReadout', next ? 'on' : 'off'); return next; })}
+          style={{ bottom: 'calc(calc(var(--subrow) * 21.5) + env(safe-area-inset-bottom, 0))' }}
+        >i</button>
+      )}
       {isAdmin && (
         <button
           type="button"
