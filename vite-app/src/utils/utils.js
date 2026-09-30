@@ -453,6 +453,7 @@ export const STRIP_ABBR = {
   'CASINO MALTA':   'MALTA',
   'BOSSIER CITY':   'BOSSIER',
   'LIVE! PHILLY':   'LIVE PHILLY',
+  'LODGE':          'THE LODGE',
 };
 export function getStripAbbr(abbr) {
   return STRIP_ABBR[abbr] || abbr;
@@ -465,13 +466,31 @@ const DERIVED_BY_ABBR = new Map();
 // Remembered so call sites WITHOUT the row in hand (filter lists, live updates) still render
 // the same strip identity for that series as the event rows do.
 const PROPERTY_BY_VENUE = new Map();
+/* Per-ROOM corrections to a derived strip, keyed by the feed's `property` so every series the
+   room runs inherits them (VENUE_MAP is per series title and would need an entry per series).
+   - longName: the expanded strip's full name where the feed's label is a short brand
+     ("ACR" is Americas Cardroom). The collapsed strip keeps the short abbr.
+   - abbr: join a room to an existing curated abbr, which carries its brand colour and its
+     PROPERTY_COORDS entry. "Lodge Card Club Austin" derived "LODGE CARD", which had no
+     coordinate, so every event there fell out of both location filters. */
+const PROPERTY_OVERRIDES = {
+  'ACR':                    { longName: 'Americas Cardroom' },
+  'Phenom':                 { longName: 'Phenom Poker' },
+  'Lodge Card Club Austin': { abbr: 'LODGE' },
+  // "Big Poker Oktober" (130 events) derived "PARKWEST", with no coordinate; the Legends of
+  // Poker entry in VENUE_MAP already used THE BIKE.
+  'Parkwest Bicycle Casino': { abbr: 'THE BIKE' },
+};
+
 export function getVenueInfo(v, property) {
   const mapped = VENUE_MAP[v];
   if (mapped) return mapped;
   // An uncurated series derives its strip from the ROOM when the feed names one — the venue
   // string is the series title by contract, and abbreviating that shows tours and cities.
   if (property) PROPERTY_BY_VENUE.set(v, property);
-  const derived = deriveVenueInfo(PROPERTY_BY_VENUE.get(v) || v);
+  const room = PROPERTY_BY_VENUE.get(v);
+  let derived = deriveVenueInfo(room || v);
+  if (room && PROPERTY_OVERRIDES[room]) derived = { ...derived, ...PROPERTY_OVERRIDES[room] };
   DERIVED_BY_ABBR.set(derived.abbr, derived);
   return derived;
 }

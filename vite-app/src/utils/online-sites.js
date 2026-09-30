@@ -272,6 +272,12 @@ export const US_STATES = [
 ];
 
 const STATE_BY_NAME = new Map(US_STATES.map(([code, name]) => [name.toLowerCase(), code]));
+const NAME_BY_STATE = new Map(US_STATES);
+
+/** "Pennsylvania" for "PA"; null for anything that is not a US state code. */
+export function stateName(code) {
+  return (code && NAME_BY_STATE.get(String(code).toUpperCase())) || null;
+}
 
 /** Nominatim returns `address.state` as a full name ("Nevada"), occasionally a
  *  code, and for DC something else entirely. Null when it is neither — never a

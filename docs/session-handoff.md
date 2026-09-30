@@ -1072,6 +1072,19 @@ so they survive a compaction:
   should be one that covers any N-game mix rather than another special case.
 - **New card graphics for the replayer.**
 
+Added 2026-09-30:
+
+- **Add BetMGM as an online room.** The 2026-09-14 recon found no public schedule
+  (its only schedules are blog posts, and its `robots.txt` disallows everything; see
+  the online watcher's `docs/sources.md`). The route that has worked since is the
+  app's own traffic: ClubWPT Gold became token-fed after a capture, and the Bravo
+  and PokerAtlas clocks came from phone captures (mitmproxy setup in the
+  2026-09-30 entry). Capture the BetMGM Poker app's lobby, document the endpoint in
+  the watcher's `docs/`, then add the adapter. The scheduler side already knows the
+  site (`online-sites.js`: `betmgm`, regulated, state allow-list), so rows only
+  need `site: 'betmgm'`. Respect the watcher rule: if the endpoint is gated,
+  don't work around the gate.
+
 ~~Also outstanding from the same day: the event card's start time and buy-in are
 NOT baseline-aligned … deliberate as of #236.~~ **Superseded 2026-09-25.** The
 card is on the grid now: time and buy-in share the 32px row baseline, the

@@ -286,7 +286,7 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
   return (
     <div
       className="buddy-avatar-row"
-      style={{ display: 'flex', gap: 'calc(var(--subrow) * 0.75)', flexWrap: 'wrap', marginBottom: 'calc(var(--subrow) * 1.25)', alignItems: 'center' }}
+      style={{ display: 'flex', gap: 'var(--gu)', flexWrap: 'wrap', alignItems: 'center' }}
     >
       {buddies.map((b, i) => {
         const name = b.username || b.real_name || '?';
@@ -298,11 +298,15 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
               cursor: onBuddyClick ? 'pointer' : 'default',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 'calc(var(--subrow) * 0.75)',
-              padding: 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.25) calc(var(--subrow) * 0.375) calc(var(--subrow) * 0.375)',
+              gap: 'calc(var(--gu) * 0.5)',
+              /* A whole 3r chip: the avatar is 2r inside 0.5r of padding each way (it was a
+                 22px avatar plus padding and borders = 3.861r, pushing all below off-grid). */
+              height: 'calc(var(--subrow) * 3)',
+              boxSizing: 'border-box',
+              padding: '0 var(--gu) 0 calc(var(--subrow) * 0.5)',
               borderRadius: 'calc(var(--subrow) * 128)',
               background: 'var(--surface)',
-              border: 'var(--bw-hair) solid var(--border)',
+              boxShadow: 'inset 0 0 0 var(--bw-hair) var(--border)',
               fontSize: 'calc(var(--gu) * 1.149)',
               color: 'var(--text)',
               userSelect: 'none',
@@ -310,8 +314,8 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
             onClick={() => onBuddyClick && onBuddyClick(b)}
             title={name}
           >
-            <Avatar src={b.avatar} username={name} size={22} />
-            <span>{name}</span>
+            <Avatar src={b.avatar} username={name} size={0} style={{ width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', fontSize: 'var(--fs-2xs)' }} />
+            <span className="buddy-chip-name">{name}</span>
           </span>
         );
       })}
@@ -383,201 +387,111 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
     onSet(result, isPublic);
   };
 
-  const renderItem = (t) => (
-    <div
-      key={t.id}
-      className={`condition-sat-item ${selectedSatId === t.id ? 'selected' : ''}`}
-      onClick={() => setSelectedSatId(t.id)}
-    >
-      <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0}}>#{t.event_number}</span>
-      <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
-      <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>${t.buyin}</span>
+  /* One rhythm for the whole picker: a flex column with 1r gaps, and every row a whole-r cell
+     whose text is trimmed to cap..baseline and seated on the cell's bottom line. Checkboxes sit
+     in 2g cells, so labels start on 7g; sub-sections indent 3g to that same 7g. */
+  const Check = ({ checked, onChange, children }) => (
+    <label className="cp-check-row">
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <span>{children}</span>
+    </label>
+  );
+  const Eyebrow = ({ children }) => <div className="cp-eyebrow"><span>{children}</span></div>;
+  const renderPick = (t, selected, onPick, lead) => (
+    <div key={t.id} className={`condition-sat-item ${selected ? 'selected' : ''}`} onClick={onPick}>
+      <span className="cp-item-lead">{lead}</span>
+      <span className="cp-item-name">{t.event_name}</span>
+      <span className="cp-item-price">{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
     </div>
   );
 
-  const checkboxStyle = {
-    width: 'calc(var(--subrow) * 2)', height: 'calc(var(--subrow) * 2)', accentColor: 'var(--accent)', cursor: 'pointer'
-  };
-  const sectionLabelStyle = {
-    fontSize: 'calc(var(--gu) * 1.208)', fontFamily: "'Univers Condensed','Univers',sans-serif", fontWeight: 'var(--fw-bold)', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1)'
-  };
-
   return (
     <div className="condition-picker">
-      <div className="condition-picker-title">Set Conditions</div>
+      <div className="cp-title"><span>Set Conditions</span></div>
 
-      {/* Satellites checkbox */}
-      <label style={{...sectionLabelStyle, marginBottom: satEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
-        <input type="checkbox" checked={satEnabled} onChange={e => setSatEnabled(e.target.checked)} style={checkboxStyle} />
-        Satellites
-      </label>
-
+      <Check checked={satEnabled} onChange={setSatEnabled}>Satellites</Check>
       {satEnabled && (
-        <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
-          <div className="condition-type-row" style={{marginBottom:'calc(var(--subrow) * 1)'}}>
-            <button className={`condition-type-btn ${satType === 'IF_WIN_SEAT' ? 'active' : ''}`} onClick={() => setSatType('IF_WIN_SEAT')}>
-              If I win a seat
+        <div className="cp-sub">
+          <div className="cp-btn-pair">
+            <button className={`cp-btn ${satType === 'IF_WIN_SEAT' ? 'active' : ''}`} onClick={() => setSatType('IF_WIN_SEAT')}>
+              <span>If I win a seat</span>
             </button>
-            <button className={`condition-type-btn ${satType === 'IF_NO_SEAT' ? 'active' : ''}`} onClick={() => setSatType('IF_NO_SEAT')}>
-              If I don't win a seat
+            <button className={`cp-btn ${satType === 'IF_NO_SEAT' ? 'active' : ''}`} onClick={() => setSatType('IF_NO_SEAT')}>
+              <span>If I don't win a seat</span>
             </button>
           </div>
-
           {suggestedSatellites.length > 0 && (
             <>
-              <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
-                Related Satellites
-              </div>
+              <Eyebrow>Related Satellites</Eyebrow>
               <div className="condition-sat-list">
-                {suggestedSatellites.map(renderItem)}
+                {suggestedSatellites.map(t => renderPick(t, selectedSatId === t.id, () => setSelectedSatId(t.id), '#' + t.event_number))}
               </div>
             </>
           )}
-
-          <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
-            {suggestedSatellites.length > 0 ? 'Or search any event' : 'Search for an event'}
-          </div>
-          <input
-            className="condition-search"
-            placeholder="Event name or number..."
-            value={satSearch}
-            onChange={e => setSatSearch(e.target.value)}
-          />
+          <Eyebrow>{suggestedSatellites.length > 0 ? 'Or search any event' : 'Search for an event'}</Eyebrow>
+          <input className="condition-search" placeholder="Event name or number..."
+            value={satSearch} onChange={e => setSatSearch(e.target.value)} />
           {searchResults.length > 0 && (
             <div className="condition-sat-list">
-              {searchResults.map(renderItem)}
+              {searchResults.map(t => renderPick(t, selectedSatId === t.id, () => setSelectedSatId(t.id), '#' + t.event_number))}
             </div>
           )}
         </div>
       )}
 
-      {/* Profit / Loss checkbox */}
-      <label style={{...sectionLabelStyle, marginBottom: profitEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
-        <input type="checkbox" checked={profitEnabled} onChange={e => setProfitEnabled(e.target.checked)} style={checkboxStyle} />
-        Profit / Loss
-      </label>
-
+      <Check checked={profitEnabled} onChange={setProfitEnabled}>Profit / Loss</Check>
       {profitEnabled && (
-        <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
-          <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
-            Profit threshold ($)
-          </div>
-          <input
-            className="condition-search"
-            type="number"
-            placeholder="e.g. 5000"
-            value={profitAmount}
-            onChange={e => setProfitAmount(e.target.value)}
-          />
-          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',display:'block',marginTop:'calc(var(--subrow) * 0.25)'}}>
-            I'll play this event if I'm up at least this amount
-          </span>
+        <div className="cp-sub">
+          <Eyebrow>Profit threshold ($)</Eyebrow>
+          <input className="condition-search" type="number" placeholder="e.g. 5000"
+            value={profitAmount} onChange={e => setProfitAmount(e.target.value)} />
+          <div className="cp-help"><span>I'll play this if I'm up at least this much</span></div>
         </div>
       )}
 
-      {/* If I Bust checkbox */}
       {bustEvents.length > 0 && (
         <>
-        <label style={{...sectionLabelStyle, marginBottom: bustEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
-          <input type="checkbox" checked={bustEnabled} onChange={e => setBustEnabled(e.target.checked)} style={checkboxStyle} />
-          If I Bust
-        </label>
-
-        {bustEnabled && (
-          <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
-            <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
-              I'll play this if I bust from:
+          <Check checked={bustEnabled} onChange={setBustEnabled}>If I Bust</Check>
+          {bustEnabled && (
+            <div className="cp-sub">
+              <Eyebrow>I'll play this if I bust from:</Eyebrow>
+              <div className="condition-sat-list">
+                {bustEvents.map(t => renderPick(t, selectedBustId === t.id, () => setSelectedBustId(t.id === selectedBustId ? null : t.id), t.time))}
+              </div>
             </div>
-            <div className="condition-sat-list">
-              {bustEvents.map(t => (
-                <div
-                  key={t.id}
-                  className={`condition-sat-item ${selectedBustId === t.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedBustId(t.id === selectedBustId ? null : t.id)}
-                >
-                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)'}}>{t.time}</span>
-                  <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
-                  <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
         </>
       )}
 
-      {/* If I Bag checkbox */}
       {bagEvents.length > 0 && (
         <>
-        <label style={{...sectionLabelStyle, marginBottom: bagEnabled ? 'calc(var(--subrow) * 1)' : 'calc(var(--subrow) * 1.5)'}}>
-          <input type="checkbox" checked={bagEnabled} onChange={e => setBagEnabled(e.target.checked)} style={checkboxStyle} />
-          If I Bag
-        </label>
-
-        {bagEnabled && (
-          <div style={{paddingLeft:'calc(var(--subrow) * 3)',marginBottom:'calc(var(--subrow) * 1.5)'}}>
-            <div style={{fontSize:'calc(var(--gu) * 1.001)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'calc(var(--subrow) * 0.5)'}}>
-              I'll play this if I bag from:
+          <Check checked={bagEnabled} onChange={setBagEnabled}>If I Bag</Check>
+          {bagEnabled && (
+            <div className="cp-sub">
+              <Eyebrow>I'll play this if I bag from:</Eyebrow>
+              <div className="condition-sat-list">
+                {bagEvents.map(t => renderPick(t, selectedBagId === t.id, () => setSelectedBagId(t.id === selectedBagId ? null : t.id), '#' + t.event_number))}
+              </div>
             </div>
-            <div className="condition-sat-list">
-              {bagEvents.map(t => (
-                <div
-                  key={t.id}
-                  className={`condition-sat-item ${selectedBagId === t.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedBagId(t.id === selectedBagId ? null : t.id)}
-                >
-                  <span style={{fontWeight: 'var(--fw-bold)',flexShrink:0,fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)'}}>#{t.event_number}</span>
-                  <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.event_name}</span>
-                  <span style={{flexShrink:0,color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)'}}>{currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
         </>
       )}
 
-      {/* Public toggle */}
-      <div
-        style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',marginTop:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.104)',fontFamily:"'Univers Condensed','Univers',sans-serif",color:'var(--text-muted)',cursor:'pointer',userSelect:'none'}}
+      {/* Public toggle: a 3g x 2r track in the same 2g-plus-gap lead as the checkboxes. */}
+      <div className="cp-toggle-row" role="switch" aria-checked={isPublic} tabIndex={0}
         onClick={() => setIsPublic(p => !p)}
-      >
-        <div style={{
-          width:'calc(var(--subrow) * 4)',height:'calc(var(--subrow) * 2.25)',borderRadius:'calc(var(--subrow) * 1.125)',
-          background: isPublic ? 'var(--accent)' : 'var(--border)',
-          position:'relative',transition:'background 0.2s'
-        }}>
-          <div style={{
-            width:'calc(var(--subrow) * 1.75)',height:'calc(var(--subrow) * 1.75)',borderRadius:'50%',background:'#fff',
-            position:'absolute',top:'calc(var(--subrow) * 0.25)',
-            left: isPublic ? 'calc(var(--subrow) * 2)' : 'calc(var(--subrow) * 0.25)',
-            transition:'left 0.2s'
-          }} />
-        </div>
-        <span style={{color:'var(--text)'}}>Show conditions on shared schedule</span>
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsPublic(p => !p); } }}>
+        <span className={`cp-toggle ${isPublic ? 'on' : ''}`}><span className="cp-toggle-knob" /></span>
+        <span className="cp-toggle-text">Show conditions on shared schedule</span>
       </div>
 
-      {/* Action buttons */}
-      <div style={{display:'flex',gap:'calc(var(--subrow) * 1)',marginTop:'calc(var(--subrow) * 1)'}}>
-        <button
-          className="condition-type-btn active"
-          style={{flex:1,opacity:canSubmit ? 1 : 0.4,pointerEvents:canSubmit ? 'auto' : 'none'}}
-          onClick={handleSubmit}
-        >
-          Set Conditions
-        </button>
-        <button className="condition-type-btn" style={{flex:'0 0 auto'}} onClick={onClose}>
-          Cancel
-        </button>
+      <div className="cp-actions">
+        <button className="cp-btn active" disabled={!canSubmit} onClick={handleSubmit}><span>Set Conditions</span></button>
+        <button className="cp-btn" onClick={onClose}><span>Cancel</span></button>
       </div>
 
       {conditions.length > 0 && (
-        <button
-          style={{marginTop:'calc(var(--subrow) * 1)',background:'none',border:'none',color:'var(--accent2)',fontSize:'calc(var(--gu) * 1.104)',cursor:'pointer',padding:'calc(var(--subrow) * 0.5) 0',fontFamily:"'Univers Condensed','Univers',sans-serif",fontWeight: 'var(--fw-bold)'}}
-          onClick={onRemove}
-        >
-          Remove All Conditions
-        </button>
+        <button className="cp-remove" onClick={onRemove}><span>Remove All Conditions</span></button>
       )}
     </div>
   );
@@ -616,8 +530,13 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     const cell = notesCellRef.current;
     if (!open || !cell) return;
     const p = cell.firstElementChild;
-    const r = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--subrow')) || 0;
-    if (!p || !r) return;
+    if (!p) return;
+    /* r from the cell's own CSS min-height (2r), resolved to px. Reading --subrow off :root
+       returned its calc() STRING, which parseFloat turned into NaN, so this returned early on
+       every card and wrapped notes sat 0.19-0.23r off the grid. */
+    cell.style.minHeight = '';
+    const r = parseFloat(getComputedStyle(cell).minHeight) / 2;
+    if (!r) return;
     cell.style.minHeight = '0px';
     const lines = Math.max(1, Math.round((p.getBoundingClientRect().height - 1.2 * r) / (3 * r)) + 1);
     cell.style.minHeight = `calc(var(--subrow) * ${2 + (lines - 1) * 3})`;
@@ -797,7 +716,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   {!readOnly && (
                     <div className="cal-action-row">
                       <button className="cal-action-btn remove" onClick={() => onToggle(tournament.id)}>
-                        <span className="cal-action-icon">{'\u2715'}</span>
+                        <span className="cal-action-icon"><Icon.x /></span>
                         <span className="cal-action-label">Remove</span>
                       </button>
                     </div>
@@ -1016,10 +935,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       </div>
                     );
                     return (
-                      <div className="admin-edit-panel" onClick={e => e.stopPropagation()} style={{marginBottom:'calc(var(--subrow) * 1.25)', padding:'calc(var(--subrow) * 1.25)', borderRadius:'calc(var(--subrow) * 1)', background:'var(--surface)', border:'var(--bw-hair) solid var(--border)'}}>
-                        <div style={{fontSize:'calc(var(--gu) * 1.104)', fontWeight:700, color:'var(--accent)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'calc(var(--subrow) * 1)'}}>Admin Edit</div>
-                        {formError && <div className="admin-field-error" style={{marginBottom:'calc(var(--subrow) * 1)'}}>{formError}</div>}
-                        <div className="cal-detail-grid" style={{gap:'calc(var(--subrow) * 1)'}}>
+                      <div className="admin-edit-panel" onClick={e => e.stopPropagation()}>
+                        <div className="cp-title admin-edit-title"><span>Admin Edit</span></div>
+                        {formError && <div className="admin-field-error">{formError}</div>}
+                        <div className="cal-detail-grid">
                           {field('Event Name', 'event_name')}
                           {field('Event #', 'event_number')}
                           {field('Buy-in', 'buyin', 'number')}
@@ -1035,16 +954,16 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                           {field('Notes', 'notes')}
                         </div>
                         {feedOwned && (
-                          <div style={{fontSize:'calc(var(--gu) * 1.031)', color:'var(--text-muted)', marginTop:'calc(var(--subrow) * 1)', lineHeight:1.4}}>
-                            Venue and Event # are the feed&rsquo;s match key &mdash; correct them in mtt-series-watcher.
-                            Everything else is pinned here and survives the hourly sync.
+                          <div className="admin-edit-note">
+                            <span>Venue and Event # are the feed&rsquo;s match key: correct them in mtt-series-watcher.</span>
+                            <span>Everything else is pinned here and survives the hourly sync.</span>
                           </div>
                         )}
                         {/* Clear overrides. Deliberately outside the Save/Cancel transaction: like
                             the strip-color picker below it writes immediately, so it must not look
                             like part of the pending edit. */}
                         {overridden.size > 0 && onClearOverrides && (
-                          <div style={{marginTop:'calc(var(--subrow) * 1)'}}>
+                          <div>
                             <button className="admin-revert-btn" disabled={saving || clearing} onClick={async () => {
                               const n = overridden.size;
                               const plural = n === 1 ? '' : 's';
@@ -1068,8 +987,8 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           const computed = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
                           const currentColor = computed || stripColor;
                           return (
-                            <div style={{marginTop:'calc(var(--subrow) * 1.25)', display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1.25)'}}>
-                              <label style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', whiteSpace:'nowrap'}}>Strip Color ({abbr})</label>
+                            <div className="admin-strip-color">
+                              <label><span>Strip Color ({abbr})</span></label>
                               <input type="color" defaultValue={currentColor}
                                 onChange={async (e) => {
                                   const color = e.target.value;
@@ -1083,12 +1002,12 @@ The feed's own values return at the next hourly sync — your edits stay visible
                                     });
                                   } catch (err) { console.error('Failed to save venue color', err); }
                                 }}
-                                style={{width:'calc(var(--subrow) * 4.5)', height:'calc(var(--subrow) * 3.5)', padding:0, border:'var(--bw-hair) solid var(--border)', borderRadius:'calc(var(--subrow) * 0.5)', cursor:'pointer', background:'transparent'}} />
+                                className="admin-strip-swatch" />
                             </div>
                           );
                         })()}
-                        <div style={{display:'flex', gap:'calc(var(--subrow) * 1)', marginTop:'calc(var(--subrow) * 1.25)'}}>
-                          <button disabled={saving} onClick={async () => {
+                        <div className="cp-actions">
+                          <button className="cp-btn active" disabled={saving} onClick={async () => {
                             if (Object.keys(editFields).length === 0) { setEditing(false); return; }
                             setSaving(true);
                             setFieldErrors({}); setFormError('');
@@ -1108,13 +1027,12 @@ The feed's own values return at the next hourly sync — your edits stay visible
                               toast.error(e.message);
                             }
                             setSaving(false);
-                          }} style={{flex:1, padding:'calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:'none', background:'var(--accent)', color:'#fff', fontWeight: 'var(--fw-bold)', fontSize:'calc(var(--gu) * 1.222)', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
-                            {saving ? 'Saving\u2026' : 'Save'}
+                          }}>
+                            <span>{saving ? 'Saving\u2026' : 'Save'}</span>
                           </button>
-                          <button disabled={saving}
-                            onClick={() => { setEditing(false); setEditFields({}); setFieldErrors({}); setFormError(''); }}
-                            style={{padding:'calc(var(--subrow) * 1) calc(var(--subrow) * 2)', borderRadius:'calc(var(--subrow) * 0.75)', border:'var(--bw-hair) solid var(--border)', background:'transparent', color:'var(--text)', fontSize:'calc(var(--gu) * 1.222)', cursor:'pointer', opacity: saving ? 0.6 : 1}}>
-                            Cancel
+                          <button className="cp-btn" disabled={saving}
+                            onClick={() => { setEditing(false); setEditFields({}); setFieldErrors({}); setFormError(''); }}>
+                            <span>Cancel</span>
                           </button>
                         </div>
                       </div>
@@ -1128,7 +1046,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                         className={`cal-action-btn ${isInSchedule ? 'remove' : ''}`}
                         onClick={() => onToggle(tournament.id)}
                       >
-                        <span className="cal-action-icon">{isInSchedule ? '\u2715' : '+'}</span>
+                        <span className="cal-action-icon">{isInSchedule ? <Icon.x /> : <Icon.plus />}</span>
                         <span className="cal-action-label">{isInSchedule ? 'Remove' : 'Add'}</span>
                       </button>
                       {isInSchedule && onToggleAnchor && (
@@ -1136,7 +1054,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           className={`cal-action-btn anchor-btn ${isAnchor ? 'locked' : ''}`}
                           onClick={() => onToggleAnchor(tournament.id, !isAnchor)}
                         >
-                          <span className="cal-action-icon">{'\uD83D\uDD12'}</span>
+                          <span className="cal-action-icon"><Icon.lock /></span>
                           <span className="cal-action-label">Priority</span>
                         </button>
                       )}
@@ -1145,7 +1063,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           className="cal-action-btn"
                           onClick={() => setEditing(true)}
                         >
-                          <span className="cal-action-icon">{'\u270E'}</span>
+                          <span className="cal-action-icon"><Icon.pencil /></span>
                           <span className="cal-action-label">Edit</span>
                         </button>
                       )}
@@ -1165,9 +1083,9 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           <div className="cal-entries-counter" onClick={e => e.stopPropagation()}>
                             <div className="cal-entries-stepper">
                               <div className="cal-entries-display">
-                                <span className={`minus ${cur <= 1 ? 'disabled' : ''}`}>{'\u2212'}</span>
+                                <span className={`minus ${cur <= 1 ? 'disabled' : ''}`}><Icon.minus /></span>
                                 <span className="value">{cur}</span>
-                                <span className={`plus ${cur >= maxE ? 'disabled' : ''}`}>+</span>
+                                <span className={`plus ${cur >= maxE ? 'disabled' : ''}`}><Icon.plus /></span>
                               </div>
                               <div className="cal-entries-overlay">
                                 <button

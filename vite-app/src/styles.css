@@ -7748,20 +7748,28 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
       text-indent: var(--track-caps);
     }
-    /* A room-menu affordance: a small dot at the corner, positioned absolutely so it never shifts
-       the centred label. Marks the Online toggle as opening a menu rather than toggling. */
-    .kind-toggle.has-menu { position: relative; }
-    .kind-toggle.has-menu::after {
-      content: '';
+    /* Online: the toggle fills the 8g cell and the caret sits over its right-hand 2g, so the
+       label stays centred on the whole button while the caret is its own tap target. */
+    .kind-toggle-split { position: relative; width: var(--col); height: calc(var(--subrow) * 2); }
+    /* The caret's divider makes 28..34g the toggle's visible segment, so the label centres there
+       (on 31g): centred on the full 8g it ended 0.27g from the divider and read as off-centre. */
+    .kind-toggle-split > .kind-toggle { padding-right: var(--subcol); }
+    .kind-toggle-caret {
       position: absolute;
-      right: calc(var(--subrow) * 0.5);
-      bottom: calc(var(--subrow) * 0.5);
-      width: calc(var(--subrow) * 0.25);
-      height: calc(var(--subrow) * 0.25);
-      border-radius: 50%;
-      background: currentColor;
-      opacity: 0.5;
+      top: 0; right: 0;
+      width: var(--subcol);
+      height: 100%;
+      margin: 0; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: none;
+      border: none;
+      box-shadow: inset var(--bw-hair) 0 0 var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
+    .kind-toggle-caret svg { width: var(--subrow); height: var(--subrow); display: block; }
+    .kind-toggle-caret.active { color: var(--accent); box-shadow: inset var(--bw-hair) 0 0 var(--accent); }
 
     /* The Online menu: opened by a tap on the Online toggle. Full content width (35g, the 1g
        margins either side) and 1r under the button row. */
@@ -7779,13 +7787,16 @@
       border-radius: var(--radius-sm);
       box-shadow: 0 var(--subrow) calc(var(--subrow) * 3) rgba(0,0,0,0.4);
     }
+    .online-room-head {
+      border-bottom: var(--bw-hair) solid var(--border);
+      margin-bottom: var(--subrow);
+    }
+    .online-room-master.is-unset { color: var(--text-muted); }
     .online-room-master {
       display: flex;
       align-items: center;
       gap: var(--gu);
       height: calc(var(--subrow) * 4);
-      border-bottom: var(--bw-hair) solid var(--border);
-      margin-bottom: var(--subrow);
       font-size: var(--fs-sm);
       color: var(--text);
       cursor: pointer;
@@ -8579,6 +8590,9 @@
     }
 
     .section-header h2 { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--text); }
+    /* Calendar tab headers ("My Events" / "All Events"): content-sized at 3.403r + 1.25r, they
+       left every card under them 0.39r off the grid. */
+    .cal-list-section-header { height: calc(var(--subrow) * 4); margin-bottom: var(--subrow); box-sizing: border-box; }
 
     .schedule-sticky-header {
       position: sticky;
@@ -8617,7 +8631,9 @@
          takes the rest — its time on a secondary line, its money on the right
          margin. Secondary col = (content − 3 gutters) / 16 primary·quarters. */
       display: grid;
-      grid-template-columns: calc((100% - 3 * var(--space-lg)) / 16) 1fr;
+      /* Exactly one subcolumn (2g). The old (content - 3 gutters)/16 came to 1.988g, so
+         everything after the strip started 0.012g short of its line. */
+      grid-template-columns: var(--subcol) 1fr;
       column-gap: 0;
       position: relative;
     }
@@ -8662,6 +8678,9 @@
 
     .cal-venue-strip {
       grid-column: 1;
+      /* The rotated full name (static when open) must not size the row: a long one held every
+         open card at a 29.21r floor with dead space under the action row. It clips already. */
+      contain: size;
       width: 100%;
       align-self: stretch;
       display: grid;
@@ -8843,27 +8862,80 @@
       .bust-list-add:hover { background: var(--accent); color: var(--bg); }
     }
 
+    /* ── Condition picker + admin edit panel ──────────────────────────────────
+       Both live in the expanded card's detail column (4g..35g) and share one rhythm:
+       a flex column with 1r gaps; every row a whole-r cell whose text is trimmed to
+       cap..baseline and seated on the cell's bottom line. Borders are inset shadows, so
+       a hairline never adds height or shifts a seated baseline. */
     .condition-picker {
-      border-top: var(--bw-hair) solid var(--border);
-      padding: var(--space-lg);
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+      padding-top: calc(var(--subrow) * 2);
+      display: flex;
+      flex-direction: column;
+      gap: var(--subrow);
     }
-    .condition-picker-title {
+    .cp-title, .cp-eyebrow, .cp-help, .cp-remove {
+      height: calc(var(--subrow) * 2);
+      display: flex;
+      align-items: flex-end;
+    }
+    .cp-title > span, .cp-eyebrow > span, .cp-help > span, .cp-remove > span,
+    .cp-check-row > span, .cp-toggle-text, .cp-btn > span,
+    .condition-sat-item > span, .admin-strip-color span, .admin-edit-note > span {
+      display: block;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .cp-title > span {
       font-size: var(--fs-xs);
       font-weight: var(--fw-bold);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      margin-bottom: var(--space-md);
     }
-    .condition-type-row {
+    .cp-eyebrow > span {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--track-caps);
+    }
+    .cp-help > span { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Checkbox rows: a 2g cell holding the 2r box, 1g gap, the label from 7g. */
+    .cp-check-row {
+      display: grid;
+      grid-template-columns: var(--subcol) 1fr;
+      column-gap: var(--gu);
+      height: calc(var(--subrow) * 2);
+      align-items: end;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cp-check-row > input {
+      width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2);
+      margin: 0; align-self: center; justify-self: center;
+      accent-color: var(--accent); cursor: pointer;
+    }
+    .cp-check-row > span {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+      color: var(--text);
+    }
+    /* A condition's detail indents 3g, to the label's 7g. */
+    .cp-sub { padding-left: calc(var(--gu) * 3); display: flex; flex-direction: column; gap: var(--subrow); }
+    /* Buttons: 5r, text seated 3r from the top (2r of padding under it). */
+    .cp-btn {
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
       display: flex;
-      gap: var(--space-md);
-      margin-bottom: var(--space-ml);
-    }
-    .condition-type-btn {
-      flex: 1;
-      padding: var(--space-md) var(--space-ml);
-      border: var(--bw-1) solid var(--border);
+      align-items: flex-end;
+      justify-content: center;
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       border-radius: var(--radius-sm);
       background: var(--bg);
       color: var(--text-muted);
@@ -8871,57 +8943,111 @@
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       cursor: pointer;
-      text-align: center;
+      min-width: 0;
+      white-space: nowrap;
     }
-    .condition-type-btn.active {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: rgba(160,160,160,0.1);
+    .cp-btn.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
+    .cp-btn:disabled { opacity: 0.4; cursor: default; }
+    /* Two choices across the 28g sub-column: 13g + 2g + 13g. */
+    .cp-btn-pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--subcol); }
+    /* Commit + cancel across the 31g column: 23g + 1g + 7g. */
+    .cp-actions { display: grid; grid-template-columns: calc(var(--gu) * 23) 1fr; column-gap: var(--gu); }
+    .cp-remove {
+      margin: 0; padding: 0; background: none; border: none; cursor: pointer; align-self: flex-start;
     }
+    .cp-remove > span {
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--accent2);
+    }
+    /* Public toggle: a 3g x 2r track in the 2g lead cell's place, text from 8g. */
+    .cp-toggle-row {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 3) 1fr;
+      column-gap: var(--gu);
+      height: calc(var(--subrow) * 2);
+      align-items: end;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cp-toggle {
+      position: relative; align-self: stretch;
+      border-radius: var(--subrow);
+      background: var(--border);
+      transition: background var(--dur-snap);
+    }
+    .cp-toggle.on { background: var(--accent); }
+    .cp-toggle-knob {
+      position: absolute; top: calc(var(--subrow) * 0.25); left: calc(var(--subrow) * 0.25);
+      width: calc(var(--subrow) * 1.5); height: calc(var(--subrow) * 1.5);
+      border-radius: 50%; background: #fff; transition: left var(--dur-snap);
+    }
+    .cp-toggle.on .cp-toggle-knob { left: calc(var(--gu) * 3 - var(--subrow) * 1.75); }
+    .cp-toggle-text { font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text); }
+    /* Pick lists: 3r rows on a 4r pitch, text seated 2r from the top. */
     .condition-sat-list {
       display: flex;
       flex-direction: column;
-      gap: var(--space-xs);
-      margin-bottom: var(--space-ml);
-      max-height: calc(var(--subrow) * 18.75);
+      gap: var(--subrow);
+      max-height: calc(var(--subrow) * 19);
       overflow-y: auto;
     }
     .condition-sat-item {
+      flex: 0 0 calc(var(--subrow) * 3);
+      box-sizing: border-box;
       display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      padding: var(--space-md) var(--space-ml);
-      border: var(--bw-hair) solid var(--border);
+      align-items: flex-end;
+      gap: var(--gu);
+      padding: 0 var(--gu) var(--subrow);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius-sm);
       background: var(--surface2);
       cursor: pointer;
       font-size: var(--fs-sm);
       color: var(--text);
     }
-    .condition-sat-item:active,
+    .condition-sat-item:active { background: var(--hover-overlay); }
     @media (hover: hover) and (pointer: fine) {
-      .condition-sat-item:hover {
-        background: var(--hover-overlay);
-      }
+      .condition-sat-item:hover { background: var(--hover-overlay); }
     }
-    .condition-sat-item.selected {
-      border-color: var(--accent);
-      background: rgba(160,160,160,0.08);
-    }
+    .condition-sat-item.selected { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); background: rgba(160,160,160,0.08); }
+    .cp-item-lead { flex-shrink: 0; font-weight: var(--fw-bold); color: var(--text-muted); }
+    .cp-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cp-item-price { flex-shrink: 0; color: var(--text-muted); }
+    /* Inputs: 5r like the buttons. */
     .condition-search {
-      padding: var(--space-md) var(--space-ml);
-      border: var(--bw-1) solid var(--border);
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 var(--gu);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       border-radius: var(--radius-sm);
       background: var(--bg);
       color: var(--text);
       font-family: var(--font-condensed);
       font-size: var(--fs-sm);
       width: 100%;
-      box-sizing: border-box;
-      margin-bottom: var(--space-md);
     }
-    .condition-search:focus {
-      border-color: var(--brand-line);
+    .condition-search:focus { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); outline: none; }
+    /* Admin edit panel: an inset-bordered box, 2r padding top and bottom, 1g at the sides
+       (so fields run 5g..34g, two 14g columns), the same 1r column rhythm. */
+    .admin-edit-panel {
+      padding: calc(var(--subrow) * 2) var(--gu);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: var(--subrow);
+    }
+    .admin-edit-title > span { color: var(--accent); }
+    .admin-edit-note { display: flex; flex-direction: column; gap: var(--subrow); }
+    .admin-edit-note > span { font-size: var(--fs-xs); color: var(--text-muted); padding-top: var(--subrow); }
+    .admin-strip-color { display: grid; grid-template-columns: 1fr calc(var(--gu) * 3); column-gap: var(--gu); height: calc(var(--subrow) * 3); align-items: end; }
+    .admin-strip-color span { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+    .admin-strip-swatch {
+      width: 100%; height: calc(var(--subrow) * 3); padding: 0; margin: 0;
+      border: none; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      border-radius: var(--radius-xs); cursor: pointer; background: transparent;
     }
     .cal-event-bar {
       display: flex;
@@ -9014,7 +9140,9 @@
          the icon ~0.125r below the line. */
       align-items: flex-end;
       justify-content: flex-end;
-      gap: var(--space-xs);
+      /* No gap: each icon is a whole 2g cell, so the cluster is 2g/4g/6g and every icon edge
+         lands on a whole g (35, 33, 31, 29). The 0.5r gap put them at 33.42/31.47/29.52g. */
+      gap: 0;
       justify-self: end;
       height: var(--cal-title-line);
       align-self: start;
@@ -9025,9 +9153,14 @@
     .cal-bounty-icon,
     .cal-ring-icon,
     .cal-bracelet-icon {
-      --icon-size: calc(var(--subrow) * 2.25);
-      width: calc(var(--subrow) * 2.25);
-      height: calc(var(--subrow) * 2.25);
+      /* A 2g x 2r cell (was 2.25r square, 1.60g wide): whole on both axes, and 2r tall so it
+         no longer reaches 0.25r up into row 1, where it touched the guarantee. The art is 2r,
+         centred in the cell; its bottom rests on the title line as before. */
+      --icon-size: calc(var(--subrow) * 2);
+      width: var(--subcol);
+      height: calc(var(--subrow) * 2);
+      justify-content: center;
+      align-items: flex-end;
       flex-shrink: 0;
       pointer-events: none;
       /* An inline <svg> sits on the text baseline, which pushed it 1px below its
@@ -9182,6 +9315,13 @@
       -webkit-box-orient: vertical;
       white-space: normal;
       overflow: hidden;
+      /* -webkit-box switches text-box-trim off, so the baseline sits where the untrimmed 2r
+         line box puts it: the 13px serif's 13/4px ascent/descent in a 15.43px (2r) line leave
+         (4 - 0.786)px = 0.419r under the baseline. Measured 7.581r against r8 on every
+         single-line and wrapped card; the offset scales with g (font and r both do), so it is
+         one constant in r. Relative offset: layout and card heights are unchanged. */
+      position: relative;
+      top: calc(var(--subrow) * 0.419);
     }
     /* A flight card carries the title on line 1 (.cal-event-base) and "- Flight A"
        on line 2 (.cal-event-stage). Each is a trimmed block, but text-box-trim
@@ -9337,7 +9477,9 @@
     }
 
     /* mini-late-reg is now inside cal-event-bar, no adjacent chevron adjustment needed */
-    .cal-event-chevron.open { margin-top: calc(var(--subrow) * -0.125); margin-bottom: calc(var(--subrow) * -0.875); padding-bottom: 0; top: calc(var(--subrow) * -1.25); }
+    /* Open: a 1r box (10r..11r) directly above the divider at 11r; the ink centres at 10.5r,
+       0.28r clear of the rule. The old negative margins left it 0.35r low, overlapping it. */
+    .cal-event-chevron.open { height: var(--subrow); margin: 0; }
     .cal-event-chevron svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); transition: transform var(--dur-snap); }
     .cal-event-chevron.open svg { transform: rotate(180deg); }
 
@@ -9418,7 +9560,9 @@
        the inset top divider; it sits on the whole r-line the bar ends on. */
     .cal-event-detail {
       box-shadow: inset 0 var(--bw-1) 0 var(--border);
-      padding: var(--space-xl) var(--space-lg) var(--space-xl);
+      /* 1g sides: content 4g..35g, the same edges as the bar above (1.5r = 1.066g put it at
+         4.05..34.95g). The action row's -1g margin now cancels it exactly. */
+      padding: var(--space-xl) var(--gu) var(--space-xl);
       /* Flex column with a whole-r gap instead of per-child margins: margins
          between blocks collapse unpredictably and made the card total drift off
          the grid by fractions of an r. With a non-collapsing 1r gap and every
@@ -9433,9 +9577,12 @@
     .cal-detail-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      /* whole-r row gap (1r) so stacked detail rows stay on the grid */
-      gap: var(--space-md) var(--space-lg);
+      /* whole-r row gap (1r) so stacked detail rows stay on the grid; a 1g column gap makes the
+         two columns 15g each (31g - 1g), the second starting on 20g. */
+      gap: var(--space-md) var(--gu);
     }
+    /* An empty grid still cost the panel a 1r flex gap. */
+    .cal-detail-grid:empty { display: none; }
 
     /* Each detail cell is a fixed 5r: a 2r label track and a 3r value track,
        both baseline-seated with text-box-trim so the caps label lands on r2 and
@@ -9484,13 +9631,17 @@
     .cal-detail-badges {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--space-xs) var(--space-lg);
+      gap: var(--space-xs) var(--gu);
       align-items: start;
     }
     /* The game label ("PLO") is a 2r cell at the top of the 3r badge row, its text trimmed to
        cap..baseline and bottom-aligned, so its baseline is the row's 2r line — level with the
        event-number pill's centred text (2.02r), and on the grid even when there is no pill. */
-    .cal-badges-left { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: flex-start; }
+    .cal-badges-left { display: flex; gap: var(--gu); flex-wrap: wrap; align-items: flex-start; }
+    /* Whole-g pills. The event number is a 4g pill (4..8g; the game label then starts on 9g),
+       the rake pill 7g (20..27g). min-width, so an unusually long number still fits. */
+    .cal-badges-left .badge-event { min-width: calc(var(--gu) * 4); padding: 0 calc(var(--gu) * 0.5); }
+    .cal-event-detail .badge-rake { min-width: calc(var(--gu) * 7); padding: 0 calc(var(--gu) * 0.4); }
     .cal-badges-left .cal-meta-line { display: flex; align-items: flex-end; height: calc(var(--subrow) * 2); }
     .cal-badges-left .cal-meta-line > span,
     .cal-badges-left .cal-meta-line + .cal-meta-line::before {
@@ -9641,16 +9792,30 @@
     }
 
     .cal-action-row {
-      display: flex;
+      /* Columns by button count (the row spans 3g..36g: the detail's 1g padding cancelled).
+         flex:1 gave widths set by label text, so dividers fell at 9.555, 16.15, 19.448g... */
+      display: grid;
+      grid-template-columns: 1fr;
       box-shadow: inset 0 var(--bw-1) 0 var(--border);
       margin: 0 calc(-1 * var(--gu));
       align-items: stretch;
+    }
+    .cal-action-row:has(> :nth-child(2):last-child) { grid-template-columns: calc(var(--gu) * 16) 1fr; }
+    .cal-action-row:has(> :nth-child(3):last-child) { grid-template-columns: repeat(2, calc(var(--gu) * 11)) 1fr; }
+    .cal-action-row:has(> :nth-child(4):last-child) { grid-template-columns: calc(var(--gu) * 7) repeat(2, calc(var(--gu) * 9)) 1fr; }
+    /* Remove | Priority | Edit | Condition | Max Entries: 6g 7g 5g 7g 8g, each wide enough for
+       its label (4.43 / 4.88 / 2.75 / 5.77 / 6.84g plus 0.71g padding). */
+    .cal-action-row:has(> :nth-child(5):last-child) {
+      grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 7) calc(var(--gu) * 5) calc(var(--gu) * 7) 1fr;
     }
 
     /* 6r: 1r above, a 2r icon cell, a 2r label cell whose trimmed label sits on its bottom r-line
        (r5), 1r below. Centring the icon+label stack put the label's baseline between r-lines. */
     .cal-action-btn, .cal-entries-counter {
-      flex: 1;
+      min-width: 0;
+      /* The icons inherit this. Unset, a <button> took the UA's near-black, so the +, the
+         pencil and the condition glyph were invisible on the dark surface. */
+      color: var(--text-muted);
       height: calc(var(--subrow) * 6);
       box-sizing: border-box;
       padding: var(--subrow) var(--space-xs) 0;
@@ -9665,9 +9830,11 @@
       font-family: inherit;
     }
     .cal-entries-counter { cursor: default; }
+    /* Dividers as an inset shadow, not a border: a border sits inside the box and pushed each
+       button's content 0.046g right of its centre. */
     .cal-action-btn + .cal-action-btn,
     .cal-action-btn + .cal-entries-counter,
-    .cal-entries-counter + .cal-action-btn { border-left: var(--bw-hair) solid var(--border); }
+    .cal-entries-counter + .cal-action-btn { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
     .cal-action-icon, .cal-entries-stepper {
       font-size: var(--fs-lg);
       line-height: 1;
@@ -9678,6 +9845,10 @@
     }
     .cal-action-icon svg { width: var(--icon-md); height: var(--icon-md); }
     .cal-action-label {
+      /* One line always ("MAX ENTRIES" wrapped into the stepper), and the trailing letter-space
+         balanced on the left so the ink is centred, not 0.037g left of centre. */
+      white-space: nowrap;
+      padding-left: var(--track-caps);
       font-family: inherit;
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
@@ -9688,6 +9859,9 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-action-btn:active { background: rgba(160,160,160,0.1); }
+    /* Buddy chip name, trimmed and bottom-aligned 1r above the 3r chip's bottom, so its baseline
+       sits on the r-line 2r below the chip top (it was centred, 0.064r off). */
+    .buddy-chip-name { align-self: flex-end; margin-bottom: var(--subrow); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
     .cal-action-btn.remove .cal-action-icon { color: #ef4444; }
     .cal-action-btn.anchor-btn.locked .cal-action-icon { color: #60a5fa; }
     :is([data-theme="light"],[data-theme="cloudy"]) .cal-action-btn.anchor-btn.locked .cal-action-icon { color: #2563eb; }
@@ -9699,13 +9873,23 @@
       height: var(--icon-md);
     }
     .cal-entries-display {
-      display: flex;
-      align-items: center;
+      /* Three 2g columns centred in the cell: minus, value and plus each centred on a column,
+         the SVG signs centred in the 2r row like every other action icon. */
+      display: grid;
+      grid-template-columns: repeat(3, var(--subcol));
       justify-content: center;
-      gap: var(--space-md);
+      justify-items: center;
+      align-items: center;
       height: 100%;
       pointer-events: none;
     }
+    .cal-entries-display svg { width: var(--icon-md); height: var(--icon-md); display: block; }
+    .cal-entries-display { grid-template-rows: var(--icon-md); }
+    .cal-entries-display .value { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    /* The sign spans hold only an SVG: no line box, or its descent space drops the sign 0.13r. */
+    .cal-entries-display .minus, .cal-entries-display .plus { line-height: 0; display: block; }
+    /* No side padding on the counter: the stepper fills the 8g cell, so each tap half is 4g. */
+    .cal-entries-counter { padding-inline: 0; }
     .cal-entries-display .minus, .cal-entries-display .plus {
       font-size: var(--fs-lg);
       font-weight: var(--fw-bold);
@@ -9762,6 +9946,9 @@
        that spaces the bar dangles and makes the block 3.25r. Zero it there: the
        block is then a clean 3r (1r pad + 2r label row). */
     .late-reg-wrap:has(.late-reg-label.pending) .late-reg-label-row { margin-bottom: 0; }
+    /* Schedule cards: the bar is a whole 1r directly under the 2r label row. */
+    .cal-event-detail .late-reg-label-row { margin-bottom: 0; }
+    .cal-event-detail .late-reg-bar-bg { height: var(--subrow); }
 
     .late-reg-label {
       font-size: var(--fs-xs);
@@ -9872,6 +10059,11 @@
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* Schedule cards: the label is a fixed 12g cell (the widest, "late reg 11h 59m | 12:59 PM",
+       is 10.24g) and there is no gap, so the track starts on 4 + 12 = 16g whatever the label
+       says. It started at 10.02/10.44/13.56g depending on the text. */
+    .cal-event-row .mini-late-reg { gap: 0; }
+    .cal-event-row .mini-late-reg-time { flex: 0 0 calc(var(--gu) * 12); }
     .mini-late-reg-track {
       flex: 1;
       height: calc(var(--subrow) * 0.375);

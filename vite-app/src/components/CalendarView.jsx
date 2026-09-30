@@ -12,7 +12,7 @@ import {
 } from '../utils/utils.js';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
-  fetchServerLocation, sameLocation } from '../utils/location-prefs.js';
+  fetchServerLocation, sameLocation, readLocalFilters } from '../utils/location-prefs.js';
 import { API_URL } from '../utils/api.js';
 
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -664,6 +664,9 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
     // Restore previously-chosen location from localStorage so users don't have
     // to re-enter distance/region on every launch.
     const savedLoc = readLocalLocation() || {};
+    // The online choices made on the Schedule tab (the Online switch, per-room rules, "available
+    // in my state") are saved there; start from them so this tab lists the same online events.
+    const savedFilters = readLocalFilters() || {};
     return {
       minBuyin: '', maxBuyin: '', buyinRanges: [], rakeRanges: [], selectedGames: [],
       hiddenVenues: [], bountyOnly: false, mysteryBountyOnly: false, headsUpOnly: false,
@@ -672,9 +675,9 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       // Must match TournamentsView's DEFAULT_FILTERS: the two views filter the same
       // tournaments from the same array, and a field present in one and absent in the
       // other produces two different lists from identical data.
-      showOnline: true,
-      onlyAvailableOnline: false,
-      siteRules: {},
+      showOnline: savedFilters.showOnline !== false,
+      onlyAvailableOnline: !!savedFilters.onlyAvailableOnline,
+      siteRules: savedFilters.siteRules || {},
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
@@ -914,6 +917,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       isInSchedule={scheduleIds.has(t.id)}
       onToggle={onToggle}
       showMiniLateReg={selectedDate === today}
+      isPast={selectedDate < today}
       focusEventId={focusEventId}
       onNavigateToEvent={(num, sat) => {
         const flights = allTournaments.filter(f => f.event_number === num);
@@ -1135,8 +1139,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           <p>Other dates in this range have events — try moving forward or back.</p>
         </div>
       ) : showMySection ? (
-        <div style={{minHeight:'100vh', paddingTop:'calc(var(--subrow) * 0.75)', paddingBottom:'100vh'}}>
-          <div className="section-header" style={{marginTop:'calc(var(--subrow) * 1)'}}>
+        <div style={{minHeight:'100vh', paddingTop:'var(--subrow)', paddingBottom:'100vh'}}>
+          <div className="section-header cal-list-section-header" style={{marginTop:'calc(var(--subrow) * 1)'}}>
             <h2>My Events</h2>
             <span style={{fontSize:'calc(var(--gu) * 1.208)',color:'var(--text-muted)'}}>{myEvents.length} event{myEvents.length !== 1 ? 's' : ''}</span>
           </div>
@@ -1144,7 +1148,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
 
           {otherEvents.length > 0 && (
             <React.Fragment>
-              <div className="section-header" style={{marginTop:'calc(var(--subrow) * 2)'}}>
+              <div className="section-header cal-list-section-header" style={{marginTop:'calc(var(--subrow) * 2)'}}>
                 <h2>All Events</h2>
                 <span style={{fontSize:'calc(var(--gu) * 1.208)',color:'var(--text-muted)'}}>{otherEvents.length} event{otherEvents.length !== 1 ? 's' : ''}</span>
               </div>
@@ -1153,7 +1157,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           )}
         </div>
       ) : (
-        <div style={{minHeight:'100vh', paddingTop:'calc(var(--subrow) * 0.75)', paddingBottom:'100vh'}}>
+        <div style={{minHeight:'100vh', paddingTop:'var(--subrow)', paddingBottom:'100vh'}}>
           {sortedEvents.map(renderEvent)}
         </div>
       )}

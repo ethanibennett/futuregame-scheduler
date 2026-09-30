@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import DateBreak from './DateBreak.jsx';
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import LocationDropdown from './LocationDropdown.jsx';
-import { ONLINE_SITES } from '../utils/online-sites.js';
+import { ONLINE_SITES, stateName } from '../utils/online-sites.js';
 import { Filtered } from './EmptyState.jsx';
 import {
   getVenueInfo, normaliseDate, getToday, haptic, fmtShortDate, daysBetween, addDays,
@@ -227,19 +227,26 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             ['Side Events', !filters.hideSideEvents, (on) => ({ hideSideEvents: !on })],
             ['Online', filters.showOnline !== false, (on) => ({ showOnline: on })],
           ].map(([label, on, patch]) => {
-            // Online opens its per-room menu on a plain tap (when there are rooms to show); the
-            // menu's first row is the Online switch. With no online rooms in the pool there is
-            // nothing to configure, so it stays a plain toggle.
-            const menu = label === 'Online' && onlineSitesInPool.length > 0;
+            const toggle = (
+              <button key={label} type="button"
+                      className={`kind-toggle${on ? ' active' : ''}`} aria-pressed={on}
+                      onClick={() => setFiltersRaw(f => ({ ...f, ...patch(!on) }))}>
+                <span className="kind-toggle-label">{label}</span>
+              </button>
+            );
+            // Online is ONE 8g button with two targets: a tap anywhere toggles Online like its
+            // neighbours, and the caret in its right-hand 2g cell opens the per-room menu. The
+            // label stays centred on the full 8g (it spans ~2g..6g, clear of the caret cell).
+            if (label !== 'Online' || onlineSitesInPool.length === 0) return toggle;
             return (
-            <button key={label} ref={label === 'Online' ? onlineBtnRef : undefined} type="button"
-                    className={`kind-toggle${on ? ' active' : ''}${menu ? ' has-menu' : ''}`}
-                    aria-pressed={menu ? undefined : on}
-                    aria-haspopup={menu ? 'menu' : undefined}
-                    aria-expanded={menu ? !!onlineMenu : undefined}
-                    onClick={() => menu ? openOnlineMenu() : setFiltersRaw(f => ({ ...f, ...patch(!on) }))}>
-              <span className="kind-toggle-label">{label}</span>
-            </button>
+              <div key={label} className="kind-toggle-split" ref={onlineBtnRef}>
+                {toggle}
+                <button type="button" className={`kind-toggle-caret${on ? ' active' : ''}`}
+                        aria-label="Online rooms" aria-haspopup="dialog" aria-expanded={!!onlineMenu}
+                        onClick={openOnlineMenu}>
+                  <Icon.chevronDown />
+                </button>
+              </div>
             );
           })}
         </div>
@@ -250,11 +257,28 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
           <div className="dropdown-backdrop" style={{ zIndex: 'var(--z-scrim)' }} onClick={() => setOnlineMenu(null)} />
           <div className="online-room-menu" role="dialog" aria-label="Online rooms"
                style={{ top: onlineMenu.top, maxHeight: `calc(100dvh - ${onlineMenu.top}px - var(--subrow) * 4)` }}>
-            <label className="online-room-master">
-              <input type="checkbox" checked={filters.showOnline !== false}
-                     onChange={e => setFiltersRaw(f => ({ ...f, showOnline: e.target.checked }))} />
-              <span>Show online events</span>
-            </label>
+            <div className="online-room-head">
+              <label className="online-room-master">
+                <input type="checkbox" checked={filters.showOnline !== false}
+                       onChange={e => setFiltersRaw(f => ({ ...f, showOnline: e.target.checked }))} />
+                <span>Show online events</span>
+              </label>
+              {/* Only rooms that can serve the state the schedule's location is in. The state is
+                  the jurisdiction derived from (or chosen for) that location; with none there is
+                  nothing to test against, so the box is disabled and says why rather than
+                  filtering on a blank. Offshore rooms that publish no state list stay visible. */}
+              {(() => {
+                const st = stateName(filters.jurisdiction);
+                const usable = !!st && filters.showOnline !== false;
+                return (
+                  <label className={`online-room-master${st ? '' : ' is-unset'}`}>
+                    <input type="checkbox" disabled={!usable} checked={!!st && !!filters.onlyAvailableOnline}
+                           onChange={e => setFiltersRaw(f => ({ ...f, onlyAvailableOnline: e.target.checked }))} />
+                    <span>{st ? `Available in ${st}, USA` : 'Available in my state (set a location)'}</span>
+                  </label>
+                );
+              })()}
+            </div>
             <OnlineRoomRules sites={onlineSitesInPool} siteRules={filters.siteRules}
                              setFilters={setFiltersRaw} disabled={filters.showOnline === false} />
             {activeSiteRuleCount > 0 && (
@@ -1074,14 +1098,10 @@ const DEFAULT_FILTERS = {
   // Online play is shown by default. It is deliberately NOT a location field: an online
   // event has no place, so every location filter would otherwise hide all of it.
   showOnline: true,
-  /* DARK. The "Available to me" checkbox that drove this was removed from the
-     filter row on 2026-09-25, so nothing in the UI can set it any more. The key
-     stays (matchesOnline still honours it, and CalendarView mirrors it) but it
-     is pinned to false when filters are loaded — the onboarding wizard used to
-     write true for anyone who plays online and gave a state, and a saved true
-     with no control to clear it would hide events forever. Delete the key,
-     the utils.js branch and its tests together if the feature is not coming
-     back. */
+  /* "Available in <state>": only online rooms that can serve the user's
+     jurisdiction. Set from the Online menu (2026-09-30; it was dark from 09-25
+     when its filter-row checkbox was removed) and persisted with the other
+     online choices. matchesOnline ignores it while no jurisdiction is known. */
   onlyAvailableOnline: false,
   /* Two-letter state code, or null. A standing fact about the user rather than
      a filter, which is why it survives "Clear all" alongside the location. */
@@ -1114,8 +1134,6 @@ export default function TournamentsView({
     return {
       ...DEFAULT_FILTERS,
       ...savedFilters,
-      // Overrides anything saved: the control for this is gone (see DEFAULT_FILTERS).
-      onlyAvailableOnline: false,
       maxDistance: savedLoc.maxDistance || '',
       userLocation: savedLoc.userLocation || null,
       locationRegion: savedLoc.locationRegion || null,
@@ -1160,10 +1178,9 @@ export default function TournamentsView({
   // answers — so a selection made in the bar survives a reload, not just one made
   // in the onboarding wizard. Only non-default fields are stored (matching the
   // wizard), so the saved blob stays small and a field reset to default really
-  // clears. Location has its own persistence above; onlyAvailableOnline is forced
-  // and never stored; a one-look date range stays session-only.
+  // clears. Location has its own persistence above;   // and never stored; a one-look date range stays session-only.
   useEffect(() => {
-    const KEYS = ['showOnline', 'siteRules', 'hideSatellites', 'hideRestarts',
+    const KEYS = ['showOnline', 'siteRules', 'onlyAvailableOnline', 'hideSatellites', 'hideRestarts',
       'hideSideEvents', 'selectedGames', 'mixedOnly', 'buyinRanges'];
     const out = {};
     for (const k of KEYS) {
@@ -1171,7 +1188,7 @@ export default function TournamentsView({
       if (v !== undefined && JSON.stringify(v) !== JSON.stringify(DEFAULT_FILTERS[k])) out[k] = v;
     }
     writeLocalFilters(out);
-  }, [filters.showOnline, filters.siteRules, filters.hideSatellites, filters.hideRestarts,
+  }, [filters.showOnline, filters.siteRules, filters.onlyAvailableOnline, filters.hideSatellites, filters.hideRestarts,
     filters.hideSideEvents, filters.selectedGames, filters.mixedOnly, filters.buyinRanges]);
   /* The account's copy, once we have a token. localStorage has already painted
      so there is no flash; this only corrects it when the choice was made on
