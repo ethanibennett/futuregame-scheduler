@@ -7074,7 +7074,20 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                 </div>
               )}
               <div className="replayer-pot-main">
-                {rSettings.showChipStacks && displayPot > 0 && !isSplitResult && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+                {/* Above the pot figure: the SPR as plain text, then the chip stack. One
+                    positioned column (in portrait) so the SPR rides on top of however tall
+                    the stacks are, and sits just over the figure when there are none. */}
+                {(() => {
+                  const spr = rSettings.showSPR ? calcSPR(hand, streetIdx) : null;
+                  const chips = rSettings.showChipStacks && displayPot > 0 && !isSplitResult;
+                  if (!spr && !chips) return null;
+                  return (
+                    <div className="replayer-pot-above">
+                      {spr && <div className="replayer-spr">SPR {spr}</div>}
+                      {chips && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+                    </div>
+                  );
+                })()}
                 <div className="replayer-pot-total">
                   <span className="replayer-pot-cell-label">
                     {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
@@ -7269,13 +7282,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                            + (straddleAmt ? '/' + formatChipAmount(straddleAmt) : ''))
               + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
-          /* SPR rides on this line. As its own badge it was pinned at 38% of the
-             table, which is exactly where the pot's chip stacks float in
-             portrait, so it sat under them (the pot block is z 6, the badge was
-             z 2). The line under the board is the table's standing state and
-             nothing else shares its space. */
-          const spr = rSettings.showSPR ? calcSPR(hand, streetIdx) : null;
-          const level = [hand.gameType, sizes, spr ? 'SPR ' + spr : null].filter(Boolean).join('  ·  ');
+          // SPR moved to plain text above the pot's chip stack (2026-09-30).
+          const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,

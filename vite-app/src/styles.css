@@ -5044,6 +5044,23 @@
     /* The main/side pills sit in their own row ABOVE the primary total. */
     .replayer-pot-layers { display: flex; align-items: center; justify-content: center; gap: 2.1cqw; }
     .replayer-pot-main { display: inline-flex; align-items: center; justify-content: center; gap: 2.1cqw; }
+    /* SPR over the chip stack: a column of [SPR, chips]. In portrait the column
+       takes the out-of-flow slot the chips had above the pot row, and the chips
+       inside it return to flow; in landscape it is simply the row's first cell. */
+    .replayer-pot-above { display: flex; flex-direction: column; align-items: center; gap: 0.6cqmin; }
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-above {
+      position: absolute; left: 50%; bottom: calc(100% + calc(var(--subrow) * 0.375));
+      transform: translateX(-50%);
+    }
+    .replayer-replay:not(.replayer-landscape) .replayer-pot-above .replayer-pot-chips { position: static; transform: none; }
+    /* Plain text, no plate: the pot's own label treatment (half the figure,
+       bold caps, the pot's text colour at 72%). */
+    .replayer-spr {
+      font-family: var(--font-condensed); font-size: 0.5em; font-weight: var(--fw-bold);
+      color: var(--pot-text, #fff); opacity: 0.72;
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+      white-space: nowrap; line-height: 1;
+    }
     .replayer-pot-total { display: inline-flex; align-items: baseline; }
     .replayer-pot-total, .replayer-pot-pill { position: relative; }
     /* Ethan wants POT inline — same baseline, to the LEFT of the figure — and
