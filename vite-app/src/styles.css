@@ -5198,6 +5198,35 @@
     }
     .replayer-action-badge.action-fold, .replayer-action-badge-outer.action-fold { background: rgba(107,114,128,0.22); color: var(--act-fold); }
     .replayer-action-badge.action-check, .replayer-action-badge-outer.action-check { background: rgba(156,163,175,0.2); color: var(--act-check); }
+    /* The felt pills — the action bubble over the fan ("raise 3,330") and the
+       draw run on the plaque corner ("D1/PAT/PAT") — are exactly 2r tall. The
+       cqmin clamps above put a bet at ~6.7px on a phone-portrait table, too
+       small to read; type now comes off the scale and the box off the grid.
+       Height is fixed and padding-block zeroed so the border sits INSIDE the
+       2r (border-box); flex centering keeps the text on the box's midline.
+       The weight hierarchy stays (light fold/check, bold bet/raise, black
+       all-in); only all-in steps up a size. */
+    .replayer-action-badge-outer,
+    .replayer-action-badge-outer.action-fold,
+    .replayer-action-badge-outer.action-check,
+    .replayer-action-badge-outer.action-call,
+    .replayer-action-badge-outer.action-bet,
+    .replayer-action-badge-outer.action-raise,
+    .replayer-seat-draw-badge {
+      box-sizing: border-box;
+      height: calc(var(--subrow) * 2);
+      padding-block: 0;
+      padding-inline: var(--space-sm);
+      font-size: var(--fs-2xs);
+      line-height: 1;
+    }
+    .replayer-action-badge-outer.action-allin {
+      box-sizing: border-box;
+      height: calc(var(--subrow) * 2);
+      padding-block: 0;
+      font-size: var(--fs-xs);
+      line-height: 1;
+    }
     .replayer-action-badge.action-call, .replayer-action-badge-outer.action-call { background: rgba(59,130,246,0.2); color: var(--act-call); }
     .replayer-action-badge.action-bet, .replayer-action-badge-outer.action-bet { background: rgba(245,158,11,0.2); color: var(--act-bet); }
     .replayer-action-badge.action-raise, .replayer-action-badge-outer.action-raise { background: rgba(239,68,68,0.2); color: var(--act-raise); }

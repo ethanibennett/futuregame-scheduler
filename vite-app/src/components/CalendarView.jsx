@@ -990,45 +990,11 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
               className="cal-month-row"
               data-direction={monthDirRef.current}
             >
-              {/* Far left of the month row: jump back to the Schedule
-                  tab's list view. Pairs with the date-picker grid on
-                  the right to keep the month buttons visually centered. */}
-              <button
-                type="button"
-                className="cal-month-icon-btn"
-                title="Switch to schedule list"
-                onClick={() => onOpenScheduleView && onOpenScheduleView()}
-              >
-                <Icon.list />
-              </button>
-              <div className="cal-month-row-buttons">
-                <button
-                  className={`cal-month-btn cal-month-btn-side ${monthPast ? 'muted' : ''}`}
-                  onClick={() => prevTarget && jumpTo(prev.getFullYear(), prev.getMonth())}
-                  disabled={!prevTarget}
-                  title={`Jump to ${MONTHS[prev.getMonth()]} ${prev.getFullYear()}`}
-                >
-                  {MONTHS[prev.getMonth()]}
-                </button>
-                <span className="cal-month-btn cal-month-btn-current">
-                  {MONTHS_FULL[curM]} {curY}
-                </span>
-                <button
-                  className="cal-month-btn cal-month-btn-side"
-                  onClick={() => nextTarget && jumpTo(next.getFullYear(), next.getMonth())}
-                  disabled={!nextTarget}
-                  title={`Jump to ${MONTHS[next.getMonth()]} ${next.getFullYear()}`}
-                >
-                  {MONTHS[next.getMonth()]}
-                </button>
-              </div>
-              {/* Far right of the month row: date-picker. The icon is
-                  decorative; the actual <input type="date"> is overlaid
-                  invisibly with pointer-events: auto so the user's tap
-                  hits the input directly. iOS Safari opens its native
-                  picker on tap of a date input — no showPicker /
-                  programmatic call needed (and showPicker on a
-                  pointer-events:none input is unreliable on iOS). */}
+              {/* Far left of the month row: the date-picker (swapped with the
+                  schedule-list button, now on the right). The icon is decorative;
+                  the <input type="date"> is overlaid invisibly with
+                  pointer-events:auto so a tap hits the input and iOS opens its
+                  native picker directly. */}
               <div
                 className="cal-month-icon-btn"
                 title="Pick a date"
@@ -1052,8 +1018,6 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
                       const earlier = [...allDates].reverse().find(d => d <= v);
                       setSelectedDate(later || earlier || allDates[0]);
                     }
-                    // Drop focus immediately so the input doesn't hold
-                    // keyboard focus after the picker dismisses.
                     e.target.blur();
                   }}
                   style={{
@@ -1061,12 +1025,41 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
                     width: '100%', height: '100%',
                     opacity: 0, border: 'none',
                     background: 'transparent', cursor: 'pointer',
-                    // pointer-events: auto so iOS can tap the input
-                    // directly and open its native picker.
                     pointerEvents: 'auto',
                   }}
                 />
               </div>
+              <div className="cal-month-row-buttons">
+                <button
+                  className={`cal-month-btn cal-month-btn-side ${monthPast ? 'muted' : ''}`}
+                  onClick={() => prevTarget && jumpTo(prev.getFullYear(), prev.getMonth())}
+                  disabled={!prevTarget}
+                  title={`Jump to ${MONTHS[prev.getMonth()]} ${prev.getFullYear()}`}
+                >
+                  {MONTHS[prev.getMonth()]}
+                </button>
+                <span className="cal-month-btn cal-month-btn-current">
+                  {MONTHS_FULL[curM]} {curY}
+                </span>
+                <button
+                  className="cal-month-btn cal-month-btn-side"
+                  onClick={() => nextTarget && jumpTo(next.getFullYear(), next.getMonth())}
+                  disabled={!nextTarget}
+                  title={`Jump to ${MONTHS[next.getMonth()]} ${next.getFullYear()}`}
+                >
+                  {MONTHS[next.getMonth()]}
+                </button>
+              </div>
+              {/* Far right of the month row: jump to the Schedule tab's list view
+                  (swapped with the date-picker, now on the left). */}
+              <button
+                type="button"
+                className="cal-month-icon-btn"
+                title="Switch to schedule list"
+                onClick={() => onOpenScheduleView && onOpenScheduleView()}
+              >
+                <Icon.list />
+              </button>
             </div>
           );
         })()}
