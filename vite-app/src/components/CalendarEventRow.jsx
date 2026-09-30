@@ -231,33 +231,18 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
 }
 
 // ── Live clock line (running events) ──
-// The room's clock on the card's top line: level (or Break / Paused), blinds, time left — and on
-// the guarantee's line 2r below (r6), players left/entries. Both end on the third primary column's
-// right edge (27g). The top line is laid out RIGHT TO LEFT on the vertical grid: the time ends on
-// 27g, and each point before it ends on the largest grid line that
-// leaves at least 1g before the point to its right. Every point is sized to its WIDEST form
-// ("00:00", entries/entries) and right-aligned in that box, so a clock going 10:00 → 9:59 or a
-// field going 10 → 9 left never moves the points to its left onto another line mid-level.
-// The start time is held to the same rule: a point that cannot sit at least 1g clear of it is
-// dropped, leftmost first — in practice the level, which the blinds already imply.
-const GRID_LINES = [1, 10, 19, 28].flatMap((c) => [0, 2, 4, 6, 8].map((k) => c + k)); // g from screen left
-const CLOCK_RIGHT_G = 27;
+// The room's clock on the card's top line, inside the third primary column (19g-27g): the blinds
+// start on its LEFT edge (19g), the time left ends on its RIGHT edge (27g), both on r4; players
+// left/entries sit 2r below on the guarantee's line (r6), also ending on 27g. The level number is
+// not shown. A break shows "Break" in the blinds' place; a paused clock shows "Paused" in the
+// time's. The time is sized to its widest form ("00:00") and right-aligned, so it never shifts.
+// The blinds and time must keep at least 1g between them; when the full blinds would not, they
+// drop the ante ("25k/50k") rather than crowd the time.
+const COL3_LEFT_G = 19;
+const COL3_RIGHT_G = 27;
 
-function clockPoints(live) {
-  const label = live.state === 'paused' ? 'Paused' : live.onBreak ? 'Break' : `L${live.level}`;
-  const pts = [{ key: 'lvl', text: label, wide: label }];
-  if (!live.onBreak) {
-    const b = `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
-    pts.push({ key: 'blinds', text: b, wide: b, cls: 'blinds' });
-  }
-  pts.push({ key: 'time', text: fmtClock(live.remaining), wide: (live.levelSecs || 0) >= 3600 ? '0:00:00' : '00:00' });
-  return pts;
-}
-
-/** Players left/entries, or null. Its own point on the guarantee's line. */
-function fieldPoint(live) {
-  if (live.playersLeft == null || live.entries == null) return null;
-  return { text: `${live.playersLeft}/${live.entries}`, wide: `${live.entries}/${live.entries}` };
+function blindsText(live, withAnte) {
+  return `${formatChips(live.sb)}/${formatChips(live.bb)}${withAnte && live.ante ? '/' + formatChips(live.ante) : ''}`;
 }
 
 let gPx = 0;
@@ -274,58 +259,51 @@ function unitG() {
 if (typeof window !== 'undefined') window.addEventListener('resize', () => { gPx = 0; });
 
 function ClockLine({ live }) {
-  const pts = clockPoints(live);
-  const field = fieldPoint(live);
-  const measureRefs = useRef([]);
-  const fieldMeasureRef = useRef(null);
-  const boxRef = useRef(null);
-  const [layout, setLayout] = useState(null); // { drop, cells: [{ w, ml }] } in g
-  const wideKey = pts.map((p) => `${p.key}:${p.wide}`).join('|') + `|field:${field ? field.wide : ''}`;
+  const paused = live.state === 'paused';
+  const full = live.onBreak ? 'Break' : blindsText(live, true);
+  const short = live.onBreak ? 'Break' : blindsText(live, false);
+  const timeText = paused ? 'Paused' : fmtClock(live.remaining);
+  const timeWide = paused ? 'Paused' : (live.levelSecs || 0) >= 3600 ? '0:00:00' : '00:00';
+  const field = live.playersLeft != null && live.entries != null
+    ? { text: `${live.playersLeft}/${live.entries}`, wide: `${live.entries}/${live.entries}` } : null;
+
+  const m = useRef({});
+  const [layout, setLayout] = useState(null); // { ante, wB, wT, ml, wF } in g
+  const key = [full, short, timeWide, field ? field.wide : ''].join('|');
   useLayoutEffect(() => {
     const g = unitG();
     if (!g) return;
-    const w = pts.map((_, i) => (measureRefs.current[i]?.getBoundingClientRect().width || 0) / g);
-    const rights = new Array(pts.length);
-    rights[pts.length - 1] = CLOCK_RIGHT_G;
-    for (let i = pts.length - 2; i >= 0; i--) {
-      const room = rights[i + 1] - w[i + 1] - 1;
-      rights[i] = Math.max(...GRID_LINES.filter((x) => x <= room + 1e-6));
-    }
-    // Where the start time's TEXT ends (its box stretches across the cell, so measure the glyphs).
-    let timeRight = -Infinity;
-    const timeEl = boxRef.current?.parentElement?.querySelector('.cal-event-time');
-    if (timeEl) {
-      const range = document.createRange();
-      range.selectNodeContents(timeEl);
-      timeRight = range.getBoundingClientRect().right / g;
-    }
-    let drop = 0;
-    while (drop < pts.length - 1 && rights[drop] - w[drop] < timeRight + 1 - 1e-6) drop++;
-    const fieldW = fieldMeasureRef.current ? fieldMeasureRef.current.getBoundingClientRect().width / g : 0;
-    setLayout({ drop, fieldW, cells: pts.map((_, i) => ({ w: w[i], ml: i > drop ? (rights[i] - w[i]) - rights[i - 1] : 0 })) });
+    const w = (k) => (m.current[k]?.getBoundingClientRect().width || 0) / g;
+    const wT = w('time');
+    const span = COL3_RIGHT_G - COL3_LEFT_G;
+    const ante = span - w('full') - wT >= 1 - 1e-6 || full === short;
+    const wB = ante ? w('full') : w('short');
+    setLayout({ ante, wB, wT, ml: span - wB - wT, wF: w('field') });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wideKey]);
+  }, [key]);
+
+  const measure = (k, text, cls = '') => (
+    <span ref={(el) => { m.current[k] = el; }} aria-hidden="true" className={`cal-clock-pt measure ${cls}`}>{text}</span>
+  );
   return (
     <>
-    <span className="cal-event-clock" ref={boxRef} title="Live tournament clock">
-      {pts.map((p, i) => (layout && i < layout.drop ? null : (
-        <span key={p.key} className={`cal-clock-pt ${p.cls || ''}`}
-              style={layout ? { width: `calc(var(--gu) * ${layout.cells[i].w.toFixed(4)})`, marginLeft: `calc(var(--gu) * ${layout.cells[i].ml.toFixed(4)})` } : undefined}>
-          {p.text}
+      <span className="cal-event-clock" title="Live tournament clock">
+        <span className="cal-clock-pt blinds" style={layout ? { width: `calc(var(--gu) * ${layout.wB.toFixed(4)})`, textAlign: 'left' } : undefined}>
+          {layout && !layout.ante ? short : full}
         </span>
-      )))}
-      {/* Off-flow copies at each point's widest form, measured once per change of wording. */}
-      {pts.map((p, i) => (
-        <span key={`m-${p.key}`} ref={(el) => { measureRefs.current[i] = el; }} aria-hidden="true"
-              className={`cal-clock-pt measure ${p.cls || ''}`}>{p.wide}</span>
-      ))}
-      {field && <span ref={fieldMeasureRef} aria-hidden="true" className="cal-clock-pt measure">{field.wide}</span>}
-    </span>
-    {field && (
-      <span className="cal-event-clock field" title="Players left / entries">
-        <span className="cal-clock-pt" style={layout ? { width: `calc(var(--gu) * ${layout.fieldW.toFixed(4)})` } : undefined}>{field.text}</span>
+        <span className="cal-clock-pt" style={layout ? { width: `calc(var(--gu) * ${layout.wT.toFixed(4)})`, marginLeft: `calc(var(--gu) * ${layout.ml.toFixed(4)})` } : undefined}>
+          {timeText}
+        </span>
+        {measure('full', full, 'blinds')}
+        {measure('short', short, 'blinds')}
+        {measure('time', timeWide)}
+        {field && measure('field', field.wide)}
       </span>
-    )}
+      {field && (
+        <span className="cal-event-clock field" title="Players left / entries">
+          <span className="cal-clock-pt" style={layout ? { width: `calc(var(--gu) * ${layout.wF.toFixed(4)})` } : undefined}>{field.text}</span>
+        </span>
+      )}
     </>
   );
 }
