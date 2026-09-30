@@ -7212,7 +7212,11 @@
        forward choreography at all — the guards already suppress that. */
     @keyframes rewindFade { from { opacity: 0.45 } to { opacity: 1 } }
     @media (prefers-reduced-motion: no-preference) {
-      .replayer-replay.is-rewinding .replayer-table-felt ~ * {
+      /* Not the watermark: a keyframe sets opacity outright, so an element that
+         RESTS below 1 (the wordmark is 0.26) was driven 0.45 -> 1 and flashed
+         bright on every step back. Anything else that rests dimmed on the felt
+         needs the same exclusion. */
+      .replayer-replay.is-rewinding .replayer-table-felt ~ *:not(.replayer-watermark) {
         animation: rewindFade var(--dur-snap) var(--ease-label) both;
       }
     }
