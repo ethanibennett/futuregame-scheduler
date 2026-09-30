@@ -5022,16 +5022,15 @@
 
     /* Draw discard badge on seat */
     .replayer-seat-draw-badge {
-      /* On the plaque's BOTTOM-right corner, straddling it. Above the plaque
-         in the stacking order: .replayer-seat-info carries z-index 1, which is
-         what hid this when it was a sibling rather than a child.
-
-         Anchored to the corner and growing LEFTWARD: it holds one mark at the
-         first draw and a run like D2/D1/PAT by the third, so a fixed box was
-         only ever right for the first street. Right-anchored keeps the corner
-         the fixed point while the width changes under it. */
-      position:absolute; bottom:0; right:0; top:auto; left:auto;
-      transform: translate(22%, 42%);
+      /* Centred under the plaque's BOTTOM edge, overlapping it by 0.5r of its
+         2r height (translateY 75%) and hanging 1.5r below. It grows from one mark at the first
+         draw to a run like D2/D1/PAT by the third, and centring lets it grow
+         evenly both ways. Clear of the dealer button, which only ever takes a
+         corner. Above the plaque in the stacking order: .replayer-seat-info
+         carries z-index 1, which is what hid this when it was a sibling rather
+         than a child. The showdown hand name sits under it (below). */
+      position:absolute; bottom:0; left:50%; top:auto; right:auto;
+      transform: translate(-50%, 75%);
       z-index: 2;
       display:flex; align-items:center; justify-content:center;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); font-family: var(--font-condensed);
@@ -5041,28 +5040,19 @@
       box-shadow:0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.35);
       animation:drawBadgePop 0.3s ease-out;
     }
-    /* The dealer button sits on a plaque corner too, chosen as the one nearest
-       the table's centre — which for a top-left seat is the bottom-right, the
-       corner this badge now wants. Measured: they overlap by 20x11px there.
-       When the button has that corner the badge takes the other end of the
-       same edge, so it stays on the bottom and the two never share a corner.
-       The button is rendered before the badge, so ~ reaches it. */
-    .replayer-dealer-btn.corner-br ~ .replayer-seat-draw-badge {
-      right: auto; left: 0;
-      transform: translate(-22%, 42%);
-      animation-name: drawBadgePopLeft;
-    }
-    @keyframes drawBadgePopLeft {
-      0% { opacity:0; transform:translate(-22%, 42%) scale(0.7); }
-      100% { opacity:1; transform:translate(-22%, 42%) scale(1); }
-    }
     /* A keyframe transform REPLACES the rule's, so every frame has to carry
        the corner offset or the badge animates from the middle of the plaque
        and stays there — the same fault that moved the action badge and the
        winning hand name off centre. */
     @keyframes drawBadgePop {
-      0% { opacity:0; transform:translate(22%, 42%) scale(0.7); }
-      100% { opacity:1; transform:translate(22%, 42%) scale(1); }
+      0% { opacity:0; transform:translate(-50%, 75%) scale(0.7); }
+      100% { opacity:1; transform:translate(-50%, 75%) scale(1); }
+    }
+    /* The showdown hand name goes UNDER the draw badge. The badge hangs 1.5r
+       below the plaque's bottom edge, so the name starts 2.5r below that edge:
+       1.5r to clear the badge, 1r of air. */
+    .replayer-seat:has(.replayer-seat-draw-badge) .replayer-seat-hand-name {
+      margin-top: calc(var(--subrow) * 2.5);
     }
 
     /* Felt color picker & card theme */

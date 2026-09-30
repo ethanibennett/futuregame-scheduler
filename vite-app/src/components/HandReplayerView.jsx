@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
@@ -1136,10 +1136,12 @@ function calcSPR(hand, streetIdx) {
   const prevStreet = hand.streets[streetIdx - 1];
   const prevActionCount = prevStreet && prevStreet.actions ? prevStreet.actions.length - 1 : -1;
   const result = calcPotsAndStacks(hand, streetIdx - 1, prevActionCount);
-  if (result.pot <= 0) return null;
+  if (!(result.pot > 0)) return null;
   const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
   const heroStack = result.stacks[heroIdx];
-  if (heroStack <= 0) return null;
+  // A hand saved without a starting stack yields NaN here, which toFixed turns
+  // into the string "NaN" and which printed as "SPR NaN". No stack, no SPR.
+  if (!Number.isFinite(heroStack) || heroStack <= 0) return null;
   return (heroStack / result.pot).toFixed(1);
 }
 
@@ -1454,7 +1456,63 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
   };
 }
 
+/* How long a displaced card takes to travel round the fan after a draw, and
+   how many points of the arc it is sampled at. The sample count only has to
+   make the path read as a curve at card scale; 16 chords of a <=30deg arc
+   deviate from it by well under a pixel. */
+const FAN_SLIDE_MS = 460;
+const FAN_SLIDE_SAMPLES = 16;
+
 function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, cardTheme, reverseZ, discardIdx }) {
+  /* Draw-game re-sort. A card keeps its DOM element for as long as it stays in
+     the hand (keyed by identity, below), so when a draw puts a new card among
+     them this can see where each surviving card was and where it is now, and
+     move it there ROUND THE FAN. A CSS transition between the two transforms
+     would cut across the chord; the fan is a rotation about one pivot and the
+     angle is linear in the card's index, so a fractional index is a point on
+     the arc - sampled into keyframes, the whole path stays on it. The drawn
+     cards fade in behind the slide rather than appearing under a card that is
+     still passing through their slot. */
+  const rowRef = useRef(null);
+  const prevFan = useRef(null);
+  const fanNow = useRef(null);
+  useLayoutEffect(() => {
+    const now = fanNow.current;
+    const prev = prevFan.current;
+    prevFan.current = now;
+    const row = rowRef.current;
+    if (!now || !prev || !row || !now.splay) return;
+    if (prev.max !== now.max || prev.splay !== now.splay || prev.splayScale !== now.splayScale) return;
+    // Two-card hands use the overlap layout, not the arc.
+    if (prev.total <= 2 || now.total <= 2) return;
+    if (typeof row.animate !== 'function') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const moves = [];
+    const arrivals = [];
+    for (const el of row.children) {
+      const k = el.dataset && el.dataset.ck;
+      if (!k || !now.byKey.has(k)) continue;
+      const to = now.byKey.get(k).i;
+      if (!prev.byKey.has(k)) { arrivals.push(el); continue; }
+      // The old slot, re-expressed in the new hand's frame: the arc is centred
+      // on the middle card, so a hand that changed length re-centres.
+      const from = prev.byKey.get(k).i - (prev.total - 1) / 2 + (now.total - 1) / 2;
+      if (Math.abs(from - to) > 1e-6) moves.push({ el, from, to, y: now.byKey.get(k).y });
+    }
+    if (!moves.length) return;
+    for (const m of moves) {
+      const frames = [];
+      for (let s = 0; s <= FAN_SLIDE_SAMPLES; s++) {
+        const f = m.from + (m.to - m.from) * (s / FAN_SLIDE_SAMPLES);
+        frames.push({ transform: getSplayStyle(f, now.total, now.splay, m.y, now.reverseZ, now.max, now.splayScale).transform });
+      }
+      m.el.animate(frames, { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
+    }
+    for (const el of arrivals) {
+      el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
+        { duration: FAN_SLIDE_MS, easing: 'ease-out' });
+    }
+  });
   const SUIT_SYMBOLS = {h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'};
   let cards = parseCardNotation(text);
   if (!cards.length && placeholderCount > 0) {
@@ -1477,10 +1535,16 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
      up cards beside them, burying exactly the ranks the fan exists to show.
      So it reverses only when nothing in the row is face up. */
   const rowReverseZ = reverseZ && !cards.some((c, i) => c.suit !== 'x' && !(downIdx && downIdx.has(i)));
+  // Identity keys (the card, plus which copy of it for repeated backs), so a
+  // card that changes SLOT keeps its element - see the re-sort effect above.
+  const seenKey = {};
+  const cardKeys = cards.map(c => { const id = c.rank + c.suit; seenKey[id] = (seenKey[id] || 0) + 1; return id + '#' + seenKey[id]; });
+  const fanByKey = new Map();
+  fanNow.current = { byKey: fanByKey, total: cards.length, splay, max, splayScale, reverseZ: rowReverseZ };
   return (
-    <div className={"card-row" + (splay ? " card-row-splay" : "")}>
+    <div ref={rowRef} className={"card-row" + (splay ? " card-row-splay" : "")}>
       {cards.map((c, i) => {
-        const k = c.rank + c.suit + '_' + i;
+        const k = cardKeys[i];
         const isDown = downIdx && downIdx.has(i);
         const isStudUp = stud && !isDown && i >= 2 && i <= 5;
         // A discarded card (draw games) lifts UP exactly the way a stud up-card
@@ -1499,26 +1563,27 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
            which paints them UNDER the ladder above — so the last card's ink
            began where the fifth card's ended and the row read as though it had
            a full card's gap in it. */
+        fanByKey.set(k, { i, y: studYOffset });
         const splayStyle = { '--ci': i, ...(splay
           ? getSplayStyle(i, cards.length, splay, studYOffset, rowReverseZ, max, splayScale)
           : getFlatStyle(i, cards.length, studYOffset, rowReverseZ)),
           ...(isDiscard ? { opacity: 0.4, transition: 'transform 260ms var(--ease-out), opacity 260ms var(--ease-out)' } : null) };
         if (c.suit === 'x' || (isDown && c.suit === 'x')) {
-          return <div key={k} className="card-unknown" style={splayStyle} />;
+          return <div key={k} data-ck={k} className="card-unknown" style={splayStyle} />;
         }
         if (cardTheme === 'classic') {
           // One class per suit. The old red/dark binary made Ah and Ad — and
           // As and Ac — pixel-identical apart from a ~9px glyph, which is not
           // a suit signal at the speed a replay runs.
           return (
-            <div key={k} className={'card-classic card-classic-' + c.suit}
+            <div key={k} data-ck={k} className={'card-classic card-classic-' + c.suit}
               style={splayStyle}>
               <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
               <span className="card-classic-suit">{SUIT_SYMBOLS[c.suit] || ''}</span>
             </div>
           );
         }
-        return <img key={k} className="card-img"
+        return <img key={k} data-ck={k} className="card-img"
           src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'}
           alt={c.rank+c.suit} loading="eager"
           style={splayStyle} />;
@@ -1535,18 +1600,16 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
 const REPLAYER_THEMES = [
   { id: 'default', label: 'Default', lit: null, shade: '#2c2e50' },
   { id: 'casino-royale', label: 'Casino Royale', lit: '#2a5c8f', shade: '#0b1a2e' },
-  { id: 'neon-vegas', label: 'Neon Vegas', lit: '#5b1a7a', shade: '#0b0416' },
-  { id: 'vintage', label: 'Vintage', lit: '#9a7c4a', shade: '#2c2113' },
-  { id: 'minimalist', label: 'Minimalist', lit: '#f4f4f6', shade: '#d8d8de' },
   { id: 'high-stakes', label: 'High Stakes', lit: '#3a3a3a', shade: '#101010' },
 ];
+/* Neon Vegas, Vintage and Minimalist were retired (2026-09-30). A viewer who had
+   one saved — or a shared hand seeded with one — falls back to Default rather
+   than rendering a theme the picker can no longer select. */
+const REPLAYER_THEME_IDS = new Set(REPLAYER_THEMES.map(t => t.id));
 const REPLAYER_CARD_BACKS = [
   { id: 'default', label: 'Default' }, { id: 'classic', label: 'Classic Blue' },
   { id: 'casino-red', label: 'Casino Red' }, { id: 'black-diamond', label: 'Black Diamond' },
   { id: 'bicycle', label: 'Bicycle' }, { id: 'custom', label: 'Custom Color' },
-];
-const REPLAYER_TABLE_SHAPES = [
-  { id: 'oval', label: 'Oval' }, { id: 'round', label: 'Round' }, { id: 'octagon', label: 'Octagon' },
 ];
 
 function useReplayerSetting(key, defaultVal, seed) {
@@ -1618,15 +1681,6 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                   </span>
                   <span className="thumb-label">{t.label}</span>
                 </button>
-              ))}
-            </div>
-          </div>
-          <div className="replayer-settings-row is-stacked">
-            <div className="replayer-settings-label">Table Shape</div>
-            <div className="replayer-settings-pills">
-              {REPLAYER_TABLE_SHAPES.map(s => (
-                <button key={s.id} className={'replayer-settings-pill' + (settings.tableShape === s.id ? ' active' : '')}
-                  onClick={() => onUpdate('tableShape', s.id)}>{s.label}</button>
               ))}
             </div>
           </div>
@@ -4968,7 +5022,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
 
   // Settings
   const _theme = useReplayerSetting('Theme', 'default');
-  const _tableShape = useReplayerSetting('TableShape', 'oval');
   const _cardBack = useReplayerSetting('CardBack', 'default');
   const _cardBackColor = useReplayerSetting('CardBackColor', '#1a3a6e');
   /* 99: the control reads "High-Contrast Deck" and applies .hc-deck, while
@@ -5020,7 +5073,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _animFold = useReplayerSetting('AnimateFold', true);
 
   const rSettings = {
-    theme: _theme[0], tableShape: _tableShape[0], feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
+    theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor, cardBack: _cardBack[0], cardBackColor: _cardBackColor[0],
     highContrastDeck: _hcDeck[0], showChipStacks: _showChipStacks[0], showHandStrength: _showHandStrength[0],
     showPotOdds: _showPotOdds[0], showCommentary: _showCommentary[0],
     showPlayerStats: _showPlayerStats[0], showNutsHighlight: _showNuts[0],
@@ -5034,7 +5087,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     cardTheme, cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
   };
   const rSetters = {
-    theme: _theme[1], tableShape: _tableShape[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
+    theme: _theme[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
     cardBack: _cardBack[1], cardBackColor: _cardBackColor[1], highContrastDeck: _hcDeck[1],
     showChipStacks: _showChipStacks[1], showHandStrength: _showHandStrength[1], showPotOdds: _showPotOdds[1],
     showCommentary: _showCommentary[1], showPlayerStats: _showPlayerStats[1],
@@ -5920,7 +5973,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   };
 
   const themeClass = rSettings.theme !== 'default' ? ' theme-' + rSettings.theme : '';
-  const shapeClass = rSettings.tableShape !== 'oval' ? ' shape-' + rSettings.tableShape : '';
+  // Table shape was retired (2026-09-30): every table is the oval.
+  const shapeClass = '';
   // Was ' four-color-deck', a class with zero rules in the stylesheet - a dead
   // switch. The deck is already four-colour; what it needs is value separation.
   const hcDeckClass = rSettings.highContrastDeck ? ' hc-deck' : '';
@@ -7102,15 +7156,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           );
         })()}
 
-        {/* 25: calcSPR, a persisted ShowSPR setting and a positioned badge
-            style were all written; nothing rendered the badge and the panel
-            never offered the toggle, so the one number that says whether a
-            pot is commit-or-fold was computed and discarded. The CSS put it
-            at top:29%, on the pot eyebrow — it sits under the plaque now. */}
-        {rSettings.showSPR && (() => {
-          const spr = calcSPR(hand, streetIdx);
-          return spr ? <div className="replayer-spr-badge">SPR {spr}</div> : null;
-        })()}
 
         {/* Polish 38 drew a deck and a muck pile on the felt, so the deal
             and the muck had somewhere to come from and go to. At the table
@@ -7159,7 +7204,13 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                            + (straddleAmt ? '/' + formatChipAmount(straddleAmt) : ''))
               + (b.ante ? '/(' + formatChipAmount(b.ante) + ')' : '')
             : null;
-          const level = [hand.gameType, sizes].filter(Boolean).join('  ·  ');
+          /* SPR rides on this line. As its own badge it was pinned at 38% of the
+             table, which is exactly where the pot's chip stacks float in
+             portrait, so it sat under them (the pot block is z 6, the badge was
+             z 2). The line under the board is the table's standing state and
+             nothing else shares its space. */
+          const spr = rSettings.showSPR ? calcSPR(hand, streetIdx) : null;
+          const level = [hand.gameType, sizes, spr ? 'SPR ' + spr : null].filter(Boolean).join('  ·  ');
           const meta = [
             hand.playersLeft ? hand.playersLeft + ' left' : null,
             hand.payoutNote || null,
