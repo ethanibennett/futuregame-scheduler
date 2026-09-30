@@ -74,7 +74,7 @@ function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, startAt, complet
     return (
       <div className="late-reg-wrap">
         <div className="late-reg-label-row">
-          <span className="late-reg-label closed">Event Completed</span>
+          <span className="late-reg-label event-completed-label">Event Completed</span>
         </div>
         <div className="late-reg-bar-bg">
           <div className="late-reg-bar-fill" style={{ width: '0%', background: 'var(--border)' }} />
@@ -164,7 +164,7 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, st
 
   if (completed) {
     if (openOnly) return null;
-    return <div className="mini-late-reg closed"><span className="mini-late-reg-label closed">Event Completed</span></div>;
+    return <div className="mini-late-reg closed"><span className="mini-late-reg-label event-completed-label">Event Completed</span></div>;
   }
 
   if (date || startAt) {
@@ -530,7 +530,7 @@ export default function DashboardView({
 
     const cardClass = [
       'dash-event-card',
-      isBustedDone || completed ? 'done' : '',
+      isBustedDone ? 'done' : (completed ? 'completed' : ''),
       event._type === 'bagged' ? 'bagged' : '',
       event._type === 'anchor' && !isConditionalOnPlaying ? 'anchor' : '',
       isConditionalOnPlaying ? 'conditional' : '',

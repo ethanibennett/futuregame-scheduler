@@ -8575,6 +8575,21 @@
     .cal-event-row.past {
       opacity: var(--state-past);
     }
+    /* A tournament whose room clock showed it finished: dimmed like a past event, but part by part
+       rather than with one opacity on the row, because nothing inside a faded element can be
+       brighter than it — and the "event completed" line has to stay legible to explain the dim. */
+    .cal-event-row.completed > .cal-venue-strip,
+    .cal-event-row.completed .cal-event-bar > :not(.mini-late-reg),
+    .cal-event-row.completed .mini-late-reg > :not(.event-completed-label),
+    .cal-event-row.completed .cal-event-chevron,
+    .cal-event-row.completed .cal-event-detail > :not(.late-reg-wrap),
+    .cal-event-row.completed .late-reg-wrap .late-reg-bar-bg {
+      opacity: var(--state-past);
+    }
+    /* Compound selectors: the footer's .mini-late-reg-time muted colour comes later in the file. */
+    .mini-late-reg-time.event-completed-label,
+    .mini-late-reg-label.event-completed-label,
+    .late-reg-label.event-completed-label { color: var(--text); opacity: 1; }
 
     /* ── Conditional events ── */
     .cal-event-row.conditional .cal-event-row-content {
@@ -10099,6 +10114,14 @@
     }
 
     .dash-event-card.done {
+      opacity: 0.45;
+      filter: grayscale(0.6);
+    }
+    /* Completed (the room's clock ended): the .done look applied part by part, leaving the
+       "Event Completed" line at full strength so it says why the card is dimmed. */
+    .dash-event-card.completed > .dash-venue-strip,
+    .dash-event-card.completed .dash-card-content > :not(.late-reg-wrap):not(.mini-late-reg),
+    .dash-event-card.completed .late-reg-wrap .late-reg-bar-bg {
       opacity: 0.45;
       filter: grayscale(0.6);
     }

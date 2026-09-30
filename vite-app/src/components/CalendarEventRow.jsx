@@ -87,7 +87,7 @@ function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, completed }) {
     return (
       <div className="late-reg-wrap">
         <div className="late-reg-label-row">
-          <span className="late-reg-label closed">Event Completed</span>
+          <span className="late-reg-label event-completed-label">Event Completed</span>
         </div>
         <div className="late-reg-bar-bg">
           <div className="late-reg-bar-fill" style={{ width: '0%', background: 'var(--border)' }} />
@@ -185,7 +185,7 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, co
     if (openOnly) return null;
     return (
       <div className="mini-late-reg">
-        <span className="mini-late-reg-time" style={{opacity:0.4}}>event completed</span>
+        <span className="mini-late-reg-time event-completed-label">event completed</span>
         <div className="mini-late-reg-track">
           <div className="mini-late-reg-fill" style={{ width: '0%' }} />
         </div>
@@ -687,7 +687,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     isAnchor ? 'anchor' : (conditions && conditions.length > 0 ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
-    isPast || completed ? 'past' : '',
+    // 'completed' dims every part of the card EXCEPT the "event completed" line, which says why.
+    completed ? 'completed' : (isPast ? 'past' : ''),
   ].filter(Boolean).join(' ');
 
   const stripColor = getVenueBrandColor(venue.abbr);
@@ -1235,7 +1236,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
     isAnchor ? 'anchor' : (hasConditions ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
-    isPast || tournament.clock_ended_at ? 'past' : '',
+    tournament.clock_ended_at ? 'completed' : (isPast ? 'past' : ''),
   ].filter(Boolean).join(' ');
   return (
     <div className={rowClasses} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
