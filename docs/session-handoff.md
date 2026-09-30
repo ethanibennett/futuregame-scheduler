@@ -5,11 +5,58 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-09-28 (from Windows). The newest section is 2026-09-28, the
+Last updated: 2026-09-30 (from Windows). The newest section is 2026-09-30, live
+tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
 2026-08-30; "Seams to the dashboard" and "The build pipeline" were added from the
 wsop-console side and verified against both live services.
+
+---
+
+## 2026-09-30 — Live tournament clocks + event audit
+
+**Live clocks.** Bravo and PokerAtlas tournament clocks (both reverse-engineered
+this session; recon in mtt-series-watcher `docs/bravo-tournaments-blocker.md` and
+`docs/pokeratlas-clock.md`) now drive the dashboard and any running schedule card
+in place of the estimate. Server: `lib/live-clocks.js` behind `POST
+/api/live-clocks`; PokerAtlas by the event's `clock_ref` (`pa:<tc_id>`, carried
+by the MTT feed), Bravo by the room at the venue's coordinates. Client poller in
+`vite-app/src/utils/live-clocks.js` (one shared 15 s registry). Cards show blinds
+· time on the top line, right-aligned to 27g. A clock seen running then gone from
+an answering provider for 5 min → `clock_ended_at`; the card dims and reads
+"event completed". Admin reachability probe: `GET
+/api/admin/live-clocks/probe?casino=&tc=` (x-sync-token). Traps: TableCaptain's
+venue clock can run minutes fast — corrected via the reply envelope's `Updated`;
+a break/pause state on PokerAtlas is still UNVERIFIED live.
+
+**Timezone.** The MTT feed now emits each event's date/time in the ROOM's zone
+(PokerAtlas `time_zone_name`) and carries `timezone`; the client trusts it over
+any name-based guess (`registerRowTimezones` / `getVenueTimezone`). Fixed Austin
+showing 3:15 PM PDT for a 2:15 PM Central start.
+
+**Event audit (2026-09-30) + fixes shipped:**
+- **Stale-row prune** (`reconcileFeedSeries`, server.js): the feed prune only
+  removed a whole series once it left the manifest, so renumbered / re-listed /
+  dropped events lingered (196 upcoming orphans, incl. WSOP Circuit stops
+  double-listed under an old and new series name). Now within-series rows whose
+  (venue, event_number) the feed no longer carries are pruned, under the same
+  reference guard, only when rows landed. One-time cleanup: local −927, prod
+  −2806. **This is the data-loss-sensitive path — verified on a scratch DB copy
+  (0 live rows deleted, referenced rows kept) before shipping.**
+- Phenom PSOP titles dropped the `#N:` prefix; the number is read into the badge
+  by `shortEventNumber` (online-poker-watcher + utils.js).
+- ACR "winners list" / "check list" non-tournament rows filtered.
+
+**Still open from the audit (not yet done):** full title normalisation across the
+non-PokerAtlas sources (spelled-out game names, acronym periods like `H.E.R.O.S.`,
+day/flight not written as a " - Day 2" suffix, ALL-CAPS ACR/ClubWPT names); the
+~1-event-per-stop WSOP Circuit merge leak (a cross-source identity edge case on
+flighted events); and a **decision needed** on whether online titles should keep
+the guarantee ("$300K GTD") when the card already shows it under the buy-in.
+
+**Cash tab:** top-bar subtitle reads "live cash games" there (not the season
+range); the in-view "Live Cash Games" h2 was removed.
 
 ---
 
