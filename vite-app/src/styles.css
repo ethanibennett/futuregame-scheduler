@@ -6385,7 +6385,14 @@
     /* Table box: 1r from the column top (0.5r pad + the table's 0.5r
        margin; was 0.25 + 0.5 = 0.75r), and 1g..36g across (was 1.25r =
        0.8875g a side, x 0.89..36.11). */
-    .replayer-fullbleed .replayer-table-slot { padding: calc(var(--subrow) * 0.5) var(--gu) 0; }
+    /* 33g table (2g..35g, 2g a side); was 35g at 1g..36g. */
+    .replayer-fullbleed .replayer-table-slot { padding: calc(var(--subrow) * 0.5) calc(var(--gu) * 2) 0; }
+    /* Seat plaques: 8g by default (--plaque-w also sizes the cards, 0.56 of it),
+       and still content-sized above that, so a longer name or stack widens the box. */
+    /* The rail is the felt's outline pushed out by --rail-w on BOTH axes, so it is one
+       thickness all the way round; 2g here (was 5.6cqmin, about 1.85g on this table). */
+    .replayer-fullbleed .replayer-table { --plaque-w: calc(var(--gu) * 8); --rail-w: calc(var(--gu) * 2); }
+    .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }
 
     /* Bar: 1r pad, the 6r transport, 1r, the 5r action row, [the 2r note],
        1r pad = 14r (16r with the note). Was 15.46r on a 0.30r phase. */
