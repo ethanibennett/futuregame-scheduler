@@ -42,7 +42,18 @@ export function wsopStructurePageFor(eventNumber) {
 export const WSOP_STRUCTURE_PDF_URL =
   'https://wsop.gg-global-cdn.com/wsop/9597cb0c-1322-4d57-831c-8160a0e6abd4.pdf';
 
-export function wsopStructureUrlFor(eventNumber) {
-  const page = wsopStructurePageFor(eventNumber);
-  return page ? `${WSOP_STRUCTURE_PDF_URL}#page=${page}` : WSOP_STRUCTURE_PDF_URL;
+/* The page link for a bracelet event, or null. This PDF is the 2026 SUMMER live series at
+   Horseshoe/Paris and nothing else, so it answers only for a live event there in 2026 whose
+   number it maps. Anything else that counts as a bracelet event (the WSOP.com Fall Online
+   Bracelet series, a later summer) got this PDF too, paged by a number from a different
+   schedule, or the whole 118-page document when the number didn't parse. Null lets the row's
+   own structure_sheet_path, if any, answer instead. */
+export function wsopStructureUrlFor(t) {
+  if (!t) return null;
+  const v = String(t.venue || '').toLowerCase();
+  if (!v.includes('horseshoe') && !v.includes('paris')) return null;
+  const d = new Date(t.date);
+  if (!(d.getFullYear() === 2026 && d.getMonth() >= 4 && d.getMonth() <= 6)) return null;
+  const page = wsopStructurePageFor(t.event_number);
+  return page ? `${WSOP_STRUCTURE_PDF_URL}#page=${page}` : null;
 }

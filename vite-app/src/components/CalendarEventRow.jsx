@@ -592,6 +592,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const tzAbbr = getVenueTzAbbr(tournament.venue);
   const timeLabel = (tournament.time || '\u2014') + (tzAbbr ? ' ' + tzAbbr : '');
   const bracelet = isBraceletEvent(tournament);
+  // The summer bracelet PDF's page for this event, only when that PDF is actually its sheet.
+  const summerSheet = bracelet ? wsopStructureUrlFor(tournament) : null;
   const venueClass = getVenueClass(tournament);
   const venue = getVenueInfo(tournament.venue, tournament.property);
   const isBounty = /bounty|mystery millions/i.test(tournament.event_name);
@@ -839,10 +841,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       was wrong: deriveVenueInfo shortens "WSOP Circuit \u2026" and "WSOP Paradise \u2026" to
                       abbr "WSOP" too, so a circuit ring event built a bogus bracelet URL from its
                       own event number. isBraceletEvent already excludes circuit/paradise/rings. */}
-                  {bracelet && (
+                  {summerSheet && (
                     <div className="cal-structure-cell">
                       <a
-                        href={wsopStructureUrlFor(tournament.event_number)}
+                        href={summerSheet}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="cal-structure-link"
@@ -851,7 +853,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       </a>
                     </div>
                   )}
-                  {!bracelet && tournament.structure_sheet_path && (() => {
+                  {!summerSheet && tournament.structure_sheet_path && (() => {
                     // structure_sheet_path may be:
                     //   'schedule-docs/Aria/structures/$X NLH \u2026pdf'                              (per-event PDF on our server)
                     //   'schedule-docs/Wynn Las Vegas/structures/Wynn_Summer_Classic.pdf#page=12' (bundled PDF + page)
