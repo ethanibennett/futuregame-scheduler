@@ -6386,17 +6386,21 @@
     /* Table box: 1r from the column top (0.5r pad + the table's 0.5r
        margin; was 0.25 + 0.5 = 0.75r), and 1g..36g across (was 1.25r =
        0.8875g a side, x 0.89..36.11). */
-    /* 33g table (2g..35g, 2g a side); was 35g at 1g..36g. */
-    .replayer-fullbleed .replayer-table-slot { padding: calc(var(--subrow) * 0.5) calc(var(--gu) * 2) 0; }
+    /* 33g table (2g..35g, 2g a side); was 35g at 1g..36g. The top pad puts the
+       table's top edge 12r down the column: 4r below where the normal 8r header
+       would end. */
+    .replayer-fullbleed .replayer-table-slot { padding: calc(var(--subrow) * 12) calc(var(--gu) * 2) 0; }
     /* Seat plaques: 8g by default (--plaque-w also sizes the cards, 0.56 of it),
        and still content-sized above that, so a longer name or stack widens the box. */
     /* The rail is the felt's outline pushed out by --rail-w on BOTH axes, so it is one
        thickness all the way round; 2g here (was 5.6cqmin, about 1.85g on this table). */
     .replayer-fullbleed .replayer-table { --plaque-w: calc(var(--gu) * 8); --rail-w: calc(var(--gu) * 2); }
-    /* 72r tall (was the slot's height less 3.5r, 93r at 402x874). min() keeps the old
-       fit-the-slot limit, so on a shorter screen the table still shrinks to fit; the
-       width (33g) is set from the slot, not from this. */
-    .replayer-fullbleed .replayer-table { height: min(calc(var(--subrow) * 72), calc(100cqh - calc(var(--subrow) * 3.5))); }
+    /* Height = whatever leaves 8r clear above the hand navigation. The slot's
+       content box ends at the transport bar's top (the strip region overlaps its
+       foot rather than taking height), so the table is that height less 8r:
+       77r at 402x874 (bar top 97r - 8r - 12r top). No top margin: the slot's
+       12r pad places it. The width (33g) is set from the slot, not from this. */
+    .replayer-fullbleed .replayer-table { height: calc(100cqh - calc(var(--subrow) * 8)); margin-top: 0; }
     .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }
 
     /* Bar: 1r pad, the 6r transport, 1r, the 5r action row, [the 2r note],
