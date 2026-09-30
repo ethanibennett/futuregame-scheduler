@@ -6389,9 +6389,9 @@
     /* Table box: 1r from the column top (0.5r pad + the table's 0.5r
        margin; was 0.25 + 0.5 = 0.75r), and 1g..36g across (was 1.25r =
        0.8875g a side, x 0.89..36.11). */
-    /* 33g table (2g..35g, 2g a side); was 35g at 1g..36g. No top pad: the
+    /* 35g table (1g..36g, 1g a side); was 33g at 2g..35g. No top pad: the
        table's top edge is the column's top (just under the safe-area inset). */
-    .replayer-fullbleed .replayer-table-slot { padding: 0 calc(var(--gu) * 2); }
+    .replayer-fullbleed .replayer-table-slot { padding: 0 var(--gu); }
     /* Seat plaques: 8g by default (--plaque-w also sizes the cards, 0.56 of it),
        and still content-sized above that, so a longer name or stack widens the box. */
     /* The rail is the felt's outline pushed out by --rail-w on BOTH axes, so it is one
