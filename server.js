@@ -10434,11 +10434,16 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
              clock_ref = COALESCE(?, clock_ref),
              timezone = ?,
              source_pdf = ?, stable_id = COALESCE(stable_id, ?),
-             -- COALESCE, not a plain overwrite: the feed only has a structure sheet for
-             -- about a sixth of events, and a locally attached one (admin edit, or a PDF
-             -- in schedule-docs) must survive an hourly re-ingest that carries null.
-             -- Feed value wins when the feed has one.
-             structure_sheet_path = COALESCE(?, structure_sheet_path)
+             -- Feed value wins when the feed has one. When it carries null, a locally
+             -- attached sheet (a schedule-docs file name, from the structure upload)
+             -- survives, but an http link is the feed's own and is cleared: every http
+             -- value on a feed row came from the feed, and a plain COALESCE kept a link
+             -- the watcher had since retracted as wrong (2026-09-30 audit: 10 rows, on
+             -- prod too, which mirrors these rows).
+             structure_sheet_path = CASE
+               WHEN ? IS NOT NULL THEN ?
+               WHEN structure_sheet_path LIKE 'http%' THEN NULL
+               ELSE structure_sheet_path END
            WHERE venue = ? AND event_number = ?`,
           [t.event_name, t.date, t.time, t.buyin, t.starting_chips,
            t.level_duration, t.reentry, t.late_reg, t.late_reg_end, t.game_variant,
@@ -10447,7 +10452,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
            t.property || null, t.is_online || 0, t.site || null,
            t.clock_ref || null,
            t.timezone || null,
-           t.source_pdf || tag, feedStableId(t, idPrefix), t.structure_sheet_path || null,
+           t.source_pdf || tag, feedStableId(t, idPrefix), t.structure_sheet_path || null, t.structure_sheet_path || null,
            t.venue, t.event_number]
         );
         if (db.getRowsModified() > 0) { upserts++; continue; }
