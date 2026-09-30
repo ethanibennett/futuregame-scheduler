@@ -1384,7 +1384,7 @@ export default function App() {
           {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>live cash games</small>
-            : currentView === 'hands' ? <small>hands log</small>
+            : currentView === 'hands' ? <small>hands archive</small>
             : (seasonLabel ? <small>{seasonLabel}</small> : null)}
         </div>
         <div className="top-bar-actions">
