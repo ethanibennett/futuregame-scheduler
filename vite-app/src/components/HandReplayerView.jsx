@@ -130,6 +130,16 @@ function sortDrawHand(cardStr, gameType) {
 // In lowball the cards thrown are the high ones — the FRONT of a rank-ordered hand.
 function drawThrowsFromTop(gameType) { return !HIGH_DRAW.has(drawBase(gameType)); }
 
+/* A folded seat's plaque shrinks AWAY from the table's centre: its scale origin
+   is the point on its own box that faces out, i.e. the unit direction from the
+   table centre (50%, 50%) to the seat, mapped onto the box (0..100%). A side
+   seat shrinks toward the rail beside it, the top seat upward, the hero down. */
+function foldOrigin(pos) {
+  const dx = (pos[0] || 50) - 50, dy = (pos[1] || 50) - 50;
+  const len = Math.hypot(dx, dy) || 1;
+  return { '--fold-ox': (50 + (dx / len) * 50).toFixed(1) + '%', '--fold-oy': (50 + (dy / len) * 50).toFixed(1) + '%' };
+}
+
 // ── Position labels ──
 function getPositionLabels(numPlayers) {
   if (numPlayers <= 2) return ['BTN/SB', 'BB'];
@@ -7500,7 +7510,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                after every single action. */
             <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')}
-              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos)}}>
+              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos), ...foldOrigin(pos)}}>
               {/* 12: opponent cards were hidden until showResult and then
                   appeared in a single frame — the only card event in the
                   replayer with no motion, at the moment the whole replay has

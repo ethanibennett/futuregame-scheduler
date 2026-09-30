@@ -5284,6 +5284,8 @@
     .replayer-seat.mucked .replayer-seat-info {
       filter: grayscale(1) brightness(0.62);
       transform: scale(0.88);
+      /* Shrink away from the table's centre (set per seat: foldOrigin). */
+      transform-origin: var(--fold-ox, 50%) var(--fold-oy, 50%);
       box-shadow:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.4),
         inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.06);
