@@ -34,6 +34,17 @@ const GAME_GROUPS = [
 // ── Inline Filters (portal-based, matching original) ──
 function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
   const panelRef = useRef(null);
+  // Long-press on the Online toggle opens a per-room menu (below). A ref to the button anchors it;
+  // the timer + fired flag tell a genuine long-press from a tap (which still toggles showOnline).
+  const onlineBtnRef = useRef(null);
+  const onlineLongPress = useRef({ timer: null, fired: false });
+  const [onlineMenu, setOnlineMenu] = useState(null); // null | { top, right } (viewport px)
+  const openOnlineMenu = useCallback(() => {
+    const el = onlineBtnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setOnlineMenu({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+  }, []);
   const [whereOpen, setWhereOpen] = useState(false);
   const [onlineOpen, setOnlineOpen] = useState(false);
   const [howMuchOpen, setHowMuchOpen] = useState(false);
@@ -168,14 +179,59 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             ['Restarts', !filters.hideRestarts, (on) => ({ hideRestarts: !on })],
             ['Side Events', !filters.hideSideEvents, (on) => ({ hideSideEvents: !on })],
             ['Online', filters.showOnline !== false, (on) => ({ showOnline: on })],
-          ].map(([label, on, patch]) => (
-            <button key={label} type="button" className={`kind-toggle${on ? ' active' : ''}`} aria-pressed={on}
-                    onClick={() => setFiltersRaw(f => ({ ...f, ...patch(!on) }))}>
+          ].map(([label, on, patch]) => {
+            // The Online button additionally opens a per-room menu on a long press (≥450ms). A
+            // press that becomes the menu suppresses the click, so it does not also toggle Online.
+            const isOnline = label === 'Online';
+            const lp = onlineLongPress.current;
+            const start = () => { lp.fired = false; clearTimeout(lp.timer); lp.timer = setTimeout(() => { lp.fired = true; haptic(); openOnlineMenu(); }, 450); };
+            const cancel = () => clearTimeout(lp.timer);
+            return (
+            <button key={label} ref={isOnline ? onlineBtnRef : undefined} type="button"
+                    className={`kind-toggle${on ? ' active' : ''}${isOnline && onlineSitesInPool.length ? ' has-menu' : ''}`} aria-pressed={on}
+                    onClick={() => { if (isOnline && lp.fired) { lp.fired = false; return; } setFiltersRaw(f => ({ ...f, ...patch(!on) })); }}
+                    onPointerDown={isOnline && onlineSitesInPool.length ? start : undefined}
+                    onPointerUp={isOnline ? cancel : undefined}
+                    onPointerLeave={isOnline ? cancel : undefined}
+                    onContextMenu={isOnline && onlineSitesInPool.length ? (e => { e.preventDefault(); if (!lp.fired) { lp.fired = true; openOnlineMenu(); } }) : undefined}>
               <span className="kind-toggle-label">{label}</span>
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      {onlineMenu && createPortal(
+        <>
+          <div className="dropdown-backdrop" style={{ zIndex: 'var(--z-scrim)' }} onClick={() => setOnlineMenu(null)} />
+          <div className="online-room-menu" role="menu"
+               style={{ position: 'fixed', top: onlineMenu.top, right: onlineMenu.right, zIndex: 'var(--z-panel)' }}>
+            <div className="online-room-menu-head">Online rooms</div>
+            {onlineSitesInPool.map(({ key, count, name }) => {
+              const rule = (filters.siteRules || {})[key];
+              const shown = !(rule && rule.hidden);
+              return (
+                <button key={key} type="button" role="menuitemcheckbox" aria-checked={shown}
+                        className={`online-room-row${shown ? ' on' : ''}`}
+                        onClick={() => setFiltersRaw(f => {
+                          const sr = { ...(f.siteRules || {}) };
+                          const cur = { ...(sr[key] || {}) };
+                          cur.hidden = shown; // toggling: was shown → now hidden
+                          if (!cur.hidden && !cur.seriesOnly && !(Number(cur.minBuyin) > 0)) delete sr[key];
+                          else sr[key] = cur;
+                          // Turning a room on is meaningless while Online is off — turn Online on too.
+                          return { ...f, siteRules: sr, showOnline: shown ? f.showOnline : true };
+                        })}>
+                  <span className="online-room-check" aria-hidden="true">{shown ? '✓' : ''}</span>
+                  <span className="online-room-name">{name}</span>
+                  <span className="online-room-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>,
+        document.body
+      )}
 
       {open && createPortal(
         <div className="dropdown-backdrop" onClick={() => setOpen(false)} />,

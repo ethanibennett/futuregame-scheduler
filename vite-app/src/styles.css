@@ -7729,6 +7729,73 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
       text-indent: var(--track-caps);
     }
+    /* A room-menu affordance: a small dot at the corner, positioned absolutely so it never shifts
+       the centred label. Marks the Online toggle as long-pressable. */
+    .kind-toggle.has-menu { position: relative; }
+    .kind-toggle.has-menu::after {
+      content: '';
+      position: absolute;
+      right: calc(var(--subrow) * 0.5);
+      bottom: calc(var(--subrow) * 0.5);
+      width: calc(var(--subrow) * 0.25);
+      height: calc(var(--subrow) * 0.25);
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.5;
+    }
+
+    /* Per-room menu opened by long-pressing the Online toggle. */
+    .online-room-menu {
+      min-width: calc(var(--gu) * 16);
+      max-width: calc(100vw - var(--gu) * 2);
+      background: var(--surface);
+      border: var(--bw-hair) solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4);
+      padding: calc(var(--subrow) * 0.5) 0;
+      overflow: hidden;
+    }
+    .online-room-menu-head {
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: calc(var(--subrow) * 0.75) calc(var(--gu) * 1) calc(var(--subrow) * 0.5);
+    }
+    .online-room-row {
+      display: flex;
+      align-items: center;
+      gap: var(--gu);
+      width: 100%;
+      box-sizing: border-box;
+      height: calc(var(--subrow) * 4);
+      padding: 0 calc(var(--gu) * 1);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-family: var(--serif);
+      font-size: var(--fs-sm);
+      text-align: left;
+    }
+    .online-room-row.on { color: var(--text); }
+    .online-room-row:active { background: var(--hover-overlay); }
+    .online-room-check {
+      flex: 0 0 auto;
+      width: calc(var(--subrow) * 2);
+      color: var(--accent);
+      font-weight: var(--fw-bold);
+    }
+    .online-room-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .online-room-count {
+      flex: 0 0 auto;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
 
     /* Square icon-only chip variant: 32x32 rounded square (instead of
        the pill shape). Used for the location/calendar/filter/import
