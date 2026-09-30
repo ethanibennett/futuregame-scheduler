@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
 import StrategyRibbon from './StrategyRibbon.jsx';
+import GridBadge from './GridBadge.jsx';
 
 // ── MULTIWAY (3-player razz) TRAINER — MVP ────────────────────────────────────
 // Play a full 3-handed razz hand as the hero against TWO blueprint-profile seats,
@@ -23,10 +24,12 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 //   POST /api/solver/trainer3/razz3/deal  {}                       -> { seed, heroSeat, game, state }
 //   POST /api/solver/trainer3/razz3/step  { seed, heroActions:[id] } -> { state, legalActions|null, handOver, result?, grades?, profile? }
 
-const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
-// Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
+// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
+// line), controls 3/5r, cards 2g × 4r, gaps 1/2r — so every block starts on an
+// r-line from the top bar. Panels pad 2r × 2g (content on 3..34).
+const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+const R = (n) => `calc(var(--subrow) * ${n})`;
 const STREET_NAMES = ['3rd', '4th', '5th', '6th', '7th'];
 const POS = 'var(--pos, #22c55e)';
 
@@ -154,16 +157,17 @@ export default function Multiway3TrainerView() {
   const totalEvLoss = useMemo(() => (grades || []).reduce((a, g) => a + Math.max(0, +g.evLoss || 0), 0), [grades]);
 
   return (
-    <div className="trainer-shell" style={{ height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 77.5)', margin: '0 auto', fontFamily: FONT }}>
+    <div className="hs-view trainer-shell" style={{ maxWidth: R(77.5) }}>
       {/* Full-width top band (header + subtitle + error). Spans above the two
-          columns on wide screens; top of the stack on narrow. */}
+          columns on wide screens; top of the stack on narrow.
+          Grid: 4r title line (title | tag, both baselines on its bottom), 1r,
+          2r copy lines. */}
       <div className="trainer-top">
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 'var(--space-md)', columnGap: 'var(--gu)' }}>
-        {/* Grid: title box 4 subrows, baseline seated on T12. */}
-        <h2 className="screen-title" style={{ fontSize: 'calc(var(--gu) * 1.767)', margin: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', lineHeight: 'calc(var(--subrow) * 4)', paddingTop: 'calc(var(--subrow) * 0.125)' }}>3-Way Razz Trainer</h2>
-        <span style={{ fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 4)' }}>MVP · multiway</span>
+      <div className="hs-split">
+        <h2 className="screen-title hs-t hs-title" style={T(4)}>3-Way Razz Trainer</h2>
+        <span className="hs-t hs-xs hs-mut" style={{ ...T(4), whiteSpace: 'nowrap' }}>MVP · multiway</span>
       </div>
-      <p style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', margin: '0 0 calc(var(--subrow) * 2)', lineHeight: 'calc(var(--subrow) * 3)' }}>
+      <p className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
         You are the hero against two seats playing a fixed blueprint <b>profile</b>. Grades are the
         certified EV-loss <b>versus that stated profile</b> — 3-player razz is general-sum, so there is
         no single correct strategy. 7th-street decisions are graded by an exact oracle; earlier streets
@@ -171,10 +175,10 @@ export default function Multiway3TrainerView() {
       </p>
 
       {error && (
-        <div style={{ ...panel, borderColor: 'var(--neg, #ef4444)', marginBottom: 'var(--subrow)' }}>
-          <span style={{ color: 'var(--neg, #ef4444)', fontSize: 'calc(var(--gu) * 1.178)', lineHeight: 'calc(var(--subrow) * 3)' }}>
+        <div className="hs-panel" style={{ marginTop: R(2), '--hs-edge': 'var(--neg, #ef4444)' }}>
+          <div className="hs-t hs-sm" style={{ ...T(3, 3), color: 'var(--neg, #ef4444)' }}>
             {error.offline ? 'Trainer unavailable on this server. ' : ''}{error.message}
-          </span>
+          </div>
         </div>
       )}
 
@@ -188,19 +192,16 @@ export default function Multiway3TrainerView() {
       {/* felt */}
       {state && <Felt3 state={state} heroSeat={heroSeat} handOver={handOver} result={result} />}
 
-      {/* action panel */}
+      {/* action panel — 2r caps label, 1r, 5r buttons on the panel's 15g halves
+          (or 9g thirds for three actions). */}
       {heroOnTurn && legalActions && (
-        <div style={{ ...panel, marginTop: 'var(--subrow)' }}>
-          <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Your action</div>
-          <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+        <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+          <div className="hs-t hs-cap" style={T(2)}>Your action</div>
+          <div className={legalActions.length === 3 ? 'hs-cols3' : 'hs-cols'} style={{ '--hs-n': 2, rowGap: 'var(--subrow)' }}>
             {legalActions.map((a) => (
-              <button key={a.id} onClick={() => pickAction(a.id)} disabled={stepping}
-                style={{
-                  height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 2.25)', borderRadius: 'calc(var(--subrow) * 1.25)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.208)',
-                  fontWeight: 'var(--fw-bold)', cursor: stepping ? 'default' : 'pointer', color: 'var(--on-brand)',
-                  border: 'var(--bw-hair) solid var(--brand)', background: 'var(--brand)', opacity: stepping ? 0.5 : 1,
-                }}>
-                {a.label}
+              <button key={a.id} className="hs-btn" onClick={() => pickAction(a.id)} disabled={stepping}
+                style={{ '--hs-h': 5, '--hs-edge': 'transparent', '--hs-fill': 'var(--brand)', '--hs-ink': 'var(--on-brand)', fontSize: 'var(--fs-sm)', cursor: stepping ? 'default' : 'pointer', opacity: stepping ? 0.5 : 1 }}>
+                <span className="hs-t" style={T(3)}>{a.label}</span>
               </button>
             ))}
           </div>
@@ -208,17 +209,13 @@ export default function Multiway3TrainerView() {
       )}
 
       {(loading || stepping) && !handOver && (
-        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.104)', padding: 'var(--space-ml) 0' }}>
+        <div className="hs-t hs-xs hs-mut" style={{ ...T(3), marginTop: 'var(--subrow)', textAlign: 'center' }}>
           {stepping ? 'replaying + grading…' : 'dealing…'}
         </div>
       )}
 
       {/* result banner — play side (the hand's conclusion, shown with the felt) */}
-      {handOver && result && (
-        <div style={{ marginTop: 'var(--subrow)' }}>
-          <ResultBanner3 result={result} heroSeat={heroSeat} />
-        </div>
-      )}
+      {handOver && result && <ResultBanner3 result={result} heroSeat={heroSeat} />}
 
       </div>{/* .trainer-col-play */}
 
@@ -228,9 +225,9 @@ export default function Multiway3TrainerView() {
       {handOver && result && (
         <>
           {profile && (
-            <div style={{ ...panel, marginTop: 'var(--subrow)', padding: 'var(--subrow) var(--gu)' }}>
-              <span style={label}>Grading basis</span>
-              <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text)', marginTop: 'var(--space-2xs)', lineHeight: 'calc(var(--subrow) * 2)' }}>
+            <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+              <span className="hs-t hs-cap" style={T(2)}>Grading basis</span>
+              <div className="hs-t hs-xs" style={T(2, 2)}>
                 {profile.label} — the two opponents play a fixed blueprint profile; this is a general-sum
                 game with no single correct strategy. The exploitability bars below are per-seat <b>lower bounds</b>.
               </div>
@@ -238,36 +235,27 @@ export default function Multiway3TrainerView() {
           )}
 
           {grades && grades.length > 0 && (
-            <div style={{ marginTop: 'var(--subrow)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-                <span style={{ ...label, letterSpacing: '0.12em', fontWeight: 700 }}>Per-decision grade</span>
-                <span style={{ fontSize: 'calc(var(--gu) * 1.178)', fontWeight: 700, color: lossColor(totalEvLoss) }}>
-                  hand EV-loss {totalEvLoss.toFixed(2)} chips
-                </span>
+            <div className="hs-stack" style={{ marginTop: R(2) }}>
+              <div className="hs-split">
+                <span className="hs-t hs-cap hs-bold" style={{ ...T(3), letterSpacing: '0.12em' }}>Per-decision grade</span>
+                <span className="hs-t hs-sm hs-bold" style={{ ...T(3), color: lossColor(totalEvLoss) }}>hand EV-loss {totalEvLoss.toFixed(2)} chips</span>
               </div>
               {grades.map((g, i) => <GradeCard3 key={i} g={g} heroSeat={heroSeat} />)}
             </div>
           )}
           {grades && grades.length === 0 && (
-            <div style={{ ...panel, marginTop: 'var(--subrow)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.104)' }}>
-              No hero decisions to grade this hand.
+            <div className="hs-panel" style={{ marginTop: 'var(--subrow)' }}>
+              <div className="hs-t hs-xs hs-mut" style={{ ...T(3), textAlign: 'center' }}>No hero decisions to grade this hand.</div>
             </div>
           )}
         </>
       )}
 
-      {/* next hand */}
-      <div style={{ marginTop: 'calc(var(--subrow) * 2)', display: 'flex', gap: 'var(--space-ml)' }}>
-        <button onClick={deal} disabled={loading || stepping}
-          style={{
-            flex: 1, height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'calc(var(--subrow) * 1.25)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)',
-            fontWeight: 700, cursor: (loading || stepping) ? 'default' : 'pointer',
-            border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
-            opacity: (loading || stepping) ? 0.5 : 1,
-          }}>
-          {handOver ? 'Deal next hand' : 'New hand'}
-        </button>
-      </div>
+      {/* next hand — 5r, full width, 2r above */}
+      <button className="hs-btn" onClick={deal} disabled={loading || stepping}
+        style={{ '--hs-h': 5, '--hs-fill': 'var(--surface)', width: '100%', marginTop: R(2), fontSize: 'var(--fs-sm)', opacity: (loading || stepping) ? 0.5 : 1 }}>
+        <span className="hs-t" style={T(3)}>{handOver ? 'Deal next hand' : 'New hand'}</span>
+      </button>
 
       {/* scoreboard */}
       <SessionScoreboard3 session={session} onReset={resetSession} />
@@ -282,16 +270,16 @@ export default function Multiway3TrainerView() {
 // One row per seat. Hero seat highlighted; each seat shows its public upcards +
 // (hidden) down cards; at showdown every live seat's hand is revealed. The seat
 // to act is flagged. A public action log sits below.
+// Grid: panel 2r × 2g, 2r above; 3r header; each seat a box 1r × 2g (content
+// 5..32): 2r label line, 1r, 6r card row (2r lift + 4r cards); 1r between.
 function Felt3({ state, heroSeat, handOver, result }) {
   const seats = state.seats || [];
   const resultSeats = handOver && result && Array.isArray(result.seats) ? result.seats : null;
   return (
-    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
-          {STREET_NAMES[state.street] || `street ${state.street}`} street
-        </span>
-        <span style={label}>
+    <div className="hs-panel hs-stack" style={{ marginTop: R(2) }}>
+      <div className="hs-split">
+        <span className="hs-t hs-md hs-bold" style={T(3)}>{STREET_NAMES[state.street] || `street ${state.street}`} street</span>
+        <span className="hs-t hs-cap hs-clip" style={T(3)}>
           Pot {state.pot}{state.deadPot ? ` (incl. ${state.deadPot} dead)` : ''} · bring-in seat {state.bringInSeat}
         </span>
       </div>
@@ -301,24 +289,20 @@ function Felt3({ state, heroSeat, handOver, result }) {
         const revealed = rs && rs.down && rs.down.some(c => c != null) ? rs.down : null;
         const isToAct = state.toAct === s.seat && !handOver;
         return (
-          <div key={s.seat} style={{
-            marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)', borderRadius: 'calc(var(--subrow) * 1.25)',
-            border: 'var(--bw-hair) solid ' + (s.isHero ? POS : 'var(--border)'),
-            background: s.isHero ? 'color-mix(in srgb, var(--pos, #22c55e) 8%, transparent)' : 'transparent',
+          <div key={s.seat} className="hs-box hs-stack" style={{
+            padding: 'var(--subrow) calc(var(--gu) * 2)',
+            '--hs-edge': s.isHero ? POS : 'var(--border)',
+            '--hs-bg': s.isHero ? 'color-mix(in srgb, var(--pos, #22c55e) 8%, transparent)' : 'transparent',
             opacity: s.folded ? 0.5 : 1,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
-              <span style={{ ...label, color: s.isHero ? POS : 'var(--text-muted)', fontWeight: 700 }}>
-                {s.isHero ? 'You' : `Seat ${s.seat}`}
-              </span>
-              {s.folded && <span style={{ fontSize: 'calc(var(--gu) * 0.854)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>folded</span>}
-              {isToAct && (
-                <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: s.isHero ? POS : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
-              )}
-              <span style={{ marginLeft: 'auto', fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)' }}>in {s.contrib}</span>
-              {rs && rs.lowRank && <span style={{ fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text)', fontWeight: 700 }}>{rs.lowRank}</span>}
+            <div style={{ display: 'flex', columnGap: 'var(--gu)', alignItems: 'flex-start', minWidth: 0 }}>
+              <span className="hs-t hs-cap hs-bold" style={{ ...T(2), color: s.isHero ? POS : 'var(--text-muted)' }}>{s.isHero ? 'You' : `Seat ${s.seat}`}</span>
+              {s.folded && <span className="hs-t hs-cap" style={T(2)}>folded</span>}
+              {isToAct && <span className="hs-t hs-cap" style={{ ...T(2), color: s.isHero ? POS : 'var(--accent)' }}>to act</span>}
+              <span className="hs-t hs-xs hs-mut" style={{ ...T(2), marginLeft: 'auto' }}>in {s.contrib}</span>
+              {rs && rs.lowRank && <span className="hs-t hs-xs hs-bold" style={T(2)}>{rs.lowRank}</span>}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 6)', paddingTop: 'calc(var(--subrow) * 2)' }}>
+            <div className="hs-cards hs-raise">
               {/* 2 hole cards: hero always face-up; opponents hidden until showdown */}
               {s.isHero
                 ? (s.down || []).slice(0, 2).map((c, i) => <Card key={'d' + i} str={c} size="sm" />)
@@ -338,10 +322,11 @@ function Felt3({ state, heroSeat, handOver, result }) {
         );
       })}
 
+      {/* Action log — hairline rule (inset, no height) + 1r, 2r lines, at most 17r. */}
       {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
+        <div className="hs-rule" style={{ maxHeight: R(17), overflowY: 'auto' }}>
           {state.log.map((e, i) => (
-            <div key={i}>
+            <div key={i} className="hs-t hs-xs hs-mut" style={T(2, 2)}>
               <b style={{ color: e.seat === heroSeat ? POS : 'var(--accent)' }}>
                 {e.seat === heroSeat ? 'You' : `Seat ${e.seat}`}
               </b>
@@ -355,6 +340,7 @@ function Felt3({ state, heroSeat, handOver, result }) {
 }
 
 // ── result banner ─────────────────────────────────────────────────────────────
+// Grid: panel 2r × 2g, 1r above; one 3r line (verdict | detail).
 function ResultBanner3({ result, heroSeat }) {
   const w = result.winner;
   const won = w === 'hero';
@@ -362,17 +348,20 @@ function ResultBanner3({ result, heroSeat }) {
   const color = won ? POS : split ? 'var(--accent)' : 'var(--neg, #ef4444)';
   const text = won ? 'You win' : split ? 'Split pot' : 'You lose';
   return (
-    <div style={{ ...panel, borderColor: color, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ fontWeight: 700, color, fontSize: 'calc(var(--gu) * 1.399)' }}>{text}</span>
-      <span style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)' }}>
-        {result.endType === 'fold' ? 'by fold' : 'at showdown'} · net {result.heroDelta > 0 ? '+' : ''}{result.heroDelta} chips
-      </span>
+    <div className="hs-panel" style={{ marginTop: 'var(--subrow)', '--hs-edge': color }}>
+      <div className="hs-split">
+        <span className="hs-t hs-md hs-bold" style={{ ...T(3), color, whiteSpace: 'nowrap' }}>{text}</span>
+        <span className="hs-t hs-sm" style={T(3, 3)}>
+          {result.endType === 'fold' ? 'by fold' : 'at showdown'} · net {result.heroDelta > 0 ? '+' : ''}{result.heroDelta} chips
+        </span>
+      </div>
     </div>
   );
 }
 
 // ── provenance badge ──────────────────────────────────────────────────────────
 // EXACT (7th) vs blueprint estimate (earlier). Honest wording only.
+// Grid: a whole-g 3r GridBadge + its sub-label, both baselines 2r down.
 function ProvenanceBadge({ g }) {
   const exact = g.forwardMode === 'exact-multiway-oracle';
   const bg = exact ? POS : 'var(--accent)';
@@ -381,35 +370,34 @@ function ProvenanceBadge({ g }) {
     ? (g.exactPath === 'snapshot-exact' ? 'mid-round exact' : 'certificate')
     : 'MC vs profile';
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'calc(var(--subrow) * 0.625)' }}>
-      <span style={{
-        fontSize: 'calc(var(--gu) * 0.825)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-        color: '#fff', background: bg, borderRadius: 'calc(var(--subrow) * 0.75)', padding: 'var(--space-2xs) var(--space-sm)',
-      }}>{txt}</span>
-      <span style={{ fontSize: 'calc(var(--gu) * 0.825)', color: 'var(--text-muted)' }}>{sub}</span>
-    </span>
+    <div className="hs-gbadges">
+      <GridBadge edge={bg} ink="#fff" bg={bg}>{txt}</GridBadge>
+      <span className="hs-t hs-xs hs-mut" style={T(2)}>{sub}</span>
+    </div>
   );
 }
 
 // ── per-seat exploitability bar (LOWER bound) ─────────────────────────────────
+// Grid: rule + 1r, 2r caps label, then 2r meter rows — label 4g (3..7) | track
+// to 27 | 6g value (28..34).
 function ExploitBar({ bar, heroSeat }) {
   if (!Array.isArray(bar) || !bar.length) return null;
   const max = Math.max(0.01, ...bar.map(b => Math.abs(b.exploitLowerBound || 0)));
   return (
-    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: 'var(--bw-hair) dashed var(--border)' }}>
-      <div style={{ ...label, marginBottom: 'calc(var(--subrow) * 0.625)' }}>Per-seat exploitability (lower bound, chips)</div>
+    <div className="hs-rule">
+      <div className="hs-t hs-cap" style={T(2, 2)}>Per-seat exploitability (lower bound, chips)</div>
       {bar.map((b) => {
         const v = Math.abs(b.exploitLowerBound || 0);
         const isHero = b.seat === heroSeat;
         return (
-          <div key={b.seat} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'calc(var(--subrow) * 0.375)' }}>
-            <span style={{ fontSize: 'calc(var(--gu) * 0.913)', width: 'calc(var(--subrow) * 5.75)', color: isHero ? POS : 'var(--text-muted)', fontWeight: isHero ? 700 : 400 }}>
+          <div key={b.seat} className="hs-meter" style={{ '--hs-lab': 'calc(var(--gu) * 4)', '--hs-val': 'calc(var(--gu) * 6)' }}>
+            <span className="hs-t hs-xs" style={{ ...T(2), color: isHero ? POS : 'var(--text-muted)', fontWeight: isHero ? 'var(--fw-bold)' : 'var(--fw-regular)' }}>
               {isHero ? 'You' : `Seat ${b.seat}`}
             </span>
-            <div style={{ flex: 1, height: 'calc(var(--subrow) * 1)', background: 'var(--border)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, (v / max) * 100)}%`, height: '100%', background: isHero ? POS : 'var(--accent)' }} />
+            <div className="hs-meter-track" style={{ '--hs-track': 'var(--border)' }}>
+              <div className="hs-meter-fill" style={{ width: `${Math.min(100, (v / max) * 100)}%`, background: isHero ? POS : 'var(--accent)' }} />
             </div>
-            <span style={{ fontSize: 'calc(var(--gu) * 0.913)', width: 'calc(var(--subrow) * 5.5)', textAlign: 'right', color: 'var(--text)' }}>≥ {v.toFixed(2)}</span>
+            <span className="hs-t hs-xs" style={T(2)}>≥ {v.toFixed(2)}</span>
           </div>
         );
       })}
@@ -418,6 +406,8 @@ function ExploitBar({ bar, heroSeat }) {
 }
 
 // ── grade card ────────────────────────────────────────────────────────────────
+// Grid: panel 2r × 2g; 3r header, badge row (3r), 2r caps label, ribbon,
+// 2r verdict line, 2r certification line, exploit bar — 1r apart.
 function GradeCard3({ g, heroSeat }) {
   const mix = g.profileMix || {};
   const actions = g.actions || mix.actions || [];
@@ -428,14 +418,12 @@ function GradeCard3({ g, heroSeat }) {
   const best = g.bestActionId;
   const rightChoice = chose === best;
   return (
-    <div style={{ ...panel, marginBottom: 'var(--space-md)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.208)' }}>{g.streetName} street</span>
-        <ProvenanceBadge g={g} />
-      </div>
+    <div className="hs-panel hs-stack">
+      <span className="hs-t hs-sm hs-bold" style={T(3)}>{g.streetName} street</span>
+      <ProvenanceBadge g={g} />
 
       {/* profile action mix as frequency bars (the blueprint's mix, not a claim of perfect play) */}
-      <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Profile action mix{mix.trained === false ? ' (untrained → uniform)' : ''}</div>
+      <div className="hs-t hs-cap" style={T(2, 2)}>Profile action mix{mix.trained === false ? ' (untrained → uniform)' : ''}</div>
       {/* One ribbon. This was the fifth hand-rolled rendering of a mix, and
           the one that drew UNCHOSEN actions in the muted-text grey - the same
           colour as the label beside them. perActionEV rides along as the
@@ -453,18 +441,16 @@ function GradeCard3({ g, heroSeat }) {
       />
 
       {/* verdict */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'calc(var(--gu) * 1.090)' }}>
-        <span style={{ color: 'var(--text-muted)' }}>
+      <div className="hs-split">
+        <span className="hs-t hs-xs hs-mut" style={T(2, 2)}>
           You chose <b style={{ color: 'var(--text)' }}>{g.heroActionLabel}</b>
           {!rightChoice && <> · best <b style={{ color: 'var(--text)' }}>{labels[actions.indexOf(best)] || best}</b></>}
         </span>
-        <span style={{ fontWeight: 700, color: lossColor(evLoss) }}>
+        <span className="hs-t hs-xs hs-bold" style={{ ...T(2), whiteSpace: 'nowrap', color: lossColor(evLoss) }}>
           EV-loss {evLoss.toFixed(2)}{g.evLossSE != null ? ` ±${(+g.evLossSE).toFixed(2)}` : ''} chips
         </span>
       </div>
-      <div style={{ fontSize: 'calc(var(--gu) * 0.854)', color: 'var(--text-muted)', marginTop: 'calc(var(--subrow) * 0.375)' }}>
-        {g.certified}
-      </div>
+      {g.certified && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>{g.certified}</div>}
 
       {/* exploitability bar (7th only) */}
       {g.exploitBar && <ExploitBar bar={g.exploitBar} heroSeat={heroSeat} />}
@@ -473,37 +459,40 @@ function GradeCard3({ g, heroSeat }) {
 }
 
 // ── session scoreboard ────────────────────────────────────────────────────────
+// Grid: panel 2r × 2g, 2r above. 3r header (label | 6g reset on 28..34), 1r,
+// three 9g stat columns (3..12, 14..23, 25..34), 2r, caps label, 1r, 2r meter
+// rows (label 4g | track to 27 | 6g value), 1r, 2r note lines.
 function SessionScoreboard3({ session, onReset }) {
   const s = session || emptySession();
   const avg = s.hands ? s.totalEvLoss / s.hands : 0;
+  const max = Math.max(0.01, ...s.byStreet.map(x => x || 0));
   return (
-    <div style={{ ...panel, marginTop: 'var(--space-xl)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-        <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>Session scoreboard</span>
-        <button onClick={onReset}
-          style={{ fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted)', background: 'transparent', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-md)', cursor: 'pointer' }}>
-          reset
+    <div className="hs-panel" style={{ marginTop: R(2) }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) calc(var(--gu) * 6)', columnGap: 'var(--gu)', alignItems: 'start' }}>
+        <span className="hs-t hs-cap hs-bold" style={{ ...T(2), letterSpacing: '0.14em' }}>Session scoreboard</span>
+        <button className="hs-btn" onClick={onReset}
+          style={{ '--hs-h': 3, padding: 0, fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-regular)', '--hs-ink': 'var(--text-muted)' }}>
+          <span className="hs-t" style={T(2)}>reset</span>
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gu)', marginBottom: 'var(--subrow)' }}>
+      <div className="hs-cols3" style={{ marginTop: 'var(--subrow)' }}>
         <Stat label="Hands" value={s.hands} />
         <Stat label="Avg EV-loss" value={`${avg.toFixed(2)}`} unit="chips" color={lossColor(avg)} />
         <Stat label="Clean hands" value={`${s.clean}/${s.hands}`} />
       </div>
-      <div style={{ ...label, marginBottom: 'var(--subrow)' }}>EV-loss by street (total, chips)</div>
-      {s.byStreet.map((v, i) => {
-        const max = Math.max(0.01, ...s.byStreet.map(x => x || 0));
-        return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)' }}>
-            <span style={{ fontSize: 'calc(var(--gu) * 0.913)', width: 'calc(var(--subrow) * 4.25)', color: 'var(--text-muted)' }}>{STREET_NAMES[i]}</span>
-            <div style={{ flex: 1, height: 'calc(var(--subrow) * 0.875)', background: 'var(--border)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, ((v || 0) / max) * 100)}%`, height: '100%', background: i === 4 ? POS : 'var(--accent)' }} />
+      <div className="hs-t hs-cap" style={{ ...T(2), marginTop: R(2) }}>EV-loss by street (total, chips)</div>
+      <div style={{ marginTop: 'var(--subrow)' }}>
+        {s.byStreet.map((v, i) => (
+          <div key={i} className="hs-meter" style={{ '--hs-lab': 'calc(var(--gu) * 4)', '--hs-val': 'calc(var(--gu) * 6)' }}>
+            <span className="hs-t hs-xs hs-mut" style={T(2)}>{STREET_NAMES[i]}</span>
+            <div className="hs-meter-track" style={{ '--hs-track': 'var(--border)' }}>
+              <div className="hs-meter-fill" style={{ width: `${Math.min(100, ((v || 0) / max) * 100)}%`, background: i === 4 ? POS : 'var(--accent)' }} />
             </div>
-            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', width: 'calc(var(--subrow) * 5.5)', textAlign: 'right', color: 'var(--text-muted)' }}>{(v || 0).toFixed(1)}</span>
+            <span className="hs-t hs-xs hs-mut hs-num" style={T(2)}>{(v || 0).toFixed(1)}</span>
           </div>
-        );
-      })}
-      <div style={{ fontSize: 'calc(var(--gu) * 0.854)', color: 'var(--text-muted)', marginTop: 'var(--subrow)', lineHeight: 'calc(var(--subrow) * 2)' }}>
+        ))}
+      </div>
+      <div className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
         {s.exactGraded7th} of your 7th-street decisions this session were graded by the exact multiway
         oracle. Earlier-street numbers are Monte-Carlo estimates vs the profile. Stored on this device only.
       </div>
@@ -511,11 +500,12 @@ function SessionScoreboard3({ session, onReset }) {
   );
 }
 
+// Stat: centred 3r value (baseline on its bottom) over a 2r caps label.
 function Stat({ label: l, value, unit, color }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color: color || 'var(--text)', lineHeight: 'calc(var(--subrow) * 3)' }}>{value}</div>
-      <div style={{ ...label, marginTop: 'var(--space-2xs)' }}>{l}{unit ? ` (${unit})` : ''}</div>
+    <div style={{ textAlign: 'center', minWidth: 0 }}>
+      <div className="hs-t hs-lg hs-bold hs-num" style={{ ...T(3), fontSize: 'var(--fs-lg)', color: color || 'var(--text)' }}>{value}</div>
+      <div className="hs-t hs-cap" style={T(2, 2)}>{l}{unit ? ` (${unit})` : ''}</div>
     </div>
   );
 }

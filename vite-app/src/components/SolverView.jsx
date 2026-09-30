@@ -23,10 +23,13 @@ import StrategyRibbon from './StrategyRibbon.jsx';
 // every field/control lands on the real column rails (a pair of
 // fields = 2 columns each, a full field = all 4) rather than on
 // arbitrary card-inset widths.
+//
+// Vertical grid: every piece is a whole number of r (text = .hs-t blocks whose
+// baseline is their bottom edge, controls 3/5/6r, gaps 1/2r), so every block
+// starts on an r-line from the top bar. Classes live in styles.css (.hs-*).
 
-const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' };
-const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'var(--space-lg) calc(var(--subrow) * 1.75)' };
+// Text block helper: className + baseline offset b (r) [+ line pitch lh (r)].
+const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
 
 // Split a free-text holding/upcard string ("As4s3d2c" / "Kc Kd 2h")
 // into individual two-char card tokens for the SolverCard preview.
@@ -44,35 +47,18 @@ function ctxLabel(hist) {
   return (m[last] || `after “${hist}”`) + ` · line ${hist}`;
 }
 
-// One legal action → a horizontal frequency bar. Best action (max
-// frequency at the node) is accent-green, matching the reference GUI.
-function ActionBar({ name, pct, best }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1.125)', marginBottom: 'calc(var(--subrow) * 0.625)' }}>
-      <span style={{ width: 'calc(var(--subrow) * 6.5)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{name}</span>
-      <div style={{ flex: 1, height: 'calc(var(--subrow) * 2)', background: 'var(--surface2)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)',
-          background: best ? 'var(--pos, #22c55e)' : 'var(--accent2)',
-          transition: 'width .5s cubic-bezier(.4,0,.2,1)',
-        }} />
-      </div>
-      <span style={{ width: 'calc(var(--subrow) * 5.5)', textAlign: 'right', fontSize: 'calc(var(--gu) * 1.060)', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{pct}%</span>
-    </div>
-  );
-}
-
 // One decision node: who acts, a readable context label, and one
-// ActionBar per legal action.
+// strategy ribbon. Grid: 2r header line (both baselines on its bottom),
+// 1r, then the ribbon (all whole r — see .hs-view .freq-*).
 function StrategyNode({ hist, node }) {
   const who = node.who === 'me' ? 'Hero' : 'Opp';
   const pcts = (node.freq || []).map((f) => +(f * 100).toFixed(1));
   const best = pcts.length ? Math.max(...pcts) : -1;
   return (
-    <div style={{ marginBottom: 'var(--space-xl)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-        <span style={{ fontSize: 'calc(var(--gu) * 1.149)', fontWeight: 700, color: who === 'Hero' ? 'var(--text)' : 'var(--accent)' }}>{who} to act</span>
-        <span style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>{ctxLabel(hist)}</span>
+    <div className="hs-stack">
+      <div className="hs-split">
+        <span className="hs-t hs-sm hs-bold" style={{ ...T(2), color: who === 'Hero' ? 'var(--text)' : 'var(--accent)' }}>{who} to act</span>
+        <span className="hs-t hs-xs hs-mut hs-clip" style={T(2)}>{ctxLabel(hist)}</span>
       </div>
       {/* One ribbon: five separate bars asked the reader to sum them. */}
       <StrategyRibbon
@@ -206,39 +192,24 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
     }
   }
 
-  // ── shared input styles ──
-  // Controls are a fixed 40px (5×8) so they sit on the 8px baseline; height
-  // does the vertical sizing, horizontal padding stays. One constant, every
-  // field and button inherits it.
-  const CTRL_H = 'calc(var(--subrow) * 5)';
-  const input = {
-    width: '100%', height: CTRL_H, boxSizing: 'border-box',
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    fontSize: 'calc(var(--gu) * 1.149)', padding: '0 var(--space-ml)', borderRadius: 'var(--radius-sm)',
-    border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface2)',
-    color: 'var(--text)', letterSpacing: '0.02em',
-  };
-  const fieldLab = { ...label, display: 'flex', alignItems: 'flex-end', height: 'calc(var(--subrow) * 3)', marginBottom: 0, lineHeight: 1 };
-
-  const pill = (active) => ({
-    height: CTRL_H, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-    padding: '0 var(--space-lg)', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontFamily: 'inherit',
-    fontSize: 'calc(var(--gu) * 1.060)', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
-    border: 'var(--bw-hair) solid ' + (active ? 'var(--text)' : 'var(--border)'),
-    background: active ? 'var(--text)' : 'transparent',
-    color: active ? 'var(--bg)' : 'var(--text-muted)',
-  });
-
   // ── grid rails ──
   // Panels span all 4 columns and are subgrids, so their fields land on
   // the app's real column lines. `half` = a 2-column field (paired),
   // `full` = a field/control across all 4 columns.
+  // Vertical: 2r between rows; a field = 2r label + 1r + 5r control = 8r.
   const panelStyle = {
     gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid',
-    rowGap: 'var(--space-xl)', background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 'var(--space-xl) 0',
+    rowGap: 'calc(var(--subrow) * 2)', background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2) 0',
   };
-  const half = { gridColumn: 'span 2' };
-  const full = { gridColumn: '1 / -1' };
+  const half = { gridColumn: 'span 2', minWidth: 0 };
+  const full = { gridColumn: '1 / -1', minWidth: 0 };
+  const dim = { opacity: 0.6 };
+  // Pill button: 5r, label baseline 3r down ((5 + 1.1 cap) / 2 = 3.05 → 3).
+  const pill = (active) => ({
+    '--hs-h': 5, '--hs-edge': active ? 'var(--text)' : 'var(--border)',
+    '--hs-fill': active ? 'var(--text)' : 'transparent', '--hs-ink': active ? 'var(--bg)' : 'var(--text-muted)',
+    fontSize: 'var(--fs-xs)', fontWeight: active ? 'var(--fw-bold)' : 'var(--fw-semibold, 600)', letterSpacing: '0.04em',
+  });
 
   const sum = result ? summarize(result, parseFloat(pot) || 0) : null;
   // exact path returns `holdings`; range path returns `n`.
@@ -246,132 +217,135 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
   const meStratNodes = result && result.me_strategy ? sortedNodes(result.me_strategy) : null;
 
   return (
-    <div style={{
-      height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 110)',
-      margin: '0 auto', fontFamily: FONT,
-      /* Grid: 1g column gaps make the four columns land on the app's 8g lines; 2-subrow row gap. */
-      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 'var(--gu)', rowGap: 'var(--space-xl)',
+    <div className="hs-view hs-solver" style={{
+      maxWidth: 'calc(var(--subrow) * 110)',
+      /* Grid: 1g column gaps make the four columns land on the app's 8g lines; 2r row gap. */
+      display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', columnGap: 'var(--gu)', rowGap: 'calc(var(--subrow) * 2)',
       alignContent: 'start',
     }}>
-      {/* Header — title on cols 1–2, game pills on cols 3–4 */}
-      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center', rowGap: 'var(--space-md)' }}>
-        <h2 className="screen-title" style={{ gridColumn: '1 / 3', fontSize: 'calc(var(--gu) * 1.767)', margin: 0, lineHeight: 'calc(var(--subrow) * 5)', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', paddingTop: 'calc(var(--subrow) * 0.625)' }}>Solver</h2>
-        {/* Game pills */}
-        <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
+      {/* Header — 5r row: title (baseline 4r down) on cols 1–2, game pills (5r) on cols 3–4 */}
+      <div style={{ ...full, display: 'grid', gridTemplateColumns: 'subgrid', height: 'calc(var(--subrow) * 5)' }}>
+        <h2 className="screen-title hs-t hs-title" style={{ ...T(4), gridColumn: '1 / 3' }}>Solver</h2>
+        <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 'var(--gu)' }}>
           {GAMES.map(([id, lbl]) => (
-            <button key={id} onClick={() => { setGame(id); if (id !== 'stud8') setAbstraction('hilo'); }} style={pill(game === id)}>{lbl}</button>
+            <button key={id} className="hs-btn hs-pill" onClick={() => { setGame(id); if (id !== 'stud8') setAbstraction('hilo'); }} style={pill(game === id)}>
+              <span className="hs-t" style={T(3)}>{lbl}</span>
+            </button>
           ))}
         </div>
       </div>
-      <p style={{ ...label, ...full, margin: 0, height: 'calc(var(--subrow) * 2)', lineHeight: 'calc(var(--subrow) * 2)' }}>Live range-form CFR+ · exact subgame solve</p>
+      <p className="hs-t hs-cap" style={{ ...full, ...T(2, 2) }}>Live range-form CFR+ · exact subgame solve</p>
 
       {/* Handoff note — appears when a spot is imported from the replayer.
           Pre-filled from a frozen replay spot; spells out the up/down split
-          assumptions and any ambiguity. Inputs below are editable. */}
+          assumptions and any ambiguity. Inputs below are editable.
+          Grid: box 1..36 with 2r × 2g padding (text on 3..34); 2r lines, 1r apart. */}
       {handoffNote && (
-        <div style={{
-          ...full, padding: 'var(--space-lg)', borderRadius: 'calc(var(--subrow) * 1.25)',
-          background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--accent)',
-          fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text)', lineHeight: 1.5,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-ml)', marginBottom: handoffNote.notes.length ? 'var(--space-md)' : 0 }}>
-            <span><b>Spot imported from the replayer.</b>{handoffNote.source ? ` ${handoffNote.source}.` : ''} Review the inputs, then Solve.</span>
-            <button onClick={() => setHandoffNote(null)} aria-label="Dismiss"
-              style={{ flex: '0 0 auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.325)', lineHeight: 1, padding: 0 }}>×</button>
+        <div className="hs-panel hs-stack" style={{ ...full, '--hs-bg': 'var(--surface2)', '--hs-edge': 'var(--accent)', position: 'relative' }}>
+          <div className="hs-t hs-xs" style={{ ...T(2, 2), paddingRight: 'calc(var(--gu) * 3)' }}>
+            <b>Spot imported from the replayer.</b>{handoffNote.source ? ` ${handoffNote.source}.` : ''} Review the inputs, then Solve.
           </div>
-          {handoffNote.notes.length > 0 && (
-            <ul style={{ margin: 'var(--space-md) 0 0', paddingLeft: 'calc(var(--subrow) * 2.25)', color: 'var(--text-muted)' }}>
-              {handoffNote.notes.map((n, i) => <li key={i} style={{ marginBottom: 'var(--space-2xs)' }}>{n}</li>)}
-            </ul>
-          )}
+          {handoffNote.notes.map((nt, i) => (
+            <div key={i} className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), paddingLeft: 'var(--gu)' }}>• {nt}</div>
+          ))}
+          {/* Dismiss: 3r × 2g hit box at the top-right, x 32..34, y 1r..4r. */}
+          <button onClick={() => setHandoffNote(null)} aria-label="Dismiss" className="hs-btn"
+            style={{ '--hs-h': 3, '--hs-edge': 'transparent', '--hs-ink': 'var(--text-muted)', position: 'absolute', top: 'var(--subrow)', right: 'calc(var(--gu) * 2)', width: 'calc(var(--gu) * 2)', padding: 0, fontSize: 'var(--fs-md)' }}>
+            <span className="hs-t" style={T(2)}>×</span>
+          </button>
         </div>
       )}
 
-      {/* Mode switch — two buttons, each spanning 2 columns */}
-      <div style={{ ...full, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
+      {/* Mode switch — two 5r buttons, each spanning 2 columns (17g) */}
+      <div style={{ ...full, display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 'var(--gu)' }}>
         {[['exact', 'Node-locked'], ['range', 'Range vs range']].map(([id, lbl]) => (
-          <button key={id} onClick={() => setMode(id)}
+          <button key={id} className="hs-btn" onClick={() => setMode(id)}
             style={{
-              height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 'calc(var(--gu) * 1.090)', fontWeight: 'var(--fw-bold)',
-              border: 'var(--bw-hair) solid ' + (mode === id ? 'var(--accent)' : 'var(--border)'),
-              background: mode === id ? 'var(--surface2)' : 'var(--surface)',
-              color: mode === id ? 'var(--text)' : 'var(--text-muted)',
+              '--hs-h': 5, '--hs-edge': mode === id ? 'var(--accent)' : 'var(--border)',
+              '--hs-fill': mode === id ? 'var(--surface2)' : 'var(--surface)', '--hs-ink': mode === id ? 'var(--text)' : 'var(--text-muted)',
+              fontSize: 'var(--fs-xs)',
             }}>
-            {lbl}
+            <span className="hs-t" style={T(3)}>{lbl}</span>
           </button>
         ))}
       </div>
 
       {/* ── Spot panel (subgrid across all 4 columns) ── */}
       <div style={panelStyle}>
-        <div style={{ ...label, ...full, letterSpacing: '0.14em', fontWeight: 700, height: 'calc(var(--subrow) * 3)', display: 'flex', alignItems: 'center', lineHeight: 1 }}>Spot</div>
+        <div className="hs-t hs-cap hs-bold" style={{ ...full, ...T(2), letterSpacing: '0.14em' }}>Spot</div>
 
         <div style={half}>
-          <div style={fieldLab}>Game</div>
-          <select value={game} onChange={(e) => setGame(e.target.value)} style={{ ...input, fontFamily: 'inherit' }}>
+          <FieldLab>Game</FieldLab>
+          <select className="hs-input" value={game} onChange={(e) => setGame(e.target.value)}>
             {GAMES.map(([id, lbl]) => <option key={id} value={id}>{lbl}</option>)}
           </select>
         </div>
         <div style={half}>
-          <div style={fieldLab}>Street</div>
-          <select value={street} onChange={(e) => setStreet(+e.target.value)} style={{ ...input, fontFamily: 'inherit' }}>
+          <FieldLab>Street</FieldLab>
+          <select className="hs-input" value={street} onChange={(e) => setStreet(+e.target.value)}>
             {STREETS.map((s) => <option key={s} value={s}>{s}th street</option>)}
           </select>
         </div>
 
         <div style={half}>
-          <div style={fieldLab}>Your upcards</div>
-          <input value={up0} onChange={(e) => setUp0(e.target.value)} placeholder="As4s3d2c" style={input} />
+          <FieldLab>Your upcards</FieldLab>
+          <input className="hs-input" value={up0} onChange={(e) => setUp0(e.target.value)} placeholder="As4s3d2c" />
         </div>
         <div style={half}>
-          <div style={fieldLab}>Opp upcards</div>
-          <input value={up1} onChange={(e) => setUp1(e.target.value)} placeholder="KhQdJc9h" style={input} />
+          <FieldLab>Opp upcards</FieldLab>
+          <input className="hs-input" value={up1} onChange={(e) => setUp1(e.target.value)} placeholder="KhQdJc9h" />
         </div>
 
         {/* Hero hand — needed for node-locked; optional line for range mode */}
         {mode === 'exact' ? (
           <div style={full}>
-            <div style={fieldLab}>Your hole cards <span style={{ opacity: 0.6 }}>({downN} down)</span></div>
-            <input value={me} onChange={(e) => setMe(e.target.value)} placeholder={downN === 3 ? '5h6h7c' : '5h6h'} style={input} />
+            <FieldLab>Your hole cards <span style={dim}>({downN} down)</span></FieldLab>
+            <input className="hs-input" value={me} onChange={(e) => setMe(e.target.value)} placeholder={downN === 3 ? '5h6h7c' : '5h6h'} />
           </div>
         ) : (
           <div style={full}>
-            <div style={fieldLab}>Hero hand <span style={{ opacity: 0.6 }}>(optional — show this hand's own line)</span></div>
-            <input value={rangeMe} onChange={(e) => setRangeMe(e.target.value)} placeholder={downN === 3 ? '5h6h7c' : '5h6h'} style={input} />
+            <FieldLab>Hero hand <span style={dim}>(optional — show this hand's own line)</span></FieldLab>
+            <input className="hs-input" value={rangeMe} onChange={(e) => setRangeMe(e.target.value)} placeholder={downN === 3 ? '5h6h7c' : '5h6h'} />
           </div>
         )}
 
-        {/* Card preview for hero + opponent upcards */}
+        {/* Card preview for hero + opponent upcards: 2r label, 1r, 4r card row (sm cards 2g × 4r).
+            Hero: upcards, a 1g gap, then the hole cards — so 4 upcards fill 1..9
+            and the hole cards start on the 10g column line. */}
         <div style={half}>
-          <div style={fieldLab}>Hero</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 'calc(var(--subrow) * 9)', boxSizing: 'border-box' }}>
-            {heroCards.length ? heroCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span style={{ ...label }}>—</span>}
+          <FieldLab>Hero</FieldLab>
+          <div className="hs-cards" style={{ height: 'calc(var(--subrow) * 4)', overflow: 'hidden' }}>
+            {heroCards.length
+              ? heroCards.map((c, i) => <span key={i} style={{ display: 'contents' }}>
+                  {i === splitCards(up0).length && i > 0 && <span style={{ width: 'var(--gu)', flex: '0 0 auto' }} />}
+                  <Card str={c} size="sm" />
+                </span>)
+              : <span className="hs-t hs-cap" style={T(2)}>—</span>}
           </div>
         </div>
         <div style={half}>
-          <div style={fieldLab}>Opp upcards</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', alignItems: 'center', height: 'calc(var(--subrow) * 9)', boxSizing: 'border-box' }}>
-            {oppCards.length ? oppCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span style={{ ...label }}>—</span>}
+          <FieldLab>Opp upcards</FieldLab>
+          <div className="hs-cards" style={{ height: 'calc(var(--subrow) * 4)', overflow: 'hidden' }}>
+            {oppCards.length ? oppCards.map((c, i) => <Card key={i} str={c} size="sm" />) : <span className="hs-t hs-cap" style={T(2)}>—</span>}
           </div>
         </div>
 
         {/* Mode-specific range inputs */}
         {mode === 'exact' ? (
-          <div style={full}>
-            <div style={fieldLab}>Opponent range <span style={{ opacity: 0.6 }}>(node-locked — comma-separated)</span></div>
-            <input value={oppRange} onChange={(e) => setOppRange(e.target.value)} placeholder="Kc Kd 2h, Qs Js Tc" style={input} />
-            <div style={{ fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', marginTop: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', lineHeight: 'calc(var(--subrow) * 2)' }}>
+          <div style={{ ...full, display: 'flex', flexDirection: 'column' }}>
+            <FieldLab>Opponent range <span style={dim}>(node-locked — comma-separated)</span></FieldLab>
+            <input className="hs-input" value={oppRange} onChange={(e) => setOppRange(e.target.value)} placeholder="Kc Kd 2h, Qs Js Tc" />
+            {/* 1r, then a 2r note line (baseline on its bottom). */}
+            <div className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
               Keep it narrow (a few holdings). Each holding is {downN} cards.
             </div>
             {oppHoldings.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gu)', marginTop: 'var(--space-md)' }}>
+              /* 1r, then 3r chips on the four 8g rails. */
+              <div className="hs-cols" style={{ '--hs-n': 4, marginTop: 'var(--subrow)' }}>
                 {oppHoldings.map((h, i) => (
-                  <span key={i} style={{
-                    fontSize: 'calc(var(--gu) * 1.001)', fontVariantNumeric: 'tabular-nums', height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box',
-                    display: 'inline-flex', alignItems: 'center', padding: '0 calc(var(--subrow) * 1.125)', borderRadius: 'calc(var(--subrow) * 0.75)',
-                    background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)', color: 'var(--text)',
-                  }}>{h}</span>
+                  <span key={i} className="hs-badge" style={{ '--hs-bg': 'var(--surface2)', '--hs-ink': 'var(--text)', borderRadius: 'var(--radius-xs)', padding: 0, textAlign: 'center' }}>
+                    <span className="hs-t hs-xs hs-num" style={T(2)}>{h}</span>
+                  </span>
                 ))}
               </div>
             )}
@@ -379,26 +353,27 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         ) : (
           <>
             <div style={half}>
-              <div style={fieldLab}>Your range (r0)</div>
-              <input value={r0} onChange={(e) => setR0(e.target.value)} placeholder="all" style={input} />
+              <FieldLab>Your range (r0)</FieldLab>
+              <input className="hs-input" value={r0} onChange={(e) => setR0(e.target.value)} placeholder="all" />
             </div>
             <div style={half}>
-              <div style={fieldLab}>Opp range (r1)</div>
-              <input value={r1} onChange={(e) => setR1(e.target.value)} placeholder="all" style={input} />
+              <FieldLab>Opp range (r1)</FieldLab>
+              <input className="hs-input" value={r1} onChange={(e) => setR1(e.target.value)} placeholder="all" />
             </div>
-            <div style={{ ...full, fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)' }}>
+            <div className="hs-t hs-xs hs-mut" style={{ ...full, ...T(2, 2) }}>
               Use <b style={{ color: 'var(--text)' }}>all</b> or a comma-separated holding list. Each holding is {downN} cards.
             </div>
             <div style={half}>
-              <div style={fieldLab}>Abstraction {!emdAvailable && <span style={{ opacity: 0.6 }}>(EMD is Stud 8 only)</span>}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gu)' }}>
+              <FieldLab>Abstraction {!emdAvailable && <span style={dim}>(EMD is Stud 8 only)</span>}</FieldLab>
+              {/* Two 8g pills inside the 17g half: 8 + 1 + 8. */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 'var(--gu)' }}>
                 {[['hilo', 'Hi/Lo'], ['emd', 'EMD']].map(([id, lbl]) => {
                   const disabled = id === 'emd' && !emdAvailable;
                   const active = abstraction === id;
                   return (
-                    <button key={id} disabled={disabled} onClick={() => setAbstraction(id)}
-                      style={{ ...pill(active), opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 'calc(var(--gu) * 1.031)' }}>
-                      {lbl}
+                    <button key={id} className="hs-btn hs-pill" disabled={disabled} onClick={() => setAbstraction(id)}
+                      style={{ ...pill(active), cursor: disabled ? 'not-allowed' : 'pointer' }}>
+                      <span className="hs-t" style={T(3)}>{lbl}</span>
                     </button>
                   );
                 })}
@@ -408,74 +383,70 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         )}
 
         <div style={half}>
-          <div style={fieldLab}>Pot (chips)</div>
-          <input value={pot} onChange={(e) => setPot(e.target.value)} inputMode="decimal" style={input} />
+          <FieldLab>Pot (chips)</FieldLab>
+          <input className="hs-input" value={pot} onChange={(e) => setPot(e.target.value)} inputMode="decimal" />
         </div>
         <div style={half}>
-          <div style={fieldLab}>Dead cards <span style={{ opacity: 0.6 }}>(optional)</span></div>
-          <input value={dead} onChange={(e) => setDead(e.target.value)} placeholder="Th 8c" style={input} />
+          <FieldLab>Dead cards <span style={dim}>(optional)</span></FieldLab>
+          <input className="hs-input" value={dead} onChange={(e) => setDead(e.target.value)} placeholder="Th 8c" />
         </div>
 
-        <button onClick={runSolve} disabled={solving}
+        {/* Solve: 6r, label baseline 4r down ((6 + 1.2 cap) / 2 = 3.6 → 4). */}
+        <button onClick={runSolve} disabled={solving} className="hs-btn"
           style={{
-            ...full, fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.178)', letterSpacing: '0.08em',
-            textTransform: 'uppercase', fontWeight: 700, height: 'calc(var(--subrow) * 6)', boxSizing: 'border-box', borderRadius: 'var(--radius-sm)', border: 'none',
-            background: 'var(--text)', color: 'var(--bg)', cursor: solving ? 'wait' : 'pointer', opacity: solving ? 0.6 : 1,
+            ...full, '--hs-h': 6, '--hs-edge': 'transparent', '--hs-fill': 'var(--text)', '--hs-ink': 'var(--bg)',
+            fontSize: 'var(--fs-sm)', letterSpacing: '0.08em', textTransform: 'uppercase',
+            cursor: solving ? 'wait' : 'pointer', opacity: solving ? 0.6 : 1,
           }}>
-          {solving ? 'Solving…' : 'Solve spot'}
+          <span className="hs-t" style={T(4)}>{solving ? 'Solving…' : 'Solve spot'}</span>
         </button>
       </div>
 
       {/* ── Solution panel (subgrid across all 4 columns) ── */}
       <div style={panelStyle}>
-        <div style={{ ...label, ...full, letterSpacing: '0.14em', fontWeight: 700, height: 'calc(var(--subrow) * 3)', display: 'flex', alignItems: 'center', lineHeight: 1 }}>Solution</div>
+        <div className="hs-t hs-cap hs-bold" style={{ ...full, ...T(2), letterSpacing: '0.14em' }}>Solution</div>
 
         {solving && (
-          <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.208)', color: 'var(--text-muted)', lineHeight: 1.55, animation: 'none' }}>
-            <span style={{ display: 'inline-block', width: 'var(--icon-xs)', height: 'var(--icon-xs)', marginRight: 'var(--space-md)', borderRadius: '50%', border: 'calc(var(--subrow) * 0.25) solid var(--border)', borderTopColor: 'var(--accent)', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'middle' }} />
+          <div className="hs-t hs-sm hs-mut" style={{ ...full, ...T(3, 3) }}>
+            <span style={{ display: 'inline-block', width: 'var(--icon-xs)', height: 'var(--icon-xs)', marginRight: 'var(--gu)', borderRadius: '50%', boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.25) var(--border)', borderTop: 'calc(var(--subrow) * 0.25) solid var(--accent)', boxSizing: 'border-box', animation: 'fgspin 0.8s linear infinite', verticalAlign: 'baseline' }} />
             Solving the subgame… range-form CFR+ over the {game} tree.
             <style>{'@keyframes fgspin{to{transform:rotate(360deg)}}'}</style>
           </div>
         )}
 
+        {/* Error: box 1..36, 1r × 2g padding, 3r lines (baseline on each line's bottom). */}
         {error && !solving && (
-          <div style={{
-            ...full, fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)',
-            border: 'var(--bw-hair) solid var(--neg, #ef4444)', borderRadius: 'var(--radius-sm)', padding: 'calc(var(--subrow) * 1.125) calc(var(--subrow) * 1.375)', lineHeight: 1.5,
-          }}>
-            {error.offline
-              ? <><b>Solver offline.</b> Start it with <code style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 'calc(var(--gu) * 1.060)' }}>cd solver/neural &amp;&amp; python3 solve_server.py</code>, then Solve again.</>
-              : <><b>Could not solve:</b> {error.message}</>}
+          <div className="hs-box" style={{ ...full, '--hs-edge': 'var(--neg, #ef4444)', '--hs-bg': 'rgba(239,68,68,.08)', padding: 'var(--subrow) calc(var(--gu) * 2)' }}>
+            <div className="hs-t hs-sm" style={{ ...T(3, 3), color: 'var(--neg, #ef4444)' }}>
+              {error.offline
+                ? <><b>Solver offline.</b> Start it with <code style={{ fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 'var(--fs-xs)', lineHeight: 0 }}>cd solver/neural &amp;&amp; python3 solve_server.py</code>, then Solve again.</>
+                : <><b>Could not solve:</b> {error.message}</>}
+            </div>
           </div>
         )}
 
+        {/* Empty prompt: accent rule on the left edge (inset, adds no width), text on 3g; 3r lines. */}
         {!solving && !error && !result && (
-          <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 3)', borderLeft: 'calc(var(--subrow) * 0.25) solid var(--accent)', paddingLeft: 'calc(var(--gu) - calc(var(--subrow)*0.25))' }}>
+          <div className="hs-t hs-sm hs-mut" style={{ ...full, ...T(3, 3), boxShadow: 'inset calc(var(--subrow) * 0.25) 0 0 var(--accent)', paddingLeft: 'calc(var(--gu) * 2)' }}>
             Edit the spot on the left and hit <b style={{ color: 'var(--text)' }}>Solve spot</b> to run it live.
           </div>
         )}
 
         {result && !solving && sum && (
           <>
-            {/* Big ± EV */}
-            <div style={{ ...full, display: 'flex', alignItems: 'baseline', gap: 'var(--space-ml)' }}>
-              <span style={{
-                fontSize: 'calc(var(--gu) * 3.093)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
-                color: sum.ev >= 0 ? 'var(--pos, #22c55e)' : 'var(--neg, #ef4444)',
-              }}>
-                {sum.ev >= 0 ? '+' : ''}{sum.ev.toFixed(2)}
-              </span>
-              <span style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.149)' }}>chips · hero EV</span>
+            {/* Big ± EV — one 4r line, baseline on its bottom (fs-3xl cap ≈ 2.8r). */}
+            <div className="hs-t hs-num" style={{ ...full, ...T(4, 5), fontSize: 'var(--fs-3xl)', fontWeight: 'var(--fw-bold)', letterSpacing: '-0.01em', color: sum.ev >= 0 ? 'var(--pos, #22c55e)' : 'var(--neg, #ef4444)' }}>
+              {sum.ev >= 0 ? '+' : ''}{sum.ev.toFixed(2)}
+              <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-regular)', letterSpacing: 0, marginLeft: 'var(--gu)' }}>chips · hero EV</span>
             </div>
 
-            {/* Badges */}
-            <div style={{ ...full, display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+            {/* Badges — 3r pills on two 17g columns, 1r row gap. */}
+            <div className="hs-cols" style={{ ...full, '--hs-n': 2 }}>
               {(() => {
                 const badge = (txt) => (
-                  <span key={txt} style={{
-                    fontSize: 'calc(var(--gu) * 0.972)', padding: 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.125)', borderRadius: 'var(--radius-pill)', background: 'var(--surface2)',
-                    border: 'var(--bw-hair) solid var(--border)', color: 'var(--text-muted)', letterSpacing: '0.03em',
-                  }}>{txt}</span>
+                  <span key={txt} className="hs-badge" style={{ '--hs-bg': 'var(--surface2)' }}>
+                    <span className="hs-t hs-xs" style={{ ...T(2), letterSpacing: '0.03em' }}>{txt}</span>
+                  </span>
                 );
                 const badges = [badge(`${result.game || game} · ${n} ${mode === 'exact' ? 'holdings' : 'buckets'}`)];
                 if (result.mode) badges.push(badge(`mode ${result.mode}${result.abstraction ? ` · ${result.abstraction}` : ''}`));
@@ -485,15 +456,15 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
               })()}
             </div>
 
-            {/* Auto-summary */}
-            <div style={{ ...full, fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text-muted)', lineHeight: 1.55, borderLeft: 'calc(var(--subrow) * 0.25) solid var(--border)', paddingLeft: 'var(--space-lg)' }}>
+            {/* Auto-summary — rule on the left edge, text on 3g, 3r lines. */}
+            <div className="hs-t hs-sm hs-mut" style={{ ...full, ...T(3, 3), boxShadow: 'inset calc(var(--subrow) * 0.25) 0 0 var(--border)', paddingLeft: 'calc(var(--gu) * 2)' }}>
               You are <b style={{ color: 'var(--text)' }}>{sum.lead}</b> for <b style={{ color: 'var(--text)' }}>{sum.ev >= 0 ? '+' : ''}{sum.ev.toFixed(2)}</b> chips.{sum.act}
             </div>
 
             {/* Hero's own line (range mode with a pinned hero hand) */}
             {meStratNodes && meStratNodes.length > 0 && (
-              <div style={{ ...panel, ...full, background: 'var(--surface2)' }}>
-                <div style={{ ...label, marginBottom: 'var(--space-ml)' }}>
+              <div className="hs-panel hs-stack" style={{ ...full, '--hs-bg': 'var(--surface2)', '--hs-gap': 2 }}>
+                <div className="hs-t hs-cap" style={T(2)}>
                   This hand's line{result.me_bucket != null ? ` · bucket ${result.me_bucket}` : ''}
                 </div>
                 {meStratNodes.map(([hist, node]) => <StrategyNode key={'me' + hist} hist={hist} node={node} />)}
@@ -501,7 +472,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             )}
 
             {/* Full strategy tree */}
-            <div style={{ ...label, ...full, letterSpacing: '0.14em' }}>GTO strategy</div>
+            <div className="hs-t hs-cap" style={{ ...full, ...T(2), letterSpacing: '0.14em' }}>GTO strategy</div>
             {sortedNodes(result.decisions).map(([hist, node]) => (
               <div key={hist} style={full}>
                 <StrategyNode hist={hist} node={node} />
@@ -512,4 +483,9 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
       </div>
     </div>
   );
+}
+
+// Field label: 2r caps line (baseline on its bottom) + 1r, then the 5r control.
+function FieldLab({ children }) {
+  return <div className="hs-t hs-cap hs-clip" style={{ '--hs-b': 2, marginBottom: 'calc(var(--subrow) - 0.3em)' }}>{children}</div>;
 }

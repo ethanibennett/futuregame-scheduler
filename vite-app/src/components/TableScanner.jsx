@@ -469,13 +469,14 @@ export default function TableScanner() {
         style={{display:'none'}} onChange={handleFile} />
 
       {state === 'idle' && (
-        <button className="cal-structure-link" onClick={() => fileRef.current?.click()}
-          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'var(--space-sm)',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',background:'none',border:'var(--bw-hair) solid var(--accent)',borderRadius:'calc(var(--subrow) * 0.75)',padding:'0 var(--space-lg)',cursor:'pointer',color:'var(--accent)',font:'inherit',fontSize:'calc(var(--gu) * 1.149)',width:'100%'}}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button className="cal-structure-link table-scanner-upload" onClick={() => fileRef.current?.click()}>
+          {/* 3r icon box on +1r..+4r; the -3 -3 30 30 viewBox keeps the ink at
+              1.8r, centred on +2.5r = the label's cap centre (baseline +3r). */}
+          <svg viewBox="-3 -3 30 30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>
-          Upload Table Screenshot (WSOP Live / PokerStars Live)
+          <span className="table-scanner-upload-label">Upload Table Screenshot (WSOP Live / PokerStars Live)</span>
         </button>
       )}
 

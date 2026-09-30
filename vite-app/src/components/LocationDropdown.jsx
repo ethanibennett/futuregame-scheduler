@@ -119,14 +119,27 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
           setFilters(f => ({...f, userLocation: null, maxDistance: '', locationRegion: null, locationLabel: null}));
           onClose();
         } else {
-          if (navigator.geolocation) {
+          /* WebKit only grants geolocation to a secure page. The installed app
+             (capacitor:// or https) is one; a live-reload build served over
+             http from a LAN/Tailscale address is not, and fails before iOS even
+             asks — so say that rather than a bare "could not get". */
+          if (typeof window !== 'undefined' && window.isSecureContext === false) {
+            toast.error('Location needs a secure page. It works in the installed app, not over the http dev server.');
+          } else if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
               (pos) => {
                 setFilters(f => ({...f, userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }, maxDistance: radius || '100', locationRegion: null, locationLabel: 'Current Location'}));
                 reverseLookup(pos.coords.latitude, pos.coords.longitude);
                 onClose();
               },
-              () => { toast.error('Could not get your location'); },
+              (err) => {
+                // The three GeolocationPositionError codes each need a different fix.
+                const why = err && err.code === 1 ? 'Location permission is off for futurega.me (Settings → Privacy → Location Services).'
+                  : err && err.code === 2 ? 'No location fix available. In the iOS Simulator, set one under Features → Location.'
+                  : err && err.code === 3 ? 'Timed out getting your location. Try again.'
+                  : 'Could not get your location.';
+                toast.error(why);
+              },
               { enableHighAccuracy: false, timeout: 10000 }
             );
           } else {

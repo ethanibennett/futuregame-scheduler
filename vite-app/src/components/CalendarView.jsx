@@ -50,6 +50,67 @@ function buildAllDates(tournaments) {
   return dates;
 }
 
+/* g and r in px, read from the live tokens (a 100-unit probe, so nothing is rounded) - the JS
+   that positions the filter panel and its pills must use exactly the units the CSS does. */
+function gridUnitsPx() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;left:0;top:0;width:calc(var(--gu) * 100);height:calc(var(--subrow) * 100)';
+  document.body.appendChild(probe);
+  const b = probe.getBoundingClientRect();
+  probe.remove();
+  return { g: b.width / 100, r: b.height / 100 };
+}
+/* The vertical lines an edge may sit on, in g from the app's left edge: each 8g column
+   (starting 1g, 10g, 19g, 28g) has a line every 2g - 1,3,5,7,9 | 10..18 | 19..27 | 28..36. */
+const GRID_LINES = [-4, -3, -2, -1, 0, 1, 2, 3].flatMap(c => [0, 2, 4, 6, 8].map(s => 1 + 9 * c + s));
+/* (continued leftwards past the screen edge, so pills scrolled out of the strip keep the pattern) */
+function prevGridLine(x) {
+  let best = GRID_LINES[0];
+  for (const l of GRID_LINES) if (l <= x + 1e-6) best = l;
+  return best;
+}
+
+/* Where the filter panel opens: 35g wide on the 1g margins, its top on the first whole r at
+   least 1r below the filter button (counted from the .top-bar top, the overlay's origin), its
+   max height the whole r that ends at least 1r above the bottom nav. Its content is whole r,
+   so the panel's height is whole r whether it fits or scrolls. */
+function calPanelPos(btn) {
+  const { r } = gridUnitsPx();
+  const bar = document.querySelector('.top-bar');
+  const shell = document.querySelector('.app-shell');
+  const nav = document.querySelector('.bottom-nav');
+  const barTop = bar ? bar.getBoundingClientRect().top : 0;
+  const x0 = shell ? shell.getBoundingClientRect().left : 0;
+  const limit = nav ? nav.getBoundingClientRect().top : (window.innerHeight || document.documentElement.clientHeight);
+  const b = btn ? btn.getBoundingClientRect() : null;
+  const topR = b ? Math.ceil((b.bottom - barTop) / r - 0.01) + 1 : 8;
+  const maxR = Math.max(8, Math.floor((limit - barTop) / r + 0.01) - topR - 1);
+  return {
+    top: `calc(${barTop}px + var(--subrow) * ${topR})`,
+    left: `calc(${x0}px + var(--gu))`,
+    maxHeight: `calc(var(--subrow) * ${maxR})`,
+  };
+}
+/* A disclosure row (Series / Buy-in / Variant / Special): 4r, label and chevron seated 1r up. */
+function calHead(label, isOpen, toggle) {
+  return (
+    <button type="button" className="cal-fp-head" aria-expanded={isOpen} onClick={toggle}>
+      <span className="cal-fp-cap">{label}</span>
+      <span className={`cal-fp-cap cal-fp-chev${isOpen ? ' is-open' : ''}`} aria-hidden="true">{'▼'}</span>
+    </button>
+  );
+}
+/* One checkbox option: a 2g checkbox cell, then the label on 2r lines - 3r for one line,
+   +2r per wrapped line, first baseline 2r down. */
+function calOpt(key, checked, onChange, text, cls = '', inputRef) {
+  return (
+    <label key={key} className={`cal-fp-opt ${cls}`}>
+      <input type="checkbox" checked={checked} onChange={onChange} ref={inputRef} />
+      <span className="cal-fp-txt">{text}</span>
+    </label>
+  );
+}
+
 // ── Inline Filters component (matches original exactly) ──
 function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tournaments, search, setSearch }) {
   const panelRef = useRef(null);
@@ -112,7 +173,7 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
   }, [open]);
 
   const hasActive = filters.minBuyin || filters.maxBuyin || (filters.buyinRanges && filters.buyinRanges.length > 0) || (filters.rakeRanges && filters.rakeRanges.length > 0) ||
-    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || !filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
+    filters.selectedGames.length > 0 || (filters.hiddenVenues && filters.hiddenVenues.length > 0) || filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || !filters.hideSatellites || !filters.hideRestarts || filters.hideSideEvents || filters.ladiesOnly || filters.seniorsOnly || filters.mixedOnly || filters.dateFrom || filters.dateTo ||
     filters.showOnline === false || filters.onlyAvailableOnline === true ||
     Object.keys(filters.siteRules || {}).length > 0;
   /* Location is deliberately NOT counted here. It survives "Clear all",
@@ -120,93 +181,75 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
      nothing when a location is the only thing set. TournamentsView's
      equivalent already omits it. */
 
+  /* Active-filter pills, in the order they have always shown. Each is [label, clear-patch]. */
+  const pills = [];
+  if (filters.selectedGames.length > 0) pills.push([filters.selectedGames.length === 1 ? filters.selectedGames[0] : `${filters.selectedGames.length} games`, { selectedGames: [] }]);
+  if (filters.buyinRanges && filters.buyinRanges.length > 0) pills.push([filters.buyinRanges.length === 1 ? ({'0-500':'< $500','500-1500':'$500\u2013$1.5K','1500-5000':'$1.5K\u2013$5K','5000-10000':'$5K\u2013$10K','10000+':'$10K+'})[filters.buyinRanges[0]] : `${filters.buyinRanges.length} buy-ins`, { buyinRanges: [] }]);
+  if (filters.rakeRanges && filters.rakeRanges.length > 0) pills.push([filters.rakeRanges.length === 1 ? ({'0-5':'< 5%','5-8':'5\u20138%','8-10':'8\u201310%','10-13':'10\u201313%','13+':'13%+'})[filters.rakeRanges[0]] : `${filters.rakeRanges.length} rake ranges`, { rakeRanges: [] }]);
+  if (filters.bountyOnly) pills.push(['Bounty', { bountyOnly: false }]);
+  if (filters.mysteryBountyOnly) pills.push(['Mystery Bounty', { mysteryBountyOnly: false }]);
+  if (filters.headsUpOnly) pills.push(['Heads Up', { headsUpOnly: false }]);
+  if (filters.tagTeamOnly) pills.push(['Tag Team', { tagTeamOnly: false }]);
+  if (filters.employeesOnly) pills.push(['Employees', { employeesOnly: false }]);
+  if (filters.hiddenVenues && filters.hiddenVenues.length > 0) pills.push([`${availableVenues.length - filters.hiddenVenues.filter(v => availableVenues.some(av => av.venue === v)).length} of ${availableVenues.length} venues`, { hiddenVenues: [] }]);
+  if (filters.ladiesOnly) pills.push(['Ladies Only', { ladiesOnly: false }]);
+  if (filters.seniorsOnly) pills.push(['Seniors Only', { seniorsOnly: false }]);
+  if (filters.mixedOnly) pills.push(['Mixed', { mixedOnly: false }]);
+  if (filters.dateFrom || filters.dateTo) pills.push([filters.dateFrom && filters.dateTo ? `${fmtShortDate(filters.dateFrom)} \u2014 ${fmtShortDate(filters.dateTo)}` : filters.dateFrom ? `From ${fmtShortDate(filters.dateFrom)}` : `Until ${fmtShortDate(filters.dateTo)}`, { dateFrom: '', dateTo: '' }]);
+
+  /* Seat the pills on the vertical grid lines. A pill's width follows its label, so CSS alone
+     cannot land its edges on a line: walking right-to-left from the filter button, each pill's
+     right edge takes the nearest valid line clear of its neighbour (1g across a column gutter,
+     2g inside a column - the same spacing the lines themselves have) and its left edge the valid
+     line that just clears the label. Widths are written in g, so they scale with the screen. */
+  const pillsRef = useRef(null);
+  const [, bumpPills] = useState(0);
+  useEffect(() => {
+    const onResize = () => bumpPills(n => n + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  React.useLayoutEffect(() => {
+    const box = pillsRef.current, btn = toggleRef.current;
+    if (!box || !btn) return;
+    const els = [...box.querySelectorAll('[data-cal-pill]')];
+    if (!els.length) return;
+    const { g } = gridUnitsPx();
+    const shell = document.querySelector('.app-shell');
+    const x0 = shell ? shell.getBoundingClientRect().left : 0;
+    els.forEach(el => { el.style.width = ''; el.style.marginRight = ''; });
+    const natural = els.map(el => el.getBoundingClientRect().width / g);
+    let edge = (btn.getBoundingClientRect().left - x0) / g;
+    for (let i = els.length - 1; i >= 0; i--) {
+      const right = prevGridLine(edge - 0.999);
+      const left = prevGridLine(right - natural[i] + 0.001);
+      els[i].style.width = `calc(var(--gu) * ${right - left})`;
+      els[i].style.marginRight = `calc(var(--gu) * ${Math.round(edge - right)})`;
+      edge = left;
+    }
+    // Overflowing (more pills than the 17g cell holds): rest at the right end, where the walk
+    // above put every edge on a line; the rest scroll in from the left.
+    box.scrollLeft = box.scrollWidth;
+  });
+
   return (
     <>
-      <div className="filter-row" style={{gap:'calc(var(--subrow) * 1)',marginBottom:'0',width:'100%',alignItems:'center'}}>
-        <div style={{flex:1,display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',justifyContent:'flex-end'}}>
-          {filters.selectedGames.length > 0 && (
-            <span className="filter-chip active">
-              {filters.selectedGames.length === 1 ? filters.selectedGames[0] : `${filters.selectedGames.length} games`}
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, selectedGames:[]}))}>&#10005;</span>
+      <div className="filter-row cal-fp-bar" style={{gap:'calc(var(--subrow) * 1)',marginBottom:'0',width:'100%',alignItems:'center'}}>
+        <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:0,justifyContent:'flex-end'}}>
+          <div ref={pillsRef} className="cal-fp-pills">
+          {pills.map(([label, patch]) => (
+            <span key={Object.keys(patch)[0]} className="filter-chip active cal-fp-pill" data-cal-pill="">
+              <span className="cal-fp-cap">{label}</span>
+              <span className="cal-fp-cap cal-fp-pill-x" role="button" aria-label={`Clear ${label}`}
+                onClick={() => setFilters(f => ({...f, ...patch}))}>&#10005;</span>
             </span>
-          )}
-          {filters.buyinRanges && filters.buyinRanges.length > 0 && (
-            <span className="filter-chip active">
-              {filters.buyinRanges.length === 1 ? ({'0-500':'< $500','500-1500':'$500\u2013$1.5K','1500-5000':'$1.5K\u2013$5K','5000-10000':'$5K\u2013$10K','10000+':'$10K+'})[filters.buyinRanges[0]] : `${filters.buyinRanges.length} buy-ins`}
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, buyinRanges:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.rakeRanges && filters.rakeRanges.length > 0 && (
-            <span className="filter-chip active">
-              {filters.rakeRanges.length === 1 ? ({'0-5':'< 5%','5-8':'5\u20138%','8-10':'8\u201310%','10-13':'10\u201313%','13+':'13%+'})[filters.rakeRanges[0]] : `${filters.rakeRanges.length} rake ranges`}
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, rakeRanges:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.bountyOnly && (
-            <span className="filter-chip active">
-              Bounty
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, bountyOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.mysteryBountyOnly && (
-            <span className="filter-chip active">
-              Mystery Bounty
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mysteryBountyOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.headsUpOnly && (
-            <span className="filter-chip active">
-              Heads Up
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, headsUpOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.tagTeamOnly && (
-            <span className="filter-chip active">
-              Tag Team
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, tagTeamOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.employeesOnly && (
-            <span className="filter-chip active">
-              Employees
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, employeesOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.hiddenVenues && filters.hiddenVenues.length > 0 && (
-            <span className="filter-chip active">
-              {availableVenues.length - filters.hiddenVenues.filter(v => availableVenues.some(av => av.venue === v)).length} of {availableVenues.length} venues
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, hiddenVenues:[]}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.ladiesOnly && (
-            <span className="filter-chip active">
-              Ladies Only
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, ladiesOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.seniorsOnly && (
-            <span className="filter-chip active">
-              Seniors Only
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, seniorsOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {filters.mixedOnly && (
-            <span className="filter-chip active">
-              Mixed
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, mixedOnly:false}))}>&#10005;</span>
-            </span>
-          )}
-          {(filters.dateFrom || filters.dateTo) && (
-            <span className="filter-chip active">
-              {filters.dateFrom && filters.dateTo ? `${fmtShortDate(filters.dateFrom)} \u2014 ${fmtShortDate(filters.dateTo)}` : filters.dateFrom ? `From ${fmtShortDate(filters.dateFrom)}` : `Until ${fmtShortDate(filters.dateTo)}`}
-              <span style={{marginLeft:'calc(var(--subrow) * 0.5)',cursor:'pointer'}} onClick={() => setFilters(f => ({...f, dateFrom:'', dateTo:''}))}>&#10005;</span>
-            </span>
-          )}
+          ))}
+          </div>
           <button
             ref={toggleRef}
-            className={`filter-chip ${open ? 'active' : ''}`}
+            className={`filter-chip filter-chip-square ${open ? 'active' : ''}`}
             onClick={() => setOpen(o => !o)}
-            style={{flexShrink:0,height:'calc(var(--subrow) * 3.5)'}}
+            style={{flexShrink:0,width:'calc(var(--gu) * 4)'}}
           >
             <Icon.filter />
           </button>
@@ -218,13 +261,9 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
         document.body
       )}
       {open && createPortal(
-        <div ref={panelRef} className="filter-panel" style={(() => {
-          const r = toggleRef.current?.getBoundingClientRect();
-          if (!r) return { top: 60, left: 8, right: 8 };
-          const vh = window.innerHeight || document.documentElement.clientHeight || 700;
-          return { top: r.bottom + 10, left: 8, right: 8, maxHeight: vh - r.bottom - 22 };
-        })()}>
-          {/* Quick filter pills */}
+        <div ref={panelRef} className="cal-fp" style={calPanelPos(toggleRef.current)}>
+          {/* Quick filter chips: five 5g chips on 2g gaps fill the 33g content (5x5 + 4x2 = 33),
+              so every inner edge sits on a column line (7|9, 14|16, 21|23, 28|30). */}
           {(() => {
             const quickFilters = [
               { label: 'NLH', isActive: filters.selectedGames.includes('NLH'),
@@ -239,34 +278,30 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 toggle: () => setFilters(f => ({ ...f, seniorsOnly: !f.seniorsOnly })) },
             ];
             return (
-              <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',marginBottom:'calc(var(--subrow) * 1.25)',gridColumn:'1 / -1'}}>
+              <div className="cal-fp-chips">
                 {quickFilters.map(qf => (
-                  <button key={qf.label} className={`filter-chip ${qf.isActive ? 'active' : ''}`}
-                    style={{flex:'1 1 0',minWidth:0,justifyContent:'center',textAlign:'center'}}
+                  <button key={qf.label} type="button" className={`filter-chip cal-fp-chip ${qf.isActive ? 'active' : ''}`}
                     onClick={qf.toggle}
-                  >{qf.label}</button>
+                  ><span className="cal-fp-cap">{qf.label}</span></button>
                 ))}
               </div>
             );
           })()}
 
           {/* Search */}
-          {/* Search — full-width row above the 4-col section row */}
-          <div className="filter-group filter-row" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
-            <div className="search-bar" style={{marginBottom:0,height:'calc(var(--subrow) * 4)'}}>
-              <Icon.search />
-              <input
-                type="text"
-                placeholder={"Search events, games\u2026"}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{padding:'calc(var(--subrow) * 0.5) 0'}}
-              />
-              {search && (
-                <button onClick={() => setSearch('')}
-                  style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.473)',padding:'0 calc(var(--subrow) * 0.25)'}}>&#10005;</button>
-              )}
-            </div>
+          <div className="search-bar cal-fp-search">
+            <Icon.search />
+            <input
+              type="text"
+              placeholder={"Search events, games…"}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="cal-fp-search-x" aria-label="Clear search" onClick={() => setSearch('')}>
+                <span className="cal-fp-cap">&#10005;</span>
+              </button>
+            )}
           </div>
 
           {/* Date Range Slider */}
@@ -279,175 +314,121 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
             const pctL = (fromIdx / totalDays) * 100;
             const pctR = (toIdx / totalDays) * 100;
             return (
-              <div className="filter-group filter-row" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
-                <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'calc(var(--subrow) * 0.75)',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
-                <div style={{padding:'0 calc(var(--subrow) * 0.75)'}}>
-                  <div className="date-slider-wrap">
-                    <div className="date-slider-track" />
-                    <div className="date-slider-fill" style={{left: pctL + '%', right: (100 - pctR) + '%'}} />
-                    <input type="range" className="date-slider-input" min={0} max={totalDays} value={fromIdx}
+              <div className="cal-fp-date">
+                <span className="cal-fp-subtxt">Date Range</span>
+                <div className="date-slider-wrap cal-fp-slider">
+                  <div className="date-slider-track" />
+                  <div className="date-slider-fill" style={{left: pctL + '%', right: (100 - pctR) + '%'}} />
+                  <input type="range" className="date-slider-input" min={0} max={totalDays} value={fromIdx}
+                    onChange={e => {
+                      const v = Math.min(Number(e.target.value), toIdx);
+                      setFilters(f => ({...f, dateFrom: v <= 0 ? '' : addDays(minDate, v)}));
+                    }}
+                  />
+                  <input type="range" className="date-slider-input" min={0} max={totalDays} value={toIdx}
+                    onChange={e => {
+                      const v = Math.max(Number(e.target.value), fromIdx);
+                      setFilters(f => ({...f, dateTo: v >= totalDays ? '' : addDays(minDate, v)}));
+                    }}
+                  />
+                </div>
+                <div className="cal-fp-dates">
+                  <label className="date-slider-date-link cal-fp-cap">
+                    {fmtShortDate(fromDate)}
+                    <input type="date" value={fromDate} min={minDate} max={toDate}
                       onChange={e => {
-                        const v = Math.min(Number(e.target.value), toIdx);
-                        setFilters(f => ({...f, dateFrom: v <= 0 ? '' : addDays(minDate, v)}));
+                        const v = e.target.value;
+                        if (!v) { setFilters(f => ({...f, dateFrom: ''})); return; }
+                        const idx = daysBetween(minDate, v);
+                        setFilters(f => ({...f, dateFrom: idx <= 0 ? '' : v}));
                       }}
                     />
-                    <input type="range" className="date-slider-input" min={0} max={totalDays} value={toIdx}
+                  </label>
+                  <label className="date-slider-date-link cal-fp-cap">
+                    {fmtShortDate(toDate)}
+                    <input type="date" value={toDate} min={fromDate} max={maxDate}
                       onChange={e => {
-                        const v = Math.max(Number(e.target.value), fromIdx);
-                        setFilters(f => ({...f, dateTo: v >= totalDays ? '' : addDays(minDate, v)}));
+                        const v = e.target.value;
+                        if (!v) { setFilters(f => ({...f, dateTo: ''})); return; }
+                        const idx = daysBetween(minDate, v);
+                        setFilters(f => ({...f, dateTo: idx >= totalDays ? '' : v}));
                       }}
                     />
-                  </div>
-                  <div className="date-slider-labels">
-                    <label className="date-slider-date-link">
-                      {fmtShortDate(fromDate)}
-                      <input type="date" value={fromDate} min={minDate} max={toDate}
-                        onChange={e => {
-                          const v = e.target.value;
-                          if (!v) { setFilters(f => ({...f, dateFrom: ''})); return; }
-                          const idx = daysBetween(minDate, v);
-                          setFilters(f => ({...f, dateFrom: idx <= 0 ? '' : v}));
-                        }}
-                      />
-                    </label>
-                    <label className="date-slider-date-link">
-                      {fmtShortDate(toDate)}
-                      <input type="date" value={toDate} min={fromDate} max={maxDate}
-                        onChange={e => {
-                          const v = e.target.value;
-                          if (!v) { setFilters(f => ({...f, dateTo: ''})); return; }
-                          const idx = daysBetween(minDate, v);
-                          setFilters(f => ({...f, dateTo: idx >= totalDays ? '' : v}));
-                        }}
-                      />
-                    </label>
-                  </div>
+                  </label>
                 </div>
               </div>
             );
           })()}
 
-          {/* Series */}
-          <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhereOpen(w => !w)}>
-              Series
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whereOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
-            {whereOpen && (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.75)'}}>
-              <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                <input type="checkbox"
-                  checked={!filters.hiddenVenues || filters.hiddenVenues.length === 0}
-                  ref={el => { if (el) el.indeterminate = filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.length < availableVenues.length; }}
-                  onChange={e => setFilters(f => ({...f, hiddenVenues: e.target.checked ? [] : availableVenues.map(v => v.venue)}))}
-                  style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                /> All
-              </label>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)'}}>
-                {availableVenues.map(({ venue, series, count }) => {
+          <div className="cal-fp-groups">
+            {/* Series */}
+            {calHead('Series', whereOpen, () => setWhereOpen(w => !w))}
+            {whereOpen && (<div className="cal-fp-body">
+              {calOpt('all', !filters.hiddenVenues || filters.hiddenVenues.length === 0,
+                e => setFilters(f => ({...f, hiddenVenues: e.target.checked ? [] : availableVenues.map(v => v.venue)})),
+                'All', 'is-bold',
+                el => { if (el) el.indeterminate = filters.hiddenVenues && filters.hiddenVenues.length > 0 && filters.hiddenVenues.length < availableVenues.length; })}
+              <div className="cal-fp-cols">
+                {availableVenues.map(({ venue, series }) => {
                   const hidden = (filters.hiddenVenues || []).includes(venue);
-                  return (
-                    <label key={venue} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                      <input type="checkbox" checked={!hidden}
-                        onChange={e => setFilters(f => {
-                          const hv = f.hiddenVenues || [];
-                          return {...f, hiddenVenues: e.target.checked ? hv.filter(v => v !== venue) : [...hv, venue]};
-                        })}
-                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
-                      />
-                      <span style={{lineHeight:1.3}}>{series}</span>
-                    </label>
-                  );
+                  return calOpt(venue, !hidden,
+                    e => setFilters(f => {
+                      const hv = f.hiddenVenues || [];
+                      return {...f, hiddenVenues: e.target.checked ? hv.filter(v => v !== venue) : [...hv, venue]};
+                    }),
+                    series);
                 })}
               </div>
             </div>)}
-          </div>
 
-          {/* Buy-in / Rake */}
-          <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setHowMuchOpen(h => !h)}>
-              Buy-in / Rake
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: howMuchOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {/* Buy-in / Rake */}
+            {calHead('Buy-in / Rake', howMuchOpen, () => setHowMuchOpen(h => !h))}
             {howMuchOpen && (() => {
               const buyinOpts = [
                 { key: '0-500', label: 'Under $500' },
-                { key: '500-1500', label: '$500 \u2013 $1.5K' },
-                { key: '1500-5000', label: '$1.5K \u2013 $5K' },
-                { key: '5000-10000', label: '$5K \u2013 $10K' },
+                { key: '500-1500', label: '$500 – $1.5K' },
+                { key: '1500-5000', label: '$1.5K – $5K' },
+                { key: '5000-10000', label: '$5K – $10K' },
                 { key: '10000+', label: '$10K+' },
               ];
               const rakeOpts = [
                 { key: '0-5', label: 'Under 5%' },
-                { key: '5-8', label: '5% \u2013 8%' },
-                { key: '8-10', label: '8% \u2013 10%' },
-                { key: '10-13', label: '10% \u2013 13%' },
+                { key: '5-8', label: '5% – 8%' },
+                { key: '8-10', label: '8% – 10%' },
+                { key: '10-13', label: '10% – 13%' },
                 { key: '13+', label: '13%+' },
               ];
               const toggleArr = (arr, key) => arr.includes(key) ? arr.filter(k => k !== key) : [...arr, key];
               const allBuyinChecked = (filters.buyinRanges || []).length === 0;
               const allRakeChecked = (filters.rakeRanges || []).length === 0;
-              return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 calc(var(--subrow) * 1.5)'}}>
-                <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
-                  <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'calc(var(--subrow) * 0.25)'}}>Buy-in</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                    <input type="checkbox" checked={allBuyinChecked}
-                      onChange={() => setFilters(f => ({...f, buyinRanges: [], minBuyin: '', maxBuyin: ''}))}
-                      style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
-                    />
-                    <span>All</span>
-                  </label>
-                  {buyinOpts.map(opt => (
-                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                      <input type="checkbox" checked={(filters.buyinRanges || []).includes(opt.key)}
-                        onChange={() => setFilters(f => ({...f, buyinRanges: toggleArr(f.buyinRanges || [], opt.key), minBuyin: '', maxBuyin: ''}))}
-                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
+              return (<div className="cal-fp-body cal-fp-cols">
+                <div>
+                  <span className="cal-fp-subtxt">Buy-in</span>
+                  {calOpt('all', allBuyinChecked, () => setFilters(f => ({...f, buyinRanges: [], minBuyin: '', maxBuyin: ''})), 'All', 'is-bold')}
+                  {buyinOpts.map(opt => calOpt(opt.key, (filters.buyinRanges || []).includes(opt.key),
+                    () => setFilters(f => ({...f, buyinRanges: toggleArr(f.buyinRanges || [], opt.key), minBuyin: '', maxBuyin: ''})),
+                    opt.label))}
                 </div>
-                <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
-                  <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'calc(var(--subrow) * 0.25)'}}>Rake</label>
-                  <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                    <input type="checkbox" checked={allRakeChecked}
-                      onChange={() => setFilters(f => ({...f, rakeRanges: []}))}
-                      style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
-                    />
-                    <span>All</span>
-                  </label>
-                  {rakeOpts.map(opt => (
-                    <label key={opt.key} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                      <input type="checkbox" checked={(filters.rakeRanges || []).includes(opt.key)}
-                        onChange={() => setFilters(f => ({...f, rakeRanges: toggleArr(f.rakeRanges || [], opt.key)}))}
-                        style={{marginTop:'calc(var(--subrow) * 0.125)',flexShrink:0}}
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
+                <div>
+                  <span className="cal-fp-subtxt">Rake</span>
+                  {calOpt('all', allRakeChecked, () => setFilters(f => ({...f, rakeRanges: []})), 'All', 'is-bold')}
+                  {rakeOpts.map(opt => calOpt(opt.key, (filters.rakeRanges || []).includes(opt.key),
+                    () => setFilters(f => ({...f, rakeRanges: toggleArr(f.rakeRanges || [], opt.key)})),
+                    opt.label))}
                 </div>
               </div>);
             })()}
-          </div>
 
-          {/* Variant */}
-          <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setWhichOpen(w => !w)}>
-              Variant
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: whichOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {/* Variant */}
+            {calHead('Variant', whichOpen, () => setWhichOpen(w => !w))}
             {whichOpen && (() => {
               const allSelected = filters.selectedGames.length === 0;
               const toggleVariant = (v, checked) => {
                 setFilters(f => ({...f, selectedGames: checked ? [...f.selectedGames, v] : f.selectedGames.filter(g => g !== v)}));
               };
-              return (<div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={allSelected}
-                    onChange={() => setFilters(f => ({...f, selectedGames:[]}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> All
-                </label>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.5)',paddingLeft:'calc(var(--subrow) * 2.625)'}}>
+              return (<div className="cal-fp-body">
+                {calOpt('all', allSelected, () => setFilters(f => ({...f, selectedGames:[]})), 'All', 'is-bold')}
+                <div className="cal-fp-cols is-spaced">
                 {GAME_GROUPS.map(group => {
                   const availVars = group.variants.filter(v => availableGameVariants.has(v));
                   if (availVars.length === 0) return null;
@@ -456,40 +437,22 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                   const groupPartial = availVars.some(v => filters.selectedGames.includes(v)) && !groupChecked;
                   if (isSingle) {
                     const v = availVars[0];
-                    return (
-                      <label key={group.label} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)',marginBottom:'calc(var(--subrow) * 0.75)'}}>
-                        <input type="checkbox" checked={filters.selectedGames.includes(v)}
-                          onChange={e => toggleVariant(v, e.target.checked)}
-                          style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                        /> {group.label}
-                      </label>
-                    );
+                    return calOpt(group.label, filters.selectedGames.includes(v), e => toggleVariant(v, e.target.checked), group.label);
                   }
-                  const needsTopGap = group.label === 'Draw' || group.label === 'Mixed';
                   return (
-                    <div key={group.label} style={needsTopGap ? {marginTop:'calc(var(--subrow) * 0.75)'} : undefined}>
-                      <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight: 'var(--fw-bold)',textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                        <input type="checkbox" checked={groupChecked}
-                          ref={el => { if (el) el.indeterminate = groupPartial; }}
-                          onChange={e => {
-                            const checked = e.target.checked;
-                            setFilters(f => {
-                              const without = f.selectedGames.filter(v => !availVars.includes(v));
-                              return {...f, selectedGames: checked ? [...without, ...availVars] : without};
-                            });
-                          }}
-                          style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                        /> {group.label}
-                      </label>
-                      <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.25)',paddingLeft:'calc(var(--subrow) * 2.625)',marginTop:'calc(var(--subrow) * 0.25)'}}>
-                        {availVars.map(v => (
-                          <label key={v} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.149)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text-muted)'}}>
-                            <input type="checkbox" checked={filters.selectedGames.includes(v)}
-                              onChange={e => toggleVariant(v, e.target.checked)}
-                              style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                            /> {v}
-                          </label>
-                        ))}
+                    <div key={group.label}>
+                      {calOpt('group', groupChecked,
+                        e => {
+                          const checked = e.target.checked;
+                          setFilters(f => {
+                            const without = f.selectedGames.filter(v => !availVars.includes(v));
+                            return {...f, selectedGames: checked ? [...without, ...availVars] : without};
+                          });
+                        },
+                        group.label, 'is-bold',
+                        el => { if (el) el.indeterminate = groupPartial; })}
+                      <div className="cal-fp-subs">
+                        {availVars.map(v => calOpt(v, filters.selectedGames.includes(v), e => toggleVariant(v, e.target.checked), v, 'is-muted'))}
                       </div>
                     </div>
                   );
@@ -497,70 +460,30 @@ function Filters({ filters, setFilters, gameVariants, venues, buyinOptions, tour
                 </div>
               </div>);
             })()}
-          </div>
 
-          {/* Special */}
-          <div className="filter-group filter-span2">
-            <label style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)'}} onClick={() => setSpecialOpen(s => !s)}>
-              Special
-              <span style={{fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: specialOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>{'\u25BC'}</span>
-            </label>
+            {/* Special */}
+            {calHead('Special', specialOpen, () => setSpecialOpen(s => !s))}
             {specialOpen && (
-              <div style={{display:'flex',flexDirection:'column',gap:'calc(var(--subrow) * 0.5)',marginTop:'calc(var(--subrow) * 0.5)'}}>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={!!filters.ladiesOnly}
-                    onChange={() => setFilters(f => ({...f, ladiesOnly:!f.ladiesOnly}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Ladies
-                </label>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={!!filters.seniorsOnly}
-                    onChange={() => setFilters(f => ({...f, seniorsOnly:!f.seniorsOnly}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Seniors
-                </label>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={filters.bountyOnly}
-                    onChange={e => setFilters(f => ({...f, bountyOnly:e.target.checked}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Bounty
-                </label>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={filters.mysteryBountyOnly}
-                    onChange={e => setFilters(f => ({...f, mysteryBountyOnly:e.target.checked}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Mystery Bounty
-                </label>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={filters.headsUpOnly}
-                    onChange={e => setFilters(f => ({...f, headsUpOnly:e.target.checked}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Heads Up
-                </label>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={filters.tagTeamOnly}
-                    onChange={e => setFilters(f => ({...f, tagTeamOnly:e.target.checked}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Tag Team
-                </label>
-                <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',fontSize:'calc(var(--gu) * 1.208)',fontWeight:400,textTransform:'none',letterSpacing:0,cursor:'pointer',color:'var(--text)'}}>
-                  <input type="checkbox" checked={filters.employeesOnly}
-                    onChange={e => setFilters(f => ({...f, employeesOnly:e.target.checked}))}
-                    style={{marginTop:'calc(var(--subrow) * 0.125)'}}
-                  /> Casino Employees
-                </label>
+              <div className="cal-fp-body">
+                {calOpt('ladies', !!filters.ladiesOnly, () => setFilters(f => ({...f, ladiesOnly:!f.ladiesOnly})), 'Ladies')}
+                {calOpt('seniors', !!filters.seniorsOnly, () => setFilters(f => ({...f, seniorsOnly:!f.seniorsOnly})), 'Seniors')}
+                {calOpt('bounty', !!filters.bountyOnly, e => setFilters(f => ({...f, bountyOnly:e.target.checked})), 'Bounty')}
+                {calOpt('mystery', !!filters.mysteryBountyOnly, e => setFilters(f => ({...f, mysteryBountyOnly:e.target.checked})), 'Mystery Bounty')}
+                {calOpt('headsup', !!filters.headsUpOnly, e => setFilters(f => ({...f, headsUpOnly:e.target.checked})), 'Heads Up')}
+                {calOpt('tagteam', !!filters.tagTeamOnly, e => setFilters(f => ({...f, tagTeamOnly:e.target.checked})), 'Tag Team')}
+                {calOpt('employees', !!filters.employeesOnly, e => setFilters(f => ({...f, employeesOnly:e.target.checked})), 'Casino Employees')}
               </div>
             )}
           </div>
 
-          {/* Clear all + Save & Close */}
-          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'calc(var(--subrow) * 1)',justifyContent:'flex-end',alignItems:'center',marginTop:'calc(var(--subrow) * 0.5)'}}>
+          {/* Clear all + Save & Close, one per half of the 2-column split (2..18 | 19..35) */}
+          <div className="cal-fp-actions">
             {hasActive && (
-              <button className="btn btn-ghost btn-sm" onClick={() =>
-                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:true,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
-              }>Clear all filters</button>
+              <button type="button" className="btn btn-ghost btn-sm cal-fp-clear" onClick={() =>
+                setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:false,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel}))
+              }><span className="cal-fp-cap">Clear all filters</span></button>
             )}
-            <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
+            <button type="button" className="btn btn-primary btn-sm cal-fp-save" onClick={() => setOpen(false)}><span className="cal-fp-cap">Save &amp; Close</span></button>
           </div>
         </div>,
         document.body
@@ -644,12 +567,53 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
     lastMonthKeyRef.current = curKey;
   }
 
-  // Scroll the active date button into view in the carousel
+  // Scroll the active date into the strip's third slot (two days back, three
+  // ahead), resting on the grid. The strip shows six 5g buttons on a 6g pitch
+  // starting at 1g, so it may only rest at whole multiples of that pitch - the
+  // same points its scroll-snap uses. scrollIntoView({inline:'center'}) aimed
+  // the button's centre at the strip's centre (18.5g), a half-pitch off every
+  // line, and left the snap to pull it somewhere else. The pitch is read from
+  // the laid-out buttons (fractional rects, not rounded offsetLeft) so the
+  // target is exactly k x 6g at any width.
+  const stripRef = useRef(null);
+  const stripPitch = (strip) => (strip && strip.children.length >= 2)
+    ? strip.children[1].getBoundingClientRect().left - strip.children[0].getBoundingClientRect().left
+    : 0;
   useEffect(() => {
-    if (activeDateRef.current) {
-      activeDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [selectedDate]);
+    const btn = activeDateRef.current;
+    const strip = stripRef.current;
+    const pitch = stripPitch(strip);
+    if (!btn || !(pitch > 0)) return;
+    const idx = Array.prototype.indexOf.call(strip.children, btn);
+    const maxK = Math.round((strip.scrollWidth - strip.clientWidth) / pitch);
+    const k = Math.max(0, Math.min(maxK, idx - 2));
+    strip.scrollTo({ left: k * pitch, behavior: 'smooth' });
+  }, [selectedDate, allDates.length]);
+
+  // WebKit keeps a scroller's offset in WHOLE px, so a rest at k x 6g
+  // (6g = 65.19px at 402) lands up to half a px short or long - measured 130px
+  // for 12g = 130.38px, putting every button 0.035g off its line. When the strip
+  // comes to rest, carry that remainder as a translate on the buttons, in g
+  // (--cal-strip-fix), so what is drawn sits exactly on k x 6g. Recomputed on
+  // every rest, so it never accumulates; |fix| <= 0.5px, invisible mid-scroll.
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    let t = null;
+    const settle = () => {
+      const pitch = stripPitch(strip);
+      if (!(pitch > 0)) return;
+      const g = pitch / 6; // the pitch is 6g by construction (styles.css .cal-date-strip)
+      const off = (strip.scrollLeft - Math.round(strip.scrollLeft / pitch) * pitch) / g;
+      // Only the rounding remainder (<= half a px, ~0.05g) is corrected; a bigger
+      // offset means the strip is still moving, and gets no fix.
+      strip.style.setProperty('--cal-strip-fix', `calc(var(--gu) * ${Math.abs(off) <= 0.1 ? off.toFixed(4) : 0})`);
+    };
+    const onScroll = () => { clearTimeout(t); t = setTimeout(settle, 120); };
+    strip.addEventListener('scroll', onScroll, { passive: true });
+    settle();
+    return () => { clearTimeout(t); strip.removeEventListener('scroll', onScroll); };
+  }, [allDates.length]);
 
   // Reset the page scroll when the selected date changes so the new
   // day's events always start at the top of the viewport (just below
@@ -1034,10 +998,10 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
                   disabled={!prevTarget}
                   title={`Jump to ${MONTHS[prev.getMonth()]} ${prev.getFullYear()}`}
                 >
-                  {MONTHS[prev.getMonth()]}
+                  <span className="cal-month-label">{MONTHS[prev.getMonth()]}</span>
                 </button>
                 <span className="cal-month-btn cal-month-btn-current">
-                  {MONTHS_FULL[curM]} {curY}
+                  <span className="cal-month-label">{MONTHS_FULL[curM]} {curY}</span>
                 </span>
                 <button
                   className="cal-month-btn cal-month-btn-side"
@@ -1045,7 +1009,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
                   disabled={!nextTarget}
                   title={`Jump to ${MONTHS[next.getMonth()]} ${next.getFullYear()}`}
                 >
-                  {MONTHS[next.getMonth()]}
+                  <span className="cal-month-label">{MONTHS[next.getMonth()]}</span>
                 </button>
               </div>
               {/* Far right of the month row: jump to the Schedule tab's list view
@@ -1069,7 +1033,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
         {/* One pass for the per-day counts, off the same list the strip
             already walks - this is the information the control was missing. */}
         {null}
-        <div className="cal-date-strip">
+        <div className="cal-date-strip" ref={stripRef}>
           {allDates.map(d => {
             const dObj = new Date(d + 'T12:00:00');
             const isSel = d === selectedDate;
@@ -1091,7 +1055,9 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
                 <span className="dow">{DOW[dObj.getDay()]}</span>
                 <span className="dom">{dObj.getDate()}</span>
                 <span className="cal-date-density" aria-hidden="true">
-                  <span style={{width: `${Math.round(density * 100)}%`}} />
+                  <span className="cal-date-density-track">
+                    <span style={{width: `${Math.round(density * 100)}%`}} />
+                  </span>
                 </span>
               </button>
             );
@@ -1124,8 +1090,10 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
             );
           })()}
           <span className="cal-event-count cal-event-count-inline">
-            {sortedEvents.length} event{sortedEvents.length !== 1 ? 's' : ''}
-            {myTodayCount > 0 && ` · ${myTodayCount} in my schedule`}
+            <span className="cal-event-count-text">
+              {sortedEvents.length} event{sortedEvents.length !== 1 ? 's' : ''}
+              {myTodayCount > 0 && ` · ${myTodayCount} in my schedule`}
+            </span>
           </span>
           <Filters filters={filters} setFilters={setFilters} gameVariants={gameVariants || []} venues={venues || []} buyinOptions={buyinOptions} tournaments={allTournaments} search={search} setSearch={setSearch} />
         </div>
@@ -1133,16 +1101,18 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
       </div>
 
       {sortedEvents.length === 0 ? (
-        <div className="empty-state" style={{padding:'calc(var(--subrow) * 5) calc(var(--subrow) * 3)'}}>
+        <div className="empty-state cal-empty">
           <Icon.empty />
           <h3>No events on this date</h3>
           <p>Other dates in this range have events — try moving forward or back.</p>
         </div>
       ) : showMySection ? (
         <div style={{minHeight:'100vh', paddingTop:'var(--subrow)', paddingBottom:'100vh'}}>
-          <div className="section-header cal-list-section-header" style={{marginTop:'calc(var(--subrow) * 1)'}}>
+          {/* No top margin: the list's 1r top pad is the whole gap under the
+              sticky block (r29), so this header sits r30-r34 like a first card. */}
+          <div className="section-header cal-list-section-header">
             <h2>My Events</h2>
-            <span style={{fontSize:'calc(var(--gu) * 1.208)',color:'var(--text-muted)'}}>{myEvents.length} event{myEvents.length !== 1 ? 's' : ''}</span>
+            <span className="cal-list-section-count">{myEvents.length} event{myEvents.length !== 1 ? 's' : ''}</span>
           </div>
           {myEvents.map(renderEvent)}
 
@@ -1150,7 +1120,7 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
             <React.Fragment>
               <div className="section-header cal-list-section-header" style={{marginTop:'calc(var(--subrow) * 2)'}}>
                 <h2>All Events</h2>
-                <span style={{fontSize:'calc(var(--gu) * 1.208)',color:'var(--text-muted)'}}>{otherEvents.length} event{otherEvents.length !== 1 ? 's' : ''}</span>
+                <span className="cal-list-section-count">{otherEvents.length} event{otherEvents.length !== 1 ? 's' : ''}</span>
               </div>
               {otherEvents.map(renderEvent)}
             </React.Fragment>

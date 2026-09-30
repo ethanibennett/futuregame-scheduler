@@ -8,6 +8,15 @@ import Card from './SolverCard.jsx';
 // seats from the solved strategy to a random decision point, and we
 // ask the user what they'd do; then reveal the solver's mixed
 // strategy and keep a running score.
+//
+// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
+// line), controls 4/5r, gaps 1/2r — so every block starts on an r-line from
+// the top bar. Horizontally: full width 1..36, panels pad 2g (content 3..34),
+// rows of controls are 8g/17g grid columns on the page rails.
+
+const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+const R = (n) => `calc(var(--subrow) * ${n})`;
 
 export default function SolverTrainerView() {
   const [games, setGames] = useState(null);
@@ -62,139 +71,141 @@ export default function SolverTrainerView() {
 
   const game = games && games.find(g => g.id === gameId);
   const d = spot && spot.description;
-  const isStud = gameId === 'stud8';
-
-  const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
-  // Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-  const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
+  // From the spot itself, not the picker: switching game re-renders with the
+  // new gameId one frame before the new spot arrives, and keying this off
+  // gameId read the old draw spot as stud (d.oppUp undefined → crash).
+  const isStud = !!(d && Array.isArray(d.oppUp));
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 70)', margin: '0 auto', fontFamily: "'Univers Condensed', 'Univers', sans-serif" }}>
-      {/* Grid: title box 4 subrows, baseline seated on T12; subtitle a 2-subrow box. */}
-      <h2 className="screen-title" style={{ fontSize: 'calc(var(--gu) * 1.767)', margin: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', lineHeight: 'calc(var(--subrow) * 4)', paddingTop: 'calc(var(--subrow) * 0.125)' }}>Solver Trainer</h2>
-      <p style={{ ...label, margin: '0 0 var(--subrow)', height: 'calc(var(--subrow) * 2)' }}>Heads-up fixed limit · CFR strategies</p>
+    <div className="hs-view" style={{ maxWidth: R(70) }}>
+      {/* Title: 4r block, baseline 4r below the view top; subtitle 2r caps line under it. */}
+      <h2 className="screen-title hs-t hs-title" style={T(4)}>Solver Trainer</h2>
+      <p className="hs-t hs-cap" style={T(2, 2)}>Heads-up fixed limit · CFR strategies</p>
 
-      {/* Game picker — 4-subrow pills, 1-subrow row gap when they wrap */}
-      <div style={{ display: 'flex', columnGap: 'var(--space-sm)', rowGap: 'var(--space-md)', marginBottom: 'calc(var(--subrow) * 2)', flexWrap: 'wrap' }}>
-        {(games || []).map(g => (
-          <button key={g.id} onClick={() => setGameId(g.id)} disabled={!g.trained}
-            style={{
-              height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', padding: '0 var(--space-lg)', borderRadius: 'var(--radius-lg)', cursor: g.trained ? 'pointer' : 'default',
-              border: 'var(--bw-hair) solid ' + (g.id === gameId ? 'var(--accent)' : 'var(--border)'),
-              background: g.id === gameId ? 'var(--accent)' : 'transparent',
-              color: g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
-              fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.104)', fontWeight: 'var(--fw-bold)', opacity: g.trained ? 1 : 0.5,
-            }}>
-            {g.name}{!g.trained && ' (untrained)'}
-          </button>
-        ))}
-      </div>
+      {/* Game picker — 4r pills on the four 8g rails, 1r between rows; 2r above. */}
+      {games && games.length > 0 && (
+        <div className="hs-cols" style={{ '--hs-n': 4, marginTop: R(2) }}>
+          {games.map(g => (
+            <button key={g.id} className="hs-btn hs-pill" onClick={() => setGameId(g.id)} disabled={!g.trained}
+              style={{
+                '--hs-h': 4, padding: 0, fontSize: 'var(--fs-xs)',
+                '--hs-edge': g.id === gameId ? 'var(--accent)' : 'var(--border)',
+                '--hs-fill': g.id === gameId ? 'var(--accent)' : 'transparent',
+                '--hs-ink': g.id === gameId ? '#fff' : (g.trained ? 'var(--text)' : 'var(--text-muted)'),
+              }}>
+              <span className="hs-t" style={T(3)}>{g.name}{!g.trained && ' (untrained)'}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
-      {error && <div style={{ ...panel, color: '#ef4444', marginBottom: 'var(--subrow)' }}>{error}</div>}
-      {!games && !error && <div style={{ color: 'var(--text-muted)' }}>Loading…</div>}
+      {error && (
+        <div className="hs-panel" style={{ marginTop: R(2), '--hs-edge': 'var(--neg, #ef4444)' }}>
+          <div className="hs-t hs-sm" style={{ ...T(3, 3), color: 'var(--neg, #ef4444)' }}>{error}</div>
+        </div>
+      )}
+      {!games && !error && <div className="hs-t hs-sm hs-mut" style={{ ...T(3, 3), marginTop: R(2) }}>Loading…</div>}
 
       {game && (
-        <div style={{ ...label, marginBottom: 'var(--subrow)' }}>
+        <div className="hs-t hs-cap" style={{ ...T(2, 2), marginTop: R(2) }}>
           {game.stakes}{game.trained ? ` · ${game.iterations.toLocaleString()} iterations · ${game.infosets.toLocaleString()} infosets` : ''}
         </div>
       )}
 
-      {loading && <div style={{ color: 'var(--text-muted)', padding: 'var(--space-2xl) 0' }}>Dealing…</div>}
+      {loading && <div className="hs-t hs-sm hs-mut" style={{ ...T(3, 3), marginTop: R(2) }}>Dealing…</div>}
 
       {spot && d && !loading && (
         <>
-          {/* Situation */}
-          <div style={{ ...panel, marginBottom: 'var(--subrow)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-              <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.325)', lineHeight: 'calc(var(--subrow) * 3)' }}>{d.streetName}</span>
-              <span style={{ ...label, lineHeight: 'calc(var(--subrow) * 3)' }}>{d.position} · Pot {d.pot}{d.toCall > 0 ? ` · ${d.toCall} to call` : ''}</span>
+          {/* Situation — panel 2r × 2g; 3r header line, then 1r-spaced rows. */}
+          <div className="hs-panel hs-stack" style={{ marginTop: R(2) }}>
+            <div className="hs-split">
+              <span className="hs-t hs-md hs-bold" style={T(3)}>{d.streetName}</span>
+              <span className="hs-t hs-cap hs-clip" style={T(3)}>{d.position} · Pot {d.pot}{d.toCall > 0 ? ` · ${d.toCall} to call` : ''}</span>
             </div>
 
             {isStud ? (
               <>
-                <div style={{ ...label, marginBottom: 'var(--space-md)' }}>Opponent shows</div>
-                <div style={{ marginBottom: 'var(--space-md)' }}>
+                <div className="hs-t hs-cap" style={T(2, 2)}>Opponent shows</div>
+                <div className="hs-cards">
                   {d.oppUp.map((c, i) => <Card key={i} str={c} />)}
                 </div>
-                <div style={{ ...label, marginBottom: 'var(--space-md)' }}>Your hand (first {d.heroDown.length === 2 ? 'two' : 'cards'} hidden)</div>
-                <div>
+                <div className="hs-t hs-cap" style={T(2, 2)}>Your hand (first {d.heroDown.length === 2 ? 'two' : 'cards'} hidden)</div>
+                <div className="hs-cards">
                   {d.heroDown.map((c, i) => <Card key={'d' + i} str={c} />)}
                   {d.heroUp.map((c, i) => <Card key={'u' + i} str={c} />)}
                 </div>
               </>
             ) : (
               <>
-                <div style={{ ...label, marginBottom: 'var(--space-md)' }}>
+                <div className="hs-t hs-cap" style={T(2, 2)}>
                   Your hand · {d.handLabel}
                   {d.oppDraws.length > 0 && ` · opp drew ${d.oppDraws.join(', ')}`}
                 </div>
-                <div>{d.heroCards.map((c, i) => <Card key={i} str={c} />)}</div>
+                <div className="hs-cards">{d.heroCards.map((c, i) => <Card key={i} str={c} />)}</div>
                 {d.myDiscards && d.myDiscards.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--space-md)' }}>
-                    <span style={{ ...label, marginRight: 'var(--space-md)' }}>your dead cards</span>
-                    {d.myDiscards.map((c, i) => <Card key={'x' + i} str={c} dim size="sm" />)}
+                  /* 4r row: caps label (baseline 3r down) then 2g × 4r dead cards from 12g. */
+                  <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--gu) * 9) 1fr', columnGap: 0, alignItems: 'start' }}>
+                    <span className="hs-t hs-cap" style={T(3)}>your dead cards</span>
+                    <div className="hs-cards">{d.myDiscards.map((c, i) => <Card key={'x' + i} str={c} dim size="sm" />)}</div>
                   </div>
                 )}
               </>
             )}
 
-            {/* Action log */}
+            {/* Action log — hairline rule (inset, no height) + 1r, then 2r lines. */}
             {d.log.length > 0 && (
-              <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)' }}>
-                {d.log.map((e, i) => <div key={i}><b style={{ color: e.who === 'Hero' ? 'var(--accent)' : 'inherit' }}>{e.who}</b> {e.what}</div>)}
+              <div className="hs-rule">
+                {d.log.map((e, i) => (
+                  <div key={i} className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+                    <b style={{ color: e.who === 'Hero' ? 'var(--accent)' : 'inherit' }}>{e.who}</b> {e.what}
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Actions / answer */}
-          <div style={{ ...panel, marginBottom: 'var(--subrow)' }}>
-            <div style={{ ...label, marginBottom: 'var(--subrow)' }}>{picked ? 'Solver strategy' : 'What do you do?'}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-              {spot.actions.map(a => {
-                const isPick = picked === a.id;
-                const isBest = picked && a.prob >= Math.max(...spot.actions.map(x => x.prob)) - 0.001;
-                return (
-                  <button key={a.id} onClick={() => pick(a.id)}
-                    style={{
-                      position: 'relative', overflow: 'hidden', textAlign: 'left',
-                      display: 'flex', alignItems: 'center', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box',
-                      padding: '0 var(--space-lg)', borderRadius: 'var(--radius-sm)', cursor: picked ? 'default' : 'pointer',
-                      border: 'var(--bw-hair) solid ' + (isPick ? 'var(--accent)' : isBest ? '#22c55e' : 'var(--border)'),
-                      background: 'transparent', color: 'var(--text)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 'var(--fw-bold)',
-                    }}>
-                    {picked && (
-                      <span style={{
-                        position: 'absolute', left: 0, top: 0, bottom: 0,
-                        width: `${Math.round(a.prob * 100)}%`,
-                        background: isBest ? 'rgba(34,197,94,0.18)' : 'rgba(128,128,128,0.12)',
-                        transition: 'width 0.4s ease',
-                      }} />
-                    )}
-                    <span style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <span>{a.label}{isPick ? ' ←' : ''}</span>
-                      {picked && <span style={{ color: isBest ? '#22c55e' : 'var(--text-muted)' }}>{Math.round(a.prob * 100)}%</span>}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Actions / answer — 2r caps label, 1r, then 5r buttons 1r apart across 3..34. */}
+          <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+            <div className="hs-t hs-cap" style={T(2)}>{picked ? 'Solver strategy' : 'What do you do?'}</div>
+            {spot.actions.map(a => {
+              const isPick = picked === a.id;
+              const isBest = picked && a.prob >= Math.max(...spot.actions.map(x => x.prob)) - 0.001;
+              return (
+                <button key={a.id} className="hs-btn hs-left" onClick={() => pick(a.id)}
+                  style={{
+                    '--hs-h': 5, position: 'relative', overflow: 'hidden', cursor: picked ? 'default' : 'pointer',
+                    '--hs-edge': isPick ? 'var(--accent)' : isBest ? '#22c55e' : 'var(--border)',
+                  }}>
+                  {picked && (
+                    <span style={{
+                      position: 'absolute', left: 0, top: 0, bottom: 0,
+                      width: `${Math.round(a.prob * 100)}%`,
+                      background: isBest ? 'rgba(34,197,94,0.18)' : 'rgba(128,128,128,0.12)',
+                      transition: 'width 0.4s ease',
+                    }} />
+                  )}
+                  <span className="hs-split" style={{ position: 'relative' }}>
+                    <span className="hs-t" style={T(3)}>{a.label}{isPick ? ' ←' : ''}</span>
+                    {picked && <span className="hs-t" style={{ ...T(3), color: isBest ? '#22c55e' : 'var(--text-muted)' }}>{Math.round(a.prob * 100)}%</span>}
+                  </span>
+                </button>
+              );
+            })}
             {picked && !spot.trained && (
-              <div style={{ ...label, marginTop: 'var(--space-md)', color: '#eab308' }}>
+              <div className="hs-t hs-cap" style={{ ...T(2, 2), color: '#eab308' }}>
                 Note: this exact spot wasn't visited enough in training — strategy shown is uniform.
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 'calc(var(--subrow) * 5)' }}>
-            <span style={label}>
+          {/* Footer — 5r row: score on cols 1–3 (baseline 3r down), button on col 4 (28..36). */}
+          <div className="hs-cols" style={{ '--hs-n': 4, marginTop: 'var(--subrow)' }}>
+            <span className="hs-t hs-cap" style={{ ...T(3, 2), gridColumn: '1 / 4' }}>
               {score.spots > 0 && `${score.best}/${score.spots} matched solver · avg weight ${Math.round((score.probSum / score.spots) * 100)}%`}
             </span>
-            <button onClick={() => dealSpot(gameId)}
-              style={{
-                height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 2.25)', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--brand)',
-                color: 'var(--on-brand)', fontFamily: 'inherit', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-bold)', cursor: 'pointer',
-              }}>
-              {picked ? 'Next Spot' : 'Skip'}
+            <button className="hs-btn" onClick={() => dealSpot(gameId)}
+              style={{ '--hs-h': 5, gridColumn: '4', '--hs-edge': 'transparent', '--hs-fill': 'var(--brand)', '--hs-ink': 'var(--on-brand)' }}>
+              <span className="hs-t" style={T(3)}>{picked ? 'Next Spot' : 'Skip'}</span>
             </button>
           </div>
         </>

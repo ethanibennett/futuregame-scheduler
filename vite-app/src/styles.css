@@ -901,31 +901,42 @@
        carried one bit of information: whether the user had an event that day,
        encoded in a border that competed with the active state's own border. */
     .cal-date-btn { position: relative; }
+    /* The dot is a mark, not a box: its top sits on the button's r1 line (the
+       button has no border, so r1 is exactly 1r below the button's top), which
+       puts it level with the day-of-week caps (cap top r0.96, baseline r2). */
     .cal-date-mine {
       position: absolute;
-      top: var(--space-xs);
-      left: var(--space-xs);
+      top: var(--subrow);
+      left: calc(var(--gu) * 0.5);
       width: calc(var(--subrow) * 0.625);
       height: calc(var(--subrow) * 0.625);
       border-radius: var(--radius-circle);
     }
+    /* Density: a 3g x 1r cell (the button's r5-r6 track, centred in the 5g
+       button, so 1g in from each side) holding a 0.25r pill stroke seated on the
+       cell's bottom r-line - r6, one r above the button's bottom. */
     .cal-date-density {
+      display: flex;
+      align-items: flex-end;
+      width: calc(var(--gu) * 3);
+      height: var(--subrow);
+    }
+    .cal-date-density-track {
       display: block;
-      width: 60%;
+      width: 100%;
       height: calc(var(--subrow) * 0.25);
-      margin-top: var(--space-xs);
       border-radius: var(--radius-pill);
       background: var(--border);
       overflow: hidden;
     }
-    .cal-date-density > span {
+    .cal-date-density-track > span {
       display: block;
       height: 100%;
       background: var(--text-muted);
       border-radius: inherit;
     }
-    .cal-date-btn.active .cal-date-density { background: var(--ov-black-2); }
-    .cal-date-btn.active .cal-date-density > span { background: var(--on-brand); }
+    .cal-date-btn.active .cal-date-density-track { background: var(--ov-black-2); }
+    .cal-date-btn.active .cal-date-density-track > span { background: var(--on-brand); }
 
 
     /* .cal-event-row is overflow:hidden, so an outline on the strip or the bar
@@ -967,7 +978,7 @@
       font: inherit;
       color: inherit;
       text-align: left;
-      border: var(--bw-hair) solid var(--border);
+      border: 0; /* the edge is an inset shadow (main rule) so it adds no size */
       cursor: pointer;
     }
 
@@ -985,31 +996,45 @@
        reflow. The container is a real surface: only the children shimmer, and
        they are staggered, because a block that pulses in phase reads as one
        object loading rather than four. */
+    /* 2026-09-30 regrid: every skeleton box whole r tall, whole g wide, on grid
+       lines. Hero = the real plain Up Next card (measured 12r: 3r strip + 9r
+       body); body 1r pad | 2r name | 1r | 1r meta | 2r | 1r bar | 1r pad, bars
+       from 3g (the card's content inset) to 19/12/34g. Edges as inset shadow. */
     .skeleton-hero-card {
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
       border-radius: var(--radius);
-      box-shadow: var(--elev-1);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
       overflow: hidden;
+      height: calc(var(--subrow) * 12);
+      box-sizing: border-box;
     }
+    .skeleton-hero-strip { height: calc(var(--subrow) * 3); border-radius: 0; }
     .skeleton-hero-body {
       display: flex;
       flex-direction: column;
-      gap: var(--space-sm);
-      padding: var(--space-ml) var(--space-xl) var(--space-lg);
+      align-items: flex-start;
+      gap: 0;
+      padding: var(--subrow) calc(var(--gu) * 2);
     }
-    .skeleton-hero-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-md);
-      margin: var(--space-xs) 0;
+    .skeleton-hero-body > .skeleton { margin: 0; border-radius: var(--radius-xs); }
+    .skeleton-hero-name { width: calc(var(--gu) * 16); height: calc(var(--subrow) * 2); }
+    .skeleton-hero-meta { width: calc(var(--gu) * 9); height: var(--subrow); margin-top: var(--subrow) !important; }
+    .skeleton-hero-bar  { width: calc(var(--gu) * 31); height: var(--subrow); margin-top: calc(var(--subrow) * 2) !important; }
+    /* Section-title stand-in: a 1r bar ending on the header's +2r baseline. */
+    .dashboard-view .dashboard-section-header > .skeleton-title {
+      align-self: flex-start;
+      height: var(--subrow);
+      margin: var(--subrow) 0 0;
+      border-radius: var(--radius-xs);
     }
-    .skeleton-hero-stats > * { height: calc(var(--subrow) * 3.25); }
+    .skeleton-slab { height: calc(var(--subrow) * 5); border-radius: var(--radius-sm); }
     .skeleton-pl-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1.25fr;
-      gap: var(--space-md);
+      grid-template-columns: var(--pl-cols);
+      column-gap: var(--gu);
     }
+    .skeleton-pl-grid > * { height: calc(var(--subrow) * 9); border-radius: var(--radius); }
 
 
     /* Opt-in brand fill. .btn-primary itself is --accent grey until item 89
@@ -2417,28 +2442,46 @@
     .hand-game-pill-row button.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight: var(--fw-bold); }
     .hand-game-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); }
 
-    /* ── Game picker: tabbed checklist ── */
-    /* Grid: outline via inset box-shadow (not a layout border) so inner rows land on subrow lines. */
+    /* ── Game picker: tabbed checklist ── (Hands tab, list screen only) */
+    /* Grid (2026-09-30, measured at 402px, g=10.865 r=7.714, origin = .top-bar top):
+       the picker spans 1..36g (35g). Every text cell is a whole-r box whose label is a
+       trimmed block child (cap..alphabetic) bottom-aligned, so the baseline IS the
+       cell's bottom content edge: 2r subheadings on their bottom line, 3r tabs and the
+       3r Structure/More rows one r above their bottom, 4r check rows one r above theirs.
+       Every rule and outline is an inset shadow, so none of them adds height. */
     .game-picker { box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border); border-radius:calc(var(--subrow) * 0.75); overflow:hidden; margin-bottom: var(--subrow); }
-    .game-subheading { font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); color:var(--text-muted); line-height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
-    /* Grid: separator via inset shadow so row height stays 3 subrows (buttons), not 3sr+1px. */
-    .game-faves-row { display:flex; gap:0; margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 var(--border); }
-    /* Grid: 3-subrow tall tab (border-box) = 22px line-box + 2px active underline. */
-    .game-fave-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; line-height: calc(var(--subrow) * 3 - calc(var(--subrow) * 0.25)); transition:color var(--dur-fast),background var(--dur-fast); border-bottom:calc(var(--subrow) * 0.25) solid transparent; }
-    .game-fave-btn.active { border:none; border-bottom:calc(var(--subrow) * 0.25) solid var(--accent2); background:transparent; color:var(--accent2); font-weight: var(--fw-bold); }
-    .game-tab-bar { display:flex; border-bottom:var(--bw-hair) solid var(--border); background:var(--surface2); }
-    /* Grid: 3-subrow tall tab (border-box). */
-    .game-tab-btn { flex:1; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-bottom:calc(var(--subrow) * 0.25) solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; margin-bottom:calc(var(--subrow) * -0.125); transition:color var(--dur-fast),border-color var(--dur-fast); line-height: calc(var(--subrow) * 3 - calc(var(--subrow) * 0.25)); }
-    .game-tab-btn.active { color:var(--accent2); border-bottom-color:var(--accent2); font-weight: var(--fw-bold); }
-    /* Grid: 4-subrow tall row; left padding absorbs the 2px indicator border so the label lands on 3g. */
-    .game-check-row { display:flex; align-items:center; gap: var(--space-ml); height: calc(var(--subrow) * 4); box-sizing:border-box; padding: 0 var(--gu) 0 calc(var(--gu) - calc(var(--subrow) * 0.25)); cursor:pointer; transition:background var(--dur-fast),border-left-color var(--dur-fast); border-bottom:none; border-left: var(--bw-2) solid transparent; }
+    .game-subheading { display:grid; align-items:end; height: calc(var(--subrow) * 2); font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); color:var(--text-muted); margin-bottom: var(--subrow); }
+    /* Four favourites = the four primary columns (1-9, 10-18, 19-27, 28-36g): 8g each,
+       1g gutters, exactly like the Schedule tab's four toggles. */
+    .game-faves-row { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--gu); height: calc(var(--subrow) * 3); margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 var(--border); }
+    .game-fave-btn { display:grid; align-items:end; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs) var(--subrow); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast); }
+    .game-fave-btn.active { background:transparent; color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
+    /* Five tabs across 35g on valid x lines: 1|9|16|23|30|36 = 8+7+7+7+6g (HOLD'EM, the
+       longest label, gets the full primary column). fr so it stays proportional >430px. */
+    .game-tab-bar { display:grid; grid-template-columns: 8fr 7fr 7fr 7fr 6fr; height: calc(var(--subrow) * 3); background:var(--surface2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+    .game-tab-btn { display:grid; align-items:end; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs) var(--subrow); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; background:transparent; color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),box-shadow var(--dur-fast); }
+    .game-tab-btn.active { color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
+    /* 4r row, label baseline one r above the bottom (row top + 3r). Left padding = 2g
+       minus the 2px indicator border, so the label starts on the 3g line; right padding
+       2g ends it on 34g. */
+    .game-check-row { position:relative; display:flex; align-items:flex-end; gap:0; height: calc(var(--subrow) * 4); box-sizing:border-box; padding: 0 calc(var(--gu) * 2) var(--subrow) calc(var(--gu) * 2 - var(--bw-2)); cursor:pointer; transition:background var(--dur-fast),border-left-color var(--dur-fast); border-bottom:none; border-left: var(--bw-2) solid transparent; }
     @media (hover: hover) and (pointer: fine) {
       .game-check-row:hover { background:var(--surface2); }
     }
     .game-check-row.selected { background:rgba(136,136,136,0.08); border-left-color:var(--accent2); }
     .game-check-radio { display:none; }
     .game-check-radio-dot { display:none; }
-    .game-check-more-row { display:flex; align-items:center; justify-content:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; border-top:var(--bw-hair) solid var(--border); border-left:none; padding: 0 calc(var(--gu) - calc(var(--subrow) * 0.125)); background:transparent; }
+    /* Stud's Super/Action checkboxes: a 2r square centred in the 1..3g gutter cell
+       (top = row + 1r), so the label stays on 3g like every other row. */
+    .game-check-box {
+      position:absolute; top: var(--subrow); left: calc((var(--gu) * 2 - var(--subrow) * 2) / 2 - var(--bw-2));
+      width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); box-sizing:border-box;
+      border-radius: calc(var(--subrow) * 0.375); box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      display:flex; align-items:center; justify-content:center; transition: background var(--dur-fast), box-shadow var(--dur-fast);
+    }
+    .game-check-box.checked { background: var(--accent2); box-shadow: inset 0 0 0 var(--bw-1) var(--accent2); }
+    .game-check-group > .game-check-row:first-child { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+    .game-check-more-row { display:grid; align-items:end; justify-items:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; padding: 0 calc(var(--gu) * 2) var(--subrow); background:transparent; box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
     @media (hover: hover) and (pointer: fine) {
       .game-check-more-row:hover { background:transparent; }
     }
@@ -2446,10 +2489,21 @@
     @media (hover: hover) and (pointer: fine) {
       .game-check-more-btn:hover { color:var(--text); }
     }
-    /* Grid: line-height 4sr + 2px top seats the baseline 3 subrows below the row top (a grid line). */
-    .game-check-row-label { font-size: var(--fs-sm); color:var(--text-muted); flex:1; align-self:flex-start; line-height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 0.375); transition:color var(--dur-fast); }
+    .game-check-row-label { font-size: var(--fs-sm); color:var(--text-muted); flex:1; transition:color var(--dur-fast); }
     .game-check-row-label.selected { color:var(--text); font-weight: var(--fw-regular); }
-    .game-check-section-label { font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); line-height: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) - calc(var(--subrow) * 0.125)); }
+    /* Structure / Super / Action: caps in the condensed face at --fs-xs (the nearest
+       token to the 1.031g / 1.001g literals they used to carry inline). */
+    .game-check-row-label.is-caps { font-family: var(--font-condensed); text-transform:uppercase; font-size: var(--fs-xs); letter-spacing: var(--track-caps); }
+    .game-check-section-label { display:grid; align-items:end; font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) * 2) var(--subrow); box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+    /* The seat itself: a trimmed block inside each cell above. padding/margin-block
+       0.3em keeps descenders from being clipped by the ellipsis overflow. */
+    .game-subheading > span, .game-fave-btn > span, .game-tab-btn > span,
+    .game-check-row-label, .game-check-more-btn, .game-check-section-label > span {
+      display:block; min-width:0; max-width:100%; line-height: calc(var(--subrow) * 2);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      padding-block: 0.3em; margin-block: -0.3em;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
 
     /* ── Card row ── */
     .card-row { display:flex; gap: var(--space-2xs); align-items:center; min-height:calc(var(--subrow) * 4); flex-wrap:wrap; }
@@ -2720,6 +2774,108 @@
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
     .replayer-hand-card.is-row .replayer-hand-card-meta { margin-top:0; }
+
+    /* ── Hands list screen on the grid (2026-09-30) ──
+       Scoped to .replayer-view.is-list (list + loading only), so the entry and replay
+       screens that share .replayer-section / .btn-sm are untouched. Measured at 402px
+       (g=10.865, r=7.714) from the .top-bar top; the view starts at 8r.
+         9-11r  New Hand | variant      (2r, baselines r11)       1..18g | 19..36g
+         12-14r FAVORITES               (2r, baseline r14)
+         15-18r four favourites         (3r, baselines r17)       primary columns
+         20-22r GAMES                   (2r, baseline r22)
+         23-53r picker (Hold'em)        tabs 3r, rows 4r
+         54-59r Create … Hand           (5r, baseline r57)        1..36g
+         61-63r Saved Hands             (2r, baseline r63)
+         64r+   6r cards, 1r apart; strip 1..3g, cards 3..10g, text 12..27g, Delete 28..34g */
+    .replayer-view.is-list .replayer-list-new { padding-top: var(--subrow); margin-bottom: calc(var(--subrow) * 2); }
+    .replayer-view.is-list .replayer-list-head {
+      display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gu);
+      align-items:end; height: calc(var(--subrow) * 2); margin-bottom: var(--subrow);
+    }
+    .replayer-view.is-list .replayer-list-title,
+    .replayer-view.is-list .replayer-list-heading { font-family: var(--font-sans); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--text); min-width:0; }
+    .replayer-view.is-list .replayer-list-variant {
+      min-width:0; text-align:right; font-family: var(--font-condensed); font-size: var(--fs-xs);
+      font-weight: var(--fw-bold); color: var(--accent2);
+    }
+    .replayer-view.is-list .replayer-list-heading { display:grid; align-items:end; height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
+    /* Create: full width (35g) — a variant name can run to "Pot Limit Stud Hi/Lo
+       Regular", which no narrower whole-g box holds. 5r, baseline 3r down: the cap
+       (~1.2r) then has 1.8r above it and 2r below, i.e. centred. */
+    .replayer-view.is-list .replayer-list-create { height: calc(var(--subrow) * 5); }
+    .replayer-view.is-list .replayer-list-create .btn,
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-actions .btn {
+      display:grid; align-items:end; justify-items:center; width:100%; height: calc(var(--subrow) * 5);
+      box-sizing:border-box; padding: 0 var(--gu) calc(var(--subrow) * 2); border:none;
+    }
+    .replayer-view.is-list .replayer-hand-card-actions .btn.btn-ghost {
+      display:grid; align-items:end; justify-items:center; width:100%; height: calc(var(--subrow) * 4);
+      box-sizing:border-box; padding: 0 var(--space-xs) var(--subrow); border:none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-view.is-list .replayer-hand-card-actions .btn.btn-ghost:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    }
+    .replayer-view.is-list .replayer-list-title > span,
+    .replayer-view.is-list .replayer-list-variant > span,
+    .replayer-view.is-list .replayer-list-heading > span,
+    .replayer-view.is-list .btn > span,
+    .replayer-view.is-list .replayer-hand-card-title,
+    .replayer-view.is-list .replayer-hand-card-meta {
+      display:block; min-width:0; max-width:100%; line-height: calc(var(--subrow) * 2); margin-top:0;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      padding-block: 0.3em; margin-block: -0.3em;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* Skeleton text bar: 1r, sitting on its cell's baseline (every cell bottom-aligns). */
+    .replayer-view.is-list .replayer-list-skel { height: var(--subrow); border-radius: var(--radius-xs); margin:0; }
+
+    /* Saved-hand card: 6r; strip 2g; content a grid on g columns and r rows. */
+    .replayer-view.is-list .replayer-hand-list { gap: var(--subrow); margin-bottom: calc(var(--subrow) * 2); }
+    .replayer-view.is-list .replayer-hand-strip { width: calc(var(--gu) * 2); }
+    .replayer-view.is-list .replayer-hand-card-content {
+      display:grid;
+      /* 3..10g cards | 2g | 12..27g text | 1g | 28..34g action | 2g right margin */
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 2) minmax(0, 1fr) var(--gu) calc(var(--gu) * 6);
+      /* title cell r1-r3, meta cell r3-r5: baselines 3r and 5r below the card top */
+      grid-template-rows: var(--subrow) calc(var(--subrow) * 2) calc(var(--subrow) * 2) var(--subrow);
+      align-items:end; gap:0;
+      padding: 0 calc(var(--gu) * 2) 0 0;
+      /* The outline as inset shadows: a 1px (bw-1) border top and bottom pushed the
+         text 0.195r off every r-line. The right edge keeps the outcome colour. */
+      border:none;
+      box-shadow: inset 0 var(--bw-1) 0 var(--border), inset 0 calc(var(--bw-1) * -1) 0 var(--border), inset calc(var(--bw-2) * -1) 0 0 var(--hc-edge, transparent);
+    }
+    .replayer-view.is-list .replayer-hand-card.outcome-win   .replayer-hand-card-content { --hc-edge: var(--ok); }
+    .replayer-view.is-list .replayer-hand-card.outcome-loss  .replayer-hand-card-content { --hc-edge: var(--danger); }
+    .replayer-view.is-list .replayer-hand-card.outcome-split .replayer-hand-card-content { --hc-edge: var(--warn); }
+    .replayer-view.is-list .replayer-hand-card-cards {
+      grid-column: 1; grid-row: 1 / -1; align-self: stretch; width:auto; height:auto;
+      /* Cards 4r tall (whole r) at the artwork's 0.7143 ratio: 2.857r = 2.03g wide. */
+      --card-h: calc(var(--subrow) * 4);
+      --card-w: calc(var(--subrow) * 2.857);
+    }
+    .replayer-view.is-list .replayer-hand-card-cards .card-row img,
+    .replayer-view.is-list .replayer-hand-card-cards .card-row .card-unknown,
+    .replayer-view.is-list .replayer-hand-card-cards .card-row .card-placeholder { height: calc(var(--subrow) * 4); }
+    .replayer-view.is-list .replayer-hand-card-body {
+      grid-column: 3; grid-row: 2 / 4; align-self: stretch;
+      display:grid; grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 2); align-items:end; gap:0;
+    }
+    /* Meta is lowercase/numeric, so --fs-xs (dense row secondary), not the caps-only --fs-2xs. */
+    .replayer-view.is-list .replayer-hand-card-meta { font-size: var(--fs-xs); }
+    .replayer-view.is-list .replayer-hand-card-actions { grid-column: 5; grid-row: 1 / -1; align-self: center; display:block; }
+    /* Empty state: the same 6r row (cards 3..10g, text 12g) plus a 5r button row under
+       the text and 1r below it = 12r. padding-left 2g stands in for the strip. */
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-content {
+      grid-template-rows: var(--subrow) calc(var(--subrow) * 2) calc(var(--subrow) * 2) var(--subrow) calc(var(--subrow) * 5) var(--subrow);
+      padding-left: calc(var(--gu) * 2);
+    }
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards { grid-row: 1 / 5; }
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-actions { grid-column: 3 / 6; grid-row: 5; align-self: stretch; }
+    .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards .card-unknown { height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857); }
+    /* Loading: the card slot is 4g (5..9g, both valid lines) instead of a centred 2g. */
+    .replayer-view.is-list .replayer-hand-card-cards > .skeleton { margin-left: calc(var(--gu) * 2); margin-right: auto; }
     .replayer-empty { text-align:center; color:var(--text-muted); font-size: var(--fs-sm); padding: var(--space-3xl) 0;
       font-family: var(--font-sans); font-weight: 300; }
 
@@ -3491,6 +3647,526 @@
       cursor: pointer;
     }
     .gto-undo-btn:active { border-color: var(--accent); color: var(--accent); }
+
+    /* ══ Hand entry — grid lock ═══════════════════════════════════════════
+       Everything between "Create … Hand" and a finished replay, scoped to
+       .replayer-entry-view (the entry-mode .replayer-view) and the portaled
+       .gto-sticky-footer, so the shared live-update-tabs / settings-row /
+       btn-sm / replayer-header rules elsewhere are untouched.
+       Vertical origin is the .top-bar top; the content area starts at 8r.
+       Text seating:
+       - block text: text-box-trim cap/alphabetic + padding-top (k·r − 1cap)
+         puts the first baseline k r below the box top; line-height 2r steps
+         every later line onto the next pair of r-lines.
+       - buttons/inputs centre their line (WebKit), so baseline =
+         H/2 + (pt − pb)/2 + (a − d)/2. For an odd H and baseline at (H+1)/2:
+         pb − pt = (a − d) − r. (a − d)/em measured at 402 (layout-rounded):
+         cond 2xs .70 · cond xs .6956 · cond sm .7692 · sans 2xs .60/.70 bold. */
+
+    /* Sticky header: margin −2r + padding 3r → content at 8 − 2 + 3 = 9r;
+       stuck at top −2r so its box top stays at 6r. Sides 1g → x 1..36. */
+    .replayer-entry-view .gto-sticky-header {
+      margin: calc(var(--subrow) * -2) calc(var(--gu) * -1) 0;
+      top: calc(var(--subrow) * -2);
+      padding: calc(var(--subrow) * 3) var(--gu) var(--subrow);
+    }
+    /* Title: 3r cell 9–12r, baseline 12r; 3r below → first tab strip at 15r. */
+    .replayer-entry-view .replayer-header { height: calc(var(--subrow) * 3); margin-bottom: calc(var(--subrow) * 3); align-items: flex-start; }
+    .replayer-entry-view .replayer-header h2 {
+      height: auto; line-height: 1; padding: calc(var(--subrow) * 3 - 1cap) 0 0;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* Segmented tabs: 3r strip, 17g + 18g = 35g (1–18–36). Label baseline 2r:
+       pb − pt = 0.6956em − r (cond xs). Hairlines as inset shadows. */
+    .replayer-entry-view .live-update-tabs {
+      display: grid; grid-template-columns: calc(var(--gu) * 17) minmax(0, 1fr);
+      height: calc(var(--subrow) * 3); border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .replayer-entry-view .live-update-tabs button {
+      box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
+      padding: 0 0 calc(0.6956em - var(--subrow)); border: 0;
+    }
+    .replayer-entry-view .live-update-tabs button:first-child { box-shadow: inset calc(var(--bw-hair) * -1) 0 0 var(--border); }
+    .replayer-entry-view .live-update-tabs button.active { box-shadow: none; }
+    /* Game row: tabs alone span 35g; with Currency, 26g + 1g + 8g (1–27, 28–36)
+       and the two tabs split 13g + 13g (1–14–27). */
+    .replayer-entry-view .entry-game-row { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--gu); align-items: end; }
+    .replayer-entry-view .entry-game-row:has(> :nth-child(2)) { grid-template-columns: calc(var(--gu) * 26) minmax(0, 1fr); }
+    .replayer-entry-view .entry-game-row:has(> :nth-child(2)) .live-update-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .replayer-entry-view .entry-game-row select { height: calc(var(--subrow) * 3); padding: 0 var(--gu) calc(0.7692em - var(--subrow)); }
+
+    /* Field: 2r label track (baseline on its bottom), 1r gap, control. */
+    .replayer-entry-view .replayer-field {
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto;
+      gap: var(--subrow) 0; align-content: start; min-width: 0;
+    }
+    .replayer-entry-view .replayer-field:has(> label) { grid-template-rows: calc(var(--subrow) * 2); }
+    .replayer-entry-view .replayer-field > label {
+      align-self: end; line-height: 1; white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* Inputs 5r, baseline 3r: pb = (a − d) − r = 0.7692em − r (cond sm). */
+    .replayer-entry-view .replayer-field input,
+    .replayer-entry-view .replayer-field select,
+    .replayer-entry-view .gto-raise-input-row input {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-height: 0;
+      padding: 0 var(--gu) calc(0.7692em - var(--subrow)); line-height: normal;
+    }
+    /* Muted multi-line copy: first baseline 2r under the box top, then 2r steps. */
+    .replayer-entry-view .replayer-field-hint,
+    .replayer-entry-view .replayer-field-error,
+    .replayer-entry-view .gto-entry-note,
+    .replayer-entry-view .replayer-settings-sublabel {
+      margin: 0; line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-entry-note { font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: var(--subrow); }
+    .replayer-entry-view .replayer-field-hint { margin-bottom: var(--subrow); }
+
+    /* Notes card 1–36: pad 1r · label 2r · 1r · textarea 6r · 1r · share row 3r · 1r = 15r.
+       Inner x 3..34 (2g inset). Textarea lines 3r: first baseline 2r =
+       pt + 1.5r + 0.35em (cond 2xs) → pt = 0.5r − 0.35em. */
+    .replayer-entry-view .replayer-notes-area {
+      margin: 0; padding: var(--subrow) calc(var(--gu) * 2); border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      display: grid; grid-template-rows: calc(var(--subrow) * 2) auto auto; row-gap: var(--subrow);
+    }
+    .replayer-entry-view .replayer-notes-area label {
+      margin: 0; align-self: end; line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .replayer-notes-area textarea {
+      display: block; box-sizing: border-box; height: calc(var(--subrow) * 6); min-height: calc(var(--subrow) * 6);
+      line-height: calc(var(--subrow) * 3); padding: calc(var(--subrow) * 0.5 - 0.35em) var(--gu) 0;
+      border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); resize: none;
+    }
+    .replayer-entry-view .replayer-notes-area textarea:focus { box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); }
+
+    /* Settings rows: 3r toggle (4g wide) top-aligned; label baseline 2r;
+       sublabel lines on 2r steps below it. */
+    .replayer-entry-view .replayer-settings-row { margin: 0 0 var(--subrow); padding: 0; align-items: flex-start; column-gap: var(--gu); }
+    .replayer-entry-view .replayer-notes-area .replayer-settings-row { margin: 0; }
+    .replayer-entry-view .replayer-settings-label {
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .replayer-settings-toggle { width: calc(var(--gu) * 4); height: calc(var(--subrow) * 3); }
+    .replayer-entry-view .replayer-settings-toggle::after { top: calc(var(--subrow) * 0.5); left: calc(var(--subrow) * 0.5); }
+    .replayer-entry-view .replayer-settings-toggle.on::after { transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3)); }
+
+    /* Phase cards 1–36, hairline inset, content inset 2g (3..34), 1r top/bottom. */
+    .replayer-entry-view .gto-entry { margin-top: 0; }
+    .replayer-entry-view .gto-phase-card,
+    .replayer-entry-view .gto-street-card { border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
+    .replayer-entry-view .gto-phase-card > .replayer-section { padding: var(--subrow) calc(var(--gu) * 2); }
+    .replayer-entry-view .replayer-section-title {
+      margin: 0 0 var(--subrow); line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* Blinds: four tracks on the column gutters, 6g · 8g · 8g · 6g (3–9, 10–18,
+       19–27, 28–34); a fifth/sixth field wraps and spans two tracks. */
+    .replayer-entry-view .gto-blinds-grid {
+      display: grid; grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 8) calc(var(--gu) * 8) minmax(0, 1fr);
+      gap: var(--subrow) var(--gu); margin-bottom: var(--subrow);
+    }
+    .replayer-entry-view .gto-blinds-grid > :nth-child(n+5) { grid-column: span 2; }
+
+    /* Hero head + seat rows: tracks 4g · 16g · 7g with 2g gaps (3–7, 9–25, 27–34),
+       5r inputs, 1r between rows. Badge 3r, centred in the row (row+1..+4),
+       baseline 2r into it = row+3r (the inputs' baseline):
+       pt − pb = 4r − 3r − (a − d) → pt = r − 0.7em (measured (a − d) = 0.70em,
+       regular and bold alike). */
+    .replayer-entry-view .gto-hero-head { width: calc(var(--gu) * 4); height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
+    .replayer-entry-view .gto-hero-head span {
+      display: block; text-align: center; font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps);
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .replayer-player-row {
+      display: grid; grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 16) minmax(0, 1fr);
+      column-gap: calc(var(--gu) * 2); align-items: center;
+      padding: 0; margin-bottom: var(--subrow); border: 0;
+    }
+    .replayer-entry-view .replayer-player-row > .replayer-field:first-child { grid-column: 1 / 3; }
+    .replayer-entry-view .replayer-player-row .replayer-player-pos {
+      box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 3); min-width: 0;
+      padding: calc(var(--subrow) - 0.7em) 0 0; border: 0;
+    }
+    .replayer-entry-view .gto-stack-wrap { display: flex; }
+    .replayer-entry-view .gto-stack-wrap input { flex: 1 1 auto; min-width: 0; text-align: right; }
+    /* Cash symbol: 1g column (27–28), same 5r line box as the input → baseline 3r. */
+    .replayer-entry-view .gto-stack-sym {
+      flex: 0 0 var(--gu); box-sizing: border-box; height: calc(var(--subrow) * 5);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text-muted);
+      padding-bottom: calc(0.7692em - var(--subrow)); line-height: calc(var(--subrow) * 6 - 0.7692em);
+    }
+
+    /* Buy-in cap row (x 1..36): label 1–9, input 10–18, Reset stacks 19–27, Reset names 28–36. */
+    .replayer-entry-view .gto-cap-row {
+      display: grid; grid-template-columns: repeat(4, calc(var(--gu) * 8)); column-gap: var(--gu);
+      margin-top: var(--subrow); height: calc(var(--subrow) * 5);
+    }
+    .replayer-entry-view .gto-cap-label {
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold); color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap;
+      line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-cap-row input { text-align: right; }
+
+    /* Buttons: 5r, label baseline 3r: pb = 0.7692em − r (cond sm). */
+    .replayer-entry-view .btn-sm,
+    .gto-sticky-footer .btn-sm {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0;
+      padding: 0 var(--gu) calc(0.7692em - var(--subrow)); white-space: nowrap;
+    }
+    .replayer-entry-view .gto-undo-btn,
+    .gto-sticky-footer .gto-undo-btn {
+      box-sizing: border-box; height: calc(var(--subrow) * 5);
+      padding: 0 var(--gu) calc(0.6956em - var(--subrow)); white-space: nowrap;
+    }
+    /* Footer rows: 8g buttons with 1g gaps, right-aligned, so they sit on the
+       column tracks 28–36 and 19–27. The bordered wrapper card, where one wraps
+       a row, goes flat so the buttons can reach the column edges. */
+    .replayer-entry-view .gto-btn-row {
+      display: grid; grid-auto-flow: column; grid-auto-columns: calc(var(--gu) * 8);
+      justify-content: end; column-gap: var(--gu); padding: var(--subrow) 0;
+    }
+    .replayer-entry-view .gto-street-card:has(> .gto-btn-row) { box-shadow: none; background: transparent; }
+
+    /* Street bar (sticky slot): 1r above, 5r bar; name + pot baseline 3r;
+       board cards 3r tall centred (bar+1..+4). */
+    .replayer-entry-view .gto-street-sticky { margin-top: var(--subrow); }
+    .replayer-entry-view .gto-street-bar {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); padding: 0 calc(var(--gu) * 2);
+      align-items: flex-start;
+    }
+    .replayer-entry-view .gto-street-name,
+    .replayer-entry-view .gto-pot-label {
+      line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-board-inline { align-self: center; }
+    .replayer-entry-view .gto-board-inline .card-row { min-height: 0; }
+    .replayer-entry-view .gto-board-inline .card-img { height: calc(var(--subrow) * 3); }
+
+    /* Seat cards 1–36: strip 2g (1–3), content 3–36 with a 2g text inset (5..34).
+       Bar: row1 3r (pos/stack baseline 3r) · row2 4r (name baseline 7r, cards 3–7r) · 1r = 8r. */
+    .replayer-entry-view .gto-seat { border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border); margin-bottom: var(--subrow); }
+    .replayer-entry-view .gto-seat.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    .replayer-entry-view .gto-seat-strip { width: calc(var(--gu) * 2); padding: 0; }
+    .replayer-entry-view .gto-seat-bar {
+      display: grid; grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 4);
+      gap: 0; padding: 0 calc(var(--gu) * 2) var(--subrow);
+    }
+    .replayer-entry-view .gto-seat-row1,
+    .replayer-entry-view .gto-seat-row2 { align-items: flex-end; column-gap: var(--gu); min-width: 0; }
+    .replayer-entry-view .gto-seat-pos,
+    .replayer-entry-view .gto-seat-stack,
+    .replayer-entry-view .gto-seat-name {
+      line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-seat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-block: 0.3em; margin-block: -0.3em; }
+    /* Cards take row2's 4r (+3..+7r); stud hole cards keep their 1r drop (+4..+8r, into the bar's 1r foot). */
+    .replayer-entry-view .gto-seat-hero-cards { align-self: flex-start; }
+    .replayer-entry-view .gto-seat-hero-cards .card-row { min-height: 0; flex-wrap: nowrap; align-items: flex-start; }
+    .replayer-entry-view .card-row.gto-card-run { gap: 0; flex-wrap: nowrap; }
+    .replayer-entry-view .gto-seat-hero-cards .card-img,
+    .replayer-entry-view .gto-seat-hero-cards .card-unknown { height: calc(var(--subrow) * 4); width: calc(var(--gu) * 2); object-fit: contain; }
+    /* Fanned hero/stud cards overlap on a 1g pitch (was −1r). */
+    .replayer-entry-view .gto-seat-hero-cards .card-img:not(:first-child),
+    .replayer-entry-view .gto-seat-hero-cards .card-row .card-unknown:not(:first-child) { margin-left: calc(var(--gu) * -1); }
+    /* Badges 3r (row2 +1..+4), baseline 2r into the box: pt = 2r − a,
+       a = 1em (cond 2xs), less the hairline border on result badges. */
+    .replayer-entry-view .gto-seat-result-badge,
+    .replayer-entry-view .gto-seat-draw-history {
+      display: block; box-sizing: border-box; height: calc(var(--subrow) * 3); line-height: normal;
+      padding: calc(var(--subrow) * 2 - 1em) var(--gu) 0; white-space: nowrap;
+    }
+    .replayer-entry-view .gto-seat-result-badge { padding-top: calc(var(--subrow) * 2 - 1em - var(--bw-hair)); }
+    .replayer-entry-view .gto-seat-bar > .gto-seat-draw-history { justify-self: start; margin: var(--subrow) 0 0; }
+    .replayer-entry-view .gto-seat-cards { padding: 0 calc(var(--gu) * 2) var(--subrow); }
+
+    /* Hero picker in the active seat: 2g inset (5..34); label 2r; 4 rows of 5r. */
+    .replayer-entry-view .gto-hero-picker { padding: 0 calc(var(--gu) * 2) var(--subrow); }
+    .replayer-entry-view .gto-hero-picker.has-cards { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+    .replayer-entry-view .gto-picker-label {
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps);
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* 13 ranks cannot land on the 2g sub-grid (29g / 13); the block is exact
+       (x 5..34 or 3..34, whole-r rows) and the ranks divide it evenly. */
+    .replayer-entry-view .card-picker-grid {
+      grid-template-columns: repeat(13, minmax(0, 1fr)); grid-auto-rows: calc(var(--subrow) * 5);
+      gap: 0; margin-top: var(--subrow);
+    }
+    .replayer-entry-view .card-picker-btn { aspect-ratio: auto; height: 100%; padding: 0 calc(var(--gu) * 0.1); }
+
+    /* Action pad: 7r buttons — 1r · icon 3r · label 2r (baseline 6r) · 1r.
+       Widths on the column lines across 3..36 (33g):
+       2 → 16|17 (3–19–36) · 3 → 11|11|11 (3–14–25–36) · 4 → 7|9|9|8 (3–10–19–28–36). */
+    .replayer-entry-view .gto-action-row {
+      display: grid; grid-auto-flow: column; grid-template-columns: minmax(0, 1fr);
+      border-top: 0; box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    .replayer-entry-view .gto-action-row:has(> :nth-child(2)) { grid-template-columns: calc(var(--gu) * 16) minmax(0, 1fr); }
+    .replayer-entry-view .gto-action-row:has(> :nth-child(3)) { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 11) minmax(0, 1fr); }
+    .replayer-entry-view .gto-action-row:has(> :nth-child(4)) { grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 9) calc(var(--gu) * 9) minmax(0, 1fr); }
+    .replayer-entry-view .gto-action-btn {
+      display: grid; grid-template-rows: var(--subrow) calc(var(--subrow) * 3) calc(var(--subrow) * 2) var(--subrow);
+      justify-items: center; min-width: 0; min-height: 0; height: calc(var(--subrow) * 7); padding: 0;
+    }
+    .replayer-entry-view .gto-action-btn + .gto-action-btn { border-left: 0; box-shadow: inset var(--bw-hair) 0 0 var(--border); }
+    .replayer-entry-view .gto-action-icon { grid-row: 2; height: calc(var(--subrow) * 3); }
+    .replayer-entry-view .gto-action-label {
+      grid-row: 3; align-self: end; display: block; margin: 0; line-height: 1; white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* Sizing: joined 5r segments across 3..36, dividers on valid lines.
+       6 → 6|5|5|6|5|6 (3–9–14–19–25–30–36) · 5 → 7|6|7|7|6 (3–10–16–23–30–36).
+       Baseline 3r: pt − pb = r − 0.70em (cond 2xs bold). */
+    .replayer-entry-view .gto-sizing-row {
+      display: grid; grid-auto-flow: column; gap: 0; padding: 0; border-top: 0;
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 6) calc(var(--gu) * 7) calc(var(--gu) * 7) minmax(0, 1fr);
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    .replayer-entry-view .gto-sizing-row:has(> :nth-child(6)) {
+      grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 6) calc(var(--gu) * 5) minmax(0, 1fr);
+    }
+    .replayer-entry-view .gto-sizing-pill {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; border: 0; border-radius: 0;
+      padding: calc(var(--subrow) - 0.7em) 0 0;
+    }
+    .replayer-entry-view .gto-sizing-pill + .gto-sizing-pill { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
+    .replayer-entry-view .gto-sizing-pill:active { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
+    /* Slider: 5r row, 1r track at +2..+3r, 5..34. */
+    .replayer-entry-view .gto-raise-slider-row {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); padding: 0 calc(var(--gu) * 2);
+      display: flex; align-items: center;
+    }
+    .replayer-entry-view .gto-raise-slider { height: var(--subrow); margin: 0; }
+    .replayer-entry-view .gto-raise-slider::-webkit-slider-thumb { width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); }
+    /* Raise input row: input 5–18 (13g), Confirm 19–27 (8g), Cancel 28–34 (6g); 5r. */
+    .replayer-entry-view .gto-raise-input-row {
+      display: grid; grid-template-columns: calc(var(--gu) * 13) calc(var(--gu) * 8) minmax(0, 1fr);
+      column-gap: var(--gu); align-items: start; padding: 0 calc(var(--gu) * 2) var(--subrow);
+    }
+    .replayer-entry-view .gto-raise-input-row input { width: 100%; min-width: 0; }
+
+    /* Draw buttons: joined 5r segments across the seat content. The draw seats
+       sit inside the phase card (seat 3..34, content 5..34 = 29g): Stand Pat
+       5–12 (7g); five counts 12–16–21–25–30–34 (4|5|4|5|4); four (badugi)
+       12–18–23–28–34 (6|5|5|6). */
+    .replayer-entry-view .gto-draw-buttons {
+      display: grid; grid-auto-flow: column; gap: 0; padding: 0;
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 6) calc(var(--gu) * 5) calc(var(--gu) * 5) minmax(0, 1fr);
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    .replayer-entry-view .gto-draw-buttons:has(> :nth-child(6)) {
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 5) minmax(0, 1fr);
+    }
+    .replayer-entry-view .gto-draw-btn {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; flex: none;
+      border: 0; border-radius: 0; background: transparent;
+      padding: 0 0 calc(0.7692em - var(--subrow));
+    }
+    .replayer-entry-view .gto-draw-btn + .gto-draw-btn { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
+    .replayer-entry-view .gto-draw-btn.pat { background: rgba(136,136,136,0.1); }
+
+    /* Board entry: street label 3r (baseline 2r: pt = r − 0.70em, cond 2xs);
+       dealt cards 4r with 1r above and below. */
+    .replayer-entry-view .gto-street-label {
+      box-sizing: border-box; height: calc(var(--subrow) * 3); margin: 0;
+      padding-top: calc(var(--subrow) - 0.7em);
+    }
+    .replayer-entry-view .gto-board-deal { display: flex; justify-content: center; gap: calc(var(--gu) * 2); margin: var(--subrow) 0; }
+    /* Cards in entry: a 2g × 4r box (the face is object-fit into it, 2% narrower
+       than the 5:7 art) so every card is whole g by whole r. */
+    .replayer-entry-view .card-row { min-height: calc(var(--subrow) * 4); }
+    .replayer-entry-view .card-row img,
+    .replayer-entry-view .card-row .card-unknown,
+    .replayer-entry-view .card-row .card-placeholder { height: calc(var(--subrow) * 4); width: calc(var(--gu) * 2); object-fit: contain; }
+
+    /* Door-card / stud-deal rows: 4r (card 0–4r, name + seat baseline 3r), 1r apart. */
+    .replayer-entry-view .gto-deal-row {
+      display: flex; align-items: flex-start; column-gap: var(--gu);
+      height: calc(var(--subrow) * 4); margin-bottom: var(--subrow);
+    }
+    .replayer-entry-view .gto-deal-row.is-pickable { padding: 0 var(--gu); cursor: pointer; border-radius: var(--radius-sm); }
+    .replayer-entry-view .gto-deal-row.is-target { background: var(--accent-bg, rgba(34,197,94,0.1)); box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    .replayer-entry-view .gto-deal-name,
+    .replayer-entry-view .gto-deal-meta {
+      line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap); white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-deal-name { font-size: var(--fs-sm); font-weight: var(--fw-bold); min-width: calc(var(--gu) * 11); }
+    .replayer-entry-view .gto-deal-meta { font-size: var(--fs-xs); color: var(--text-muted); }
+    .replayer-entry-view .gto-deal-meta.is-unknown { font-style: italic; }
+
+    /* Action-phase footer (fixed above the tab bar): 1r · card (1r · 5r · 1r) · 1r = 9r.
+       Bottom-anchored, its top would land wherever the viewport height puts it;
+       the top is snapped DOWN to the r-grid measured from the bar top (sa-t) and
+       the box still runs to the tab bar, so the < 1r remainder is footer ground.
+       Undo 3–7, Back to Setup 9–18, Cancel Hand 25–34. */
+    .gto-sticky-footer {
+      padding: var(--subrow) var(--gu);
+      top: calc(var(--sa-t) + round(down, 100dvh - var(--sa-t) - var(--tab-h) - var(--sa-b) - var(--subrow) * 9, var(--subrow)));
+    }
+    .gto-sticky-footer .gto-street-card { border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
+    .gto-sticky-footer .gto-foot-row {
+      display: grid; grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 11) minmax(0, 1fr) calc(var(--gu) * 9);
+      gap: 0; padding: var(--subrow) calc(var(--gu) * 2);
+    }
+    .gto-sticky-footer .gto-foot-row > :nth-child(2) { justify-self: end; width: calc(var(--gu) * 9); }
+
+    /* Stacked phase cards (showdown opponents): 1r apart. */
+    .replayer-entry-view .gto-phase-card + .gto-phase-card { margin-top: var(--subrow); }
+    /* Showdown opponent head: 5r row — badge 3–7 at +1..+4r, name and the
+       Muck/Clear button label all on +3r; button 6g at 28–34. */
+    .replayer-entry-view .gto-sd-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      height: calc(var(--subrow) * 5); margin-bottom: var(--subrow);
+    }
+    .replayer-entry-view .gto-sd-who { display: flex; align-items: flex-start; column-gap: calc(var(--gu) * 2); min-width: 0; }
+    .replayer-entry-view .gto-sd-who .replayer-player-pos {
+      box-sizing: border-box; width: calc(var(--gu) * 4); height: calc(var(--subrow) * 3); min-width: 0;
+      margin-top: var(--subrow); padding: calc(var(--subrow) - 0.7em) 0 0; border: 0;
+    }
+    .replayer-entry-view .gto-sd-name {
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+      line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap); white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-sd-head .gto-undo-btn { width: calc(var(--gu) * 6); flex: none; }
+    .replayer-entry-view .gto-sd-mucked {
+      text-align: center; font-family: var(--font-condensed); font-size: var(--fs-xs); font-style: italic; color: var(--text-muted);
+      line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .gto-sd-cards { margin: 0 0 var(--subrow); }
+
+    /* Result: winner toggles two across, 15g + 1g + 15g (3–18, 19–34), 5r,
+       label baseline 3r (cond xs: pb = 0.6956em − r); 1r between rows. */
+    .replayer-entry-view .gto-winner-grid {
+      display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 15)); gap: var(--subrow) var(--gu);
+      margin-bottom: var(--subrow);
+    }
+    .replayer-entry-view .gto-winner-btn {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; cursor: pointer;
+      padding: 0 var(--gu) calc(0.6956em - var(--subrow));
+      border: var(--bw-1) solid; border-radius: var(--radius-sm);
+      font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+    }
+    .replayer-entry-view .gto-result-auto { text-align: center; font-family: var(--font-condensed); padding-bottom: var(--subrow); }
+    .replayer-entry-view .gto-result-win {
+      font-size: var(--fs-md); font-weight: var(--fw-bold); color: #4ade80;
+      line-height: 1; padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* Draw card details (2-7 TD etc.): one panel per drawer at 3..34, 2g inner
+       inset (5..32), 1r top/bottom; head 4r (name/seat/badge baseline 3r),
+       "tap to select" label 2r, hand 4r, then Discarded 5–18 | New Cards 19–32. */
+    .replayer-entry-view .gto-dce-box {
+      background: var(--surface2); border-radius: var(--radius-sm);
+      padding: var(--subrow) calc(var(--gu) * 2); margin-bottom: var(--subrow);
+    }
+    .replayer-entry-view .gto-dce-box > :last-child { margin-bottom: 0; }
+    .replayer-entry-view .gto-dce-head .replayer-draw-pat-badge,
+    .replayer-entry-view .gto-dce-head .replayer-draw-count-badge {
+      display: block; box-sizing: border-box; height: calc(var(--subrow) * 3); margin-top: var(--subrow);
+      padding: calc(var(--subrow) * 2 - 1em) var(--gu) 0; line-height: normal; white-space: nowrap;
+      width: calc(var(--gu) * 7); margin-left: auto; text-align: center;   /* 25–32 */
+    }
+    .replayer-entry-view .gto-dce-hand { margin-bottom: var(--subrow); }
+    .replayer-entry-view .gto-dce-hand .gto-picker-label { display: block; height: calc(var(--subrow) * 2); }
+    .replayer-entry-view .gto-dce-fields {
+      display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 13)); column-gap: var(--gu);
+    }
+    /* Classic entry: sections 1–36 with the 2g inset (3..34), 1r apart. */
+    .replayer-entry-view .replayer-entry { gap: var(--subrow); }
+    .replayer-entry-view .replayer-entry > .replayer-section,
+    .replayer-entry-view .replayer-street {
+      border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      padding: var(--subrow) calc(var(--gu) * 2); margin: 0;
+    }
+    .replayer-entry-view .replayer-entry > .replayer-section > .replayer-player-row:last-child { margin-bottom: 0; }
+    /* Street tabs, 1..36: 2 → 17|18 · 3 → 11|13|11 (1–12–25–36) · 4 → 9|9|9|8 (1–10–19–28–36)
+       · 5 → 6|7|7|7|8 (1–7–14–21–28–36). */
+    .replayer-entry-view .replayer-entry > .live-update-tabs:has(> :nth-child(3)) { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 13) minmax(0, 1fr); }
+    .replayer-entry-view .replayer-entry > .live-update-tabs:has(> :nth-child(4)) { grid-template-columns: repeat(3, calc(var(--gu) * 9)) minmax(0, 1fr); }
+    .replayer-entry-view .replayer-entry > .live-update-tabs:has(> :nth-child(5)) { grid-template-columns: calc(var(--gu) * 6) repeat(3, calc(var(--gu) * 7)) minmax(0, 1fr); }
+    .replayer-entry-view .replayer-entry > .live-update-tabs { margin: 0; }
+    .replayer-entry-view .replayer-entry > .live-update-tabs > button + button { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
+    .replayer-entry-view .replayer-entry > .live-update-tabs > button.active { box-shadow: none; }
+    .replayer-entry-view .replayer-street-header { height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); align-items: flex-start; }
+    .replayer-entry-view .replayer-street-name,
+    .replayer-entry-view .replayer-street-pot {
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-entry-view .replayer-street > .replayer-field { margin-bottom: var(--subrow); }
+    /* Recorded actions: 3r rows, text baseline 2r, 1r apart. */
+    .replayer-entry-view .replayer-action-list { gap: var(--subrow); margin-top: 0; }
+    .replayer-entry-view .replayer-action-list:not(:empty) { margin-bottom: var(--subrow); }
+    .replayer-entry-view .replayer-action-item {
+      box-sizing: border-box; height: calc(var(--subrow) * 3); padding: 0 var(--gu); align-items: flex-start; column-gap: var(--gu);
+    }
+    .replayer-entry-view .replayer-action-item > span {
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* Amount row: input 3–18 (15g), pot helper 19–27 (8g), 5r. */
+    .replayer-entry-view .gto-amount-row {
+      display: grid; grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 8); column-gap: var(--gu);
+      margin-bottom: var(--subrow);
+    }
+    .replayer-entry-view .replayer-pot-helper {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border); padding: calc(var(--subrow) - 0.7em) 0 0;
+    }
+    /* Action buttons across 3..34: 2 → 15|15 (3–18, 19–34) · 3 → 9|9|9 with 2g gaps (3–12, 14–23, 25–34). */
+    .replayer-entry-view .replayer-action-btns {
+      display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, calc(var(--gu) * 15)); column-gap: var(--gu); margin-top: 0;
+    }
+    .replayer-entry-view .replayer-action-btns:has(> :nth-child(3)) { grid-template-columns: repeat(3, calc(var(--gu) * 9)); column-gap: calc(var(--gu) * 2); }
+    .replayer-entry-view .replayer-action-btns button,
+    .replayer-entry-view .replayer-winner-btn {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; white-space: nowrap;
+      padding: 0 var(--gu) calc(0.6956em - var(--subrow)); overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Text tab: textarea 1–36, 18r, 2r lines; Parse 5r, label baseline 3r
+       (cond md bold: pb = 0.7333em − r). */
+    .replayer-entry-view .gto-text-entry { padding: var(--subrow) 0; }
+    .replayer-entry-view .gto-text-entry textarea {
+      display: block; box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 18); min-height: calc(var(--subrow) * 18);
+      font-family: monospace; font-size: var(--fs-sm); line-height: calc(var(--subrow) * 2);
+      /* first baseline = pt + 1r + (a − d)/2; measured (a − d)/2 = 0.273em for the
+         harness's monospace → pt = r − 0.273em puts it on 2r (platform mono varies). */
+      padding: calc(var(--subrow) - 0.273em) var(--gu) 0; resize: none;
+      background: var(--surface); color: var(--text); border: 0; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .replayer-entry-view .gto-text-entry .create-group-submit {
+      box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 5); margin-top: var(--subrow);
+      line-height: normal; padding: 0 var(--gu) calc(0.7333em - var(--subrow));
+    }
+    .replayer-entry-view .gto-result-sub {
+      font-size: var(--fs-xs); color: var(--text-muted);
+      line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* ══ end Hand entry — grid lock ══ */
 
     /* Card picker grid */
     .card-picker-grid {
@@ -5663,6 +6339,474 @@
     @media (hover: hover) and (pointer: fine) {
       .replayer-gear-btn:hover { color:var(--text); background:var(--surface2); }
     }
+
+    /* ── Replay screen chrome on the 37g / r grid ─────────────────────────
+       Everything around the felt: the column, the transport, the action row,
+       the strips over the foot of the cloth, the table-settings dropdown, the
+       full settings sheet. Measured at 402x874 (g 10.8649, r 7.7141); every
+       height below is whole r, every width whole g on the valid x-lines.
+
+       .rs-t is the one text primitive: a block whose line box is 2r, trimmed
+       to cap-top / alphabetic baseline, with (2r - 1cap) put back on top — so
+       its box is exactly 2r per line and its BOTTOM is the baseline. Stack
+       them, or bottom-align them in a whole-r cell, and every baseline lands
+       on an r-line with no nudges. Same construction as .cal-empty. */
+    .rs-t {
+      display: block;
+      line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .rs-cell { display: block; }
+
+    /* Column. The viewport is not a whole number of r (874 / 7.7141 =
+       113.30), so a bottom-anchored bar put everything under the table on a
+       0.30r phase. The top pad is the safe-area inset rounded UP to whole r
+       and the bottom pad adds the sub-r remainder, so the column between them
+       is whole r and stacks from a whole-r origin. @supports because a
+       round()/mod() the engine rejects would reset the inset to 0. */
+    .replayer-replay.replayer-fullbleed { gap: 0; }
+    @supports (padding-top: round(up, 1dvh, 1dvh)) and (padding-top: mod(1dvh, 1dvh)) {
+      .replayer-replay.replayer-fullbleed {
+        --rp-top: round(up, var(--sa-t), var(--subrow));
+        padding-top: var(--rp-top);
+        padding-bottom: calc(var(--sa-b) + mod(100dvh - var(--rp-top) - var(--sa-b), var(--subrow)));
+      }
+    }
+    /* Table box: 1r from the column top (0.5r pad + the table's 0.5r
+       margin; was 0.25 + 0.5 = 0.75r), and 1g..36g across (was 1.25r =
+       0.8875g a side, x 0.89..36.11). */
+    .replayer-fullbleed .replayer-table-slot { padding: calc(var(--subrow) * 0.5) var(--gu) 0; }
+
+    /* Bar: 1r pad, the 6r transport, 1r, the 5r action row, [the 2r note],
+       1r pad = 14r (16r with the note). Was 15.46r on a 0.30r phase. */
+    .replayer-fullbleed .replayer-bottom-fixed {
+      padding: var(--subrow) 0;
+      gap: 0;
+    }
+    .replayer-fullbleed .replayer-bottom-fixed > * { max-width: none; }
+    /* Transport: a 27g capsule, x 5..32, 6r tall. Six whole-g cells with 1g
+       padding each side: 1 + 4 + 4 + 5 + 4 + 4 + 4 + 1 = 27. The circles sit
+       centred in their cells (a circle cannot be whole g AND whole r), 4r
+       tall so they start 1r down; play fills the capsule's 6r. */
+    .replayer-fullbleed .replayer-controls {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 4);
+      grid-template-rows: calc(var(--subrow) * 6);
+      align-items: center; justify-items: center;
+      width: calc(var(--gu) * 27); height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
+      padding: 0 var(--gu); gap: 0; margin: 0 auto;
+    }
+    .replayer-fullbleed .replayer-controls .replayer-play-btn {
+      width: calc(var(--subrow) * 6); height: calc(var(--subrow) * 6);
+    }
+    .replayer-fullbleed .replayer-controls button svg {
+      width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2);
+    }
+    /* "1x": the circle is 4r, so its baseline can sit 2r or 3r down; 3r
+       puts the caps at 1.95..3r against a centre of 2r, the nearer of the two
+       to optical centre for figures (2r would put them at 0.95..2). */
+    .replayer-fullbleed .replayer-speed-btn {
+      align-items: flex-end;
+      padding-bottom: var(--subrow);
+      box-sizing: border-box;
+      /* The hairline as an inset shadow: a 0.13r border lifted the seated
+         baseline to 2.87r (measured 101.88 against 102). */
+      border-width: 0;
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.10), inset 0 0 0 var(--bw-hair) rgba(255,255,255,0.14);
+    }
+    .replayer-fullbleed .replayer-speed-btn .replayer-speed-label {
+      display: block; font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* Action row: 35 one-g tracks from x = 1g, 5r tall. The four-button row
+       takes the four primary columns; with Solve (admin) the five buttons sit
+       on subcolumn lines with uniform 2g gaps. */
+    .replayer-fullbleed .replayer-actions-bar {
+      display: grid;
+      grid-template-columns: repeat(35, var(--gu));
+      grid-template-rows: calc(var(--subrow) * 5);
+      width: calc(var(--gu) * 35);
+      margin: var(--subrow) auto 0;
+      gap: 0;
+    }
+    .replayer-fullbleed .replayer-actions-bar > * {
+      grid-row: 1;
+      height: calc(var(--subrow) * 5); min-width: 0; min-height: 0;
+      box-sizing: border-box; margin: 0;
+    }
+    .replayer-fullbleed .replayer-actions-bar .rab-back  { grid-column: 1 / 9; }
+    .replayer-fullbleed .replayer-actions-bar .rab-edit  { grid-column: 10 / 18; }
+    .replayer-fullbleed .replayer-actions-bar .rab-share { grid-column: 19 / 27; }
+    .replayer-fullbleed .replayer-actions-bar .rab-gear  { grid-column: 28 / 36; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 5; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-edit  { grid-column: 7 / 10; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-solve { grid-column: 12 / 23; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 30; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-gear,
+    .replayer-fullbleed .replayer-actions-bar.is-linked .rab-gear  { grid-column: 32 / 36; }
+    /* Text seated 3r down a 5r button: caps (1.18r at --fs-sm) span
+       1.82..3r, centre 2.41 against the box's 2.5. The hairline is an inset
+       shadow so it adds nothing to the box. */
+    .replayer-fullbleed .replayer-actions-bar .btn {
+      display: flex; align-items: flex-end; justify-content: center;
+      gap: var(--space-xs);
+      padding: 0 0 calc(var(--subrow) * 2);
+      border: 0; line-height: normal;
+    }
+    .replayer-fullbleed .replayer-actions-bar .btn-ghost { box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
+    .replayer-fullbleed .replayer-actions-bar .btn .rs-t { white-space: nowrap; }
+    .replayer-fullbleed .replayer-actions-bar .btn svg,
+    .replayer-fullbleed .replayer-actions-bar .replayer-gear-btn svg {
+      width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); flex: none;
+    }
+    /* The gear joins the row's shape: a 4g x 5r (8g x 5r) rounded rect, its
+       glyph on the text line (1..3r) like Solve's. */
+    .replayer-fullbleed .replayer-actions-bar .replayer-gear-btn {
+      width: auto; border: 0; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      align-items: flex-start; padding-top: var(--subrow);
+    }
+    .replayer-fullbleed .replayer-bar-note {
+      width: calc(var(--gu) * 35); height: calc(var(--subrow) * 2);
+      margin: 0 auto; font-size: var(--fs-xs);
+    }
+
+    /* Strips over the foot of the cloth. Sized to their content (every strip
+       whole r, 1r between, 1r pads) and bottom-anchored on the bar's top, so
+       both edges are whole r. They were a fixed min(12r, 8.1vh) = 9.18r box
+       whose flex children SHRANK to fit: the draw bar went from 7.75r to
+       5.04r and its row of pills (Stand Pat / draws 1) hung out under it,
+       clipped by the commentary and the transport. No strip shrinks now. */
+    .replayer-fullbleed .replayer-under {
+      /* In the column again, but pulled up over the foot of the slot by the
+         9r that is free under the hero's plaque (the old overlay was 9.18r):
+         strips up to 9r cost the table nothing, exactly as the overlay did,
+         and anything taller takes its excess from the table's height rather
+         than landing on the hero — draw bar + commentary is 15r. */
+      position: relative; left: auto; right: auto; bottom: auto;
+      z-index: var(--z-raised);
+      margin-top: calc(var(--under-b) * -1);
+      min-height: var(--under-b);
+      height: auto;
+      max-height: calc(var(--subrow) * 17);
+      padding: var(--subrow) var(--gu);
+      gap: var(--subrow);
+      --under-b: calc(var(--subrow) * 9);
+    }
+    @media (max-height: 720px) {
+      .replayer-fullbleed .replayer-under { --under-b: calc(var(--subrow) * 6); }
+    }
+    /* The free band under the hero's plaque and draw badge is a fixed share
+       of the slot — measured 8.99r of 97 (402x874), 8.43 of 91, 6.46 of 70
+       (375x667): 0.0925 of the slot's height. The budget is that, plus the
+       strip region's own 1r top pad less a 0.5r margin, floored to whole r:
+       9r at 402x874, 6r at 375x667. The slot it is taken from is the column
+       less the bar (--bar-h, measured in r). */
+    @supports (padding-top: round(down, 1dvh, 1dvh)) {
+      .replayer-fullbleed .replayer-under {
+        --under-b: round(down, (100dvh - var(--rp-top, 0dvh) - var(--bar-h, calc(var(--subrow) * 16))) * 0.0925 + var(--subrow) * 0.5, var(--subrow));
+      }
+    }
+    /* Landscape keeps its own bar layout; the seating spans inside it stay
+       inert there. */
+    .replayer-landscape .replayer-bottom-fixed .rs-t {
+      display: inline; padding-top: 0; line-height: inherit; text-box-trim: none;
+    }
+    .replayer-fullbleed .replayer-under > * {
+      flex: none; box-sizing: border-box;
+      width: 100%; max-width: none;
+      margin: 0;
+    }
+    .replayer-fullbleed .replayer-under > *:first-child { margin-top: auto; }
+    /* Draw bar, 7r: the street label on a 2r line (baseline 2r), the 4r
+       player row, 1r under it. */
+    .replayer-fullbleed .replayer-draw-info-bar {
+      height: calc(var(--subrow) * 7);
+      padding: 0 var(--gu) var(--subrow);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .replayer-fullbleed .replayer-draw-info-label {
+      margin: 0; line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-fullbleed .replayer-draw-info-players {
+      height: calc(var(--subrow) * 4); align-items: stretch;
+    }
+    /* Each player: name and badge seated 3r down the 4r row; the cards fill
+       it. The badges were --fs-2xs in mixed case, which the scale reserves
+       for capitals. */
+    .replayer-fullbleed .replayer-draw-info-item { align-items: flex-end; height: calc(var(--subrow) * 4); }
+    .replayer-fullbleed .replayer-draw-info-name,
+    .replayer-fullbleed .replayer-draw-pat-badge,
+    .replayer-fullbleed .replayer-draw-count-badge {
+      display: block; align-self: flex-end;
+      line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      margin-bottom: var(--subrow);
+    }
+    /* The badge is a 3r pill; its caps sit 2r down it, 1r above its foot. */
+    .replayer-fullbleed .replayer-draw-pat-badge,
+    .replayer-fullbleed .replayer-draw-count-badge {
+      text-transform: uppercase;
+      box-sizing: border-box; height: calc(var(--subrow) * 3);
+      padding: calc(var(--subrow) * 2 - 1cap) var(--space-sm) var(--subrow);
+      margin-bottom: 0;
+    }
+    /* The thrown and drawn cards fill the 4r row as 2g x 4r cards (they were
+       3.5r, centred 0.25r down in a 4r min-height row). */
+    .replayer-fullbleed .replayer-draw-info-item .card-row { align-self: stretch; align-items: stretch; min-height: 0; height: calc(var(--subrow) * 4); }
+    .replayer-fullbleed .replayer-draw-info-item .card-row > * { width: calc(var(--gu) * 2); height: calc(var(--subrow) * 4); min-width: 0; }
+    /* Commentary lower third, 5r: street on the 2r line, the call on the 4r
+       line, 1r under. Full width, 1..36g; the accent is an inset shadow so
+       the text column starts on x = 3g. */
+    .replayer-fullbleed .replayer-commentary {
+      height: calc(var(--subrow) * 5);
+      box-shadow: inset calc(var(--subrow) * 0.5) 0 0 var(--brand), var(--plate-bevel, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55));
+    }
+    .replayer-fullbleed .replayer-commentary::before { display: none; }
+    .replayer-fullbleed .replayer-commentary > .replayer-commentary-body {
+      flex: 1 1 auto; padding: 0 calc(var(--gu) * 2); min-height: 0;
+      line-height: calc(var(--subrow) * 2);
+    }
+    .replayer-fullbleed .replayer-commentary-street,
+    .replayer-fullbleed .replayer-commentary-line {
+      margin: 0; line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* The line clips (ellipsis), and a trimmed box that clips cuts its
+       descenders: give them the room back outside the box. */
+    .replayer-fullbleed .replayer-commentary-line { padding-bottom: 0.3em; margin-bottom: -0.3em; }
+    /* Hand strength, 3r: label and figure on the 2r line, the bar 1..2r. */
+    .replayer-fullbleed .replayer-hand-strength {
+      height: calc(var(--subrow) * 3); align-items: flex-start;
+      padding: 0 calc(var(--gu) * 2); border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .replayer-fullbleed .replayer-hand-strength-label,
+    .replayer-fullbleed .replayer-hand-strength-pct {
+      line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-fullbleed .replayer-hand-strength-pct { min-width: calc(var(--gu) * 3); }
+    .replayer-fullbleed .replayer-hand-strength-bar { height: var(--subrow); margin-top: var(--subrow); }
+    /* Pot odds, 3r, full width; icon on the text line (0..2r). */
+    .replayer-fullbleed .replayer-pot-odds {
+      display: flex; justify-content: center; align-items: flex-start;
+      height: calc(var(--subrow) * 3);
+      padding: 0 calc(var(--gu) * 2); border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) rgba(59,130,246,0.25);
+      line-height: calc(var(--subrow) * 2);
+    }
+    .replayer-fullbleed .replayer-pot-odds svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+
+    /* Table-settings button: 4g x 5r, x 32..36, 1r under the column top —
+       over the stadium's empty top-right corner. Glyph 3r, 1r in. */
+    .replayer-quick-btn {
+      position: absolute; z-index: var(--z-raised);
+      top: calc(var(--rp-top, var(--sa-t)) + var(--subrow)); right: var(--gu);
+      width: calc(var(--gu) * 4); height: calc(var(--subrow) * 5);
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; border: 0; border-radius: var(--radius-sm);
+      background: rgba(0,0,0,0.35); color: var(--text-muted); cursor: pointer;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      --icon-size: calc(var(--subrow) * 3);
+    }
+    .replayer-quick-btn.is-open { color: var(--text); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); background: var(--brand-tint); }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-quick-btn:hover { color: var(--text); }
+    }
+    .replayer-quick-btn:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--subrow) * 0.25); }
+
+    /* The dropdown: 17g (x 19..36 under a 32..36 button), 1r under the
+       button, 1g x 1r padding, so the controls run 20..35g. */
+    .replayer-quick-settings {
+      position: fixed; z-index: calc(var(--z-modal) + 10);
+      width: calc(var(--gu) * 17); box-sizing: border-box;
+      padding: var(--subrow) var(--gu);
+      display: flex; flex-direction: column;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--elev-3), inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .replayer-quick-settings .rs-note { color: var(--text-muted); }
+
+    /* Controls shared by the dropdown and the sheet. */
+    /* Swatches: 3g cells, 3r rows, 1r between rows; the circle is 3r
+       (2.13g) centred in its cell. Was a 3.5r circle on a 0.5r flex gap. */
+    .replayer-settings-swatches {
+      display: grid; grid-template-columns: repeat(auto-fill, calc(var(--gu) * 3));
+      grid-auto-rows: calc(var(--subrow) * 3); row-gap: var(--subrow); column-gap: 0;
+      margin-top: var(--subrow); width: 100%;
+    }
+    .replayer-settings-swatches .rs-swatch-cell { display: flex; justify-content: center; }
+    .replayer-settings-swatches .felt-color-swatch,
+    .replayer-settings-swatches .felt-color-custom {
+      width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
+      border: 0; box-sizing: border-box;
+    }
+    .replayer-settings-swatches .felt-color-custom { box-shadow: var(--elev-1), inset 0 0 0 calc(var(--subrow) * 0.25) var(--border); }
+    .replayer-settings-swatches.is-disabled { opacity: var(--state-disabled); }
+    .replayer-settings-swatches.is-disabled .felt-color-swatch { cursor: default; }
+    /* Toggle rows: the label's 2r line, a 2r gloss line per wrapped line, and
+       a 3g x 2r switch level with the label. In the dropdown a row is 4r with
+       the label 3r down and the switch at 1..3r. */
+    .replayer-settings-toggle {
+      width: calc(var(--gu) * 3); height: calc(var(--subrow) * 2);
+    }
+    .replayer-settings-toggle::after {
+      width: calc(var(--subrow) * 1.5); height: calc(var(--subrow) * 1.5);
+    }
+    .replayer-settings-toggle.on::after { transform: translateX(calc(var(--gu) * 3 - var(--subrow) * 2)); }
+    .replayer-quick-settings .replayer-settings-row {
+      height: calc(var(--subrow) * 4); margin: 0;
+      align-items: flex-start;
+    }
+    .replayer-quick-settings .replayer-settings-row .rs-t { padding-top: calc(var(--subrow) * 3 - 1cap); }
+    .replayer-quick-settings .replayer-settings-toggle { margin-top: var(--subrow); }
+    .replayer-quick-settings .rs-note { margin-top: 0; }
+    /* Splay amount row, 4r: 12g slider + 3g figure = 15g. The track is 1r at
+       2..3r — centred on the figure's caps (1.95..3r). */
+    .rs-splay {
+      display: grid; grid-template-columns: 1fr calc(var(--gu) * 3);
+      height: calc(var(--subrow) * 4); align-items: start;
+    }
+    .rs-splay .rs-splay-slider { height: var(--subrow); margin: calc(var(--subrow) * 2) 0 0; width: 100%; }
+    .rs-splay .rs-splay-pct {
+      text-align: right; font-family: var(--font-condensed);
+      font-variant-numeric: var(--num-tabular); font-size: var(--fs-xs); color: var(--text-muted);
+    }
+    .rs-splay .rs-splay-pct .rs-t { padding-top: calc(var(--subrow) * 3 - 1cap); }
+    /* In the sheet: 6g preview | 1g | slider | 3g figure | 1g | 5g Reset, 5r. */
+    .rs-splay.has-preview {
+      grid-template-columns: calc(var(--gu) * 6) 1fr calc(var(--gu) * 3) calc(var(--gu) * 5);
+      column-gap: 0; height: calc(var(--subrow) * 5); margin-top: var(--subrow);
+    }
+    .rs-splay.has-preview .rs-splay-slider { margin-left: var(--gu); margin-right: 0; width: calc(100% - var(--gu)); }
+    .rs-splay.has-preview .rs-splay-reset {
+      margin-left: var(--gu); height: calc(var(--subrow) * 5); box-sizing: border-box;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 0 0 calc(var(--subrow) * 2); border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      font-size: var(--fs-sm);
+    }
+
+    /* The full sheet. 1g sides, so the content runs 1..36g; bottom pad
+       carries the inset and the sub-r remainder so the sheet's TOP is whole r
+       whether it is content-high or at its cap. */
+    .replayer-settings-panel {
+      padding: calc(var(--subrow) * 2) var(--gu) calc(var(--subrow) * 4 + var(--sa-b));
+    }
+    @supports (padding-top: mod(1dvh, 1dvh)) and (padding-top: round(up, 1dvh, 1dvh)) {
+      .replayer-settings-panel {
+        max-height: calc(100dvh - round(up, 15dvh, var(--subrow)));
+        padding-bottom: calc(var(--subrow) * 4 + var(--sa-b) + mod(100dvh - var(--sa-b), var(--subrow)));
+      }
+    }
+    .replayer-settings-header {
+      height: calc(var(--subrow) * 4); margin-bottom: calc(var(--subrow) * 2);
+      align-items: flex-start;
+    }
+    .replayer-settings-header .rs-t { padding-top: calc(var(--subrow) * 3 - 1cap); }
+    .replayer-settings-close {
+      width: calc(var(--gu) * 4); height: calc(var(--subrow) * 4); padding: 0;
+      margin-right: calc(var(--gu) * -1);
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .replayer-settings-group {
+      margin-bottom: calc(var(--subrow) * 2); padding-bottom: var(--subrow);
+      border-bottom: 0; box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+    }
+    .replayer-settings-group:last-child { box-shadow: none; }
+    .replayer-settings-group-title { margin-bottom: var(--subrow); }
+    .replayer-settings-fold > summary { display: flex; }
+    .replayer-settings-fold > summary::after { align-self: center; }
+    .replayer-settings-row { align-items: flex-start; margin-bottom: var(--subrow); gap: var(--gu); }
+    .replayer-settings-row .rs-text { min-width: 0; }
+    .replayer-settings-row.is-stacked { gap: 0; }
+    /* Label --fs-sm and gloss --fs-xs: the gloss was --fs-2xs in sentence
+       case, and the scale keeps --fs-2xs for capitals. */
+    .replayer-settings-label { font-size: var(--fs-sm); }
+    .replayer-settings-sublabel { font-size: var(--fs-xs); }
+    .replayer-settings-pills { gap: 0; }
+    /* Thumbnails: 8g x 7r (an 8g x 5r felt, a 2r caption) on the four
+       primary columns, 4 x 8 + 3 x 1 = 35g. At 5g the longest caption
+       ("Black Diamond", "Casino Royale") ran into its neighbour. Caption in
+       --fs-xs sentence case; it was --fs-2xs, which is for capitals. */
+    .replayer-settings-row.is-stacked > .replayer-settings-pills:not(.is-text) {
+      display: grid; grid-template-columns: repeat(auto-fill, calc(var(--gu) * 8));
+      column-gap: var(--gu); row-gap: var(--subrow); width: 100%; margin-top: var(--subrow);
+    }
+    .replayer-settings-thumb { width: calc(var(--gu) * 8); gap: 0; }
+    .replayer-settings-thumb .thumb-felt,
+    .replayer-settings-thumb .thumb-back { width: calc(var(--gu) * 8); height: calc(var(--subrow) * 5); }
+    .replayer-settings-thumb .thumb-label { line-height: normal; font-size: var(--fs-xs); white-space: nowrap; }
+    /* Text pills: 8g x 3r in the first two primary columns (1..9, 10..18);
+       caps 0.95..2r of 3r. */
+    .replayer-settings-pills.is-text {
+      display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 8));
+      column-gap: var(--gu); margin-top: var(--subrow);
+    }
+    .replayer-settings-pill {
+      height: calc(var(--subrow) * 3); box-sizing: border-box;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 0 0 var(--subrow); border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      font-size: var(--fs-xs); text-align: center;
+    }
+    .replayer-settings-pill.active { box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); }
+
+    /* Share sheet (the replay's own, .replayer-share-sheet): same edge rules
+       as the settings sheet; two 17g tiles with a 1g gutter (1..18, 19..36). */
+    .share-menu-panel.replayer-share-sheet {
+      padding: calc(var(--subrow) * 2) var(--gu) calc(var(--subrow) * 4 + var(--sa-b));
+    }
+    @supports (padding-top: mod(1dvh, 1dvh)) and (padding-top: round(up, 1dvh, 1dvh)) {
+      .share-menu-panel.replayer-share-sheet {
+        max-height: calc(100dvh - round(up, 30dvh, var(--subrow)));
+        padding-bottom: calc(var(--subrow) * 4 + var(--sa-b) + mod(100dvh - var(--sa-b), var(--subrow)));
+      }
+    }
+    .share-menu-panel.replayer-share-sheet h3 {
+      margin: 0 0 calc(var(--subrow) * 2);
+      line-height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .replayer-share-sheet .share-menu-grid {
+      grid-template-columns: repeat(2, calc(var(--gu) * 17));
+      column-gap: var(--gu); row-gap: var(--subrow);
+    }
+    /* A tile: 2r pad, 4r preview, 1r, the 2r label line, a 2r line per line
+       of description, 1r pad. */
+    .replayer-share-sheet .share-menu-item {
+      gap: 0; padding: calc(var(--subrow) * 2) var(--gu) var(--subrow);
+      border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+    }
+    /* 5g x 4r, centred in a 17g tile: 6g in, so x 7..12 and 25..30. The
+       story preview keeps its 9:16 phone as a centred painted panel inside
+       the same box, so the box stays on the lines. */
+    .replayer-share-sheet .export-preview {
+      width: calc(var(--gu) * 5); height: calc(var(--subrow) * 4); margin: 0 auto var(--subrow);
+    }
+    .replayer-share-sheet .export-preview.is-story {
+      width: calc(var(--gu) * 5);
+      background: linear-gradient(180deg, #3a2f5c, #171226) center / calc(var(--subrow) * 2.25) 100% no-repeat;
+      box-shadow: none;
+    }
+    .replayer-share-sheet .export-preview.is-link { border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    .share-menu-panel.replayer-share-sheet .share-label,
+    .share-menu-panel.replayer-share-sheet .share-desc {
+      display: block; width: 100%;
+      line-height: calc(var(--subrow) * 2); padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .share-menu-panel.replayer-share-sheet .share-desc { font-size: var(--fs-xs); }
 
     /* ── Theme: Casino Royale ── */
     .replayer-table.theme-casino-royale .replayer-table-felt {
@@ -8220,26 +9364,42 @@
       text-align: left; padding: var(--space-md) 0 0;
     }
     .dashboard-section .empty-state svg { grid-column: 1 / -1; margin: 0; justify-self: start; width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3); }
-    /* iOS WebKit floors each text LINE to a whole px, so whole-r line-heights lose
-       a fraction per line and the error compounds down the page. min-height in r
-       is sub-px exact (verified on-device), so it holds the block on the grid while
-       the floored lines float inside; text-box-trim + justify-content:end seats the
-       glyph baseline on the block's bottom r-line. */
+    /* 2026-09-30: the h3/p were display:flex, where text-box-trim is inert, so
+       the "seat" was min-height alone and the baselines floated (p +0.02..+0.55r
+       per line). Now each is a trimmed BLOCK: the trimmed box runs cap..last
+       baseline = (n-1) x line-height + 1cap, and padding-top (line-height - 1cap)
+       brings it to exactly n x line-height with every baseline on an r-line
+       (h3 on 3r lines, p on 2r lines) — any number of wrapped lines. */
     .dashboard-section .empty-state h3 {
       grid-column: 1 / -1; margin: 0;
-      min-height: calc(var(--subrow) * 3);
-      display: flex; flex-direction: column; justify-content: flex-end;
+      display: block;
       line-height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .dashboard-section .empty-state p {
       grid-column: 1 / 4; max-width: none; margin: 0;
-      min-height: calc(var(--subrow) * 4);
-      display: flex; flex-direction: column; justify-content: flex-end;
+      display: block;
       line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    .dashboard-section .empty-state-action { grid-column: 1 / 3; align-self: start; width: 100%; margin: 0; }
+    /* CTA: 5r x 17g (cols 1-2, 1-18g). Label on +3r: cap ~1.1r -> 1.9r above,
+       2r below — the odd height is what centres a ~1r cap with its baseline on a
+       line. Border as inset shadow so it takes no space inside the fixed height. */
+    .dashboard-section .empty-state-action {
+      grid-column: 1 / 3; align-self: start; width: 100%; margin: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      height: calc(var(--subrow) * 5); min-height: 0; box-sizing: border-box;
+      padding: 0; border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--brand);
+    }
+    .dashboard-section .empty-state-action-label {
+      display: block;
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
     /* Secondary ways out of a filter sit quiet — only one action should pull. */
     .empty-state-action-quiet {
       background: transparent; color: var(--text-muted); border-color: var(--border);
@@ -8306,21 +9466,41 @@
        middle auto-sized column) regardless of the left/right cell
        widths. */
     .cal-bottom-row {
-      /* Grid: [today icon] [centered events count] [filter btn].
-         1fr center column keeps the count text centered between the
-         end icons. */
+      /* Grid: [today 4g] 2g [count 1fr] 2g [filter 4g], one 4r row (r23-r27 from
+         the bar). 4 + 2 + 23 + 2 + 4 = 35g, so with no active-filter chips the count
+         cell is 7g-30g - both valid lines, centred on 18.5g like the month row. The
+         1r above is the date strip's own bottom padding, so no margin here. */
       display: grid;
-      grid-template-columns: auto 1fr auto;
-      align-items: center;
-      gap: var(--space-md);
-      margin-top: var(--space-md);
+      grid-template-columns: calc(var(--gu) * 4) 1fr auto;
+      column-gap: calc(var(--gu) * 2);
+      align-items: start;
+      height: calc(var(--subrow) * 4);
+      margin: 0;
     }
-    .cal-event-count-inline {
-      font-size: var(--fs-sm);
+    /* The count is a 4r cell with its baseline on the cell's r3 (1r above its
+       bottom): the trimmed text child is bottom-aligned over a 1r pad. Scoped
+       under the row so it outranks .cal-event-count's margin further down. */
+    .cal-bottom-row > .cal-event-count-inline {
+      font-size: var(--fs-xs);
       color: var(--text-muted);
       white-space: nowrap;
       margin: 0;
-      justify-self: center;
+      justify-self: stretch;
+      min-width: 0;
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      padding-bottom: var(--subrow);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .cal-event-count-text {
+      display: block;
+      min-width: 0;
+      line-height: 1;
+      overflow-x: clip;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-bottom-row > .cal-today-btn { justify-self: center; }
     .cal-today-btn {
@@ -8353,57 +9533,65 @@
        The center button is wider (it carries the full label) while
        the side buttons are slim, slightly muted, and indicate the
        previous / next adjacent month. */
-    /* Calendar tab: trim the sticky-filters top padding so the month
-       row sits closer to the page header. Schedule tab keeps its
-       larger padding (its first sticky child is the search bar which
-       wants more headroom). */
-    [data-tab="calendar"] .sticky-filters { padding-top: var(--space-lg); }
-    @media (min-width: 640px) {
-      [data-tab="calendar"] .sticky-filters { padding-top: var(--space-xl); }
-    }
-    @media (min-width: 1024px) {
-      [data-tab="calendar"] .sticky-filters { padding-top: var(--space-2xl); }
-    }
+    /* Calendar header block, on the grid (r from the .top-bar top, g from the
+       screen's left edge; the block is the shared .sticky-filters, 2r pad top and
+       bottom, 1g sides, so its content spans 1g-36g):
+         8r   block top (content-area top = --header-h)
+         10r  month row, 4r            -> r10-r14, month labels on r13
+         14r  date strip, 1r+7r+1r     -> buttons r15-r22 (dow r17, dom r20, density r21)
+         23r  bottom row, 4r           -> r23-r27, count on r26
+         29r  block bottom; the list's 1r top pad puts the first card on r30.
+       Borders are inset box-shadows (--cal-ring) so they neither add size nor
+       push a text track off its r-line. */
 
     .cal-month-row {
-      /* 3-column grid: [list-view icon] [centered prev/current/next]
-         [date-picker grid icon]. Symmetric end caps keep the three
-         month buttons visually centered. */
+      /* [picker 4g] 2g [prev 3g | 2g | current 13g | 2g | next 3g] 2g [list 4g]
+         = 4+2+23+2+4 = 35g, so every edge is a valid line: 1|5, 7|10, 12|25,
+         27|30, 32|36. The side buttons get 3g because 6g and 11g are not lines:
+         between the 5g picker edge and the 12g current edge the only whole
+         button on valid lines with a gap either side is 7g-10g. 3g still holds
+         the widest short month (MAR, 2.56g incl. its trailing track). */
       display: grid;
-      grid-template-columns: auto 1fr auto;
-      align-items: center;
-      gap: var(--space-sm);
-      margin: 0 0 var(--space-sm);
+      grid-template-columns: calc(var(--gu) * 4) 1fr calc(var(--gu) * 4);
+      column-gap: calc(var(--gu) * 2);
+      height: calc(var(--subrow) * 4);
+      margin: 0;
       overflow: hidden;
       animation: cal-month-row-slide 280ms ease-out;
     }
 
     .cal-month-row-buttons {
-      display: flex;
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 3) calc(var(--gu) * 13) calc(var(--gu) * 3);
+      column-gap: calc(var(--gu) * 2);
       justify-content: center;
-      align-items: center;
-      gap: var(--space-sm);
+      height: calc(var(--subrow) * 4);
     }
 
-    /* Calendar-icon date picker — pinned to the far left of the month
-       row. Square, hosts the hidden <input type="date"> that drives
-       the native picker. */
+    /* Square icon buttons (date picker + list in the month row, Today in the
+       bottom row): 4g x 4r, so they sit 1g-5g / 32g-36g, both edges on lines,
+       matching the Schedule toolbar's 4g filter button. The picker hosts the
+       hidden <input type="date"> that drives the native picker. */
     .cal-month-icon-btn {
+      --cal-ring: var(--border);
       position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: calc(var(--subrow) * 4);
+      width: calc(var(--gu) * 4);
       height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      padding: 0;
       border-radius: var(--radius-sm);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--cal-ring);
       background: var(--surface);
       color: var(--text);
       cursor: pointer;
       flex-shrink: 0;
     }
     @media (hover: hover) and (pointer: fine) {
-      .cal-month-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+      .cal-month-icon-btn:hover { --cal-ring: var(--accent); color: var(--accent); }
     }
     .cal-month-icon-btn:disabled {
       opacity: var(--state-disabled);
@@ -8411,7 +9599,7 @@
     }
     @media (hover: hover) and (pointer: fine) {
       .cal-month-icon-btn:disabled:hover {
-        border-color: var(--border);
+        --cal-ring: var(--border);
         color: var(--text);
       }
     }
@@ -8425,26 +9613,41 @@
        the months are being scrolled horizontally with the carousel. */
     .cal-month-row[data-direction="next"] { animation-name: cal-month-row-slide-from-right; }
     .cal-month-row[data-direction="prev"] { animation-name: cal-month-row-slide-from-left; }
+    /* Month buttons fill their 3g/13g grid cells, 4r tall. The label is a
+       trimmed block (cap top to baseline) bottom-aligned over a 1r pad, so its
+       baseline is the button's r3 - r13 from the bar. text-indent balances the
+       trailing letter-spacing so the caps centre on the cell. */
     .cal-month-btn {
-      display: inline-flex;
-      align-items: center;
+      --cal-ring: var(--border);
+      display: flex;
+      align-items: flex-end;
       justify-content: center;
-      padding: var(--space-xs) var(--space-lg);
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      min-width: 0;
       font-family: var(--font-condensed);
       font-size: var(--fs-xs);
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps-lg);
       text-transform: uppercase;
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--cal-ring);
       border-radius: var(--radius-sm);
       cursor: pointer;
       white-space: nowrap;
       color: var(--text);
     }
+    .cal-month-label {
+      display: block;
+      line-height: 1;
+      text-indent: var(--track-caps-lg);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
     .cal-month-btn-side {
       color: var(--text-muted);
-      flex: 0 0 auto;
     }
     .cal-month-btn-side.muted {
       opacity: 0.55;
@@ -8456,12 +9659,11 @@
     @media (hover: hover) and (pointer: fine) {
       .cal-month-btn-side:not(:disabled):hover {
         color: var(--text);
-        border-color: var(--accent);
+        --cal-ring: var(--accent);
       }
     }
     .cal-month-btn-current {
-      flex: 0 0 auto;
-      border-color: var(--accent);
+      --cal-ring: var(--accent);
       color: var(--text);
       cursor: default;
     }
@@ -8478,48 +9680,67 @@
       100% { transform: translateX(0);   opacity: 1; }
     }
 
+    /* The strip is 35g wide (1g-36g) and 9r tall: 1r pad, the 7r buttons, 1r
+       pad - the pads ARE the 1r gaps to the month row above and the bottom row
+       below, and give the active button's bounce room before the clip.
+       Buttons are 5g wide on a 6g pitch (1g gap): 6 x 5 + 5 x 1 = 35g exactly,
+       so the six visible buttons run 1-6, 7-12, 13-18, 19-24, 25-30, 31-36 and
+       the strip starts AND ends on a valid line. (A regular pitch cannot keep
+       every edge on a line - the lines repeat on the 9g column period, which
+       would allow one 8g button per column, 4 dates. 7 x 4g + 6 x 1g = 34g ends
+       on 35g, not a line.) The strip rests only on multiples of the 6g pitch:
+       mandatory snap to each button's start for swipes, and the scroll-to-date
+       in CalendarView scrolls to k x pitch. Max scroll = (N x 6 - 1 - 35)g =
+       (N - 6) x 6g, itself a pitch multiple, so the far end rests on the grid too. */
     .cal-date-strip {
       display: flex;
-      gap: var(--space-sm);
+      column-gap: var(--gu);
       overflow-x: auto;
-      padding-bottom: var(--space-sm);
-      margin-bottom: var(--space-md);
+      overflow-y: hidden;
+      height: calc(var(--subrow) * 9);
+      box-sizing: border-box;
+      padding: var(--subrow) 0;
+      margin: 0;
+      scroll-snap-type: x mandatory;
+      scroll-padding: 0;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
     }
 
     .cal-date-strip::-webkit-scrollbar { display: none; }
 
-    /* Each date button: exactly 1/7th of the visible strip width so
-       seven full date boxes always fit between the list button (left)
-       and date-picker grid (right). Width is computed from the
-       viewport minus .content-area + .sticky-filters horizontal
-       padding so it stays accurate at every breakpoint.
-         small  (<640px):  pad 12 each side = 24, plus 6 gaps × 6 = 36 → -60
-         medium (≥640px):  pad 20 each side = 40                       → -76
-         large  (≥1024px): pad 32 each side = 64                       → -100 */
+    /* Each date button: 5g x 7r, three whole-r tracks bottom-aligned -
+       dow in r0-r2 (baseline r2), dom in r2-r5 (baseline r5), the density cell
+       r5-r6 (stroke on r6), then a 1r bottom pad. Dow cap top is r0.96 and the
+       stroke's bottom r6, so the content has ~1r above and exactly 1r below. */
     .cal-date-btn {
-      flex: 0 0 calc((100vw - calc(var(--subrow) * 7.5)) / 7);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--space-ml) var(--space-ml);
+      --cal-ring: var(--border);
+      flex: 0 0 calc(var(--gu) * 5);
+      height: calc(var(--subrow) * 7);
+      display: grid;
+      grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3) var(--subrow) var(--subrow);
+      justify-items: center;
+      align-items: end;
+      padding: 0;
       border-radius: var(--radius-sm);
       background: var(--surface);
-      border: var(--bw-1) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--cal-ring);
       cursor: pointer;
       box-sizing: border-box;
       min-width: 0;
-      transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+      scroll-snap-align: start;
+      /* The whole-px scroll remainder, set by CalendarView when the strip rests
+         (see --cal-strip-fix there); `translate`, not transform, so it composes
+         with the active date's bounce. */
+      translate: var(--cal-strip-fix, 0) 0;
+      transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     }
-    @media (min-width: 640px) {
-      .cal-date-btn { flex-basis: calc((100vw - calc(var(--subrow) * 9.5)) / 7); }
-    }
-    @media (min-width: 1024px) {
-      .cal-date-btn { flex-basis: calc((100vw - calc(var(--subrow) * 12.5)) / 7); }
-    }
+    .cal-date-btn > .dow { grid-row: 1; }
+    .cal-date-btn > .dom { grid-row: 2; }
+    .cal-date-btn > .cal-date-density { grid-row: 3; }
 
-    .cal-date-btn.active { background: var(--brand); border-color: var(--brand); animation: date-bounce var(--dur-slow) var(--ease-spring) both; }
+    .cal-date-btn.active { background: var(--brand); --cal-ring: var(--brand); animation: date-bounce var(--dur-slow) var(--ease-spring) both; }
 
     @keyframes date-bounce {
       0%   { transform: scale(0.85); }
@@ -8527,22 +9748,28 @@
       100% { transform: scale(1); }
     }
     .cal-date-btn .dow {
+      display: block;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
+      text-indent: var(--track-caps);
       color: var(--text-muted);
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .cal-date-btn.active .dow { color: var(--on-brand); }
 
     .cal-date-btn .dom {
+      display: block;
       font-family: var(--font-condensed);
       font-size: var(--fs-lg);
       font-weight: var(--fw-bold);
       color: var(--text);
-      line-height: 1.2;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .cal-date-btn.active .dom { color: var(--bg-contrast); }
@@ -8593,6 +9820,16 @@
     /* Calendar tab headers ("My Events" / "All Events"): content-sized at 3.403r + 1.25r, they
        left every card under them 0.39r off the grid. */
     .cal-list-section-header { height: calc(var(--subrow) * 4); margin-bottom: var(--subrow); box-sizing: border-box; }
+    /* ...and their text was centred, which put "My Events" on r2.83 and its count on
+       r2.65 of the 4r header. Bottom-align trimmed blocks over a 1r pad: both
+       baselines land on the header's r3. */
+    .cal-list-section-header { align-items: flex-end; padding-bottom: var(--subrow); }
+    .cal-list-section-header > * {
+      display: block;
+      margin: 0;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
 
     .schedule-sticky-header {
       position: sticky;
@@ -8881,7 +10118,7 @@
     }
     .cp-title > span, .cp-eyebrow > span, .cp-help > span, .cp-remove > span,
     .cp-check-row > span, .cp-toggle-text, .cp-btn > span,
-    .condition-sat-item > span, .admin-strip-color span, .admin-edit-note > span {
+    .condition-sat-item > span, .admin-strip-color span, .admin-edit-note span {
       display: block;
       line-height: 1;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
@@ -8993,9 +10230,15 @@
     .condition-sat-item {
       flex: 0 0 calc(var(--subrow) * 3);
       box-sizing: border-box;
-      display: flex;
-      align-items: flex-end;
-      gap: var(--gu);
+      /* Fixed columns: a 9g lead (the widest, a time, measured 7.97g), the name, the price. With
+         the lead sizing itself the name column started at 16.24-16.97g, ragged row to row. */
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 9) minmax(0, 1fr) auto;
+      /* align-content moves the (content-sized) row track to the bottom of the 2r content box;
+         align-items alone only aligns inside that track, which left the text at the top. */
+      align-content: end;
+      align-items: end;
+      column-gap: var(--gu);
       padding: 0 var(--gu) var(--subrow);
       box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius-sm);
@@ -9012,6 +10255,14 @@
     .cp-item-lead { flex-shrink: 0; font-weight: var(--fw-bold); color: var(--text-muted); }
     .cp-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cp-item-price { flex-shrink: 0; color: var(--text-muted); }
+    /* Trimmed text in an overflow:hidden box loses everything under its baseline ("Triple"
+       read "Triole"). Grow the clip box by 0.3em each way and cancel it with a matching
+       negative margin, so the descenders show and the seated baseline does not move. */
+    .cp-item-lead, .cp-item-name, .cp-item-price, .cp-help > span, .admin-edit-note span,
+    .admin-edit-panel .cal-detail-value {
+      padding-block: 0.3em;
+      margin-block: -0.3em;
+    }
     /* Inputs: 5r like the buttons. */
     .condition-search {
       height: calc(var(--subrow) * 5);
@@ -9026,6 +10277,9 @@
       font-family: var(--font-condensed);
       font-size: var(--fs-sm);
       width: 100%;
+      /* Baseline 3r from the top: WebKit centres the line (ascent 13 + descent 3 at 13px), which
+         put it at 3.148r; shortening the content box by ascent - descent - 1r moves it up to 3r. */
+      padding-bottom: calc(0.769em - var(--subrow));
     }
     .condition-search:focus { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); outline: none; }
     /* Admin edit panel: an inset-bordered box, 2r padding top and bottom, 1g at the sides
@@ -9040,8 +10294,13 @@
       gap: var(--subrow);
     }
     .admin-edit-title > span { color: var(--accent); }
-    .admin-edit-note { display: flex; flex-direction: column; gap: var(--subrow); }
-    .admin-edit-note > span { font-size: var(--fs-xs); color: var(--text-muted); padding-top: var(--subrow); }
+    /* Four short lines, each a 2r cell with its baseline on the bottom (a wrapping paragraph
+       broke at arbitrary widths and left everything below it 0.4r off the grid). */
+    .admin-edit-note { display: flex; flex-direction: column; }
+    .admin-edit-note > div { height: calc(var(--subrow) * 2); display: flex; align-items: flex-end; }
+    .admin-edit-note span { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* A locked (feed-owned) value is one line; a long venue wrapped onto its own label. */
+    .admin-edit-panel .cal-detail-value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .admin-strip-color { display: grid; grid-template-columns: 1fr calc(var(--gu) * 3); column-gap: var(--gu); height: calc(var(--subrow) * 3); align-items: end; }
     .admin-strip-color span { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
     .admin-strip-swatch {
@@ -10169,6 +11428,42 @@
     .dashboard-section .table-scanner > button {
       margin-bottom: 0;
     }
+    /* Idle upload button, 2026-09-30: was inline px/bare-multiplier styles with a
+       centred label (baseline +3.08r). Now 5r x 35g (1-36g), border an inset
+       shadow, label --fs-sm trimmed with its baseline on +3r (cap 1.13r ->
+       1.87r above, 2r below), icon a 3r box on +1r..+4r. */
+    .dashboard-section .table-scanner-upload {
+      display: flex; align-items: flex-start; justify-content: center;
+      gap: var(--space-sm);
+      width: 100%;
+      height: calc(var(--subrow) * 5); min-height: 0;
+      box-sizing: border-box;
+      padding: 0 var(--gu);
+      background: none;
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--accent);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--accent);
+      font: inherit;
+      font-size: var(--fs-sm);
+      line-height: normal;
+      text-box-trim: none;
+    }
+    .dashboard-section .table-scanner-upload > svg {
+      flex: 0 0 auto;
+      width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
+      margin-top: var(--subrow);
+    }
+    .dashboard-section .table-scanner-upload-label {
+      display: block;
+      min-width: 0;
+      padding: calc(var(--subrow) * 3 - 1cap) 0 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
 
     .dashboard-section-header {
       display: flex;
@@ -10211,23 +11506,59 @@
       padding: 0 var(--space-md);
       border-radius: var(--radius);
     }
+    /* Dashboard section titles share the header's +2r baseline with the 3r pills
+       and controls beside them (they sat on +3r, a whole r below the pill text):
+       trimmed block, padding-top 2r - 1cap, top-aligned in the 3r header. */
+    .dashboard-view .dashboard-section-header > .dashboard-section-title {
+      align-self: flex-start;
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      white-space: nowrap;
+    }
+    /* Dashboard header pill, 2026-09-30 regrid. A 2r pill centred its text (baseline
+       at +1.45r, off-grid) and hugged the text (x 32.59g). Now a header-high 3r x 4g
+       block (6g --wide) on the 32/30g lines, caps micro-label (--fs-2xs is caps-only),
+       trimmed to cap..alphabetic with padding-top 2r - 1cap, so the baseline sits on
+       +2r: cap 0.94r -> 1.06r above, 1r below = centred. */
+    .dashboard-view .dashboard-section-badge {
+      display: block;
+      flex: 0 0 auto;
+      width: calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 3);
+      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2 - 1cap) 0 0;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-radius: var(--radius);
+    }
+    .dashboard-view .dashboard-section-badge.dashboard-section-badge--wide { width: calc(var(--gu) * 6); }
 
     /* What's Next event cards */
     .dash-event-card {
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      /* The outline is an INSET RING, not a border, so it adds no size. A real
+         border is snapped to device pixels (the 0.25r playing border rendered
+         1.667px, not 1.929, at @3x) while the padding that compensated for it
+         used the unsnapped width — content landed at 3.06g and the playing card
+         came to 31.92r. With no border the padding IS the geometry:
+         4r top (3r venue strip + 1r gap), 2g sides (content 3g..34g on a 1g..36g
+         card), 2r bottom — every card is a whole r. */
+      border: 0;
       border-radius: var(--radius);
-      /* Top padding clears the venue bar; sides stay symmetrical so the
-         conditional variant's negative margins cancel exactly. */
-      /* Horizontal padding = 2g LESS the border. The border sits inside the
-         border-box, so a flat 2g put content at 3.14g (border + 2g); subtracting
-         the hairline lands the content edges exactly on 3g and 34g. (Was space-xl
-         ≈ 1.47g, which started every child at the off-grid 2.55g.) */
-      padding: calc(var(--subrow) * 3.5) calc(var(--gu) * 2 - var(--bw-hair)) calc(var(--subrow) * 1.75);
+      padding: calc(var(--subrow) * 4) calc(var(--gu) * 2) calc(var(--subrow) * 2);
       display: flex;
       flex-direction: column;
       gap: var(--space-md); /* 1 subrow — was 6px, off-grid */
-      box-shadow: var(--elev-1);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
       transition: background var(--dur-snap) var(--ease-out),
                   box-shadow var(--dur-snap) var(--ease-out);
       position: relative;
@@ -10260,46 +11591,26 @@
     }
 
     /* The hero states get a taller band and more tracking — this is the card
-       someone is actually looking at. */
+       someone is actually looking at. 3r band, the name's BASELINE seated on
+       its 2r line: the text is a trimmed .dash-t (cap..baseline) bottom-aligned
+       over 1r of padding. Centred would be (3 + cap 1.037r) / 2 = 2.02r, so the
+       seated baseline is also the optically centred one. The card has no border
+       now (inset ring), so the band sits at 0/0/0 on the card box in every state. */
     .dash-event-card.playing .dash-venue-strip,
     .dash-event-card.next-up .dash-venue-strip,
     .dash-event-card.manually-expanded .dash-venue-strip {
-      height: calc(var(--subrow) * 3); /* 3 subrows — was 22px */
+      height: calc(var(--subrow) * 3);
+      box-sizing: border-box;
+      align-items: flex-end;
+      padding: 0 var(--space-lg) var(--subrow);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps-lg);
-    }
-    /* Pull the strip out over the card border so its top edge sits on the grid
-       line (the card box top) instead of being pushed down by the border, and
-       its side edges reach the card's own g-line edges. Offset = border width,
-       which differs by state (playing is 2px, the others 1px). */
-    .dash-event-card.playing .dash-venue-strip {
-      top: calc(var(--subrow) * -0.25); left: calc(var(--subrow) * -0.25); right: calc(var(--subrow) * -0.25);
-    }
-    .dash-event-card.next-up .dash-venue-strip,
-    .dash-event-card.manually-expanded .dash-venue-strip {
-      top: calc(var(--subrow) * -0.125); left: calc(var(--subrow) * -0.125); right: calc(var(--subrow) * -0.125);
     }
 
     .dash-event-card.playing,
     .dash-event-card.next-up,
     .dash-event-card.manually-expanded {
-      /* 32px reserved above the content (24px strip + 8px gap = 4 subrows),
-         less the 1px border so the content-top lands on a subrow line. The
-         playing state (2px border) subtracts 2px — see below. */
-      padding-top: calc(var(--space-4xl) - calc(var(--subrow) * 0.125));
-      padding-left: calc(var(--gu) * 2 - var(--bw-hair)); /* matches the base card padding (2g less the border) */
-      box-shadow: var(--elev-2);
-    }
-
-    /* The card box was 17.875r: content-top lands on 4r, content is 12r, but the
-       base 1.75r bottom padding + the 1px (0.125r) bottom border = 1.875r below
-       the content, leaving it 0.125r short of a whole 18r. Bump the bottom
-       padding to 1.875r for the 1px-border states so bottom padding + border =
-       2.0r and the card is a whole 18r. The playing state is excluded: its 2px
-       (0.25r) border already makes 1.75r + 0.25r = 2.0r, so it is whole as-is. */
-    .dash-event-card.next-up,
-    .dash-event-card.manually-expanded {
-      padding-bottom: calc(var(--subrow) * 1.875);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
     }
 
     @media (hover: hover) and (pointer: fine) {
@@ -10426,10 +11737,9 @@
          stripe between the venue strip and card body in dark mode. */
     }
 
+    /* The heavier playing outline, as a 0.25r inset ring (no size — see the base card). */
     .dash-event-card.playing {
-      border-width: calc(var(--subrow) * 0.25);
-      /* 2px border → subtract 2px from the 32px reserve so content stays on grid */
-      padding-top: calc(var(--space-4xl) - calc(var(--subrow) * 0.25));
+      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.25) var(--border), var(--elev-2);
     }
 
     .dash-card-content {
@@ -10437,23 +11747,53 @@
       flex-direction: column;
       gap: var(--space-md); /* 1 subrow — was 6px, off-grid */
     }
+    /* Late-reg bar on the Up Next card, with the Schedule card's anatomy (scoped —
+       .late-reg-* is shared): the bar is a whole 1r directly under the 2r label
+       row, so the block is 1r pad + 2r + 1r = 4r and the bar's top is an r-line.
+       Was a 0.25r margin + 0.75r bar, its top 0.25r off. */
+    .dash-card-content .late-reg-label-row { margin-bottom: 0; }
+    /* "Until Start ——— 44 minutes": the leader rule stands on the labels' shared
+       baseline (the row's 2r line) like a typeset leader, instead of floating at
+       the row's centre (0.93r..1.05r, on no line). */
+    .dash-card-content .late-reg-sep { align-self: flex-end; }
+    .dash-card-content .late-reg-bar-bg { height: var(--subrow); }
+    /* Mini bar (busted / conditional cards): the label is a flex item of the 2r
+       row, bottom-aligned; trimmed it seats its baseline on the row's 2r line
+       (a plain span sat its line box there, baseline 0.53r above). */
+    .dash-card-content .mini-late-reg-label {
+      display: block;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* Conditional-on-playing: no solid outline; a dashed box drawn from the venue
+       band's bottom edge down the card's own sides and bottom. */
     .dash-event-card.conditional {
       opacity: 0.7;
-      border-left: none;
-      border-right: none;
-      border-bottom: none;
+      box-shadow: var(--elev-2);
     }
-    /* Negative margins pull the dashed box out to the card's own edges, so it
-       meets the solid venue bar with no seam. They only cancel because the
-       card's side padding is symmetrical — top is -10px to reach the 18px bar
-       from the 28px padding. */
+    /* The dashed box's geometry is EXACT: margins pull the content box out to the
+       band's bottom (−1r of the 4r top pad: 12r → 15r strip bottom) and the card's
+       edges (−2g sides, −2r bottom), and padding of the same amounts puts the
+       content back exactly where every other card has it (3g..34g, 4r down). The
+       dashes are a positioned ::after, not the box's border, so the (device-
+       snapped) dash width adds nothing to the layout — the old border version
+       came to 22.30 / 24.30 / 12.30r cards. The inline border-color (venue
+       colour) is set on the content box and inherited by the ::after. */
     .dash-event-card.conditional .dash-card-content {
-      border-left: var(--bw-1) dashed var(--border);
-      border-right: var(--bw-1) dashed var(--border);
-      border-bottom: var(--bw-1) dashed var(--border);
+      position: relative;
+      border-color: var(--border);
+      margin: calc(var(--subrow) * -1) calc(var(--gu) * -2) calc(var(--subrow) * -2);
+      padding: var(--subrow) calc(var(--gu) * 2) calc(var(--subrow) * 2);
+    }
+    .dash-event-card.conditional .dash-card-content::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: var(--bw-1) dashed;
+      border-color: inherit;
+      border-top: 0;
       border-radius: 0 0 var(--radius) var(--radius);
-      margin: calc(var(--subrow) * -1.25) calc(var(--subrow) * -2) calc(var(--subrow) * -1.75);
-      padding: var(--space-ml) var(--space-xl) var(--space-xl);
+      pointer-events: none;
     }
 
     .dash-event-card.done {
@@ -10473,11 +11813,31 @@
       opacity: 0.5;
     }
 
+    /* Name | buy-in | ✕ on column lines: title 3g..25g (name/meta 3g..23g + 2g
+       gutter), buy-in 25g..30g (5g, figure right-aligned — "$1,500" is 4.9g; a
+       wider figure grows the track rather than overflow), ✕ 30g..34g with the
+       3r = 2.13g circle right-aligned to 34g. Was flex with 1.5r gaps: buy-in
+       26.39g..30.81g, name to 26.1g, wherever the text widths left them. */
     .dash-event-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--space-lg);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(calc(var(--gu) * 5), max-content) calc(var(--gu) * 4);
+      align-items: start;
+    }
+    .dash-event-title { min-width: 0; padding-right: var(--subcol); }
+    .dash-event-header > .dash-undo-x { justify-self: end; margin-left: 0; }
+    .dash-event-header > .dash-event-buyin { align-items: flex-end; }
+
+    /* Text seat, used inside every label in the Up Next card: a BLOCK trimmed to
+       cap-height..alphabetic-baseline, so its box bottom IS the baseline. Placed
+       at the bottom of a whole-r cell (flex-end), the baseline lands on that
+       cell's r-line by construction. (Trim is inert on a flex/button box itself,
+       which is why each label is a child span.) */
+    .dash-event-card .dash-t {
+      display: block;
+      line-height: 1;
+      white-space: nowrap;
+      text-box-trim: trim-both;
+      text-box-edge: cap alphabetic;
     }
 
     /* Up Next is the one slot in the app with room for the display face to do
@@ -10497,19 +11857,25 @@
     .dash-event-card.manually-expanded .dash-event-name {
       font-size: var(--fs-lg);
       line-height: calc(var(--subrow) * 3); /* 3 subrows per line */
-      /* Seat the alphabetic baseline on the 3r line without a nudge: iOS floors
-         a 3r line box to 23px (0.14px short of the grid), so instead of leaning
-         on line-height, trim the box to cap height and bottom-align it inside a
-         min-height that holds at a whole r (min-height resolves sub-px on iOS;
-         line boxes floor to integer px). The last line's baseline then lands on
-         the grid line whatever the font's own line metrics are. */
+      /* A cell of whole 3r lines (min-height; DashboardView pins it to the
+         rendered line count) with the trimmed text block bottom-aligned in it:
+         the last baseline lands on the cell's bottom r-line and each line above
+         it 3r higher. The trim has to be on the child .dash-t — on this flex
+         box it was inert, which left the baseline at 2.28r of the 3r cell. */
       min-height: calc(var(--subrow) * 3);
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      text-box-trim: trim-both;
-      text-box-edge: cap alphabetic;
     }
+    .dash-event-name .dash-t {
+      line-height: calc(var(--subrow) * 3);
+      white-space: normal;
+    }
+    /* The "- Day 1" / "Flight B" stage line under a hero name. --fs-sm replaces
+       the bare 0.78em (0.78 × --fs-lg 1.6107g = 1.2563g; --fs-sm 1.1965g is the
+       nearest token). line-height 1 keeps its inline box inside the 3r line the
+       name sets, so the line pitch stays exactly 3r. */
+    .dash-event-stage { font-size: var(--fs-sm); line-height: 1; opacity: 0.7; }
     /* A two-line name (base + "- Day 1" stage) is two 3r line boxes. The
        min-height carries to 6r so the bottom-aligned, trimmed box still seats
        its last baseline on the grid — no negative-margin nudge. */
@@ -10529,41 +11895,44 @@
       color: var(--text);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
-      line-height: calc(var(--subrow) * 3); /* match the event name's first line box */
-      /* Same baseline-seating as the hero name: trim to cap + bottom-align in a
-         whole-r min-height, so the figure's baseline lands on the same 3r line
-         as the name instead of floating on a floored line box. */
-      min-height: calc(var(--subrow) * 3);
+      /* A 3r cell with the trimmed figure bottom-aligned: its baseline shares the
+         name's first 3r line (was 2.21r into the cell — the trim sat on this
+         flex box, where it does nothing). */
+      height: calc(var(--subrow) * 3);
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      text-box-trim: trim-both;
-      text-box-edge: cap alphabetic;
     }
 
+    /* Date + time under the name: each pair is a 2r cell, icon and trimmed label
+       bottom-aligned so the label's baseline is the cell's 2r line. The date cell
+       is 6g (3g..9g, widest "Dec 30" pair 3.95g), so the time pair always starts
+       on the 9g column line instead of wherever 1.5r after the date ended; a wrap
+       adds a whole 1r gap + 2r row. */
     .dash-event-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-md) var(--space-lg);
+      gap: var(--space-md) 0;
       font-size: var(--fs-xs);
       color: var(--text-muted);
-      line-height: calc(var(--subrow) * 2); /* 2 subrows */
-      /* Hold the meta row at a whole 2r (its line box floors to 1.947r on iOS)
-         and bottom-align the icon+label pairs, so the header column below the
-         name stays whole-r and the meta baseline sits at the low grid line. */
       min-height: calc(var(--subrow) * 2);
       align-items: flex-end;
     }
 
-    .dash-event-meta span {
-      display: inline-flex;
-      align-items: center;
+    .dash-event-meta > span {
+      display: flex;
+      align-items: flex-end;
       gap: var(--space-xs);
+      height: calc(var(--subrow) * 2);
     }
+    .dash-event-meta > span:not(:last-child) { flex: 0 0 calc(var(--gu) * 6); }
+    .dash-event-meta > span:last-child { flex: 1 1 0; min-width: 0; } /* runs to the title's 23g edge */
 
+    /* 1r icon standing on the baseline (1r..2r of the cell): the old 1.375r icon
+       was centred, top and bottom off the r-lines. 1r ≈ the label's 1.167r cap. */
     .dash-event-meta svg {
-      width: calc(var(--subrow) * 1.375);
-      height: calc(var(--subrow) * 1.375);
+      width: var(--subrow);
+      height: var(--subrow);
       flex-shrink: 0;
     }
 
@@ -10578,12 +11947,17 @@
       flex: 1 1 0;
       background: var(--surface2);
       border-radius: var(--radius-sm);
-      /* Fixed 6r box (was padding + two floored 2r lines = ~5.89r). Block flow,
-         not flex: two exact 2r cells (value, label) stack under the 1r top pad,
-         so value's box bottom lands on the 3r line and label's on the 5r line. */
+      /* Fixed 6r box, two grid rows with the trimmed value / label bottom-aligned
+         in them: value BASELINE on the 3r line, label baseline on the 5r line, 1r
+         below. Was two 2r line-height cells, which put the baselines at 2.71r and
+         4.45r (a line box centres the glyphs; it doesn't seat them). Gaps read
+         top 1.57r (3 − value cap 1.426r), value→label cap 0.96r, bottom 1r. */
       height: calc(var(--subrow) * 6);
       box-sizing: border-box;
-      padding: var(--space-md) var(--space-sm);
+      display: grid;
+      grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 2);
+      align-items: end;
+      padding: 0 var(--space-sm);
       text-align: center;
       min-width: 0;
     }
@@ -10593,11 +11967,6 @@
       font-size: var(--fs-md);
       font-weight: var(--fw-bold);
       color: var(--text);
-      /* Exact 2r cell (height, not min-height — the floored line fits inside and
-         the cell bottom stays on the grid line). */
-      height: calc(var(--subrow) * 2);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
     }
 
     .dash-stat-label {
@@ -10605,9 +11974,12 @@
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      height: calc(var(--subrow) * 2);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
+    }
+    .dash-stat-value, .dash-stat-label {
+      line-height: 1;
+      white-space: nowrap;
+      text-box-trim: trim-both;
+      text-box-edge: cap alphabetic;
     }
 
     .dash-event-tag {
@@ -10618,18 +11990,34 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      /* A whole-r pill box (was 2.446r from line + vertical padding, which
-         floored to a fraction and pushed the whole card body off the grid).
-         Height held at 2r via min-height; vertical padding zeroed and the text
-         centered, so the row this pill sits in is a whole r and the name/buyin
-         below it start on a grid line. Two wrapped tags stay a whole multiple. */
-      height: calc(var(--subrow) * 2);
+      /* 3r pill, trimmed label seated on its 2r line over 1r of padding. A 2r pill
+         can't seat a centred label: centred sits at (2 + cap 1.037r) / 2 = 1.52r,
+         half an r off either line; in 3r, centred is 2.02r, i.e. ON the 2r line.
+         Width is a whole g per variant (below) with the label centred, so both
+         edges land on subcolumn lines: 3g + width, and with the 2g row gap a
+         second tag starts on the next line (10→12, 12→14, 16→18). */
+      height: calc(var(--subrow) * 3);
       box-sizing: border-box;
-      /* 1g horizontal padding so the tag text sits on a g-line (the tag box's
-         left edge is already on one via the card's whole-g padding). */
-      padding: 0 var(--gu);
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0 0 var(--subrow);
       border-radius: var(--radius-xs);
     }
+    /* Label widths (measured, --fs-2xs condensed caps): Locked In 4.75g,
+       Reg Closed 5.49g, Conditional 6.18g, Bagged — Day 12 8.31g, Conditional on
+       bag 9.97g. Width = the smallest whole g ≥ label + 2g whose right edge
+       (from 3g) is a subcolumn line: 7g → 10g, 9g → 12g, 11g → 14g, 13g → 16g
+       (Reg Closed 7.49g needs past 10.49g, so 9g). */
+    .dash-event-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--subrow) var(--subcol);
+    }
+    .dash-event-tag.anchor       { width: calc(var(--gu) * 7); }
+    .dash-event-tag.reg-closed,
+    .dash-event-tag.conditional  { width: calc(var(--gu) * 9); }
+    .dash-event-tag.bagged       { width: calc(var(--gu) * 11); }
+    .dash-event-tag.conditional.on-bag { width: calc(var(--gu) * 13); }
 
     .dash-event-tag.bagged {
       background: rgba(34, 197, 94, 0.15);
@@ -10665,12 +12053,14 @@
       justify-content: center;
       gap: var(--space-sm);
       width: 100%;
-      /* Fixed 4r box (was 1r padding + line + border = 4.34r, which pushed the
-         card off whole-r and drifted every section below it). */
-      height: calc(var(--subrow) * 4);
+      /* 5r box (see the 5r-box seat rule below for why 5, not 4). The outline is
+         an inset ring so it takes no room from the padding the label is seated by. */
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
       box-sizing: border-box;
       padding: 0 var(--space-xl);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius-sm);
       background: var(--surface2);
       color: var(--text);
@@ -10678,7 +12068,7 @@
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
       cursor: pointer;
-      transition: background var(--dur-fast), border-color var(--dur-fast);
+      transition: background var(--dur-fast), box-shadow var(--dur-fast);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
     }
@@ -10686,13 +12076,14 @@
     @media (hover: hover) and (pointer: fine) {
       .dash-start-btn:hover {
         background: var(--hover-overlay);
-        border-color: var(--text-muted);
+        box-shadow: inset 0 0 0 var(--bw-hair) var(--text-muted);
       }
     }
 
+    /* Icons in the 5r boxes: 2r, standing on the label's baseline (1r..3r). */
     .dash-start-btn svg {
-      width: calc(var(--subrow) * 1.75);
-      height: calc(var(--subrow) * 1.75);
+      width: calc(var(--subrow) * 2);
+      height: calc(var(--subrow) * 2);
     }
 
     .dash-playing-badge {
@@ -10702,8 +12093,10 @@
       gap: var(--space-md);
       width: 100%;
       height: calc(var(--subrow) * 5); /* 5 subrows — was ~46px */
+      box-sizing: border-box;
       padding: 0 var(--space-xl);
-      border: var(--bw-hair) solid var(--ok);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--ok);
       border-radius: var(--radius-sm);
       background: var(--ok-bg);
       color: var(--accent);
@@ -10744,13 +12137,25 @@
       50% { opacity: var(--state-disabled); }
     }
 
+    /* Status row on column lines. Two cells (Finished + Rebuys / All entries
+       used; Cancel + Finish): 15g | 1g | 15g = 3g..18g, 19g..34g. Three (the bust
+       menu: Cancel, Rebuys, Finish): 7g | 13g | 7g with 2g gaps = 3..10, 12..25,
+       27..34 — "Rebuys: Unlimited" is 10.50g of label, so it cannot take a 9g
+       third. Was flex with a 0.75r gap: 16.95g + 13.52g, 8.15g x 2 + 13.52g. */
     .dash-status-row {
-      display: flex;
-      gap: var(--space-sm);
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+      column-gap: var(--gu);
       align-items: stretch;
     }
+    .dash-status-row:has(> :nth-child(3)) {
+      grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 13) calc(var(--gu) * 7);
+      column-gap: var(--subcol);
+    }
     .dash-status-row > button {
-      flex: 1;
+      min-width: 0;
+      padding: 0;
     }
     .dash-status-stack {
       display: flex;
@@ -10773,14 +12178,15 @@
     }
 
     .dash-bag-btn, .dash-bust-btn, .dash-update-btn {
-      /* Fixed 4r box (was 1r padding + a floored line = ~4.34r, which left the
-         status stack — badge 5r + gap 1r + this — at 10.34r and the card off). */
-      height: calc(var(--subrow) * 4);
+      /* 5r box (see the 5r-box seat rule), min-height 0 so flexbox can't grow it. */
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
       box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0 var(--space-xl);
+      border: 0;
       border-radius: var(--radius-sm);
       font-family: var(--font-condensed);
       font-size: var(--fs-xs);
@@ -10793,19 +12199,19 @@
 
     .dash-bag-btn {
       background: rgba(34,197,94,0.12);
-      border: var(--bw-hair) solid #22c55e;
+      box-shadow: inset 0 0 0 var(--bw-hair) #22c55e;
       color: #22c55e;
     }
 
     .dash-update-btn {
       background: rgba(59,130,246,0.12);
-      border: var(--bw-hair) solid #3b82f6;
+      box-shadow: inset 0 0 0 var(--bw-hair) #3b82f6;
       color: #3b82f6;
     }
 
     .dash-bust-btn {
       background: rgba(239,68,68,0.12);
-      border: var(--bw-hair) solid #ef4444;
+      box-shadow: inset 0 0 0 var(--bw-hair) #ef4444;
       color: #ef4444;
     }
 
@@ -10814,11 +12220,11 @@
     }
 
     .dash-rebuy-btn {
-      /* Fixed 4r box, matching the bag/bust/update buttons. nowrap + min-height:0
-         so the long "Rebuys: Unlimited" label can't wrap to two lines and, via
-         flexbox's default min-height:auto, override the 4r height (it grew to
-         ~5.76r and threw the busted card's status row off). */
-      height: calc(var(--subrow) * 4);
+      /* 5r box, matching the bag/bust/update buttons and the Finished badge beside
+         it (was 4r in that 5r row, top-aligned, 1r short). nowrap + min-height:0
+         so the long "Rebuys: Unlimited" label can't wrap and, via flexbox's
+         min-height:auto, override the height. */
+      height: calc(var(--subrow) * 5);
       min-height: 0;
       white-space: nowrap;
       box-sizing: border-box;
@@ -10834,13 +12240,19 @@
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       background: rgba(160,160,160,0.12);
-      border: var(--bw-hair) solid var(--accent);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--accent);
       color: var(--accent);
       transition: opacity var(--dur-fast);
     }
 
     .dash-no-rebuy {
-      padding: var(--space-md) var(--space-ml);
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
@@ -10862,7 +12274,8 @@
       min-height: 0;
       box-sizing: border-box;
       padding: 0 var(--space-xl);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius-sm);
       background: var(--surface2);
       color: var(--text-muted);
@@ -10879,8 +12292,12 @@
       justify-content: center;
       gap: var(--space-md);
       width: 100%;
-      padding: var(--space-md) var(--space-xl);
-      border: var(--bw-hair) solid #22c55e;
+      /* Fixed 5r box (was 1r padding + a line box, a fraction of r). */
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      padding: 0 var(--space-xl);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) #22c55e;
       border-radius: var(--radius-sm);
       background: rgba(34,197,94,0.08);
       color: #22c55e;
@@ -10891,7 +12308,43 @@
       letter-spacing: var(--track-caps);
     }
 
-    .dash-restart-badge svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); }
+    .dash-restart-badge svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+
+    /* The 5r-box seat — every 5r box in the Up Next card (Start, Currently
+       Playing, Update / Bag / Bust, Cancel / Rebuys / Finish, Finished, All
+       entries used, Restart): the trimmed label and any icon stand on the 3r
+       line, 2r above the bottom. Why 5r: a label reads centred when its baseline
+       is at (height + cap) / 2. Caps here are 1.167r (--fs-xs) and 1.296r
+       (--fs-sm): in 4r that is 2.58 / 2.65r — half an r off both lines; in 5r it
+       is 3.08 / 3.15r, so seating on the 3r line IS centring (within 0.15r).
+       The x (3r) and the playing dot (1r) stay centred: 1r..4r and 2r..3r. */
+    .dash-start-btn > .dash-t, .dash-start-btn > svg,
+    .dash-playing-badge > .dash-t,
+    .dash-bag-btn > .dash-t, .dash-bust-btn > .dash-t, .dash-update-btn > .dash-t,
+    .dash-rebuy-btn > .dash-t, .dash-no-rebuy > .dash-t,
+    .dash-finished-badge > .dash-t,
+    .dash-restart-badge > .dash-t, .dash-restart-badge > svg {
+      align-self: flex-end;
+      margin-bottom: calc(var(--subrow) * 2);
+    }
+    /* Badges that hold a ✕ (Currently Playing, Finished, Restart/Bagged): 2g side
+       padding, so the leading dot / label / icon starts on the 5g line and the
+       right-pushed ✕ ends on the badge's right edge − 2g (32g full width, 16g in
+       the 3g..18g Finished cell). Was 2r (1.42g): 4.42g and 32.58g / 16.58g. */
+    .dash-playing-badge, .dash-finished-badge, .dash-restart-badge {
+      padding-left: var(--subcol);
+      padding-right: var(--subcol);
+    }
+    /* The ✕ glyph in its 3r circle, seated: baseline on the circle's 2r line
+       (centred it sat at 2.08r). Border as an inset ring so it doesn't offset it. */
+    .dash-event-card .dash-undo-x, .dash-event-card .dash-unbag-x {
+      align-items: flex-end;
+      padding: 0 0 var(--subrow);
+      border: 0;
+    }
+    .dash-event-card .dash-undo-x { box-shadow: inset 0 0 0 var(--bw-hair) rgba(160,160,160,0.40); }
+    .dash-event-card .dash-undo-x.muted { box-shadow: inset 0 0 0 var(--bw-hair) rgba(136,136,136,0.40); }
+    .dash-event-card .dash-unbag-x { box-shadow: inset 0 0 0 var(--bw-hair) rgba(34,197,94,0.40); }
 
     .dash-undo-x {
       margin-left: auto;
@@ -10965,43 +12418,110 @@
        global grid: 10g + 10g + 13g tracks with 1g gutters = 35g (1g→36g),
        edges on g-lines. The 10:10:13 ratio preserves the old ~1:1:1.25 weight
        that keeps the Net card wider. */
-    :root { --pl-cols: calc(var(--gu) * 10) calc(var(--gu) * 10) calc(var(--gu) * 13); }
+    /* 2026-09-30 regrid: 10g/10g/13g put card edges on 11g and 22g, which are not
+       grid lines (col 1 lines are odd, col 2 even). Three cells on the grid =
+       whole columns: 8g | 8g | 17g (col 1, col 2, cols 3-4 + their gutter),
+       8 + 1 + 8 + 1 + 17 = 35g, edges 1-9, 10-18, 19-36. Net keeps the wider
+       cell. The widest label, "TOTAL BUYINS ▾", measures 7.58g, so the 8g
+       cards carry no horizontal padding (centred, 0.21g each side). */
+    :root { --pl-cols: var(--col) var(--col) calc(var(--col) * 2 + var(--gu)); }
     .dash-results-header {
       display: grid;
       grid-template-columns: var(--pl-cols);
-      gap: var(--gu);
-      /* end, not center: the standard .dashboard-section-header bottom-aligns its
-         3r box so the title's line box seats on the 3r line (Up Next / Table
-         Scanner read clean this way). This header overrode it to center for the
-         P&L-column grid and floated the title +0.10 off. end restores the seat;
-         the grid columns still align the header to the P&L cards horizontally. */
+      grid-template-rows: calc(var(--subrow) * 3);
+      column-gap: var(--gu);
+      /* end: the title is trimmed to cap..alphabetic, so its bottom (the
+         baseline) seats on the header's 3r line. The 3r controls fill the row. */
       align-items: end;
     }
-    .dash-results-header > .dash-results-head-left {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: var(--space-md);
-      min-width: 0;
+    .dash-results-header > * { grid-row: 1; min-width: 0; }
+    .dash-results-header > .dashboard-section-title { grid-column: 1; }
+    /* Reset right-aligned to the Cashes column (14-18g); in the confirm state
+       Confirm takes 12-18g and Cancel 19-25g; the currency sits 30-36g. */
+    .dash-results-header > .dash-results-reset { grid-column: 2; justify-self: end; }
+    .dash-results-header > .dash-results-cancel { grid-column: 3; justify-self: start; }
+    .dash-results-header > .dash-results-right { grid-column: 3; justify-self: end; }
+    /* Header controls: 3r (header-high) blocks, caps micro-label, baseline on +2r
+       (padding-top 2r - 1cap on a trimmed block child) — the badge recipe. The
+       border is an inset shadow so it adds no size. */
+    .dash-results-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      width: calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 3);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      cursor: pointer;
     }
+    .dash-results-btn.dash-results-confirm,
+    .dash-results-btn.dash-results-cancel { width: calc(var(--gu) * 6); }
+    .dash-results-btn.dash-results-confirm {
+      background: #b91c1c; color: #fff; box-shadow: none;
+    }
+    .dash-results-btn > span,
+    .dash-results-currency > span {
+      display: block;
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* Currency: a 6g x 3r face showing the choice, the native <select> laid over
+       it transparent — a select's own text can't be trimmed or seated. */
+    .dash-results-currency {
+      display: block;
+      position: relative;
+      width: calc(var(--gu) * 6);
+      height: calc(var(--subrow) * 3);
+      box-sizing: border-box;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .dash-results-currency > select {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer; font-size: var(--fs-2xs);
+      -webkit-appearance: none; appearance: none; border: 0; margin: 0;
+    }
+    .dash-results-currency:focus-within { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 
     .dash-pl-grid {
       display: grid;
       grid-template-columns: var(--pl-cols);
-      gap: var(--gu);
+      column-gap: var(--gu);
       align-items: stretch;
     }
 
     .dash-pl-card {
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      /* inset shadow, not a border: a border shifted the content by a hairline
+         and made the top padding a 1r - 0.125r fudge. */
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
-      /* Fixed 9-subrow box. Top padding is 1 subrow less the 1px border so the
-         value line's box top lands on a grid line; content is top-aligned so
-         the value (3-subrow line) and label (2-subrow line) sit at the same
-         grid rows across all three cards. */
-      min-height: calc(var(--subrow) * 9);
-      padding: calc(var(--space-md) - calc(var(--subrow) * 0.125)) var(--space-lg) 0;
+      /* Exact 9r: 1r pad + value 3r + label 2r + ROI 2r + 1r. Each line is a
+         trimmed block whose padding-top is (cell - 1cap), so every baseline sits
+         on its cell's bottom r-line: value +4r, label +6r, ROI +8r. */
+      height: calc(var(--subrow) * 9);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: var(--space-md) 0 0;
       text-align: center;
       /* these are <button> now, so undo the UA defaults */
       font: inherit;
@@ -11009,44 +12529,55 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
+      align-items: stretch;
       gap: 0;
+      min-width: 0;
     }
     .dash-pl-btn { cursor: pointer; position: relative; }
 
     .dash-pl-card--net {
       background: var(--surface-raised);
-      border-color: var(--border-strong);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong);
     }
-    .dash-pl-card--net .dash-pl-value { font-size: var(--fs-xl); line-height: calc(var(--subrow) * 3); }
-    .dash-pl-card:not(.dash-pl-card--net) .dash-pl-value { font-size: var(--fs-md); line-height: calc(var(--subrow) * 3); }
+    .dash-pl-card--net .dash-pl-value { font-size: var(--fs-xl); }
+    .dash-pl-card:not(.dash-pl-card--net) .dash-pl-value { font-size: var(--fs-md); }
     /* "Net — +12.4% ROI" was one 9.3px string doing two jobs. */
     .dash-pl-roi {
       display: block;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps);
-      line-height: calc(var(--subrow) * 2); /* 2 subrows */
+      text-transform: uppercase;
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .dash-pl-roi.pos { color: var(--ok); }
     .dash-pl-roi.neg { color: var(--danger); }
 
     .dash-pl-value {
+      display: block;
       font-family: var(--font-condensed);
       font-size: var(--fs-md);
       font-weight: var(--fw-bold);
       color: var(--text);
-      line-height: 1.1;
+      padding-top: calc(var(--subrow) * 3 - 1cap);   /* 3r cell */
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .dash-pl-value.positive { color: #22c55e; }
     .dash-pl-value.negative { color: #ef4444; }
 
     .dash-pl-label {
+      display: block;
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      line-height: calc(var(--subrow) * 2); /* 2 subrows — was margin-top 2px, off-grid */
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .dash-pl-btn {
@@ -11060,36 +12591,54 @@
       }
     }
 
+    /* 17g (two columns + gutter) so, left-aligned to its card, it spans 1-18g or
+       10-27g. Rows are 3r with the baseline on +2r (cap ~1r: 1r above, 1r below),
+       so the panel is n x 3r with no padding and the JS places its top on a whole
+       r from the bar. Border as inset shadow (adds no size). */
     .dash-pl-dropdown {
       position: absolute;
       top: 100%;
       left: 0;
-      width: calc(var(--subrow) * 22.5);
-      margin-top: var(--space-xs);
+      width: calc(var(--col) * 2 + var(--gu));
+      box-sizing: border-box;
       background: var(--surface);
-      border: var(--bw-1) solid var(--border);
+      border: 0;
       border-radius: var(--radius-sm);
-      padding: var(--space-xs) 0;
+      padding: 0;
       z-index: var(--z-panel);
-      box-shadow: var(--elev-2);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border), var(--elev-2);
       animation: luSlideDown 0.15s ease-out;
     }
     .dash-pl-dropdown-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: var(--space-sm) var(--space-lg);
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 3);
+      box-sizing: border-box;
+      padding: 0 var(--gu);
       font-family: var(--font-condensed);
       font-size: var(--fs-xs);
+    }
+    .dash-pl-dropdown-venue,
+    .dash-pl-dropdown-amount {
+      display: block;
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .dash-pl-dropdown-venue {
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-tight);
+      min-width: 0;
+      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
+      text-overflow: ellipsis;
     }
     .dash-pl-dropdown-amount {
       color: var(--text);
       font-weight: var(--fw-bold);
+      flex-shrink: 0;
     }
 
     /* Connections toggle */
@@ -11105,27 +12654,48 @@
       width: 100%;
       min-width: 0;
     }
+    /* Dots: a 2r row (1r pad + a 1r dot row). Each dot is a 1g x 1r cell on a 2g
+       pitch (1g cell, 1g gap), so N dots span 2N − 1 g; centred in the 35g
+       section (1g..36g) the first cell starts at 1 + (35 − (2N − 1)) / 2 = 19 − N
+       g — a whole g for every N, where the old 0.75r dots on a 1.75r pitch started
+       at 15.04g / 16.64g. The mark is a 1r circle (the full cell height, so its
+       top and bottom are the r-lines) drawn by ::before; a circle can't also be a
+       whole g wide (1r = 0.71g), so it is centred in its 1g cell. The tap target
+       (::after) is the 2g pitch wide and 5r tall, so neighbours abut, not overlap. */
     .dash-upnext-dots {
-      /* Whole 2r box: 1r top pad + 0.75r dots + 0.25r bottom pad. Was 1.25r top
-         (2.25r total), which pushed the Up Next section and everything below it
-         a quarter-subrow off the grid. */
-      display: flex; gap: var(--space-sm); justify-content: center; padding: var(--space-md) 0 var(--space-2xs);
+      display: grid; grid-auto-flow: column; grid-auto-columns: var(--gu);
+      column-gap: var(--gu); justify-content: center;
+      height: calc(var(--subrow) * 2); box-sizing: border-box; padding: var(--subrow) 0 0;
     }
     .dash-upnext-dot {
-      width: calc(var(--subrow) * 0.75); height: calc(var(--subrow) * 0.75); border-radius: var(--radius-circle);
+      width: var(--gu); height: var(--subrow);
+      background: none;
+    }
+    .dash-upnext-dot.active { background: none; }
+    .dash-upnext-dot::before {
+      content: '';
+      position: absolute;
+      top: 0; left: calc(50% - var(--subrow) / 2);
+      width: var(--subrow); height: var(--subrow);
+      border-radius: var(--radius-circle);
       background: var(--border);
       transition: background var(--dur-fast);
     }
-    .dash-upnext-dot.active { background: var(--accent); }
+    .dash-upnext-dot.active::before { background: var(--accent); }
+    .dash-upnext-dot::after { inset: calc(var(--subrow) * -2) calc(var(--gu) * -0.5); }
 
-    /* Position readout, used instead of dots once the schedule is long. Whole 3r
-       box (was 1.25r top pad + content ≈ 3.77r, off-grid — the same bug the dots
-       had, but this is the variant long schedules hit). */
+    /* Position readout, used instead of dots once the schedule is long. A 3r box,
+       three grid cells centred on the section: ‹ 14g..16g, "n / N" 16g..21g,
+       › 21g..23g — the 9g group's centre is the section's 18.5g, and every edge is
+       a subcolumn line. Each glyph is a trimmed .dash-t (or the trimmed pos text)
+       bottom-aligned over 1r of padding, so every baseline is on the 2r line —
+       centred for the 1.037r-cap readout: (3 + 1.037) / 2 = 2.02r. Was flex with
+       2r line boxes: baselines at 2.45r / 2.84r, cells 15.74g..21.26g. */
     .dash-upnext-counter {
-      /* flex-end so the counter's text/arrows seat their line boxes on the 3r
-         bottom line instead of floating centered (was pos +0.47, arrows -0.40). */
-      display: flex; align-items: flex-end; justify-content: center;
-      gap: var(--space-sm); height: calc(var(--subrow) * 3); box-sizing: border-box; padding: 0;
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 2) calc(var(--gu) * 5) calc(var(--gu) * 2);
+      justify-content: center; align-items: end;
+      height: calc(var(--subrow) * 3); box-sizing: border-box; padding: 0 0 var(--subrow);
     }
     .dash-upnext-pos {
       font-family: var(--font-condensed);
@@ -11133,14 +12703,22 @@
       letter-spacing: var(--track-caps);
       color: var(--text-muted);
       font-variant-numeric: tabular-nums;
-      min-width: 4.5ch;
       text-align: center;
-      line-height: calc(var(--subrow) * 2); /* whole 2r box, floored, bottom-seated */
+      display: block;
+      line-height: 1;
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .dash-upnext-step {
-      background: none; border: none; cursor: pointer; padding: 0 var(--space-xs);
-      color: var(--text-muted); font-size: var(--fs-lg); line-height: calc(var(--subrow) * 2);
+      background: none; border: none; cursor: pointer; padding: 0;
+      height: calc(var(--subrow) * 2);
+      display: flex; align-items: flex-end; justify-content: center;
+      color: var(--text-muted); font-size: var(--fs-lg);
       transition: color var(--dur-fast) var(--ease-out);
+    }
+    .dash-upnext-step > .dash-t {
+      display: block; line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     @media (hover: hover) and (pointer: fine) {
       .dash-upnext-step:hover:not(:disabled) { color: var(--text); }
@@ -11154,22 +12732,34 @@
       outline: var(--focus-ring); outline-offset: var(--focus-offset);
     }
 
-    /* Connections avatar row */
+    /* Connections avatar row — 2026-09-30 regrid. Avatars were 5.5r cells at a
+       6.5r (4.61g) pitch, so no edge after the first sat on a g-line, and ten of
+       them plus "+N" ran to 51g: the overflow button was never on screen. Now
+       eight 4g cells, two per column, a 1g gutter before cells 3/5/7:
+       1-5-9 | 10-14-18 | 19-23-27 | 28-32-36. Column = 5r avatar + 2r name = 7r.
+       The avatar is 5r (not 4r) so its initial, trimmed with the baseline on +3r,
+       sits centred: cap 0.94r -> 2.06r above, 2r below. */
     .dash-connections-row {
       display: flex;
-      gap: var(--space-md);
-      overflow: hidden;
-      /* No vertical padding: the column is a whole 6r (4r avatar + 2r name cell),
-         so the Connections row and the name baseline land on the grid. */
+      gap: 0;
+      /* visible: the row ends on the names' baseline (+7r), so clipping here cut
+         every descender. At most eight 4g cells render, which fill 1-36g exactly. */
+      overflow: visible;
       padding: 0;
     }
+    .dash-connections-row > :nth-child(2n+3) { margin-left: var(--gu); }
 
     .dash-conn-avatar {
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
       gap: 0;
-      width: calc(var(--subrow) * 5.5);
+      flex: 0 0 calc(var(--gu) * 4);
+      width: calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 7);
+      min-height: 0;
+      box-sizing: border-box;
       cursor: pointer;
       padding: 0;
       border-radius: var(--radius-sm);
@@ -11178,148 +12768,177 @@
       background: none;
       color: var(--text);
       position: relative;
-      flex-shrink: 0;
     }
     @media (hover: hover) and (pointer: fine) {
       .dash-conn-avatar:hover { background: var(--hover-overlay); }
     }
+    /* 2r cell under the avatar: trimmed, padding-top 2r - 1cap puts the baseline
+       on the cell's bottom line (+7r). The 0.3em bottom pad/neg-margin keeps
+       descenders inside the ellipsis clip without changing the 2r. */
     .dash-conn-avatar .conn-name {
-      font-size: var(--fs-2xs);
+      display: block;
+      align-self: stretch;
+      font-size: var(--fs-xs);
       font-family: var(--font-condensed);
       color: var(--text-muted);
       text-align: center;
-      /* Exact 2r cell under the 4r avatar → whole 6r column, name on the grid. */
-      height: calc(var(--subrow) * 2);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
-      max-width: calc(var(--subrow) * 5.5);
-      overflow: hidden;
+      padding: calc(var(--subrow) * 2 - 1cap) 0 0;
+      min-width: 0;
+      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
       text-overflow: ellipsis;
       white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* On the avatar's top-right: right edge = avatar right = (4g - 5r) / 2. */
     .dash-conn-avatar .playing-dot {
       position: absolute;
-      top: 0; right: calc(var(--subrow) * 0.5);
+      top: 0; right: calc((var(--gu) * 4 - var(--subrow) * 5) / 2);
       width: calc(var(--subrow) * 1); height: calc(var(--subrow) * 1);
+      box-sizing: border-box;
       border-radius: var(--radius-circle);
       background: #22c55e;
       border: calc(var(--subrow) * 0.25) solid var(--bg);
     }
+    /* "+N" takes the eighth cell; the count sits on the avatar's +3r baseline. */
     .dash-conn-overflow {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      width: calc(var(--subrow) * 5.5);
+      justify-content: flex-start;
+      flex: 0 0 calc(var(--gu) * 4);
+      width: calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 7);
+      min-height: 0;
+      box-sizing: border-box;
       cursor: pointer;
-      padding: var(--space-2xs);
+      padding: 0;
       border: none;
       background: none;
       color: var(--text-muted);
       font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
-      flex-shrink: 0;
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+    }
+    .dash-conn-overflow > span {
+      display: block;
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     @media (hover: hover) and (pointer: fine) {
       .dash-conn-overflow:hover { color: var(--text); }
     }
 
-    /* Friends playing carousel */
+    /* Friends playing carousel — 2026-09-30 regrid. Chips hugged their text
+       (14.40g / 12.60g wide, 1.25r = 0.89g gap), so the second chip started on
+       16.28g. Now every chip is two columns wide, 17g, at an 18g pitch (1g gap):
+       1-18, 19-36, and the scroll snaps each chip's start back onto a column
+       line. The max scroll, (18n - 1)g - 35g = 18(n-2)g, is itself a whole
+       number of pitches, so the last snap rests on the grid too. */
     .dash-friends-scroll {
       display: flex;
-      gap: var(--space-ml);
+      gap: var(--gu);
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      /* No vertical padding: the scroll height is the chip's 8r, so the section
-         (header 3r + gap 1r + scroll 8r) lands on a whole 12r and stops nudging
-         the section titles below it. */
+      scroll-snap-type: x mandatory;
       padding: 0;
     }
     .dash-friends-scroll::-webkit-scrollbar { display: none; }
+    /* 17g = 1g pad | 4g avatar cell | 1g | 10g text (7-17g) | 1g pad.
+       8r = 1r | 6r (three 2r text cells; the 5r avatar bottom-aligned in it, so
+       it spans +2r..+7r, centred on the text block's cap-top..last-baseline) | 1r. */
     .dash-friend-chip {
-      display: flex;
-      align-items: center;
-      gap: var(--space-md);
-      flex-shrink: 0;
-      /* Fixed 8r box: 1r pad + three exact 2r text cells + 1r pad. The three
-         chip lines were floored-line heights of three different sizes, each
-         losing a different fraction; exact 2r cells (below) seat each baseline. */
+      display: grid;
+      grid-template-columns: var(--gu) calc(var(--gu) * 4) var(--gu) calc(var(--gu) * 10) var(--gu);
+      grid-template-rows: var(--subrow) calc(var(--subrow) * 6) var(--subrow);
+      flex: 0 0 calc(var(--gu) * 17);
+      width: calc(var(--gu) * 17);
       height: calc(var(--subrow) * 8);
+      min-height: 0;
       box-sizing: border-box;
-      padding: var(--space-md) var(--space-lg);
+      padding: 0;
       background: var(--surface2);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
-      min-width: 0;
-      max-width: calc(var(--subrow) * 32.5);
+      scroll-snap-align: start;
       cursor: pointer;
-      transition: border-color var(--dur-fast);
+      transition: box-shadow var(--dur-fast);
     }
     @media (hover: hover) and (pointer: fine) {
-      .dash-friend-chip:hover { border-color: var(--accent); }
+      .dash-friend-chip:hover { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
     }
+    .dash-friend-chip > :first-child { grid-area: 2 / 2; align-self: end; justify-self: center; }
     .dash-friend-chip .friend-info {
+      grid-area: 2 / 4;
       display: flex;
       flex-direction: column;
-      gap: 0; /* the three 2r cells stack to exactly 6r, no inter-line gap */
+      gap: 0; /* three 2r cells stack to exactly 6r */
       min-width: 0;
     }
-    .dash-friend-chip .friend-name {
+    /* Each line: a trimmed block, padding-top 2r - 1cap => baseline on its 2r
+       cell's bottom line (+3r, +5r, +7r from the chip top). */
+    .dash-friend-chip .friend-name,
+    .dash-friend-chip .friend-event,
+    .dash-friend-chip .friend-stack {
+      display: block;
       font-family: var(--font-condensed);
+      padding: calc(var(--subrow) * 2 - 1cap) 0 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .dash-friend-chip .friend-name {
       font-size: var(--fs-xs);
       font-weight: var(--fw-bold);
       color: var(--text);
-      height: calc(var(--subrow) * 2);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
+    /* Mixed-case event names: --fs-xs (--fs-2xs is caps micro-labels only). */
     .dash-friend-chip .friend-event {
-      font-family: var(--font-condensed);
-      font-size: var(--fs-2xs);
+      font-size: var(--fs-xs);
       color: var(--text-muted);
-      height: calc(var(--subrow) * 2);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .dash-friend-chip .friend-stack {
-      font-family: var(--font-condensed);
-      height: calc(var(--subrow) * 2);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
       font-size: var(--fs-2xs);
       color: #22c55e;
-      white-space: nowrap;
     }
 
-    /* Connection dropdown popup */
+    /* Connection dropdown popup — 26g (three columns + two gutters), placed by
+       the JS on a column line (1g or 10g) and on a whole r from the bar. Height
+       is whole r by construction: name 2r + each label 3r + each event 2r + 1r
+       foot, every line a trimmed block seated on its cell's bottom line. */
     .dash-conn-dropdown {
       position: absolute;
       z-index: var(--z-panel);
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      border: 0;
       border-radius: var(--radius);
-      box-shadow: var(--elev-2);
-      padding: var(--space-ml) var(--space-lg);
-      min-width: calc(var(--subrow) * 25);
-      max-width: calc(var(--subrow) * 32.5);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
+      width: calc(var(--col) * 3 + var(--gu) * 2);
+      box-sizing: border-box;
+      padding: 0 var(--gu) var(--subrow);
       left: 50%;
       transform: translateX(-50%);
     }
     .dash-conn-dropdown.above { bottom: calc(100% + calc(var(--subrow) * 0.5)); }
     .dash-conn-dropdown.below { top: calc(100% + calc(var(--subrow) * 0.5)); }
+    .dash-conn-dropdown-name,
+    .dash-conn-dropdown-label,
+    .dash-conn-dropdown-event {
+      display: block;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
     .dash-conn-dropdown-name {
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       font-size: var(--fs-sm);
       color: var(--text);
-      margin-bottom: var(--space-sm);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
     }
     .dash-conn-dropdown-label {
       font-size: var(--fs-2xs);
@@ -11327,14 +12946,12 @@
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       color: var(--text-muted);
-      margin-bottom: var(--space-2xs);
-      margin-top: var(--space-sm);
+      padding-top: calc(var(--subrow) * 3 - 1cap);   /* 3r cell: 1r more air before a group */
     }
-    .dash-conn-dropdown-label:first-of-type { margin-top: 0; }
     .dash-conn-dropdown-event {
       font-size: var(--fs-xs);
       color: var(--text);
-      padding: var(--space-2xs) 0;
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
     }
     .dash-conn-dropdown-event .muted { color: var(--text-muted); }
 
@@ -12559,9 +14176,33 @@
     /* ── Solver self-play table (reuses the replayer's oval felt + seats) ── */
     .solver-table {
       position: relative;
-      width: min(100%, calc(var(--subrow) * 55));
-      aspect-ratio: 3 / 2.5;
-      margin: var(--space-sm) auto var(--space-lg);
+      /* Grid: 35g wide (the full content width, 1g..36g), a whole 41r tall
+         (was aspect-ratio 3:2.5 → 41.08r), 1r above and 2r below. */
+      width: min(100%, calc(var(--gu) * 35));
+      height: calc(var(--subrow) * 41);
+      margin: var(--subrow) auto calc(var(--subrow) * 2);
+      /* The replayer's felt, rail, seat plaques and seat cards all read their
+         geometry from variables that .replayer-table defines. This table never
+         had that class, so --felt-x/-y, --rail-w and --card-h were undefined:
+         the felt collapsed to 0×0 and every seat card fell back to its SVG's
+         natural 19r height. Define the same set here, against this box. */
+      container-type: size;
+      --z-felt: 1; --z-mark: 2; --z-strip: 3; --z-seat: 4; --z-board: 5; --z-pot: 6; --z-bet: 7; --z-dealer: 8; --z-flight: 9;
+      --cast-x: 0; --cast-y: calc(var(--subrow) * 0.25); --cast-blur: calc(var(--subrow) * 0.5);
+      --plate-bevel:
+        0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55),
+        inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.16),
+        inset 0 calc(var(--subrow) * -0.125) 0 rgba(0,0,0,0.6);
+      --r-card: 7.1%;
+      --r-object: calc(var(--subrow) * 0.75);
+      --ring-1: 0 0 0 calc(var(--subrow) * 0.25);
+      --ring-2: 0 0 calc(var(--subrow) * 1.5) calc(var(--subrow) * 0.25);
+      --felt-y: 9.375%;
+      --felt-x: 12.5%;
+      --rail-w: 5.6cqmin;
+      --plaque-w: min(calc(var(--subrow) * 25), 25cqmin);
+      --card-h: calc(var(--plaque-w) * 0.56);
+      --card-w: calc(var(--card-h) * 0.7143);
     }
     .solver-table .replayer-table-felt { cursor: default; }
     .solver-tpot {
@@ -12591,6 +14232,209 @@
     .solver-dead-label { font-family: var(--font-condensed); font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted); margin-right: var(--space-2xs); }
     .solver-deadstrip img { height: calc(var(--subrow) * 3); width: auto; border-radius: var(--radius-xs); }
 
+    /* ── Hands › Solver / Solver Trainer / Watch Solver / Trainer / 3-Way on the grid ──
+       Everything below is scoped to .hs-view, the root of the five non-replayer
+       Hands tools, so none of it reaches the Hand Replayer's shared classes.
+       g = --gu, r = --subrow.
+
+       .hs-t is the ONE text primitive. It is a trimmed block (box top = cap top,
+       box bottom = alphabetic baseline) padded down by (b·r − 1cap), so a one-line
+       block is exactly b r tall with its baseline ON its bottom edge — by
+       construction, no nudge, any font size. Each further line adds lh r, so a
+       wrapped block stays whole too. 1cap and text-box-edge:cap read the same
+       font metric (measured: Univers Condensed 0.722em both, Libre Baskerville
+       0.770em both). lh must stay >= the font's content height (1.24em) or the
+       line box is shorter than the cap and the trim has nothing to take — the
+       3r default covers every size used here up to fs-lg.
+       Every block in these views is a stack of whole-r pieces (text blocks,
+       whole-r controls, whole-r gaps), so every block starts on an r-line. */
+    /* The per-element knobs are registered NON-inheriting: set on a button or a
+       panel, they must not leak into a nested .hs-t / .hs-btn that relies on its
+       own default (a panel's red --hs-edge would otherwise outline every button
+       inside it). */
+    @property --hs-b    { syntax: '<number>'; inherits: false; initial-value: 2; }
+    @property --hs-lh   { syntax: '<number>'; inherits: false; initial-value: 3; }
+    @property --hs-h    { syntax: '<number>'; inherits: false; initial-value: 5; }
+    @property --hs-n    { syntax: '<integer>'; inherits: false; initial-value: 4; }
+    @property --hs-gap  { syntax: '<number>'; inherits: false; initial-value: 1; }
+    @property --hs-lab  { syntax: '*'; inherits: false; }
+    @property --hs-val  { syntax: '*'; inherits: false; }
+    @property --hs-edge { syntax: '*'; inherits: false; }
+    @property --hs-fill { syntax: '*'; inherits: false; }
+    @property --hs-ink  { syntax: '*'; inherits: false; }
+    @property --hs-bg   { syntax: '*'; inherits: false; }
+    @property --hs-track { syntax: '*'; inherits: false; }
+    .hs-view {
+      height: 100%; overflow-y: auto; box-sizing: border-box; margin: 0 auto;
+      padding: 0 0 calc(var(--subrow) * 10);
+      font-family: var(--font-condensed); color: var(--text);
+    }
+    .hs-view .hs-t {
+      display: block; margin: 0; min-width: 0;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      padding-top: calc(var(--subrow) * var(--hs-b, 2) - 1cap);
+      line-height: calc(var(--subrow) * var(--hs-lh, 3));
+    }
+    /* Inline runs inside a text block (<b>, a smaller caps label, a <code>) take
+       no part in sizing the line: at the same line-height a different face or
+       size sits its half-leading lower, which grew each line holding one by
+       0.03–0.19r (measured: bold at 375px, the fs-2xs "Why" label at 402px).
+       With line-height 0 every line box is exactly the block's lh r strut. */
+    .hs-view .hs-t :not(.hs-t) { line-height: 0; }
+    /* Single line, ellipsis. Trimmed text inside overflow:hidden clips its
+       descenders at the baseline, so the clip box is let down by 0.3em and the
+       flow pulled back up by the same amount — height unchanged. */
+    .hs-view .hs-clip {
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      padding-bottom: 0.3em; margin-bottom: -0.3em;
+    }
+    .hs-view .hs-title { font-family: var(--font-title); font-weight: var(--fw-regular); font-size: var(--fs-lg); color: var(--text); --hs-lh: 4; }
+    .hs-view .hs-cap { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted); --hs-lh: 2; }
+    .hs-view .hs-xs  { font-size: var(--fs-xs); --hs-lh: 2; }
+    .hs-view .hs-sm  { font-size: var(--fs-sm); }
+    .hs-view .hs-md  { font-size: var(--fs-md); }
+    .hs-view .hs-mut { color: var(--text-muted); }
+    .hs-view .hs-bold { font-weight: var(--fw-bold); }
+    .hs-view .hs-num { font-variant-numeric: tabular-nums; }
+
+    /* Vertical stack with whole-r gaps (flex, so margins never collapse). */
+    .hs-view .hs-stack { display: flex; flex-direction: column; row-gap: calc(var(--subrow) * var(--hs-gap, 1)); min-width: 0; }
+    /* Two text blocks on one line, pushed apart; both are .hs-t of the same b,
+       so both baselines sit on the row's bottom edge. */
+    .hs-view .hs-split { display: flex; justify-content: space-between; align-items: flex-start; column-gap: var(--gu); min-width: 0; }
+    .hs-view .hs-split > .hs-t:last-child { text-align: right; }
+
+    /* Column rows. Full width (35g): --n 4 → 8g columns on the page rails,
+       --n 2 → 17g. Inside a panel (31g, x 3..34) use --n 2 → 15g (3-18, 19-34). */
+    .hs-view .hs-cols {
+      display: grid; grid-template-columns: repeat(var(--hs-n, 4), minmax(0, 1fr));
+      column-gap: var(--gu); row-gap: calc(var(--subrow) * var(--hs-gap, 1));
+    }
+    /* Three equal boxes inside a panel: 9g + 2g + 9g + 2g + 9g = 31g, edges on
+       3 | 12, 14 | 23, 25 | 34 — all subcolumn lines. */
+    .hs-view .hs-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: calc(var(--gu) * 2); }
+
+    /* Panel: 2r × 2g padding, border as an inset shadow so it adds no size.
+       Box on 1..36 → content on 3..34. */
+    .hs-view .hs-panel {
+      box-sizing: border-box; min-width: 0;
+      padding: calc(var(--subrow) * 2) calc(var(--gu) * 2);
+      border-radius: var(--radius); background: var(--hs-bg, var(--surface));
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--hs-edge, var(--border));
+    }
+    /* A box inside a panel: 1r × 1g padding, inset border. */
+    .hs-view .hs-box {
+      box-sizing: border-box; min-width: 0;
+      padding: var(--subrow) var(--gu);
+      border-radius: var(--radius-sm); background: var(--hs-bg, transparent);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--hs-edge, var(--border));
+    }
+    /* Hairline rule that takes no height: an inset shadow on the top edge of a
+       block whose padding-top is a whole r. */
+    .hs-view .hs-rule { box-shadow: inset 0 var(--bw-hair) 0 var(--border); padding-top: var(--subrow); }
+
+    /* Button: fixed whole-r height (--h), label is an .hs-t of --b, pinned to the
+       top so its baseline lands b r below the button's top edge. */
+    .hs-view .hs-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      box-sizing: border-box; height: calc(var(--subrow) * var(--hs-h, 5)); min-width: 0; min-height: 0; margin: 0;
+      padding: 0 var(--gu); border: none; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--hs-edge, var(--border));
+      background: var(--hs-fill, transparent); color: var(--hs-ink, var(--text));
+      font-family: inherit; font-size: var(--fs-sm); font-weight: var(--fw-bold);
+      white-space: nowrap; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .hs-view .hs-btn > .hs-t { max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding-bottom: 0.3em; margin-bottom: -0.3em; }
+    .hs-view .hs-btn.hs-left { align-items: stretch; text-align: left; }
+    .hs-view .hs-btn:disabled { cursor: default; opacity: 0.45; }
+    .hs-view .hs-pill { border-radius: var(--radius-pill); }
+
+    /* Text input / select: 5r tall, baseline 3r from the top. WebKit centres the
+       line (ascent 13 + descent 3 at 13px, the fs-sm size) in the content box, so
+       shortening it from the bottom by ascent − descent − 1r lifts the baseline
+       from 3.5r·… to exactly 3r (same measured correction as .condition-search). */
+    .hs-view .hs-input {
+      display: block; width: 100%; height: calc(var(--subrow) * 5); box-sizing: border-box; margin: 0;
+      padding: 0 var(--gu) calc(0.769em - var(--subrow));
+      border: none; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      background: var(--surface2); color: var(--text);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); letter-spacing: 0.02em;
+      -webkit-appearance: none; appearance: none;
+    }
+    .hs-view select.hs-input {
+      /* A drawn caret (two gradient halves), inset 1g from the right edge. */
+      background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+      background-position: calc(100% - var(--gu) * 1.5) 45%, calc(100% - var(--gu)) 45%;
+      background-size: calc(var(--gu) * 0.5) calc(var(--gu) * 0.5);
+      background-repeat: no-repeat;
+      padding-right: calc(var(--gu) * 2);
+    }
+
+    /* Cards (SolverCard): whole-g wide, whole-r tall. 2g × 4r and 3g × 6r are both
+       0.704 wide:tall against the artwork's 0.714 — a 1.4% squeeze, so the grid
+       gets both axes. Raised stud upcards lift 2r; rows that hold them pad 2r. */
+    .hs-card { display: block; flex: 0 0 auto; box-sizing: border-box; margin: 0; }
+    .hs-card-sm { width: calc(var(--gu) * 2); height: calc(var(--subrow) * 4); }
+    .hs-card-md { width: calc(var(--gu) * 3); height: calc(var(--subrow) * 6); }
+    .hs-card-lg { width: calc(var(--gu) * 4); height: calc(var(--subrow) * 8); }
+    img.hs-card { border-radius: var(--radius-xs); box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.375) rgba(0,0,0,0.35); }
+    .hs-card-raised { transform: translateY(calc(var(--subrow) * -2)); }
+    .hs-card-dim { opacity: 0.5; filter: grayscale(0.4); box-shadow: none; }
+    .hs-view .hs-cards { display: flex; flex-wrap: wrap; align-items: flex-start; min-width: 0; }
+    .hs-view .hs-cards.hs-raise { padding-top: calc(var(--subrow) * 2); row-gap: calc(var(--subrow) * 2); }
+
+    /* Badge: 3r pill, label baseline 2r down, label inset 2g (box on a
+       subcolumn line → label on the next one). */
+    .hs-view .hs-badge {
+      display: block; box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
+      padding: 0 calc(var(--gu) * 2); border-radius: var(--radius-pill);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--hs-edge, var(--border));
+      color: var(--hs-ink, var(--text-muted)); background: var(--hs-bg, transparent);
+      white-space: nowrap; overflow: hidden;
+    }
+    .hs-view .hs-badge > .hs-t { overflow: hidden; text-overflow: ellipsis; padding-bottom: 0.3em; margin-bottom: -0.3em; }
+    /* GridBadge: 3r caps pill sized in whole g by GridBadge.jsx (label + 1g a
+       side, rounded up); label baseline 2r down. Rows of them wrap with 1g
+       between and 1r between lines. */
+    .hs-view .hs-gbadge {
+      display: inline-block; flex: 0 0 auto; box-sizing: border-box; height: calc(var(--subrow) * 3); vertical-align: top;
+      padding: 0 var(--gu); border-radius: var(--radius-pill); text-align: center; white-space: nowrap;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--hs-edge, var(--border));
+      color: var(--hs-ink, var(--text-muted)); background: var(--hs-bg, transparent);
+      font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+    .hs-view .hs-gbadges { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: var(--gu); row-gap: var(--subrow); min-width: 0; }
+
+    /* Horizontal meter: label | track | value, one 2r row. Columns are set per
+       use (--lab / --val, whole g) so the track's ends land on subcolumn lines;
+       the track keeps --gap g clear of the value column. */
+    .hs-view .hs-meter { display: grid; grid-template-columns: var(--hs-lab, calc(var(--gu) * 4)) minmax(0, 1fr) var(--hs-val, calc(var(--gu) * 4)); column-gap: 0; align-items: start; }
+    .hs-view .hs-meter > .hs-meter-track { margin-right: var(--gu); }
+    .hs-view .hs-meter > .hs-t:last-child { text-align: right; }
+    /* 1r track in the lower half of the 2r row: its bottom sits on the row's
+       baseline line, beside the labels' baselines. */
+    .hs-view .hs-meter-track { height: var(--subrow); margin-top: var(--subrow); border-radius: var(--radius-xs); background: var(--hs-track, var(--surface2)); overflow: hidden; }
+    .hs-view .hs-meter-fill { height: 100%; border-radius: var(--radius-xs); transition: width var(--dur-slow) var(--ease-standard); }
+
+    /* StrategyRibbon inside these views: track 3r · EV strip 1r (1r above) ·
+       legend 2r rows (1r above, 1r between). The shared .freq-* margins were
+       1r/2r around a 0.75r EV strip + 0.5r gap + a 1.94r legend line. */
+    .hs-view .freq-ribbon { margin: 0; }
+    .hs-view .freq-seg { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+    .hs-view .freq-seg-pct {
+      display: block; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      padding-top: calc(var(--subrow) * 2 - 1cap); line-height: calc(var(--subrow) * 2);
+    }
+    .hs-view .freq-ev { height: var(--subrow); margin-top: var(--subrow); }
+    .hs-view .freq-legend { row-gap: var(--subrow); column-gap: var(--gu); margin-top: var(--subrow); }
+    .hs-view .freq-legend-item {
+      display: block; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      padding-top: calc(var(--subrow) * 2 - 1cap); line-height: calc(var(--subrow) * 2);
+    }
+    .hs-view .freq-legend-item i { vertical-align: baseline; margin-right: calc(var(--gu) * 0.5); }
+    .hs-view .freq-legend-item b { margin-left: calc(var(--gu) * 0.5); }
+
     /* ── Solver Trainer responsive shell ──────────────────────────────────
        RazzTrainerView + Multiway3TrainerView. NARROW (<900px): the existing
        single-column phone stack — the inline maxWidth on the shell governs the
@@ -12601,7 +14445,11 @@
        them. The header (title + game pills), trust badge and Pro-mode toggle
        stay full width in .trainer-top above the two columns. Pure CSS media
        query — no JS resize listener. */
-    .trainer-cols { display: grid; grid-template-columns: 1fr; }
+    /* minmax(0, 1fr) + min-width 0: a bare 1fr track has an auto minimum, so one
+       nowrap run in a column (the draw hint's "draw 2 (throw 9s, Kd) 10%")
+       widened the whole column to 40.4g on a 35g screen. */
+    .trainer-cols { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .trainer-col { min-width: 0; }
     @media (min-width: 900px) {
       /* Widen the centered shell. !important overrides the inline narrow
          maxWidth (560 razz / 620 multiway), which is preserved below 900px. */
@@ -12690,3 +14538,259 @@
     }
     .grid-dev-toggle.is-on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
     .grid-dev-toggle:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+    /* ── Calendar tab filter panel (CalendarView Filters) ───────────────────────────────────
+       Its own classes, so the Schedule tab's .filter-panel keeps its geometry. Horizontal:
+       the panel is 35g on the 1g margins (1..36) with 1g side padding, so its content is 33g
+       (2..35), halved at the 18|19 column gutter into two 16g columns. Vertical: every row is
+       whole r and every text baseline is seated by a cap/alphabetic-trimmed block - bottom-
+       aligned 1r up in a 4r control, or 2r down a 3r option row - so the panel top (a whole
+       r from the .top-bar, see calPanelPos) carries every line onto the overlay. Borders are
+       drawn as inset shadows/outlines so they add nothing to a box. */
+    .cal-fp {
+      position: fixed; z-index: var(--z-panel);
+      width: calc(var(--gu) * 35);
+      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2) var(--gu);
+      display: flex; flex-direction: column;
+      gap: calc(var(--subrow) * 2);
+      background: var(--surface);
+      border: none;
+      border-radius: var(--radius);
+      outline: var(--bw-hair) solid var(--border);
+      outline-offset: calc(var(--bw-hair) * -1);
+      box-shadow: var(--elev-3);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .cal-fp > * { flex: none; }
+    /* A seated line of text: its box runs cap-top to baseline, so a bottom-aligned box puts
+       the baseline on the line under it. */
+    .cal-fp-cap {
+      display: block;
+      line-height: 1;
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* Quick chips: 5 x 5g on 2g gaps = 33g. 4r tall, label seated 1r above the bottom. */
+    .cal-fp-chips {
+      display: grid;
+      grid-template-columns: repeat(5, calc(var(--gu) * 5));
+      column-gap: var(--subcol);
+    }
+    .cal-fp .cal-fp-chip, .cal-fp-pill {
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .cal-fp .cal-fp-chip { width: calc(var(--gu) * 5); min-width: 0; padding: 0 0 var(--subrow); }
+    .cal-fp .cal-fp-chip.active, .cal-fp-pill.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+
+    /* Active-filter pills beside the filter button: 4r, label and clear-x seated 1r up; the
+       width is set in g by the Filters layout effect so both edges land on column lines. */
+    .cal-fp-pill {
+      flex: none;
+      padding: 0 var(--gu) var(--subrow);
+      gap: calc(var(--gu) * 0.5);
+      cursor: default;
+    }
+    /* The pills and the filter button share the bottom row's right-hand cell, capped at 17g
+       (19g..36g: pills to 30g, 2g, the 4g button) so the event count keeps the rest. Pills that
+       don't fit scroll sideways inside it instead of pushing the button off the screen. */
+    .cal-fp-bar { min-width: 0; max-width: calc(var(--gu) * 17); }
+    .cal-fp-pills {
+      display: flex; align-items: center;
+      flex: 0 1 auto; min-width: 0;
+      overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: none;
+    }
+    .cal-fp-pills::-webkit-scrollbar { display: none; }
+    .cal-fp-pills > :first-child { margin-left: auto; }
+    /* The x keeps its seat but gets a bigger target: padding and an equal negative margin. */
+    .cal-fp-pill-x {
+      cursor: pointer;
+      padding: var(--subrow) calc(var(--gu) * 0.5) 0;
+      margin: calc(var(--subrow) * -1) calc(var(--gu) * -0.5) 0;
+    }
+
+    /* Search: 33g x 4r. Icon cell 2g x 2r from 3g; the input fills to 34g (or to the 2g clear
+       cell). Input text baseline on the bar's r3: the line box is centred in the content box,
+       so with content = line-height the baseline sits at pt + (L - (A+D))/2 + A. Univers
+       Condensed has A - D = 0.7333em (15px: A 15, D 4), so pt = 2r - 0.7333em and
+       L = 2r + 0.7333em give pt + L = 4r and a baseline at exactly 3r. */
+    .cal-fp .cal-fp-search {
+      height: calc(var(--subrow) * 4);
+      margin: 0;
+      padding: 0 var(--gu);
+      gap: 0;
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+    }
+    .cal-fp .cal-fp-search svg { width: var(--subcol); height: calc(var(--subrow) * 2); }
+    .cal-fp .cal-fp-search input {
+      align-self: stretch;
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2 - 0.7333em) 0 0 calc(var(--gu) * 0.5);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
+      margin: 0;
+    }
+    /* The focus ring goes on the whole 33g bar, not the input inside it. */
+    .cal-fp .cal-fp-search input:focus-visible { outline: none; }
+    .cal-fp .cal-fp-search:focus-within { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+    .cal-fp-search-x {
+      flex: none;
+      width: var(--subcol);
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 0 0 var(--subrow);
+      margin: 0;
+      background: none; border: none;
+      color: var(--text-muted);
+      font-size: var(--fs-md);
+      cursor: pointer;
+    }
+
+    /* Date range: label row 3r (baseline r2), slider 4r (thumb 2r on r4..r6 of the block),
+       dates 2r (baseline on the block's r9). */
+    .cal-fp-date { display: flex; flex-direction: column; }
+    .cal-fp-slider.date-slider-wrap { height: calc(var(--subrow) * 4); padding: 0; box-sizing: border-box; }
+    /* Track and fill: whole-r 2r boxes (r1..r3) whose 0.5r bar is painted in the middle. */
+    .cal-fp-slider .date-slider-track,
+    .cal-fp-slider .date-slider-fill {
+      top: var(--subrow);
+      height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
+      padding-block: calc(var(--subrow) * 0.75);
+      background-clip: content-box;
+      border-radius: 0;
+    }
+    .cal-fp-slider .date-slider-track { left: 0; right: 0; }
+    .cal-fp-slider .date-slider-input { top: 0; height: calc(var(--subrow) * 4); }
+    .cal-fp-slider .date-slider-input::-webkit-slider-thumb { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+    .cal-fp-slider .date-slider-input::-moz-range-thumb { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+    .cal-fp-dates {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      height: calc(var(--subrow) * 2);
+      font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+    /* The link's box is only its cap height now; stretch the invisible picker over the row. */
+    .cal-fp-dates .date-slider-date-link input[type="date"] {
+      top: calc(var(--subrow) * -2);
+      height: calc(100% + var(--subrow) * 3);
+    }
+
+    /* Disclosure rows: 4r, full 33g, label + chevron seated 1r above the bottom. */
+    .cal-fp-head {
+      display: flex; align-items: flex-end;
+      gap: calc(var(--gu) * 0.5);
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 0 var(--subrow);
+      background: none; border: none;
+      font-family: inherit; font-size: var(--fs-sm); font-weight: var(--fw-bold);
+      color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+      text-align: left;
+      cursor: pointer;
+    }
+    .cal-fp-chev { font-size: var(--fs-xs); transition: transform var(--dur-fast, 0.15s); }
+    .cal-fp-chev.is-open { transform: rotate(180deg); }
+    .cal-fp-body { padding-bottom: var(--subrow); }
+
+    /* Two 16g columns split at the 18|19 gutter. */
+    .cal-fp-cols {
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--gu) * 16));
+      column-gap: var(--gu);
+      align-items: start;
+    }
+    .cal-fp-cols.is-spaced { row-gap: var(--subrow); }
+    .cal-fp-subs { padding-left: var(--subcol); }
+
+    /* Option rows: 2g checkbox cell + label. The label is 2r lines, trimmed to cap-top..last
+       baseline and padded (2r - 1cap) above and 1r below: one line = 3r with its baseline on
+       r2, each wrapped line +2r. The 1.5r checkbox is centred on the first line's cap band. */
+    .cal-fp-opt {
+      display: grid;
+      grid-template-columns: var(--subcol) minmax(0, 1fr);
+      align-items: start;
+      /* WebKit truncates each padded piece to 1/64px; a whole-r floor stops that summing
+         down a 50-row list (measured 2.996r a row without it). */
+      min-height: calc(var(--subrow) * 3);
+      font-size: var(--fs-sm); font-weight: var(--fw-regular);
+      color: var(--text);
+      text-transform: none; letter-spacing: 0;
+      cursor: pointer;
+    }
+    .cal-fp-opt.is-bold { font-weight: var(--fw-bold); }
+    .cal-fp-opt.is-muted { color: var(--text-muted); }
+    .cal-fp-opt input {
+      font: inherit;
+      width: calc(var(--subrow) * 1.5); height: calc(var(--subrow) * 1.5);
+      margin: calc(var(--subrow) * 1.25 - 0.5cap) 0 0;
+    }
+    .cal-fp-txt, .cal-fp-subtxt {
+      display: block;
+      min-width: 0;
+      line-height: calc(var(--subrow) * 2);
+      padding: calc(var(--subrow) * 2 - 1cap) 0 var(--subrow);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      overflow-wrap: anywhere;
+    }
+    /* Sub-labels (DATE RANGE, BUY-IN, RAKE): the same 3r seated row, as caps micro-labels. */
+    .cal-fp-subtxt {
+      box-sizing: border-box; min-height: calc(var(--subrow) * 3);
+      font-size: var(--fs-xs); font-weight: var(--fw-bold);
+      color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+
+    /* Clear all | Save & Close: one per 16g column, 4r, label seated 1r up. */
+    .cal-fp-actions {
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--gu) * 16));
+      column-gap: var(--gu);
+    }
+    .cal-fp-actions .btn {
+      grid-row: 1;
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      border: none;
+      align-items: flex-end; justify-content: center;
+    }
+    .cal-fp-actions .btn-ghost { box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
+    .cal-fp-clear { grid-column: 1; }
+    .cal-fp-save { grid-column: 2; }
+
+    /* "My Events" / "All Events" count, beside the seated h2. */
+    .cal-list-section-count { font-size: var(--fs-sm); color: var(--text-muted); }
+
+    /* Calendar empty state ("No events on this date"): 5r pad, 5g x 6r icon (the glyph is drawn
+       at the 6r height, centred - 16g..21g on the 35g list), title baseline 4r under the icon,
+       copy on 2r lines 27g wide (5g..32g), first baseline 3r under the title, 5r pad. */
+    .cal-empty.empty-state { padding: calc(var(--subrow) * 5) 0; }
+    .cal-empty svg { display: block; width: calc(var(--gu) * 5); height: calc(var(--subrow) * 6); margin: 0 auto; }
+    .cal-empty h3 {
+      margin: 0;
+      line-height: 1;
+      padding-top: calc(var(--subrow) * 4 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .cal-empty p {
+      width: calc(var(--gu) * 27); max-width: none;
+      margin: 0 auto;
+      line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }

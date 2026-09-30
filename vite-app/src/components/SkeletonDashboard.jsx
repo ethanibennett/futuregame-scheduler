@@ -13,46 +13,45 @@ import React from 'react';
  * children, so card and children shimmered in phase and the whole block
  * flashed as one rectangle — which says "one thing is loading" when four are.
  * The container is now a real surface and only the children animate, staggered.
+ *
+ * 2026-09-30: on the grid. Every box is whole r tall and whole g wide with its
+ * edges on grid lines (sizes live in styles.css, .skeleton-hero-* / -title /
+ * -slab / -pl-grid): the hero is the real plain card's 12r, the scanner slab
+ * the real 5r button, the results grid the real 8g | 8g | 17g x 9r cards.
  */
 export default function SkeletonDashboard() {
   return (
     <div className="dashboard-view">
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 10)', height: 'calc(var(--subrow) * 1.75)'}} />
+          <div className="skeleton skeleton-title" style={{width: 'calc(var(--gu) * 6)'}} />
         </div>
-        {/* Hero card: 18px full-bleed strip, then the real padding. */}
         <div className="skeleton-hero-card">
-          <div className="skeleton" style={{height: 'calc(var(--subrow) * 2.25)', borderRadius: 0}} />
+          <div className="skeleton skeleton-hero-strip" />
           <div className="skeleton-hero-body">
-            <div className="skeleton skeleton-text" style={{width: '55%', height: 'calc(var(--subrow) * 1.875)', animationDelay: '0ms'}} />
-            <div className="skeleton skeleton-text" style={{width: '35%', height: 'calc(var(--subrow) * 1.375)', animationDelay: '90ms'}} />
-            <div className="skeleton-hero-stats">
-              <div className="skeleton skeleton-text" style={{animationDelay: '180ms'}} />
-              <div className="skeleton skeleton-text" style={{animationDelay: '230ms'}} />
-              <div className="skeleton skeleton-text" style={{animationDelay: '280ms'}} />
-            </div>
-            <div className="skeleton" style={{height: 'calc(var(--subrow) * 0.75)', borderRadius: 'var(--radius-xs)', animationDelay: '330ms'}} />
+            <div className="skeleton skeleton-hero-name" style={{animationDelay: '0ms'}} />
+            <div className="skeleton skeleton-hero-meta" style={{animationDelay: '90ms'}} />
+            <div className="skeleton skeleton-hero-bar" style={{animationDelay: '180ms'}} />
           </div>
         </div>
       </div>
 
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 8.75)', height: 'calc(var(--subrow) * 1.75)'}} />
+          <div className="skeleton skeleton-title" style={{width: 'calc(var(--gu) * 11)'}} />
         </div>
-        <div className="skeleton" style={{height: 'calc(var(--subrow) * 7.5)', borderRadius: 'var(--radius-sm)'}} />
+        <div className="skeleton skeleton-slab" />
       </div>
 
       {/* The results section is a 3-up grid, not another slab. */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 12.5)', height: 'calc(var(--subrow) * 1.75)'}} />
+          <div className="skeleton skeleton-title" style={{width: 'calc(var(--gu) * 6)'}} />
         </div>
         <div className="skeleton-pl-grid">
-          <div className="skeleton" style={{height: 'calc(var(--subrow) * 6.5)', borderRadius: 'var(--radius)', animationDelay: '0ms'}} />
-          <div className="skeleton" style={{height: 'calc(var(--subrow) * 6.5)', borderRadius: 'var(--radius)', animationDelay: '90ms'}} />
-          <div className="skeleton" style={{height: 'calc(var(--subrow) * 6.5)', borderRadius: 'var(--radius)', animationDelay: '180ms'}} />
+          <div className="skeleton" style={{animationDelay: '0ms'}} />
+          <div className="skeleton" style={{animationDelay: '90ms'}} />
+          <div className="skeleton" style={{animationDelay: '180ms'}} />
         </div>
       </div>
     </div>

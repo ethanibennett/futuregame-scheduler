@@ -32,7 +32,9 @@ export function FirstRun({ icon = 'star', title, body, actionLabel, onAction, co
       {body ? <p>{body}</p> : null}
       {actionLabel && onAction ? (
         <button type="button" className="empty-state-action" onClick={onAction}>
-          {actionLabel}
+          {/* A block child so a grid-seated context (the dashboard) can trim it —
+              text-box-trim is inert on the button's own flex box. */}
+          <span className="empty-state-action-label">{actionLabel}</span>
         </button>
       ) : null}
     </div>

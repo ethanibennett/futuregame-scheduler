@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchApi } from '../utils/api.js';
 import Card from './SolverCard.jsx';
+import GridBadge from './GridBadge.jsx';
 
 // ── Stud Trainer (Razz / Stud 8) ─────────────────────────────────────────
 // Play a full heads-up hand of the selected game (Razz or Stud 8) against the
@@ -19,10 +20,14 @@ import Card from './SolverCard.jsx';
 // decision OR terminal. We keep the running heroActions list locally and POST
 // the full list each step (the server is the source of truth for state).
 
-const FONT = "'Univers Condensed', 'Univers', sans-serif";
-const label = { fontSize: 'calc(var(--gu) * 0.913)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 'calc(var(--subrow) * 2)' };
-// Grid: 1px border absorbed into padding so panel inner content lands on 2g / subrow lines.
-const panel = { background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' };
+// Grid (classes in styles.css, .hs-*): every piece is whole r — text is an
+// .hs-t block whose baseline is its bottom edge (b r tall, +lh r per extra
+// line), controls 3/4/5r, cards 2g × 4r, gaps 1/2r — so every block starts on
+// an r-line from the top bar. Panels pad 2r × 2g (content on 3..34); rows of
+// controls sit on the 8g column rails or on 15g / 9g panel columns whose edges
+// are subcolumn lines. Badges are whole-g wide (GridBadge measures them).
+const T = (b, lh) => (lh ? { '--hs-b': b, '--hs-lh': lh } : { '--hs-b': b });
+const R = (n) => `calc(var(--subrow) * ${n})`;
 
 // ── explicit-discard encoding (mirrors solver/draw-trainer/play.js) ────────
 // FULL DISCARD CONTROL: the hero's draw action is a STATELESS string
@@ -204,21 +209,20 @@ function labelFor(g, actionId) {
   return actionId;
 }
 
-// ── one GTO strategy bar (reused markup from SolverView ActionBar) ───────
+// ── one GTO strategy bar ──────────────────────────────────────────────────
+// Grid: one 2r row inside a panel (content 3..34): name 7g (3..10) | 1r track
+// on the row's baseline line, 18g (10..28), 2g clear | percent 4g (30..34).
 function ActionBar({ name, pct, best, marker }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--subrow) * 1.125)', marginBottom: 'calc(var(--subrow) * 0.625)' }}>
-      <span style={{ width: 'calc(var(--subrow) * 10.75)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {name}{marker ? ' ' + marker : ''}
-      </span>
-      <div style={{ flex: 1, height: 'calc(var(--subrow) * 2)', background: 'var(--surface2)', borderRadius: 'var(--radius-xs)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)',
-          background: best ? 'var(--pos, #22c55e)' : 'var(--accent2)',
-          transition: 'width .5s cubic-bezier(.4,0,.2,1)',
-        }} />
+    <div className="hs-meter" style={{ '--hs-lab': 'calc(var(--gu) * 7)', '--hs-val': 'calc(var(--gu) * 4)' }}>
+      {/* wrapper: a trimmed overflow:hidden GRID item loses its content height in WebKit */}
+      <div style={{ minWidth: 0, paddingRight: 'var(--gu)' }}>
+        <span className="hs-t hs-xs hs-mut hs-clip" style={{ ...T(2), textTransform: 'capitalize' }}>{name}{marker ? ' ' + marker : ''}</span>
       </div>
-      <span style={{ width: 'calc(var(--subrow) * 5)', textAlign: 'right', fontSize: 'calc(var(--gu) * 1.060)', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{pct}%</span>
+      <div className="hs-meter-track" style={{ marginRight: 'calc(var(--gu) * 2)' }}>
+        <div className="hs-meter-fill" style={{ width: `${pct}%`, background: best ? 'var(--pos, #22c55e)' : 'var(--accent2)' }} />
+      </div>
+      <span className="hs-t hs-xs hs-num" style={T(2)}>{pct}%</span>
     </div>
   );
 }
@@ -380,21 +384,21 @@ export default function RazzTrainerView() {
   // ── render ──
   const gameName = GAME_LABEL[game] || game;
   return (
-    <div className="trainer-shell" style={{ height: '100%', overflowY: 'auto', padding: '0 0 calc(var(--subrow) * 10)', maxWidth: 'calc(var(--subrow) * 70)', margin: '0 auto', fontFamily: FONT }}>
+    <div className="hs-view trainer-shell" style={{ maxWidth: R(70) }}>
       {/* Full-width top band (header + game pills + trust badge + pro toggle + error).
-          On wide screens it spans above the two columns; on narrow it's the top of the stack. */}
+          On wide screens it spans above the two columns; on narrow it's the top of the stack.
+          Grid: title 4r (baseline on its bottom), 2r, 4r pills on the four 8g rails
+          (1r between rows), 1r, 2r caps subtitle lines, 1r, 2r trust lines, 2r. */}
       <div className="trainer-top">
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 'var(--space-md)', columnGap: 'var(--gu)' }}>
-        {/* Grid: title box 4 subrows, baseline seated on T12. */}
-        <h2 className="screen-title" style={{ fontSize: 'calc(var(--gu) * 1.767)', margin: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', lineHeight: 'calc(var(--subrow) * 4)', paddingTop: 'calc(var(--subrow) * 0.125)' }}>{gameName} Trainer</h2>
-        {/* Game pills */}
-        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-          {GAMES.map(([id, lbl]) => (
-            <button key={id} onClick={() => selectGame(id)} disabled={loading || stepping} style={gamePill(game === id, loading || stepping)}>{lbl}</button>
-          ))}
-        </div>
+      <h2 className="screen-title hs-t hs-title" style={T(4)}>{gameName} Trainer</h2>
+      <div className="hs-cols" style={{ '--hs-n': 4, marginTop: R(2) }}>
+        {GAMES.map(([id, lbl]) => (
+          <button key={id} className="hs-btn hs-pill" onClick={() => selectGame(id)} disabled={loading || stepping} style={gamePill(game === id, loading || stepping)}>
+            <span className="hs-t" style={T(3)}>{lbl}</span>
+          </button>
+        ))}
       </div>
-      <p style={{ ...label, margin: '0 0 var(--subrow)', minHeight: 'calc(var(--subrow) * 2)' }}>
+      <p className="hs-t hs-cap" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
         Heads-up {gameName} · play vs the blueprint · range-aware EV grading
         {game === 'stud8' ? ' · hi/lo split' : ''}
         {cat === 'draw' ? ' · single low · hidden opponent' : ''}
@@ -402,22 +406,16 @@ export default function RazzTrainerView() {
 
       {/* Blueprint trust badge — how far to trust this game's EV-loss grades */}
       {GAME_TRUST[game] && (GAME_TRUST[game].ok ? (
-        <div style={{
-          fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', margin: '0 0 var(--subrow)', lineHeight: 'calc(var(--subrow) * 2)',
-          display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)',
-        }}>
-          <span style={{ color: 'var(--pos, #22c55e)' }}>✓</span>
+        <div className="hs-t hs-xs hs-mut" style={{ ...T(2, 2), marginTop: 'var(--subrow)' }}>
+          <span style={{ color: 'var(--pos, #22c55e)', marginRight: 'var(--gu)' }}>✓</span>
           Trustworthy bot — {GAME_TRUST[game].expl < 0.5 ? '≈0' : `≥${GAME_TRUST[game].expl}`} chips/hand exploitable (best-response LBR, lower bound)
         </div>
       ) : (
-        <div style={{
-          fontSize: 'calc(var(--gu) * 1.090)', lineHeight: 1.45, margin: '0 0 var(--space-lg)', padding: 'var(--space-md) var(--space-ml)',
-          borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--warn, #f59e0b)',
-          background: 'rgba(245,158,11,.10)', color: 'var(--text)',
-          display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)',
-        }}>
-          <span style={{ fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 1 }}>⚠</span>
-          <span><b>Approximate grades.</b> The {gameName} bot is {GAME_TRUST[game].note} (≈{GAME_TRUST[game].expl} chips/hand exploitable). Use its EV-loss as a rough guide, not gospel — it’s being sharpened.</span>
+        <div className="hs-panel" style={{ marginTop: 'var(--subrow)', '--hs-edge': 'var(--warn, #f59e0b)', '--hs-bg': 'rgba(245,158,11,.10)' }}>
+          <div className="hs-t hs-xs" style={T(2, 2)}>
+            <span style={{ marginRight: 'var(--gu)' }}>⚠</span>
+            <b>Approximate grades.</b> The {gameName} bot is {GAME_TRUST[game].note} (≈{GAME_TRUST[game].expl} chips/hand exploitable). Use its EV-loss as a rough guide, not gospel — it’s being sharpened.
+          </div>
         </div>
       ))}
 
@@ -429,16 +427,16 @@ export default function RazzTrainerView() {
       )}
 
       {error && (
-        <div style={{
-          ...panel, marginBottom: 'var(--space-lg)', color: 'var(--neg, #ef4444)',
-          border: 'var(--bw-hair) solid var(--neg, #ef4444)', background: 'rgba(239,68,68,.08)', fontSize: 'calc(var(--gu) * 1.178)', lineHeight: 1.5,
-        }}>
-          {error.offline
-            ? <><b>Trainer offline.</b> The {gameName} trainer backend isn’t reachable. {error.message ? `(${error.message})` : ''}</>
-            : <><b>Could not deal:</b> {error.message}</>}
-          <div style={{ marginTop: 'var(--space-md)' }}>
-            <button onClick={() => deal()} style={primaryBtn}>Retry</button>
+        <div className="hs-panel hs-stack" style={{ marginTop: R(2), '--hs-edge': 'var(--neg, #ef4444)', '--hs-bg': 'rgba(239,68,68,.08)' }}>
+          <div className="hs-t hs-sm" style={{ ...T(3, 3), color: 'var(--neg, #ef4444)' }}>
+            {error.offline
+              ? <><b>Trainer offline.</b> The {gameName} trainer backend isn’t reachable. {error.message ? `(${error.message})` : ''}</>
+              : <><b>Could not deal:</b> {error.message}</>}
           </div>
+          {/* Retry: 5r × 9g on 3..12 (both edges on subcolumn lines). */}
+          <button className="hs-btn" onClick={() => deal()} style={{ ...primaryBtn, width: 'calc(var(--gu) * 9)' }}>
+            <span className="hs-t" style={T(3)}>Retry</span>
+          </button>
         </div>
       )}
 
@@ -449,7 +447,7 @@ export default function RazzTrainerView() {
       <div className="trainer-cols">
       <div className="trainer-col trainer-col-play">
 
-      {loading && !state && <div style={{ color: 'var(--text-muted)', padding: 'var(--space-2xl) 0' }}>Dealing…</div>}
+      {loading && !state && <div className="hs-t hs-sm hs-mut" style={{ ...T(3, 3), marginTop: R(2) }}>Dealing…</div>}
 
       {state && cat === 'stud' && (
         <StudTable state={state} heroSeat={heroSeat} handOver={handOver} result={result} />
@@ -465,21 +463,17 @@ export default function RazzTrainerView() {
 
       {/* ── action buttons (hero's turn) ── betting nodes use this generic
           panel; draw nodes render their decision inside DrawTable so the
-          keep/throw highlight can react to button hover. ── */}
+          keep/throw highlight can react to button hover.
+          Grid: 2r caps label, 1r, 5r buttons — 3 across on 9g + 2g + 9g + 2g + 9g,
+          otherwise 2 across on 15g + 1g + 15g (content 3..34). ── */}
       {heroOnTurn && !drawDecisionInTable && (
-        <div style={{ ...panel, marginTop: 'var(--subrow)' }}>
-          <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Your action {stepping ? '· …' : ''}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+        <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+          <div className="hs-t hs-cap" style={T(2)}>Your action {stepping ? '· …' : ''}</div>
+          <div className={legalActions.length === 3 ? 'hs-cols3' : 'hs-cols'} style={{ '--hs-n': 2, rowGap: 'var(--subrow)' }}>
             {legalActions.map((a) => (
-              <button key={a.id} onClick={() => pickAction(a.id)} disabled={stepping}
-                style={{
-                  touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-                  flex: '1 1 auto', minWidth: 'calc(var(--subrow) * 12)', height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 'var(--radius-sm)',
-                  cursor: stepping ? 'wait' : 'pointer', border: 'var(--bw-hair) solid var(--accent)',
-                  background: 'transparent', color: 'var(--text)', fontFamily: 'inherit',
-                  fontSize: 'calc(var(--gu) * 1.325)', fontWeight: 700, opacity: stepping ? 0.6 : 1,
-                }}>
-                {a.label}
+              <button key={a.id} className="hs-btn" onClick={() => pickAction(a.id)} disabled={stepping}
+                style={{ '--hs-h': 5, '--hs-edge': 'var(--accent)', fontSize: 'var(--fs-md)', cursor: stepping ? 'wait' : 'pointer', opacity: stepping ? 0.6 : 1 }}>
+                <span className="hs-t" style={T(3)}>{a.label}</span>
               </button>
             ))}
           </div>
@@ -488,12 +482,12 @@ export default function RazzTrainerView() {
 
       {/* waiting on opponent / chance between hero turns */}
       {state && !handOver && !heroOnTurn && (
-        <div style={{ ...panel, marginTop: 'var(--space-ml)', color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.208)' }}>
-          {stepping ? 'Advancing the hand…' : 'Opponent to act…'}
+        <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+          <div className="hs-t hs-sm hs-mut" style={T(3, 3)}>{stepping ? 'Advancing the hand…' : 'Opponent to act…'}</div>
           {stepping && proMode && proModeAvailable(game) && (
-            <span style={{ display: 'block', marginTop: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 1.001)' }}>
+            <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
               Pro mode — if the hand ends, each {oracleStreetLabel(game)} decision runs an exact GTO re-solve (~1–5s){game === 'badugi' ? '; each pre-last-draw bet is graded by the certified value net (~0.06 SB)' : ''}.
-            </span>
+            </div>
           )}
         </div>
       )}
@@ -508,76 +502,64 @@ export default function RazzTrainerView() {
       {/* Feedback side: grading report + deal-next + scoreboard + history. */}
       <div className="trainer-col trainer-col-feedback">
 
+      {/* Grading report — 3r header line (label | total), pro badges (3r, 1r
+          between lines) 1r under it, then the grade cards 1r apart. 2r above. */}
       {handOver && grades && (
-        <div style={{ marginTop: 'var(--subrow)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--subrow)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-            <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>
-              Grading report
-              {/* Pro-mode provenance: shown when at least one decision in this
-                  hand was graded by the true-GTO oracle. Per-decision badges on
-                  each card below say exactly which. */}
-              {grades.some((g) => g.gradeSource === 'oracle') && (
-                <span title={`Pro mode — ${oracleStreetLabel(game)} decisions in this hand were graded by the exact GTO re-solve (oracle); other streets by the blueprint. Each card is tagged with its grade source.`}
-                  style={{
-                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
-                  }}>
-                  pro · true-GTO {catOf(game) === 'draw' ? 'final' : '7th'}
-                </span>
-              )}
-              {/* CERTIFIED-NET provenance (first neural grade): pre-last-draw badugi
-                  bet decisions graded by the trained value net. Kept visually
-                  DISTINCT from 'true-GTO' — a certified approximator, not exact. */}
-              {grades.some((g) => g.gradeSource === 'certified-net') && (
-                <span title={`Pro mode — pre-last-draw badugi bet decisions in this hand were graded by the CERTIFIED value net (a neural approximator of GTO, mean grade error ~0.06 small bets), NOT an exact re-solve. Each card is tagged with its grade source.`}
-                  style={{
-                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: 'var(--bw-hair) dashed var(--accent)', color: 'var(--accent)',
-                  }}>
-                  pro · certified net ~0.06 SB
-                </span>
-              )}
-              {/* 6th-STREET ORACLE provenance: bucketed 6th→7th re-solve, APPROXIMATE
-                  (bucket abstraction), shown but NOT charged. Dashed amber = distinct
-                  from the solid-accent near-exact 7th 'true-GTO' and 'certified net'. */}
-              {grades.some((g) => g.gradeSource === 'oracle-6th') && (
-                <span title={`Pro mode — 6th-street decisions in this hand were graded by the bucketed 6th→7th re-solve: APPROXIMATE (bucket abstraction), SHOWN but NOT charged to your score. Distinct from the near-exact 7th-street oracle. Each card is tagged with its grade source.`}
-                  style={{
-                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
-                  }}>
-                  pro · 6th approx
-                </span>
-              )}
-              {grades.some((g) => g.gradeSource === 'oracle-5th') && (
-                <span title={`Pro mode — 5th-street decisions were graded by a depth-limited re-solve with the 6th value net as the leaf: APPROXIMATE (net-leaf, no exact anchor below 6th), SHOWN but NOT charged. The softest tier.`}
-                  style={{
-                    marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-                    border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
-                  }}>
-                  pro · 5th laddered
-                </span>
-              )}
-            </span>
-            <span style={{ fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)' }}>
+        <div className="hs-stack" style={{ marginTop: R(2) }}>
+          <div className="hs-split">
+            <span className="hs-t hs-cap hs-bold" style={{ ...T(3), letterSpacing: '0.14em' }}>Grading report</span>
+            <span className="hs-t hs-sm hs-mut" style={T(3)}>
               total EV-loss <b style={{ color: totalEvLoss > 0.5 ? 'var(--neg, #ef4444)' : 'var(--pos, #22c55e)', fontVariantNumeric: 'tabular-nums' }}>
                 {totalEvLoss.toFixed(2)}
               </b> chips
             </span>
           </div>
+          {/* Pro-mode provenance: shown when at least one decision in this
+              hand was graded by the true-GTO oracle / certified net / 6th / 5th
+              re-solves. Per-decision badges on each card below say exactly which. */}
+          {grades.some((g) => ['oracle', 'certified-net', 'oracle-6th', 'oracle-5th'].includes(g.gradeSource)) && (
+            <div className="hs-gbadges">
+              {grades.some((g) => g.gradeSource === 'oracle') && (
+                <GridBadge edge="var(--accent)" ink="var(--accent)"
+                  title={`Pro mode — ${oracleStreetLabel(game)} decisions in this hand were graded by the exact GTO re-solve (oracle); other streets by the blueprint. Each card is tagged with its grade source.`}>
+                  pro · true-GTO {catOf(game) === 'draw' ? 'final' : '7th'}
+                </GridBadge>
+              )}
+              {/* CERTIFIED-NET provenance (first neural grade): pre-last-draw badugi
+                  bet decisions graded by the trained value net. Kept visually
+                  DISTINCT from 'true-GTO' — a certified approximator, not exact. */}
+              {grades.some((g) => g.gradeSource === 'certified-net') && (
+                <GridBadge edge="var(--accent)" ink="var(--accent)" dashed
+                  title="Pro mode — pre-last-draw badugi bet decisions in this hand were graded by the CERTIFIED value net (a neural approximator of GTO, mean grade error ~0.06 small bets), NOT an exact re-solve. Each card is tagged with its grade source.">
+                  pro · certified net ~0.06 SB
+                </GridBadge>
+              )}
+              {/* 6th-STREET ORACLE provenance: bucketed 6th→7th re-solve, APPROXIMATE
+                  (bucket abstraction), shown but NOT charged. Dashed amber = distinct
+                  from the solid-accent near-exact 7th 'true-GTO' and 'certified net'. */}
+              {grades.some((g) => g.gradeSource === 'oracle-6th') && (
+                <GridBadge edge="var(--accent2, #eab308)" ink="var(--accent2, #eab308)" dashed
+                  title="Pro mode — 6th-street decisions in this hand were graded by the bucketed 6th→7th re-solve: APPROXIMATE (bucket abstraction), SHOWN but NOT charged to your score. Distinct from the near-exact 7th-street oracle. Each card is tagged with its grade source.">
+                  pro · 6th approx
+                </GridBadge>
+              )}
+              {grades.some((g) => g.gradeSource === 'oracle-5th') && (
+                <GridBadge edge="var(--accent2, #eab308)" ink="var(--accent2, #eab308)" dashed
+                  title="Pro mode — 5th-street decisions were graded by a depth-limited re-solve with the 6th value net as the leaf: APPROXIMATE (net-leaf, no exact anchor below 6th), SHOWN but NOT charged. The softest tier.">
+                  pro · 5th laddered
+                </GridBadge>
+              )}
+            </div>
+          )}
           {grades.map((g, i) => <GradeCard key={i} g={g} game={game} />)}
         </div>
       )}
 
-      {/* ── deal next ── */}
+      {/* ── deal next ── 5r button on cols 3–4 (19..36), 2r above. */}
       {handOver && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'calc(var(--subrow) * 2)' }}>
-          <button onClick={() => deal()} disabled={loading} style={primaryBtn}>
-            {loading ? 'Dealing…' : 'Deal Next Hand'}
+        <div className="hs-cols" style={{ '--hs-n': 4, marginTop: R(2) }}>
+          <button className="hs-btn" onClick={() => deal()} disabled={loading} style={{ ...primaryBtn, gridColumn: '3 / -1' }}>
+            <span className="hs-t" style={T(3)}>{loading ? 'Dealing…' : 'Deal Next Hand'}</span>
           </button>
         </div>
       )}
@@ -594,12 +576,10 @@ export default function RazzTrainerView() {
   );
 }
 
+// Primary action button: 5r, brand fill, label baseline 3r down.
 const primaryBtn = {
-  height: 'calc(var(--subrow) * 5)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-  padding: '0 calc(var(--subrow) * 2.25)', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent)',
-  color: '#fff', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 700, cursor: 'pointer',
-  // touch polish: no double-tap zoom / text-select / tap-highlight during rapid play
-  touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
+  '--hs-h': 5, '--hs-edge': 'transparent', '--hs-fill': 'var(--accent)', '--hs-ink': '#fff',
+  fontSize: 'var(--fs-sm)',
 };
 
 // ── Pro mode toggle (true-GTO / exact-resolve grading) ────────────────────
@@ -608,35 +588,25 @@ const primaryBtn = {
 // far more accurate, but each eligible decision runs an exact solve (~4-5s), so
 // finishing a hand is slower. OFF by default. Matches the app's surface/border/
 // accent tokens and the existing switch look.
+// Grid: panel 2r × 2g (content 3..34). Row 1 (3r): "Pro mode" (baseline 2r
+// down) + a 3r badge, the 3r × 4g switch on 30..34. Then 1r and 2r copy lines
+// on 3..28 (clear of the switch column).
 function ProModeToggle({ on, onToggle, disabled, game }) {
   const streetLbl = oracleStreetLabel(game);
   const isDraw = catOf(game) === 'draw';
   return (
-    <div style={{
-      ...panel, margin: '0 0 calc(var(--subrow) * 2)', padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))',
-      display: 'flex', alignItems: 'center', gap: 'var(--gu)',
-      borderColor: on ? 'var(--accent)' : 'var(--border)',
-      background: on ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-      transition: 'border-color .2s ease, background .2s ease',
+    <div className="hs-panel" style={{
+      marginTop: R(2),
+      display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) calc(var(--gu) * 4)', columnGap: 'calc(var(--gu) * 2)', rowGap: 'var(--subrow)', alignItems: 'start',
+      '--hs-edge': on ? 'var(--accent)' : 'var(--border)',
+      '--hs-bg': on ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+      transition: 'background .2s ease',
     }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', height: 'calc(var(--subrow) * 3)' }}>
-          <span style={{ fontSize: 'calc(var(--gu) * 1.208)', fontWeight: 700, color: 'var(--text)', lineHeight: 'calc(var(--subrow) * 3)' }}>Pro mode</span>
-          <span style={{
-            padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.795)', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
-            border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
-          }}>
-            true GTO
-          </span>
-        </div>
-        <div style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', marginTop: 'var(--subrow)' }}>
-          Grade {streetLbl} {isDraw ? 'bet' : ''} decisions against an <b style={{ color: 'var(--text)' }}>exact GTO re-solve</b> instead
-          of the blueprint bot. Much more accurate — but each {streetLbl} decision runs a full solve ({isDraw ? '~1–2s' : '~4–5s'}), so
-          finishing a hand is slower. {isDraw ? 'Earlier draws and every draw decision' : 'Earlier streets'} stay on the blueprint grade.
-        </div>
+      <div className="hs-gbadges" style={{ alignItems: 'flex-start' }}>
+        <span className="hs-t hs-sm hs-bold" style={T(2)}>Pro mode</span>
+        <GridBadge edge="var(--accent)" ink="var(--accent)">true GTO</GridBadge>
       </div>
-      {/* switch */}
+      {/* switch: 3r × 4g, knob 2r inset 0.5r */}
       <button
         onClick={disabled ? undefined : onToggle}
         disabled={disabled}
@@ -645,36 +615,68 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
         aria-label="Pro mode — true-GTO grading"
         title={on ? `Pro mode ON — ${streetLbl} decisions graded by exact GTO re-solve` : 'Pro mode OFF — blueprint grading (fast)'}
         style={{
-          flex: '0 0 auto', position: 'relative', width: 'calc(var(--subrow) * 5.5)', height: 'calc(var(--subrow) * 3)', borderRadius: 'var(--radius-pill)',
-          border: 'var(--bw-hair) solid ' + (on ? 'var(--accent)' : 'var(--border)'),
+          position: 'relative', width: 'calc(var(--gu) * 4)', height: R(3), borderRadius: 'var(--radius-pill)', border: 'none', margin: 0,
+          boxShadow: 'inset 0 0 0 var(--bw-hair) ' + (on ? 'var(--accent)' : 'var(--border)'),
           background: on ? 'var(--accent)' : 'var(--surface2)',
           cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
-          padding: 0, transition: 'background .18s ease, border-color .18s ease',
+          padding: 0, transition: 'background .18s ease',
           touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
         }}>
         <span style={{
-          position: 'absolute', top: 'var(--space-2xs)', left: on ? 'calc(var(--subrow) * 2.75)' : 'var(--space-2xs)', width: 'calc(var(--subrow) * 2.25)', height: 'calc(var(--subrow) * 2.25)', borderRadius: '50%',
+          position: 'absolute', top: 'calc(var(--subrow) * 0.5)', left: on ? 'calc(var(--gu) * 4 - var(--subrow) * 2.5)' : 'calc(var(--subrow) * 0.5)', width: R(2), height: R(2), borderRadius: '50%',
           background: '#fff', transition: 'left .18s cubic-bezier(.4,0,.2,1)',
           boxShadow: '0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,.3)',
         }} />
       </button>
+      <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+        Grade {streetLbl} {isDraw ? 'bet' : ''} decisions against an <b style={{ color: 'var(--text)' }}>exact GTO re-solve</b> instead
+        of the blueprint bot. Much more accurate — but each {streetLbl} decision runs a full solve ({isDraw ? '~1–2s' : '~4–5s'}), so
+        finishing a hand is slower. {isDraw ? 'Earlier draws and every draw decision' : 'Earlier streets'} stay on the blueprint grade.
+      </div>
     </div>
   );
 }
 
-// pill matching SolverView's game pills (filled when active).
+// pill matching SolverView's game pills (filled when active): 4r, label 3r down.
 const gamePill = (active, disabled) => ({
-  touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-  height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-  padding: '0 var(--space-lg)', borderRadius: 'var(--radius-pill)', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-  fontSize: 'calc(var(--gu) * 1.060)', fontWeight: active ? 700 : 600, letterSpacing: '0.04em',
-  border: 'var(--bw-hair) solid ' + (active ? 'var(--text)' : 'var(--border)'),
-  background: active ? 'var(--text)' : 'transparent',
-  color: active ? 'var(--bg)' : 'var(--text-muted)',
+  '--hs-h': 4, padding: 0, fontSize: 'var(--fs-xs)', fontWeight: active ? 'var(--fw-bold)' : 'var(--fw-semibold, 600)', letterSpacing: '0.04em',
+  '--hs-edge': active ? 'var(--text)' : 'var(--border)',
+  '--hs-fill': active ? 'var(--text)' : 'transparent',
+  '--hs-ink': active ? 'var(--bg)' : 'var(--text-muted)',
+  cursor: disabled ? 'not-allowed' : 'pointer',
   opacity: disabled && !active ? 0.5 : 1,
 });
 
+// Seat label row: 2r — caps name + a caps "to act" flag, both baselines on its bottom.
+function SeatLabel({ name, toAct, color }) {
+  return (
+    <div style={{ display: 'flex', columnGap: 'var(--gu)', alignItems: 'flex-start' }}>
+      <span className="hs-t hs-cap" style={T(2)}>{name}</span>
+      {toAct && <span className="hs-t hs-cap" style={{ ...T(2), color }}>to act</span>}
+    </div>
+  );
+}
+
+// Action log — hairline rule (inset, no height) + 1r, 2r lines, at most 16r tall.
+function ActionLog({ log, heroSeat, streetOf }) {
+  if (!log || !log.length) return null;
+  return (
+    <div className="hs-rule" style={{ maxHeight: R(17), overflowY: 'auto' }}>
+      {log.map((e, i) => (
+        <div key={i} className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+          <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
+            {e.seat === heroSeat ? 'You' : 'Opp'}
+          </b>
+          <span style={{ opacity: 0.7 }}> · {streetOf(e)}</span> {e.label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── heads-up stud table (game-agnostic: down + up cards) ──────────────────
+// Grid: panel 2r × 2g, rows 1r apart — 3r header, [dead-card box], opponent
+// (2r label, 1r, 6r card row: 2r lift + 4r cards), hero (same), log.
 function StudTable({ state, heroSeat, handOver, result }) {
   const oppShowdown = handOver && result && result.showdown ? result.showdown.oppDown : null;
   const bringInIsHero = state.bringInSeat === heroSeat;
@@ -683,89 +685,47 @@ function StudTable({ state, heroSeat, handOver, result }) {
   const deadCards = Array.isArray(state.deadCards) ? state.deadCards : [];
 
   return (
-    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
-          {STREET_NAMES[state.street] || `street ${state.street}`} street
-        </span>
-        <span style={label}>
-          Pot {state.pot} · bring-in {bringInIsHero ? 'hero' : 'opp'}
-        </span>
+    <div className="hs-panel hs-stack" style={{ marginTop: R(2) }}>
+      <div className="hs-split">
+        <span className="hs-t hs-md hs-bold" style={T(3)}>{STREET_NAMES[state.street] || `street ${state.street}`} street</span>
+        <span className="hs-t hs-cap hs-clip" style={T(3)}>Pot {state.pot} · bring-in {bringInIsHero ? 'hero' : 'opp'}</span>
       </div>
 
       {/* Dead cards — folded opponents' exposed door cards, dimmed/face-up so the
-          player can read removal at a glance. Only meaningful for stud games. */}
+          player can read removal at a glance. Box 1r × 2g (content 5..32). */}
       {deadCards.length > 0 && (
-        <div style={{
-          marginBottom: 'var(--subrow)', padding: 'var(--subrow) var(--gu)',
-          background: 'color-mix(in srgb, var(--surface) 70%, #000)',
-          border: 'var(--bw-hair) dashed var(--border)', borderRadius: 'calc(var(--subrow) * 1.25)',
-        }}>
-          <div style={{ marginBottom: 'var(--subrow)', height: 'calc(var(--subrow) * 2)' }}>
-            <span style={label}>Dead (folded): {deadCards.length} {deadCards.length === 1 ? 'card' : 'cards'}</span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 4)', opacity: 0.85 }}>
+        <div className="hs-box hs-stack" style={{ padding: 'var(--subrow) calc(var(--gu) * 2)', '--hs-bg': 'color-mix(in srgb, var(--surface) 70%, #000)' }}>
+          <span className="hs-t hs-cap" style={T(2)}>Dead (folded): {deadCards.length} {deadCards.length === 1 ? 'card' : 'cards'}</span>
+          <div className="hs-cards" style={{ opacity: 0.85 }}>
             {deadCards.map((c, i) => <Card key={'dc' + i} str={c} dim size="sm" />)}
           </div>
         </div>
       )}
 
       {/* Opponent */}
-      <div style={{ marginBottom: 'var(--subrow)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
-          <span style={label}>Opponent</span>
-          {state.toAct === (1 - heroSeat) && !handOver && (
-            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
-          )}
-        </div>
-        {/* Card order: [2 hole cards] [upcards raised] [7th-street river, not raised].
-            The river is a down card but sits at the END (right of the 6th upcard) and
-            at hole-card level. Hidden pre-showdown; revealed face-up at showdown. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 6)', paddingTop: 'calc(var(--subrow) * 2)' }}>
-          {/* 2 hole cards */}
-          {oppShowdown
-            ? oppShowdown.slice(0, 2).map((c, i) => <Card key={'od' + i} str={c} size="sm" />)
-            : Array.from({ length: 2 }).map((_, i) => <Card key={'ob' + i} faceDown size="sm" />)}
-          {/* upcards (3rd door + 4th/5th/6th) */}
-          {(state.oppUp || []).map((c, i) => <Card key={'ou' + i} str={c} size="sm" raised />)}
-          {/* 7th-street river — down card AFTER the upcards, at hole level, not raised */}
-          {state.street === 4 && (oppShowdown
-            ? oppShowdown.slice(2).map((c, i) => <Card key={'or' + i} str={c} size="sm" />)
-            : <Card key="orb" faceDown size="sm" />)}
-        </div>
+      <SeatLabel name="Opponent" toAct={state.toAct === (1 - heroSeat) && !handOver} color="var(--accent)" />
+      {/* Card order: [2 hole cards] [upcards raised] [7th-street river, not raised].
+          The river is a down card but sits at the END (right of the 6th upcard) and
+          at hole-card level. Hidden pre-showdown; revealed face-up at showdown. */}
+      <div className="hs-cards hs-raise">
+        {oppShowdown
+          ? oppShowdown.slice(0, 2).map((c, i) => <Card key={'od' + i} str={c} size="sm" />)
+          : Array.from({ length: 2 }).map((_, i) => <Card key={'ob' + i} faceDown size="sm" />)}
+        {(state.oppUp || []).map((c, i) => <Card key={'ou' + i} str={c} size="sm" raised />)}
+        {state.street === 4 && (oppShowdown
+          ? oppShowdown.slice(2).map((c, i) => <Card key={'or' + i} str={c} size="sm" />)
+          : <Card key="orb" faceDown size="sm" />)}
       </div>
 
       {/* Hero */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
-          <span style={label}>You</span>
-          {state.toAct === heroSeat && !handOver && (
-            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--pos, #22c55e)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 6)', paddingTop: 'calc(var(--subrow) * 2)' }}>
-          {/* first 2 down = hole cards */}
-          {(state.heroDown || []).slice(0, 2).map((c, i) => <Card key={'hd' + i} str={c} size="sm" />)}
-          {/* upcards (3rd door + 4th/5th/6th), raised */}
-          {(state.heroUp || []).map((c, i) => <Card key={'hu' + i} str={c} size="sm" raised />)}
-          {/* river — any down card beyond the first 2 (7th street), at hole level, not raised */}
-          {(state.heroDown || []).slice(2).map((c, i) => <Card key={'hr' + i} str={c} size="sm" />)}
-        </div>
+      <SeatLabel name="You" toAct={state.toAct === heroSeat && !handOver} color="var(--pos, #22c55e)" />
+      <div className="hs-cards hs-raise">
+        {(state.heroDown || []).slice(0, 2).map((c, i) => <Card key={'hd' + i} str={c} size="sm" />)}
+        {(state.heroUp || []).map((c, i) => <Card key={'hu' + i} str={c} size="sm" raised />)}
+        {(state.heroDown || []).slice(2).map((c, i) => <Card key={'hr' + i} str={c} size="sm" />)}
       </div>
 
-      {/* Action log */}
-      {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
-          {state.log.map((e, i) => (
-            <div key={i}>
-              <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
-                {e.seat === heroSeat ? 'You' : 'Opp'}
-              </b>
-              <span style={{ opacity: 0.7 }}> · {STREET_NAMES[e.street] || `s${e.street}`}</span> {e.label}
-            </div>
-          ))}
-        </div>
-      )}
+      <ActionLog log={state.log} heroSeat={heroSeat} streetOf={(e) => STREET_NAMES[e.street] || `s${e.street}`} />
     </div>
   );
 }
@@ -778,6 +738,9 @@ function StudTable({ state, heroSeat, handOver, result }) {
 // buttons live here (passed via `drawDecision`) so hovering a "Draw K" count
 // highlights exactly which hero cards that count would KEEP vs THROW — the
 // abstraction picks WHICH cards (discardIdx), the player picks the COUNT.
+// Grid: panel 2r × 2g, rows 1r apart. Hero cards are 2g × 4r with a 1g gap
+// (the keep/throw ring is an outer shadow, so it takes no room), plus a 2r
+// keep/throw caption while choosing; a thrown card drops 1r.
 function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
   // hover/focus highlight: indices into heroCards that the previewed draw THROWS
   // (used by the SOLVER-RECOMMENDATION hint — hovering a suggested count lights up
@@ -818,147 +781,114 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
   const drawGame = state.game || 'td27';
   const roundLabel = streetName(drawGame, state.street, state.phase);
   const phaseTag = state.phase === 'draw' ? 'draw' : 'bet';
+  const anyCaption = picking || hoverThrow != null;
 
   return (
-    <div style={{ ...panel, padding: 'calc(var(--subrow) * 2 - calc(var(--subrow)*0.125)) calc(var(--gu) - calc(var(--subrow)*0.125))' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', lineHeight: 'calc(var(--subrow) * 3)' }}>
+    <div className="hs-panel hs-stack" style={{ marginTop: R(2) }}>
+      <div className="hs-split">
+        <span className="hs-t hs-md hs-bold" style={T(3)}>
           {roundLabel}
-          <span style={{ ...label, marginLeft: 'var(--space-sm)' }}>{phaseTag}</span>
+          <span style={{ fontSize: 'var(--fs-2xs)', lineHeight: 0, fontWeight: 'var(--fw-regular)', textTransform: 'uppercase', letterSpacing: 'var(--track-caps)', color: 'var(--text-muted)', marginLeft: 'var(--gu)' }}>{phaseTag}</span>
         </span>
-        <span style={label}>Pot {state.pot}</span>
+        <span className="hs-t hs-cap" style={T(3)}>Pot {state.pot}</span>
       </div>
 
       {/* Opponent — entirely hidden until showdown. */}
-      <div style={{ marginBottom: 'var(--subrow)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
-          <span style={label}>Opponent</span>
-          {state.toAct === (1 - heroSeat) && !handOver && (
-            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
-          )}
-          {oppDraws.length > 0 && (
-            <span style={{ fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted)' }}>
-              {oppDraws.map((k, i) => `Opp drew ${k}`).join(' · ')}
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 4.75)' }}>
-          {oppShowdown
-            ? oppShowdown.map((c, i) => <Card key={'oc' + i} str={c} size="sm" />)
-            : Array.from({ length: handSize }).map((_, i) => <Card key={'ob' + i} faceDown size="sm" />)}
-        </div>
+      <div style={{ display: 'flex', columnGap: 'var(--gu)', alignItems: 'flex-start', minWidth: 0 }}>
+        <span className="hs-t hs-cap" style={T(2)}>Opponent</span>
+        {state.toAct === (1 - heroSeat) && !handOver && <span className="hs-t hs-cap" style={{ ...T(2), color: 'var(--accent)' }}>to act</span>}
+        {oppDraws.length > 0 && <span className="hs-t hs-xs hs-mut hs-clip" style={T(2)}>{oppDraws.map((k) => `Opp drew ${k}`).join(' · ')}</span>}
+      </div>
+      <div className="hs-cards">
+        {oppShowdown
+          ? oppShowdown.map((c, i) => <Card key={'oc' + i} str={c} size="sm" />)
+          : Array.from({ length: handSize }).map((_, i) => <Card key={'ob' + i} faceDown size="sm" />)}
       </div>
 
       {/* Hero — five face-up cards; on draw-button hover, ring kept vs throw. */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', height: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
-          <span style={label}>You</span>
-          {state.toAct === heroSeat && !handOver && (
-            <span style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--pos, #22c55e)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>to act</span>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', minHeight: 'calc(var(--subrow) * 5.75)' }}>
-          {heroCards.map((c, i) => {
-            // When the hero is PICKING, the source of truth is their click
-            // selection (thrownSet); the solver-hint hover preview only applies
-            // when nothing is being actively chosen at a non-pick node.
-            const selThrown = picking && thrownSet.has(i);
-            const previewing = !picking && hoverThrow != null;
-            const hoverT = previewing && hoverThrow.includes(i);
-            // visual state: a card is "throw" if selected (pick) or hover-throw.
-            const isThrow = picking ? selThrown : hoverT;
-            // a "keep" ring shows on every card while picking, or on the
-            // non-thrown cards during a hint hover.
-            const showKeep = picking ? !selThrown : (previewing && !hoverT);
-            const ring = isThrow ? 'var(--neg, #ef4444)' : showKeep ? 'var(--pos, #22c55e)' : 'transparent';
-            const bg = isThrow ? 'rgba(239,68,68,0.12)' : showKeep ? 'rgba(34,197,94,0.08)' : 'transparent';
-            return (
-              <span key={'hc' + i}
-                onClick={picking ? () => toggleCard(i) : undefined}
-                onKeyDown={picking ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCard(i); } } : undefined}
-                role={picking ? 'button' : undefined}
-                tabIndex={picking ? 0 : undefined}
-                aria-pressed={picking ? selThrown : undefined}
-                aria-label={picking ? `${selThrown ? 'Throwing' : 'Keeping'} ${c} — click to ${selThrown ? 'keep' : 'throw'}` : undefined}
-                title={picking ? (selThrown ? 'Click to KEEP' : 'Click to THROW') : undefined}
-                style={{
-                  touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-                  padding: 'var(--space-2xs)', borderRadius: 'calc(var(--subrow) * 0.875)', margin: '0 calc(var(--subrow) * 0.125)',
-                  cursor: picking ? (drawDecision.stepping ? 'wait' : 'pointer') : 'default',
-                  border: 'calc(var(--subrow) * 0.25) solid ' + ring,
-                  background: bg,
-                  transition: 'border-color .12s ease, background .12s ease, transform .08s ease',
-                  transform: selThrown ? 'translateY(calc(var(--subrow)*0.375))' : 'none',
-                }}>
+      <SeatLabel name="You" toAct={state.toAct === heroSeat && !handOver} color="var(--pos, #22c55e)" />
+      <div className="hs-cards" style={{ columnGap: 'var(--gu)', paddingBottom: 'var(--subrow)' }}>
+        {heroCards.map((c, i) => {
+          // When the hero is PICKING, the source of truth is their click
+          // selection (thrownSet); the solver-hint hover preview only applies
+          // when nothing is being actively chosen at a non-pick node.
+          const selThrown = picking && thrownSet.has(i);
+          const previewing = !picking && hoverThrow != null;
+          const hoverT = previewing && hoverThrow.includes(i);
+          // visual state: a card is "throw" if selected (pick) or hover-throw.
+          const isThrow = picking ? selThrown : hoverT;
+          // a "keep" ring shows on every card while picking, or on the
+          // non-thrown cards during a hint hover.
+          const showKeep = picking ? !selThrown : (previewing && !hoverT);
+          const ring = isThrow ? 'var(--neg, #ef4444)' : showKeep ? 'var(--pos, #22c55e)' : 'transparent';
+          return (
+            <span key={'hc' + i}
+              onClick={picking ? () => toggleCard(i) : undefined}
+              onKeyDown={picking ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCard(i); } } : undefined}
+              role={picking ? 'button' : undefined}
+              tabIndex={picking ? 0 : undefined}
+              aria-pressed={picking ? selThrown : undefined}
+              aria-label={picking ? `${selThrown ? 'Throwing' : 'Keeping'} ${c} — click to ${selThrown ? 'keep' : 'throw'}` : undefined}
+              title={picking ? (selThrown ? 'Click to KEEP' : 'Click to THROW') : undefined}
+              style={{
+                touchAction: 'manipulation', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'calc(var(--gu) * 2)',
+                cursor: picking ? (drawDecision.stepping ? 'wait' : 'pointer') : 'default',
+                transition: 'transform .08s ease',
+                transform: selThrown ? 'translateY(var(--subrow))' : 'none',
+              }}>
+              <span style={{ display: 'block', borderRadius: 'var(--radius-xs)', boxShadow: `0 0 0 calc(var(--subrow) * 0.25) ${ring}`, transition: 'box-shadow .12s ease' }}>
                 <Card str={c} size="sm" dim={isThrow} />
-                {(picking || previewing) && (
-                  <span style={{ fontSize: 'calc(var(--gu) * 0.795)', textTransform: 'uppercase', letterSpacing: '0.04em', color: isThrow ? 'var(--neg, #ef4444)' : 'var(--pos, #22c55e)' }}>
-                    {isThrow ? 'throw' : 'keep'}
-                  </span>
-                )}
               </span>
-            );
-          })}
-        </div>
-
-        {/* hero's most recent discards (dimmed) */}
-        {myDiscards.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--space-md)' }}>
-            <span style={{ ...label, marginRight: 'var(--space-sm)' }}>you discarded</span>
-            {myDiscards.map((c, i) => <Card key={'md' + i} str={c} dim size="sm" />)}
-          </div>
-        )}
+              {anyCaption && (
+                <span className="hs-t" style={{ ...T(2), fontSize: 'var(--fs-2xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: isThrow ? 'var(--neg, #ef4444)' : 'var(--pos, #22c55e)', visibility: (picking || previewing) ? 'visible' : 'hidden' }}>
+                  {isThrow ? 'throw' : 'keep'}
+                </span>
+              )}
+            </span>
+          );
+        })}
       </div>
+
+      {/* hero's most recent discards (dimmed): 4r row, caps label (baseline 3r down) on 3..12, cards from 12g. */}
+      {myDiscards.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--gu) * 9) minmax(0, 1fr)', alignItems: 'start' }}>
+          <span className="hs-t hs-cap" style={T(3)}>you discarded</span>
+          <div className="hs-cards">{myDiscards.map((c, i) => <Card key={'md' + i} str={c} dim size="sm" />)}</div>
+        </div>
+      )}
 
       {/* DRAW decision — FULL DISCARD CONTROL. Click the cards above to choose
           EXACTLY which to throw, then Confirm; or Stand Pat to throw none. The
           solver's abstraction recommendation is shown as a hint (hovering it
           lights up which cards IT would throw). The submitted action is the
-          explicit string 'd:' + sorted thrown 2-char codes. */}
+          explicit string 'd:' + sorted thrown 2-char codes.
+          Grid: rule + 1r, 2r caps label, 1r, 3r count line, 1r, 5r buttons on
+          the two 15g halves, 1r, the hint box. */}
       {drawDecision && (
-        <div style={{ marginTop: 'calc(var(--subrow) * 1.75)', paddingTop: 'var(--space-lg)', borderTop: 'var(--bw-hair) solid var(--border)' }}>
-          <div style={{ ...label, marginBottom: 'var(--space-md)' }}>
+        <div className="hs-rule hs-stack">
+          <div className="hs-t hs-cap" style={T(2, 2)}>
             Choose your discard {drawDecision.stepping ? '· …' : ''}
-            <span style={{ textTransform: 'none', marginLeft: 'var(--space-sm)', color: 'var(--text-muted)' }}>
-              (click any cards to throw them)
-            </span>
+            <span style={{ textTransform: 'none', marginLeft: 'var(--gu)' }}>(click any cards to throw them)</span>
           </div>
 
-          {/* live count */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-ml)', marginBottom: 'var(--space-ml)' }}>
-            <span style={{ fontSize: 'calc(var(--gu) * 1.399)', fontWeight: 700, color: 'var(--text)' }}>
-              {throwCount === 0
-                ? 'Standing pat — drawing 0'
-                : `Throwing ${throwCount} — drawing ${throwCount}`}
-            </span>
+          <div className="hs-t hs-md hs-bold" style={T(3, 3)}>
+            {throwCount === 0 ? 'Standing pat — drawing 0' : `Throwing ${throwCount} — drawing ${throwCount}`}
             {throwCount > 0 && (
-              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 'var(--fs-xs)', lineHeight: 0, fontWeight: 'var(--fw-regular)', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'var(--gu)' }}>
                 ({heroCards.filter((_, i) => thrownSet.has(i)).join(' ')})
               </span>
             )}
           </div>
 
-          {/* Stand Pat shortcut + Confirm */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
-            <button onClick={standPat} disabled={drawDecision.stepping || throwCount === 0}
-              style={{
-                flex: '0 0 auto', minWidth: 'calc(var(--subrow) * 13.75)', padding: 'calc(var(--subrow) * 1.375) var(--space-xl)', borderRadius: 'var(--radius-sm)',
-                cursor: drawDecision.stepping ? 'wait' : (throwCount === 0 ? 'default' : 'pointer'),
-                border: 'var(--bw-hair) solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
-                fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 1.252)', fontWeight: 700,
-                opacity: drawDecision.stepping || throwCount === 0 ? 0.55 : 1,
-              }}>
-              Stand Pat
+          <div className="hs-cols" style={{ '--hs-n': 2 }}>
+            <button className="hs-btn" onClick={standPat} disabled={drawDecision.stepping || throwCount === 0}
+              style={{ '--hs-h': 5, '--hs-ink': 'var(--text-muted)', cursor: drawDecision.stepping ? 'wait' : (throwCount === 0 ? 'default' : 'pointer') }}>
+              <span className="hs-t" style={T(3)}>Stand Pat</span>
             </button>
-            <button onClick={confirmDiscard} disabled={drawDecision.stepping}
-              style={{
-                flex: '1 1 auto', minWidth: 'calc(var(--subrow) * 17.5)', padding: 'calc(var(--subrow) * 1.375) var(--space-xl)', borderRadius: 'var(--radius-sm)',
-                cursor: drawDecision.stepping ? 'wait' : 'pointer', border: 'none',
-                background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'inherit',
-                fontSize: 'calc(var(--gu) * 1.325)', fontWeight: 700, opacity: drawDecision.stepping ? 0.6 : 1,
-              }}>
-              {throwCount === 0 ? 'Confirm — Stand Pat' : `Confirm Discard — Draw ${throwCount}`}
+            <button className="hs-btn" onClick={confirmDiscard} disabled={drawDecision.stepping}
+              style={{ '--hs-h': 5, '--hs-edge': 'transparent', '--hs-fill': 'var(--brand)', '--hs-ink': 'var(--on-brand)', cursor: drawDecision.stepping ? 'wait' : 'pointer' }}>
+              <span className="hs-t" style={T(3)}>{throwCount === 0 ? 'Confirm — Stand Pat' : `Confirm Discard — Draw ${throwCount}`}</span>
             </button>
           </div>
 
@@ -977,18 +907,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
       )}
 
       {/* Action log (shared shape with StudTable; draw rounds included). */}
-      {state.log && state.log.length > 0 && (
-        <div style={{ marginTop: 'var(--subrow)', paddingTop: 'calc(var(--subrow) - calc(var(--subrow)*0.125))', borderTop: 'var(--bw-hair) solid var(--border)', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', lineHeight: 'calc(var(--subrow) * 2)', maxHeight: 'calc(var(--subrow) * 16)', overflowY: 'auto' }}>
-          {state.log.map((e, i) => (
-            <div key={i}>
-              <b style={{ color: e.seat === heroSeat ? 'var(--pos, #22c55e)' : 'var(--accent)' }}>
-                {e.seat === heroSeat ? 'You' : 'Opp'}
-              </b>
-              <span style={{ opacity: 0.7 }}> · {streetName(drawGame, e.street, e.phase)}</span> {e.label}
-            </div>
-          ))}
-        </div>
-      )}
+      <ActionLog log={state.log} heroSeat={heroSeat} streetOf={(e) => streetName(drawGame, e.street, e.phase)} />
     </div>
   );
 }
@@ -1000,6 +919,7 @@ function DrawTable({ state, heroSeat, handOver, result, drawDecision }) {
 // indices (into heroCards) the abstraction would THROW for that count. We map
 // each option to the actual thrown card strings and, when a gtoMix (probs) is
 // present, the play frequency. Hovering an option lights up its cards above.
+// Grid: box 1r × 2g (text on 5..32), 2r lines.
 function SolverDrawHint({ legalActions, gtoMix, heroCards, onHover }) {
   const opts = Array.isArray(legalActions) ? legalActions : [];
   if (opts.length === 0) return null;
@@ -1025,22 +945,24 @@ function SolverDrawHint({ legalActions, gtoMix, heroCards, onHover }) {
     .sort((x, y) => (y.p ?? 0) - (x.p ?? 0));
 
   return (
-    <div style={{
-      marginTop: 'var(--space-xs)', padding: 'var(--space-md) var(--space-ml)', borderRadius: 'var(--radius-sm)',
-      background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)',
-      fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)', lineHeight: 1.5,
-    }}>
-      <span style={{ ...label, marginRight: 'var(--space-sm)' }}>Solver</span>
-      {sorted.map(({ a, p, idx }, i) => (
-        <span key={a.id}
-          onMouseEnter={() => onHover(idx)}
-          onMouseLeave={() => onHover(null)}
-          style={{ cursor: 'help', whiteSpace: 'nowrap' }}>
-          <b style={{ color: 'var(--text)' }}>{optText(a)}</b>
-          {p != null ? <span style={{ color: 'var(--accent)' }}> {Math.round(p * 100)}%</span> : null}
-          {i < sorted.length - 1 ? <span style={{ opacity: 0.6 }}>{'  ·  '}</span> : null}
-        </span>
-      ))}
+    <div className="hs-box" style={{ '--hs-bg': 'var(--surface2)', padding: 'var(--subrow) calc(var(--gu) * 2)' }}>
+      <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+        <span style={{ fontSize: 'var(--fs-2xs)', lineHeight: 0, textTransform: 'uppercase', letterSpacing: 'var(--track-caps)', marginRight: 'var(--gu)' }}>Solver</span>
+        {/* The separator sits OUTSIDE the nowrap option spans: inside them there was
+            no break opportunity anywhere in the line, so a long option ran out of the box. */}
+        {sorted.map(({ a, p, idx }, i) => (
+          <React.Fragment key={a.id}>
+            <span
+              onMouseEnter={() => onHover(idx)}
+              onMouseLeave={() => onHover(null)}
+              style={{ cursor: 'help', whiteSpace: 'nowrap' }}>
+              <b style={{ color: 'var(--text)' }}>{optText(a)}</b>
+              {p != null ? <span style={{ color: 'var(--accent)' }}> {Math.round(p * 100)}%</span> : null}
+            </span>
+            {i < sorted.length - 1 ? <span style={{ opacity: 0.6 }}>{' · '}</span> : null}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1058,6 +980,7 @@ function sideWinnerLabel(who) {
 // Stud 8: hi/lo split — classify the pot outcome (scoop / split / quarter) and
 //   show BOTH boards: the hi winner + winning hi hand, and the lo winner +
 //   qualifying low (or "no qualifier").
+// Grid: panel 2r × 2g; 3r headline line (headline | ± chips), then 1r-spaced rows.
 function ResultBanner({ result, heroSeat, game }) {
   const delta = +result.heroDelta || 0;
   const sd = result.showdown || {};
@@ -1083,16 +1006,13 @@ function ResultBanner({ result, heroSeat, game }) {
   }
 
   return (
-    <div style={{ ...panel, marginTop: 'var(--space-lg)', borderColor: delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
-        <span style={{ fontWeight: 700, fontSize: 'calc(var(--gu) * 1.472)', color: 'var(--text)' }}>
+    <div className="hs-panel hs-stack" style={{ marginTop: 'var(--subrow)', '--hs-edge': delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--border)' }}>
+      <div className="hs-split">
+        <span className="hs-t hs-md hs-bold" style={T(3)}>
           {headline}
-          {result.endType === 'fold' && <span style={{ ...label, marginLeft: 'var(--space-sm)' }}>(by fold)</span>}
+          {result.endType === 'fold' && <span style={{ fontSize: 'var(--fs-2xs)', lineHeight: 0, fontWeight: 'var(--fw-regular)', textTransform: 'uppercase', letterSpacing: 'var(--track-caps)', color: 'var(--text-muted)', marginLeft: 'var(--gu)' }}>(by fold)</span>}
         </span>
-        <span style={{
-          fontSize: 'calc(var(--gu) * 2.062)', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-          color: delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--text-muted)',
-        }}>
+        <span className="hs-t hs-bold hs-num" style={{ ...T(3), fontSize: 'var(--fs-xl)', '--hs-lh': 4, color: delta > 0 ? 'var(--pos, #22c55e)' : delta < 0 ? 'var(--neg, #ef4444)' : 'var(--text-muted)' }}>
           {delta > 0 ? '+' : ''}{delta} chips
         </span>
       </div>
@@ -1102,22 +1022,22 @@ function ResultBanner({ result, heroSeat, game }) {
         ? <Stud8Boards sd={sd} />
         : isDraw
         ? ((sd.heroHand || sd.oppHand) && (
-            <div style={{ marginTop: 'var(--space-md)', fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              {sd.heroHand && <div>Your hand: <b style={{ color: 'var(--text)' }}>{sd.heroHand}</b></div>}
-              {sd.oppHand && <div>Opp hand: <b style={{ color: 'var(--text)' }}>{sd.oppHand}</b></div>}
+            <>
+              {sd.heroHand && <div className="hs-t hs-sm hs-mut" style={T(3, 3)}>Your hand: <b style={{ color: 'var(--text)' }}>{sd.heroHand}</b></div>}
+              {sd.oppHand && <div className="hs-t hs-sm hs-mut" style={T(3, 3)}>Opp hand: <b style={{ color: 'var(--text)' }}>{sd.oppHand}</b></div>}
               {Array.isArray(sd.oppCards) && sd.oppCards.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--space-sm)' }}>
-                  <span style={{ ...label, marginRight: 'var(--space-sm)' }}>opp shows</span>
-                  {sd.oppCards.map((c, i) => <Card key={'os' + i} str={c} size="sm" />)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--gu) * 7) minmax(0, 1fr)', alignItems: 'start' }}>
+                  <span className="hs-t hs-cap" style={T(3)}>opp shows</span>
+                  <div className="hs-cards">{sd.oppCards.map((c, i) => <Card key={'os' + i} str={c} size="sm" />)}</div>
                 </div>
               )}
-            </div>
+            </>
           ))
         : ((sd.heroLow || sd.oppLow) && (
-            <div style={{ marginTop: 'var(--space-md)', fontSize: 'calc(var(--gu) * 1.149)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              {sd.heroLow && <div>Your low: <b style={{ color: 'var(--text)' }}>{sd.heroLow}</b></div>}
-              {sd.oppLow && <div>Opp low: <b style={{ color: 'var(--text)' }}>{sd.oppLow}</b></div>}
-            </div>
+            <>
+              {sd.heroLow && <div className="hs-t hs-sm hs-mut" style={T(3, 3)}>Your low: <b style={{ color: 'var(--text)' }}>{sd.heroLow}</b></div>}
+              {sd.oppLow && <div className="hs-t hs-sm hs-mut" style={T(3, 3)}>Opp low: <b style={{ color: 'var(--text)' }}>{sd.oppLow}</b></div>}
+            </>
           )))}
     </div>
   );
@@ -1146,40 +1066,42 @@ function classifyStud8(hiW, loW, loQualifies) {
 
 // Stud 8 hi/lo board breakdown: hi winner + winning hi hand, lo winner +
 // qualifying low (or "no qualifier"). Tolerant of partial fields.
+// Grid: two 15g boxes (3..18, 19..34), 1r × 2g padding (text on 5.. / 21..).
 function Stud8Boards({ sd }) {
   const hi = sd.hi || {};
   const lo = sd.lo || {};
   const loQualifies = !!(lo.winner && lo.winner !== 'none');
+  const box = { '--hs-bg': 'var(--surface2)', padding: 'var(--subrow) calc(var(--gu) * 2)' };
   return (
-    <div style={{ marginTop: 'var(--space-ml)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
-      <div style={{ background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
-        <div style={{ ...label, marginBottom: 'var(--space-xs)' }}>High · {sideWinnerLabel(hi.winner)}</div>
-        <div style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)', lineHeight: 1.4 }}>
+    <div className="hs-cols" style={{ '--hs-n': 2, alignItems: 'start' }}>
+      <div className="hs-box hs-stack" style={box}>
+        <div className="hs-t hs-cap" style={T(2, 2)}>High · {sideWinnerLabel(hi.winner)}</div>
+        <div className="hs-t hs-sm" style={T(3, 3)}>
           {hi.hand ? <b>{hi.hand}</b> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
         </div>
         {(hi.heroHand || hi.oppHand) && (
-          <div style={{ marginTop: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            {hi.heroHand && <div>You: {hi.heroHand}</div>}
-            {hi.oppHand && <div>Opp: {hi.oppHand}</div>}
+          <div>
+            {hi.heroHand && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>You: {hi.heroHand}</div>}
+            {hi.oppHand && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>Opp: {hi.oppHand}</div>}
           </div>
         )}
       </div>
-      <div style={{ background: 'var(--surface2)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
-        <div style={{ ...label, marginBottom: 'var(--space-xs)' }}>Low · {loQualifies ? sideWinnerLabel(lo.winner) : 'no qualifier'}</div>
+      <div className="hs-box hs-stack" style={box}>
+        <div className="hs-t hs-cap" style={T(2, 2)}>Low · {loQualifies ? sideWinnerLabel(lo.winner) : 'no qualifier'}</div>
         {loQualifies ? (
           <>
-            <div style={{ fontSize: 'calc(var(--gu) * 1.178)', color: 'var(--text)', lineHeight: 1.4 }}>
+            <div className="hs-t hs-sm" style={T(3, 3)}>
               {lo.hand ? <b>{lo.hand}</b> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
             </div>
             {(lo.heroLow || lo.oppLow) && (
-              <div style={{ marginTop: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {lo.heroLow && <div>You: {lo.heroLow}</div>}
-                {lo.oppLow && <div>Opp: {lo.oppLow}</div>}
+              <div>
+                {lo.heroLow && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>You: {lo.heroLow}</div>}
+                {lo.oppLow && <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>Opp: {lo.oppLow}</div>}
               </div>
             )}
           </>
         ) : (
-          <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>No 8-or-better low — hi takes it all</div>
+          <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>No 8-or-better low — hi takes it all</div>
         )}
       </div>
     </div>
@@ -1190,6 +1112,8 @@ function Stud8Boards({ sd }) {
 // Game-agnostic GTO-mix + per-action-EV report. For DRAW games it tags each
 // decision DRAW vs BET (e.g. "DRAW · you drew 2" / "BET · you called") and
 // shows a range-degraded / low-confidence badge when grade.confidence==='low'.
+// Grid: panel 2r × 2g; 3r header line (head | EV-loss), [badges], then a 2r bar
+// row per action (+ a 2r EV line), 1r apart; rule-topped footers.
 function GradeCard({ g, game }) {
   const mix = g.gtoMix || { actions: [], labels: [], probs: [] };
   const acts = mix.actions || [];
@@ -1264,172 +1188,94 @@ function GradeCard({ g, game }) {
     ? `${(kind === 'draw' ? 'DRAW' : 'BET')} · ${streetName(game, g.street, g.phase)}`
     : `${streetName(game, g.street, g.phase)} street`;
 
+  const AMBER = 'var(--accent2, #eab308)';
+  const WARN = 'var(--warn, #f59e0b)';
+  const badges = [
+    lowConf && <GridBadge key="lc" edge={AMBER} ink={AMBER} title="Opponent range degraded (low particle-filter confidence) — treat this EV as approximate.">range-degraded · low confidence</GridBadge>,
+    // ── Pro-mode grade-source badges (only when gradeSource is tagged,
+    //    i.e. the hand was graded with the oracle on) ──
+    isOracleGrade && <GridBadge key="or" edge="var(--accent)" ink="var(--accent)"
+      title={`Graded by the exact GTO re-solve (true GTO), not the blueprint bot.${g.oracleIters ? ` ${g.oracleIters} CFR+ iters` : ''}${g.oracleResolveExploitability != null ? ` · resolver self-play gap ${Number(g.oracleResolveExploitability).toFixed(2)} chips` : ''}`}>true GTO</GridBadge>,
+    isNetGrade && <GridBadge key="net" edge="var(--accent)" ink="var(--accent)"
+      title={`Graded by the CERTIFIED value net (torch-free) — a neural approximator of GTO for this pre-last-draw badugi spot, NOT an exact re-solve. Certified mean grade error ~${certSB.toFixed(2)} small bets.${g.netValueGauge != null ? ` · net zero-sum residual ${Number(g.netValueGauge).toExponential(1)}` : ''}`}>certified net · ~{certSB.toFixed(2)} SB</GridBadge>,
+    isOracle6thGrade && <GridBadge key="o6" edge={AMBER} ink={AMBER} dashed
+      title={`Graded by the bucketed 6th→7th re-solve — APPROXIMATE (bucket abstraction), NOT exact. SHOWN but NOT charged to your score. Estimated abstraction gap ~${oracle6thChips.toFixed(1)} chips for this game.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}>6th oracle · approx ~{oracle6thChips.toFixed(1)}ch</GridBadge>,
+    isOracle5thGrade && <GridBadge key="o5" edge={AMBER} ink={AMBER} dashed
+      title={`Graded by a depth-limited 5th-street re-solve using the 6th value net as the leaf — APPROXIMATE (net leaf + public up-card sampling, and NO exact anchor below 6th street). SHOWN but NOT charged to your score. The softest tier — one street below the last exactly-referenceable street.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}>5th oracle · laddered</GridBadge>,
+    oracleFellBack && <GridBadge key="fb" edge={WARN} ink={WARN}
+      title={`Pro mode was on, but the ${netEligibleStreet ? 'certified value net' : 'exact re-solver'} was unavailable for this decision — this grade fell back to the blueprint bot. Treat it as an ordinary blueprint grade, not ${netEligibleStreet ? 'a certified-net grade' : 'true GTO'}.`}>
+      {netEligibleStreet ? 'net unavailable · blueprint grade' : 'oracle unavailable · blueprint grade'}</GridBadge>,
+    gradeSource === 'blueprint' && !oracleFellBack && <GridBadge key="bp"
+      title={`Graded by the blueprint bot — the Pro-mode oracle covers only ${oracleStreetLabel(game)} decisions.`}>blueprint</GridBadge>,
+    oracleUnconverged && <GridBadge key="uc" edge={WARN} ink={WARN}
+      title={`The oracle's per-action EV had not converged at ${g.oracleIters || '?'} iters — treat this grade as approximate.`}>unconverged</GridBadge>,
+    rangeSensitive && <GridBadge key="rs" edge={AMBER} ink={AMBER} dashed
+      title={`This decision's grade depends on the ASSUMED opponent range: across a spread of plausible ranges the oracle's best action flips or the EV-loss swings by more than a small bet${rsSpread ? ` (EV-loss ranged ${rsSpread[0].toFixed(1)}–${rsSpread[1].toFixed(1)} chips)` : ''}. It is shown for study but ${notCharged ? 'NOT counted' : 'still counted'} in your session score.`}>
+      range-sensitive · {notCharged ? 'shown, not charged' : 'shown'}</GridBadge>,
+  ].filter(Boolean);
+
   return (
-    <div style={{
-      ...panel, marginBottom: 'var(--space-ml)',
-      borderColor: isLeak ? 'var(--neg, #ef4444)' : 'var(--border)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-        <span style={{ fontWeight: 700, fontSize: 'calc(var(--gu) * 1.252)', color: 'var(--text)' }}>
+    <div className="hs-panel hs-stack" style={{ '--hs-edge': isLeak ? 'var(--neg, #ef4444)' : 'var(--border)' }}>
+      <div className="hs-split">
+        <span className="hs-t hs-sm hs-bold hs-clip" style={T(3)}>
           {head}
-          <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.149)' }}>
-            {' '}· you {g.heroActionLabel || g.heroActionId}
-          </span>
-          {lowConf && (
-            <span title="Opponent range degraded (low particle-filter confidence) — treat this EV as approximate."
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) solid var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
-              }}>
-              range-degraded · low confidence
-            </span>
-          )}
-          {/* ── Pro-mode grade-source badges (only when gradeSource is tagged,
-              i.e. the hand was graded with the oracle on) ── */}
-          {isOracleGrade && (
-            <span title={`Graded by the exact GTO re-solve (true GTO), not the blueprint bot.${g.oracleIters ? ` ${g.oracleIters} CFR+ iters` : ''}${g.oracleResolveExploitability != null ? ` · resolver self-play gap ${Number(g.oracleResolveExploitability).toFixed(2)} chips` : ''}`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
-              }}>
-              true GTO
-            </span>
-          )}
-          {isNetGrade && (
-            <span title={`Graded by the CERTIFIED value net (torch-free) — a neural approximator of GTO for this pre-last-draw badugi spot, NOT an exact re-solve. Certified mean grade error ~${certSB.toFixed(2)} small bets.${g.netValueGauge != null ? ` · net zero-sum residual ${Number(g.netValueGauge).toExponential(1)}` : ''}`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) solid var(--accent)', color: 'var(--accent)',
-              }}>
-              certified net · ~{certSB.toFixed(2)} SB
-            </span>
-          )}
-          {isOracle6thGrade && (
-            <span title={`Graded by the bucketed 6th→7th re-solve — APPROXIMATE (bucket abstraction), NOT exact. SHOWN but NOT charged to your score. Estimated abstraction gap ~${oracle6thChips.toFixed(1)} chips for this game.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
-              }}>
-              6th oracle · approx ~{oracle6thChips.toFixed(1)}ch
-            </span>
-          )}
-          {isOracle5thGrade && (
-            <span title={`Graded by a depth-limited 5th-street re-solve using the 6th value net as the leaf — APPROXIMATE (net leaf + public up-card sampling, and NO exact anchor below 6th street). SHOWN but NOT charged to your score. The softest tier — one street below the last exactly-referenceable street.${g.oracleIters ? ` · ${g.oracleIters} CFR+ iters` : ''}`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
-              }}>
-              5th oracle · laddered
-            </span>
-          )}
-          {oracleFellBack && (
-            <span title={`Pro mode was on, but the ${netEligibleStreet ? 'certified value net' : 'exact re-solver'} was unavailable for this decision — this grade fell back to the blueprint bot. Treat it as an ordinary blueprint grade, not ${netEligibleStreet ? 'a certified-net grade' : 'true GTO'}.`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
-              }}>
-              {netEligibleStreet ? 'net unavailable · blueprint grade' : 'oracle unavailable · blueprint grade'}
-            </span>
-          )}
-          {gradeSource === 'blueprint' && !oracleFellBack && (
-            <span title={`Graded by the blueprint bot — the Pro-mode oracle covers only ${oracleStreetLabel(game)} decisions.`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) solid var(--border)', color: 'var(--text-muted)',
-              }}>
-              blueprint
-            </span>
-          )}
-          {oracleUnconverged && (
-            <span title={`The oracle's per-action EV had not converged at ${g.oracleIters || '?'} iters — treat this grade as approximate.`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) solid var(--warn, #f59e0b)', color: 'var(--warn, #f59e0b)',
-              }}>
-              unconverged
-            </span>
-          )}
-          {rangeSensitive && (
-            <span title={`This decision's grade depends on the ASSUMED opponent range: across a spread of plausible ranges the oracle's best action flips or the EV-loss swings by more than a small bet${rsSpread ? ` (EV-loss ranged ${rsSpread[0].toFixed(1)}–${rsSpread[1].toFixed(1)} chips)` : ''}. It is shown for study but ${notCharged ? 'NOT counted' : 'still counted'} in your session score.`}
-              style={{
-                marginLeft: 'var(--space-md)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', borderRadius: 'var(--radius-pill)', fontSize: 'calc(var(--gu) * 0.854)', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                border: 'var(--bw-hair) dashed var(--accent2, #eab308)', color: 'var(--accent2, #eab308)',
-              }}>
-              range-sensitive · {notCharged ? 'shown, not charged' : 'shown'}
-            </span>
-          )}
+          <span style={{ fontWeight: 'var(--fw-regular)', color: 'var(--text-muted)' }}>{' '}· you {g.heroActionLabel || g.heroActionId}</span>
         </span>
-        <span style={{
-          fontSize: 'calc(var(--gu) * 1.208)', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-          color: isLeak ? 'var(--neg, #ef4444)' : evLoss > 0.01 ? 'var(--accent)' : 'var(--pos, #22c55e)',
-        }}>
+        <span className="hs-t hs-sm hs-bold hs-num" style={{ ...T(3), whiteSpace: 'nowrap', color: isLeak ? 'var(--neg, #ef4444)' : evLoss > 0.01 ? 'var(--accent)' : 'var(--pos, #22c55e)' }}>
           {evLoss <= 0.01 ? 'optimal' : `−${evLoss.toFixed(2)} chips`}
-          {se != null && evLoss > 0.01 ? <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> ±{se.toFixed(2)}</span> : null}
+          {se != null && evLoss > 0.01 ? <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--fw-regular)' }}> ±{se.toFixed(2)}</span> : null}
         </span>
       </div>
+      {badges.length > 0 && <div className="hs-gbadges">{badges}</div>}
 
       {/* GTO mix bars + per-action EV */}
-      <div>
-        {acts.map((id, i) => {
-          const lbl = labels[i] || id;
-          const isHero = id === g.heroActionId;
-          const isBest = id === g.bestActionId;
-          const ev = g.perActionEV ? g.perActionEV[id] : undefined;
-          const marker = isHero && isBest ? '✓←' : isBest ? '✓' : isHero ? '←' : '';
-          return (
-            <div key={id} style={{ marginBottom: 'var(--space-xs)' }}>
-              <ActionBar
-                name={lbl}
-                pct={Math.round((probs[i] || 0) * 100)}
-                best={(probs[i] || 0) >= maxProb - 0.001}
-                marker={marker}
-              />
-              {ev !== undefined && (
-                <div style={{ marginLeft: 'calc(var(--subrow) * 10.75)', marginTop: 'calc(var(--subrow) * -0.25)', marginBottom: 'var(--space-xs)', fontSize: 'calc(var(--gu) * 0.972)', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  EV {ev >= 0 ? '+' : ''}{Number(ev).toFixed(2)} chips{isBest ? ' · best' : ''}{isHero ? ' · your pick' : ''}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {acts.map((id, i) => {
+        const lbl = labels[i] || id;
+        const isHero = id === g.heroActionId;
+        const isBest = id === g.bestActionId;
+        const ev = g.perActionEV ? g.perActionEV[id] : undefined;
+        const marker = isHero && isBest ? '✓←' : isBest ? '✓' : isHero ? '←' : '';
+        return (
+          <div key={id}>
+            <ActionBar
+              name={lbl}
+              pct={Math.round((probs[i] || 0) * 100)}
+              best={(probs[i] || 0) >= maxProb - 0.001}
+              marker={marker}
+            />
+            {ev !== undefined && (
+              <div className="hs-t hs-xs hs-mut hs-num" style={{ ...T(2, 2), paddingLeft: 'calc(var(--gu) * 7)' }}>
+                EV {ev >= 0 ? '+' : ''}{Number(ev).toFixed(2)} chips{isBest ? ' · best' : ''}{isHero ? ' · your pick' : ''}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* FULL DISCARD CONTROL — the hero's actual explicit discard: which cards
           they threw, the EV of that exact discard vs the solver-recommended
           play, and the note (recommended keep vs non-standard / off-book). */}
       {isExplicit && (
-        <div style={{
-          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: 'var(--bw-hair) solid var(--border)',
-          fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)', lineHeight: 1.5,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-sm)', marginBottom: thrownCards.length ? 'var(--space-xs)' : 0 }}>
-            <span style={{ ...label }}>Your discard</span>
+        <div className="hs-rule hs-stack">
+          <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+            <span style={{ fontSize: 'var(--fs-2xs)', lineHeight: 0, textTransform: 'uppercase', letterSpacing: 'var(--track-caps)', marginRight: 'var(--gu)' }}>Your discard</span>
             {thrownCards.length === 0
               ? <b style={{ color: 'var(--text)' }}>stand pat (threw nothing)</b>
-              : <>
-                  <b style={{ color: 'var(--text)' }}>threw {thrownCards.length}</b>
-                  {thrownCards.map((c, i) => <Card key={'td' + i} str={c} dim size="sm" />)}
-                </>}
+              : <b style={{ color: 'var(--text)' }}>threw {thrownCards.length}</b>}
             {heroDiscardEV !== undefined && (
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                · EV {heroDiscardEV >= 0 ? '+' : ''}{Number(heroDiscardEV).toFixed(2)}
+                {' '}· EV {heroDiscardEV >= 0 ? '+' : ''}{Number(heroDiscardEV).toFixed(2)}
                 {evLoss > 0.01
                   ? <span style={{ color: isLeak ? 'var(--neg, #ef4444)' : 'var(--accent)' }}> ({'−'}{evLoss.toFixed(2)} vs solver)</span>
                   : <span style={{ color: 'var(--pos, #22c55e)' }}> (matches solver)</span>}
               </span>
             )}
           </div>
+          {thrownCards.length > 0 && (
+            <div className="hs-cards">{thrownCards.map((c, i) => <Card key={'td' + i} str={c} dim size="sm" />)}</div>
+          )}
           {g.discardNote && (
-            <div style={{ fontStyle: 'italic', color: lowConf ? 'var(--accent2, #eab308)' : 'var(--text-muted)' }}>
+            <div className="hs-t hs-xs" style={{ ...T(2, 2), fontStyle: 'italic', color: lowConf ? AMBER : 'var(--text-muted)' }}>
               {g.discardNote}
             </div>
           )}
@@ -1442,25 +1288,24 @@ function GradeCard({ g, game }) {
           blueprint's EV-loss for comparison when it was actually computed (it is
           skipped on the fast path, so it's usually present only on fallback/debug). */}
       {isOracleGrade && (
-        <div style={{
-          marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: 'var(--bw-hair) solid var(--border)',
-          fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', lineHeight: 1.5,
-        }}>
-          <span style={{ ...label, marginRight: 'var(--space-sm)' }}>Oracle</span>
-          exact GTO re-solve · EV-loss{' '}
-          <b style={{ color: lossColor(evLoss), fontVariantNumeric: 'tabular-nums' }}>
-            {evLoss <= 0.01 ? '0.00' : `−${evLoss.toFixed(2)}`}
-          </b> chips (exact showdown)
-          {g.blueprintEvLoss != null && (
-            <span> · blueprint would grade <span style={{ fontVariantNumeric: 'tabular-nums' }}>−{Math.max(0, +g.blueprintEvLoss).toFixed(2)}</span></span>
-          )}
-          {oracleUnconverged
-            ? <span style={{ color: 'var(--warn, #f59e0b)' }}> · EV not fully converged — approximate</span>
-            : g.oracleGradeTrust === 'ev-converged'
-            ? <span style={{ color: 'var(--pos, #22c55e)' }}> · EV-converged</span>
-            : null}
+        <div className="hs-rule">
+          <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+            <span style={{ fontSize: 'var(--fs-2xs)', lineHeight: 0, textTransform: 'uppercase', letterSpacing: 'var(--track-caps)', marginRight: 'var(--gu)' }}>Oracle</span>
+            exact GTO re-solve · EV-loss{' '}
+            <b style={{ color: lossColor(evLoss), fontVariantNumeric: 'tabular-nums' }}>
+              {evLoss <= 0.01 ? '0.00' : `−${evLoss.toFixed(2)}`}
+            </b> chips (exact showdown)
+            {g.blueprintEvLoss != null && (
+              <span> · blueprint would grade <span style={{ fontVariantNumeric: 'tabular-nums' }}>−{Math.max(0, +g.blueprintEvLoss).toFixed(2)}</span></span>
+            )}
+            {oracleUnconverged
+              ? <span style={{ color: WARN }}> · EV not fully converged — approximate</span>
+              : g.oracleGradeTrust === 'ev-converged'
+              ? <span style={{ color: 'var(--pos, #22c55e)' }}> · EV-converged</span>
+              : null}
+          </div>
           {rangeSensitive && (
-            <div style={{ marginTop: 'var(--space-xs)', color: 'var(--accent2, #eab308)' }}>
+            <div className="hs-t hs-xs" style={{ ...T(2, 2), color: AMBER }}>
               range-sensitive{rsSpread ? ` · EV-loss spans ${rsSpread[0].toFixed(2)}–${rsSpread[1].toFixed(2)} chips across plausible opponent ranges` : ''}
               {notCharged ? ' · not charged to your score' : ' · counted in your score'}
             </div>
@@ -1472,6 +1317,9 @@ function GradeCard({ g, game }) {
 }
 
 // ── session scoreboard (per-game) ─────────────────────────────────────────
+// Grid: panel 2r × 2g (surface2), 2r above. 3r header (label | 9g reset on
+// 25..34), 1r, three 9g stat boxes (3..12, 14..23, 25..34), 2r, by-street
+// meters (2r each), 2r, leaks (2r lines).
 function SessionScoreboard({ session, onReset, gameName, game }) {
   const avg = session.decisions > 0 ? session.totalEvLoss / session.hands : 0;
   const topLeaks = useMemo(() => {
@@ -1483,40 +1331,38 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
   // draw games index 4 rounds (0..3); stud games index 5 streets (3rd..7th).
   const nRows = catOf(game) === 'draw' ? 4 : 5;
   const rowLabel = (i) => (catOf(game) === 'draw' ? DRAW_BET_NAMES[i] : STREET_NAMES[i]);
+  const max = Math.max(0.001, ...session.byStreet.slice(0, nRows).map((x) => (x.n > 0 ? x.loss / x.n : 0)));
 
   return (
-    <div style={{ ...panel, marginTop: 'calc(var(--subrow) * 3)', background: 'var(--surface2)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', height: 'calc(var(--subrow) * 3)', marginBottom: 'var(--subrow)' }}>
-        <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>{gameName ? `${gameName} scoreboard` : 'Session scoreboard'}</span>
-        <button onClick={onReset}
-          style={{
-            height: 'calc(var(--subrow) * 3)', boxSizing: 'border-box', padding: '0 var(--space-ml)', borderRadius: 'calc(var(--subrow) * 0.75)', border: 'var(--bw-hair) solid var(--border)', background: 'transparent',
-            color: 'var(--text-muted)', fontFamily: 'inherit', fontSize: 'calc(var(--gu) * 0.972)', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em',
-          }}>
-          Reset session
+    <div className="hs-panel" style={{ marginTop: R(2), '--hs-bg': 'var(--surface2)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) calc(var(--gu) * 9)', columnGap: 'var(--gu)', alignItems: 'start' }}>
+        {/* wrapper: a trimmed overflow:hidden GRID item loses its content height in WebKit */}
+        <div style={{ minWidth: 0 }}><span className="hs-t hs-cap hs-bold hs-clip" style={{ ...T(2), letterSpacing: '0.14em' }}>{gameName ? `${gameName} scoreboard` : 'Session scoreboard'}</span></div>
+        <button className="hs-btn" onClick={onReset}
+          style={{ '--hs-h': 3, padding: 0, fontSize: 'var(--fs-2xs)', fontWeight: 'var(--fw-regular)', textTransform: 'uppercase', letterSpacing: 'var(--track-caps)', '--hs-ink': 'var(--text-muted)', borderRadius: 'calc(var(--subrow) * 0.75)' }}>
+          <span className="hs-t" style={T(2)}>Reset session</span>
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gu)', marginBottom: 'calc(var(--subrow) * 2)' }}>
+      <div className="hs-cols3" style={{ marginTop: 'var(--subrow)' }}>
         <Stat label="Hands" value={session.hands} />
         <Stat label="Total EV-loss" value={`${session.totalEvLoss.toFixed(1)}`} unit="chips" />
         <Stat label="Avg / hand" value={session.hands ? avg.toFixed(2) : '—'} unit={session.hands ? 'chips' : ''}
           tone={avg > 0.5 ? 'neg' : avg > 0 ? 'mut' : 'pos'} />
       </div>
 
-      {/* by street / draw-round */}
-      <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Avg EV-loss by {catOf(game) === 'draw' ? 'round' : 'street'}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 2)' }}>
+      {/* by street / draw-round — label 4g (stud, 3..7) or 7g (draw, 3..10) | track to 27 | 6g value on 28..34 */}
+      <div className="hs-t hs-cap" style={{ ...T(2), marginTop: R(2) }}>Avg EV-loss by {catOf(game) === 'draw' ? 'round' : 'street'}</div>
+      <div style={{ marginTop: 'var(--subrow)' }}>
         {session.byStreet.slice(0, nRows).map((b, i) => {
           const a = b.n > 0 ? b.loss / b.n : 0;
-          const max = Math.max(0.001, ...session.byStreet.slice(0, nRows).map((x) => (x.n > 0 ? x.loss / x.n : 0)));
           return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-              <span style={{ width: catOf(game) === 'draw' ? 'calc(var(--subrow) * 9.75)' : 'calc(var(--subrow) * 3.75)', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{rowLabel(i)}</span>
-              <div style={{ flex: 1, height: 'calc(var(--subrow) * 1.5)', background: 'var(--surface)', borderRadius: 'calc(var(--subrow) * 0.375)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.round((a / max) * 100)}%`, background: a > 0.5 ? 'var(--neg, #ef4444)' : 'var(--accent2)', borderRadius: 'calc(var(--subrow) * 0.375)', transition: 'width .4s ease' }} />
+            <div key={i} className="hs-meter" style={{ '--hs-lab': `calc(var(--gu) * ${catOf(game) === 'draw' ? 7 : 4})`, '--hs-val': 'calc(var(--gu) * 6)' }}>
+              <div style={{ minWidth: 0 }}><span className="hs-t hs-xs hs-mut hs-clip" style={T(2)}>{rowLabel(i)}</span></div>
+              <div className="hs-meter-track" style={{ '--hs-track': 'var(--surface)' }}>
+                <div className="hs-meter-fill" style={{ width: `${Math.round((a / max) * 100)}%`, background: a > 0.5 ? 'var(--neg, #ef4444)' : 'var(--accent2)' }} />
               </div>
-              <span style={{ width: 'calc(var(--subrow) * 8)', textAlign: 'right', fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+              <span className="hs-t hs-xs hs-num" style={T(2)}>
                 {b.n > 0 ? `${a.toFixed(2)}` : '—'}
                 <span style={{ color: 'var(--text-muted)' }}> ({b.n})</span>
               </span>
@@ -1526,34 +1372,36 @@ function SessionScoreboard({ session, onReset, gameName, game }) {
       </div>
 
       {/* recurring leaks */}
-      <div style={{ ...label, marginBottom: 'var(--subrow)' }}>Biggest recurring leaks</div>
-      {topLeaks.length === 0 ? (
-        <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>
-          {session.hands ? 'No leaks yet — clean session.' : 'Play a hand to start tracking leaks.'}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-          {topLeaks.map((l) => (
-            <div key={l.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-md)', fontSize: 'calc(var(--gu) * 1.090)' }}>
-              <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.key}</span>
-              <span style={{ color: 'var(--neg, #ef4444)', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
-                −{l.chips.toFixed(1)} <span style={{ color: 'var(--text-muted)' }}>×{l.n}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="hs-t hs-cap" style={{ ...T(2), marginTop: R(2) }}>Biggest recurring leaks</div>
+      <div style={{ marginTop: 'var(--subrow)' }}>
+        {topLeaks.length === 0 ? (
+          <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>
+            {session.hands ? 'No leaks yet — clean session.' : 'Play a hand to start tracking leaks.'}
+          </div>
+        ) : topLeaks.map((l) => (
+          <div key={l.key} className="hs-split">
+            <span className="hs-t hs-xs hs-clip" style={T(2)}>{l.key}</span>
+            <span className="hs-t hs-xs hs-num" style={{ ...T(2), whiteSpace: 'nowrap', color: 'var(--neg, #ef4444)' }}>
+              −{l.chips.toFixed(1)} <span style={{ color: 'var(--text-muted)' }}>×{l.n}</span>
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
+// Stat box: 9g, 1r × 2g padding (text on the next subcolumn line), 2r caps
+// label + 3r value = 7r with the padding.
 function Stat({ label: lab, value, unit, tone }) {
   const color = tone === 'neg' ? 'var(--neg, #ef4444)' : tone === 'pos' ? 'var(--pos, #22c55e)' : 'var(--text)';
   return (
-    <div style={{ background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--subrow) var(--gu)' }}>
-      <div style={{ ...label, marginBottom: 'var(--space-2xs)', height: 'calc(var(--subrow) * 2)' }}>{lab}</div>
-      <div style={{ fontSize: 'calc(var(--gu) * 1.620)', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-        {value}{unit ? <span style={{ fontSize: 'calc(var(--gu) * 0.972)', fontWeight: 400, color: 'var(--text-muted)' }}> {unit}</span> : null}
+    <div className="hs-box" style={{ '--hs-bg': 'var(--surface)', padding: 'var(--subrow) calc(var(--gu) * 2)' }}>
+      {/* wraps (2r lines) rather than clipping: the 5g text column fits "HANDS" but not "TOTAL EV-LOSS";
+          the three boxes stretch to the tallest, which is whole r */}
+      <div className="hs-t hs-cap" style={T(2, 2)}>{lab}</div>
+      <div className="hs-t hs-md hs-bold hs-num hs-clip" style={{ ...T(3), color }}>
+        {value}{unit ? <span style={{ fontSize: 'var(--fs-2xs)', lineHeight: 0, fontWeight: 'var(--fw-regular)', color: 'var(--text-muted)' }}> {unit}</span> : null}
       </div>
     </div>
   );
@@ -1570,19 +1418,20 @@ function lossColor(total) {
 // Tiny per-round EV-loss bar strip — one cell per round, shaded by that round's
 // loss (red if it's a leak, accent if small, faint if clean). Gives an at-a-
 // glance "where did this hand bleed" indicator without expanding the row.
+// Grid: 6g wide, one 1r cell per round sitting on the row's baseline line.
 function PerRoundStrip({ perRound, game }) {
   const n = catOf(game) === 'draw' ? 4 : 5;
   const cells = [];
   for (let i = 0; i < n; i++) {
     const v = (perRound && perRound[i]) || 0;
-    const bg = v > 0.5 ? 'var(--neg, #ef4444)' : v > 0.01 ? 'var(--accent2)' : 'var(--surface)';
+    const bg = v > 0.5 ? 'var(--neg, #ef4444)' : v > 0.01 ? 'var(--accent2)' : 'var(--surface2)';
     const op = v > 0.01 ? 1 : 0.5;
     cells.push(
       <div key={i} title={`${catOf(game) === 'draw' ? DRAW_BET_NAMES[i] : STREET_NAMES[i]}: −${v.toFixed(2)}`}
-        style={{ flex: 1, height: 'calc(var(--subrow) * 0.75)', background: bg, opacity: op, borderRadius: 'calc(var(--subrow) * 0.25)' }} />
+        style={{ flex: 1, height: 'var(--subrow)', background: bg, opacity: op, borderRadius: 'calc(var(--subrow) * 0.25)' }} />
     );
   }
-  return <div style={{ display: 'flex', gap: 'calc(var(--subrow) * 0.375)', width: 'calc(var(--subrow) * 8.75)', flex: '0 0 auto' }}>{cells}</div>;
+  return <div style={{ display: 'flex', gap: 'calc(var(--subrow) * 0.375)', width: 'calc(var(--gu) * 6)', flex: '0 0 auto', marginTop: R(2) }}>{cells}</div>;
 }
 
 // Durable per-hand history for the current game (DB-backed). Collapsed by
@@ -1590,6 +1439,8 @@ function PerRoundStrip({ perRound, game }) {
 // Clicking a row fetches + expands that hand's recorded grades (reusing the
 // same GradeCard markup as the live grading report). The localStorage
 // scoreboard stays the session aggregate; this is the durable record.
+// Grid: panel 2r × 2g (surface2), 2r above; 2r header line; rows are 5r boxes
+// (1r × 2g padding around a 3r line), 1r apart.
 function TrainerHistory({ game, gameName, rev }) {
   const [open, setOpen] = useState(false);
   const [hands, setHands] = useState(null); // null = not loaded; [] = loaded empty
@@ -1628,67 +1479,52 @@ function TrainerHistory({ game, gameName, rev }) {
       .finally(() => setDetailLoading(false));
   }, [expandedId, game]);
 
+  const note = (txt) => <div className="hs-t hs-xs hs-mut" style={T(2, 2)}>{txt}</div>;
+
   return (
-    <div style={{ ...panel, marginTop: 'calc(var(--subrow) * 1.75)', background: 'var(--surface2)' }}>
-      <button onClick={() => setOpen((o) => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
-        <span style={{ ...label, letterSpacing: '0.14em', fontWeight: 700 }}>
-          {gameName ? `${gameName} history` : 'Hand history'}
+    <div className="hs-panel" style={{ marginTop: R(2), '--hs-bg': 'var(--surface2)' }}>
+      <button className="hs-btn hs-left" onClick={() => setOpen((o) => !o)}
+        style={{ '--hs-h': 2, '--hs-edge': 'transparent', padding: 0, width: '100%', fontWeight: 'var(--fw-regular)' }}>
+        <span className="hs-split">
+          <span className="hs-t hs-cap hs-bold" style={{ ...T(2), letterSpacing: '0.14em' }}>
+            {gameName ? `${gameName} history` : 'Hand history'}
+          </span>
+          <span className="hs-t hs-xs hs-mut" style={T(2)}>{open ? 'Hide ▲' : 'Show ▼'}</span>
         </span>
-        <span style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)' }}>{open ? 'Hide ▲' : 'Show ▼'}</span>
       </button>
 
       {open && (
-        <div style={{ marginTop: 'var(--subrow)' }}>
-          {loading && hands == null ? (
-            <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>Loading history…</div>
-          ) : error ? (
-            <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>Couldn’t load history (offline?). Played hands are saved when you’re back online.</div>
-          ) : hands && hands.length === 0 ? (
-            <div style={{ fontSize: 'calc(var(--gu) * 1.090)', color: 'var(--text-muted)' }}>No saved hands yet — play one to start your history.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-              {(hands || []).map((h) => {
-                const isOpen = expandedId === h.id;
-                return (
-                  <div key={h.id} style={{ background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                    <button onClick={() => toggleRow(h.id)}
-                      style={{
-                        width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--space-ml)', padding: 'var(--space-md) var(--space-ml)',
-                        background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                      }}>
-                      <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>
-                        {fmtPlayedAt(h.played_at)}
-                      </span>
-                      <PerRoundStrip perRound={h.per_round} game={game} />
-                      <span style={{ flex: 1 }} />
-                      <span style={{ fontSize: 'calc(var(--gu) * 1.149)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: lossColor(+h.ev_loss_total || 0), flex: '0 0 auto' }}>
-                        {(+h.ev_loss_total || 0) <= 0.01 ? 'optimal' : `−${(+h.ev_loss_total || 0).toFixed(2)}`}
-                      </span>
-                      <span style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', flex: '0 0 auto' }}>{isOpen ? '▲' : '▼'}</span>
-                    </button>
+        <div className="hs-stack" style={{ marginTop: 'var(--subrow)' }}>
+          {loading && hands == null ? note('Loading history…')
+            : error ? note('Couldn’t load history (offline?). Played hands are saved when you’re back online.')
+            : hands && hands.length === 0 ? note('No saved hands yet — play one to start your history.')
+            : (hands || []).map((h) => {
+              const isOpen = expandedId === h.id;
+              return (
+                <div key={h.id} className="hs-box" style={{ '--hs-bg': 'var(--surface)', padding: 0, overflow: 'hidden' }}>
+                  {/* Row: 5r — 1r pad, then time | per-round strip | loss | caret, baselines 4r down. */}
+                  <button onClick={() => toggleRow(h.id)} className="hs-btn"
+                    style={{ '--hs-h': 5, '--hs-edge': 'transparent', width: '100%', flexDirection: 'row', alignItems: 'flex-start', columnGap: 'var(--gu)', padding: 'var(--subrow) calc(var(--gu) * 2) 0', fontWeight: 'var(--fw-regular)' }}>
+                    <span className="hs-t hs-xs hs-mut hs-num" style={{ ...T(3), flex: '0 0 auto' }}>{fmtPlayedAt(h.played_at)}</span>
+                    <PerRoundStrip perRound={h.per_round} game={game} />
+                    <span style={{ flex: 1 }} />
+                    <span className="hs-t hs-sm hs-bold hs-num" style={{ ...T(3), color: lossColor(+h.ev_loss_total || 0), flex: '0 0 auto' }}>
+                      {(+h.ev_loss_total || 0) <= 0.01 ? 'optimal' : `−${(+h.ev_loss_total || 0).toFixed(2)}`}
+                    </span>
+                    <span className="hs-t hs-xs hs-mut" style={{ ...T(3), flex: '0 0 auto' }}>{isOpen ? '▲' : '▼'}</span>
+                  </button>
 
-                    {isOpen && (
-                      <div style={{ padding: '0 var(--space-ml) var(--space-ml)', borderTop: 'var(--bw-hair) solid var(--border)' }}>
-                        {detailLoading || !detail || detail.id !== h.id ? (
-                          <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', padding: 'var(--space-md) 0' }}>Loading hand…</div>
-                        ) : !detail.hand || !Array.isArray(detail.hand.grades) || detail.hand.grades.length === 0 ? (
-                          <div style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted)', padding: 'var(--space-md) 0' }}>No recorded decisions for this hand.</div>
-                        ) : (
-                          <div style={{ marginTop: 'var(--space-ml)' }}>
-                            {detail.hand.grades.map((g, i) => <GradeCard key={i} g={g} game={game} />)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  {isOpen && (
+                    <div className="hs-rule hs-stack" style={{ padding: 'var(--subrow) calc(var(--gu) * 2) calc(var(--subrow) * 2)' }}>
+                      {/* 1r top (under the rule) / 2r bottom, 2g sides: the nested grade cards sit on 5..32 */}
+                      {detailLoading || !detail || detail.id !== h.id ? note('Loading hand…')
+                        : !detail.hand || !Array.isArray(detail.hand.grades) || detail.hand.grades.length === 0 ? note('No recorded decisions for this hand.')
+                        : detail.hand.grades.map((g, i) => <GradeCard key={i} g={g} game={game} />)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>

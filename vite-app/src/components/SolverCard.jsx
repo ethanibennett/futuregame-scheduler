@@ -4,35 +4,16 @@ import React from 'react';
 // SVGs the Hand Replayer uses (/cards/cards_gui_<rank><suit>.svg) so the
 // solver shows hands graphically and consistently with the replayer.
 // Card strings match the asset names directly: 'Ah' -> cards_gui_Ah.svg.
+//
+// Grid: sized by .hs-card-* in styles.css — sm 2g × 4r, md 3g × 6r, lg 4g × 8r
+// (whole g wide, whole r tall; 0.704 against the artwork's 0.714). Raised stud
+// upcards lift 2r (.hs-card-raised). No px anywhere.
 
 export default function SolverCard({ str, faceDown, dim, size = 'md', raised }) {
-  // Grid: heights are subrow multiples (32=4sr, 48=6sr, 56=7sr) so card rows land on grid lines.
-  const h = size === 'sm' ? 32 : size === 'lg' ? 56 : 48;
-  // stud upcards sit raised above the hole cards, matching the replayer's board layout
-  const raise = raised ? 'translateY(-11px)' : undefined;
+  const cls = 'hs-card hs-card-' + (size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'md') +
+    (raised ? ' hs-card-raised' : '') + (dim ? ' hs-card-dim' : '');
 
-  if (faceDown || !str) {
-    return (
-      <span className="card-back" style={{
-        height: h, width: Math.round(h * 0.7),
-        margin: '0 1.5px', verticalAlign: 'middle', transform: raise,
-      }} />
-    );
-  }
+  if (faceDown || !str) return <span className={'card-back ' + cls} />;
 
-  return (
-    <img
-      className="card-img"
-      src={`/cards/cards_gui_${str}.svg`}
-      alt={str}
-      loading="eager"
-      style={{
-        height: h, width: 'auto', margin: '0 1.5px', verticalAlign: 'middle', transform: raise,
-        borderRadius: Math.round(h * 0.09),
-        opacity: dim ? 0.5 : 1,
-        filter: dim ? 'grayscale(0.4)' : 'none',
-        boxShadow: dim ? 'none' : '0 1px 3px rgba(0,0,0,0.35)',
-      }}
-    />
-  );
+  return <img className={'card-img ' + cls} src={`/cards/cards_gui_${str}.svg`} alt={str} loading="eager" />;
 }

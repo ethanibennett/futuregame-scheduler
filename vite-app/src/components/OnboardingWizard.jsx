@@ -45,6 +45,8 @@ export default function OnboardingWizard({ token, onDone }) {
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { setLocError('Location not available on this device.'); return; }
+    // WebKit refuses geolocation on a non-secure page (an http dev server); say so.
+    if (window.isSecureContext === false) { setLocError('Location needs a secure page (it works in the installed app). Pick a region instead.'); return; }
     setLocating(true); setLocError('');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -56,7 +58,12 @@ export default function OnboardingWizard({ token, onDone }) {
           .then(d => { const code = d && (d.region || d.state); if (code) setJurisdiction(String(code).toUpperCase()); })
           .catch(() => {});
       },
-      () => { setLocating(false); setLocError('Could not get your location — pick a region instead.'); },
+      (err) => {
+        setLocating(false);
+        setLocError(err && err.code === 1 ? 'Location permission is off for futurega.me. Pick a region instead.'
+          : err && err.code === 2 ? 'No location fix available (in the Simulator: Features → Location). Pick a region instead.'
+          : 'Could not get your location. Pick a region instead.');
+      },
       { timeout: 8000 }
     );
   };

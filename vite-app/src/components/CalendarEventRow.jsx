@@ -955,8 +955,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         </div>
                         {feedOwned && (
                           <div className="admin-edit-note">
-                            <span>Venue and Event # are the feed&rsquo;s match key: correct them in mtt-series-watcher.</span>
-                            <span>Everything else is pinned here and survives the hourly sync.</span>
+                            <div><span>Venue and Event # are the feed&rsquo;s match key;</span></div>
+                            <div><span>correct them in mtt-series-watcher.</span></div>
+                            <div><span>Everything else is pinned here</span></div>
+                            <div><span>and survives the hourly sync.</span></div>
                           </div>
                         )}
                         {/* Clear overrides. Deliberately outside the Save/Cancel transaction: like
@@ -984,8 +986,19 @@ The feed's own values return at the next hourly sync — your edits stay visible
                           const venueInfo = getVenueInfo(tournament.venue, tournament.property);
                           const abbr = venueInfo.abbr;
                           const cssVar = VENUE_BRAND_VAR[abbr] || `--venue-${abbr.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')}`;
-                          const computed = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-                          const currentColor = computed || stripColor;
+                          /* <input type=color> takes #rrggbb only. The brand variable can hold
+                             another var() or an rgb(), which the input rejects (it showed the raw
+                             "var(--v..." text), so resolve it through a probe to a real colour. */
+                          const toHex = (css) => {
+                            const probe = document.createElement('span');
+                            probe.style.color = css;
+                            document.body.appendChild(probe);
+                            const m = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g);
+                            probe.remove();
+                            if (!m || m.length < 3) return null;
+                            return '#' + m.slice(0, 3).map(v => Math.round(Number(v)).toString(16).padStart(2, '0')).join('');
+                          };
+                          const currentColor = toHex(`var(${cssVar}, ${stripColor})`) || '#808080';
                           return (
                             <div className="admin-strip-color">
                               <label><span>Strip Color ({abbr})</span></label>

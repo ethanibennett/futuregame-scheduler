@@ -27,10 +27,47 @@ function formatEventName(name) {
     <>
       {base}
       <br />
-      <span style={{ fontSize: '0.78em', opacity: 0.7 }}>{stage}</span>
+      <span className="dash-event-stage">{stage}</span>
     </>
   );
 }
+
+// ── Grid placement for the portalled dropdowns ──
+// g is read from a 100g probe (what --gu really resolves to), r = 0.71g, and the
+// origin is the top bar — the overlay's origin. A panel's top is snapped to a
+// whole r from the bar (1r below / above its trigger) and emitted as calc() in r,
+// its left edge as calc() in g on a column line; nothing is written in px.
+function gridGeom() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;height:0;width:calc(var(--gu) * 100)';
+  document.body.appendChild(probe);
+  const G = probe.getBoundingClientRect().width / 100;
+  probe.remove();
+  const barTop = document.querySelector('.top-bar')?.getBoundingClientRect().top || 0;
+  return { G, R: G * 0.71, barTop };
+}
+function gridPanelStyle(anchorRect, heightR, leftG) {
+  const { R, barTop } = gridGeom();
+  const openAbove = anchorRect.top > window.innerHeight / 2;
+  const topR = openAbove
+    ? Math.round((anchorRect.top - barTop) / R) - 1 - heightR
+    : Math.round((anchorRect.bottom - barTop) / R) + 1;
+  const barR = barTop / R; // 0 when the bar sits at the viewport top
+  return {
+    position: 'fixed',
+    left: `calc(var(--gu) * ${+leftG.toFixed(4)})`,
+    top: `calc(var(--subrow) * ${+(topR + barR).toFixed(4)})`,
+    transform: 'none',
+  };
+}
+// A letter avatar's initial, seated: trimmed to cap..alphabetic with its baseline
+// on +3r of the 5r circle (cap 0.94r -> 2.06r above, 2r below = centred).
+const SEATED_INITIAL = {
+  display: 'block', textAlign: 'center', boxSizing: 'border-box',
+  paddingTop: 'calc(var(--subrow) * 3 - 1cap)',
+  textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
+};
+const AVATAR_5R = 'calc(var(--subrow) * 5)';
 
 // ── Countdown Clock (collapsed card) ──
 function CountdownClock({ startMs }) {
@@ -409,20 +446,24 @@ export default function DashboardView({
   // Shared poller (utils/live-clocks.js): a schedule card showing the same event costs nothing more.
   const liveClocks = useLiveClocks(clockTargetsKey ? JSON.parse(clockTargetsKey) : [], clockTargetsKey);
 
-  // Seat multi-line hero event names on the grid. A single line is held at 3r by
-  // CSS min-height, and an explicit "- Day 1" <br> is caught by :has(br) → 6r,
-  // but a name that WRAPS on width carries no <br>, and two floored 23px lines
-  // come to 5.97r rather than a whole 6r — leaving the card fractionally tall.
-  // CSS can't count wrapped lines, so measure the rendered content and pin
-  // min-height to that many whole 3r rows. Runs after layout, before paint.
+  // Seat multi-line hero event names on the grid. The name's text is a trimmed
+  // block (.dash-t: cap-top .. last baseline) bottom-aligned in a cell of whole
+  // 3r lines, so its last baseline sits on the cell's bottom r-line. An explicit
+  // "- Day 1" <br> is caught by :has(br) → 6r, but a name that WRAPS on width
+  // carries no <br>, and CSS can't count wrapped lines. The trimmed block is
+  // (lines − 1) × 3r + one cap height (1.815r for --fs-lg display, < 3r), so
+  // ceil(height / 3r) is exactly the line count. Runs after layout, before paint.
+  // --subrow is a calc() string on :root, so read r from the grid unit instead:
+  // r = 0.71g, g = innerWidth / 37 (capped at 430, as --gu is).
   useLayoutEffect(() => {
-    const subrow = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--subrow')) || 0;
+    const subrow = (Math.min(window.innerWidth, 430) / 37) * 0.71;
     if (!subrow) return;
     document.querySelectorAll(
       '.dash-event-card.playing .dash-event-name, .dash-event-card.next-up .dash-event-name, .dash-event-card.manually-expanded .dash-event-name'
     ).forEach((el) => {
-      el.style.minHeight = '0px';               // collapse to natural content to count lines
-      const lines = Math.max(1, Math.round(el.scrollHeight / (subrow * 3)));
+      const text = el.querySelector('.dash-t');
+      if (!text) return;
+      const lines = Math.max(1, Math.ceil(text.getBoundingClientRect().height / (subrow * 3) - 0.01));
       el.style.minHeight = `calc(var(--subrow) * ${lines * 3})`;
     });
   }, [whatsNextEvents, selectedUpNextIdx]);
@@ -538,7 +579,15 @@ export default function DashboardView({
       regClosed && event._type !== 'bagged' ? 'reg-closed' : '',
     ].filter(Boolean).join(' ');
 
-    const cardStyle = isBustedDone ? { borderColor: 'var(--border)' } : {};
+    // Status tags above the name. Built as a list so the row is rendered only when
+    // it has something in it: an empty flex row still took the content's 1r gap.
+    const tags = [];
+    if (!isConditionalOnPlaying) {
+      if (event._type === 'bagged') tags.push(['bagged', `Bagged — Day ${event._bagUpdate?.bag_day || '?'}`]);
+      if (event._type === 'anchor' && !event._conditionalOnBag) tags.push(['anchor', 'Locked In']);
+      if (event._type === 'conditional') tags.push(event._conditionalOnBag ? ['conditional on-bag', 'Conditional on bag'] : ['conditional', 'Conditional']);
+      if (regClosed && event._type !== 'bagged') tags.push(['reg-closed', 'Reg Closed']);
+    }
 
     const activeUpdate = activeEventMap[event.id];
     const liveStack = activeUpdate?.stack;
@@ -547,8 +596,12 @@ export default function DashboardView({
     // Tapping the card opens this event in My Schedule, expanded. Guarded on
     // swipeDx so finishing a carousel drag over the card does not navigate —
     // the drag distance is reset on every touchstart, so a genuine tap reads 0.
-    const openInSchedule = () => {
+    const openInSchedule = (e) => {
       if (Math.abs(swipeDx.current || 0) > 10) return;
+      // A tap on one of the card's own controls (Bust, Update, Bag, Finish,
+      // Cancel, Rebuys...) is that control's, not "open this event": it used
+      // to bubble here and jump the user to My Schedule mid-action.
+      if (e && e.target !== e.currentTarget && e.target.closest('button, input, select, textarea, a, label')) return;
       if (onOpenInSchedule) onOpenInSchedule(event.id);
     };
 
@@ -556,7 +609,6 @@ export default function DashboardView({
       <div
         key={event.id}
         className={cardClass}
-        style={cardStyle}
         role={onOpenInSchedule ? 'button' : undefined}
         tabIndex={onOpenInSchedule ? 0 : undefined}
         /* Raw name, not formatEventName — that returns JSX for "… - Flight A"
@@ -564,49 +616,40 @@ export default function DashboardView({
         aria-label={onOpenInSchedule ? `Open ${event.event_name} in My Schedule` : undefined}
         onClick={onOpenInSchedule ? openInSchedule : undefined}
         onKeyDown={onOpenInSchedule ? (e) => {
+          // Only when the card itself has focus; Enter on an inner button is that button's.
+          if (e.target !== e.currentTarget) return;
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInSchedule(); }
         } : undefined}
       >
         {/* The Up Next banner shows the FULL venue name, never the strip
             abbreviation — abbr stays only for the brand colour + WSOP casing. */}
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em', padding: '0 var(--space-lg)'}}>{venueInfo.longName || venueInfo.abbr}</div>
+        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em'}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
-        {!isConditionalOnPlaying && (
-          <div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-xs)',alignItems:'center'}}>
-            {event._type === 'bagged' && (
-              <span className="dash-event-tag bagged">Bagged — Day {event._bagUpdate?.bag_day || '?'}</span>
-            )}
-            {event._type === 'anchor' && !event._conditionalOnBag && (
-              <span className="dash-event-tag anchor">Locked In</span>
-            )}
-            {event._type === 'conditional' && (
-              <span className="dash-event-tag conditional">
-                {event._conditionalOnBag ? 'Conditional on bag' : 'Conditional'}
-              </span>
-            )}
-            {regClosed && event._type !== 'bagged' && (
-              <span className="dash-event-tag reg-closed">Reg Closed</span>
-            )}
+        {tags.length > 0 && (
+          <div className="dash-event-tags">
+            {tags.map(([cls, label]) => (
+              <span key={cls} className={`dash-event-tag ${cls}`}><span className="dash-t">{label}</span></span>
+            ))}
           </div>
         )}
 
         <div className="dash-event-header">
-          <div style={{flex:1}}>
-            <div className="dash-event-name">{formatEventName(event.event_name)}</div>
+          <div className="dash-event-title">
+            <div className="dash-event-name"><span className="dash-t">{formatEventName(event.event_name)}</span></div>
             {!isConditionalOnPlaying && (
               <div className="dash-event-meta">
                 {/* The carousel now runs the whole schedule, so a card can be
                     weeks out — time alone would be ambiguous. */}
                 {normaliseDate(event.date) !== todayISO && (
-                  <span><Icon.calendar /> {fmtShortDate(normaliseDate(event.date))}</span>
+                  <span><Icon.calendar /><span className="dash-t">{fmtShortDate(normaliseDate(event.date))}</span></span>
                 )}
-                <span><Icon.clock /> {event.time || 'TBD'}{event.venue ? ' ' + getVenueTzAbbr(event.venue) : ''}</span>
+                <span><Icon.clock /><span className="dash-t">{event.time || 'TBD'}{event.venue ? ' ' + getVenueTzAbbr(event.venue) : ''}</span></span>
               </div>
             )}
           </div>
-          <div className="dash-event-buyin">{formatBuyin(event.buyin, event.venue)}</div>
+          <div className="dash-event-buyin"><span className="dash-t">{formatBuyin(event.buyin, event.venue)}</span></div>
           {onToggle && (
-            <button className="dash-undo-x muted" onClick={(e) => { e.stopPropagation(); if (confirm('Remove from schedule?')) onToggle(event.id); }} title="Remove from schedule">&#10005;</button>
+            <button className="dash-undo-x muted" onClick={(e) => { e.stopPropagation(); if (confirm('Remove from schedule?')) onToggle(event.id); }} title="Remove from schedule"><span className="dash-t">&#10005;</span></button>
           )}
         </div>
 
@@ -646,16 +689,16 @@ export default function DashboardView({
               const m = Math.floor((diffMs % 3600000) / 60000);
               return (
                 <div className="dash-restart-badge">
-                  <Icon.restart /> Restart in {h}:{String(m).padStart(2, '0')}
-                  <button className="dash-unbag-x" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag">&#10005;</button>
+                  <Icon.restart /><span className="dash-t">Restart in {h}:{String(m).padStart(2, '0')}</span>
+                  <button className="dash-unbag-x" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag"><span className="dash-t">&#10005;</span></button>
                 </div>
               );
             }
           }
           return (
             <div className="dash-restart-badge">
-              <Icon.restart /> Bagged
-              <button className="dash-unbag-x" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag">&#10005;</button>
+              <Icon.restart /><span className="dash-t">Bagged</span>
+              <button className="dash-unbag-x" onClick={(e) => { e.stopPropagation(); if (confirm('Undo bag?')) undoBag(); }} title="Undo bag"><span className="dash-t">&#10005;</span></button>
             </div>
           );
         })()}
@@ -673,11 +716,11 @@ export default function DashboardView({
             return (
               <div className="dash-status-row">
                 <div className="dash-finished-badge">
-                  Finished
+                  <span className="dash-t">Finished</span>
                   <button className="dash-undo-x muted" onClick={(e) => {
                     e.stopPropagation();
                     if (bustedUpd?.id && onDeleteUpdate && confirm('Undo finish? This will restore the event to playing.')) onDeleteUpdate(bustedUpd.id);
-                  }} title="Undo finish">&#10005;</button>
+                  }} title="Undo finish"><span className="dash-t">&#10005;</span></button>
                 </div>
                 {canRebuy ? (
                   <button className="dash-rebuy-btn" onClick={() => {
@@ -689,9 +732,9 @@ export default function DashboardView({
                         playStartedAt: new Date().toISOString(),
                       });
                     }
-                  }}>Rebuys: {maxEntries >= 99 ? 'Unlimited' : maxEntries - usedEntries}</button>
+                  }}><span className="dash-t">Rebuys: {maxEntries >= 99 ? 'Unlimited' : maxEntries - usedEntries}</span></button>
                 ) : (
-                  <div className="dash-no-rebuy">All entries used</div>
+                  <div className="dash-no-rebuy"><span className="dash-t">All entries used</span></div>
                 )}
               </div>
             );
@@ -707,7 +750,7 @@ export default function DashboardView({
             if (showBustMenu) {
               return (
                 <div className="dash-status-row">
-                  <button className="dash-update-btn" onClick={() => setBustMenuEventId(null)}>Cancel</button>
+                  <button className="dash-update-btn" onClick={() => setBustMenuEventId(null)}><span className="dash-t">Cancel</span></button>
                   {canRebuy && (
                     <button className="dash-rebuy-btn" onClick={() => {
                       haptic(25);
@@ -730,7 +773,7 @@ export default function DashboardView({
                         }, 300);
                       }
                       setBustMenuEventId(null);
-                    }}>Rebuys: {maxEntries >= 99 ? 'Unlimited' : maxEntries - bulletNum}</button>
+                    }}><span className="dash-t">Rebuys: {maxEntries >= 99 ? 'Unlimited' : maxEntries - bulletNum}</span></button>
                   )}
                   <button className="dash-bust-btn" onClick={() => {
                     haptic(25);
@@ -738,7 +781,7 @@ export default function DashboardView({
                       detail: { tab: 'finish', tournamentId: event.id }
                     }));
                     setBustMenuEventId(null);
-                  }}>Finish</button>
+                  }}><span className="dash-t">Finish</span></button>
                 </div>
               );
             }
@@ -746,34 +789,34 @@ export default function DashboardView({
             return (
               <div className="dash-status-stack">
                 <div className="dash-playing-badge">
-                  <span className="dash-playing-dot" /> Currently Playing{bulletNum > 1 ? `; Bullet ${bulletNum}` : ''}
+                  <span className="dash-playing-dot" /><span className="dash-t">Currently Playing{bulletNum > 1 ? `; Bullet ${bulletNum}` : ''}</span>
                   <button className="dash-undo-x" onClick={(e) => {
                     e.stopPropagation();
                     if (activeUpd?.id && onDeleteUpdate && confirm('Undo playing status for this event?')) onDeleteUpdate(activeUpd.id);
-                  }} title="Undo start">&#10005;</button>
+                  }} title="Undo start"><span className="dash-t">&#10005;</span></button>
                 </div>
                 <div className="dash-action-row">
                   <button className="dash-update-btn" onClick={() => {
                     window.dispatchEvent(new CustomEvent('openLiveUpdate', {
                       detail: { tab: 'update', tournamentId: event.id }
                     }));
-                  }}>Update</button>
+                  }}><span className="dash-t">Update</span></button>
                   <button className="dash-bag-btn" onClick={() => {
                     haptic(25);
                     const nextBagDay = (activeUpd?.bag_day || 0) + 1 || 1;
                     window.dispatchEvent(new CustomEvent('openLiveUpdate', {
                       detail: { tab: 'update', tournamentId: event.id, bag: nextBagDay }
                     }));
-                  }}>Bag</button>
+                  }}><span className="dash-t">Bag</span></button>
                   {!regClosed ? (
-                    <button className="dash-bust-btn" onClick={() => { haptic(); setBustMenuEventId(event.id); }}>Bust</button>
+                    <button className="dash-bust-btn" onClick={() => { haptic(); setBustMenuEventId(event.id); }}><span className="dash-t">Bust</span></button>
                   ) : (
                     <button className="dash-bust-btn" onClick={() => {
                       haptic(25);
                       window.dispatchEvent(new CustomEvent('openLiveUpdate', {
                         detail: { tab: 'finish', tournamentId: event.id }
                       }));
-                    }}>Finish</button>
+                    }}><span className="dash-t">Finish</span></button>
                   )}
                 </div>
               </div>
@@ -803,7 +846,7 @@ export default function DashboardView({
                 }
               }}
             >
-              <Icon.play /> Start Event
+              <Icon.play /><span className="dash-t">Start Event</span>
             </button>
           );
         })()}
@@ -872,18 +915,16 @@ export default function DashboardView({
     setPlDropdown(d => (d === key ? null : key));
   };
   // Anchored panel, flipped above the trigger when it would run off the bottom.
-  const plPanelStyle = () => {
+  // Left-aligned to its card (1g or 10g, a column line); 17g wide so it ends on
+  // 18g or 27g. Height = rows x 3r, so the above-case top is exact too.
+  const plPanelStyle = (rows) => {
     if (!plRect) return { position: 'fixed' };
-    const openAbove = plRect.top > window.innerHeight / 2;
-    return {
-      position: 'fixed',
-      left: Math.min(Math.max(8, plRect.left + plRect.width / 2 - 110), window.innerWidth - 228),
-      transform: 'none',
-      ...(openAbove
-        ? { bottom: window.innerHeight - plRect.top + 4 }
-        : { top: plRect.bottom + 4 }),
-    };
+    const { G } = gridGeom();
+    return gridPanelStyle(plRect, rows * 3, plRect.left / G);
   };
+  const plRows = (field) => Object.entries(plData.byVenue)
+    .filter(([, v]) => v[field] > 0)
+    .sort((a, b) => b[1][field] - a[1][field]);
 
   // Friends currently playing
   const activeFriends = useMemo(() => {
@@ -913,7 +954,8 @@ export default function DashboardView({
     const buddyToday = {};
     Object.entries(buddyEvents).forEach(([tid, buddies]) => {
       const t = tournaments.find(x => x.id === Number(tid));
-      if (!t || t.date !== todayISO) return;
+      // Stored dates are "September 30, 2026"; todayISO is ISO — compare normalised.
+      if (!t || normaliseDate(t.date) !== todayISO) return;
       buddies.forEach(b => {
         if (!buddyToday[b.id]) buddyToday[b.id] = [];
         buddyToday[b.id].push(t);
@@ -951,6 +993,8 @@ export default function DashboardView({
   }, [activeFriends, scheduledFriends]);
 
   const connDropdownRef = useRef(null);
+  // The tapped avatar's rect (and its row's left), captured on click like plRect.
+  const [connRect, setConnRect] = useState(null);
 
   useEffect(() => {
     if (!connDropdownId) return;
@@ -971,7 +1015,7 @@ export default function DashboardView({
         <div className="dashboard-section-header">
           <div className="dashboard-section-title">Up Next</div>
           {whatsNextEvents.length > 0 && (
-            <span className="dashboard-section-badge">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
+            <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
           )}
         </div>
         {whatsNextEvents.length > 0 ? (() => {
@@ -1014,7 +1058,7 @@ export default function DashboardView({
                     onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
                     disabled={safeIdx === 0}
                     aria-label="Previous event"
-                  >&#8249;</button>
+                  ><span className="dash-t">&#8249;</span></button>
                   <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
                   <button
                     type="button"
@@ -1022,7 +1066,7 @@ export default function DashboardView({
                     onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
                     disabled={safeIdx === whatsNextEvents.length - 1}
                     aria-label="Next event"
-                  >&#8250;</button>
+                  ><span className="dash-t">&#8250;</span></button>
                 </div>
               )}
             </div>
@@ -1053,7 +1097,7 @@ export default function DashboardView({
               const blinds = lu?.bb ? `${lu.sb ? Number(lu.sb).toLocaleString() : '?'}/${Number(lu.bb).toLocaleString()}${(lu.bbAnte || lu.bb_ante) ? '/' + Number(lu.bbAnte || lu.bb_ante).toLocaleString() : ''}` : null;
               return (
                 <button type="button" key={f.id} className="dash-friend-chip" onClick={() => onNavigate('social')}>
-                  <Avatar src={f.avatar} username={f.username} size={28} />
+                  <Avatar src={f.avatar} username={f.username} size={AVATAR_5R} style={f.avatar ? undefined : SEATED_INITIAL} />
                   <div className="friend-info">
                     <div className="friend-name">{displayName(f)}</div>
                     <div className="friend-event">{lu?.eventName || 'Playing'}</div>
@@ -1073,7 +1117,7 @@ export default function DashboardView({
       {/* Table Scanner */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Table Scanner <span style={{fontWeight:400,fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>(WSOP Live / PokerStars Live)</span></div>
+          <div className="dashboard-section-title">Table Scanner <span style={{fontWeight:400,fontSize:'var(--fs-xs)',color:'var(--text-muted)'}}>(WSOP Live / PokerStars Live)</span></div>
         </div>
         <TableScanner />
       </div>
@@ -1081,56 +1125,51 @@ export default function DashboardView({
       <div className="dash-bottom-stack">
       {/* Results */}
       <div className="dashboard-section">
-        {/* Header laid out as a 3-column grid that mirrors the P&L grid
-            below: title + Reset on the left (Reset right-aligned to the
-            Total Buyins col), empty middle, currency dropdown flush
-            right with the Net card. */}
+        {/* Header on the P&L columns (8g | 8g | 17g): title in col 1, Reset
+            right-aligned in col 2 (14-18g) — or Confirm 12-18g + Cancel
+            19-25g — and the currency flush right with the Net card (30-36g).
+            Every control is a 3r block with its label seated on +2r. */}
         <div className="dashboard-section-header dash-results-header">
-          <div className="dash-results-head-left">
-            <div className="dashboard-section-title">Results</div>
-            {plData.count > 0 && onResetResults && (
-              resetConfirmOpen ? (
-                <span style={{display:'inline-flex',alignItems:'center',gap:'var(--space-sm)'}}>
-                  <button
-                    onClick={() => { onResetResults(); setResetConfirmOpen(false); }}
-                    style={{fontSize:'calc(var(--gu) * 1.031)',fontWeight:700,padding:'calc(var(--subrow) * 0.375) var(--space-md)',border:'var(--bw-hair) solid #b91c1c',borderRadius:'calc(var(--subrow) * 0.625)',background:'#b91c1c',color:'#fff',cursor:'pointer'}}
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    onClick={() => setResetConfirmOpen(false)}
-                    style={{fontSize:'calc(var(--gu) * 1.031)',padding:'calc(var(--subrow) * 0.375) var(--space-md)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.625)',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
-                  >
-                    Cancel
-                  </button>
-                </span>
-              ) : (
+          <div className="dashboard-section-title">Results</div>
+          {plData.count > 0 && onResetResults && (
+            resetConfirmOpen ? (
+              <>
                 <button
-                  onClick={() => setResetConfirmOpen(true)}
-                  title="Clear all logged results"
-                  style={{fontSize:'calc(var(--gu) * 1.031)',fontWeight: 'var(--fw-bold)',padding:'calc(var(--subrow) * 0.375) var(--space-md)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.625)',background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer'}}
-                >
-                  Reset
-                </button>
-              )
-            )}
-          </div>
-          <div />{/* empty middle column to mirror the Cashes button */}
-          <div style={{justifySelf:'end', alignSelf:'center'}}>
-            {plData.count > 0 && dashRates && (
-              <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)}
-                style={{fontSize:'calc(var(--gu) * 0.957)',padding:'var(--space-2xs) var(--space-xs)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.625)',
-                  background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
+                  type="button"
+                  className="dash-results-btn dash-results-reset dash-results-confirm"
+                  onClick={() => { onResetResults(); setResetConfirmOpen(false); }}
+                ><span>Confirm</span></button>
+                <button
+                  type="button"
+                  className="dash-results-btn dash-results-cancel"
+                  onClick={() => setResetConfirmOpen(false)}
+                ><span>Cancel</span></button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="dash-results-btn dash-results-reset"
+                onClick={() => setResetConfirmOpen(true)}
+                title="Clear all logged results"
+              ><span>Reset</span></button>
+            )
+          )}
+          {plData.count > 0 && dashRates && (
+            <label className="dash-results-right dash-results-currency">
+              <span aria-hidden="true">
+                {dashCurrency === 'NATIVE' ? 'Native' : `${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
+              </span>
+              <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
                 <option value="NATIVE">Native</option>
                 {Object.keys(CURRENCY_CONFIG).map(c => (
                   <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
                 ))}
               </select>
-            )}
-            {plData.count > 0 && !dashRates && (
-              <span className="dashboard-section-badge">{plData.count} result{plData.count !== 1 ? 's' : ''}</span>
-            )}
-          </div>
+            </label>
+          )}
+          {plData.count > 0 && !dashRates && (
+            <span className="dash-results-right dashboard-section-badge dashboard-section-badge--wide">{plData.count} result{plData.count !== 1 ? 's' : ''}</span>
+          )}
         </div>
         {plData.count > 0 ? (
           <>
@@ -1140,10 +1179,8 @@ export default function DashboardView({
               <div className="dash-pl-value">{fmtPl(plData.invested)}</div>
               <div className="dash-pl-label">Total Buyins &#9662;</div>
               {plDropdown === 'buyins' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle()} onClick={e => e.stopPropagation()}>
-                  {Object.entries(plData.byVenue)
-                    .filter(([, v]) => v.invested > 0)
-                    .sort((a, b) => b[1].invested - a[1].invested)
+                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('invested').length)} onClick={e => e.stopPropagation()}>
+                  {plRows('invested')
                     .map(([venue, v]) => (
                       <div key={venue} className="dash-pl-dropdown-row">
                         <span className="dash-pl-dropdown-venue">{venue}</span>
@@ -1159,10 +1196,8 @@ export default function DashboardView({
               <div className="dash-pl-value">{fmtPl(plData.cashed)}</div>
               <div className="dash-pl-label">Cashes &#9662;</div>
               {plDropdown === 'cashes' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle()} onClick={e => e.stopPropagation()}>
-                  {Object.entries(plData.byVenue)
-                    .filter(([, v]) => v.cashed > 0)
-                    .sort((a, b) => b[1].cashed - a[1].cashed)
+                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cashed').length)} onClick={e => e.stopPropagation()}>
+                  {plRows('cashed')
                     .map(([venue, v]) => (
                       <div key={venue} className="dash-pl-dropdown-row">
                         <span className="dash-pl-dropdown-venue">{venue}</span>
@@ -1178,11 +1213,9 @@ export default function DashboardView({
               <div className={`dash-pl-value ${plData.net >= 0 ? 'positive' : 'negative'}`}>
                 {plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
               </div>
-              <div className="dash-pl-label">
-                Net
-                <span className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
-                  {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
-                </span>
+              <div className="dash-pl-label">Net</div>
+              <div className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
+                {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
               </div>
             </div>
             </>); })()}
@@ -1212,32 +1245,37 @@ export default function DashboardView({
         </div>
         {allConnections.length > 0 ? (
           <div className="dash-connections-row">
-            {allConnections.slice(0, 10).map(f => (
+            {/* Eight 4g cells fit 1-36g; past eight, seven avatars and "+N". */}
+            {allConnections.slice(0, allConnections.length > 8 ? 7 : 8).map(f => (
               <button
                 key={f.id}
                 className="dash-conn-avatar"
-                onClick={() => setConnDropdownId(connDropdownId === f.id ? null : f.id)}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const row = e.currentTarget.parentElement.getBoundingClientRect();
+                  setConnRect({ left: r.left, top: r.top, bottom: r.bottom, rowLeft: row.left });
+                  setConnDropdownId(connDropdownId === f.id ? null : f.id);
+                }}
                 ref={connDropdownId === f.id ? connDropdownRef : undefined}
               >
-                <Avatar src={f.avatar} username={f.username} size="calc(var(--subrow) * 4)" />
+                <Avatar src={f.avatar} username={f.username} size={AVATAR_5R} style={f.avatar ? undefined : SEATED_INITIAL} />
                 {f.isPlaying && <span className="playing-dot" />}
                 <span className="conn-name">{displayName(f)}</span>
-                {connDropdownId === f.id && (() => {
-                  const rect = connDropdownRef.current?.getBoundingClientRect();
-                  if (!rect) return null;
-                  const openAbove = rect.top > window.innerHeight / 2;
-                  // Anchored to the trigger's rect and rendered at the document
-                  // root, so no ancestor's overflow can clip it. left is clamped
-                  // rather than centred with a transform, which keeps the panel
-                  // on screen for the first and last avatar in the row.
-                  const pos = {
-                    position: 'fixed',
-                    left: Math.min(Math.max(8, rect.left + rect.width / 2 - 100), window.innerWidth - 212),
-                    transform: 'none',
-                    ...(openAbove
-                      ? { bottom: window.innerHeight - rect.top + 4 }
-                      : { top: rect.bottom + 4 }),
-                  };
+                {connDropdownId === f.id && connRect && (() => {
+                  // Rendered at the document root, so no ancestor's overflow can
+                  // clip it. 26g wide, left on the start line of the avatar's own
+                  // column (1g or 10g from the row; a col-3/4 avatar uses 10g so
+                  // the panel ends on 36g). Height in r is counted from its rows.
+                  const { G } = gridGeom();
+                  const col = Math.floor(((connRect.left - connRect.rowLeft) / G + 0.5) / 9);
+                  const leftG = connRect.rowLeft / G + Math.min(col, 1) * 9;
+                  const nToday = (f.todayEvents || []).length;
+                  const heightR = 2
+                    + (f.isPlaying && f.liveUpdate ? 3 + 2 : 0)
+                    + (nToday > 0 ? 3 + 2 * nToday : 0)
+                    + (!f.isPlaying && nToday === 0 ? 2 : 0)
+                    + 1;
+                  const pos = gridPanelStyle(connRect, heightR, leftG);
                   return createPortal(
                     <div className="dash-conn-dropdown portalled" style={pos} onClick={e => e.stopPropagation()}>
                       <div className="dash-conn-dropdown-name">{displayName(f)}</div>
@@ -1268,9 +1306,9 @@ export default function DashboardView({
                 })()}
               </button>
             ))}
-            {allConnections.length > 10 && (
-              <button className="dash-conn-overflow" onClick={() => onNavigate('social')}>
-                +{allConnections.length - 10}
+            {allConnections.length > 8 && (
+              <button className="dash-conn-overflow" onClick={() => onNavigate('social')} aria-label={`${allConnections.length - 7} more connections`}>
+                <span>+{allConnections.length - 7}</span>
               </button>
             )}
           </div>
