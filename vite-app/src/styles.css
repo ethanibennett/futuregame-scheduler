@@ -8868,7 +8868,10 @@
       grid-row: 1;
       justify-self: end;
       margin-right: var(--subcol);
-      position: relative;               /* anchors the off-flow measuring copies */
+      /* The third primary column exactly (19g-27g): right edge on 27g via the margin above, left-
+         aligned text so the blinds start on 19g. */
+      width: var(--col);
+      text-align: left;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-regular);
@@ -8879,12 +8882,7 @@
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    /* Each data point: an inline-block sized (by ClockLine) to its widest form, text right-aligned,
-       so the grid positions hold while its digits change. Inline-block keeps every point on the
-       shared baseline, which the trimmed 2r box seats on r4. */
-    .cal-clock-pt { display: inline-block; text-align: right; }
-    .cal-clock-pt.measure { position: absolute; visibility: hidden; left: 0; top: 0; }
-    /* The blinds: the one bold point, at the start time's size. */
+    /* The blinds: bold, at the start time's size; the dot and time stay regular. */
     .cal-clock-pt.blinds { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts

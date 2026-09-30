@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -231,59 +231,18 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
 }
 
 // ── Live clock line (running events) ──
-// The room's clock on the card's top line, inside the third primary column (19g-27g): the blinds
-// start on its LEFT edge (19g) and the time left ends on its RIGHT edge (27g), both on r4. The level
-// number and players left are not shown for now. A break shows "Break" in the blinds' place; a
-// paused clock shows "Paused" in the time's. The time is sized to its widest form ("00:00") and
-// right-aligned, so it never shifts. No minimum space between the two: the blinds always show in
-// full, and very large blinds can run close to the time.
-const COL3_SPAN_G = 27 - 19;
-
-let gPx = 0;
-function unitG() {
-  if (!gPx && typeof document !== 'undefined') {
-    const pr = document.createElement('div');
-    pr.style.cssText = 'position:absolute;visibility:hidden;width:var(--gu)';
-    document.body.appendChild(pr);
-    gPx = pr.getBoundingClientRect().width;
-    pr.remove();
-  }
-  return gPx;
-}
-if (typeof window !== 'undefined') window.addEventListener('resize', () => { gPx = 0; });
-
+// The room's clock on the card's top line: "5k/10k/10k · 15:48", starting on the third primary
+// column's left edge (19g) — the box is that column (19g-27g), text left-aligned — baseline on r4.
+// The level number and players left are not shown for now. A break shows "Break" in the blinds'
+// place; a paused clock shows "Paused" in the time's.
 function ClockLine({ live }) {
-  const paused = live.state === 'paused';
   const blinds = live.onBreak ? 'Break'
     : `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
-  const timeText = paused ? 'Paused' : fmtClock(live.remaining);
-  const timeWide = paused ? 'Paused' : (live.levelSecs || 0) >= 3600 ? '0:00:00' : '00:00';
-
-  const m = useRef({});
-  const [layout, setLayout] = useState(null); // { wB, wT, ml } in g
-  const key = `${blinds}|${timeWide}`;
-  useLayoutEffect(() => {
-    const g = unitG();
-    if (!g) return;
-    const w = (k) => (m.current[k]?.getBoundingClientRect().width || 0) / g;
-    const wB = w('blinds'), wT = w('time');
-    setLayout({ wB, wT, ml: COL3_SPAN_G - wB - wT });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
-  const measure = (k, text, cls = '') => (
-    <span ref={(el) => { m.current[k] = el; }} aria-hidden="true" className={`cal-clock-pt measure ${cls}`}>{text}</span>
-  );
   return (
     <span className="cal-event-clock" title="Live tournament clock">
-      <span className="cal-clock-pt blinds" style={layout ? { width: `calc(var(--gu) * ${layout.wB.toFixed(4)})`, textAlign: 'left' } : undefined}>
-        {blinds}
-      </span>
-      <span className="cal-clock-pt" style={layout ? { width: `calc(var(--gu) * ${layout.wT.toFixed(4)})`, marginLeft: `calc(var(--gu) * ${layout.ml.toFixed(4)})` } : undefined}>
-        {timeText}
-      </span>
-      {measure('blinds', blinds, 'blinds')}
-      {measure('time', timeWide)}
+      <span className="cal-clock-pt blinds">{blinds}</span>
+      {' \u00b7 '}
+      {live.state === 'paused' ? 'Paused' : fmtClock(live.remaining)}
     </span>
   );
 }
