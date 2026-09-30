@@ -657,6 +657,12 @@ export function shortEventNumber(v) {
   const circuit = raw.match(/-circuit-\d{6}-(\d+)-\d{8}$/);
   if (circuit) return circuit[1];
 
+  /* Phenom SERIES events (online-poker-watcher phenom-series) carry a real event number as the
+     last segment of their id: "PHENOM-psop-i-37-20261101" → 37. The recurring daily schedule
+     (phenom.ts) ends in a game slug, not a number, so it does not match. */
+  const phenomSeries = raw.match(/^PHENOM-.+-(\d+)-\d{8}$/i);
+  if (phenomSeries) return phenomSeries[1];
+
   // Strip the "-<id>-<YYYYMMDD>" uniqueness suffix to leave the base.
   const m = raw.match(/^(.+)-[^-]+-\d{8}$/);
   const base = m ? m[1] : raw;
