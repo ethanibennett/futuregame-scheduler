@@ -10485,15 +10485,15 @@
     }
     .cal-event-time { grid-column: 1; grid-row: 1; }
     /* The room's running clock (CalendarEventRow clockLine), sharing the time's cell: right-
-       aligned to the right edge of the THIRD primary column (27g). The cell ends on the money
-       column's edge (29g), so one subcolumn of margin brings it in. Seated like the guarantee —
+       aligned on 25g, 2g inside the third primary column's right edge (27g; moved in from there
+       2026-09-30). The cell ends on the money column's edge (29g), so two subcolumns of margin. Seated like the guarantee —
        a 2r trimmed box, align-items:end — so its baseline lands on r4 with the time's and the
        buy-in's. Real data, so full --text rather than the muted meta colour. */
     .cal-event-clock {
       grid-column: 1;
       grid-row: 1;
       justify-self: end;
-      margin-right: var(--subcol);      /* right edge on 27g, the third primary column's */
+      margin-right: calc(var(--subcol) * 2);   /* right edge on 25g */
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-regular);
