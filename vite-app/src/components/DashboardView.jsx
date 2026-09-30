@@ -13,7 +13,7 @@ import {
   convertAmount, formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
-import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd } from '../utils/live-clocks.js';
+import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
@@ -62,12 +62,27 @@ function CountdownClock({ startMs }) {
 }
 
 // ── Late Reg Bar ──
-function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, startAt }) {
+function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, startAt, completed }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  // The room's clock showed the tournament finished (server: clock_ended_at / state 'ended').
+  if (completed) {
+    return (
+      <div className="late-reg-wrap">
+        <div className="late-reg-label-row">
+          <span className="late-reg-label closed">Event Completed</span>
+        </div>
+        <div className="late-reg-bar-bg">
+          <div className="late-reg-bar-fill" style={{ width: '0%', background: 'var(--border)' }} />
+        </div>
+      </div>
+    );
+  }
+
 
   // Pre-start countdown
   // startAt: the room's own clock start (PokerAtlas), when it has one, over the published time.
@@ -140,12 +155,17 @@ function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, startAt }) {
 }
 
 // ── Mini Late Reg Bar ──
-function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, startAt }) {
+function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, startAt, completed }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  if (completed) {
+    if (openOnly) return null;
+    return <div className="mini-late-reg closed"><span className="mini-late-reg-label closed">Event Completed</span></div>;
+  }
 
   if (date || startAt) {
     const startMs = startAt ?? (venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM'));
@@ -375,7 +395,7 @@ export default function DashboardView({
     if (demoStates) return '';
     const DAY = 24 * 60 * 60 * 1000;
     return JSON.stringify(whatsNextEvents
-      .filter(e => e._type !== 'bagged' && Number.isInteger(e.id) && !e.is_online) // online rooms have no Bravo/Atlas clock
+      .filter(e => e._type !== 'bagged' && Number.isInteger(e.id) && !e.is_online && !e.clock_ended_at) // online rooms have no Bravo/Atlas clock; a completed event is done asking
       .filter(e => {
         const s = parseTournamentTime(e), t = nowMinute * 60000;
         if (s <= t) return t - s < DAY;
@@ -501,6 +521,8 @@ export default function DashboardView({
     const isConditionalOnPlaying = !isCurrentlyPlaying && hasActivePlaying && event._type !== 'bagged';
     const bustedUpdate = bustedEventMap[event.id];
     const isBustedDone = bustedUpdate && (bustedUpdate.bust_count || 1) >= getMaxEntries(event.reentry);
+    // The room's clock showed it finished: dimmed like a busted-out card, "Event Completed" below.
+    const completed = isCompleted(event, liveClocks[event.id]);
 
     const venueInfo = getVenueInfo(event.venue, event.property);
     const venueColor = getVenueBrandColor(venueInfo.abbr);
@@ -508,7 +530,7 @@ export default function DashboardView({
 
     const cardClass = [
       'dash-event-card',
-      isBustedDone ? 'done' : '',
+      isBustedDone || completed ? 'done' : '',
       event._type === 'bagged' ? 'bagged' : '',
       event._type === 'anchor' && !isConditionalOnPlaying ? 'anchor' : '',
       isConditionalOnPlaying ? 'conditional' : '',
@@ -789,6 +811,7 @@ export default function DashboardView({
         {event._type !== 'bagged' && !isBustedDone && !(isConditionalOnPlaying && regClosed) && (
           (bustedEventMap[event.id] || isConditionalOnPlaying) ? (
             <MiniLateRegBar
+              completed={completed}
               startAt={clockStart}
               lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}
@@ -797,6 +820,7 @@ export default function DashboardView({
             />
           ) : (
             <LateRegBar
+              completed={completed}
               startAt={clockStart}
               lateRegEnd={effectiveLateRegEnd(event)}
               date={event.date}

@@ -3071,6 +3071,19 @@ async function initDatabase() {
       }
     },
     {
+      // When the room's clock showed the tournament finished: set by /api/live-clocks once a clock
+      // it had seen running is gone from its provider (Bravo drops finished events). Stored, so it
+      // survives restarts and reaches every client in the tournament list.
+      name: 'tournaments-clock-ended-2026-09',
+      fn: () => {
+        db.run('ALTER TABLE tournaments ADD COLUMN clock_ended_at TEXT');
+        // First time a running clock was seen. Written once per event, so a restart (which forgets
+        // the in-memory sighting) can still conclude a vanished clock means a finished event.
+        db.run('ALTER TABLE tournaments ADD COLUMN clock_seen_at TEXT');
+        console.log('Added tournaments.clock_ended_at, clock_seen_at');
+      }
+    },
+    {
       // The IANA zone a feed row's date/time are WRITTEN in. The MTT watcher used to write every
       // event in Eastern while the app read `time` as the venue's local time, so a 2:15 PM Central
       // start in Austin showed as "3:15 PM PDT". It now writes the room's own zone and says which;
@@ -3828,6 +3841,34 @@ app.post('/api/upload-schedule', authenticateToken, requireRegistered, upload.si
 // its dashboard and the venue coordinates it already knows (getVenueCoords), which is how a Bravo
 // room is found; a PokerAtlas event carries its own clock_ref from the feed. Capped at 40 events a
 // call, and upstream answers are cached per clock, so polling is cheap however many are open.
+//
+// Completion: Bravo drops a tournament's clock when it finishes, so a clock seen running and then
+// ABSENT from an answering provider for 5 minutes marks the event completed (clock_ended_at). A
+// failed request never counts, and a sighting older than 12 h is too stale to conclude from.
+const clockSeen = new Map(); // tournament id -> ms last seen running/paused
+const CLOCK_ENDED_AFTER_MS = 5 * 60 * 1000;
+const CLOCK_SEEN_MAX_MS = 12 * 60 * 60 * 1000;
+let clockEndSaveTimer = null;
+function saveClockStateSoon() {
+  clearTimeout(clockEndSaveTimer);
+  clockEndSaveTimer = setTimeout(() => saveDatabase().catch(() => {}), 2000);
+}
+function markClockSeen(id, atMs, alreadyStored) {
+  clockSeen.set(id, atMs);
+  if (alreadyStored) return;
+  db.run('UPDATE tournaments SET clock_seen_at = ? WHERE id = ? AND clock_seen_at IS NULL', [new Date(atMs).toISOString(), id]);
+  if (db.getRowsModified() > 0) saveClockStateSoon();
+}
+function markClockEnded(id, atMs) {
+  const iso = new Date(atMs).toISOString();
+  db.run('UPDATE tournaments SET clock_ended_at = ? WHERE id = ? AND clock_ended_at IS NULL', [iso, id]);
+  clockSeen.delete(id);
+  if (db.getRowsModified() > 0) {
+    console.log(`[LiveClocks] tournament ${id} completed (clock gone since ${iso})`);
+    saveClockStateSoon();
+  }
+  return iso;
+}
 app.post('/api/live-clocks', authenticateToken, async (req, res) => {
   const list = Array.isArray(req.body && req.body.events) ? req.body.events.slice(0, 40) : [];
   const clocks = {};
@@ -3835,16 +3876,28 @@ app.post('/api/live-clocks', authenticateToken, async (req, res) => {
     const id = Number(e && e.id);
     if (!Number.isInteger(id)) return;
     let row = null;
-    const sel = db.prepare('SELECT id, event_number, event_name, property, clock_ref FROM tournaments WHERE id = ?');
+    const sel = db.prepare('SELECT id, event_number, event_name, property, clock_ref, clock_ended_at, clock_seen_at FROM tournaments WHERE id = ?');
     sel.bind([id]);
     if (sel.step()) row = sel.getAsObject();
     sel.free();
     if (!row) return;
+    if (row.clock_ended_at) { clocks[id] = { state: 'ended', endedAt: row.clock_ended_at }; return; }
     const lat = Number(e.lat), lng = Number(e.lng);
     const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
     try {
-      const c = await clockForEvent(row, coords);
-      if (c) clocks[id] = c;
+      const { clock, answered } = await clockForEvent(row, coords);
+      const now = Date.now();
+      if (clock && clock.state === 'ended') {
+        clocks[id] = { state: 'ended', endedAt: markClockEnded(id, now) };
+      } else if (clock) {
+        if (clock.state === 'running' || clock.state === 'paused') markClockSeen(id, now, !!row.clock_seen_at);
+        clocks[id] = clock;
+      } else if (answered) {
+        const seen = clockSeen.get(id) ?? (row.clock_seen_at ? Date.parse(row.clock_seen_at) : undefined);
+        if (seen && now - seen >= CLOCK_ENDED_AFTER_MS && now - seen <= CLOCK_SEEN_MAX_MS) {
+          clocks[id] = { state: 'ended', endedAt: markClockEnded(id, seen) };
+        }
+      }
     } catch (err) {
       console.error('[LiveClocks]', id, err.message);
     }

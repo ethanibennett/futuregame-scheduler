@@ -124,6 +124,12 @@ export function liveView(c) {
   return { ...c, remaining: Math.max(0, Math.round(c.remainingSecs - aged)) };
 }
 
+/** Has the room's clock shown this tournament finished? Either stored on the row (clock_ended_at,
+ *  from the tournament list) or just reported by a poll (state 'ended'). */
+export function isCompleted(t, c) {
+  return !!(t && t.clock_ended_at) || !!(c && c.state === 'ended');
+}
+
 /** The room's own start time from a clock that has not started yet (PokerAtlas), or null. */
 export function clockStartMs(c) {
   if (!c || c.state !== 'not-started' || !c.startsAt) return null;

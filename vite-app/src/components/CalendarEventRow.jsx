@@ -13,7 +13,7 @@ import {
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
   HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords,
 } from '../utils/utils.js';
-import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock } from '../utils/live-clocks.js';
+import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmtClock, isCompleted } from '../utils/live-clocks.js';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -75,12 +75,27 @@ function scrollBelowSticky(el) {
 }
 
 // ── Late Reg Bar (expanded view) ──
-function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue }) {
+function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, completed }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  // The room's clock showed the tournament finished (server: clock_ended_at / state 'ended').
+  if (completed) {
+    return (
+      <div className="late-reg-wrap">
+        <div className="late-reg-label-row">
+          <span className="late-reg-label closed">Event Completed</span>
+        </div>
+        <div className="late-reg-bar-bg">
+          <div className="late-reg-bar-fill" style={{ width: '0%', background: 'var(--border)' }} />
+        </div>
+      </div>
+    );
+  }
+
 
   // Pre-start countdown
   if (date) {
@@ -159,12 +174,24 @@ function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue }) {
 }
 
 // ── Mini Late Reg Bar (collapsed view) ──
-function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) {
+function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, completed }) {
   const [now, setNow] = useState(getNow());
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  if (completed) {
+    if (openOnly) return null;
+    return (
+      <div className="mini-late-reg">
+        <span className="mini-late-reg-time" style={{opacity:0.4}}>event completed</span>
+        <div className="mini-late-reg-track">
+          <div className="mini-late-reg-fill" style={{ width: '0%' }} />
+        </div>
+      </div>
+    );
+  }
 
   if (date) {
     const startMs = venue ? parseDateTimeInTz(date, time, venue) : parseDateTime(date, time || '12:00 AM');
@@ -608,7 +635,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   }, [showMiniLateReg]);
   // Bravo and PokerAtlas clock live rooms only; an online event never has one to ask for.
   const startMsForClock = showMiniLateReg && tournament.venue !== 'Personal' && !tournament.is_online ? parseTournamentTime(tournament) : NaN;
+  // An event already known to be complete (clock_ended_at) is not asked about again.
   const clockCandidate = onScreen && Number.isInteger(tournament.id) && Number.isFinite(startMsForClock)
+    && !tournament.clock_ended_at
     && startMsForClock <= Date.now() && Date.now() - startMsForClock < 18 * 60 * 60 * 1000;
   useEffect(() => {
     if (!clockCandidate) return undefined;
@@ -616,6 +645,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   }, [clockCandidate, tournament.id]);
   const clockStore = useClockStore();
   const live = clockCandidate ? liveView(clockStore[tournament.id]) : null;
+  // Finished (the room's clock ended): dimmed like a previous day's event, and the late-reg line
+  // reads "event completed".
+  const completed = isCompleted(tournament, clockCandidate ? clockStore[tournament.id] : null);
   useSecondTick(!!live && live.state === 'running');
 
   // Auto-expand when programmatically focused (e.g. navigating to a
@@ -655,7 +687,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     isAnchor ? 'anchor' : (conditions && conditions.length > 0 ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
-    isPast ? 'past' : '',
+    isPast || completed ? 'past' : '',
   ].filter(Boolean).join(' ');
 
   const stripColor = getVenueBrandColor(venue.abbr);
@@ -713,7 +745,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </span>
                 )}
               </div>
-              {showMiniLateReg && !open && <MiniLateRegBar lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
+              {showMiniLateReg && !open && <MiniLateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />}
             </>
           )}
         </div>
@@ -871,7 +903,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                     </div>
                   )}
 
-                  <LateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
+                  <LateRegBar completed={completed} lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
                     <BuddyAvatarRow buddies={buddyEvents[tournament.id]} liveUpdates={buddyLiveUpdates}
@@ -1203,7 +1235,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
     isAnchor ? 'anchor' : (hasConditions ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
-    isPast ? 'past' : '',
+    isPast || tournament.clock_ended_at ? 'past' : '',
   ].filter(Boolean).join(' ');
   return (
     <div className={rowClasses} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
