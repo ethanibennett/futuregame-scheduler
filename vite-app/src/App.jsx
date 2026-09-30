@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspens
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
-import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel } from './utils/utils.js';
+import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones, measureStickyStack } from './utils/milestones.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
@@ -445,6 +445,8 @@ export default function App() {
       });
       if (!res) return;
       const data = await res.json();
+      // Before render: every start time and zone label reads the zone the row declares.
+      registerRowTimezones(Array.isArray(data) ? data : []);
       setTournaments(Array.isArray(data) ? data : []);
     } catch (e) { console.error('Fetch tournaments:', e); toast.error('Failed to load tournaments'); }
   };

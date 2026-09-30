@@ -900,12 +900,33 @@ const ABBR_TZ = {
   'THE BARREL': 'America/Chicago',       // Franklin KY — Bowling Green area, Central
 };
 
+/* The zone each feed venue's rows DECLARE (tournaments.timezone): the IANA zone the watcher wrote
+   their date/time in — the room's own where PokerAtlas names it, Eastern otherwise. It is a fact
+   about the data, so it wins over every guess below: before it existed the watcher wrote every
+   event in Eastern while this file read `time` as venue-local, and a 2:15 PM Central start in
+   Austin showed as "3:15 PM PDT" (the unknown-venue fallback). Filled from each tournament list as
+   it arrives (registerRowTimezones); rows that predate the column declare nothing. */
+const ROW_TZ = new Map();
+export function registerRowTimezones(rows) {
+  if (!Array.isArray(rows)) return;
+  let changed = false;
+  for (const t of rows) {
+    if (t && t.venue && t.timezone && ROW_TZ.get(t.venue) !== t.timezone) {
+      ROW_TZ.set(t.venue, t.timezone);
+      changed = true;
+    }
+  }
+  if (changed) parseDateTimeInTzCache.clear();
+}
+
 export function getVenueTimezone(venue) {
   // "Personal" events (travel days, days off, user-created entries) live in
   // the user's own time zone — they aren't tied to any physical venue.
   // WSOP Online events advertise PT start times, so default for both
   // "WSOP Online" and any unknown venue is PT.
   if (venue === 'Personal') return getBrowserTimezone();
+  const declared = ROW_TZ.get(venue);
+  if (declared) return declared;
   const explicit = VENUE_TIMEZONES[venue];
   if (explicit) return explicit;
   /* Online venues are named "<Site> <Series>" by the watcher and are open-ended,
