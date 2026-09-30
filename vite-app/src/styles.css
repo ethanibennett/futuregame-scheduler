@@ -10420,16 +10420,24 @@
     .cal-bracelet-icon > svg {
       display: block;
     }
-    /* The cell's bottom is on the title's line, but each glyph's painted art
-       stops short of its 24-unit viewBox, so it floated above the line. Each
-       drops by its own measured shortfall (raster-scanned at the 1.75 stroke;
-       the cell is 2r, so 12 units = 1r): ring 21.00 -> 0.25r, crosshairs 20.86
-       -> 0.262r, bracelet 10.45 -> 1.129r, restart 21.89 -> 0.176r; satellite
-       reaches 24 and stays. */
-    .cal-accolades svg[data-icon="ring"] { transform: translateY(calc(var(--subrow) * 0.25)); }
-    .cal-accolades svg[data-icon="crosshairs"] { transform: translateY(calc(var(--subrow) * 0.262)); }
-    .cal-accolades svg[data-icon="bracelet"] { transform: translateY(calc(var(--subrow) * 1.129)); }
-    .cal-accolades svg[data-icon="restart"] { transform: translateY(calc(var(--subrow) * 0.176)); }
+    /* Each glyph is seated by its PAINTED art, not its box (raster-scanned at
+       the 1.75 stroke, in 24-unit viewBox terms; the svg is 2r, so 12 units = 1r).
+       Down: the cell's bottom is on the title's line and the art stops short of
+       the viewBox bottom. Right: the 2r svg is centred in a 2g cell (g - r each
+       side) and the art stops short of the viewBox's right edge, so the ring
+       ended 0.58g inside the buy-in above it. Each moves right by g - r plus its
+       own shortfall, less 0.05g, the buy-in digits' right side bearing (0.6px
+       measured), so the art ends where the buy-in's ink does.
+         ring        right 19.09 bottom 21.00 -> x 0.95g - 0.5908r, y 0.25r
+         crosshairs  right 20.86 bottom 20.86 -> x 0.95g - 0.7383r, y 0.262r
+         bracelet    right 23.39 bottom 10.45 -> x 0.95g - 0.9492r, y 1.129r
+         satellite   right 23.12 bottom 24    -> x 0.95g - 0.9267r
+         restart     right 21.88 bottom 21.89 -> x 0.95g - 0.8233r, y 0.176r */
+    .cal-accolades svg[data-icon="ring"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.5908), calc(var(--subrow) * 0.25)); }
+    .cal-accolades svg[data-icon="crosshairs"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.7383), calc(var(--subrow) * 0.262)); }
+    .cal-accolades svg[data-icon="bracelet"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.9492), calc(var(--subrow) * 1.129)); }
+    .cal-accolades svg[data-icon="satellite"] { transform: translateX(calc(var(--gu) * 0.95 - var(--subrow) * 0.9267)); }
+    .cal-accolades svg[data-icon="restart"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.8233), calc(var(--subrow) * 0.176)); }
 
 
     .cal-bounty-icon { color: var(--text); opacity: 0.5; }
