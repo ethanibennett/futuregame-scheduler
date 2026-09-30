@@ -10455,12 +10455,12 @@
       --icon-size: calc(var(--subrow) * 1.5465);
       transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.5709), calc(var(--subrow) * 0.2023));
     }
-    /* Bracelet art 0.5r tall: painted 0.44..10.45 (10.01 units) -> svg 1.1988r.
-         down  (24 - 10.45)/24 x 1.1988r = 0.6768r
-         right g - 1.1988r/2 + (24 - 23.39)/24 x 1.1988r - 0.05g = 0.95g - 0.5689r */
+    /* Bracelet art 0.75r tall: painted 0.44..10.45 (10.01 units) -> svg 1.7982r.
+         down  (24 - 10.45)/24 x 1.7982r = 1.0152r
+         right g - 1.7982r/2 + (24 - 23.39)/24 x 1.7982r - 0.05g = 0.95g - 0.8534r */
     .cal-accolades svg[data-icon="bracelet"] {
-      --icon-size: calc(var(--subrow) * 1.1988);
-      transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.5689), calc(var(--subrow) * 0.6768));
+      --icon-size: calc(var(--subrow) * 1.7982);
+      transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.8534), calc(var(--subrow) * 1.0152));
     }
     .cal-accolades svg[data-icon="satellite"] { transform: translateX(calc(var(--gu) * 0.95 - var(--subrow) * 0.9267)); }
     .cal-accolades svg[data-icon="restart"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.8233), calc(var(--subrow) * 0.176)); }
