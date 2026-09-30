@@ -2697,9 +2697,9 @@
        schedule uses for venues — so the outcome moves to the right edge rather
        than being dropped. Two things are being said and each gets a side. */
     .replayer-hand-card.is-row { padding-left: 0; }
-    /* Grid: real saved-hand rows are 6 subrows tall so the list stacks on grid lines.
+    /* Grid: real saved-hand rows are 8 subrows tall so the list stacks on grid lines.
        The empty-state card keeps its natural height (its meta wraps). */
-    .replayer-hand-card.is-row:not(.is-empty) { height: calc(var(--subrow) * 6); }
+    .replayer-hand-card.is-row:not(.is-empty) { height: calc(var(--subrow) * 8); }
     /* The same strip the schedule draws, property for property, including the
        corner: border-radius is written mirrored because transform:rotate(180deg)
        swaps the corners, so the element's RIGHT radii paint on the visual left.
@@ -2830,15 +2830,18 @@
     /* Skeleton text bar: 1r, sitting on its cell's baseline (every cell bottom-aligns). */
     .replayer-view.is-list .replayer-list-skel { height: var(--subrow); border-radius: var(--radius-xs); margin:0; }
 
-    /* Saved-hand card: 6r; strip 2g; content a grid on g columns and r rows. */
+    /* Saved-hand card: 8r; strip 2g; content a grid on g columns and r rows. */
     .replayer-view.is-list .replayer-hand-list { gap: var(--subrow); margin-bottom: calc(var(--subrow) * 2); }
     .replayer-view.is-list .replayer-hand-strip { width: calc(var(--gu) * 2); }
     .replayer-view.is-list .replayer-hand-card-content {
       display:grid;
       /* 3..10g cards | 2g | 12..27g text | 1g | 28..34g action | 2g right margin */
       grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 2) minmax(0, 1fr) var(--gu) calc(var(--gu) * 6);
-      /* title cell r1-r3, meta cell r3-r5: baselines 3r and 5r below the card top */
-      grid-template-rows: var(--subrow) calc(var(--subrow) * 2) calc(var(--subrow) * 2) var(--subrow);
+      /* 8r in four 2r rows: title cell r2-r4, meta cell r4-r6, baselines 4r and 6r below the
+         card top. The text block (title cap-top ~2.8r to meta baseline 6r) centres on 4.4r,
+         the nearest whole-r seating to the card's 4r middle; the 4r cards and the 4r Delete
+         button centre on it with 2r above and below. */
+      grid-template-rows: repeat(4, calc(var(--subrow) * 2));
       align-items:end; gap:0;
       padding: 0 calc(var(--gu) * 2) 0 0;
       /* The outline as inset shadows: a 1px (bw-1) border top and bottom pushed the
@@ -2865,10 +2868,10 @@
     /* Meta is lowercase/numeric, so --fs-xs (dense row secondary), not the caps-only --fs-2xs. */
     .replayer-view.is-list .replayer-hand-card-meta { font-size: var(--fs-xs); }
     .replayer-view.is-list .replayer-hand-card-actions { grid-column: 5; grid-row: 1 / -1; align-self: center; display:block; }
-    /* Empty state: the same 6r row (cards 3..10g, text 12g) plus a 5r button row under
-       the text and 1r below it = 12r. padding-left 2g stands in for the strip. */
+    /* Empty state: the same 8r row (cards 3..10g, text 12g) plus a 5r button row under
+       the text and 1r below it = 14r. padding-left 2g stands in for the strip. */
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-content {
-      grid-template-rows: var(--subrow) calc(var(--subrow) * 2) calc(var(--subrow) * 2) var(--subrow) calc(var(--subrow) * 5) var(--subrow);
+      grid-template-rows: repeat(4, calc(var(--subrow) * 2)) calc(var(--subrow) * 5) var(--subrow);
       padding-left: calc(var(--gu) * 2);
     }
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-cards { grid-row: 1 / 5; }
