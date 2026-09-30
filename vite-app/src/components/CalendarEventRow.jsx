@@ -824,7 +824,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                     </div>
                   )}
 
-                  <LateRegBar completed={completed} lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
+                  {/* Same source as the collapsed card's mini bar: the room's live clock first,
+                      then the stored late_reg_end. Reading only late_reg_end, an event whose
+                      close came from the clock alone lost its bar the moment it was expanded. */}
+                  <LateRegBar completed={completed} lateRegEnd={(live && clockRegEnd(tournament, live)) || tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
 
                   {buddyEvents && buddyEvents[tournament.id] && buddyEvents[tournament.id].length > 0 && (
                     <BuddyAvatarRow buddies={buddyEvents[tournament.id]} liveUpdates={buddyLiveUpdates}

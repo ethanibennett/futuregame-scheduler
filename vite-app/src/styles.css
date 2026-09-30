@@ -10338,12 +10338,17 @@
       height: calc(var(--subrow) * 13);
       padding-bottom: 0;
     }
-    /* Standard card (no flight) + late-reg bar = 14r. Bar fixed at 12r (2r chevron
-       closes the card); margin-top:auto drops the late-reg bar to the bottom,
-       seating its label on r12 — a whole-r footer below the title (r8). */
+    /* Standard card (no flight) + late-reg bar: a fixed 2r gap between the title's
+       last line and the late-reg bar, so the label seats on r12 under a one-line
+       title (r8) and on r14 under a two-line one (r8, r10) — bar 12r or 14r, plus
+       the 2r chevron. It was a fixed 12r bar with margin-top:auto, so a wrapped
+       title (which grows its row by 2r) ate the whole gap and the second line sat
+       directly on the bar. */
     .cal-event-row:not(.open):not(:has(.cal-event-stage)):has(.mini-late-reg) .cal-event-bar {
-      height: calc(var(--subrow) * 12);
       padding-bottom: 0;
+    }
+    .cal-event-row:not(.open):not(:has(.cal-event-stage)) .cal-event-bar > .mini-late-reg {
+      margin-top: calc(var(--subrow) * 2);
     }
     .cal-event-row:not(.open) {
       overflow: hidden;
