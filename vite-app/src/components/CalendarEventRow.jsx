@@ -231,9 +231,10 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
 }
 
 // ── Live clock line (running events) ──
-// The room's clock on the card's top line: level (or Break / Paused), blinds, time left, players
-// left/entries. Laid out RIGHT TO LEFT on the vertical grid: the last point ends on the third
-// primary column's right edge (27g), and each point before it ends on the largest grid line that
+// The room's clock on the card's top line: level (or Break / Paused), blinds, time left — and on
+// the guarantee's line 2r below (r6), players left/entries. Both end on the third primary column's
+// right edge (27g). The top line is laid out RIGHT TO LEFT on the vertical grid: the time ends on
+// 27g, and each point before it ends on the largest grid line that
 // leaves at least 1g before the point to its right. Every point is sized to its WIDEST form
 // ("00:00", entries/entries) and right-aligned in that box, so a clock going 10:00 → 9:59 or a
 // field going 10 → 9 left never moves the points to its left onto another line mid-level.
@@ -250,10 +251,13 @@ function clockPoints(live) {
     pts.push({ key: 'blinds', text: b, wide: b, cls: 'blinds' });
   }
   pts.push({ key: 'time', text: fmtClock(live.remaining), wide: (live.levelSecs || 0) >= 3600 ? '0:00:00' : '00:00' });
-  if (live.playersLeft != null && live.entries != null) {
-    pts.push({ key: 'field', text: `${live.playersLeft}/${live.entries}`, wide: `${live.entries}/${live.entries}` });
-  }
   return pts;
+}
+
+/** Players left/entries, or null. Its own point on the guarantee's line. */
+function fieldPoint(live) {
+  if (live.playersLeft == null || live.entries == null) return null;
+  return { text: `${live.playersLeft}/${live.entries}`, wide: `${live.entries}/${live.entries}` };
 }
 
 let gPx = 0;
@@ -271,10 +275,12 @@ if (typeof window !== 'undefined') window.addEventListener('resize', () => { gPx
 
 function ClockLine({ live }) {
   const pts = clockPoints(live);
+  const field = fieldPoint(live);
   const measureRefs = useRef([]);
+  const fieldMeasureRef = useRef(null);
   const boxRef = useRef(null);
   const [layout, setLayout] = useState(null); // { drop, cells: [{ w, ml }] } in g
-  const wideKey = pts.map((p) => `${p.key}:${p.wide}`).join('|');
+  const wideKey = pts.map((p) => `${p.key}:${p.wide}`).join('|') + `|field:${field ? field.wide : ''}`;
   useLayoutEffect(() => {
     const g = unitG();
     if (!g) return;
@@ -295,10 +301,12 @@ function ClockLine({ live }) {
     }
     let drop = 0;
     while (drop < pts.length - 1 && rights[drop] - w[drop] < timeRight + 1 - 1e-6) drop++;
-    setLayout({ drop, cells: pts.map((_, i) => ({ w: w[i], ml: i > drop ? (rights[i] - w[i]) - rights[i - 1] : 0 })) });
+    const fieldW = fieldMeasureRef.current ? fieldMeasureRef.current.getBoundingClientRect().width / g : 0;
+    setLayout({ drop, fieldW, cells: pts.map((_, i) => ({ w: w[i], ml: i > drop ? (rights[i] - w[i]) - rights[i - 1] : 0 })) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wideKey]);
   return (
+    <>
     <span className="cal-event-clock" ref={boxRef} title="Live tournament clock">
       {pts.map((p, i) => (layout && i < layout.drop ? null : (
         <span key={p.key} className={`cal-clock-pt ${p.cls || ''}`}
@@ -311,7 +319,14 @@ function ClockLine({ live }) {
         <span key={`m-${p.key}`} ref={(el) => { measureRefs.current[i] = el; }} aria-hidden="true"
               className={`cal-clock-pt measure ${p.cls || ''}`}>{p.wide}</span>
       ))}
+      {field && <span ref={fieldMeasureRef} aria-hidden="true" className="cal-clock-pt measure">{field.wide}</span>}
     </span>
+    {field && (
+      <span className="cal-event-clock field" title="Players left / entries">
+        <span className="cal-clock-pt" style={layout ? { width: `calc(var(--gu) * ${layout.fieldW.toFixed(4)})` } : undefined}>{field.text}</span>
+      </span>
+    )}
+    </>
   );
 }
 
