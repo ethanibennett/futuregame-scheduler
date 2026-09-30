@@ -231,8 +231,8 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
 }
 
 // ── Live clock line (running events) ──
-// The room's clock on the card's top line: "5k/10k/10k · 15:48", starting on the third primary
-// column's left edge (19g) — the box is that column (19g-27g), text left-aligned — baseline on r4.
+// The room's clock on the card's top line: "5k/10k/10k · 15:48", right-aligned to the third
+// primary column's right edge (27g), baseline on r4.
 // The level number and players left are not shown for now. A break shows "Break" in the blinds'
 // place; a paused clock shows "Paused" in the time's.
 function ClockLine({ live }) {

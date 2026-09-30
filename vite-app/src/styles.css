@@ -8867,11 +8867,7 @@
       grid-column: 1;
       grid-row: 1;
       justify-self: end;
-      margin-right: var(--subcol);
-      /* The third primary column exactly (19g-27g): right edge on 27g via the margin above, left-
-         aligned text so the blinds start on 19g. */
-      width: var(--col);
-      text-align: left;
+      margin-right: var(--subcol);      /* right edge on 27g, the third primary column's */
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-regular);
