@@ -4520,7 +4520,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   if (loading) {
     return (
       <div className="replayer-view">
-        <div className="replayer-header"><h2>Hand Replayer</h2></div>
+        {/* Title dropped — the top-bar subtitle reads "hands log" on this tab. */}
         <div className="replayer-section" style={{marginBottom:'var(--space-lg)'}}>
           <div className="skeleton skeleton-text" style={{width: 'calc(var(--subrow) * 12)', height: 'calc(var(--subrow) * 1.625)', marginBottom: 'var(--space-lg)'}} />
           <div style={{display:'flex', gap: 'var(--space-sm)', flexWrap:'wrap'}}>
@@ -4552,14 +4552,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // ── List mode ──
   return (
     <div className="replayer-view">
-      <div className="replayer-header">
-        {/* 75: replay mode used the stylesheet's heading, list mode
-            inline-overrode the SAME element to a smaller muted size with a
-            literal tracking and a font-family string, and entry mode rendered
-            it unstyled — so the page title shrank and greyed as you navigated
-            between three screens of one feature. */}
-        <h2>Hand Replayer</h2>
-      </div>
+      {/* Title dropped — the top-bar subtitle reads "hands log" on this tab. */}
 
       {/* New hand creation */}
       <div className="replayer-section" style={{marginBottom:'calc(var(--subrow) * 2)'}}>

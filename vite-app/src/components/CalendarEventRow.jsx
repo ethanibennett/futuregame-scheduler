@@ -912,7 +912,12 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       onBuddyClick={isInSchedule && onBuddySwap ? (buddy) => onBuddySwap(buddy, tournament) : undefined} />
                   )}
 
-                  {venue.abbr === 'WSOP' && (
+                  {/* The WSOP.com bracelet structure pages are keyed by bracelet event number, so
+                      this link is ONLY valid for a real bracelet event. Gating it on abbr==='WSOP'
+                      was wrong: deriveVenueInfo shortens "WSOP Circuit \u2026" and "WSOP Paradise \u2026" to
+                      abbr "WSOP" too, so a circuit ring event built a bogus bracelet URL from its
+                      own event number. isBraceletEvent already excludes circuit/paradise/rings. */}
+                  {bracelet && (
                     <div className="cal-structure-cell">
                       <a
                         href={wsopStructureUrlFor(tournament.event_number)}
@@ -924,7 +929,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       </a>
                     </div>
                   )}
-                  {venue.abbr !== 'WSOP' && tournament.structure_sheet_path && (() => {
+                  {!bracelet && tournament.structure_sheet_path && (() => {
                     // structure_sheet_path may be:
                     //   'schedule-docs/Aria/structures/$X NLH \u2026pdf'                              (per-event PDF on our server)
                     //   'schedule-docs/Wynn Las Vegas/structures/Wynn_Summer_Classic.pdf#page=12' (bundled PDF + page)

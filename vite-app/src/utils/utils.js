@@ -419,7 +419,14 @@ export function deriveVenueInfo(v) {
     if (abbr.split(' ').length >= 2) break;
   }
   abbr = (abbr || words[0] || raw).toUpperCase().slice(0, 11) || '?';
-  return { abbr, color: deriveColor(raw), longName: raw };
+  // The strip shows longName; a series title's trailing year ("… 2026", "… 2026-27", "… '26") is
+  // noise on the strip, so drop it. Curated VENUE_MAP longNames already carry no year.
+  const longName = raw
+    .replace(/\s*\b(19|20)\d{2}(\s*-\s*\d{2})?\b/g, '')
+    .replace(/\s*['’]\d{2}\b/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim() || raw;
+  return { abbr, color: deriveColor(raw), longName };
 }
 
 // Strip display names. The abbr doubles as a lookup key (PROPERTY_COORDS,
