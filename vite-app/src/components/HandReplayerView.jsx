@@ -1444,10 +1444,10 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
     const prev = prevFan.current;
     prevFan.current = now;
     const row = rowRef.current;
-    if (!now || !prev || !row || !now.splay) return;
+    if (!now || !prev || !row) return;
     if (prev.max !== now.max || prev.splay !== now.splay || prev.splayScale !== now.splayScale) return;
-    // Two-card hands use the overlap layout, not the arc.
-    if (prev.total <= 2 || now.total <= 2) return;
+    // Two-card splayed hands use the overlap layout, not the arc.
+    if (now.splay && (prev.total <= 2 || now.total <= 2)) return;
     if (typeof row.animate !== 'function') return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const moves = [];
@@ -1463,6 +1463,31 @@ function CardRow({ text, stud, max, placeholderCount, splay, splayScale = 1, car
       if (Math.abs(from - to) > 1e-6) moves.push({ el, from, to, y: now.byKey.get(k).y });
     }
     if (!moves.length) return;
+    if (!now.splay) {
+      /* Flat row: slots are a straight line one STEP apart (a card's width less
+         the Overlap setting), centred like the arc, so the same re-expressed
+         slot difference times the step is how far each card has to travel.
+         The step is a card's width plus the (negative) left margin that sets the
+         overlap, both fractional px; offsetLeft rounds to whole px and started
+         each slide up to a pixel off its old slot. The card's own vertical
+         lift (a stud up-card, a discard) rides along untouched. */
+      const kids = [...row.children];
+      const k1 = kids[1] || kids[0];
+      const step = k1 ? k1.getBoundingClientRect().width + (kids[1] ? parseFloat(getComputedStyle(kids[1]).marginLeft) || 0 : 0) : 0;
+      if (!step) return;
+      for (const m of moves) {
+        const base = m.el.style.transform || '';
+        m.el.animate([
+          { transform: ('translateX(' + ((m.from - m.to) * step).toFixed(2) + 'px) ' + base).trim() },
+          { transform: base || 'none' },
+        ], { duration: FAN_SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' });
+      }
+      for (const el of arrivals) {
+        el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }],
+          { duration: FAN_SLIDE_MS, easing: 'ease-out' });
+      }
+      return;
+    }
     for (const m of moves) {
       const frames = [];
       for (let s = 0; s <= FAN_SLIDE_SAMPLES; s++) {
