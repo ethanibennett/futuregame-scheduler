@@ -6066,6 +6066,37 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const hcDeckClass = rSettings.highContrastDeck ? ' hc-deck' : '';
   const boardAnimClass = getBoardAnimClass();
 
+  /* The flop is dealt the way a dealer spreads it: the three cards land as one
+     stack in the first card's slot with the WINDOW card (the one that ends up
+     rightmost) on top and showing, hold a beat, then spread into place. The
+     window card travels furthest, uncovering the middle card, which uncovers the
+     first. DOM order already paints slot 2 over slot 1 over slot 0. Measured
+     offsets, so it follows the table's size; not cancelled when the class drops
+     on the next render — only replaced by the next flop. */
+  const boardRowRef = useRef(null);
+  const flopAnimsRef = useRef([]);
+  const flopAnimKey = boardAnimClass.includes('animate-board-flop') ? streetIdx : null;
+  useLayoutEffect(() => {
+    if (flopAnimKey == null) return;
+    const row = boardRowRef.current;
+    if (!row) return;
+    const cards = [0, 1, 2].map(i => row.querySelector('[data-slot="' + i + '"]'));
+    if (cards.some(c => !c) || typeof cards[0].animate !== 'function') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    flopAnimsRef.current.forEach(a => a.cancel());
+    const x0 = cards[0].getBoundingClientRect().left;
+    flopAnimsRef.current = cards.map(el => {
+      const dx = x0 - el.getBoundingClientRect().left;
+      const at = 'translateX(' + dx + 'px)';
+      return el.animate([
+        { transform: at + ' scale(0.9)', opacity: 0, offset: 0 },
+        { transform: at + ' scale(1)', opacity: 1, offset: 0.3 },
+        { transform: at, opacity: 1, offset: 0.5, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+        { transform: 'translateX(0)', opacity: 1, offset: 1 },
+      ], { duration: 820, fill: 'backwards' });
+    });
+  }, [flopAnimKey]);
+
   // Share as image
   const shareReplayImage = async () => {
     const allCardNotations = [heroCards, boardCards, ...opponentCards].filter(Boolean);
@@ -7267,7 +7298,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   only street context during replay was the prose below the
                   table. It renders under the board rather than at the CSS's
                   top:28%, where it would have sat on the pot eyebrow. */}
-              <div className="card-row replayer-board-spaced">
+              <div className="card-row replayer-board-spaced" ref={boardRowRef}>
                 {parsed.map((c, i) => {
                   const key = c.rank + c.suit + '_' + i;
                   // Flop | turn | river. Grouping is how every broadcast graphic

@@ -5919,7 +5919,9 @@
 
     /* Board card street spacing */
     .replayer-board-spaced { display:flex; align-items:center; gap: var(--space-2xs); justify-content:center; flex-wrap:nowrap; }
-    .replayer-board-spaced img { height: var(--card-h); }
+    /* Width too: an image not yet loaded is 0 wide, so the row reflowed as the
+       faces arrived and the flop's spread measured every slot at one spot. */
+    .replayer-board-spaced img { height: var(--card-h); width: var(--card-w); }
     .replayer-board-spaced .card-unknown { width: var(--card-w); height: var(--card-h); }
     /* The board is one uniform row of five again: the flop/turn/river gaps and
        their labels are reverted. The street is still stated twice — in the
@@ -7085,9 +7087,8 @@
        elements in this row, so counting children would animate the wrong card
        the moment the board is grouped — the exact trap that kept the gap class
        unrendered. data-slot is the card's own index and cannot drift. */
-    .replayer-board-area.animate-board-flop .card-row > [data-slot="0"] { animation:flopCardSlide var(--dur-base) var(--ease-object) both; animation-delay:0ms; }
-    .replayer-board-area.animate-board-flop .card-row > [data-slot="1"] { animation:flopCardSlide var(--dur-base) var(--ease-object) both; animation-delay:120ms; }
-    .replayer-board-area.animate-board-flop .card-row > [data-slot="2"] { animation:flopCardSlide var(--dur-base) var(--ease-object) both; animation-delay:240ms; }
+    /* The flop's deal (stack, window card showing, spread) is a Web Animation in
+       HandReplayerView (flopAnimKey), measured against the board's real slots. */
     .replayer-board-area.animate-board-turn .card-row > [data-slot="3"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
     .replayer-board-area.animate-board-river .card-row > [data-slot="4"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
     /* Legacy fallback */
