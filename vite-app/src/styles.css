@@ -8868,9 +8868,10 @@
       grid-row: 1;
       justify-self: end;
       margin-right: var(--subcol);
+      position: relative;               /* anchors the off-flow measuring copies */
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
+      font-weight: var(--fw-regular);
       letter-spacing: var(--track-tight);
       line-height: calc(var(--subrow) * 2);
       color: var(--text);
@@ -8878,6 +8879,13 @@
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* Each data point: an inline-block sized (by ClockLine) to its widest form, text right-aligned,
+       so the grid positions hold while its digits change. Inline-block keeps every point on the
+       shared baseline, which the trimmed 2r box seats on r4. */
+    .cal-clock-pt { display: inline-block; text-align: right; }
+    .cal-clock-pt.measure { position: absolute; visibility: hidden; left: 0; top: 0; }
+    /* The blinds: the one bold point, at the start time's size. */
+    .cal-clock-pt.blinds { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
 
     /* Icons pin to the TITLE line, not the row's centre. formatEventName puts
        "- Flight A" on a second line, which doubles the row height and used to
@@ -9111,6 +9119,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      /* Centred on the middle gutter (18-19g, centre 18.5g = the screen's midpoint), not on the
+         content box, which starts right of the venue strip (3g-36g, centre 19.5g): 2g of right
+         padding moves the centre exactly 1g left. The open-state rotation is on the svg, not
+         this box, so the flip happens in place instead of mirroring about the padded box. */
+      padding-right: calc(var(--gu) * 2);
       /* 2 subrows, not a fixed 16px: the collapsed card is 2r pad + 4r row1 +
          3r row2 + 1r pad + this = exactly 12r. A fixed 16px overran it by 0.07r. */
       height: calc(var(--subrow) * 2);
@@ -9120,8 +9133,9 @@
     }
 
     /* mini-late-reg is now inside cal-event-bar, no adjacent chevron adjustment needed */
-    .cal-event-chevron.open { transform: rotate(180deg); margin-top: calc(var(--subrow) * -0.125); margin-bottom: calc(var(--subrow) * -0.875); padding-bottom: 0; top: calc(var(--subrow) * -1.25); }
-    .cal-event-chevron svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); }
+    .cal-event-chevron.open { margin-top: calc(var(--subrow) * -0.125); margin-bottom: calc(var(--subrow) * -0.875); padding-bottom: 0; top: calc(var(--subrow) * -1.25); }
+    .cal-event-chevron svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); transition: transform var(--dur-snap); }
+    .cal-event-chevron.open svg { transform: rotate(180deg); }
 
     .back-to-today-fab {
       position: fixed;

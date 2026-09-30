@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -231,14 +231,88 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue }) 
 }
 
 // ── Live clock line (running events) ──
-// Level and blinds (or Break), time left, players left/entries — shown on the card's top line
-// between the start time and the buy-in while the room's clock is running.
-function clockLine(live) {
-  const stakes = live.onBreak ? 'Break'
-    : `L${live.level} ${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
-  const parts = [stakes, live.state === 'paused' ? `${fmtClock(live.remaining)} paused` : fmtClock(live.remaining)];
-  if (live.playersLeft != null && live.entries != null) parts.push(`${live.playersLeft}/${live.entries}`);
-  return parts.join(' · ');
+// The room's clock on the card's top line: level (or Break / Paused), blinds, time left, players
+// left/entries. Laid out RIGHT TO LEFT on the vertical grid: the last point ends on the third
+// primary column's right edge (27g), and each point before it ends on the largest grid line that
+// leaves at least 1g before the point to its right. Every point is sized to its WIDEST form
+// ("00:00", entries/entries) and right-aligned in that box, so a clock going 10:00 → 9:59 or a
+// field going 10 → 9 left never moves the points to its left onto another line mid-level.
+// The start time is held to the same rule: a point that cannot sit at least 1g clear of it is
+// dropped, leftmost first — in practice the level, which the blinds already imply.
+const GRID_LINES = [1, 10, 19, 28].flatMap((c) => [0, 2, 4, 6, 8].map((k) => c + k)); // g from screen left
+const CLOCK_RIGHT_G = 27;
+
+function clockPoints(live) {
+  const label = live.state === 'paused' ? 'Paused' : live.onBreak ? 'Break' : `L${live.level}`;
+  const pts = [{ key: 'lvl', text: label, wide: label }];
+  if (!live.onBreak) {
+    const b = `${formatChips(live.sb)}/${formatChips(live.bb)}${live.ante ? '/' + formatChips(live.ante) : ''}`;
+    pts.push({ key: 'blinds', text: b, wide: b, cls: 'blinds' });
+  }
+  pts.push({ key: 'time', text: fmtClock(live.remaining), wide: (live.levelSecs || 0) >= 3600 ? '0:00:00' : '00:00' });
+  if (live.playersLeft != null && live.entries != null) {
+    pts.push({ key: 'field', text: `${live.playersLeft}/${live.entries}`, wide: `${live.entries}/${live.entries}` });
+  }
+  return pts;
+}
+
+let gPx = 0;
+function unitG() {
+  if (!gPx && typeof document !== 'undefined') {
+    const pr = document.createElement('div');
+    pr.style.cssText = 'position:absolute;visibility:hidden;width:var(--gu)';
+    document.body.appendChild(pr);
+    gPx = pr.getBoundingClientRect().width;
+    pr.remove();
+  }
+  return gPx;
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', () => { gPx = 0; });
+
+function ClockLine({ live }) {
+  const pts = clockPoints(live);
+  const measureRefs = useRef([]);
+  const boxRef = useRef(null);
+  const [layout, setLayout] = useState(null); // { drop, cells: [{ w, ml }] } in g
+  const wideKey = pts.map((p) => `${p.key}:${p.wide}`).join('|');
+  useLayoutEffect(() => {
+    const g = unitG();
+    if (!g) return;
+    const w = pts.map((_, i) => (measureRefs.current[i]?.getBoundingClientRect().width || 0) / g);
+    const rights = new Array(pts.length);
+    rights[pts.length - 1] = CLOCK_RIGHT_G;
+    for (let i = pts.length - 2; i >= 0; i--) {
+      const room = rights[i + 1] - w[i + 1] - 1;
+      rights[i] = Math.max(...GRID_LINES.filter((x) => x <= room + 1e-6));
+    }
+    // Where the start time's TEXT ends (its box stretches across the cell, so measure the glyphs).
+    let timeRight = -Infinity;
+    const timeEl = boxRef.current?.parentElement?.querySelector('.cal-event-time');
+    if (timeEl) {
+      const range = document.createRange();
+      range.selectNodeContents(timeEl);
+      timeRight = range.getBoundingClientRect().right / g;
+    }
+    let drop = 0;
+    while (drop < pts.length - 1 && rights[drop] - w[drop] < timeRight + 1 - 1e-6) drop++;
+    setLayout({ drop, cells: pts.map((_, i) => ({ w: w[i], ml: i > drop ? (rights[i] - w[i]) - rights[i - 1] : 0 })) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wideKey]);
+  return (
+    <span className="cal-event-clock" ref={boxRef} title="Live tournament clock">
+      {pts.map((p, i) => (layout && i < layout.drop ? null : (
+        <span key={p.key} className={`cal-clock-pt ${p.cls || ''}`}
+              style={layout ? { width: `calc(var(--gu) * ${layout.cells[i].w.toFixed(4)})`, marginLeft: `calc(var(--gu) * ${layout.cells[i].ml.toFixed(4)})` } : undefined}>
+          {p.text}
+        </span>
+      )))}
+      {/* Off-flow copies at each point's widest form, measured once per change of wording. */}
+      {pts.map((p, i) => (
+        <span key={`m-${p.key}`} ref={(el) => { measureRefs.current[i] = el; }} aria-hidden="true"
+              className={`cal-clock-pt measure ${p.cls || ''}`}>{p.wide}</span>
+      ))}
+    </span>
+  );
 }
 
 // ── Buddy Avatar Row ──
@@ -670,7 +744,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
             <>
               <div className="cal-bar-row1">
                 <span className="cal-event-time">{timeLabel}</span>
-                {live && <span className="cal-event-clock" title="Live tournament clock">{clockLine(live)}</span>}
+                {live && <ClockLine live={live} />}
                 <span className="cal-event-money">
                   <span className="cal-event-buyin">{currencySymbol(tournament.venue)}{Number(tournament.buyin).toLocaleString()}</span>
                   {Number(tournament.prize_pool) > 0 && (
