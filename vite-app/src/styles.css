@@ -5152,6 +5152,18 @@
       z-index: var(--z-board); display:flex; flex-direction:column; align-items:center; gap: var(--space-xs);
     }
     .replayer-board-area .card-row { justify-content:center; flex-wrap:nowrap; }
+    /* Dead cards take the board's slot in stud and draw games. A stud hand can
+       fold a lot of up cards (7 seats x 4), so they are smaller than board cards
+       (about 2/3) and wrap inside 64% of the table instead of running into the
+       side seats; faces only, flat, dimmed a touch so they read as out of play. */
+    .replayer-dead-area { --card-h: clamp(14px, 7.3cqmin, 94px); max-width: 64%; gap: 0.6cqmin; }
+    .replayer-dead-area .card-row.replayer-dead-row { flex-wrap: wrap; justify-content: center; gap: 0.8cqmin; }
+    .replayer-dead-area .card-row.replayer-dead-row > * { opacity: 0.72; }
+    .replayer-dead-label {
+      font-family: var(--font-condensed); font-weight: var(--fw-bold);
+      font-size: clamp(7px, 2.4cqmin, 20px); letter-spacing: var(--track-caps); text-transform: uppercase;
+      color: var(--text-muted); line-height: 1;
+    }
     /* Board cards sit ON the felt. Without this they were the only cards with no shadow — hole
        cards already have one — so the board looked printed on while the hole cards floated.
        More vertical and softer than the hole-card shadow: light is overhead at the table centre. */

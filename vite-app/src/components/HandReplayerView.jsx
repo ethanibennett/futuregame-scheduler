@@ -6898,6 +6898,32 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const drawStreetActionCount = (hand.streets[streetIdx]?.actions || []).length;
   const drawDoneThisStreet = isDrawGame && actionIdx >= drawStreetActionCount - 1;
 
+  /* Known dead cards, for games with no board: what the hero can SEE is out of
+     play. Stud - a folded player's up cards (the opponent strings ARE their up
+     cards, accumulated by street) and every card of the hero's own if the hero
+     folded. Draw - each recorded discard, from the moment its draw is announced
+     (the end of the street it is recorded on), and the hero's hand if the hero
+     folded; an opponent's discards count only where the hand records them.
+     Face-down cards ('x') are never dead-known. Chronological, de-duplicated. */
+  const deadCards = (() => {
+    if (category !== 'stud' && !isDrawGame) return [];
+    const out = []; const seen = new Set();
+    const add = (str) => { for (const c of parseCardNotation(str || '')) { const k = c.rank + c.suit; if (c.suit !== 'x' && !seen.has(k)) { seen.add(k); out.push(k); } } };
+    if (isDrawGame) {
+      for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
+        if (si === streetIdx && !drawDoneThisStreet) break;
+        for (const d of (hand.streets[si].draws || [])) if (d && d.discarded > 0 && d.discardedCards) add(d.discardedCards);
+      }
+      if (folded.has(replayHeroIdx)) add(heroCards);
+    } else {
+      hand.players.forEach((_, pi) => {
+        if (!folded.has(pi)) return;
+        add(pi === replayHeroIdx ? heroCards : opponentCards[pi]);
+      });
+    }
+    return out;
+  })();
+
   return (
     /* 77: isLandscape was computed at mount and kept current by a live
        matchMedia listener, and then referenced nowhere — so forty lines of
@@ -7175,6 +7201,26 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           );
         })()}
 
+
+        {/* Known dead cards, in the board's slot (stud and draw have no board). */}
+        {deadCards.length > 0 && (
+          <div className="replayer-board-area replayer-dead-area" aria-label={'Dead cards: ' + deadCards.join(' ')}>
+            <div className="replayer-dead-label">Dead</div>
+            <div className="card-row replayer-dead-row">
+              {deadCards.map(k => {
+                const rank = k[0], suit = k[1];
+                return cardTheme === 'classic' ? (
+                  <div key={k} className={'card-classic card-classic-' + suit}>
+                    <span className="card-classic-rank">{rank.toUpperCase()}</span>
+                    <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[suit] || ''}</span>
+                  </div>
+                ) : (
+                  <img key={k} className="card-img" src={'/cards/cards_gui_' + k + '.svg'} alt={k} loading="eager" />
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Polish 38 drew a deck and a muck pile on the felt, so the deal
             and the muck had somewhere to come from and go to. At the table
