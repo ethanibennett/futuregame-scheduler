@@ -10305,6 +10305,43 @@ function pruneFeedVenues(keepVenues, label, tag = 'mtt-feed') {
   return { pruned, skipped };
 }
 
+// Prune STALE rows WITHIN a series that is still in the feed. pruneFeedVenues only removes a whole
+// venue once it leaves the manifest; but a source also renumbers an event, re-lists it under a new
+// id, or drops one while the series lives on — and those old rows lingered forever (196 upcoming
+// orphans measured 2026-09-30, incl. WSOPC stops double-listed under an old and a new series name,
+// and the same event under two ids at Ft. Lauderdale/ACR).
+//
+// `seenByVenue` maps each venue the feed just carried to the set of event_numbers it carried for it
+// — the feed's own upsert key (venue, event_number). Any feed row in that venue whose event_number
+// is NOT in the set is stale and deleted, under the SAME reference guard as prune: a row a user
+// saved or logged results against is kept. A venue is reconciled ONLY if the feed brought ≥1 row
+// for it this run, so a missing or empty series file never empties a series (matching the
+// empty-manifest guard). Returns rows deleted.
+function reconcileFeedSeries(seenByVenue, label, tag) {
+  const guard = feedRefGuardSql();
+  let pruned = 0, skipped = 0;
+  for (const [venue, seen] of seenByVenue) {
+    if (!seen || seen.size === 0) continue; // no rows this run for this series — leave it untouched
+    const nums = [...seen];
+    const ph = nums.map(() => '?').join(', ');
+    const before = db.exec(
+      `SELECT COUNT(*) FROM tournaments WHERE source_pdf = ? AND venue = ? AND event_number NOT IN (${ph})`,
+      [tag, venue, ...nums]
+    )[0].values[0][0];
+    if (!before) continue;
+    db.run(
+      `DELETE FROM tournaments WHERE source_pdf = ? AND venue = ? AND event_number NOT IN (${ph})${guard}`,
+      [tag, venue, ...nums]
+    );
+    const gone = db.getRowsModified();
+    pruned += gone;
+    skipped += before - gone;
+  }
+  if (pruned > 0) console.log(`[${label}] pruned ${pruned} stale row(s) from series still in the feed`);
+  if (skipped > 0) console.log(`[${label}] kept ${skipped} stale row(s) — referenced by saved schedules or results`);
+  return pruned;
+}
+
 // Every feed the scheduler consumes. A feed owns its rows through `source_pdf`, and nothing
 // crosses that line: ingest, prune and push are all scoped by it.
 const FEED_TAGS = ['mtt-feed', 'online-feed'];
@@ -10374,12 +10411,16 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
     pruned = pruneFeedVenues(manifestVenues, label, tag).pruned;
     // Retire any hand-added bridge series this feed has now taken over (no-op when none match).
     supersedeBridges(new Set(manifestVenues), label);
+    // event_numbers this run carried per venue, for the within-series stale prune below.
+    const seenByVenue = new Map();
     for (const entry of manifest) {
       const filePath = path.join(__dirname, feedDir, entry.file);
       if (!fs.existsSync(filePath)) continue;
       const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       for (const t of rows) {
         try {
+        const seen = seenByVenue.get(t.venue) || seenByVenue.set(t.venue, new Set()).get(t.venue);
+        seen.add(t.event_number || '');
         // COALESCE: backfill stable_id on rows that predate feedStableId without ever
         // overwriting a legacy id production may already key on.
         db.run(
@@ -10436,6 +10477,9 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
       }
     }
     if (rowFailures > 3) console.error(`[${label}] ${rowFailures} row(s) failed total`);
+    // Within-series stale prune, only once rows actually landed (a wholesale failure must not be
+    // read as "every series emptied"), mirroring the empty-manifest guard above.
+    if (upserts + inserts > 0) pruned += reconcileFeedSeries(seenByVenue, label, tag);
     if (upserts + inserts + pruned > 0) {
       // Overrides go on AFTER the upsert, which is the whole point: the upsert has just
       // overwritten every field the feed owns, including any admin correction.
@@ -12487,6 +12531,18 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
       // Per tag: a venue missing from the push is gone from whichever feed owned it, and
       // pruning one tag can never reach the other's rows.
       for (const tag of FEED_TAGS) pruned += pruneFeedVenues(feedVenues, `FeedSync:${tag}`, tag).pruned;
+      // Within-series stale prune: the push carries every current row, so its (venue, event_number)
+      // set is authoritative per series. Build it per tag from the pushed rows and drop feed rows
+      // whose event_number the push no longer carries (same reference guard). This is what clears an
+      // event renumbered or re-listed under a new id while its series lives on.
+      const seenByTag = new Map(FEED_TAGS.map(t => [t, new Map()]));
+      for (const t of tournaments) {
+        const bucket = seenByTag.get(t.source_pdf);
+        if (!bucket) continue;
+        const seen = bucket.get(t.venue) || bucket.set(t.venue, new Set()).get(t.venue);
+        seen.add(t.event_number || '');
+      }
+      for (const tag of FEED_TAGS) pruned += reconcileFeedSeries(seenByTag.get(tag), `FeedSync:${tag}`, tag);
       if (pruned > 0) {
         await saveDatabase();
         console.log(`[FeedSync] pruned ${pruned} row(s) from series no longer in the feed`);
