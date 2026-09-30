@@ -8,7 +8,7 @@ import {
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
   haptic, VENUE_MAP, getVenueBrandColor, getVenueCoords, haversineDistance,
   VENUE_TO_SERIES, LOCATION_REGIONS,
-  isSideEvent, isOnline, isSeriesEvent,
+  isSideEvent, isOnline, passesSiteRule,
 } from '../utils/utils.js';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
@@ -856,14 +856,8 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
              agree or the same data produces two lists. */
           if (filters.onlyAvailableOnline && filters.jurisdiction
               && !isSiteAvailable(t.site, filters.jurisdiction)) return false;
-          // Per-room rules, same predicate as matchesOnline's.
-          const rule = filters.siteRules && t.site ? filters.siteRules[t.site] : null;
-          if (rule) {
-            if (rule.hidden) return false;
-            if (rule.seriesOnly && !isSeriesEvent(t)) return false;
-            const floor = Number(rule.minBuyin);
-            if (Number.isFinite(floor) && floor > 0 && Number(t.buyin || 0) < floor) return false;
-          }
+          // Per-room rules — the SAME function matchesOnline calls.
+          if (!passesSiteRule(t, filters.siteRules && t.site ? filters.siteRules[t.site] : null)) return false;
         }
         if (!isOnline(t) && filters.maxDistance && filters.userLocation) {
           const coords = getVenueCoords(t.venue, t.property);

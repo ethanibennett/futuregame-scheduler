@@ -1298,15 +1298,29 @@ export function matchesOnline(t, filters) {
      Absent rules mean no restriction, so a saved filter set from before this
      existed behaves exactly as it did. */
   const rule = filters.siteRules && t.site ? filters.siteRules[t.site] : null;
-  if (rule) {
-    /* A room switched off is off outright — checked before the other rules,
-       which are refinements WITHIN a room the user still wants to see. */
-    if (rule.hidden) return false;
-    if (rule.seriesOnly && !isSeriesEvent(t)) return false;
-    const floor = Number(rule.minBuyin);
-    if (Number.isFinite(floor) && floor > 0 && Number(t.buyin || 0) < floor) return false;
-  }
+  return passesSiteRule(t, rule);
+}
+
+/** One room's rule against one online event. Shared by matchesOnline and
+    CalendarView's filter block so the two views cannot drift. */
+export function passesSiteRule(t, rule) {
+  if (!rule) return true;
+  /* A room switched off is off outright — checked before the other rules,
+     which are refinements WITHIN a room the user still wants to see. */
+  if (rule.hidden) return false;
+  if (rule.seriesOnly && !isSeriesEvent(t)) return false;
+  const buyin = Number(t.buyin || 0);
+  const floor = Number(rule.minBuyin);
+  if (Number.isFinite(floor) && floor > 0 && buyin < floor) return false;
+  const ceiling = Number(rule.maxBuyin);
+  if (Number.isFinite(ceiling) && ceiling > 0 && buyin > ceiling) return false;
   return true;
+}
+
+/** A rule that restricts nothing. Dropped from siteRules rather than kept, so
+    the "N set" count stays honest and a cleared field really is cleared. */
+export function siteRuleIsEmpty(r) {
+  return !r || (!r.hidden && !r.seriesOnly && !(Number(r.minBuyin) > 0) && !(Number(r.maxBuyin) > 0));
 }
 
 /** Is this online event part of a SERIES, as opposed to the room's standing

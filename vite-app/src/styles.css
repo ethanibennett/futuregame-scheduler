@@ -7759,7 +7759,7 @@
       text-indent: var(--track-caps);
     }
     /* A room-menu affordance: a small dot at the corner, positioned absolutely so it never shifts
-       the centred label. Marks the Online toggle as long-pressable. */
+       the centred label. Marks the Online toggle as opening a menu rather than toggling. */
     .kind-toggle.has-menu { position: relative; }
     .kind-toggle.has-menu::after {
       content: '';
@@ -7773,58 +7773,109 @@
       opacity: 0.5;
     }
 
-    /* Per-room menu opened by long-pressing the Online toggle. */
+    /* The Online menu: opened by a tap on the Online toggle. Full content width (35g, the 1g
+       margins either side) and 1r under the button row. */
     .online-room-menu {
-      min-width: calc(var(--gu) * 16);
-      max-width: calc(100vw - var(--gu) * 2);
+      position: fixed;
+      left: var(--gu);
+      right: var(--gu);
+      margin-top: var(--subrow);
+      z-index: var(--z-panel);
+      box-sizing: border-box;
+      padding: var(--subrow) var(--gu);
+      overflow-y: auto;
       background: var(--surface);
       border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-sm);
-      box-shadow: 0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4);
-      padding: calc(var(--subrow) * 0.5) 0;
-      overflow: hidden;
+      box-shadow: 0 var(--subrow) calc(var(--subrow) * 3) rgba(0,0,0,0.4);
     }
-    .online-room-menu-head {
+    .online-room-master {
+      display: flex;
+      align-items: center;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 4);
+      border-bottom: var(--bw-hair) solid var(--border);
+      margin-bottom: var(--subrow);
+      font-size: var(--fs-sm);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .online-room-master input { margin: 0; }
+    .online-room-clear {
+      display: block;
+      height: calc(var(--subrow) * 3);
+      margin-top: var(--subrow);
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+
+    /* Per-room rules grid (shared by the menu and the Filters sheet): room | min $ | max $ | series.
+       A 2r header row names each column once; every room row is 4r, its inputs 3r. */
+    .online-rules {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 6) calc(var(--gu) * 6) calc(var(--gu) * 3);
+      grid-template-rows: calc(var(--subrow) * 2);
+      grid-auto-rows: calc(var(--subrow) * 4);
+      column-gap: var(--gu);
+      align-items: center;
+    }
+    .online-rules.is-disabled { opacity: 0.45; }
+    .online-rules-h {
+      align-self: end;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
-      padding: calc(var(--subrow) * 0.75) calc(var(--gu) * 1) calc(var(--subrow) * 0.5);
+      text-align: right;
+      line-height: 1;
     }
-    .online-room-row {
+    .online-rules-h-room { text-align: left; }
+    .online-rules-h:last-of-type { text-align: center; }
+    .online-rules-room {
       display: flex;
       align-items: center;
-      gap: var(--gu);
-      width: 100%;
-      box-sizing: border-box;
-      height: calc(var(--subrow) * 4);
-      padding: 0 calc(var(--gu) * 1);
-      background: none;
-      border: none;
+      gap: calc(var(--gu) * 0.75);
+      min-width: 0;
       cursor: pointer;
       color: var(--text-muted);
-      font-family: var(--serif);
-      font-size: var(--fs-sm);
-      text-align: left;
-    }
-    .online-room-row.on { color: var(--text); }
-    .online-room-row:active { background: var(--hover-overlay); }
-    .online-room-check {
-      flex: 0 0 auto;
-      width: calc(var(--subrow) * 2);
-      color: var(--accent);
-      font-weight: var(--fw-bold);
-    }
-    .online-room-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .online-room-count {
-      flex: 0 0 auto;
       font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+    }
+    .online-rules-room.on { color: var(--text); }
+    .online-rules-room input { margin: 0; flex: 0 0 auto; }
+    .online-rules-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .online-rules-count {
+      flex: 0 0 auto;
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       font-variant-numeric: tabular-nums;
     }
+    .online-rules-num {
+      box-sizing: border-box;
+      width: 100%;
+      height: calc(var(--subrow) * 3);
+      padding: 0 calc(var(--gu) * 0.5);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      color: var(--text);
+      background: var(--bg);
+      border: var(--bw-hair) solid var(--border);
+      border-radius: var(--radius-xs);
+    }
+    /* No spinners: a 6g field has no room for them and nobody steps a buy-in by $1. */
+    .online-rules-num { -moz-appearance: textfield; appearance: textfield; }
+    .online-rules-num::-webkit-inner-spin-button,
+    .online-rules-num::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .online-rules-num:disabled, .online-rules-series:disabled { opacity: 0.4; }
+    .online-rules-series { justify-self: center; margin: 0; cursor: pointer; }
 
     /* Square icon-only chip variant: 32x32 rounded square (instead of
        the pill shape). Used for the location/calendar/filter/import

@@ -14,6 +14,7 @@ import {
   isSideEvent,
   matchesLocation,
   matchesOnline,
+  siteRuleIsEmpty,
 } from '../utils/utils.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
   fetchServerLocation, sameLocation, readLocalFilters, writeLocalFilters } from '../utils/location-prefs.js';
@@ -31,19 +32,65 @@ const GAME_GROUPS = [
   { label: 'Mixed', variants: ['8-Game Mix', '9-Game Mix', 'HORSE', 'TORSE', 'Mixed', "Dealer's Choice", 'Limit Hold\'em'] },
 ];
 
+/* Per-room online rules — show/hide, a buy-in floor and ceiling, and series-only — as ONE grid,
+   rendered by both the Online menu and the Filters sheet so the two can never offer different
+   controls. Headers are said once, over their columns, so the room name keeps the width. */
+function OnlineRoomRules({ sites, siteRules, setFilters, disabled }) {
+  const setRule = (key, patch) => setFilters(f => {
+    const next = { ...(f.siteRules || {}) };
+    const merged = { ...(next[key] || {}), ...patch };
+    if (siteRuleIsEmpty(merged)) delete next[key];
+    else next[key] = merged;
+    // Switching a room ON while Online is off would change nothing on screen, so it turns Online on.
+    return { ...f, siteRules: next, showOnline: patch.hidden === false ? true : f.showOnline };
+  });
+  return (
+    <div className={`online-rules${disabled ? ' is-disabled' : ''}`}>
+      <span className="online-rules-h online-rules-h-room">Room</span>
+      <span className="online-rules-h">Min $</span>
+      <span className="online-rules-h">Max $</span>
+      <span className="online-rules-h">Series</span>
+      {sites.map(({ key, name, count }) => {
+        const rule = (siteRules || {})[key] || {};
+        const on = !rule.hidden;
+        // Floor, ceiling and series are refinements WITHIN a room: disabled with the room off, but
+        // their values are kept, so switching the room back on restores what the user set.
+        const live = !disabled && on;
+        return (
+          <React.Fragment key={key}>
+            <label className={`online-rules-room${on ? ' on' : ''}`}>
+              <input type="checkbox" checked={on} disabled={disabled}
+                     onChange={e => setRule(key, { hidden: !e.target.checked })} />
+              <span className="online-rules-name">{name}</span>
+              <span className="online-rules-count">{count}</span>
+            </label>
+            <input className="online-rules-num" type="number" min="0" inputMode="numeric" placeholder="any"
+                   disabled={!live} value={rule.minBuyin ?? ''} aria-label={`Minimum buy-in for ${name}`}
+                   onChange={e => setRule(key, { minBuyin: e.target.value })} />
+            <input className="online-rules-num" type="number" min="0" inputMode="numeric" placeholder="any"
+                   disabled={!live} value={rule.maxBuyin ?? ''} aria-label={`Maximum buy-in for ${name}`}
+                   onChange={e => setRule(key, { maxBuyin: e.target.value })} />
+            <input className="online-rules-series" type="checkbox" disabled={!live}
+                   checked={!!rule.seriesOnly} aria-label={`Show only series events for ${name}`}
+                   onChange={e => setRule(key, { seriesOnly: e.target.checked })} />
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Inline Filters (portal-based, matching original) ──
 function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buyinOptions, tournaments, open, setOpen, toggleRef, search, setSearch }) {
   const panelRef = useRef(null);
-  // Long-press on the Online toggle opens a per-room menu (below). A ref to the button anchors it;
-  // the timer + fired flag tell a genuine long-press from a tap (which still toggles showOnline).
+  // A tap on the Online toggle opens the per-room menu (below), anchored under the button. Online
+  // itself is switched from the menu's first row, so the tap no longer toggles it directly.
   const onlineBtnRef = useRef(null);
-  const onlineLongPress = useRef({ timer: null, fired: false });
-  const [onlineMenu, setOnlineMenu] = useState(null); // null | { top, right } (viewport px)
+  const [onlineMenu, setOnlineMenu] = useState(null); // null | { top } (viewport px, measured)
   const openOnlineMenu = useCallback(() => {
     const el = onlineBtnRef.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    setOnlineMenu({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+    setOnlineMenu({ top: el.getBoundingClientRect().bottom });
   }, []);
   const [whereOpen, setWhereOpen] = useState(false);
   const [onlineOpen, setOnlineOpen] = useState(false);
@@ -116,7 +163,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
 
   const activeSiteRuleCount = useMemo(() => {
     const r = filters.siteRules || {};
-    return Object.keys(r).filter(k => r[k] && (r[k].hidden || r[k].seriesOnly || Number(r[k].minBuyin) > 0)).length;
+    return Object.keys(r).filter(k => !siteRuleIsEmpty(r[k])).length;
   }, [filters.siteRules]);
 
   const poolFacts = useMemo(() => {
@@ -180,20 +227,17 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             ['Side Events', !filters.hideSideEvents, (on) => ({ hideSideEvents: !on })],
             ['Online', filters.showOnline !== false, (on) => ({ showOnline: on })],
           ].map(([label, on, patch]) => {
-            // The Online button additionally opens a per-room menu on a long press (≥450ms). A
-            // press that becomes the menu suppresses the click, so it does not also toggle Online.
-            const isOnline = label === 'Online';
-            const lp = onlineLongPress.current;
-            const start = () => { lp.fired = false; clearTimeout(lp.timer); lp.timer = setTimeout(() => { lp.fired = true; haptic(); openOnlineMenu(); }, 450); };
-            const cancel = () => clearTimeout(lp.timer);
+            // Online opens its per-room menu on a plain tap (when there are rooms to show); the
+            // menu's first row is the Online switch. With no online rooms in the pool there is
+            // nothing to configure, so it stays a plain toggle.
+            const menu = label === 'Online' && onlineSitesInPool.length > 0;
             return (
-            <button key={label} ref={isOnline ? onlineBtnRef : undefined} type="button"
-                    className={`kind-toggle${on ? ' active' : ''}${isOnline && onlineSitesInPool.length ? ' has-menu' : ''}`} aria-pressed={on}
-                    onClick={() => { if (isOnline && lp.fired) { lp.fired = false; return; } setFiltersRaw(f => ({ ...f, ...patch(!on) })); }}
-                    onPointerDown={isOnline && onlineSitesInPool.length ? start : undefined}
-                    onPointerUp={isOnline ? cancel : undefined}
-                    onPointerLeave={isOnline ? cancel : undefined}
-                    onContextMenu={isOnline && onlineSitesInPool.length ? (e => { e.preventDefault(); if (!lp.fired) { lp.fired = true; openOnlineMenu(); } }) : undefined}>
+            <button key={label} ref={label === 'Online' ? onlineBtnRef : undefined} type="button"
+                    className={`kind-toggle${on ? ' active' : ''}${menu ? ' has-menu' : ''}`}
+                    aria-pressed={menu ? undefined : on}
+                    aria-haspopup={menu ? 'menu' : undefined}
+                    aria-expanded={menu ? !!onlineMenu : undefined}
+                    onClick={() => menu ? openOnlineMenu() : setFiltersRaw(f => ({ ...f, ...patch(!on) }))}>
               <span className="kind-toggle-label">{label}</span>
             </button>
             );
@@ -204,30 +248,21 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
       {onlineMenu && createPortal(
         <>
           <div className="dropdown-backdrop" style={{ zIndex: 'var(--z-scrim)' }} onClick={() => setOnlineMenu(null)} />
-          <div className="online-room-menu" role="menu"
-               style={{ position: 'fixed', top: onlineMenu.top, right: onlineMenu.right, zIndex: 'var(--z-panel)' }}>
-            <div className="online-room-menu-head">Online rooms</div>
-            {onlineSitesInPool.map(({ key, count, name }) => {
-              const rule = (filters.siteRules || {})[key];
-              const shown = !(rule && rule.hidden);
-              return (
-                <button key={key} type="button" role="menuitemcheckbox" aria-checked={shown}
-                        className={`online-room-row${shown ? ' on' : ''}`}
-                        onClick={() => setFiltersRaw(f => {
-                          const sr = { ...(f.siteRules || {}) };
-                          const cur = { ...(sr[key] || {}) };
-                          cur.hidden = shown; // toggling: was shown → now hidden
-                          if (!cur.hidden && !cur.seriesOnly && !(Number(cur.minBuyin) > 0)) delete sr[key];
-                          else sr[key] = cur;
-                          // Turning a room on is meaningless while Online is off — turn Online on too.
-                          return { ...f, siteRules: sr, showOnline: shown ? f.showOnline : true };
-                        })}>
-                  <span className="online-room-check" aria-hidden="true">{shown ? '✓' : ''}</span>
-                  <span className="online-room-name">{name}</span>
-                  <span className="online-room-count">{count}</span>
-                </button>
-              );
-            })}
+          <div className="online-room-menu" role="dialog" aria-label="Online rooms"
+               style={{ top: onlineMenu.top, maxHeight: `calc(100dvh - ${onlineMenu.top}px - var(--subrow) * 4)` }}>
+            <label className="online-room-master">
+              <input type="checkbox" checked={filters.showOnline !== false}
+                     onChange={e => setFiltersRaw(f => ({ ...f, showOnline: e.target.checked }))} />
+              <span>Show online events</span>
+            </label>
+            <OnlineRoomRules sites={onlineSitesInPool} siteRules={filters.siteRules}
+                             setFilters={setFiltersRaw} disabled={filters.showOnline === false} />
+            {activeSiteRuleCount > 0 && (
+              <button type="button" className="online-room-clear"
+                      onClick={() => setFiltersRaw(f => ({ ...f, siteRules: {} }))}>
+                Clear room rules
+              </button>
+            )}
           </div>
         </>,
         document.body
@@ -378,7 +413,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                     const next = { ...(f.siteRules || {}) };
                     for (const s of onlineSitesInPool) {
                       const merged = { ...(next[s.key] || {}), hidden: !e.target.checked };
-                      if (!merged.hidden && !merged.seriesOnly && !(Number(merged.minBuyin) > 0)) delete next[s.key];
+                      if (siteRuleIsEmpty(merged)) delete next[s.key];
                       else next[s.key] = merged;
                     }
                     return { ...f, siteRules: next };
@@ -386,73 +421,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
                   style={{margin:0}} />
                 All rooms
               </label>
-              {/* One grid for every room, not a flex row per room: the controls have
-                  to line up in columns, and a per-row flex box starts each one
-                  wherever that room's name happens to end. The rows are
-                  Fragments so their cells are direct grid children. */}
-              <div style={{
-                display:'grid',
-                gridTemplateColumns:'minmax(0,1fr) auto auto',
-                alignItems:'center', columnGap:'calc(var(--subrow) * 1.25)', rowGap:'calc(var(--subrow) * 1)',
-              }}>
-                {/* Column headers, so "min $" and "series only" are said ONCE
-                    rather than on every row. Repeating them cost ~100px of width
-                    and truncated the room names to "Americas …" and "WSOP.co…",
-                    which is the opposite of the point: the name is the thing you
-                    are looking for. */}
-                <span />
-                <span style={{fontSize:'calc(var(--gu) * 1.001)',color:'var(--text-muted)',letterSpacing:'0.04em',textAlign:'right'}}>MIN $</span>
-                {/* Centred over its column, because the checkboxes below it are
-                    centred — a left-aligned header over centred boxes is two
-                    different columns wearing one heading. */}
-                <span style={{fontSize:'calc(var(--gu) * 1.001)',color:'var(--text-muted)',letterSpacing:'0.04em',justifySelf:'center'}}>SERIES</span>
-              {onlineSitesInPool.map(({ key, name, count }) => {
-                const rule = (filters.siteRules && filters.siteRules[key]) || {};
-                const setRule = (patch) => setFilters(f => {
-                  const next = { ...(f.siteRules || {}) };
-                  const merged = { ...(next[key] || {}), ...patch };
-                  // Drop a rule that no longer restricts anything, so "how many
-                  // are set" stays honest and a cleared box really is cleared.
-                  if (!merged.hidden && !merged.seriesOnly && !(Number(merged.minBuyin) > 0)) delete next[key];
-                  else next[key] = merged;
-                  return { ...f, siteRules: next };
-                });
-                const on = !rule.hidden;
-                return (
-                  <React.Fragment key={key}>
-                    {/* The room switch itself. Its label is the room name, so the
-                        whole name is the hit target rather than a bare box. */}
-                    <label style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',cursor:'pointer',minWidth:0}}>
-                      <input type="checkbox" checked={on}
-                        onChange={e => setRule({ hidden: !e.target.checked })}
-                        style={{margin:0,flexShrink:0}} />
-                      <span style={{fontSize:'calc(var(--gu) * 1.208)',fontWeight:'var(--fw-bold)',textTransform:'none',letterSpacing:0,color: on ? 'var(--text)' : 'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                        {name}
-                        <span style={{color:'var(--text-muted)',fontWeight:400}}> {count}</span>
-                      </span>
-                    </label>
-                    {/* A floor and a series switch are refinements WITHIN a room.
-                        With the room off they cannot mean anything, so they are
-                        disabled and dimmed rather than left live and inert — but
-                        their VALUES are kept, so switching the room back on
-                        restores the rules the user set rather than silently
-                        discarding them. */}
-                    <input type="number" min="0" inputMode="numeric" disabled={!on}
-                      value={rule.minBuyin ?? ''}
-                      placeholder="any"
-                      aria-label={`Minimum buy-in for ${name}`}
-                      onChange={e => setRule({ minBuyin: e.target.value })}
-                      style={{width:'calc(var(--subrow) * 7.75)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75)',fontSize:'calc(var(--gu) * 1.178)',textAlign:'right',background:'var(--bg)',color:'var(--text)',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius)',opacity: on ? 1 : 0.4}} />
-                    {/* The header names this column, so the box carries the label
-                        for anyone not reading it visually. */}
-                    <input type="checkbox" checked={!!rule.seriesOnly} disabled={!on}
-                      aria-label={`Show only series events for ${name}`}
-                      onChange={e => setRule({ seriesOnly: e.target.checked })}
-                      style={{margin:0,justifySelf:'center',cursor: on ? 'pointer' : 'not-allowed',opacity: on ? 1 : 0.4}} />
-                  </React.Fragment>
-                );
-              })}
-              </div>
+              <OnlineRoomRules sites={onlineSitesInPool} siteRules={filters.siteRules} setFilters={setFilters} />
               {activeSiteRuleCount > 0 && (
                 <button onClick={() => setFilters(f => ({ ...f, siteRules: {} }))} style={{
                   alignSelf:'flex-start',background:'none',border:'none',color:'var(--text-muted)',
