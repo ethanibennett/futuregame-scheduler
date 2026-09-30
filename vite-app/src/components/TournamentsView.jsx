@@ -1600,14 +1600,14 @@ export default function TournamentsView({
             own line below the icon buttons instead of overflowing and clipping
             "Side Events" off the right edge. */}
         <div style={{display:'flex',gap:'var(--gu)',alignItems:'center',flexWrap:'wrap',rowGap:'calc(var(--subrow) * 1)'}}>
-          {/* Location chip expands to fill the row and carries the current
-              location indicator inside it; the other tools stay square at the
-              right. */}
+          {/* Location | filter | calendar, on the column grid: location spans three
+              primary columns (26g, 1-27g), then the 1g gutter, a 4g filter button
+              (28-32g), 1g, and the 3g calendar button (33-36g) — 35g, rail to rail. */}
           <button
             ref={locationBtnRef}
             className={`filter-chip ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
-            style={{flex:1,minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'calc(var(--subrow) * 1)',padding:'0 calc(var(--subrow) * 1.25)'}}
+            style={{flex:'0 0 auto',width:'calc(var(--col) * 3 + var(--gu) * 2)',minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'calc(var(--subrow) * 1)',padding:'0 calc(var(--subrow) * 1.25)'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
               ? LOCATION_REGIONS[filters.locationRegion].label
               : filters.userLocation && filters.maxDistance
@@ -1622,6 +1622,14 @@ export default function TournamentsView({
                   ? `${filters.locationLabel || 'Location'} \u00B7 ${filters.maxDistance} mi`
                   : 'All locations'}
             </span>
+          </button>
+          <button
+            ref={filterToggleRef}
+            className={`filter-chip filter-chip-square ${filterPanelOpen ? 'active' : ''}`}
+            onClick={() => setFilterPanelOpen(o => !o)}
+            style={{flexShrink:0,width:'calc(var(--gu) * 4)'}}
+          >
+            <Icon.filter />
           </button>
           {/* Calendar chip: tap → switch to Calendar view. Long-press
               (≥500ms) → open a native date picker scoped to today and
@@ -1642,14 +1650,6 @@ export default function TournamentsView({
             onClick={() => onOpenCalendarView && onOpenCalendarView()}
           >
             <Icon.calendar />
-          </button>
-          <button
-            ref={filterToggleRef}
-            className={`filter-chip filter-chip-square ${filterPanelOpen ? 'active' : ''}`}
-            onClick={() => setFilterPanelOpen(o => !o)}
-            style={{flexShrink:0}}
-          >
-            <Icon.filter />
           </button>
         </div>
 
