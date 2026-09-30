@@ -10438,8 +10438,22 @@
          bracelet    right 23.39 bottom 10.45 -> x 0.95g - 0.9492r, y 1.129r
          satellite   right 23.12 bottom 24    -> x 0.95g - 0.9267r
          restart     right 21.88 bottom 21.89 -> x 0.95g - 0.8233r, y 0.176r */
-    .cal-accolades svg[data-icon="ring"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.5908), calc(var(--subrow) * 0.25)); }
-    .cal-accolades svg[data-icon="crosshairs"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.7383), calc(var(--subrow) * 0.262)); }
+    /* Ring and crosshairs are sized so their painted art is 1r tall (ring art
+       15.82 units, crosshairs 15.52, of the 24-unit box): svg 1.5171r and
+       1.5465r. The same seating at that size — svg bottom on the cell bottom,
+       centred in the 2g cell:
+         ring       down 3.00/24 x 1.5171r = 0.1896r;
+                    right g - 1.5171r/2 + 4.91/24 x 1.5171r - 0.05g = 0.95g - 0.4482r
+         crosshairs down 3.14/24 x 1.5465r = 0.2023r;
+                    right g - 1.5465r/2 + 3.14/24 x 1.5465r - 0.05g = 0.95g - 0.5709r */
+    .cal-accolades svg[data-icon="ring"] {
+      --icon-size: calc(var(--subrow) * 1.5171);
+      transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.4482), calc(var(--subrow) * 0.1896));
+    }
+    .cal-accolades svg[data-icon="crosshairs"] {
+      --icon-size: calc(var(--subrow) * 1.5465);
+      transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.5709), calc(var(--subrow) * 0.2023));
+    }
     .cal-accolades svg[data-icon="bracelet"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.9492), calc(var(--subrow) * 1.129)); }
     .cal-accolades svg[data-icon="satellite"] { transform: translateX(calc(var(--gu) * 0.95 - var(--subrow) * 0.9267)); }
     .cal-accolades svg[data-icon="restart"] { transform: translate(calc(var(--gu) * 0.95 - var(--subrow) * 0.8233), calc(var(--subrow) * 0.176)); }
