@@ -8883,9 +8883,6 @@
        so the grid positions hold while its digits change. Inline-block keeps every point on the
        shared baseline, which the trimmed 2r box seats on r4. */
     .cal-clock-pt { display: inline-block; text-align: right; }
-    /* Players left/entries: 2r down, on the guarantee's line (row1's second track, baseline r6),
-       ending on the same 27g as the time above it. */
-    .cal-event-clock.field { grid-row: 2; }
     .cal-clock-pt.measure { position: absolute; visibility: hidden; left: 0; top: 0; }
     /* The blinds: the one bold point, at the start time's size. */
     .cal-clock-pt.blinds { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
