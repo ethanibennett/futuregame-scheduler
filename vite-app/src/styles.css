@@ -5319,8 +5319,9 @@
     .replayer-hand-card-cards .card-row:not(.card-row-splay) > *:not(:first-child) {
       /* A share of a card rather than a flat 12px: the cards scale with the
          table, so a fixed overlap spread the row wider exactly when the table
-         had least room for it. */
-      margin-left: calc(var(--card-w) * -0.52);
+         had least room for it. --card-overlap is the replay table's Overlap
+         setting (set on .replayer-table); anywhere else it falls back to 0.52. */
+      margin-left: calc(var(--card-w) * -1 * var(--card-overlap, 0.52));
       /* 0.26, down from 0.62. The lit line is the stock of the card beneath
          showing through, and it was reading as a white stroke drawn between
          two cards instead. Measured across the hero's flat row: the seams sat

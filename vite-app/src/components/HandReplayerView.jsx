@@ -1674,6 +1674,22 @@ function SplayAmountSlider({ value, onChange, preview }) {
   );
 }
 
+/* Flat-row overlap, 0% (cards side by side) to 90% (nearly stacked). Shown
+   instead of the splay amount while splay is off; applies on every input event
+   so the row re-lays while the thumb moves. */
+function CardOverlapSlider({ value, onChange }) {
+  const v = Number(value ?? 52) || 0;
+  return (
+    <div className="rs-splay">
+      <input type="range" className="gto-raise-slider rs-splay-slider" min={0} max={90} step={2}
+        value={v} aria-label="Card overlap"
+        onInput={e => onChange(Number(e.target.value))}
+        onChange={e => onChange(Number(e.target.value))} />
+      <span className="rs-splay-pct rs-cell"><span className="rs-t">{v}%</span></span>
+    </div>
+  );
+}
+
 /* The table-settings dropdown: the five controls that change how the table
    LOOKS, on the replay screen itself, so a change — the splay above all — is
    judged against the real table while it happens. Anchored under its button,
@@ -1717,7 +1733,12 @@ function TableQuickSettings({ anchorRef, onClose, settings, onUpdate }) {
       <SettingToggleRow label="Bright felt" on={settings.feltBright} onToggle={v => onUpdate('feltBright', v)} />
       <SettingToggleRow label="Rail light strip" on={settings.lightStrip} onToggle={v => onUpdate('lightStrip', v)} />
       <SettingToggleRow label="Splay" ariaLabel="Splay hole cards" on={settings.cardSplay} onToggle={v => onUpdate('cardSplay', v)} />
-      {settings.cardSplay && <SplayAmountSlider value={settings.splayAmount} onChange={v => onUpdate('splayAmount', v)} />}
+      {settings.cardSplay
+        ? <SplayAmountSlider value={settings.splayAmount} onChange={v => onUpdate('splayAmount', v)} />
+        : (<>
+            <div className="replayer-settings-label rs-cell rs-head"><span className="rs-t">Overlap</span></div>
+            <CardOverlapSlider value={settings.cardOverlap} onChange={v => onUpdate('cardOverlap', v)} />
+          </>)}
     </div>,
     document.body
   );
@@ -1839,6 +1860,15 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
                 <div className="replayer-settings-sublabel rs-cell"><span className="rs-t">How wide the hole-card fan opens</span></div>
               </div>
               <SplayAmountSlider preview value={settings.splayAmount} onChange={v => onUpdate('splayAmount', v)} />
+            </div>
+          )}
+          {!settings.cardSplay && (
+            <div className="replayer-settings-row is-stacked">
+              <div className="rs-text">
+                <div className="replayer-settings-label rs-cell"><span className="rs-t">Overlap</span></div>
+                <div className="replayer-settings-sublabel rs-cell"><span className="rs-t">How much each flat card covers the one before it</span></div>
+              </div>
+              <CardOverlapSlider value={settings.cardOverlap} onChange={v => onUpdate('cardOverlap', v)} />
             </div>
           )}
         </div>
@@ -5073,6 +5103,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   /* How wide the hole-card fan opens, as a percent of what the table can hold.
      100 is the default fan; the slider tightens it toward a squared stack. */
   const _splayAmount = useReplayerSetting('SplayAmount', 100);
+  /* With splay off the hole cards lie flat in an overlapped row; this is how
+     much each card covers the one before it, as a percentage of a card's width.
+     52 is the overlap the row has always had. */
+  const _cardOverlap = useReplayerSetting('CardOverlap', 52);
   /* Off by default: the dark cloth is what the table looks like today, and a
      setting that changes the first thing you see should be opt-in. */
   const _feltBright = useReplayerSetting('FeltBright', false, hand && hand.feltColor ? !!hand.feltBright : undefined);
@@ -5095,7 +5129,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     soundFold: _soundFold[0], soundAllIn: _soundAllIn[0],
     animateDeal: _animDeal[0], animateChips: _animChips[0], animateBoard: _animBoard[0], animateWinner: _animWinner[0],
     animateFold: _animFold[0],
-    cardTheme, cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
+    cardTheme, cardSplay: _cardSplay[0], splayAmount: _splayAmount[0], cardOverlap: _cardOverlap[0], lightStrip: _lightStrip[0], feltBright: _feltBright[0],
   };
   const rSetters = {
     theme: _theme[1], feltColor: v => { setFeltColor(v); localStorage.setItem('replayerFeltColor', v); },
@@ -5111,7 +5145,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     animateDeal: _animDeal[1], animateChips: _animChips[1], animateBoard: _animBoard[1], animateWinner: _animWinner[1],
     animateFold: _animFold[1],
     cardTheme: v => { setCardTheme(v); localStorage.setItem('replayerCardTheme', v); },
-    cardSplay: _cardSplay[1], splayAmount: _splayAmount[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
+    cardSplay: _cardSplay[1], splayAmount: _splayAmount[1], cardOverlap: _cardOverlap[1], lightStrip: _lightStrip[1], feltBright: _feltBright[1],
   };
   const handleSettingsUpdate = (key, val) => { if (rSetters[key]) rSetters[key](val); };
   /* The sound calls live inside effects whose dependency arrays deliberately
@@ -6969,6 +7003,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       data-felt={rSettings.feltBright ? 'bright' : 'dark'}
         style={(() => {
           const s = { ...(potContrast || {}) };
+          s['--card-overlap'] = String((Number(rSettings.cardOverlap ?? 52) || 0) / 100);
           if (rSettings.cardBack === 'custom') {
             // Same derivation as the felt below, and for the same reason.
             const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
