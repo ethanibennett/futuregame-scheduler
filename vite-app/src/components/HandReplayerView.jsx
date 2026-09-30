@@ -5480,6 +5480,25 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     return out;
   }, [hand, streetIdx, actionIdx, folded, stacks]);
 
+  /* Tournament rule: once a player is all-in and no betting is left, every
+     live hand is tabled before the runout. So in a tournament hand (not cash),
+     from the step where two or more players remain, at least one is all-in, at
+     most one still has chips, and the hand records no further action, every
+     live hand shows face up. Board and stud games only: in a draw game the
+     all-in players still draw, so a hand tabled now is not the hand shown down. */
+  const exposeAllIn = useMemo(() => {
+    if (hand.gameMode === 'cash') return false;
+    if (category !== 'community' && category !== 'stud') return false;
+    const live = hand.players.map((_, i) => i).filter(i => !folded.has(i));
+    if (live.length < 2 || !live.some(i => allIn.has(i))) return false;
+    if (live.filter(i => !allIn.has(i)).length > 1) return false;
+    for (let si = streetIdx; si < hand.streets.length; si++) {
+      const acts = hand.streets[si].actions || [];
+      if (acts.length > (si === streetIdx ? actionIdx + 1 : 0)) return false;
+    }
+    return true;
+  }, [hand, category, folded, allIn, streetIdx, actionIdx]);
+
   /* 92: one pot number. In any multi-way all-in there is a main pot and one
      or more side pots with different eligible players, and the split display
      only appeared at the RESULT — so the hands people actually save and share
@@ -7390,7 +7409,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         {hand.players.map((p, pi) => {
           const pos = seats[pi] || [50, 50];
           const rawCards = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
-          let cards = (pi === replayHeroIdx || showResult) ? (rawCards === 'MUCK' ? '' : rawCards) : '';
+          let cards = (pi === replayHeroIdx || showResult || exposeAllIn) ? (rawCards === 'MUCK' ? '' : rawCards) : '';
           // Draw hands in rank order, BEFORE discardIdx below indexes into them.
           if (isDrawGame && cards) cards = sortDrawHand(cards, hand.gameType);
           /* Draw discards: the moment this street's draw is announced (the same
@@ -7453,8 +7472,11 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               ? (gameCfg.heroCards || 7)
               : parseCardNotation(heroCards || '').length;
             const knownAll = parseCardNotation(rawCards || '').filter(c => c.suit !== 'x').length;
-            // A finished showdown with every card recorded is left alone.
-            const complete = showResult && knownAll >= (gameCfg.heroCards || 7);
+            // A finished showdown with every card recorded is left alone, and so
+            // is an all-in hand tabled early once every card dealt so far is known.
+            const complete = showResult
+              ? knownAll >= (gameCfg.heroCards || 7)
+              : exposeAllIn && knownAll >= dealt;
             if (upCards.length && !complete) {
               /* A face-down card here is a RANK carrying the suit 'x':
                  parseCardNotation pairs ranks and suits by position, so a bare
