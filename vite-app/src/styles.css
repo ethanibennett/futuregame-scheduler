@@ -11229,9 +11229,14 @@
        that spaces the bar dangles and makes the block 3.25r. Zero it there: the
        block is then a clean 3r (1r pad + 2r label row). */
     .late-reg-wrap:has(.late-reg-label.pending) .late-reg-label-row { margin-bottom: 0; }
-    /* Schedule cards: the bar is a whole 1r directly under the 2r label row. */
-    .cal-event-detail .late-reg-label-row { margin-bottom: 0; }
+    /* Schedule cards: 1r of space under the 2r label row, then a whole 1r bar
+       (block 5r: 1r pad + 2r text + 1r + 1r bar). The text stays muted in every
+       state, as the collapsed card's mini bar is; the red/amber ramp is the
+       dashboard's, and the bar's own critical fill still says "closing". */
+    .cal-event-detail .late-reg-label-row { margin-bottom: var(--subrow); }
     .cal-event-detail .late-reg-bar-bg { height: var(--subrow); }
+    .cal-event-detail .late-reg-label.soon, .cal-event-detail .late-reg-label.urgent,
+    .cal-event-detail .late-reg-time.soon, .cal-event-detail .late-reg-time.urgent { color: var(--text-muted); }
 
     .late-reg-label {
       font-size: var(--fs-xs);
