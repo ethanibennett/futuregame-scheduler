@@ -2160,7 +2160,9 @@
       /* Centred in the 8r bar (its own centre on the 4r line). The bar is now
          align-items:flex-start, so this absolute group sets its own vertical
          centre rather than inheriting the old align-items:center. */
-      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin-left: 0;
+      /* top 4r, not 50%: 50% of the bar's padding box (8r less its inner hairline border) put the
+         centre at 3.93r, half a pixel above the grid line. */
+      position: absolute; left: 50%; top: calc(var(--subrow) * 4); transform: translate(-50%, -50%); margin-left: 0;
     }
     @media (min-width: 640px) {
       .top-bar-actions { position: static; top: auto; transform: none; margin-left: auto; align-self: center; }
@@ -2174,7 +2176,14 @@
     /* Avatar + display-name chip — always pinned to the far right of the bar.
        On iOS this stays in normal flex flow even after the action icons get
        lifted out to the Dynamic Island. */
-    .top-bar-user { margin-left: var(--space-sm); }
+    /* Avatar + name centred on the SAME line as the theme / update / notification buttons: the
+       same absolute top:4r + translateY(-50%) those use, so both groups centre on the 4r grid line.
+       Pinned to the right rail (1g). The name is trimmed to its cap box (below), so
+       align-items:center centres its capitals, not its line box, on that line. */
+    .top-bar-user {
+      position: absolute; right: var(--gu); top: calc(var(--subrow) * 4); transform: translateY(-50%);
+      display: flex; align-items: center; min-width: 0;
+    }
 
     .username-chip {
       font-size: var(--fs-sm);
@@ -2187,9 +2196,9 @@
       transition: color var(--dur-fast);
       font-family: inherit;
     }
-    /* Trim the name so its box bottom is its baseline; the chip is align-items:
-       flex-end in a 4r cell, so that baseline lands on 4r — the wordmark's line. */
-    .username-chip span { text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    /* Trim the name to its cap box (cap top to baseline), so the chip's align-items:center centres
+       the capitals — not the line box with its descender space — on the avatar's centre line. */
+    .username-chip span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
     @media (hover: hover) and (pointer: fine) {
       .username-chip:hover { color: var(--text); }
     }
@@ -7675,6 +7684,41 @@
     .filter-chip svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); display: block; flex-shrink: 0; color: var(--text); }
 
     .filter-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
+
+    /* Event-kind toggles (Satellites / Restarts / Side Events / Online): one button per primary
+       column, each 8g x 2r, the 1g gutters between. Same family as .filter-chip — surface fill and
+       hairline border off; accent border, accent text and a soft tint on — at the micro-label size
+       a 2r box can hold. */
+    .kind-toggles {
+      display: grid;
+      grid-template-columns: repeat(4, var(--col));
+      column-gap: var(--gu);
+      width: 100%;
+    }
+    .kind-toggle {
+      width: var(--col);
+      height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      border: var(--bw-hair) solid var(--border);
+      border-radius: var(--radius-xs);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      line-height: 1;
+      color: var(--text-muted);
+      white-space: nowrap;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .kind-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
 
     /* Square icon-only chip variant: 32x32 rounded square (instead of
        the pill shape). Used for the location/calendar/filter/import

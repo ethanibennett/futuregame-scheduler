@@ -1405,7 +1405,7 @@ export default function App() {
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
         </div>
-        <div className="top-bar-user" style={{position:'relative',minWidth:0,flexShrink:1,display:'flex',alignItems:'flex-end',height:'calc(var(--subrow) * 5.75)'}}>
+        <div className="top-bar-user">
           <button className="username-chip" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',background:'none',border:'none',padding:0,cursor:'pointer',maxWidth:'100%',overflow:'hidden'}}>
             <Avatar src={avatar} username={username} size={22} style={{flexShrink:0}} />
             <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameMode === 'username' ? username : (realName || username)}</span>

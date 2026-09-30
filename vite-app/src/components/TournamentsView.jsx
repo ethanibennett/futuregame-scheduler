@@ -157,37 +157,23 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
           setFiltersRaw (not the scroll-wrapped setter) so toggling doesn't jump
           the list back to today. */}
       <div className="filter-row" style={{gap:'0',marginTop:'calc(var(--subrow) * 2)',marginBottom:'0',width:'100%',alignItems:'center',flexWrap:'nowrap'}}>
-        {/* Satellites / Restarts / Side Events / Online distributed margin to
-            margin: the row is the full 35g between the rails, so the first
-            square sits on the left margin and the last label ends on the right.
-            "Available to me" used to sit here (right-justified, shown only when
-            Online was on); it is gone from the UI — see the note on
-            onlyAvailableOnline in DEFAULT_FILTERS. */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%'}}>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
-            <input type="checkbox" checked={!filters.hideSatellites}
-              onChange={e => setFiltersRaw(f => ({...f, hideSatellites:!e.target.checked}))}
-              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
-            /> Satellites
-          </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
-            <input type="checkbox" checked={!filters.hideRestarts}
-              onChange={e => setFiltersRaw(f => ({...f, hideRestarts:!e.target.checked}))}
-              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
-            /> Restarts
-          </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
-            <input type="checkbox" checked={!filters.hideSideEvents}
-              onChange={e => setFiltersRaw(f => ({...f, hideSideEvents:!e.target.checked}))}
-              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
-            /> Side Events
-          </label>
-          <label style={{cursor:'pointer',display:'flex',alignItems:'center',height:'calc(var(--subrow) * 2)',gap:'calc(var(--subrow) * 0.375)',fontSize:'calc(var(--gu) * 1.149)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text)',whiteSpace:'nowrap'}}>
-            <input type="checkbox" checked={filters.showOnline !== false}
-              onChange={e => setFiltersRaw(f => ({...f, showOnline:e.target.checked}))}
-              style={{margin:0,width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}
-            /> Online
-          </label>
+        {/* Satellites / Restarts / Side Events / Online as four toggle BUTTONS, one per primary
+            column: each exactly 8g x 2r, with the 1g gutters between them, so the four fill the
+            35g between the margins (4 x 8g + 3 x 1g) and each button IS a column. aria-pressed
+            carries the state. "Available to me" used to sit here; it is gone from the UI — see
+            the note on onlyAvailableOnline in DEFAULT_FILTERS. */}
+        <div className="kind-toggles">
+          {[
+            ['Satellites', !filters.hideSatellites, (on) => ({ hideSatellites: !on })],
+            ['Restarts', !filters.hideRestarts, (on) => ({ hideRestarts: !on })],
+            ['Side Events', !filters.hideSideEvents, (on) => ({ hideSideEvents: !on })],
+            ['Online', filters.showOnline !== false, (on) => ({ showOnline: on })],
+          ].map(([label, on, patch]) => (
+            <button key={label} type="button" className={`kind-toggle${on ? ' active' : ''}`} aria-pressed={on}
+                    onClick={() => setFiltersRaw(f => ({ ...f, ...patch(!on) }))}>
+              <span className="kind-toggle-label">{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
