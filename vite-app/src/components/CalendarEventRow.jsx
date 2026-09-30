@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -579,6 +579,23 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const displayName = useDisplayName();
   const rowRef = useRef(null);
 
+  /* Seat the notes (the series name) on the grid however many lines it wraps to: the text is
+     trimmed to cap-top..baseline at a 3r line pitch, and its cell is held to 2r + 3r per extra
+     line, bottom-aligned — so every baseline lands on an r-line and the block is a whole number of
+     r. CSS cannot count wrapped lines, so it is measured after layout (as the dashboard's hero
+     name is). */
+  const notesCellRef = useRef(null);
+  useLayoutEffect(() => {
+    const cell = notesCellRef.current;
+    if (!open || !cell) return;
+    const p = cell.firstElementChild;
+    const r = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--subrow')) || 0;
+    if (!p || !r) return;
+    cell.style.minHeight = '0px';
+    const lines = Math.max(1, Math.round((p.getBoundingClientRect().height - 1.2 * r) / (3 * r)) + 1);
+    cell.style.minHeight = `calc(var(--subrow) * ${2 + (lines - 1) * 3})`;
+  }, [open, tournament.notes]);
+
   /* Live clock (utils/live-clocks.js). A card asks only while it is on screen and its event is
      today's and past its start, so a day of 150 events costs the dozen the user can see. */
   const [onScreen, setOnScreen] = useState(false);
@@ -770,7 +787,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         </span>
                       )}
                       {tournament.game_variant && getGamePills(tournament.game_variant, tournament.event_name).map((g, i) => (
-                        <span key={i} className="cal-meta-line">{g}</span>
+                        <span key={i} className="cal-meta-line"><span>{g}</span></span>
                       ))}
                     </div>
                     <div className="cal-badges-right">
@@ -849,9 +866,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   )}
 
                   {tournament.notes && (
-                    <p style={{fontSize:'calc(var(--gu) * 1.149)', color:'var(--text-muted)', fontStyle:'italic', lineHeight:'calc(var(--subrow) * 2)', margin:0}}>
-                      {tournament.notes}
-                    </p>
+                    <div className="cal-detail-notes-cell" ref={notesCellRef}>
+                      <p className="cal-detail-notes">{tournament.notes}</p>
+                    </div>
                   )}
 
                   <LateRegBar lateRegEnd={tournament.late_reg_end} date={tournament.date} time={tournament.time} venueAbbr={venue.abbr} venue={tournament.venue} />
@@ -862,14 +879,16 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   )}
 
                   {venue.abbr === 'WSOP' && (
-                    <a
-                      href={wsopStructureUrlFor(tournament.event_number)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="cal-structure-link"
-                    >
-                      View Structure Sheet {'\u2197'}
-                    </a>
+                    <div className="cal-structure-cell">
+                      <a
+                        href={wsopStructureUrlFor(tournament.event_number)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="cal-structure-link"
+                      >
+                        View Structure Sheet {'\u2197'}
+                      </a>
+                    </div>
                   )}
                   {venue.abbr !== 'WSOP' && tournament.structure_sheet_path && (() => {
                     // structure_sheet_path may be:
@@ -894,14 +913,16 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                       url = `${API_URL}/schedule-docs/${encodeURIComponent(parts[1])}/${encodeURIComponent(parts[2])}/${encodeURIComponent(parts.slice(3).join('/'))}${fragPart}`;
                     }
                     return (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="cal-structure-link"
-                      >
-                        View Structure Sheet {'\u2197'}
-                      </a>
+                      <div className="cal-structure-cell">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="cal-structure-link"
+                        >
+                          View Structure Sheet {'\u2197'}
+                        </a>
+                      </div>
                     );
                   })()}
 

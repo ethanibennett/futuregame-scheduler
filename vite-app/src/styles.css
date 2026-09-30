@@ -9321,15 +9321,41 @@
       gap: var(--space-xs) var(--space-lg);
       align-items: start;
     }
-    .cal-badges-left { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+    /* The game label ("PLO") is a 2r cell at the top of the 3r badge row, its text trimmed to
+       cap..baseline and bottom-aligned, so its baseline is the row's 2r line — level with the
+       event-number pill's centred text (2.02r), and on the grid even when there is no pill. */
+    .cal-badges-left { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: flex-start; }
+    .cal-badges-left .cal-meta-line { display: flex; align-items: flex-end; height: calc(var(--subrow) * 2); }
+    .cal-badges-left .cal-meta-line > span,
+    .cal-badges-left .cal-meta-line + .cal-meta-line::before {
+      display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
     .cal-badges-right { display: flex; flex-direction: column; gap: var(--space-sm); align-items: flex-start; }
 
+    /* A seated 2r cell: the link is trimmed to cap..baseline and the cell bottom-aligns it, so its
+       baseline is the cell's bottom r-line. (A fixed height on the trimmed link itself holds the
+       text at the TOP of the box — 1.2r down, between r-lines.) */
+    .cal-structure-cell { display: flex; align-items: flex-end; height: calc(var(--subrow) * 2); }
     .cal-structure-link {
-      display: inline-block;
+      display: block;
       font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 3);
+      line-height: calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
       color: var(--accent);
       text-decoration: none;
+    }
+    /* The notes line (the series name, italic): a cell 2r + 3r per wrapped line tall (set by
+       CalendarEventRow after layout), the text trimmed to cap..baseline at a 3r pitch and bottom-
+       aligned, so every baseline is on an r-line. The 3r pitch and the 1r block gap above keep at
+       least 1r between a line's lowest ink (descenders included) and the next line's capitals. */
+    .cal-detail-notes-cell { display: flex; align-items: flex-end; min-height: calc(var(--subrow) * 2); }
+    .cal-detail-notes {
+      margin: 0;
+      font-size: calc(var(--gu) * 1.149);
+      font-style: italic;
+      line-height: calc(var(--subrow) * 3);
+      color: var(--text-muted);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-structure-link:active { opacity: 0.6; }
 
@@ -9455,18 +9481,20 @@
       align-items: stretch;
     }
 
+    /* 6r: 1r above, a 2r icon cell, a 2r label cell whose trimmed label sits on its bottom r-line
+       (r5), 1r below. Centring the icon+label stack put the label's baseline between r-lines. */
     .cal-action-btn, .cal-entries-counter {
       flex: 1;
       height: calc(var(--subrow) * 6);
       box-sizing: border-box;
-      padding: 0 var(--space-xs);
+      padding: var(--subrow) var(--space-xs) 0;
       background: none;
       border: none;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: grid;
+      grid-template-rows: var(--icon-md) calc(var(--subrow) * 2);
+      align-content: start;
+      justify-items: center;
       gap: 0;
       font-family: inherit;
     }
@@ -9490,7 +9518,8 @@
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       color: var(--text-muted);
-      margin-top: var(--space-sm);
+      align-self: end;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-action-btn:active { background: rgba(160,160,160,0.1); }
     .cal-action-btn.remove .cal-action-icon { color: #ef4444; }
@@ -9573,13 +9602,13 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      /* Label (fs-xs) and time (fs-sm) are different sizes, so centering them in
-         the 2r row left their bottoms mismatched and off-grid (+0.07 / +0.20).
-         Force both line boxes to a whole 2r — floors to 15px, which fits inside
-         the 15.42px row — and bottom-align the row (below), so both bottoms land
-         on the same 2r line. No text-box-trim: it's a no-op on a flex item and
-         unsupported on the iOS 15 deploy target, so line-height carries it. */
-      line-height: calc(var(--subrow) * 2);
+      /* Trimmed to cap..baseline and bottom-aligned in the 2r row, so the BASELINE — not the line
+         box — sits on the row's 2r line. A 2r line box put the baseline 0.46r above it (measured
+         2026-09-29). Trimming works here: a flex item is blockified (display:block makes it
+         explicit), and the notes/link cells seat the same way. */
+      display: block;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* The ramp used to run open #b0b0b0 -> soon #909090 -> urgent #707070:
@@ -9598,9 +9627,10 @@
     .late-reg-time {
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
-      /* Same whole-2r line box as the label so both bottoms share the row's
-         lower 2r line (see .late-reg-label). */
-      line-height: calc(var(--subrow) * 2);
+      /* Trimmed and bottom-aligned like the label, so both BASELINES share the row's 2r line. */
+      display: block;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .late-reg-time.open   { color: var(--text-muted); }
