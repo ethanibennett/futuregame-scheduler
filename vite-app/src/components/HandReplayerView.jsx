@@ -1083,15 +1083,16 @@ function getStreetColorClass(streetName) {
 }
 
 // ── Additional analysis helpers ──
-function calcSPR(hand, streetIdx) {
+/* Stack-to-pot at the current step — the hero's stack over the pot as it
+   stands after the action on screen, so it moves with every bet and call
+   (it was frozen at the street's opening pot). Postflop only. */
+function calcSPR(hand, streetIdx, actionIdx = -1) {
   if (streetIdx <= 0) return null;
   // Not in a limit game: with the bet fixed, the stack-to-pot ratio decides nothing.
   const gt = String(hand.gameType || '');
   const cfg = HAND_CONFIG[gt] || HAND_CONFIG[gt.replace(/^Super /, '')];
   if (cfg && cfg.betting === 'fl') return null;
-  const prevStreet = hand.streets[streetIdx - 1];
-  const prevActionCount = prevStreet && prevStreet.actions ? prevStreet.actions.length - 1 : -1;
-  const result = calcPotsAndStacks(hand, streetIdx - 1, prevActionCount);
+  const result = calcPotsAndStacks(hand, streetIdx, actionIdx);
   if (!(result.pot > 0)) return null;
   const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
   const heroStack = result.stacks[heroIdx];
@@ -7137,7 +7138,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                     positioned column (in portrait) so the SPR rides on top of however tall
                     the stacks are, and sits just over the figure when there are none. */}
                 {(() => {
-                  const spr = rSettings.showSPR ? calcSPR(hand, streetIdx) : null;
+                  const spr = rSettings.showSPR ? calcSPR(hand, streetIdx, actionIdx) : null;
                   const chips = rSettings.showChipStacks && displayPot > 0 && !isSplitResult;
                   if (!spr && !chips) return null;
                   return (
