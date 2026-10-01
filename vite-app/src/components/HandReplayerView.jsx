@@ -6681,7 +6681,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      5.5, which is why 7 and 9-max sit a little wider than 6 and 8. */
   const layouts = {
     2:  [seat(CC,RT), seat(CC,RB)],
-    3:  [seat(5.5,RT), seat(CC,RB), seat(10.5,RT)],
+    /* Three-handed: the two opponents take the TOP seat of each side (left and right
+       columns, row 10 — where 9-max's upper side seats sit), not the top run; the hero
+       keeps the bottom. Ring order is unchanged: left, hero, right. */
+    3:  [seat(CL,10), seat(CC,RB), seat(CR,10)],
     4:  [seat(CC,RT), seat(CR,16), seat(CC,RB), seat(CL,16)],
     /* Odd counts (5/7/9) have TWO top seats. A layout is a ring — consecutive
        players must be ADJACENT seats — but these listed top-left first and
