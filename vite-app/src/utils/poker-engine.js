@@ -131,7 +131,9 @@ export function evalLow27(cards) {
   if (vals[0] - vals[4] === 4 && new Set(vals).size === 5) isStraight = true;
   if (isFlush || isStraight || new Set(vals).size < 5) {
     const hi = evalHigh5(cards);
-    return { score: 1e9 + hi.score, name: hi.name + ' (bad low)' };
+    // Named as the made hand alone ("Pair of Kings"), no "(bad low)" suffix (Ethan,
+    // 2026-10-01); the score still ranks it below every real low.
+    return { score: 1e9 + hi.score, name: hi.name };
   }
   const P = 15;
   const score = vals[0] * Math.pow(P, 4) + vals[1] * Math.pow(P, 3) + vals[2] * Math.pow(P, 2) + vals[3] * P + vals[4];
