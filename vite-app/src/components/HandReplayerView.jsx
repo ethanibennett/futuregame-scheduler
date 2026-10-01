@@ -6068,17 +6068,51 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       // NOT url-encoded — the format's commas/slashes are fragment-safe, so this
       // is shorter and the decoder handles encoded or raw. Used if the mint fails
       // (offline / not signed in).
-      let url = SITE_URL + '/#h/' + shorthand;
-      try {
-        const res = await fetch(`${API_URL}/hand-links`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({ shorthand, title }),
-        });
-        if (res.ok) { const d = await res.json(); if (d && d.id) url = SITE_URL + '/h/' + d.id; }
-      } catch (e) { /* keep the fragment fallback */ }
-      await navigator.clipboard.writeText(url);
-      setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000);
+      const fallbackUrl = SITE_URL + '/#h/' + shorthand;
+      const urlPromise = (async () => {
+        try {
+          const res = await fetch(`${API_URL}/hand-links`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ shorthand, title }),
+          });
+          if (res.ok) { const d = await res.json(); if (d && d.id) return SITE_URL + '/h/' + d.id; }
+        } catch (e) { /* keep the fragment fallback */ }
+        return fallbackUrl;
+      })();
+      /* Safari and the iOS app only let a page write the clipboard inside the tap that asked
+         for it, and the short link comes back from the server after that tap is over — so
+         writeText(url) after the fetch was refused, silently, and nothing was copied. The
+         clipboard is claimed NOW, synchronously, with a ClipboardItem whose text is a promise
+         the server's answer fills in (Safari's sanctioned pattern). Fallbacks, in order:
+         writeText once the URL is known (fine where there is no gesture rule), a hidden
+         textarea + execCommand('copy'), and the share sheet. */
+      let copied = false;
+      if (typeof window.ClipboardItem === 'function' && navigator.clipboard && navigator.clipboard.write) {
+        try {
+          const item = new window.ClipboardItem({ 'text/plain': urlPromise.then(u => new Blob([u], { type: 'text/plain' })) });
+          await navigator.clipboard.write([item]);
+          copied = true;
+        } catch (e) { /* fall through */ }
+      }
+      const url = await urlPromise;
+      if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+        try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* fall through */ }
+      }
+      if (!copied) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = url; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, url.length);
+          copied = document.execCommand('copy');
+          ta.remove();
+        } catch (e) { /* fall through */ }
+      }
+      if (!copied && navigator.share) {
+        try { await navigator.share({ url }); copied = true; } catch (e) { /* dismissed */ }
+      }
+      if (copied) { setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); }
+      else console.error('Share link: no clipboard path worked for', url);
     } catch (e) { console.error('Share link error:', e); }
     // The live look, not the one at mount: these deps were [hand, token], so a felt
     // or splay changed after opening the hand never reached the link.
