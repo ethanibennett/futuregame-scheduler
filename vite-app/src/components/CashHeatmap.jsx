@@ -19,7 +19,7 @@ const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-seri
 const SEL_KEY = 'cashHeatmapSel';
 const METRIC_KEY = 'cashHeatmapMetric';
 const gLabel = (g) => `${g.stakes} ${g.gameType}`;
-const hourLabel = (h) => h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`;
+const hourLabel = (h) => h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
 
 // Compact avg-tables label for a tiny cell: "1.8", "2", "12", ".5", "0".
 function fmtTables(n) {
