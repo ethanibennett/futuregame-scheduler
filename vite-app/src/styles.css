@@ -6435,8 +6435,8 @@
     .replayer-dead-strip-cards > *:not(:first-child) { margin-left: calc(var(--gu) * var(--dead-ml, 0.2214)); }
     .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }
 
-    /* Bar: 1r pad, the 6r transport, 1r, the 5r action row, [the 2r note],
-       1r pad = 14r (16r with the note). Was 15.46r on a 0.30r phase. */
+    /* Bar: 1r pad, the 6r transport, 1r, the 4r action row, [the 2r note],
+       1r pad = 13r (15r with the note). Was 15.46r on a 0.30r phase. */
     .replayer-fullbleed .replayer-bottom-fixed {
       padding: var(--subrow) 0;
       gap: 0;
@@ -6479,53 +6479,54 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    /* Action row: 35 one-g tracks from x = 1g, 5r tall. The four-button row
-       takes the four primary columns; with Solve (admin) the five buttons sit
-       on subcolumn lines with uniform 2g gaps. */
+    /* Action row: 35 one-g tracks from x = 1g, 4r tall, 1g between every two
+       buttons. Four buttons: 8g each (8+1+8+1+8+1+8 = 35). With Solve (admin):
+       Back 5g, Edit 4g, Solve 12g, Share 6g, gear 4g (5+1+4+1+12+1+6+1+4 = 35). */
     .replayer-fullbleed .replayer-actions-bar {
       display: grid;
       grid-template-columns: repeat(35, var(--gu));
-      grid-template-rows: calc(var(--subrow) * 5);
+      grid-template-rows: calc(var(--subrow) * 4);
       width: calc(var(--gu) * 35);
       margin: var(--subrow) auto 0;
       gap: 0;
     }
     .replayer-fullbleed .replayer-actions-bar > * {
       grid-row: 1;
-      height: calc(var(--subrow) * 5); min-width: 0; min-height: 0;
+      height: calc(var(--subrow) * 4); min-width: 0; min-height: 0;
       box-sizing: border-box; margin: 0;
     }
     .replayer-fullbleed .replayer-actions-bar .rab-back  { grid-column: 1 / 9; }
     .replayer-fullbleed .replayer-actions-bar .rab-edit  { grid-column: 10 / 18; }
     .replayer-fullbleed .replayer-actions-bar .rab-share { grid-column: 19 / 27; }
     .replayer-fullbleed .replayer-actions-bar .rab-gear  { grid-column: 28 / 36; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 5; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-edit  { grid-column: 7 / 10; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-solve { grid-column: 12 / 23; }
-    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 30; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 6; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-edit  { grid-column: 7 / 11; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-solve { grid-column: 12 / 24; }
+    .replayer-fullbleed .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 31; }
     .replayer-fullbleed .replayer-actions-bar.has-solve .rab-gear,
     .replayer-fullbleed .replayer-actions-bar.is-linked .rab-gear  { grid-column: 32 / 36; }
-    /* Text seated 3r down a 5r button: caps (1.18r at --fs-sm) span
-       1.82..3r, centre 2.41 against the box's 2.5. The hairline is an inset
-       shadow so it adds nothing to the box. */
+    /* Text centred both ways: the label is trimmed to cap-top..baseline with
+       none of .rs-t's 2r line box put back, so centring the box centres the
+       capitals. The hairline is an inset shadow so it adds nothing to the box. */
     .replayer-fullbleed .replayer-actions-bar .btn {
-      display: flex; align-items: flex-end; justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       gap: var(--space-xs);
-      padding: 0 0 calc(var(--subrow) * 2);
+      padding: 0;
       border: 0; line-height: normal;
     }
+    .replayer-fullbleed .replayer-actions-bar .btn .rs-t { padding-top: 0; line-height: 1; }
     .replayer-fullbleed .replayer-actions-bar .btn-ghost { box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
     .replayer-fullbleed .replayer-actions-bar .btn .rs-t { white-space: nowrap; }
     .replayer-fullbleed .replayer-actions-bar .btn svg,
     .replayer-fullbleed .replayer-actions-bar .replayer-gear-btn svg {
       width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); flex: none;
     }
-    /* The gear joins the row's shape: a 4g x 5r (8g x 5r) rounded rect, its
-       glyph on the text line (1..3r) like Solve's. */
+    /* The gear joins the row's shape: a 4g x 4r (8g x 4r) rounded rect, its
+       glyph centred like the labels. */
     .replayer-fullbleed .replayer-actions-bar .replayer-gear-btn {
       width: auto; border: 0; border-radius: var(--radius-sm);
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
-      align-items: flex-start; padding-top: var(--subrow);
+      display: flex; align-items: center; justify-content: center; padding: 0;
     }
     .replayer-fullbleed .replayer-bar-note {
       width: calc(var(--gu) * 35); height: calc(var(--subrow) * 2);
