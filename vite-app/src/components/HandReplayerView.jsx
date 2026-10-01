@@ -7897,13 +7897,13 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           });
         })}
       </div>
-      {/* Dead cards in the 4r under the table (portrait): a 4g label, then 4r
-          cards on a 2.25g pitch that tightens when the list would pass 28g, so a
-          long stud list still fits 2g..35g. */}
+      {/* Dead cards under the table (portrait): the label on its own 2r line, the
+          4r cards directly beneath it from the same left edge, on a 2.25g pitch
+          that tightens when the list would pass the full 2g..35g (33g). */}
       {!isLandscape && deadCards.length > 0 && (() => {
         const CARD_G = 2.0286;   // 4r at the artwork's 0.7143 ratio, in g
         const n = deadCards.length;
-        const pitch = n > 1 ? Math.min(2.25, (28 - CARD_G) / (n - 1)) : 0;
+        const pitch = n > 1 ? Math.min(2.25, (33 - CARD_G) / (n - 1)) : 0;
         return (
           <div className="replayer-dead-strip" aria-label={'Dead cards: ' + deadCards.join(' ')}>
             <span className="replayer-dead-strip-label"><span>Dead</span></span>

@@ -6413,21 +6413,22 @@
        foot rather than taking height), so the table is that height less 4r:
        93r at 402x874 (bar top 97r - 4r, top at 0). No top margin. The width (33g) is set from the slot, not from this. */
     .replayer-fullbleed .replayer-table { height: calc(100cqh - calc(var(--subrow) * 4)); margin-top: 0; }
-    /* Dead cards (stud, draw) in the 4r between the table and the navigation:
-       2g..35g, pinned to the slot's foot, above the strip region that overlaps
-       it. A 4g label seated 2r down, 1g, then 4r cards. */
+    /* Dead cards (stud, draw), 2g..35g, pinned to the slot's foot: the label on a
+       2r line (baseline on its foot), 1r of space, then the 4r cards from the same
+       left edge. 7r tall: the cards fill the 4r under the table and the label line
+       sits in the table box above them, clear of the rail and the hero (both end
+       6r higher, measured). It was a 4g label beside the cards, seated 2r down. */
     .replayer-fullbleed .replayer-table-slot { position: relative; }
     .replayer-dead-strip {
       position: absolute; left: calc(var(--gu) * 2); right: calc(var(--gu) * 2); bottom: 0;
-      height: calc(var(--subrow) * 4);
-      display: flex; align-items: stretch; gap: var(--gu);
+      height: calc(var(--subrow) * 7);
+      display: flex; flex-direction: column; align-items: stretch; gap: var(--subrow);
       z-index: calc(var(--z-raised) + 1);
       pointer-events: none;
     }
     .replayer-dead-strip-label {
-      flex: 0 0 calc(var(--gu) * 4);
+      flex: 0 0 calc(var(--subrow) * 2);
       display: flex; align-items: flex-end;
-      padding-bottom: calc(var(--subrow) * 2); box-sizing: border-box;
     }
     .replayer-dead-strip-label > span {
       display: block; line-height: 1;
@@ -6435,7 +6436,7 @@
       letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-muted);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    .replayer-dead-strip-cards { flex: 1 1 auto; min-width: 0; display: flex; align-items: stretch; }
+    .replayer-dead-strip-cards { flex: 0 0 calc(var(--subrow) * 4); min-width: 0; display: flex; align-items: stretch; }
     .replayer-dead-strip-cards > * {
       flex: none; height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857);
       border-radius: 7.1%; opacity: 0.85;
