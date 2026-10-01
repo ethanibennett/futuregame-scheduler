@@ -6399,6 +6399,11 @@
     /* The rail is the felt's outline pushed out by --rail-w on BOTH axes, so it is one
        thickness all the way round; 2g here (was 5.6cqmin, about 1.85g on this table). */
     .replayer-fullbleed .replayer-table { --plaque-w: calc(var(--gu) * 8); --rail-w: calc(var(--gu) * 2); }
+    /* The drawn table on whole g: the felt inset was 12.5% of the 35g box (4.375g), so the rail
+       ran 3.374g..33.626g. A 4g inset puts the rail's outer edge on 3g and 34g (3g clear each
+       side of the screen) and the felt on 5g..32g. Seats are placed on the box's 16x32 grid, not
+       against the felt, so they don't move. */
+    .replayer-fullbleed .replayer-table { --felt-x: calc(var(--gu) * 4); }
     /* Height = whatever leaves 4r clear above the hand navigation. The slot's
        content box ends at the transport bar's top (the strip region overlaps its
        foot rather than taking height), so the table is that height less 4r:
