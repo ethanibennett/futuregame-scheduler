@@ -41,6 +41,15 @@ export function cardLocations(hand, env) {
   return locs;
 }
 
+/* How many cards a location should hold, where the game says (used to read
+   unknown cards written as single x's or as xx pairs). */
+function expectedCount(hand, env, loc) {
+  if (loc.kind === 'board') return env.category === 'community' ? streetDef(hand.gameType).boardCards[loc.si] : undefined;
+  if (loc.kind === 'hero') return env.isStud ? (loc.si === 0 ? 3 : 1) : (loc.si === 0 ? env.cfg.heroCards : undefined);
+  if (loc.kind === 'opp') return env.isStud ? undefined : (loc.si === 0 ? env.cfg.heroCards : undefined);
+  return undefined;
+}
+
 /* Is this location one the replayer reads as a dealt card? */
 function isLiveLocation(loc, env) {
   if (loc.kind === 'hero' || loc.kind === 'opp') return env.isStud || loc.si === 0;
@@ -54,7 +63,7 @@ export function heroCardRules(hand, env, out) {
   const field = 'streets.0.cards.hero';
   const expect = env.isStud ? 3 : env.cfg.heroCards;
   const key = [STAGE.heroCards, 0];
-  const bad = notationProblem(s);
+  const bad = notationProblem(s, expect);
   // Face-down cards stand for cards not known, so the suit question that would
   // follow them is answered in the same breath.
   const unknownAnswer = (value) => ({ op: 'batch', ops: [{ op: 'set', path: field, value }, { op: 'dismiss', id: 'cards:hero-suits' }] });
@@ -125,7 +134,7 @@ export function cardRules(hand, env, out) {
   const badPaths = new Set();
   locs.forEach((loc, li) => {
     if (loc.path === 'streets.0.cards.hero') return; // heroCardRules
-    const bad = notationProblem(loc.str);
+    const bad = notationProblem(loc.str, expectedCount(hand, env, loc));
     if (!bad) return;
     badPaths.add(loc.path);
     if (bad.unknown) {
@@ -286,7 +295,7 @@ export function boardRules(hand, env, out, ctx) {
   }
   const def = streetDef(hand.gameType);
   // A board written with "xx" for unnamed cards still has its count.
-  const counts = streets.map(st => { const bad = notationProblem(st.cards.board); if (!bad) return cardsOf(st.cards.board).length; return bad.unknown ? bad.known.length + bad.unknown : null; });
+  const counts = streets.map((st, si) => { const bad = notationProblem(st.cards.board, def.boardCards[si]); if (!bad) return cardsOf(st.cards.board).length; return bad.unknown ? bad.known.length + bad.unknown : null; });
   if (counts.some(c => c == null)) return; // notation first
   const total = counts.reduce((a, b) => a + b, 0);
   if (total > 5) {

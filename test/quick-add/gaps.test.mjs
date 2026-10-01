@@ -448,8 +448,15 @@ test('a missing stack for a player who acted blocks; same as hero first', () => 
   const g = gap(h, 'stack:2');
   ok(g.blocking); eq(g.options[0].value, { op: 'set', path: 'players.2.startingStack', value: 20000 });
   ok(/How deep was Cal/.test(g.question));
-  const h2 = nlh6max(); delete h2.players[0].startingStack;
-  ok(!gap(h2, 'stack:0').blocking, 'a seat that only folded does not block');
+  // Seats that only folded share one optional question.
+  const h2 = nlh6max(); delete h2.players[0].startingStack; delete h2.players[1].startingStack;
+  ok(!ids(h2).includes('stack:0'));
+  const g2 = gap(h2, 'stacks:others');
+  ok(g2 && !g2.blocking, 'a seat that only folded does not block');
+  ok(/Alex and Ben/.test(g2.question), g2.question);
+  const filled = answerFirst(h2, g2);
+  eq([filled.players[0].startingStack, filled.players[1].startingStack], [20000, 20000]);
+  eq(ids(applyAnswer(h2, g2, g2.options[g2.options.length - 1].value)), [], 'or left blank');
 });
 
 test('a zero stack is impossible', () => {
@@ -1091,6 +1098,158 @@ test('a player whose position is null does not trip the layout check', () => {
   const h = nlh6max(); h.quickAdd = { tableSize: 6 };
   h.players[0].position = null; h.players[0].name = 'Opp 1';
   ok(!ids(h).includes('structure'));
+});
+
+// ═════════════════════════════════════════════════════════════════════════
+// 12c. Lessons from the corpus (test/quick-add/corpus, part D's --oracle run)
+// ═════════════════════════════════════════════════════════════════════════
+test('unknown cards written as single x or as xx pairs are missing cards', () => {
+  const p = plo6max(); p.streets[0].cards.hero = 'AxAxxx'; // Ax Ax and two unknown (the corpus's form)
+  const g = gap(p, 'cards:hero');
+  eq(g.kind, 'missing'); ok(/Only 2 of your 4/.test(g.question), g.question);
+  eq(answerFirst(p, g).streets[0].cards.hero, 'AxAxAxAx');
+  const n = nlhHeadsUp(); n.streets[0].cards.hero = 'XxXx'; // hand-history style
+  const gn = gap(n, 'cards:hero');
+  eq(gn.kind, 'missing'); eq(answerFirst(n, gn).streets[0].cards.hero, 'AxAx');
+  const b = nlh6max(); b.streets[1].cards.board = 'Ah9dx'; // a flop rag nobody named
+  const gb = gap(b, 'notation:streets.1.cards.board');
+  eq(gb.kind, 'missing'); eq(answerFirst(b, gb).streets[1].cards.board, 'Ah9dAx');
+});
+
+test('hero cards with ranks but no suits get an optional suits question', () => {
+  const h = nlh6max(); h.streets[0].cards.hero = 'AxKx';
+  const g = gap(h, 'cards:hero-suits');
+  ok(g && !g.blocking); eq(g.kind, 'missing');
+  ok(!ids(answerFirst(h, g)).includes('cards:hero-suits'));
+});
+
+test('stud: the bring-in by the wrong door card is questioned, not blocked', () => {
+  const h = studHi(); h.streets[0].cards.opponents[0] = '3c'; // Pia's 3c is no longer lowest...
+  h.streets[0].cards.hero = 'AsKd2h';                        // ...the hero's 2h is
+  const g = gap(h, 'bringin-door');
+  ok(g && !g.blocking); eq(g.options[0].value.action.player, 0);
+});
+
+test('stud: an open pair on 4th street allows the small bet as well as the big', () => {
+  const h = studHi(); h.streets[1].cards.hero = 'Qd'; // Qh door + Qd: an open pair
+  eq(blocking(findGaps(h)).map(g => g.id), [], 'the small bet stands');
+  h.streets[1].actions = [A(0, 'bet', 400), A(1, 'fold'), A(3, 'call', 400)];
+  eq(blocking(findGaps(h)).map(g => g.id), [], 'and so does the big one');
+});
+
+test('stud: shown hidden cards may sit on 7th street', () => {
+  const h = studHi(); h.streets[0].cards.opponents[2] = 'Jc'; h.streets[4].cards.opponents[2] = 'AhAcKc';
+  eq(findGaps(h).map(g => g.id), []);
+});
+
+test('stud: a later street is opened by whoever the description says acted first', () => {
+  const h = razz(); // aces up are the best razz board, though the replayer scores them high
+  h.streets[1].cards.hero = 'As'; h.streets[0].cards.hero = 'Kh2d3c'; h.streets[0].cards.opponents[0] = 'Qd';
+  eq(blocking(findGaps(h)).map(g => g.id), []);
+});
+
+test('silent seats that never act fold without blocking (auto)', () => {
+  const s = studHi(); s.players.push(P('Sy', 'Seat 5', 12000));
+  s.streets.forEach(st => st.cards.opponents.push(''));
+  // Order from the bring-in: Pia, Quin, Rex, Sy, Hero — Sy is skipped before the hero's complete.
+  const g = gap(s, 'action:0:3');
+  ok(g && !g.blocking && g.auto, JSON.stringify(findGaps(s)));
+  eq(g.options[0].value.actions, [A(4, 'fold')]);
+  eq(blocking(findGaps(s)).map(x => x.id), [], 'the rest of the hand is still checked');
+  // A seat that plays later is not silent: that one still blocks.
+  const h = nlh6max(); h.streets[0].actions = [A(2, 'raise', 500), A(3, 'raise', 1500), A(2, 'call', 1000)];
+  h.streets[0].cards.opponents[0] = 'AdAh'; // Alex holds cards: described, not silent
+  ok(gap(h, 'action:0:0').blocking);
+});
+
+test('a seat filled by deduction for a player who named none is asked about', () => {
+  const h = {
+    gameType: 'NLH', gameMode: 'mtt', blinds: { sb: 500, bb: 1000, ante: 1000 },
+    players: [{ name: 'Sam', position: 'SB', startingStack: null }, { name: 'Bea', position: 'BB', startingStack: 30000 }, { name: 'Hero', position: '', startingStack: 25000 }],
+    heroIdx: 2,
+    streets: [St('Preflop', 'AsKd', ['', ''], '', [A(2, 'raise', 2200), A(0, 'fold'), A(1, 'call', 1200)]), St('Flop', '', ['', ''], 'Th8h4c', []), St('Turn', '', ['', ''], '', []), St('River', '', ['', ''], '', [])],
+  };
+  const g = gap(h, 'seat:2');
+  ok(g && g.blocking); eq(g.kind, 'missing'); eq(g.field, 'players.2.position');
+});
+
+test('a stack the ante or blind uses up, for a player who bets later', () => {
+  const h = nlhHeadsUp(); h.players[1].startingStack = 80;
+  const g = gap(h, 'stack:1');
+  eq(g.kind, 'impossible'); ok(g.blocking);
+  ok(g.options.every(o => o.value.value > 100));
+});
+
+test('an ante bigger than the big blind', () => {
+  const h = nlh6max(); h.blinds.ante = 5000;
+  const g = gap(h, 'blinds.ante');
+  ok(g.blocking); eq(g.kind, 'impossible'); eq(g.options[0].value.value, 200);
+});
+
+test('pot limit counts the big blind ante in the pot', () => {
+  const h = plo6max(); h.gameMode = 'mtt'; h.blinds = { sb: 300, bb: 600, ante: 600 };
+  h.players.forEach(p => { p.startingStack = 60000; });
+  h.streets[0].actions = [A(0, 'fold'), A(1, 'fold'), A(2, 'fold'), A(3, 'raise', 2700), A(4, 'fold'), A(5, 'call', 2100)];
+  h.streets[1].actions = [A(5, 'check'), A(3, 'bet', 3000), A(5, 'fold')];
+  h.streets[2].actions = []; h.streets[3].actions = []; h.streets[2].cards.board = ''; h.streets[3].cards.board = '';
+  eq(blocking(findGaps(h)).map(g => g.id), []);
+});
+
+test('a hand that went to showdown needs its board even when the betting check stopped early', () => {
+  const h = nlh6max();
+  h.streets[0].actions[6] = A(2, 'call', 9999); // the betting check stops here, preflop
+  h.streets[2].actions = []; h.streets[3].actions = []; h.streets[2].cards.board = '';
+  // No action on the turn, but a winner and Cal's shown cards say it was dealt.
+  const got = ids(h);
+  ok(got.includes('action:0:6') && got.includes('board:2'), got.join(' '));
+});
+
+test('previews: with the game unknown, the rest is listed after it, without options', () => {
+  const h = nlh6max(); delete h.gameType; h.streets[0].cards.hero = '';
+  const gs = findGaps(h);
+  eq(gs[0].id, 'game');
+  const later = gs.find(g => g.id === 'cards:hero');
+  ok(later && later.provisional && !later.options && later.allowFree);
+});
+
+test('previews: with the table size unknown, later streets are previewed', () => {
+  const h = narratorHand(); h.streets[1].actions[1] = { player: 1, action: 'bet', amount: null };
+  const gs = findGaps(h);
+  eq(gs[0].id, 'table-size');
+  const p = gs.find(g => g.id === 'action:1:1');
+  ok(p && p.provisional && !p.options, gs.map(g => g.id).join(' '));
+  ok(!gs.some(g => g.provisional && /^stack/.test(g.id)), 'nothing indexed by seat is previewed');
+});
+
+/* Random damage to every complete hand: findGaps and applyAnswer must never
+   throw, and answering the first gap again and again must keep making
+   progress. Seeded, so a failure reproduces. */
+test('fuzz: damaged hands never throw and answering always progresses', () => {
+  let seed = 20261001;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const WEIRD = [null, undefined, -1, 0, 1, 2, 7, 99999, 'x', '', 'AhAh', 'MUCK', 'raise', 'Ah', {}, [], true, 0.5, 'BTN', 'UTG', 'Txx'];
+  const paths = (o, pre = '', acc = []) => { if (o && typeof o === 'object') for (const k of Object.keys(o)) { const p = pre ? pre + '.' + k : k; acc.push(p); paths(o[k], p, acc); } return acc; };
+  const setP = (o, p, v) => { const ks = p.split('.'); let c = o; for (let i = 0; i < ks.length - 1; i++) { c = c[ks[i]]; if (c == null || typeof c !== 'object') return; } if (v === undefined) delete c[ks[ks.length - 1]]; else c[ks[ks.length - 1]] = v; };
+  const makers = Object.values(COMPLETE);
+  let walked = 0;
+  for (let it = 0; it < 400; it++) {
+    const h = makers[it % makers.length]();
+    const ps = paths(h);
+    for (let j = 0; j < 1 + Math.floor(rnd() * 3); j++) setP(h, pick(ps), pick(WEIRD));
+    let cur = h;
+    const seen = new Set();
+    for (let step = 0; step < 25; step++) {
+      const g = findGaps(cur)[0];
+      if (!g || !g.options || !g.options.length) break;
+      const sig = g.id + '|' + g.question + '|' + JSON.stringify(cur);
+      ok(!seen.has(sig), 'no progress on ' + g.id + ': ' + g.question);
+      seen.add(sig);
+      cur = applyAnswer(cur, g, g.options[0].value);
+      walked++;
+    }
+  }
+  ok(walked > 500, 'walked ' + walked);
 });
 
 // ═════════════════════════════════════════════════════════════════════════

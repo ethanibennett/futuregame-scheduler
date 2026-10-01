@@ -5,7 +5,7 @@
 import { gameConfig, streetDef, guessGameType, COMMON_GAMES, positionLabels } from './game.js';
 import { canonicalPosition, seatHand, positionsCanonical, fittingTableSizes, positionMode, pendingTableSize } from './seats.js';
 import { validStack } from './betting.js';
-import { STAGE, makeGap, fmt, niceRound, playerName, listWords, num } from './common.js';
+import { STAGE, makeGap, fmt, niceRound, playerName, listWords, num, dismissOption } from './common.js';
 import { cardsOf } from './cards.js';
 
 const isIdx = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
@@ -115,8 +115,23 @@ export function blindRules(hand, env, out) {
       }, key(1)));
     }
   }
+  // An ante bigger than the big blind (in stud, the small bet) is a typo or a
+  // misheard number, not a structure anybody plays.
+  const anteNow = num(b.ante);
+  if (anteNow > 0 && (env.isStud ? anteNow >= bb : anteNow > bb)) {
+    const guess = env.isStud ? niceRound(bb / 8) : bb;
+    out.push(makeGap({
+      id: 'blinds.ante', kind: 'impossible', field: 'blinds.ante',
+      question: 'An ante of ' + fmt(anteNow) + ' is bigger than the ' + (env.isStud ? 'small bet' : 'big blind') + ' (' + fmt(bb) + '). What was the ante?',
+      options: [
+        { label: env.isStud ? fmt(guess) + ' each' : 'A big blind ante of ' + fmt(guess), value: { op: 'set', path: 'blinds.ante', value: guess } },
+        { label: 'No ante', value: { op: 'set', path: 'blinds.ante', value: 0 } },
+      ],
+      allowFree: true, blocking: true,
+    }, key(2)));
+  }
   const qa = hand.quickAdd || {};
-  const potPending = hand.streets.some(st => (st.actions || []).some(a => a && a.amount == null && a.potFraction != null));
+  const potPending =hand.streets.some(st => (st.actions || []).some(a => a && a.amount == null && a.potFraction != null));
   if (b.ante == null && !(qa.antePerPlayer != null && !env.isStud)) {
     // A size said as a fraction of the pot cannot be worked out without the ante.
     if (env.isStud) {
@@ -355,7 +370,6 @@ export function stackRules(hand, env, out) {
     if (p.startingStack == null && num(p.startingStackBB) > 0 && !bbKnown) continue;
     missing.push(i);
   }
-  if (!missing.length) return;
   const bb = env.bb || 0;
   const unit = env.isStud ? ((env.bigBet || bb * 2)) : bb;
   const deep = (k) => (env.isStud ? unit * k * 3 / 10 : unit * k); // stud stacks in big bets: 30, 15, 60
@@ -363,6 +377,29 @@ export function stackRules(hand, env, out) {
   const depthLabel = (k) => (env.isStud ? (k * 3 / 10) + ' ' + unitWord : k + ' ' + unitWord);
   const acts = (i) => hand.streets.some(st => (st.actions || []).some(a => a && a.player === i && a.action !== 'fold'));
   const hero = hand.heroIdx;
+
+  // A stack the forced bets use up cannot then bet, call or bring it in.
+  for (let i = 0; i < n; i++) {
+    const p = hand.players[i];
+    if (!validStack(p.startingStack) || missing.includes(i)) continue;
+    const ante = env.ante || 0;
+    const forced = env.isStud ? ante
+      : (p.position === 'BB' ? (env.bb || 0) + ante : (p.position === 'SB' || p.position === 'BTN/SB') ? (env.sb || 0) : 0);
+    const later = hand.streets.some(st => (st.actions || []).some(a => a && a.player === i && a.action !== 'fold' && a.action !== 'check'));
+    if (forced > 0 && p.startingStack <= forced && later) {
+      const name = playerName(hand, i);
+      const opts = [];
+      const heroStack = isIdx(hero, n) && validStack(hand.players[hero].startingStack) ? hand.players[hero].startingStack : null;
+      if (heroStack != null && i !== hero && heroStack > forced) opts.push({ label: 'Same as ' + playerName(hand, hero) + ' (' + fmt(heroStack) + ')', value: { op: 'set', path: 'players.' + i + '.startingStack', value: heroStack } });
+      if (bbKnown && deep(100) > forced) opts.push({ label: depthLabel(100) + ' (' + fmt(deep(100)) + ')', value: { op: 'set', path: 'players.' + i + '.startingStack', value: deep(100) } });
+      out.push(makeGap({
+        id: 'stack:' + i, kind: 'impossible', field: 'players.' + i + '.startingStack',
+        question: (i === hero ? 'Your' : name + '’s') + ' stack of ' + fmt(p.startingStack) + ' is used up by the ' + (env.isStud ? 'ante' : 'blind') + ' (' + fmt(forced) + '), but ' + (i === hero ? 'you' : name) + ' bet later. How deep ' + (i === hero ? 'were you' : 'was ' + name) + '?',
+        options: opts, allowFree: true, blocking: true,
+      }, [STAGE.stacks, i]));
+    }
+  }
+  if (!missing.length) return;
 
   if (missing.length === n && n > 1 && !hand.players.some(p => num(p.startingStackBB) > 0)) {
     const opts = [];
@@ -380,7 +417,26 @@ export function stackRules(hand, env, out) {
   const known = hand.players.map((p, i) => (validStack(p.startingStack) ? p.startingStack : null));
   const heroStack = isIdx(hero, n) ? known[hero] : null;
   const biggest = Math.max(...known.filter(v => v != null));
+  /* Players who never put a chip in by choice (they only folded) usually have
+     no stated stack, and the replay does not need one. They get one
+     skippable question between them, not one each. */
+  const quiet = missing.filter(i => i !== hero && !acts(i) && hand.players[i].startingStack == null && !(num(hand.players[i].startingStackBB) > 0));
+  if (quiet.length && !env.dismissed.has('stacks:others')) {
+    const setAll = (v) => ({ op: 'setMany', sets: quiet.map(i => ({ path: 'players.' + i + '.startingStack', value: v })) });
+    const opts = [];
+    if (heroStack != null) opts.push({ label: 'Same as ' + playerName(hand, hero) + ' (' + fmt(heroStack) + ')', value: setAll(heroStack) });
+    if (unit > 0) opts.push({ label: depthLabel(100) + ' (' + fmt(deep(100)) + ')', value: setAll(deep(100)) });
+    opts.push(dismissOption('Leave them blank'));
+    out.push(makeGap({
+      id: 'stacks:others', kind: 'missing', field: 'players.*.startingStack',
+      question: quiet.length === 1
+        ? 'How deep was ' + playerName(hand, quiet[0]) + '? (Only folded, so it is optional.)'
+        : 'No stacks for ' + listWords(quiet.map(i => playerName(hand, i))) + ', who only folded. Give them all the same?',
+      options: opts, allowFree: quiet.length === 1, blocking: false,
+    }, [STAGE.stacks, 50]));
+  }
   for (const i of missing) {
+    if (quiet.includes(i)) continue;
     const raw = hand.players[i].startingStack;
     const isHero = i === hero;
     const name = playerName(hand, i);

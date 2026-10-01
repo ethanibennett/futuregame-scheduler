@@ -53,7 +53,7 @@ const SUITS = 'hdcsx';
    face-down K — a different hand from the one typed.
    Returns null when the string is fine, else { reason, guess } where guess is
    a cleaned string to offer (or null). */
-export function notationProblem(str) {
+export function notationProblem(str, expected) {
   if (typeof str !== 'string' || !str.trim()) return null;
   if (isMuck(str)) return null;
   const stripped = str.replace(/[\s,]/g, '');
@@ -65,11 +65,11 @@ export function notationProblem(str) {
     else if (SUITS.includes(ch.toLowerCase())) suits++;
   }
   if (!bad.length && ranks === suits) return null;
-  /* "xx" (or "??") for a card nobody saw: the replayer's parser drops a card
-     with no rank, so the hand would come up a card short. That is a card the
+  /* "x" or "xx" (or "?") for a card nobody saw: the replayer's parser drops a
+     card with no rank, so the hand would come up short. That is a card the
      player does not know — missing, not mistyped — and its face-down form is
      'Ax'. */
-  const tokens = tokenizeCards(stripped);
+  const tokens = tokenizeCards(stripped, expected);
   if (tokens && tokens.some(t => t === '??')) {
     return {
       reason: 'unknown cards',
@@ -82,18 +82,43 @@ export function notationProblem(str) {
   return { reason, guess: cleanCardGuess(str) };
 }
 
-/* Interleaved cards, with "xx"/"??" for a wholly unknown card, as two-char
-   tokens ('??' for unknown); null when the string is not that. */
-function tokenizeCards(s) {
-  const out = [];
+/* Interleaved cards with wholly unknown cards among them, as two-char tokens
+   ('??' for an unknown card); null when the string is not that. An unknown
+   card is written two ways: one 'x' each ("Tx9xx" is Tx 9x and one unknown —
+   the corpus's form) or 'xx'/'Xx' each (hand-history style, "XxXx"). Runs of
+   x's are read whichever way makes the count come out to `expected`; with no
+   count to go by, an even run is pairs. */
+function tokenizeCards(s, expected) {
+  const known = [];
+  const runs = []; // [{ at: index in the token list, len }]
   let i = 0;
   while (i < s.length) {
     const a = s[i], b = s[i + 1];
-    if (b === undefined) return null;
-    if (RANKS.includes(a.toUpperCase()) && SUITS.includes(b.toLowerCase())) { out.push(a.toUpperCase() + b.toLowerCase()); i += 2; continue; }
-    if (/[xX?]/.test(a) && /[xX?]/.test(b)) { out.push('??'); i += 2; continue; }
+    if (RANKS.includes(a.toUpperCase()) && b !== undefined && SUITS.includes(b.toLowerCase())) {
+      known.push(a.toUpperCase() + b.toLowerCase()); i += 2; continue;
+    }
+    if (/[xX?]/.test(a)) {
+      let j = i;
+      while (j < s.length && /[xX?]/.test(s[j])) j++;
+      runs.push({ len: j - i, pos: known.length });
+      i = j; continue;
+    }
     return null;
   }
+  const xs = runs.reduce((t, r) => t + r.len, 0);
+  if (!xs) return known;
+  const allEven = runs.every(r => r.len % 2 === 0);
+  let pairs;
+  if (Number.isInteger(expected) && allEven && known.length + xs / 2 === expected) pairs = true;
+  else if (Number.isInteger(expected) && known.length + xs === expected) pairs = false;
+  else pairs = allEven;
+  const out = [];
+  let k = 0;
+  for (const r of runs.sort((x, y) => x.pos - y.pos)) {
+    while (k < r.pos) out.push(known[k++]);
+    for (let u = 0; u < (pairs ? r.len / 2 : r.len); u++) out.push('??');
+  }
+  while (k < known.length) out.push(known[k++]);
   return out;
 }
 
