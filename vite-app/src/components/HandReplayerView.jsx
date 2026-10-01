@@ -7,7 +7,7 @@ import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, ass
          bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
          seatOrderFromButton } from '../utils/poker-engine.js';
-import { encodeHand, decodeHand, GAME_CODES } from '../utils/hand-shorthand.js';
+import { encodeHand, decodeHand, GAME_CODES, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import { playTableSound } from '../utils/replay-sound.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -5083,7 +5083,13 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const [drawDiscardAnims, setDrawDiscardAnims] = useState([]);
 
   // Settings
-  const _theme = useReplayerSetting('Theme', 'default');
+  /* A shared link carries the sharer's table look (hand.visuals, from the link's 'v'
+     part). Each value seeds its setting for this view without being written back,
+     exactly as the felt colour already did, so the link shows the sharer's table and
+     the viewer's own preferences are untouched. A hand without it seeds nothing. */
+  const _vis = (hand && hand.visuals) || null;
+  const vs = k => (_vis && _vis[k] !== undefined ? _vis[k] : undefined);
+  const _theme = useReplayerSetting('Theme', 'default', vs('theme'));
   const _cardBack = useReplayerSetting('CardBack', 'default');
   const _cardBackColor = useReplayerSetting('CardBackColor', '#1a3a6e');
   /* 99: the control reads "High-Contrast Deck" and applies .hc-deck, while
@@ -5095,48 +5101,48 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const _hcDeck = useReplayerSetting('HighContrastDeck', (() => {
     const legacy = localStorage.getItem('replayerFourColorDeck');
     return legacy === null ? false : legacy === 'true';
-  })());
+  })(), vs('highContrastDeck'));
   /* Defaulted off, which meant PotChipVisual, getChipBreakdown, the
      denomination ladder and the edge pips had all been built and never seen.
      A pot with no chips in it is a number floating on cloth. */
-  const _showChipStacks = useReplayerSetting('ShowChipStacks', true);
+  const _showChipStacks = useReplayerSetting('ShowChipStacks', true, vs('showChipStacks'));
   const _showHandStrength = useReplayerSetting('ShowHandStrength', false);
-  const _showPotOdds = useReplayerSetting('ShowPotOdds', false);
+  const _showPotOdds = useReplayerSetting('ShowPotOdds', false, vs('showPotOdds'));
   const _showCommentary = useReplayerSetting('ShowCommentary', false);
-  const _showPlayerStats = useReplayerSetting('ShowPlayerStats', false);
-  const _showNuts = useReplayerSetting('ShowNutsHighlight', false);
-  const _showSPR = useReplayerSetting('ShowSPR', false);
-  const _showBetSizing = useReplayerSetting('ShowBetSizing', false);
-  const _showRanges = useReplayerSetting('ShowRanges', false);
-  const _showChipDelta = useReplayerSetting('ShowChipDelta', false);
-  const _showEquity = useReplayerSetting('ShowEquity', false);
-  const _stacksInBB = useReplayerSetting('StacksInBB', false);
+  const _showPlayerStats = useReplayerSetting('ShowPlayerStats', false, vs('showPlayerStats'));
+  const _showNuts = useReplayerSetting('ShowNutsHighlight', false, vs('showNutsHighlight'));
+  const _showSPR = useReplayerSetting('ShowSPR', false, vs('showSPR'));
+  const _showBetSizing = useReplayerSetting('ShowBetSizing', false, vs('showBetSizing'));
+  const _showRanges = useReplayerSetting('ShowRanges', false, vs('showRanges'));
+  const _showChipDelta = useReplayerSetting('ShowChipDelta', false, vs('showChipDelta'));
+  const _showEquity = useReplayerSetting('ShowEquity', false, vs('showEquity'));
+  const _stacksInBB = useReplayerSetting('StacksInBB', false, vs('stacksInBB'));
   // Anonymise every non-hero seat as "Opponent 1", "Opponent 2", … — the hero
   // (the logged-in user) keeps their name. For clean, private sharing.
-  const _hideOppNames = useReplayerSetting('HideOppNames', false);
+  const _hideOppNames = useReplayerSetting('HideOppNames', false, vs('hideOppNames'));
   // 99: off by default. Sound that starts without being asked for is worse
   // than no sound, and this is a screen people open in card rooms.
   const _soundDeal = useReplayerSetting('SoundDeal', false);
   const _soundChips = useReplayerSetting('SoundChips', false);
   const _soundFold = useReplayerSetting('SoundFold', false);
   const _soundAllIn = useReplayerSetting('SoundAllIn', false);
-  const _cardSplay = useReplayerSetting('CardSplay', true);
+  const _cardSplay = useReplayerSetting('CardSplay', true, vs('cardSplay'));
   /* How wide the hole-card fan opens, as a percent of what the table can hold.
      100 is the default fan; the slider tightens it toward a squared stack. */
-  const _splayAmount = useReplayerSetting('SplayAmount', 100);
+  const _splayAmount = useReplayerSetting('SplayAmount', 100, vs('splayAmount'));
   /* With splay off the hole cards lie flat in an overlapped row; this is how
      much each card covers the one before it, as a percentage of a card's width.
      52 is the overlap the row has always had. */
-  const _cardOverlap = useReplayerSetting('CardOverlap', 52);
+  const _cardOverlap = useReplayerSetting('CardOverlap', 52, vs('cardOverlap'));
   /* Off by default: the dark cloth is what the table looks like today, and a
      setting that changes the first thing you see should be opt-in. */
   const _feltBright = useReplayerSetting('FeltBright', false, hand && hand.feltColor ? !!hand.feltBright : undefined);
-  const _lightStrip = useReplayerSetting('LightStrip', false);
-  const _animDeal = useReplayerSetting('AnimateDeal', true);
-  const _animChips = useReplayerSetting('AnimateChips', true);
-  const _animBoard = useReplayerSetting('AnimateBoard', true);
+  const _lightStrip = useReplayerSetting('LightStrip', false, vs('lightStrip'));
+  const _animDeal = useReplayerSetting('AnimateDeal', true, vs('animateDeal'));
+  const _animChips = useReplayerSetting('AnimateChips', true, vs('animateChips'));
+  const _animBoard = useReplayerSetting('AnimateBoard', true, vs('animateBoard'));
   const _animWinner = useReplayerSetting('AnimateWinner', true);
-  const _animFold = useReplayerSetting('AnimateFold', true);
+  const _animFold = useReplayerSetting('AnimateFold', true, vs('animateFold'));
 
   const rSettings = {
     theme: REPLAYER_THEME_IDS.has(_theme[0]) ? _theme[0] : 'default', feltColor, cardBack: 'default', cardBackColor: _cardBackColor[0],
@@ -5964,7 +5970,11 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     try {
       // Carry the felt the sharer is looking at, so the link reproduces their
       // table rather than the recipient's default felt.
-      const shorthand = encodeHand({ ...hand, feltColor, feltBright: rSettings.feltBright });
+      const visuals = {
+        theme: rSettings.theme, splayAmount: Number(rSettings.splayAmount) || 0, cardOverlap: Number(rSettings.cardOverlap ?? 52) || 0,
+        ...Object.fromEntries(VISUAL_SWITCHES.map(k => [k, !!rSettings[k]])),
+      };
+      const shorthand = encodeHand({ ...hand, feltColor, feltBright: rSettings.feltBright, visuals });
       if (!shorthand) return;
       const b = hand.blinds || {};
       // The straddle is part of the stakes — a link that reads "10/10" for a
@@ -5988,7 +5998,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       await navigator.clipboard.writeText(url);
       setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000);
     } catch (e) { console.error('Share link error:', e); }
-  }, [hand, token]);
+    // The live look, not the one at mount: these deps were [hand, token], so a felt
+    // or splay changed after opening the hand never reached the link.
+  }, [hand, token, feltColor, rSettings]);
 
   // Seat class
   const getPlayerSeatClass = (playerIdx) => {

@@ -186,6 +186,17 @@ export function encodeHand(hand) {
     parts.push(feltPart);
   }
 
+  /* The rest of the sharer's table: theme, rail light strip, splay and its amount,
+     flat-row overlap, the four-colour deck, stack units, hidden names, and the
+     overlay and animation switches — so a link reproduces the table the sharer was
+     looking at, not the viewer's. One part: 'v1' + theme code + '-' + the switches
+     as a base-36 bitmask + '-' + splay amount + '-' + overlap. Fragment-safe, and
+     an older decoder ignores it like the felt part. */
+  if (hand.visuals) {
+    var vp = encodeVisuals(hand.visuals);
+    if (vp) parts.push(vp);
+  }
+
   /* A cash hand carries its money: '$' + currency code, so the link shows the
      dollar (or euro) on the felt rather than reading as tournament chips. Only
      for cash — a tournament adds nothing, and an older decoder ignores it. Read
@@ -404,13 +415,15 @@ export function decodeHand(str) {
      shorthands, in which case the viewer keeps their own felt. */
   // Trailing parts are read by their leading marker, not their index, so felt
   // ('f') and the cash marker ('$') can arrive in either order.
-  var feltColor = null, feltBright = false, gameMode = 'mtt', currency = 'USD';
+  var feltColor = null, feltBright = false, gameMode = 'mtt', currency = 'USD', visuals = null;
   for (var tpi = 5; tpi < parts.length; tpi++) {
     var tp = parts[tpi] || '';
     if (tp.charAt(0) === 'f') {
       var fb = tp.slice(1);
       if (fb.charAt(fb.length - 1) === 'b') { feltBright = true; fb = fb.slice(0, -1); }
       if (/^[0-9a-fA-F]{3,8}$/.test(fb)) feltColor = '#' + fb;
+    } else if (tp.charAt(0) === 'v') {
+      visuals = decodeVisuals(tp);
     } else if (tp.charAt(0) === '$') {
       gameMode = 'cash';
       var cur = tp.slice(1);
@@ -423,6 +436,7 @@ export function decodeHand(str) {
     players: players,
     feltColor: feltColor,
     feltBright: feltBright,
+    visuals: visuals,
     gameMode: gameMode,
     currency: currency,
     blinds: (function() {
@@ -446,4 +460,34 @@ export function decodeHand(str) {
     heroIdx: heroIdx,
     result: result
   };
+}
+
+/* Table-look settings carried by a shared link (see encode). The switch order is
+   APPEND-ONLY: a link's bitmask is read against it, so reordering or removing a key
+   would flip settings on every link already sent. Retire a key by leaving it in place. */
+export var VISUAL_SWITCHES = [
+  'lightStrip', 'cardSplay', 'highContrastDeck', 'stacksInBB', 'showChipStacks', 'hideOppNames',
+  'showPotOdds', 'showSPR', 'showBetSizing', 'showEquity', 'showChipDelta', 'showNutsHighlight',
+  'showPlayerStats', 'showRanges', 'animateDeal', 'animateChips', 'animateBoard', 'animateFold',
+];
+var THEME_CODES = { 'default': 'd', 'casino-royale': 'c', 'high-stakes': 'h' };
+export function encodeVisuals(v) {
+  if (!v) return '';
+  var bits = 0;
+  for (var i = 0; i < VISUAL_SWITCHES.length; i++) if (v[VISUAL_SWITCHES[i]]) bits += Math.pow(2, i);
+  var t = THEME_CODES[v.theme] || 'd';
+  var amt = Math.max(0, Math.min(999, Math.round(Number(v.splayAmount) || 0)));
+  var ov = Math.max(0, Math.min(99, Math.round(Number(v.cardOverlap) || 0)));
+  return 'v1' + t + '-' + bits.toString(36) + '-' + amt + '-' + ov;
+}
+export function decodeVisuals(part) {
+  var m = /^v1([a-z])-([0-9a-z]+)-(\d+)-(\d+)$/.exec(String(part || ''));
+  if (!m) return null;
+  var out = { theme: 'default' };
+  for (var k in THEME_CODES) if (THEME_CODES[k] === m[1]) out.theme = k;
+  var bits = parseInt(m[2], 36);
+  for (var i = 0; i < VISUAL_SWITCHES.length; i++) out[VISUAL_SWITCHES[i]] = Math.floor(bits / Math.pow(2, i)) % 2 === 1;
+  out.splayAmount = parseInt(m[3], 10);
+  out.cardOverlap = parseInt(m[4], 10);
+  return out;
 }
