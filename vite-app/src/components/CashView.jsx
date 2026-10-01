@@ -271,22 +271,10 @@ export default function CashView({ token, onModeChange }) {
 
   return (
     <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
-      {/* Both titles live in the top-bar subtitle now ("live cash games" / "cash game history"),
-          so this row is only the Refresh button, on Live; Heatmaps has no row at all, rather than
-          an empty 4r band above the mode strip. */}
-      {mode === 'live' && (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
-        {(
-          <button onClick={load}
-            style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
-            {status === 'loading' ? 'Loading…' : 'Refresh'}
-          </button>
-        )}
-      </div>
-      )}
-
-      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash. */}
-      <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: mode === 'heatmap' ? 'var(--subrow)' : 0, marginBottom: 'var(--space-xl)' }}>
+      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, first on the
+          page and 1r under the header on BOTH views, so it never moves when you switch. (Live's
+          Refresh row used to sit above it and push it down; it is below the strip now.) */}
+      <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: 'var(--subrow)', marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} type="button" className={mode === m ? 'active' : ''} aria-pressed={mode === m}
             onClick={() => setModePersist(m)}>{lbl}</button>
@@ -300,6 +288,14 @@ export default function CashView({ token, onModeChange }) {
       )}
 
       {mode === 'live' && (<>
+
+      {/* Refresh, right-aligned under the mode strip (Live only). */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
+        <button onClick={load}
+          style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
+          {status === 'loading' ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
 
       {/* Persistent location picker — what the watcher polls around (SPEC §5) */}
       <CashLocationPicker token={token} />
