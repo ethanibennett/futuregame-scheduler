@@ -14,6 +14,7 @@ import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { parseHandText } from '../utils/hand-text-parser.js';
+import QuickAddView from './QuickAddView.jsx';
 
 // ── Street definitions ──────────────────────────────────────
 const STREET_DEFS = {
@@ -4229,7 +4230,7 @@ class ReplayErrorBoundary extends React.Component {
 // ══════════════════════════════════════════════════════════
 // ── Main Hand Replayer View ──────────────────────────────
 // ══════════════════════════════════════════════════════════
-export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay }) {
+export default function HandReplayerView({ token, heroName, cardSplay, initialHand, onClearInitialHand, onSolveSpot, linkedReplay, quickAdd }) {
   const toast = useToast();
   const [mode, setMode] = useState(initialHand ? 'replay' : 'list');
   const [entryMode, setEntryMode] = useState('gto');
@@ -4726,6 +4727,16 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     );
   }
 
+  // ── Quick add (admins): describe a hand, answer its gaps, then replay or review it ──
+  if (mode === 'quick' && quickAdd) {
+    return <QuickAddView token={token} heroName={heroName} onBack={() => setMode('list')}
+      onOpen={(hand, target) => {
+        setCurrentHand(hand); setCurrentHandId(null);
+        setTitle(''); setNotes(''); setIsPublic(false);
+        setMode(target === 'entry' ? 'entry' : 'replay');
+      }} />;
+  }
+
   /* 100: the loading branch was one line of text with no shape, so the picker
      rendered a sentence and then snapped the whole screen in when the fetch
      landed — while this app ships a full skeleton kit that the schedule,
@@ -4738,6 +4749,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         {/* Grid: the same wrappers the loaded screen uses, so every placeholder
             lands on the block it stands in for. Text bars are 1r tall, sitting
             on their cell's baseline (the cells bottom-align); widths whole g. */}
+        {quickAdd && <div className="qa-entry"><div className="skeleton" /></div>}
         <div className="replayer-list-new">
           <div className="replayer-list-head">
             <div className="skeleton replayer-list-skel" style={{width: 'calc(var(--gu) * 8)'}} />
@@ -4775,6 +4787,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   return (
     <div className="replayer-view is-list">
       {/* Title dropped — the top-bar subtitle reads "hands archive" on this tab. */}
+
+      {quickAdd && (
+        <div className="qa-entry">
+          <button type="button" className="qa-chip" onClick={() => setMode('quick')}><span>Quick add · describe a hand</span></button>
+        </div>
+      )}
 
       {/* New hand creation. Grid: no longer a bordered panel. Inside a 1..36g
           panel the content has to inset a whole subcolumn (3..34g) to land on
