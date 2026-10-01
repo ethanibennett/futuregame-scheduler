@@ -14885,3 +14885,199 @@
       padding-top: calc(var(--subrow) * 3 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+
+    /* ══ Quick Add (QuickAddView.jsx) ═══════════════════════════════════════
+       Describe a hand, then answer one question at a time. Every class is qa-.
+       Measured from the .top-bar top at 402 (g = 10.865, r = 7.714); the view
+       starts at 8r, inside the content area's 1g sides, so x runs 1..36g.
+       Text seating, the same two mechanisms the hand entry uses:
+       - single lines sit in a whole-r cell, bottom-aligned, trimmed cap/alphabetic,
+         so the baseline IS the cell's bottom line;
+       - buttons and inputs centre their line, baseline = H/2 + (pt − pb)/2 + (a − d)/2;
+         5r with baseline 3r → pb = (a − d) − r = 0.7692em − r (cond sm, measured).
+       Multi-line copy: line-height 2r, first baseline k·r down via
+       padding-top k·r − 1cap, so N lines are k + 2(N − 1) r tall. */
+    /* 1r above the head; 2r under the last block, which is the end of the scroll range
+       (the hands panel is 100% tall, so the content area's own bottom padding never
+       reaches overflowing content). */
+    .qa-view { padding: var(--subrow) 0 calc(var(--subrow) * 2); }
+
+    /* Head 9–14r: Back 1–9 · title 10–27 · Start over 28–36, all baselines 12r. */
+    .qa-head {
+      display: grid; grid-template-columns: calc(var(--gu) * 8) minmax(0, 1fr) calc(var(--gu) * 8);
+      column-gap: var(--gu); height: calc(var(--subrow) * 5); margin-bottom: calc(var(--subrow) * 2);
+    }
+    .qa-head-back { grid-column: 1; }
+    .qa-head-reset { grid-column: 3; }
+    .qa-head-title {
+      grid-column: 2; display: grid; align-items: end; height: calc(var(--subrow) * 3);
+      font-family: var(--font-sans); font-size: var(--fs-xs); font-weight: var(--fw-regular);
+      color: var(--text); text-align: center; min-width: 0;
+    }
+
+    /* Single-line text in a whole-r cell: block, trimmed, ellipsis without
+       clipping descenders (padding-block/margin-block cancel). */
+    .qa-head-title > span,
+    .qa-summary-label,
+    .qa-summary-value {
+      display: block; min-width: 0; max-width: 100%; margin-top: 0;
+      line-height: calc(var(--subrow) * 2);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding-block: 0.3em; margin-block: -0.3em;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* Chips and every other button here: 5r, label baseline 3r. Widths come from
+       the grid track they sit in. */
+    .qa-chip {
+      box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; min-height: 0; margin: 0;
+      padding: 0 var(--gu) calc(0.7692em - var(--subrow));
+      display: flex; align-items: center; justify-content: center;
+      border: 0; border-radius: var(--radius-sm); -webkit-appearance: none; appearance: none;
+      background: transparent; color: var(--text);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); line-height: 1;
+      cursor: pointer;
+      transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+    }
+    .qa-chip > span {
+      display: block; min-width: 0; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding-block: 0.3em; margin-block: -0.3em;
+    }
+    .qa-chip.is-best { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+    .qa-chip.is-skip { color: var(--text-muted); }
+    .qa-chip:active:not(:disabled) { transform: var(--state-press); }
+    .qa-chip:disabled { opacity: var(--state-disabled); cursor: default; }
+    .qa-chip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+    @media (hover: hover) and (pointer: fine) {
+      .qa-chip:not(.is-best):not(:disabled):hover { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
+      .qa-chip.is-best:not(:disabled):hover { background: var(--brand-hover); }
+    }
+    .qa-wide { width: 100%; }
+
+    /* Entry on the hands list (admins only): 1r above, a 5r ghost button 1–36, so
+       everything below it on the list sits 6r lower than the list comment above says. */
+    .qa-entry { box-sizing: content-box; height: calc(var(--subrow) * 5); padding-top: var(--subrow); }
+    .qa-entry > .qa-chip { width: 100%; }
+    .qa-entry > .skeleton { height: 100%; border-radius: var(--radius-sm); }
+
+    /* Bubbles. Width is set inline in whole g, chosen so both edges are x-lines:
+       yours end at 36 (left edge 7..34), the app's start at 1 (right edge 5..30).
+       1g sides; text first baseline 3r down, 2r lines, 2r below the last: N lines
+       are (2N + 3) r — one line is a 5r bubble with its baseline where a button's is. */
+    .qa-describe, .qa-chat, .qa-log, .qa-active, .qa-question, .qa-ready {
+      display: grid; grid-template-columns: minmax(0, 1fr); justify-items: stretch; align-content: start;
+    }
+    .qa-describe { row-gap: calc(var(--subrow) * 2); }
+    .qa-chat { row-gap: calc(var(--subrow) * 2); }
+    .qa-log { row-gap: var(--subrow); }
+    .qa-log:empty { display: none; }
+    .qa-active { row-gap: calc(var(--subrow) * 2); }
+    .qa-question { row-gap: var(--subrow); }
+
+    .qa-bubble {
+      position: relative; overflow: hidden; box-sizing: border-box; justify-self: start;
+      width: calc(var(--gu) * 29); max-width: 100%; min-width: 0;
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) var(--radius-xs);
+      background: var(--surface2); color: var(--text);
+    }
+    .qa-bubble.is-user {
+      justify-self: end;
+      border-radius: var(--radius-sm) var(--radius-sm) var(--radius-xs) var(--radius-sm);
+      background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line);
+    }
+    .qa-bubble.is-note { background: transparent; color: var(--text-muted); box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    .qa-bubble.is-note .qa-bubble-text { font-style: italic; }
+    .qa-bubble.is-ask { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+    .qa-bubble.is-ask .qa-bubble-text { font-weight: var(--fw-bold); }
+    .qa-bubble.is-skip { color: var(--text-muted); background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    .qa-bubble-text,
+    .qa-bubble-twin { font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-regular); }
+    .qa-bubble.is-ask .qa-bubble-twin { font-weight: var(--fw-bold); }
+    .qa-bubble-text {
+      margin: 0; line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      overflow-wrap: anywhere; white-space: pre-wrap;
+    }
+    /* The one-line twin the width is measured from. */
+    .qa-bubble-twin { position: absolute; left: 0; top: 0; visibility: hidden; white-space: pre; pointer-events: none; }
+
+    /* Describe: label 2r · 1r · textarea 18r · 1r · hint 2r = 24r. Textarea lines
+       3r, first baseline 3r: 1.5r + (a − d)/2 + pt = 3r → pt = 1.5r − 0.3846em. */
+    .qa-field {
+      display: grid; grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: calc(var(--subrow) * 2) auto auto; row-gap: var(--subrow);
+    }
+    .qa-field > label {
+      align-self: end; margin: 0; line-height: 1; white-space: nowrap;
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-regular);
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .qa-field textarea {
+      display: block; box-sizing: border-box; width: 100%; margin: 0;
+      height: calc(var(--subrow) * 18); min-height: 0; resize: none;
+      padding: calc(var(--subrow) * 1.5 - 0.3846em) var(--gu) 0;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); line-height: calc(var(--subrow) * 3);
+      color: var(--text); background: var(--surface); border: 0; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border); -webkit-appearance: none; appearance: none;
+    }
+    .qa-field textarea:focus { outline: none; box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+    .qa-field textarea::placeholder, .qa-reply input::placeholder { color: var(--text-muted); opacity: 1; }
+    /* Error copy may wrap: first baseline 2r down, 2r lines; its whole-r height is set
+       from the line count (Status in the JSX). The hint and the ready line are one
+       line each, in an exact 2r cell. */
+    .qa-hint, .qa-status, .qa-ready-text {
+      margin: 0; line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      font-family: var(--font-condensed);
+    }
+    .qa-hint, .qa-ready-text {
+      box-sizing: border-box; height: calc(var(--subrow) * 2); white-space: nowrap;
+    }
+    .qa-hint { font-size: var(--fs-xs); color: var(--text-muted); }
+    .qa-status { font-size: var(--fs-sm); color: var(--danger); }
+    .qa-ready-text { font-size: var(--fs-sm); color: var(--text); }
+
+    /* Summary card 1–36: 1r · six 2r rows · 2r = 15r (13r without a board).
+       Labels 3–10, values 10–34 (2g inset each side); baselines on each row's bottom line. */
+    .qa-summary {
+      justify-self: stretch;
+      display: grid; grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr);
+      grid-auto-rows: calc(var(--subrow) * 2); align-items: end;
+      padding: var(--subrow) calc(var(--gu) * 2) calc(var(--subrow) * 2);
+      border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .qa-summary-row { display: contents; }
+    .qa-summary-label {
+      font-family: var(--font-condensed); font-size: var(--fs-2xs); color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: var(--track-caps);
+    }
+    .qa-summary-value { font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text); }
+    .qa-summary-value.is-unknown { color: var(--text-muted); }
+
+    /* Chips: four 8g (1–9–10–18–19–27–28–36), two 17g (1–18, 19–36) or one 35g; 1r apart. */
+    .qa-chips { display: grid; column-gap: var(--gu); row-gap: var(--subrow); }
+    .qa-chips.is-4 { grid-template-columns: repeat(4, calc(var(--gu) * 8)); }
+    .qa-chips.is-2 { grid-template-columns: repeat(2, calc(var(--gu) * 17)); }
+    .qa-chips.is-1 { grid-template-columns: calc(var(--gu) * 35); }
+
+    /* Free reply: input 1–27 (26g) · Send 28–36 (8g), both 5r, baselines 3r. */
+    .qa-reply { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 8); column-gap: var(--gu); margin: 0; }
+    .qa-reply input {
+      box-sizing: border-box; width: 100%; height: calc(var(--subrow) * 5); min-height: 0; margin: 0;
+      padding: 0 var(--gu) calc(0.7692em - var(--subrow)); line-height: normal;
+      font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+      background: var(--surface); border: 0; border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border); -webkit-appearance: none; appearance: none;
+    }
+    .qa-reply input:focus { outline: none; box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+
+    /* Ready: line 2r · 1r · Open 1–18 | Review 19–36 (17g each, 5r) = 8r. */
+    .qa-ready { row-gap: var(--subrow); justify-items: stretch; }
+    .qa-ready-actions { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
+    /* ══ end Quick Add ═══════════════════════════════════════════════════════ */
