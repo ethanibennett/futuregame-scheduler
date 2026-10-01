@@ -203,6 +203,32 @@ test('the prompt example: seats, slots, implicit folds and chips added', () => {
   assert.ok(notes.some((n) => /6 players not mentioned/.test(n)));
 });
 
+test('heads-up shorthand ("x, b 4k, c") alternates; showdown cards move to the hole cards', () => {
+  // 2026-10-01: the model gave the SB the flop check AND the bet, and filed the opponent's
+  // shown AhKd on the river, where it was dropped.
+  const d = {
+    gameType: 'NLH', gameMode: 'mtt', tableSize: 6, othersFolded: true,
+    blinds: { sb: 300, bb: 600, ante: 600 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 50000 }, { position: 'SB', startingStack: 50000 }, { position: 'BB' }],
+    streets: [
+      { name: 'Preflop', cards: [{ player: 0, cards: 'AdKc' }], actions: [{ player: 0, action: 'raise', toAmount: 1500 },
+        { player: 1, action: 'raise', toAmount: 4000 }, { player: 2, action: 'fold' }, { player: 0, action: 'call' }] },
+      { name: 'Flop', board: 'QdJd3d', actions: [{ player: 1, action: 'check' }, { player: 1, action: 'bet', toAmount: 4000 }, { player: 0, action: 'call' }] },
+      { name: 'Turn', board: 'Tc', actions: [{ player: 1, action: 'check' }, { player: 0, action: 'bet', toAmount: 12000 },
+        { player: 1, action: 'all-in', toAmount: 42000 }, { player: 0, action: 'call' }] },
+      { name: 'River', board: '2d', cards: [{ player: 1, cards: 'AhKd' }], actions: [] },
+    ],
+    notes: [],
+  };
+  const { hand, notes } = normalizeDraft(d);
+  eq(acts(hand, 1), [[4, 'check', 0], [3, 'bet', 4000], [4, 'call', 4000]]);
+  eq(acts(hand, 2), [[4, 'check', 0], [3, 'bet', 12000], [4, 'all-in', 42000], [3, 'call', 30000]]); // already in turn: untouched
+  eq(hand.streets[0].cards.opponents[3], 'AhKd');
+  assert.ok(notes.some((n) => /Flop actions were put in turn order/.test(n)));
+  assert.ok(!notes.some((n) => /Turn actions/.test(n)));
+  assert.ok(!notes.some((n) => /were left out/.test(n)));
+});
+
 test('the output is a replayer hand: it encodes and decodes through the share link', async () => {
   const { encodeHand, decodeHand } = await loadVite();
   const d = EXAMPLE_DRAFT();
