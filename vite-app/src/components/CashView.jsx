@@ -157,9 +157,12 @@ function CashLocationPicker({ token }) {
     : 'Set location';
 
   return (
-    <div style={{ marginBottom: 'var(--space-xl)' }}>
-      <button ref={btnRef} type="button" className="filter-chip" onClick={() => setOpen(o => !o)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+    /* Where the Schedule tab's location field is, and the same field: 2r under the header,
+       26g wide (three columns, 1g..27g) and 4r tall, lit when a point is set. Shown on Live
+       and Heatmaps alike, above the mode strip. */
+    <div style={{ marginTop: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
+      <button ref={btnRef} type="button" className={'filter-chip' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
+        style={{ width: 'calc(var(--col) * 3 + var(--gu) * 2)', minWidth: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 'calc(var(--subrow) * 1)', padding: '0 calc(var(--subrow) * 1.25)' }}>
         <Icon.mapPin />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
       </button>
@@ -271,10 +274,13 @@ export default function CashView({ token, onModeChange }) {
 
   return (
     <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
-      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, first on the
-          page and 1r under the header on BOTH views, so it never moves when you switch. (Live's
-          Refresh row used to sit above it and push it down; it is below the strip now.) */}
-      <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: 'var(--subrow)', marginBottom: 'var(--space-xl)' }}>
+      {/* The cash location, in the Schedule tab's location-field spot, on both views. */}
+      <CashLocationPicker token={token} />
+
+      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, 1r under the
+          location field on BOTH views (7r under the header), so it never moves when you switch.
+          Live's Refresh row sits below it. */}
+      <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: 0, marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} type="button" className={mode === m ? 'active' : ''} aria-pressed={mode === m}
             onClick={() => setModePersist(m)}>{lbl}</button>
@@ -297,8 +303,6 @@ export default function CashView({ token, onModeChange }) {
         </button>
       </div>
 
-      {/* Persistent location picker — what the watcher polls around (SPEC §5) */}
-      <CashLocationPicker token={token} />
 
       {/* Persistent variant filter */}
       {availableVariants.length > 0 && (
