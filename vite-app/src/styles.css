@@ -5342,7 +5342,11 @@
          table, so a fixed overlap spread the row wider exactly when the table
          had least room for it. --card-overlap is the replay table's Overlap
          setting (set on .replayer-table); anywhere else it falls back to 0.52. */
-      margin-left: calc(var(--card-w) * -1 * var(--card-overlap, 0.52));
+      /* From the card's OWN size: --card-w is computed once on the table, and the hero's
+         seat only overrides --card-h, so a --card-w-based overlap covered 52% of an
+         opponent's card but 43% of the hero's bigger one (measured). --card-h does
+         resolve per seat. */
+      margin-left: calc(var(--card-h) * 0.7143 * -1 * var(--card-overlap, 0.52));
       /* 0.26, down from 0.62. The lit line is the stock of the card beneath
          showing through, and it was reading as a white stroke drawn between
          two cards instead. Measured across the hero's flat row: the seams sat
