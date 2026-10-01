@@ -24,7 +24,7 @@ export default function BottomNav({ current, onChange, scheduleCount, newShareCo
           style={{position:'relative'}}
         >
           <tab.icon />
-          {tab.label}
+          <span className="nav-tab-label">{tab.label}</span>
           {tab.badge > 0 && (
             <span style={{
               position:'absolute', top:'calc(var(--subrow) * 0.5)', right:'50%', marginRight:'calc(var(--subrow) * -2)',
