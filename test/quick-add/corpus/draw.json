@@ -1,0 +1,227 @@
+[
+  {
+    "id": "td27-btn-3bet-beaten-by-86",
+    "source": "text",
+    "game": "2-7 TD",
+    "tags": ["draw", "limit", "3bet"],
+    "text": "2-7 TD 100/200 (blinds 50/100), 6 handed, everyone 4k. Folds to the CO who raises, I 3bet from the BTN with 2s3d7c8hKd, blinds fold, CO calls. First draw: CO draws 2, I draw 1 (the Kd) and catch the 5c — 8-7-5-3-2. CO checks, I bet, he calls. Second draw: he draws 1, I pat. He checks, I bet, he raises, I call. Third draw: he draws 1, I pat. He bets, I call. He shows 8d6s5h3c2h. Ouch.",
+    "expect": {
+      "gameType": "2-7 TD",
+      "blinds": { "sb": 50, "bb": 100, "bigBet": 200 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "2s3d7c8hKd", "stacksAll": 4000,
+      "actions": {
+        "predraw": [["CO", "raise", 200], ["BTN", "raise", 300], ["SB", "fold"], ["BB", "fold"], ["CO", "call", 100]],
+        "draw1": [["CO", "check"], ["BTN", "bet", 100], ["CO", "call", 100]],
+        "draw2": [["CO", "check"], ["BTN", "bet", 200], ["CO", "raise", 400], ["BTN", "call", 200]],
+        "draw3": [["CO", "bet", 200], ["BTN", "call", 200]]
+      },
+      "draws": {
+        "predraw": [["CO", 2], ["BTN", 1, "Kd", "5c"]],
+        "draw1": [["CO", 1], ["BTN", 0]],
+        "draw2": [["CO", 1], ["BTN", 0]]
+      },
+      "showdown": { "CO": "8d6s5h3c2h" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "td27-speech-three-handed-seven-six",
+    "source": "speech",
+    "game": "2-7 TD",
+    "tags": ["draw", "limit", "3bet"],
+    "text": "deuce to seven triple draw two hundred four hundred blinds one hundred and two hundred three handed everyone has about ten thousand. I'm in the big blind with deuce three four seven and a queen two of hearts three of clubs four of spades seven of diamonds queen of hearts. the button raises the small blind folds I call. first draw I take one throwing the queen and he takes two I catch the nine of clubs. I check he bets I call. second draw I take one again throwing the nine and he takes one I get the six of hearts making seven six four three two. I bet he raises I three bet he calls. third draw I stand pat he draws one. I bet he calls and shows eight seven five four two eight of spades seven of clubs five of diamonds four of hearts two of diamonds and my seven six takes it",
+    "expect": {
+      "gameType": "2-7 TD",
+      "blinds": { "sb": 100, "bb": 200, "bigBet": 400 },
+      "players": 3, "heroPosition": "BB", "heroCards": "2h3c4s7dQh", "stacksAll": 10000,
+      "actions": {
+        "predraw": [["BTN", "raise", 400], ["SB", "fold"], ["BB", "call", 200]],
+        "draw1": [["BB", "check"], ["BTN", "bet", 200], ["BB", "call", 200]],
+        "draw2": [["BB", "bet", 400], ["BTN", "raise", 800], ["BB", "raise", 800], ["BTN", "call", 400]],
+        "draw3": [["BB", "bet", 400], ["BTN", "call", 400]]
+      },
+      "draws": {
+        "predraw": [["BB", 1, "Qh", "9c"], ["BTN", 2]],
+        "draw1": [["BB", 1, "9c", "6h"], ["BTN", 1]],
+        "draw2": [["BB", 0], ["BTN", 1]]
+      },
+      "showdown": { "BTN": "8s7c5d4h2d" },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "a5td-wheel-beats-seven",
+    "source": "text",
+    "game": "A-5 TD",
+    "tags": ["draw", "limit", "lowball"],
+    "text": "A-5 triple draw 50/100, blinds 25/50, 4 handed, all 3k. CO opens, I call on the BTN with As2d4c9hKd, SB folds, BB calls. Draw 1: BB 2, CO 1, me 2 (9h Kd) — catch 3s 7c for A-2-3-4-7. BB checks, CO bets, I raise, BB folds, CO calls. Draw 2: CO 1, I pat. CO checks, I bet, CO calls. Draw 3: CO 1, I pat. CO checks, I bet, CO raises, I call. CO shows Ah2s3h4d5c, the wheel.",
+    "expect": {
+      "gameType": "A-5 TD",
+      "blinds": { "sb": 25, "bb": 50, "bigBet": 100 },
+      "players": 4, "heroPosition": "BTN", "heroCards": "As2d4c9hKd", "stacksAll": 3000,
+      "actions": {
+        "predraw": [["CO", "raise", 100], ["BTN", "call", 100], ["SB", "fold"], ["BB", "call", 50]],
+        "draw1": [["BB", "check"], ["CO", "bet", 50], ["BTN", "raise", 100], ["BB", "fold"], ["CO", "call", 50]],
+        "draw2": [["CO", "check"], ["BTN", "bet", 100], ["CO", "call", 100]],
+        "draw3": [["CO", "check"], ["BTN", "bet", 100], ["CO", "raise", 200], ["BTN", "call", 100]]
+      },
+      "draws": {
+        "predraw": [["BB", 2], ["CO", 1], ["BTN", 2, "9hKd", "3s7c"]],
+        "draw1": [["CO", 1], ["BTN", 0]],
+        "draw2": [["CO", 1], ["BTN", 0]]
+      },
+      "showdown": { "CO": "Ah2s3h4d5c" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "badugi-speech-five-badugi",
+    "source": "speech",
+    "game": "Badugi",
+    "tags": ["draw", "limit", "3bet"],
+    "text": "badugi one hundred two hundred blinds fifty and one hundred four handed everybody's got five thousand. I'm on the button with ace of clubs two of diamonds three of hearts and the king of hearts. cutoff raises I three bet small blind folds big blind folds cutoff calls. first draw he takes two I take one I throw the king of hearts and catch the five of spades for a five badugi. he checks I bet he calls. second draw he draws one I'm pat. he checks I bet he calls. last draw he draws one I'm pat. he bets out I raise he calls and shows a seven badugi seven of spades six of diamonds four of clubs two of hearts",
+    "expect": {
+      "gameType": "Badugi",
+      "blinds": { "sb": 50, "bb": 100, "bigBet": 200 },
+      "players": 4, "heroPosition": "BTN", "heroCards": "Ac2d3hKh", "stacksAll": 5000,
+      "actions": {
+        "predraw": [["CO", "raise", 200], ["BTN", "raise", 300], ["SB", "fold"], ["BB", "fold"], ["CO", "call", 100]],
+        "draw1": [["CO", "check"], ["BTN", "bet", 100], ["CO", "call", 100]],
+        "draw2": [["CO", "check"], ["BTN", "bet", 200], ["CO", "call", 200]],
+        "draw3": [["CO", "bet", 200], ["BTN", "raise", 400], ["CO", "call", 200]]
+      },
+      "draws": {
+        "predraw": [["CO", 2], ["BTN", 1, "Kh", "5s"]],
+        "draw1": [["CO", 1], ["BTN", 0]],
+        "draw2": [["CO", 1], ["BTN", 0]]
+      },
+      "showdown": { "CO": "7s6d4c2h" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "sd27-nl-single-draw-jam",
+    "source": "text",
+    "game": "NL 2-7 SD",
+    "tags": ["draw", "no-limit", "all-in", "3bet"],
+    "text": "NL 2-7 single draw, 100/200 (no ante), 5 handed, everyone 10k. HJ opens 600, I 3b to 1800 from the SB with 2c 3d 4h 7s Qc, BB folds, HJ calls. I draw 1 (the Qc), he draws 1. I catch the 8d — 8-7-4-3-2. I bet 2500, he jams, I call. He shows 7h6s5c3s2d.",
+    "expect": {
+      "gameType": "NL 2-7 SD",
+      "blinds": { "sb": 100, "bb": 200 },
+      "players": 5, "heroPosition": "SB", "heroCards": "2c3d4h7sQc", "stacksAll": 10000,
+      "actions": {
+        "predraw": [["HJ", "raise", 600], ["SB", "raise", 1700], ["BB", "fold"], ["HJ", "call", 1200]],
+        "draw": [["SB", "bet", 2500], ["HJ", "all-in", 8200], ["SB", "call", 5700]]
+      },
+      "draws": {
+        "predraw": [["SB", 1, "Qc", "8d"], ["HJ", 1]]
+      },
+      "showdown": { "HJ": "7h6s5c3s2d" },
+      "winners": ["HJ"]
+    }
+  },
+  {
+    "id": "td27-discards-card-never-dealt",
+    "source": "text",
+    "game": "2-7 TD",
+    "tags": ["draw", "limit", "impossible-cards"],
+    "flaws": ["draw"],
+    "text": "27TD 3 handed, limit 150/300 (blinds 75/150). I'm in the SB with 2h 4d 5c 8s Jh. BTN raises, I call, BB calls. 1st draw I throw the jack of hearts and the nine of clubs and catch 3c 7d, BB draws 1, BTN draws 1. SB (me) checks, BB checks, BTN bets 150, I call, BB folds. 2nd draw I pat, BTN takes 1. I bet 300, he folds.",
+    "expect": {
+      "gameType": "2-7 TD",
+      "blinds": { "sb": 75, "bb": 150, "bigBet": 300 },
+      "players": 3, "heroPosition": "SB", "heroCards": "2h4d5c8sJh",
+      "actions": {
+        "predraw": [["BTN", "raise", 300], ["SB", "call", 225], ["BB", "call", 150]],
+        "draw1": [["SB", "check"], ["BB", "check"], ["BTN", "bet", 150], ["SB", "call", 150], ["BB", "fold"]],
+        "draw2": [["SB", "bet", 300], ["BTN", "fold"]]
+      },
+      "draws": {
+        "predraw": [["SB", 2, "Jh9c", "3c7d"], ["BB", 1], ["BTN", 1]],
+        "draw1": [["SB", 0], ["BTN", 1]]
+      },
+      "winners": ["SB"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": ["streets.0.draws", "streets.0.cards.hero"], "id": ["draw", "card"], "about": "hero throws the 9c, which he was never dealt" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "badugi-no-stakes-no-cards",
+    "source": "text",
+    "game": "Badugi",
+    "tags": ["draw", "terse"],
+    "text": "badugi hand: I'm BB, BTN raises, I call. I draw 2, he draws 1. I check, he bets, I call. I draw 1, he pats. I check-raise, he calls. I draw 1 again, he pats. I bet, he folds.",
+    "expect": {
+      "gameType": "Badugi",
+      "heroPosition": "BB",
+      "actions": {
+        "predraw": [["BTN", "raise", null], ["BB", "call", null]],
+        "draw1": [["BB", "check"], ["BTN", "bet", null], ["BB", "call", null]],
+        "draw2": [["BB", "check"], ["BTN", "bet", null], ["BB", "raise", null], ["BTN", "call", null]],
+        "draw3": [["BB", "bet", null], ["BTN", "fold"]]
+      },
+      "draws": {
+        "predraw": [["BB", 2], ["BTN", 1]],
+        "draw1": [["BB", 1], ["BTN", 0]],
+        "draw2": [["BB", 1], ["BTN", 0]]
+      },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "blinds", "id": "blinds", "about": "no stakes" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" },
+      { "kind": "missing", "field": "streets.0.cards.hero", "id": "hero", "about": "hero's cards are never named" }
+    ]
+  },
+  {
+    "id": "triple-draw-which-lowball",
+    "source": "speech",
+    "game": "A-5 TD",
+    "tags": ["draw", "limit", "ambiguous-game"],
+    "text": "triple draw fifty one hundred blinds twenty five fifty I'm in the cutoff with ace two three seven nine I open the big blind three bets I call. he draws one I draw one throwing the nine I catch a four. he bets I raise he calls. second draw he takes one I'm pat. he checks I bet he calls. last draw he takes one I'm pat he bets I call he shows a wheel",
+    "expect": {
+      "blinds": { "sb": 25, "bb": 50, "bigBet": 100 },
+      "heroPosition": "CO", "heroCards": "Ax2x3x7x9x",
+      "actions": {
+        "predraw": [["CO", "raise", 100], ["BB", "raise", 100], ["CO", "call", 50]],
+        "draw1": [["BB", "bet", 50], ["CO", "raise", 100], ["BB", "call", 50]],
+        "draw2": [["BB", "check"], ["CO", "bet", 100], ["BB", "call", 100]],
+        "draw3": [["BB", "bet", 100], ["CO", "call", 100]]
+      },
+      "draws": {
+        "predraw": [["BB", 1], ["CO", 1, "9x", "4x"]],
+        "draw1": [["BB", 1], ["CO", 0]],
+        "draw2": [["BB", 1], ["CO", 0]]
+      },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": ["ambiguous", "missing"], "field": "gameType", "id": "game", "about": "'triple draw' could be 2-7 or A-5 (and 'a wheel' means a different hand in each)" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "sd27-speech-pat-seven-no-stacks",
+    "source": "speech",
+    "game": "NL 2-7 SD",
+    "tags": ["draw", "no-limit", "all-in"],
+    "text": "no limit deuce to seven single draw blinds one thousand two thousand I'm on the button with a pat seven seven of hearts five of clubs four of diamonds three of spades two of hearts I raise to five thousand small blind folds big blind jams I call he draws two I'm pat he bricks",
+    "expect": {
+      "gameType": "NL 2-7 SD",
+      "blinds": { "sb": 1000, "bb": 2000 },
+      "heroPosition": "BTN", "heroCards": "7h5c4d3s2h",
+      "actions": {
+        "predraw": [["BTN", "raise", 5000], ["SB", "fold"], ["BB", "all-in", null], ["BTN", "call", null]]
+      },
+      "draws": {
+        "predraw": [["BB", 2], ["BTN", 0]]
+      },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "the all-in has no size without stacks" }
+    ]
+  }
+]

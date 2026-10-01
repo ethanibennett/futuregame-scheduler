@@ -1,0 +1,431 @@
+[
+  {
+    "id": "nlh-mtt-hj-vs-btn-3bet-river-call",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "3bet"],
+    "text": "MTT, 1k/2k w/ 2k bb ante, 8 handed. I'm in the HJ with 45bb (90k), open to 4.4k with AdJd. BTN (60k) 3bets to 13k, blinds fold, I call. Flop Jh 8c 3s, I check, he bets 7k, I call. Turn 2s, check check. River Qd, I check, he bets 22k, I call. He shows QsQh.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 1000, "bb": 2000, "ante": 2000 },
+      "players": 8, "heroPosition": "HJ", "heroCards": "AdJd",
+      "stacks": { "HJ": 90000, "BTN": 60000 },
+      "board": { "flop": "Jh8c3s", "turn": "2s", "river": "Qd" },
+      "actions": {
+        "preflop": [["HJ", "raise", 4400], ["BTN", "raise", 13000], ["SB", "fold"], ["BB", "fold"], ["HJ", "call", 8600]],
+        "flop": [["HJ", "check"], ["BTN", "bet", 7000], ["HJ", "call", 7000]],
+        "turn": [["HJ", "check"], ["BTN", "check"]],
+        "river": [["HJ", "check"], ["BTN", "bet", 22000], ["HJ", "call", 22000]]
+      },
+      "showdown": { "BTN": "QsQh" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "nlh-mtt-co-shove-bb-calls",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "all-in"],
+    "text": "level twelve blinds are fifteen hundred three thousand with a three thousand big blind ante we're nine handed I've got thirty big blinds in the cutoff ninety thousand and I shove with ace five suited ace five of hearts folds to the big blind who has us both covered he's got two hundred K and he calls with pocket tens ten of clubs ten of spades. board comes king of hearts nine of hearts four of clubs two of spades seven of diamonds and I'm out",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 1500, "bb": 3000, "ante": 3000 },
+      "players": 9, "heroPosition": "CO", "heroCards": "Ah5h",
+      "stacks": { "CO": 90000, "BB": 200000 },
+      "board": { "flop": "Kh9h4c", "turn": "2s", "river": "7d" },
+      "actions": {
+        "preflop": [["CO", "all-in", 90000], ["BB", "call", 87000]]
+      },
+      "showdown": { "BB": "TcTs" },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "nlh-mtt-bubble-three-way-all-in",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "all-in", "side-pot", "multiway"],
+    "notes": "Main pot to UTG, a side pot to hero: winners not asserted.",
+    "text": "Bubble of a 200 runner. 2k/4k/4k bba, 7-handed. Stacks: UTG 30k, CO 85k, me BTN 140k, BB 20k. UTG jams 30k, CO calls, I jam with QhQd to put CO all in, SB folds, BB calls off his last 12k, CO calls. Board As 7c 7d 3h Ks. UTG had AhJc, CO 8s8c, BB 6h6d. UTG triples, I win the side pot vs CO.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 2000, "bb": 4000, "ante": 4000 },
+      "players": 7, "heroPosition": "BTN", "heroCards": "QhQd",
+      "stacks": { "UTG": 30000, "CO": 85000, "BTN": 140000, "BB": 20000 },
+      "board": { "flop": "As7c7d", "turn": "3h", "river": "Ks" },
+      "actions": {
+        "preflop": [["UTG", "all-in", 30000], ["CO", "call", 30000], ["BTN", "all-in", 140000], ["SB", "fold"], ["BB", "all-in", 12000], ["CO", "call", 55000]]
+      },
+      "showdown": { "UTG": "AhJc", "CO": "8s8c", "BB": "6h6d" }
+    }
+  },
+  {
+    "id": "nlh-mtt-bb-units-only",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "all-in", "terse"],
+    "text": "Deep in the main event, 8 handed, I have 40bb on the BTN with A9o, CO opens 2.2bb, I 3b shove, CO tanks and calls with AK. Board brick brick, I'm out.",
+    "expect": {
+      "gameMode": "mtt",
+      "players": 8, "heroPosition": "BTN", "heroCards": "Ax9x",
+      "actions": {
+        "preflop": [["CO", "raise", null], ["BTN", "all-in", null], ["CO", "call", null]]
+      },
+      "showdown": { "CO": "AxKx" },
+      "winners": ["CO"]
+    },
+    "expectGaps": [
+      { "kind": ["missing", "ambiguous"], "field": "blinds", "id": "blinds", "about": "stakes are given only in big blinds; no chip amounts" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "the CO's stack is never given" },
+      { "kind": "missing", "field": ["streets.1.cards.board", "streets.2.cards.board", "streets.3.cards.board"], "id": "board", "about": "'brick brick' names no board cards though it went to showdown" }
+    ]
+  },
+  {
+    "id": "nlh-mtt-utg1-river-shove",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "3bet"],
+    "text": "WSOP daily blinds four hundred eight hundred with an eight hundred big blind ante nine handed I'm under the gun plus one with thirty two thousand pocket jacks jack of spades jack of clubs I raise to two thousand it folds to the small blind who has about fifty K and he three bets to sixty five hundred big blind folds I call. flop queen of diamonds eight of spades five of spades he bets four thousand I call. turn three of hearts he checks I check. river jack of diamonds he bets nine thousand I shove he folds",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 400, "bb": 800, "ante": 800 },
+      "players": 9, "heroPosition": "UTG+1", "heroCards": "JsJc",
+      "stacks": { "UTG+1": 32000, "SB": 50000 },
+      "board": { "flop": "Qd8s5s", "turn": "3h", "river": "Jd" },
+      "actions": {
+        "preflop": [["UTG+1", "raise", 2000], ["SB", "raise", 6100], ["BB", "fold"], ["UTG+1", "call", 4500]],
+        "flop": [["SB", "bet", 4000], ["UTG+1", "call", 4000]],
+        "turn": [["SB", "check"], ["UTG+1", "check"]],
+        "river": [["SB", "bet", 9000], ["UTG+1", "all-in", 21500], ["SB", "fold"]]
+      },
+      "winners": ["UTG+1"]
+    }
+  },
+  {
+    "id": "nlh-mtt-hero-seat-unknown",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "terse"],
+    "text": "turbo, 500/1000 1000 bba. I have 25k, open AK to 2200, BB defends. Flop T84 two hearts, he check-raises my 1800 cbet to 5500, I fold.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 500, "bb": 1000, "ante": 1000 },
+      "heroCards": "AxKx",
+      "stacks": { "hero": 25000 },
+      "board": { "flop": "Tx8x4x" },
+      "actions": {
+        "preflop": [["hero", "raise", 2200], ["BB", "call", 1200]],
+        "flop": [["BB", "check"], ["hero", "bet", 1800], ["BB", "raise", 5500], ["hero", "fold"]]
+      },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": ["heroIdx", "players.*.position"], "id": ["hero", "position", "button"], "about": "hero's seat is never stated" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "the big blind's stack is never given" }
+    ]
+  },
+  {
+    "id": "nlh-mtt-final-table-squeeze-jam",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "squeeze", "all-in"],
+    "text": "FT 4 left, 10k/20k w 20k bba. Stacks CO 900k, me (BTN) 1.1M, SB 400k, BB 650k. CO opens 45k, I flat 9h9d, SB folds, BB squeezes to 200k, CO folds, I jam, BB calls off his last 430k with AcKc. 7s6s2c Kd 4h, gg.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 10000, "bb": 20000, "ante": 20000 },
+      "players": 4, "heroPosition": "BTN", "heroCards": "9h9d",
+      "stacks": { "CO": 900000, "BTN": 1100000, "SB": 400000, "BB": 650000 },
+      "board": { "flop": "7s6s2c", "turn": "Kd", "river": "4h" },
+      "actions": {
+        "preflop": [["CO", "raise", 45000], ["BTN", "call", 45000], ["SB", "fold"], ["BB", "raise", 180000], ["CO", "fold"], ["BTN", "all-in", 1055000], ["BB", "call", 430000]]
+      },
+      "showdown": { "BB": "AcKc" },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "nlh-mtt-speech-for-thousand-vague-stack",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "homophones", "all-in"],
+    "text": "eight hundred sixteen hundred sixteen hundred ante seven handed I'm on the button with about forty bigs sixty four thousand the hijack opens to thirty five hundred I call with queen jack of clubs blinds fold flop comes ten nine and a rag with one club he bets for thousand I raise to ten thousand he shoves for like fifty I call he has ace ten turn and river bricks I'm crippled",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 800, "bb": 1600, "ante": 1600 },
+      "players": 7, "heroPosition": "BTN", "heroCards": "QcJc",
+      "stacks": { "BTN": 64000 },
+      "board": { "flop": "Tx9xx" },
+      "actions": {
+        "preflop": [["HJ", "raise", 3500], ["BTN", "call", 3500], ["SB", "fold"], ["BB", "fold"]],
+        "flop": [["HJ", "bet", 4000], ["BTN", "raise", 10000], ["HJ", "all-in", null], ["BTN", "call", null]]
+      },
+      "showdown": { "HJ": "AxTx" },
+      "winners": ["HJ"]
+    },
+    "expectGaps": [
+      { "kind": ["missing", "ambiguous"], "field": "players.*.startingStack", "id": "stack", "about": "'like fifty' leaves the hijack's stack vague" },
+      { "kind": "missing", "field": ["streets.1.cards.board", "streets.2.cards.board", "streets.3.cards.board"], "id": "board", "about": "the flop rag, turn and river are never named" }
+    ],
+    "notes": "'for thousand' = four thousand."
+  },
+  {
+    "id": "nlh-mtt-limp-reraise-utg",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "limp", "out-of-order"],
+    "text": "Stack sizes first: I had 52k, the guy in the SB had 80k. 600/1200/1200. 9 handed. Anyway I limped UTG with KdKs (trappy, i know), folds to SB who raises to 4500, BB folds, I re-raise to 12k, he calls. Flop Ac 7h 3d, he checks, I check. Turn 5c, he bets 9k, I call. River 7c, he checks, I bet 12k, he calls with Ah2h.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 600, "bb": 1200, "ante": 1200 },
+      "players": 9, "heroPosition": "UTG", "heroCards": "KdKs",
+      "stacks": { "UTG": 52000, "SB": 80000 },
+      "board": { "flop": "Ac7h3d", "turn": "5c", "river": "7c" },
+      "actions": {
+        "preflop": [["UTG", "call", 1200], ["SB", "raise", 3900], ["BB", "fold"], ["UTG", "raise", 10800], ["SB", "call", 7500]],
+        "flop": [["SB", "check"], ["UTG", "check"]],
+        "turn": [["SB", "bet", 9000], ["UTG", "call", 9000]],
+        "river": [["SB", "check"], ["UTG", "bet", 12000], ["SB", "call", 12000]]
+      },
+      "showdown": { "SB": "Ah2h" },
+      "winners": ["SB"]
+    }
+  },
+  {
+    "id": "nlh-mtt-hj-acts-out-of-turn",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "3bet", "out-of-turn"],
+    "flaws": ["betting"],
+    "text": "5k/10k/10k bba, 6max, ~40bb deep all (400k). UTG opens 22k, I 3b to 70k in the CO w AsQs, blinds fold, UTG folds, HJ calls. Flop Qh 8d 4c, HJ checks, I bet 60k, he folds.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 5000, "bb": 10000, "ante": 10000 },
+      "players": 6, "heroPosition": "CO", "heroCards": "AsQs", "stacksAll": 400000,
+      "board": { "flop": "Qh8d4c" },
+      "actions": {
+        "preflop": [["UTG", "raise", 22000], ["CO", "raise", 70000], ["SB", "fold"], ["BB", "fold"], ["UTG", "fold"], ["HJ", "call", null]],
+        "flop": [["HJ", "check"], ["CO", "bet", 60000], ["HJ", "fold"]]
+      },
+      "winners": ["CO"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": "streets.0.actions", "id": "action:0", "about": "the HJ calls the 3-bet but never acted on the open (it was his turn before hero's)" }
+    ]
+  },
+  {
+    "id": "nlh-mtt-heads-up-for-the-bracelet",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "heads-up", "all-in"],
+    "text": "heads up for the title blinds are twenty thousand forty thousand with a forty thousand big blind ante I have two point four million he has one point six I'm on the button and I limp with seven six of spades he checks. flop is seven of hearts six of diamonds two of clubs he checks I bet forty thousand he raises to one hundred sixty thousand I call. turn ace of clubs he bets two hundred forty thousand I call. river four of spades he jams I call he has ace ten ace of diamonds ten of clubs and I win the bracelet",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 20000, "bb": 40000, "ante": 40000 },
+      "players": 2, "heroPosition": "BTN/SB", "heroCards": "7s6s",
+      "stacks": { "BTN/SB": 2400000, "BB": 1600000 },
+      "board": { "flop": "7h6d2c", "turn": "Ac", "river": "4s" },
+      "actions": {
+        "preflop": [["BTN/SB", "call", 20000], ["BB", "check"]],
+        "flop": [["BB", "check"], ["BTN/SB", "bet", 40000], ["BB", "raise", 160000], ["BTN/SB", "call", 120000]],
+        "turn": [["BB", "bet", 240000], ["BTN/SB", "call", 240000]],
+        "river": [["BB", "all-in", 1120000], ["BTN/SB", "call", 1120000]]
+      },
+      "showdown": { "BB": "AdTc" },
+      "winners": ["BTN/SB"]
+    }
+  },
+  {
+    "id": "nlh-mtt-forgot-river",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "all-in"],
+    "text": "MTT 300/600/600. 9-handed. Hero 18k in the SB with 8c8h, folds to me, I shove, BB calls with AcJd for his 25k. Flop Jc 9d 2s. Turn 8d. River? cant remember. Who won lol",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 300, "bb": 600, "ante": 600 },
+      "players": 9, "heroPosition": "SB", "heroCards": "8c8h",
+      "stacks": { "SB": 18000, "BB": 25000 },
+      "board": { "flop": "Jc9d2s", "turn": "8d" },
+      "actions": {
+        "preflop": [["SB", "all-in", 17700], ["BB", "call", 17400]]
+      },
+      "showdown": { "BB": "AcJd" }
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "streets.3.cards.board", "id": "board", "about": "the river card is forgotten" },
+      { "kind": "missing", "field": "result", "id": "result", "about": "a showdown with no winner (the river decides it)" }
+    ]
+  },
+  {
+    "id": "nlh-mtt-pko-three-way-checkraise",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "multiway", "shorthand"],
+    "text": "PKO, 1.5k/3k/3k bba, 8max, all 100k+ (say everyone 120k). LJ opens 6.5k, I call HJ w/ Tc9c, BTN calls, blinds fold. Flop 9h8h4s. LJ cbets 8k, I call, BTN calls. Turn 2d: LJ x, I x, BTN bets 20k, LJ c/r to 60k, I fold, BTN calls. River 3h. LJ jams 45.5k, BTN folds.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 1500, "bb": 3000, "ante": 3000 },
+      "players": 8, "heroPosition": "HJ", "heroCards": "Tc9c", "stacksAll": 120000,
+      "board": { "flop": "9h8h4s", "turn": "2d", "river": "3h" },
+      "actions": {
+        "preflop": [["LJ", "raise", 6500], ["HJ", "call", 6500], ["BTN", "call", 6500], ["SB", "fold"], ["BB", "fold"]],
+        "flop": [["LJ", "bet", 8000], ["HJ", "call", 8000], ["BTN", "call", 8000]],
+        "turn": [["LJ", "check"], ["HJ", "check"], ["BTN", "bet", 20000], ["LJ", "raise", 60000], ["HJ", "fold"], ["BTN", "call", 40000]],
+        "river": [["LJ", "all-in", 45500], ["BTN", "fold"]]
+      },
+      "winners": ["LJ"]
+    }
+  },
+  {
+    "id": "nlh-mtt-no-game-no-stacks-no-turn",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["all-in"],
+    "text": "so the blinds are two hundred four hundred I open for twelve hundred from the hijack with kings button calls flop is king nine five I bet for uh sixteen hundred he raises to four thousand I go all in he calls he has nine five and I hold",
+    "expect": {
+      "blinds": { "sb": 200, "bb": 400 },
+      "heroPosition": "HJ", "heroCards": "KxKx",
+      "board": { "flop": "Kx9x5x" },
+      "actions": {
+        "preflop": [["HJ", "raise", 1200], ["BTN", "call", 1200]],
+        "flop": [["HJ", "bet", 1600], ["BTN", "raise", 4000], ["HJ", "all-in", null], ["BTN", "call", null]]
+      },
+      "showdown": { "BTN": "9x5x" },
+      "winners": ["HJ"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks, so the all-in has no size" },
+      { "kind": "missing", "field": ["streets.2.cards.board", "streets.3.cards.board"], "id": "board", "about": "turn and river never named though it went to showdown" }
+    ]
+  },
+  {
+    "id": "nlh-mtt-bb-defend-river-pot",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante"],
+    "text": "250/500/500 bba, 6-handed online MTT, all ~30k. BTN opens 1100, I defend BB with Kc5c. Flop Kd 9s 6h, x/c 800. Turn 3c, x, he bets 2400, call. River Qh, x, he bets pot (9,350), I call. He has JhTh.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 250, "bb": 500, "ante": 500 },
+      "players": 6, "heroPosition": "BB", "heroCards": "Kc5c", "stacksAll": 30000,
+      "board": { "flop": "Kd9s6h", "turn": "3c", "river": "Qh" },
+      "actions": {
+        "preflop": [["BTN", "raise", 1100], ["BB", "call", 600]],
+        "flop": [["BB", "check"], ["BTN", "bet", 800], ["BB", "call", 800]],
+        "turn": [["BB", "check"], ["BTN", "bet", 2400], ["BB", "call", 2400]],
+        "river": [["BB", "check"], ["BTN", "bet", 9350], ["BB", "call", 9350]]
+      },
+      "showdown": { "BTN": "JhTh" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "nlh-mtt-jam-bigger-than-stack",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "all-in", "impossible-stack"],
+    "text": "1k/2k/2k bba, 9 handed. UTG (40bb, 80k) opens 4.5k, I 3b to 14k in the HJ with 9s9h, he 4b jams 95k, I call. Board 8c 7c 2d Ah Ks, his AdKd wins.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 1000, "bb": 2000, "ante": 2000 },
+      "players": 9, "heroPosition": "HJ", "heroCards": "9s9h",
+      "stacks": { "UTG": 80000 },
+      "board": { "flop": "8c7c2d", "turn": "Ah", "river": "Ks" },
+      "actions": {
+        "preflop": [["UTG", "raise", 4500], ["HJ", "raise", 14000], ["UTG", "all-in", null], ["HJ", "call", null]]
+      },
+      "showdown": { "UTG": "AdKd" },
+      "winners": ["UTG"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": ["players.*.startingStack", "streets.0.actions"], "id": ["stack", "action:0"], "about": "UTG jams 95k with an 80k stack" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "hero's own stack is never given" }
+    ]
+  },
+  {
+    "id": "nlh-mtt-day2-sb-limp-iso",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "blind-vs-blind", "shorthand"],
+    "text": "Day 2, 2k/4k 4k bba, 9-handed. Folds to SB (140k) who limps, I iso to 14k from the BB (210k) with KcJh, he calls. Flop Jd7s3c, he x, I bet 9k, call. Turn 3h x/x. River Ad, he leads 30k, I call, he has As7d.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 2000, "bb": 4000, "ante": 4000 },
+      "players": 9, "heroPosition": "BB", "heroCards": "KcJh",
+      "stacks": { "SB": 140000, "BB": 210000 },
+      "board": { "flop": "Jd7s3c", "turn": "3h", "river": "Ad" },
+      "actions": {
+        "preflop": [["SB", "call", 2000], ["BB", "raise", 10000], ["SB", "call", 10000]],
+        "flop": [["SB", "check"], ["BB", "bet", 9000], ["SB", "call", 9000]],
+        "turn": [["SB", "check"], ["BB", "check"]],
+        "river": [["SB", "bet", 30000], ["BB", "call", 30000]]
+      },
+      "showdown": { "SB": "As7d" },
+      "winners": ["SB"]
+    }
+  },
+  {
+    "id": "nlh-mtt-self-correcting-speech",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "self-correction"],
+    "text": "so I'm in the cutoff no wait the hijack with some suited connector I think it was nine eight of hearts five hundred thousand uh I mean five hundred one thousand with a one thousand ante I open to twenty two hundred the button calls flop is ten jack two I bet he calls turn three I check he bets five thousand I fold",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 500, "bb": 1000, "ante": 1000 },
+      "heroPosition": "HJ", "heroCards": "9h8h",
+      "board": { "flop": "TxJx2x", "turn": "3x" },
+      "actions": {
+        "preflop": [["HJ", "raise", 2200], ["BTN", "call", 2200]],
+        "flop": [["HJ", "bet", null], ["BTN", "call", null]],
+        "turn": [["HJ", "check"], ["BTN", "bet", 5000], ["HJ", "fold"]]
+      },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" },
+      { "field": "streets.1.actions", "id": "action:1", "about": "the flop bet size is never given" }
+    ],
+    "notes": "Two self-corrections: cutoff -> hijack, and 'five hundred thousand' -> 500/1000."
+  },
+  {
+    "id": "nlh-mtt-ten-handed-4bet-jam",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "4bet", "all-in"],
+    "text": "10-handed (WSOP style), 1500/3000/3000 bba. UTG+1 (95k) opens 6.5k, I 3b to 18k from the HJ (120k) with AcKs, folds back, UTG+1 4b jams 95k, I call. He has QhQd. Board Kd 9c 5s 2h Th — I win.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 1500, "bb": 3000, "ante": 3000 },
+      "players": 10, "heroPosition": "HJ", "heroCards": "AcKs",
+      "stacks": { "UTG+1": 95000, "HJ": 120000 },
+      "board": { "flop": "Kd9c5s", "turn": "2h", "river": "Th" },
+      "actions": {
+        "preflop": [["UTG+1", "raise", 6500], ["HJ", "raise", 18000], ["UTG+1", "all-in", 88500], ["HJ", "call", 77000]]
+      },
+      "showdown": { "UTG+1": "QhQd" },
+      "winners": ["HJ"]
+    }
+  },
+  {
+    "id": "nlh-mtt-effective-only-three-handed",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mtt", "ante", "all-in"],
+    "text": "3-handed at the final table, 50k/100k/100k bba. 25bb effective between me and the big blind. I open the button to 200k with Qs9s, SB folds, BB jams, I call. He has 7c7h, board Kc 8d 4s 2c 3d.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "mtt",
+      "blinds": { "sb": 50000, "bb": 100000, "ante": 100000 },
+      "players": 3, "heroPosition": "BTN", "heroCards": "Qs9s", "effectiveStack": 2500000,
+      "board": { "flop": "Kc8d4s", "turn": "2c", "river": "3d" },
+      "actions": {
+        "preflop": [["BTN", "raise", 200000], ["SB", "fold"], ["BB", "all-in", null], ["BTN", "call", null]]
+      },
+      "showdown": { "BB": "7c7h" },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": ["missing", "ambiguous"], "field": "players.*.startingStack", "id": "stack", "about": "only the effective stack is given; who covers whom, and the SB's stack, are unknown" }
+    ]
+  }
+]

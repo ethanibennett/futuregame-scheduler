@@ -1,0 +1,234 @@
+[
+  {
+    "id": "stud-hi-rolled-up-queens",
+    "source": "text",
+    "game": "Stud Hi",
+    "tags": ["stud", "limit", "bring-in"],
+    "text": "Stud 100/200, 25 ante, 25 bring-in, 6 handed, everyone around 4k. I'm dealt (Ks9s) 9d. 3c brings it in, Qh completes, I raise, 3c folds, Qh calls. 4th: I catch Kd, he gets 7c. I bet, he calls. 5th: me 2h, him 7s; he bets, I raise, he calls. 6th: I pair my 9 with the 9c, he gets Jd. I bet, he calls. River I get Kc for nines full! I bet, he calls and shows QcQd — rolled up queens, he made queens full with the 2c on the end.",
+    "expect": {
+      "gameType": "Stud Hi",
+      "blinds": { "ante": 25, "bringIn": 25, "bb": 100, "bigBet": 200 },
+      "players": 6, "heroCards": "Ks9s9d", "stacksAll": 4000,
+      "heroStreetCards": { "4th": "Kd", "5th": "2h", "6th": "9c", "7th": "Kc" },
+      "studUp": { "@Qh": "Qh7c7sJd" },
+      "actions": {
+        "3rd": [["@3c", "bring-in", 25], ["@Qh", "bet", 100], ["hero", "raise", 200], ["@3c", "fold"], ["@Qh", "call", 100]],
+        "4th": [["hero", "bet", 100], ["@Qh", "call", 100]],
+        "5th": [["@Qh", "bet", 200], ["hero", "raise", 400], ["@Qh", "call", 200]],
+        "6th": [["hero", "bet", 200], ["@Qh", "call", 200]],
+        "7th": [["hero", "bet", 200], ["@Qh", "call", 200]]
+      },
+      "showdown": { "@Qh": "QcQdQh7c7sJd2c" },
+      "winners": ["@Qh"]
+    }
+  },
+  {
+    "id": "stud8-speech-wheel-splits",
+    "source": "speech",
+    "game": "Stud 8",
+    "tags": ["stud", "limit", "bring-in", "split"],
+    "text": "seven card stud high low eight or better two hundred four hundred with a fifty ante and a fifty bring in five players everyone has about six thousand. I've got ace two in the hole with the three of clubs showing ace of hearts two of diamonds three of clubs. the other doors are the deuce of spades the king of diamonds the jack of clubs and the nine of hearts. the deuce of spades brings it in for fifty the king folds I complete to two hundred the jack folds the nine of hearts calls the deuce folds. fourth street I get the four of hearts he gets the ten of spades he checks I bet he calls. fifth street I get the king of clubs he gets the nine of spades so he's got nines showing he bets four hundred I call. sixth street I get the five of spades for the wheel he gets the four of diamonds he bets I raise he calls. seventh street I get the eight of diamonds he checks I bet he calls he shows ten ten in the hole for tens full and I get the low half with my wheel",
+    "expect": {
+      "gameType": "Stud 8",
+      "blinds": { "ante": 50, "bringIn": 50, "bb": 200, "bigBet": 400 },
+      "players": 5, "heroCards": "Ah2d3c", "stacksAll": 6000,
+      "heroStreetCards": { "4th": "4h", "5th": "Kc", "6th": "5s", "7th": "8d" },
+      "studUp": { "@9h": "9hTs9s4d" },
+      "actions": {
+        "3rd": [["@2s", "bring-in", 50], ["@Kd", "fold"], ["hero", "bet", 200], ["@Jc", "fold"], ["@9h", "call", 200], ["@2s", "fold"]],
+        "4th": [["@9h", "check"], ["hero", "bet", 200], ["@9h", "call", 200]],
+        "5th": [["@9h", "bet", 400], ["hero", "call", 400]],
+        "6th": [["@9h", "bet", 400], ["hero", "raise", 800], ["@9h", "call", 400]],
+        "7th": [["@9h", "check"], ["hero", "bet", 400], ["@9h", "call", 400]]
+      },
+      "showdown": { "@9h": "TxTx9hTs9s4d" },
+      "winners": { "refs": ["@9h", "hero"], "split": true }
+    },
+    "notes": "His two hole tens: one is the Ts showing on 4th, so the hole cards can only be two of Tc/Td/Th; suits are not stated."
+  },
+  {
+    "id": "razz-seven-way-bring-in",
+    "source": "text",
+    "game": "Razz",
+    "tags": ["stud", "limit", "bring-in", "lowball"],
+    "text": "Razz 200/400, 50 ante, 50 bring-in, 7 handed, all ~8k. I have (Ac3h) 5s. Kc brings it in, Qd folds, 8h folds, I complete, 4c calls, 2d folds, Jh folds, Kc calls. 4th: me Ts, 4c gets 6d, Kc gets 9c. 4c bets, Kc folds, I call. 5th: me 2h, him Qs. I bet, he calls. 6th: me 7c, him 3d. I bet, he raises, I 3bet, he calls. 7th: I get the Kd, I bet, he calls, shows (Ah8s) and 9s on the end — my 7-5 low wins.",
+    "expect": {
+      "gameType": "Razz",
+      "blinds": { "ante": 50, "bringIn": 50, "bb": 200, "bigBet": 400 },
+      "players": 7, "heroCards": "Ac3h5s", "stacksAll": 8000,
+      "heroStreetCards": { "4th": "Ts", "5th": "2h", "6th": "7c", "7th": "Kd" },
+      "studUp": { "@4c": "4c6dQs3d", "@Kc": "Kc9c" },
+      "actions": {
+        "3rd": [["@Kc", "bring-in", 50], ["@Qd", "fold"], ["@8h", "fold"], ["hero", "bet", 200], ["@4c", "call", 200], ["@2d", "fold"], ["@Jh", "fold"], ["@Kc", "call", 150]],
+        "4th": [["@4c", "bet", 200], ["@Kc", "fold"], ["hero", "call", 200]],
+        "5th": [["hero", "bet", 400], ["@4c", "call", 400]],
+        "6th": [["hero", "bet", 400], ["@4c", "raise", 800], ["hero", "raise", 800], ["@4c", "call", 400]],
+        "7th": [["hero", "bet", 400], ["@4c", "call", 400]]
+      },
+      "showdown": { "@4c": "Ah8s4c6dQs3d9s" },
+      "winners": ["hero"]
+    }
+  },
+  {
+    "id": "stud-wrong-player-brings-in",
+    "source": "speech",
+    "game": "Stud Hi",
+    "tags": ["stud", "bring-in", "impossible-order"],
+    "flaws": ["betting"],
+    "text": "stud four hundred eight hundred hundred ante hundred bring in four players. I've got two kings in the hole and the six of diamonds up king of spades king of hearts six of diamonds. the other door cards are the ace of clubs the jack of spades and the ten of hearts. the jack brings it in I complete the ace calls the ten folds the jack folds. fourth street I get the king of clubs he gets the queen of clubs he checks I bet he folds",
+    "expect": {
+      "gameType": "Stud Hi",
+      "blinds": { "ante": 100, "bringIn": 100, "bb": 400, "bigBet": 800 },
+      "players": 4, "heroCards": "KsKh6d",
+      "heroStreetCards": { "4th": "Kc" },
+      "studUp": { "@Ac": "AcQc", "@Js": "Js", "@Th": "Th" },
+      "actions": {
+        "3rd": [["@Js", "bring-in", 100], ["hero", "bet", 400], ["@Ac", "call", 400], ["@Th", "fold"], ["@Js", "fold"]],
+        "4th": [["@Ac", "check"], ["hero", "bet", 400], ["@Ac", "fold"]]
+      },
+      "winners": ["hero"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": "streets.0.actions", "id": "action:0", "about": "hero's 6d is the lowest door, so hero brings it in, not the jack" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "stud8-no-stakes-no-suits",
+    "source": "text",
+    "game": "Stud 8",
+    "tags": ["stud", "split", "terse"],
+    "text": "Stud8 at the Bike. (A2)4 vs the Kd door, I complete, he calls. 4th I get a 5, he gets a K (pair). He bets, I call. 5th 9 for me, Q for him, bet call. 6th I get a 3 — wheel. He bets, I raise, he 3bets, I call. 7th he bets, I call, he has kings full, I take the low half.",
+    "expect": {
+      "gameType": "Stud 8",
+      "heroCards": "Ax2x4x",
+      "heroStreetCards": { "4th": "5x", "5th": "9x", "6th": "3x" },
+      "studUp": { "@Kd": "KdKxQx" },
+      "actions": {
+        "3rd": [["hero", "bet", null], ["@Kd", "call", null]],
+        "4th": [["@Kd", "bet", null], ["hero", "call", null]],
+        "5th": [["@Kd", "bet", null], ["hero", "call", null]],
+        "6th": [["@Kd", "bet", null], ["hero", "raise", null], ["@Kd", "raise", null], ["hero", "call", null]],
+        "7th": [["@Kd", "bet", null], ["hero", "call", null]]
+      },
+      "winners": { "refs": ["@Kd", "hero"], "split": true }
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "blinds", "id": "blinds", "about": "no stakes, ante or bring-in" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" },
+      { "kind": ["missing", "ambiguous"], "field": "players", "id": ["players", "seats"], "about": "how many players were dealt in is never said" }
+    ]
+  },
+  {
+    "id": "razz-speech-three-handed",
+    "source": "speech",
+    "game": "Razz",
+    "tags": ["stud", "lowball", "bring-in"],
+    "text": "razz one hundred two hundred twenty five ante bring in twenty five three handed everyone's got five thousand. I have ace four in the hole and a deuce up ace of diamonds four of spades two of clubs. the king of hearts brings it in the seven of clubs completes to one hundred I raise to two hundred king folds seven calls. fourth street I catch the six of hearts he catches the jack of diamonds I bet he folds",
+    "expect": {
+      "gameType": "Razz",
+      "blinds": { "ante": 25, "bringIn": 25, "bb": 100, "bigBet": 200 },
+      "players": 3, "heroCards": "Ad4s2c", "stacksAll": 5000,
+      "heroStreetCards": { "4th": "6h" },
+      "studUp": { "@7c": "7cJd", "@Kh": "Kh" },
+      "actions": {
+        "3rd": [["@Kh", "bring-in", 25], ["@7c", "bet", 100], ["hero", "raise", 200], ["@Kh", "fold"], ["@7c", "call", 100]],
+        "4th": [["hero", "bet", 100], ["@7c", "fold"]]
+      },
+      "winners": ["hero"]
+    }
+  },
+  {
+    "id": "stud-four-cards-on-third",
+    "source": "text",
+    "game": "Stud Hi",
+    "tags": ["stud", "card-count", "bring-in"],
+    "flaws": ["card-count"],
+    "text": "$10/$20 stud, $2 ante, $3 bring-in, 8 handed. I have (Ac Ad Kh) 5s showing. My 5s is low so I bring it in for 3, the Qs completes to 10, I call, others fold. 4th: me 9d, him 8h; he bets 10, I call. 5th I get the Ah (trips), he gets the Js; I bet 20, he raises, I 3-bet, he calls. 6th 3c for me, 2h for him, I bet, he folds.",
+    "expect": {
+      "gameType": "Stud Hi", "gameMode": "cash", "currency": "USD",
+      "blinds": { "ante": 2, "bringIn": 3, "bb": 10, "bigBet": 20 },
+      "players": 8, "heroCards": "AcAdKh5s",
+      "heroStreetCards": { "4th": "9d", "5th": "Ah", "6th": "3c" },
+      "studUp": { "@Qs": "Qs8hJs2h" },
+      "actions": {
+        "3rd": [["hero", "bring-in", 3], ["@Qs", "bet", 10], ["hero", "call", 7]],
+        "4th": [["@Qs", "bet", 10], ["hero", "call", 10]],
+        "5th": [["hero", "bet", 20], ["@Qs", "raise", 40], ["hero", "raise", 40], ["@Qs", "call", 20]],
+        "6th": [["hero", "bet", 20], ["@Qs", "fold"]]
+      },
+      "winners": ["hero"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": "streets.0.cards.hero", "id": "hero", "about": "four cards given for 3rd street (two down, one up)" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "stud8-cash-quads-and-low",
+    "source": "text",
+    "game": "Stud 8",
+    "tags": ["stud", "cash", "split", "bring-in"],
+    "text": "Stud/8 $20/$40, $5 ante, $5 bring-in, 6 handed, all $1000. My hand (3h 4h) Ah. 2c brings in, I complete to 20, Td calls, 2c calls 15. 4th: me 6c, Td gets Tc, 2c gets Kd. Td (pair) bets 20, 2c folds, I call. 5th: me 8s, him 9h. He bets 40, I call. 6th: me Ks, him 2s. He checks, I check. 7th: I get the Qc, he bets 40, I call. He shows TsTh in the hole and 5d on the end, quads, and my 8-6-4-3-A takes the low.",
+    "expect": {
+      "gameType": "Stud 8", "gameMode": "cash", "currency": "USD",
+      "blinds": { "ante": 5, "bringIn": 5, "bb": 20, "bigBet": 40 },
+      "players": 6, "heroCards": "3h4hAh", "stacksAll": 1000,
+      "heroStreetCards": { "4th": "6c", "5th": "8s", "6th": "Ks", "7th": "Qc" },
+      "studUp": { "@Td": "TdTc9h2s", "@2c": "2cKd" },
+      "actions": {
+        "3rd": [["@2c", "bring-in", 5], ["hero", "bet", 20], ["@Td", "call", 20], ["@2c", "call", 15]],
+        "4th": [["@Td", "bet", 20], ["@2c", "fold"], ["hero", "call", 20]],
+        "5th": [["@Td", "bet", 40], ["hero", "call", 40]],
+        "6th": [["@Td", "check"], ["hero", "check"]],
+        "7th": [["@Td", "bet", 40], ["hero", "call", 40]]
+      },
+      "showdown": { "@Td": "TsThTdTc9h2s5d" },
+      "winners": { "refs": ["@Td", "hero"], "split": true }
+    }
+  },
+  {
+    "id": "stud-speech-hero-folds-fifth",
+    "source": "speech",
+    "game": "Stud Hi",
+    "tags": ["stud", "bring-in"],
+    "text": "seven stud fifty one hundred ante ten bring in fifteen eight handed everybody has around two thousand. my hand is jack ten in the hole and the jack of clubs up jack of spades ten of diamonds jack of clubs. the deuce of hearts brings it in for fifteen the ace of spades completes to fifty I call everyone else folds the deuce folds. fourth street I get the four of hearts he gets the king of diamonds he bets fifty I call. fifth street I get the three of clubs he gets the ace of hearts he bets a hundred I fold",
+    "expect": {
+      "gameType": "Stud Hi",
+      "blinds": { "ante": 10, "bringIn": 15, "bb": 50, "bigBet": 100 },
+      "players": 8, "heroCards": "JsTdJc", "stacksAll": 2000,
+      "heroStreetCards": { "4th": "4h", "5th": "3c" },
+      "studUp": { "@As": "AsKdAh" },
+      "actions": {
+        "3rd": [["@2h", "bring-in", 15], ["@As", "bet", 50], ["hero", "call", 50], ["@2h", "fold"]],
+        "4th": [["@As", "bet", 50], ["hero", "call", 50]],
+        "5th": [["@As", "bet", 100], ["hero", "fold"]]
+      },
+      "winners": ["@As"]
+    }
+  },
+  {
+    "id": "razz-speech-no-suits-no-stakes",
+    "source": "speech",
+    "game": "Razz",
+    "tags": ["stud", "lowball", "terse"],
+    "text": "razz hand I'm dealt ace three five with the five up two other players a seven and a king showing. the king brings it in I complete the seven raises I call the king folds. fourth street I get a jack he gets a four he bets I call. fifth I get a two he gets a queen I bet he calls. sixth I get a six he gets a king I bet he folds",
+    "expect": {
+      "gameType": "Razz",
+      "players": 3, "heroCards": "Ax3x5x",
+      "heroStreetCards": { "4th": "Jx", "5th": "2x", "6th": "6x" },
+      "studUp": { "@7x": "7x4xQxKx", "@Kx": "Kx" },
+      "actions": {
+        "3rd": [["@Kx", "bring-in", null], ["hero", "bet", null], ["@7x", "raise", null], ["hero", "call", null], ["@Kx", "fold"]],
+        "4th": [["@7x", "bet", null], ["hero", "call", null]],
+        "5th": [["hero", "bet", null], ["@7x", "call", null]],
+        "6th": [["hero", "bet", null], ["@7x", "fold"]]
+      },
+      "winners": ["hero"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "blinds", "id": "blinds", "about": "no stakes, ante or bring-in" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  }
+]
