@@ -30,7 +30,6 @@ export function cardsOf(str) {
   if (!s || s.trim().toUpperCase() === MUCK) return [];
   return parseCardNotation(s);
 }
-export function cardCount(str) { return cardsOf(str).length; }
 export function knownKeys(str) {
   return cardsOf(str).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
 }

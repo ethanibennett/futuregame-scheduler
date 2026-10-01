@@ -14,7 +14,7 @@
 // silently).
 
 import { gameConfig, gameCategory } from './game.js';
-import { seatHand, referencedSeats, hasCards, positionMode } from './seats.js';
+import { seatHand, referencedSeats, hasCards, positionMode, DEFAULT_NAME } from './seats.js';
 import { straddles } from './betting.js';
 
 const PENDING_ACTION_KEYS = ['toAmount', 'toAmountBB', 'potFraction'];
@@ -27,10 +27,6 @@ export function roundChips(x, blinds) {
   const b = blinds || {};
   const fractional = [b.sb, b.bb, b.ante, b.bigBet, b.bringIn].some(v => typeof v === 'number' && !Number.isInteger(v));
   return fractional ? Math.round(x * 100) / 100 : Math.round(x);
-}
-
-export function hasPendingSize(a) {
-  return !!a && PENDING_ACTION_KEYS.some(k => a[k] != null);
 }
 
 function clearPending(a) { for (const k of PENDING_ACTION_KEYS) delete a[k]; }
@@ -83,6 +79,15 @@ export function seatTable(hand, n, remap) {
   const oldToNew = {};
   order.forEach((o, k) => { if (o != null) oldToNew[o] = k; });
   let out = remap(hand, order, { positions: seated.positions });
+  // Placeholder names are renumbered in seat order, the hero aside, as the
+  // server's internalToHand does ("Opp 1" is the first opponent to act).
+  let opp = 0;
+  out.players = out.players.map((p, i) => {
+    if (i === out.heroIdx) return p;
+    opp++;
+    const nm = typeof p.name === 'string' ? p.name.trim() : '';
+    return !nm || DEFAULT_NAME.test(nm) ? { ...p, name: 'Opp ' + opp } : p;
+  });
   const qa = { ...qaBefore };
   delete qa.positions;
   if (!seated.complete) {

@@ -4,7 +4,7 @@
 // rules in gaps.js pick the values; these only carry them out.
 
 import { gameConfig, streetDef, positionLabels, studPositionLabels } from './game.js';
-import { oppSlot, slotPlayer, removeCardFrom, cardsOf, isMuck } from './cards.js';
+import { oppSlot, slotPlayer, removeCardFrom, cardsOf } from './cards.js';
 import { orderFromButton } from './seats.js';
 import { seatTable } from './pending.js';
 
@@ -418,4 +418,3 @@ export function applyFreeValue(input, gap, value) {
   return hand;
 }
 
-export { isIdx, oppSlot, isMuck };

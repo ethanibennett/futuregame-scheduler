@@ -18,7 +18,6 @@
 // rule. The replay itself never enforces turn order, so nothing disagrees.
 
 import { cardsOf } from './cards.js';
-import { isLowStud } from './game.js';
 
 const STRADDLE_TYPES = ['utg', 'button', 'rock', 'mississippi'];
 

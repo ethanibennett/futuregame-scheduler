@@ -5,7 +5,7 @@
 // state that is already wrong, so the next problem is only worth asking about
 // once this one is answered (findGaps re-runs after every answer).
 
-import { Table, seatOrder, straddles, lastStraddleSeat, findStudBringIn, findStudBestBoard, studUpCards, studStreetCards, doorCard } from './betting.js';
+import { Table, seatOrder, straddles, lastStraddleSeat, findStudBringIn, findStudBestBoard, studUpCards, doorCard } from './betting.js';
 import { referencedSeats, hasCards } from './seats.js';
 import { isLowStud } from './game.js';
 import { cardsOf } from './cards.js';

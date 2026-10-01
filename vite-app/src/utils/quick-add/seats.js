@@ -67,7 +67,7 @@ export function roleRank(token) {
   return i < 0 ? ROLE_ORDER.length : i;
 }
 
-const DEFAULT_NAME = /^(hero|opp(onent)?\s*\d*|player\s*\d*|villain\s*\d*|seat\s*\d+)$/i;
+export const DEFAULT_NAME = /^(hero|opp(onent)?\s*\d*|player\s*\d*|villain\s*\d*|seat\s*\d+)$/i;
 const isIdx = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
 
 /* How the hand's position words are to be read: 'narrator' while quick-add
