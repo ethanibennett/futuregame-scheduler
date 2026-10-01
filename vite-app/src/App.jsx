@@ -1388,6 +1388,7 @@ export default function App() {
               season's date range. The h2 inside CashView is dropped in favour of this. */}
           {currentView === 'cash' ? <small>live cash games</small>
             : currentView === 'hands' ? <small>hands archive</small>
+            : currentView === 'dashboard' ? <small>dashboard</small>
             : (seasonLabel ? <small>{seasonLabel}</small> : null)}
         </div>
         <div className="top-bar-actions">
