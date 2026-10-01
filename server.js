@@ -11458,6 +11458,28 @@ function postProcessEvents(allEvents, userVenue) {
   return { deduplicated, warnings };
 }
 
+// ── Quick-add hand histories (lib/quick-add.js) ── BEGIN ──────────────────────
+// POST /api/quick-add/parse  { text, source, hints? } -> { hand, notes }
+// POST /api/quick-add/answer { hand, gap, answer }    -> { hand, applied, notes }
+// Admins only and rate-limited per user (every parse is a paid API call); 503 without
+// ANTHROPIC_API_KEY. Models: QUICK_ADD_PARSE_MODEL / QUICK_ADD_ANSWER_MODEL override
+// the defaults. Contract: docs/quick-add-contract.md.
+{
+  const { createQuickAddRouter } = require('./lib/quick-add');
+  let quickAddClient = null, quickAddKey = null;
+  app.use('/api/quick-add', createQuickAddRouter({
+    authenticateToken,
+    isAdmin: (user) => APP_ADMIN_USERNAMES.has(String((user && user.username) || '').toLowerCase()) && !user.isGuest,
+    getClient: () => {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return null;
+      if (apiKey !== quickAddKey) { quickAddClient = new Anthropic({ apiKey, timeout: 90000, maxRetries: 1 }); quickAddKey = apiKey; }
+      return quickAddClient;
+    },
+  }));
+}
+// ── Quick-add hand histories ── END ────────────────────────────────────────────
+
 // ── Parse schedule from file upload ──
 app.post('/api/parse-schedule', authenticateToken, requireRegistered, scheduleUpload.array('file', 20), async (req, res) => {
   const files = req.files || (req.file ? [req.file] : []);
