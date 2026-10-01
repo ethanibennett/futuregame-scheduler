@@ -178,6 +178,7 @@ const isDismiss = o => o && o.value && typeof o.value === 'object' && o.value.op
 
 // Plain-English failures. `kind` is 'parse' or 'answer'.
 function describeFailure(status, kind) {
+  if (status === -1) return 'No answer after a minute. Your description is kept: try again.';
   if (status === 0) return "Couldn't reach the server. Check your connection and try again.";
   if (status === 401) return 'Your session has expired. Sign in again to use quick add.';
   if (status === 403) return 'Quick add is for admins only for now.';
@@ -189,17 +190,31 @@ function describeFailure(status, kind) {
   return `Something went wrong (error ${status}). Try again.`;
 }
 
+/* ⚠️ A deadline, because without one a request the phone never sends waits forever. Seen
+   2026-10-01 in the iOS app: "Reading the hand…" for over a minute while the server received
+   nothing, then the request went out together with the app's resume traffic and parsed in 7 s.
+   A parse takes ~7 s and the server gives the model 90 s, so 60 s means the request is stuck,
+   not slow. */
+const REQUEST_TIMEOUT_MS = 60000;
+
 async function postJson(path, token, body) {
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS) : null;
   let res;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
       body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined,
     });
-  } catch { return { ok: false, status: 0 }; }
+  } catch (e) {
+    clearTimeout(timer);
+    return { ok: false, status: e && e.name === 'AbortError' ? -1 : 0 };
+  }
   let data = null;
-  try { data = await res.json(); } catch { /* empty or not JSON */ }
+  try { data = await res.json(); } catch { /* empty, not JSON, or cut off by the deadline */ }
+  clearTimeout(timer);
   return { ok: res.ok, status: res.status, data };
 }
 
