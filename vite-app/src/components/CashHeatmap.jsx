@@ -6,9 +6,13 @@ import { API_URL } from '../utils/api.js';
 // a venue + game/stake; the grid shows when it runs and how busy. Needs ~2 weeks
 // of collected history to be meaningful.
 
-// Heatmap geometry: a 5g hour column, then seven 4g day columns; every row 2r.
-const HEAT_COLS = 'calc(var(--gu) * 5) repeat(7, calc(var(--gu) * 4))';
-const HEAT_W = 'calc(var(--gu) * 33)';
+// Heatmap geometry: a 3g hour column, then seven 3g day columns, 1g between every two
+// columns (31g, centred: labels 3g..6g, cells starting 7, 11, 15 ... 31g, ending 34g, every
+// edge on a whole g); every row 2r. Seven 4g columns with 1g gaps would be 34g and leave no
+// room for the hours, so the cells went to 3g (Ethan's call, 2026-10-01).
+const HEAT_COLS = 'calc(var(--gu) * 3) repeat(7, calc(var(--gu) * 3))';
+const HEAT_COL_GAP = 'var(--gu)';
+const HEAT_W = 'calc(var(--gu) * 31)';
 const HEAT_ROW_H = 'calc(var(--subrow) * 2)';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
@@ -211,21 +215,20 @@ export default function CashHeatmap({ token }) {
           {/* Vertical orientation: hours run DOWN as rows, the 7 days ACROSS as
               columns. Seven columns fit the phone width, so no horizontal scroll —
               the grid grows downward instead. */}
-          {/* Every cell is 4g x 2r with no gaps, so the columns sit on whole g: a 5g hour
-              column + 7 x 4g = 33g, centred, putting the cells on 7g..35g; 24 rows x 2r = 48r.
-              Neighbours are told apart by an inset hairline in the background colour, which
-              costs no size. (They stretched to fill the height and width, with 2xs gaps.) */}
+          {/* Every cell is 3g x 2r, columns 1g apart, every edge on a whole g (see HEAT_COLS);
+              24 rows x 2r = 48r with no row gap. Vertically adjacent cells are told apart by an
+              inset hairline in the background colour, which costs no size. */}
           <div ref={gridRef} style={{ flex: 'none', display: 'flex', flexDirection: 'column', width: HEAT_W, maxWidth: '100%', margin: '0 auto', paddingTop: `calc(var(--subrow) * ${gridDrop.toFixed(4)})` }}>
             {/* Day axis (column headers), one 2r line */}
-            <div style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, gap: 0, flexShrink: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flexShrink: 0 }}>
               <div />
               {DOW.map((day, d) => (
                 <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{day}</div>
               ))}
             </div>
             {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, gap: 0, flex: 'none' }}>
-                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--gu)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
+              <div key={h} style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flex: 'none' }}>
+                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 0, fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
                 {DOW.map((day, d) => {
                   const c = cellMap.get(`${d}-${h}`);
                   const hasData = !!(c && c.samples > 0);
