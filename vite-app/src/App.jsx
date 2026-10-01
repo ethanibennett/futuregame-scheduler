@@ -364,6 +364,7 @@ export default function App() {
     if (sharedHandData) setCurrentView('hands');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const sharedPathShown = useRef(false);
   // Resolve a /h/<id> short link: fetch the stored hand, decode, and open it.
   // (The #h/ fragment above is decoded synchronously; this one needs the server.)
   useEffect(() => {
@@ -377,10 +378,19 @@ export default function App() {
         setSharedHandData(decoded);
         setSharedHandArrived(true);
         setCurrentView('hands');
-        if (window.history.replaceState) window.history.replaceState(null, '', '/');
+        // The /h/<id> address stays while the hand is open (it used to be replaced with '/'
+        // right here), so sharing the page from the browser, or reloading it, keeps the hand and
+        // its preview title instead of the bare site with the season title. It goes back to '/'
+        // when the shared hand is closed — the effect below.
+        sharedPathShown.current = true;
       })
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (sharedHandData || !sharedPathShown.current) return;
+    if (/^\/h\//.test(window.location.pathname) && window.history.replaceState) window.history.replaceState(null, '', '/');
+    sharedPathShown.current = false;
+  }, [sharedHandData]);
 
   // Listen for hashchange to handle #h/ hand links without full reload
   useEffect(() => {
