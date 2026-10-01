@@ -4464,7 +4464,7 @@
          a layout of its own. */
       --card-h: clamp(18px, 10.5cqmin, 132px);
     }
-    .replayer-landscape .replayer-seat.is-hero { --card-h: clamp(20px, 13cqmin, 164px); }
+    .replayer-landscape .replayer-seat.is-hero { --card-h: clamp(20px, 13cqmin, 164px); --card-w: calc(var(--card-h) * 0.7143); }
     .replayer-landscape .replayer-table-slot { align-items: center; }
     /* Measured off the reference: its pot row's centre sits at 35.6% of the
        table height (pill band y 373..411 of a table spanning 128..869).
@@ -7884,7 +7884,11 @@
        one, and a fan overflows it anyway. The plaque does the joining. */
 
     /* 88: the hero. Bigger plate, the brand hairline, and cards a step up. */
-    .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqmin, 200px); }  /* 2.5 cells */
+    /* --card-w is re-derived here too: it is otherwise computed once on the table, so the hero
+       inherited the OPPONENTS' card width while drawing bigger cards — and the fan is laid out
+       in --card-w units, so the hero's hand splayed (and overlapped) tighter than everyone
+       else's. Same 0.7143 artwork ratio as the table's own definition. */
+    .replayer-seat.is-hero { --card-h: clamp(20px, 15.625cqmin, 200px); --card-w: calc(var(--card-h) * 0.7143); }  /* 2.5 cells */
     .replayer-seat.is-hero .replayer-seat-info {
       min-width: min(calc(var(--subrow) * 27.5), 27cqmin);
       padding: var(--nudge-1) min(var(--space-ml), 4cqmin);
