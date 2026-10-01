@@ -31,6 +31,17 @@ const GAP_MAX_MS = 25 * 60 * 1000;
 const HISTORY_HOURS = 16;
 const gameKey = (venueSlug, gameType, stakes) => `${venueSlug}|${gameType}|${stakes}`;
 
+/* The game as the room lists it. The watcher's normalised gameType is for grouping, filters and
+   history; shown to a person it can be wrong (Bravo's "BIG O/OE 8" read as PLO5, 2026-10-01),
+   so the card shows the room's own label, minus the stakes it starts with ("10-20 …"), which
+   have their own column. Falls back to gameType when there is no label. */
+const STAKES_PREFIX = /^\s*\$?\d+(?:[.,]\d+)?(?:\s*[-\/]\s*\$?\d+(?:[.,]\d+)?){1,2}\s+/;
+function listedGame(g) {
+  const raw = String((g && g.gameRaw) || '').trim();
+  const name = raw.replace(STAKES_PREFIX, '').trim();
+  return name || (g && g.gameType) || '';
+}
+
 function ago(iso) {
   if (!iso) return null;
   const t = Date.parse(iso);
@@ -387,7 +398,7 @@ export default function CashView({ token, onModeChange }) {
                           return (
                             <div key={gi + '-' + ti} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-ml)', padding: isTop ? 'var(--space-md) calc(var(--subrow) * 1.75)' : 'calc(var(--subrow) * 0.375) calc(var(--subrow) * 1.75)', borderTop: (gi === 0 && isTop) ? 'none' : (isTop ? 'var(--bw-hair) solid var(--border, rgba(255,255,255,0.08))' : 'none') }}>
                               <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text, #fff)', minWidth: 'calc(var(--subrow) * 7.75)' }}>{isTop ? g.stakes : ''}</span>
-                              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isTop ? g.gameType : ''}</span>
+                              <span style={{ fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--text-muted, #aaa)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isTop ? listedGame(g) : ''}</span>
                               <span style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap', minWidth: 'calc(var(--subrow) * 12)', textAlign: 'right' }}>{open || ''}</span>
                               <span style={{ minWidth: 'calc(var(--subrow) * 6.75)', textAlign: 'right' }}>
                                 {isTop && (g.waitlistLen || 0) > 0 && (
@@ -405,7 +416,7 @@ export default function CashView({ token, onModeChange }) {
                           <span style={{ fontSize: 'calc(var(--gu) * 0.913)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted,#777)', alignSelf: 'center' }}>Interest</span>
                           {interest.map((g, i) => (
                             <span key={'i' + i} style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted,#999)', border: 'var(--bw-hair) dashed var(--border,#333)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)' }}>
-                              {g.stakes} {g.gameType}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}
+                              {g.stakes} {listedGame(g)}{(g.waitlistLen || 0) > 0 ? ` · WL ${g.waitlistLen}` : ''}
                             </span>
                           ))}
                         </div>
