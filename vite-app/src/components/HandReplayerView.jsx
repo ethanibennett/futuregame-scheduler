@@ -61,6 +61,76 @@ function computeDrawHand(originalCards, draws, upToStreetIdx, gameType = '') {
   return current;
 }
 
+/* Cards that cannot be dealt to `playerIdx` on the draw recorded at `streetIdx`, each with
+   the reason, for the New Cards fields (Ethan, 2026-10-01: dead cards must not be
+   selectable as cards dealt on a draw). Dead: every card discarded so far in the hand (this
+   draw's discards included), every card in any player's hand going into this draw, and any
+   card already dealt to someone else on this same draw. Face-down 'x' cards are unknown and
+   never dead. */
+function drawDeadCards(hand, streetIdx, playerIdx) {
+  const dead = new Map();
+  const heroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
+  const nameOf = (pi) => (hand.players[pi] && hand.players[pi].name) || 'another player';
+  const add = (str, why) => {
+    for (const c of parseCardNotation(str || '')) {
+      if (c.suit === 'x') continue;
+      const k = c.rank + c.suit;
+      if (!dead.has(k)) dead.set(k, why);
+    }
+  };
+  for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
+    for (const d of (hand.streets[si].draws || [])) add(d.discardedCards, 'already discarded');
+  }
+  const s0 = (hand.streets[0] && hand.streets[0].cards) || {};
+  hand.players.forEach((_, pi) => {
+    const oppSlot = pi > heroIdx ? pi - 1 : pi;
+    const base = pi === heroIdx ? (s0.hero || '') : ((s0.opponents || [])[oppSlot] || '');
+    const held = computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), streetIdx - 1, hand.gameType);
+    add(held, pi === playerIdx ? 'already in this hand' : 'in ' + nameOf(pi) + "'s hand");
+  });
+  // Cards dealt on earlier draws are in their drawer's hand even when that player's starting
+  // cards are unknown (computeDrawHand returns nothing without them). Any later thrown away are
+  // already in the map as discarded.
+  for (let si = 0; si < streetIdx && si < hand.streets.length; si++) {
+    for (const d of (hand.streets[si].draws || [])) {
+      add(d.newCards, d.player === playerIdx ? 'already in this hand' : 'in ' + nameOf(d.player) + "'s hand");
+    }
+  }
+  const cur = hand.streets[streetIdx];
+  for (const d of ((cur && cur.draws) || [])) {
+    if (d.player !== playerIdx) add(d.newCards, 'already dealt to ' + nameOf(d.player));
+  }
+  return dead;
+}
+
+/* The New Cards field for a draw: a dead card typed into it does not take. Each complete
+   two-character card is checked as it is typed; a dead one (or a repeat) is dropped and the
+   reason shows under the field until the next edit. A half-typed card passes through. */
+function DrawNewCardsInput({ value, onChange, dead, placeholder }) {
+  const [msg, setMsg] = useState('');
+  const handle = (raw) => {
+    const chars = String(raw || '').replace(/\s+/g, '');
+    const kept = []; const seen = new Set(); let note = '';
+    let i = 0;
+    for (; i + 1 < chars.length; i += 2) {
+      const tok = chars[i].toUpperCase() + chars[i + 1].toLowerCase();
+      const why = dead && dead.get(tok);
+      if (why) { note = tok + ' is ' + why; continue; }
+      if (seen.has(tok)) { note = tok + ' is already entered'; continue; }
+      seen.add(tok); kept.push(chars[i] + chars[i + 1]);
+    }
+    const tail = i < chars.length ? chars[i] : '';
+    setMsg(note);
+    onChange(kept.join('') + tail);
+  };
+  return (
+    <>
+      <input type="text" placeholder={placeholder} value={value || ''} onChange={e => handle(e.target.value)} />
+      {msg && <div className="replayer-field-error">{msg}</div>}
+    </>
+  );
+}
+
 function getPlayerDrawsByStreet(hand, playerIdx) {
   const result = {};
   hand.streets.forEach((s, si) => {
@@ -2197,7 +2267,9 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
                       </div>
                       <div className="replayer-field" style={{flex:1}}>
                         <label>New Cards</label>
-                        <input type="text" placeholder={'e.g. Ah5s'} value={(draw && draw.newCards) || ''} onChange={e => updateDrawField(currentStreetIdx, pi, 'newCards', e.target.value)} />
+                        <DrawNewCardsInput placeholder={'e.g. Ah5s'} value={(draw && draw.newCards) || ''}
+                          dead={drawDeadCards(hand, currentStreetIdx, pi)}
+                          onChange={v => updateDrawField(currentStreetIdx, pi, 'newCards', v)} />
                         {draw?.newCards && <CardRow text={draw.newCards} max={discardCount} />}
                       </div>
                     </div>
@@ -3659,7 +3731,9 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       </div>
                       <div className="replayer-field">
                         <label>New Cards</label>
-                        <input type="text" placeholder="e.g. Ah5s" value={de.newCards || ''} onChange={e => updateDrawCardsFn(pi, 'newCards', e.target.value)} />
+                        <DrawNewCardsInput placeholder="e.g. Ah5s" value={de.newCards || ''}
+                          dead={drawDeadCards(hand, currentStreetIdx, pi)}
+                          onChange={v => updateDrawCardsFn(pi, 'newCards', v)} />
                         {de.newCards && <CardRow text={de.newCards} max={de.discarded} />}
                       </div>
                     </div>
