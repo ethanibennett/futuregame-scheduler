@@ -403,9 +403,35 @@ export function stackRules(hand, env, out) {
 
   if (missing.length === n && n > 1 && !hand.players.some(p => num(p.startingStackBB) > 0)) {
     const opts = [];
-    if (unit > 0) for (const k of [100, 50, 200]) {
-      const v = deep(k);
-      opts.push({ label: 'Everyone ' + depthLabel(k) + ' (' + fmt(v) + ')', value: { op: 'setMany', sets: hand.players.map((_, i) => ({ path: 'players.' + i + '.startingStack', value: v })) } });
+    const setAll = v => ({ op: 'setMany', sets: hand.players.map((_, i) => ({ path: 'players.' + i + '.startingStack', value: v })) });
+    /* The best guess must be deep enough for the hand's own action: a fixed "100 BB" first
+       made a hand with bigger bets impossible, and accepting it set off a run of all-in
+       questions (measured on a PLO corpus hand: three follow-ups). The most anyone put in
+       across the streets (amounts are chips ADDED), plus a big blind for the blinds/ante, is
+       the floor; of the usual depths only those at or above it are offered — 100 first when
+       it fits (the common case is unchanged), else the shallowest that does. */
+    // Forced bets first (blinds/ante are posted, not recorded as actions) — same rule as the
+    // "stack used up by the blind" check above.
+    const put = hand.players.map(p => env.isStud ? (env.ante || 0)
+      : (p.position === 'BB' ? (env.bb || 0) + (env.ante || 0) : (p.position === 'SB' || p.position === 'BTN/SB') ? (env.sb || 0) : 0));
+    for (const st of (hand.streets || [])) {
+      for (const a of ((st && st.actions) || [])) {
+        if (a && Number.isInteger(a.player) && a.player >= 0 && a.player < n && num(a.amount) > 0) put[a.player] += num(a.amount);
+      }
+    }
+    const floor = Math.max(0, ...put) + (unit > 0 ? unit : 0);
+    /* A hand with an all-in says how deep the all-in player was: everything they put in. That
+       is the likeliest effective stack, so it leads; any deeper depth would contradict the
+       all-in and only trade one question for another. */
+    const allInPut = Math.max(0, ...hand.players.map((_, i) => (hand.streets || []).some(st => ((st && st.actions) || []).some(a => a && a.player === i && a.action === 'all-in')) ? put[i] : 0));
+    if (allInPut > 0) opts.push({ label: 'Everyone ' + fmt(allInPut) + ' (the all-in)', value: setAll(allInPut) });
+    if (unit > 0) {
+      const ks = [100, 50, 200, 300, 500, 1000].filter(k => deep(k) >= floor).slice(0, allInPut > 0 ? 2 : 3);
+      for (const k of ks) opts.push({ label: 'Everyone ' + depthLabel(k) + ' (' + fmt(deep(k)) + ')', value: setAll(deep(k)) });
+      if (!ks.length) {
+        const v = Math.ceil(floor / unit) * unit;
+        opts.push({ label: 'Enough to cover the action (' + fmt(v) + ')', value: setAll(v) });
+      }
     }
     out.push(makeGap({
       id: 'stacks', kind: 'missing', field: 'players.*.startingStack',

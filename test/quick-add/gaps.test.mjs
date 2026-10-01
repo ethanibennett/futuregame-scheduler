@@ -1392,6 +1392,27 @@ test('every gap has the contract shape', () => {
   }
 }
 
+// ── The stacks best guess fits the hand's own action (integration fix, 2026-10-01) ──
+test('stacks: an all-in hand suggests the all-in amount first, and taking it settles the stacks', () => {
+  const h = { gameType: 'NLH', heroIdx: 0, blinds: { sb: 100, bb: 200, ante: 0 },
+    players: [P('Hero', 'BTN/SB', null), P('Opp', 'BB', null)],
+    streets: [St('Preflop', 'AsKd', [''], '', [A(0, 'all-in', 9900), A(1, 'call', 9800)])] };
+  const g = gap(h, 'stacks');
+  ok(g, 'stacks gap raised');
+  ok(/10,000/.test(g.options[0].label), 'first option is the all-in amount: ' + g.options[0].label);
+  const after = applyAnswer(h, g, g.options[0].value);
+  ok(!ids(after).some(id => /^stack/.test(id)), 'no stack gaps after taking it: ' + ids(after).join(','));
+});
+test('stacks: action bigger than 100 BB never gets a best guess too shallow for it', () => {
+  const h = { gameType: 'NLH', heroIdx: 0, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [P('Hero', 'BTN/SB', null), P('Opp', 'BB', null)],
+    streets: [St('Preflop', 'AsKd', [''], '', [A(0, 'raise', 5), A(1, 'raise', 18), A(0, 'call', 14)]),
+      St('Flop', '', [''], 'Kh7c2d', [A(1, 'bet', 200), A(0, 'call', 200)])] };
+  const g = gap(h, 'stacks');
+  const v = g.options[0].value.sets[0].value;
+  ok(v >= 220, 'best guess ' + v + ' covers the 220 put in');
+});
+
 // ── HAND_CONFIG drift (needs utils.js, which touches localStorage at import) ──
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.window = globalThis;

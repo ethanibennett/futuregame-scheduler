@@ -153,8 +153,27 @@ function toReplayable(hand) {
   }));
   h.blinds = h.blinds || {};
   if (h.heroIdx == null) h.heroIdx = 0;
+  delete h.quickAddDismissed; // the gaps engine's "don't ask again" list
   return h;
 }
+
+/* The gaps engine marks some gaps `auto`: a mechanical fix whose first option follows from
+   the hand itself (an implied fold, a relabelled action). Those are applied without asking —
+   each at most once, so a fix that does not settle its gap cannot loop — and announced in the
+   chat so nothing changes silently. `provisional` gaps are previews (asked after the real
+   question settles the game or seating), never questions. */
+function settleAuto(hand) {
+  let h = hand; const notes = []; const done = new Set();
+  for (let i = 0; i < 25; i++) {
+    const g = findGaps(h).find(x => x.auto && !x.provisional && !done.has(x.id) && x.options && x.options.length);
+    if (!g) break;
+    done.add(g.id);
+    h = applyAnswer(h, g, g.options[0].value);
+    notes.push({ side: 'app', tone: 'note', text: 'Filled in: ' + g.options[0].label });
+  }
+  return { hand: h, notes };
+}
+const isDismiss = o => o && o.value && typeof o.value === 'object' && o.value.op === 'dismiss';
 
 // Plain-English failures. `kind` is 'parse' or 'answer'.
 function describeFailure(status, kind) {
@@ -219,7 +238,7 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
   const [skipped, setSkipped] = useState(() => new Set());
   const activeRef = useRef(null);
 
-  const gaps = useMemo(() => (hand ? findGaps(hand) : []), [hand]);
+  const gaps = useMemo(() => (hand ? findGaps(hand).filter(g => !g.provisional) : []), [hand]);
   const open = useMemo(() => gaps.filter(g => !skipped.has(g.id)), [gaps, skipped]);
   const blocking = gaps.filter(g => g.blocking);
   const ready = phase === 'chat' && hand && blocking.length === 0;
@@ -238,24 +257,25 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
     setBusy(null);
     if (!ok || !data?.hand) { setError(describeFailure(ok ? 500 : status, 'parse')); return; }
     const notes = Array.isArray(data.notes) ? data.notes.filter(Boolean) : [];
-    setHand(data.hand);
-    setLog([{ side: 'user', text: description }, ...notes.map(n => ({ side: 'app', tone: 'note', text: n }))]);
+    const settled = settleAuto(data.hand);
+    setHand(settled.hand);
+    setLog([{ side: 'user', text: description }, ...notes.map(n => ({ side: 'app', tone: 'note', text: n })), ...settled.notes]);
     setSkipped(new Set());
     setPhase('chat');
   };
 
   // After any answer: if the same gap still leads, say so instead of silently re-asking.
   const afterAnswer = (gap, nextHand) => {
-    const next = findGaps(nextHand).filter(g => !skipped.has(g.id))[0];
+    const next = findGaps(nextHand).filter(g => !g.provisional && !skipped.has(g.id))[0];
     if (next && next.id === gap.id) say({ side: 'app', tone: 'note', text: "That didn't settle it. Try another way." });
   };
 
   const choose = (gap, option) => {
     if (busy) return;
-    const nextHand = applyAnswer(hand, gap, option.value);
-    say({ side: 'app', text: gap.question }, { side: 'user', text: option.label });
-    setHand(nextHand); setError(null); setReply('');
-    afterAnswer(gap, nextHand);
+    const settled = settleAuto(applyAnswer(hand, gap, option.value));
+    say({ side: 'app', text: gap.question }, { side: 'user', tone: isDismiss(option) ? 'skip' : undefined, text: option.label }, ...settled.notes);
+    setHand(settled.hand); setError(null); setReply('');
+    if (!isDismiss(option)) afterAnswer(gap, settled.hand);
   };
 
   const skip = gap => {
@@ -271,9 +291,10 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
     const { ok, status, data } = await postJson('/quick-add/answer', token, { hand, gap, answer });
     setBusy(null);
     if (!ok || !data?.hand) { setError(describeFailure(ok ? 500 : status, 'answer')); return; }
-    say({ side: 'app', text: gap.question }, { side: 'user', text: answer });
-    setHand(data.hand); setReply('');
-    afterAnswer(gap, data.hand);
+    const settled = settleAuto(data.hand);
+    say({ side: 'app', text: gap.question }, { side: 'user', text: answer }, ...settled.notes);
+    setHand(settled.hand); setReply('');
+    afterAnswer(gap, settled.hand);
   };
 
   const startOver = () => {
@@ -311,7 +332,7 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
     if (!gap) return null;
     const options = (gap.options || []).slice();
     const all = options.map(o => ({ ...o }));
-    if (!gap.blocking) all.push({ label: 'Skip', value: undefined, skip: true });
+    if (!gap.blocking && !options.some(isDismiss)) all.push({ label: 'Skip', value: undefined, skip: true });
     // One filled action per region: once the Open button exists, it is the one.
     const sendIsPrimary = !options.length && !ready;
     return (
