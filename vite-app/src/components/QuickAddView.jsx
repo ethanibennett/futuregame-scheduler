@@ -9,7 +9,8 @@ import { findGaps, applyAnswer } from '../utils/quick-add/gaps.js';
      2. findGaps(hand) → ask the first gap; an option chip merges locally via
         applyAnswer, free text goes to POST /api/quick-add/answer
      3. every answer re-runs findGaps, so a fix that exposes a new gap is asked next
-     4. no blocking gaps → open it in the replayer (or the entry form, to save)
+     4. no blocking gaps → save it and open the replayer (or the entry form, saved
+        when done); the description is saved as the hand's notes
    Grid: every width is whole g on the 1..36 x-lines, every height whole r; see the
    "Quick Add" section of styles.css for the arithmetic. */
 
@@ -227,11 +228,24 @@ function ChipGrid({ label, items, busy, primaryFirst, onPick }) {
   );
 }
 
+/* The unfinished hand survives leaving the screen (Back, another tab, an app restart): the
+   description and every answer so far. Cleared once the hand is opened (and saved) or the
+   user starts over. Per-device convenience only, so every access is guarded. */
+const DRAFT_KEY = 'quickadd_draft';
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+    return d && typeof d === 'object' ? d : null;
+  } catch { return null; }
+}
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch { /* storage unavailable */ } }
+
 export default function QuickAddView({ token, heroName, onBack, onOpen }) {
-  const [phase, setPhase] = useState('describe');      // 'describe' | 'chat'
-  const [text, setText] = useState('');
-  const [hand, setHand] = useState(null);
-  const [log, setLog] = useState([]);                   // { side, tone?, text }
+  const draft = useMemo(loadDraft, []);
+  const [phase, setPhase] = useState(() => (draft && draft.phase === 'chat' && draft.hand ? 'chat' : 'describe'));
+  const [text, setText] = useState(() => (draft && typeof draft.text === 'string' ? draft.text : ''));
+  const [hand, setHand] = useState(() => (draft && draft.phase === 'chat' ? draft.hand || null : null));
+  const [log, setLog] = useState(() => (draft && draft.phase === 'chat' && Array.isArray(draft.log) ? draft.log : []));   // { side, tone?, text }
   const [busy, setBusy] = useState(null);               // null | 'parse' | 'answer'
   const [error, setError] = useState(null);
   const [reply, setReply] = useState('');
@@ -246,6 +260,20 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
   const summary = useMemo(() => summarize(hand), [hand]);
 
   const say = useCallback((...entries) => setLog(l => [...l, ...entries]), []);
+
+  useEffect(() => {
+    try {
+      if (!text.trim() && !hand) localStorage.removeItem(DRAFT_KEY);
+      else localStorage.setItem(DRAFT_KEY, JSON.stringify({ phase, text, hand, log }));
+    } catch { /* storage unavailable or full: the draft is a convenience */ }
+  }, [phase, text, hand, log]);
+
+  // The description goes with the hand (saved as its notes); the draft is done with.
+  const openHand = target => {
+    const description = text.trim() || (log.find(m => m.side === 'user') || {}).text || '';
+    clearDraft();
+    onOpen(toReplayable(hand), target, description);
+  };
 
   const parse = async () => {
     const description = text.trim();
@@ -413,10 +441,10 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
                   ? "That's enough to replay it. The rest is optional."
                   : "That's everything. Ready to replay."}</p>
                 <div className="qa-ready-actions">
-                  <button type="button" className="qa-chip is-best" onClick={() => onOpen(toReplayable(hand), 'replay')}>
-                    <span>Open in replayer</span>
+                  <button type="button" className="qa-chip is-best" onClick={() => openHand('replay')}>
+                    <span>Save &amp; replay</span>
                   </button>
-                  <button type="button" className="qa-chip" onClick={() => onOpen(toReplayable(hand), 'entry')}>
+                  <button type="button" className="qa-chip" onClick={() => openHand('entry')}>
                     <span>Review &amp; save</span>
                   </button>
                 </div>

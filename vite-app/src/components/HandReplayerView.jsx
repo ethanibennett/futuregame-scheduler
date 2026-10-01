@@ -4494,14 +4494,18 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     }
   };
 
-  const saveHand = async (hand) => {
+  // `over` lets a caller that has just set title/notes/id pass them directly — state set in the
+  // same tick is not visible to this closure yet (quick add saves straight after setNotes).
+  const saveHand = async (hand, over = {}) => {
     if (!token) return;
+    const handId = 'id' in over ? over.id : currentHandId;
+    const saveNotes = 'notes' in over ? over.notes : notes;
     setLoading(true);
     try {
-      const payload = { handData: hand, gameType: hand.gameType, title: title || (hand.gameType + ' Hand'), notes, isPublic };
+      const payload = { handData: hand, gameType: hand.gameType, title: title || (hand.gameType + ' Hand'), notes: saveNotes, isPublic };
       let res;
-      if (currentHandId) {
-        res = await fetch(`${API_URL}/replayer/hands/${currentHandId}`, {
+      if (handId) {
+        res = await fetch(`${API_URL}/replayer/hands/${handId}`, {
           method: 'PUT', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
@@ -4512,9 +4516,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         });
         if (res.ok) { const data = await res.json(); setCurrentHandId(data.id); }
       }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       fetchHands();
       toast('Hand saved');
-    } catch (e) { console.error('Failed to save hand:', e); }
+    } catch (e) {
+      console.error('Failed to save hand:', e);
+      if (toast?.info) toast.info("Couldn't save the hand: " + (e.message || 'network error'));
+    }
     setLoading(false);
   };
 
@@ -4730,10 +4738,16 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // ── Quick add (admins): describe a hand, answer its gaps, then replay or review it ──
   if (mode === 'quick' && quickAdd) {
     return <QuickAddView token={token} heroName={heroName} onBack={() => setMode('list')}
-      onOpen={(hand, target) => {
+      onOpen={(hand, target, description) => {
+        // The description the hand was read from is kept as its notes, so the original words
+        // travel with the saved hand. "Open in replayer" saves at once — before this nothing
+        // quick add produced was ever stored; "Review & save" saves when the form is done.
+        const desc = String(description || '').trim();
         setCurrentHand(hand); setCurrentHandId(null);
-        setTitle(''); setNotes(''); setIsPublic(false);
-        setMode(target === 'entry' ? 'entry' : 'replay');
+        setTitle(''); setNotes(desc); setIsPublic(false);
+        if (target === 'entry') { setMode('entry'); return; }
+        setMode('replay');
+        saveHand(hand, { id: null, notes: desc });
       }} />;
   }
 

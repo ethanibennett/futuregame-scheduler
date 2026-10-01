@@ -42,6 +42,12 @@ function listedGame(g) {
   return name || (g && g.gameType) || '';
 }
 
+/* 0-0 stakes are not a game you can sit in: rooms use them for lists and notices ("0-0
+   DINNER LIST", "0-0 High Hand") and for interest lists with no stakes set yet ("0-0
+   7-CARD STUD H-L", 2026-10-01). Hidden from the live board. */
+const ZERO_STAKES = /^\s*\$?0+(?:\.0+)?(?:\s*[-\/]\s*\$?0+(?:\.0+)?)+(?:\s|$)/;
+const isZeroStakes = g => ZERO_STAKES.test(String((g && g.gameRaw) || '')) || ZERO_STAKES.test(String((g && g.stakes) || ''));
+
 function ago(iso) {
   if (!iso) return null;
   const t = Date.parse(iso);
@@ -262,7 +268,7 @@ export default function CashView({ token, onModeChange }) {
   // The variant chips are every variant currently seen anywhere, so the filter
   // offers exactly what's on the table.
   const availableVariants = [...new Set(
-    rawVenues.flatMap(v => (v.games || []).map(g => g.gameType)).filter(Boolean)
+    rawVenues.flatMap(v => (v.games || []).filter(g => !isZeroStakes(g)).map(g => g.gameType)).filter(Boolean)
   )].sort();
 
   const sortGames = (games) => [...(games || [])].sort((a, b) =>
@@ -272,7 +278,7 @@ export default function CashView({ token, onModeChange }) {
 
   const filterActive = hidden.size > 0;
   const venues = rawVenues.map(v => {
-    const games = sortGames(v.games).filter(g => !hidden.has(g.gameType));
+    const games = sortGames(v.games).filter(g => !hidden.has(g.gameType) && !isZeroStakes(g));
     const running = games.filter(g => (g.tablesRunning || 0) > 0);
     const interest = games.filter(g => !(g.tablesRunning > 0) && (g.isInterest || (g.waitlistLen || 0) > 0));
     const totalTables = running.reduce((s, g) => s + (g.tablesRunning || 0), 0);
