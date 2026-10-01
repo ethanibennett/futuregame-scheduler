@@ -7470,7 +7470,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             Landscape only: portrait shows them in the 4r strip under the table. */}
         {isLandscape && deadCards.length > 0 && (
           <div className="replayer-board-area replayer-dead-area" aria-label={'Dead cards: ' + deadCards.join(' ')}>
-            <div className="replayer-dead-label">Dead</div>
+            <div className="replayer-dead-label">Dead cards</div>
             <div className="card-row replayer-dead-row">
               {deadCards.map(k => {
                 const rank = k[0], suit = k[1];
@@ -8035,7 +8035,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         const pitch = n > 1 ? Math.min(2.25, (33 - CARD_G) / (n - 1)) : 0;
         return (
           <div className="replayer-dead-strip" aria-label={'Dead cards: ' + deadCards.join(' ')}>
-            <span className="replayer-dead-strip-label"><span>Dead</span></span>
+            <span className="replayer-dead-strip-label"><span>Dead cards</span></span>
             <div className="replayer-dead-strip-cards" style={{ '--dead-ml': (pitch - CARD_G).toFixed(4) }}>
               {deadCards.map(k => cardTheme === 'classic' ? (
                 <div key={k} className={'card-classic card-classic-' + k[1]}>
