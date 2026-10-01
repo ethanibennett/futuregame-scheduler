@@ -1,0 +1,257 @@
+[
+  {
+    "id": "plo-cash-3bet-pot-set-of-eights",
+    "source": "text",
+    "game": "PLO",
+    "tags": ["cash", "3bet", "pot-limit", "all-in"],
+    "text": "PLO $1/$2, 6-max, everyone 300. CO pots to 7, I 3b pot to 24 on the BTN with AsKsQhJh, blinds fold, CO calls. Flop Kd8h3s, CO x, I bet 35, call. Turn 2c, x, I pot it 121, call. River 9d, x, I jam 120, he calls with KcQd8c8d. Set of 8s.",
+    "expect": {
+      "gameType": "PLO", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "AsKsQhJh", "stacksAll": 300,
+      "board": { "flop": "Kd8h3s", "turn": "2c", "river": "9d" },
+      "actions": {
+        "preflop": [["CO", "raise", 7], ["BTN", "raise", 24], ["SB", "fold"], ["BB", "fold"], ["CO", "call", 17]],
+        "flop": [["CO", "check"], ["BTN", "bet", 35], ["CO", "call", 35]],
+        "turn": [["CO", "check"], ["BTN", "bet", 121], ["CO", "call", 121]],
+        "river": [["CO", "check"], ["BTN", "all-in", 120], ["CO", "call", 120]]
+      },
+      "showdown": { "CO": "KcQd8c8d" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "plo-cash-aces-double-suited-repot",
+    "source": "speech",
+    "game": "PLO",
+    "tags": ["cash", "pot-limit", "all-in", "multiway"],
+    "text": "five ten PLO four handed everybody's got about two thousand. I'm in the cutoff with aces double suited ace of spades ace of hearts ten of spades nine of hearts I raise pot to thirty five button calls small blind folds big blind calls. flop jack of spades eight of hearts deuce of diamonds big blind checks I bet sixty button folds big blind raises to two forty I pot it back to eight thirty he shoves I call. turn five of clubs river king of diamonds he's got queen ten nine seven queen of clubs ten of diamonds nine of diamonds seven of clubs and my aces hold",
+    "expect": {
+      "gameType": "PLO",
+      "blinds": { "sb": 5, "bb": 10 },
+      "players": 4, "heroPosition": "CO", "heroCards": "AsAhTs9h", "stacksAll": 2000,
+      "board": { "flop": "Js8h2d", "turn": "5c", "river": "Kd" },
+      "actions": {
+        "preflop": [["CO", "raise", 35], ["BTN", "call", 35], ["SB", "fold"], ["BB", "call", 25]],
+        "flop": [["BB", "check"], ["CO", "bet", 60], ["BTN", "fold"], ["BB", "raise", 240], ["CO", "raise", 770], ["BB", "all-in", 1725], ["CO", "call", 1135]]
+      },
+      "showdown": { "BB": "QcTd9d7c" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "plo-mtt-3bet-over-pot",
+    "source": "text",
+    "game": "PLO",
+    "tags": ["mtt", "ante", "pot-limit", "impossible-size"],
+    "flaws": ["betting"],
+    "text": "PLO MTT 100/200/200 bba, 6max, stacks around 25k. UTG raises pot to 900, I 3b to 4000 on the BTN with KhKdJs9c, he calls. Flop Kc 7s 2h, he checks, I bet 3500, he folds.",
+    "expect": {
+      "gameType": "PLO", "gameMode": "mtt",
+      "blinds": { "sb": 100, "bb": 200, "ante": 200 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "KhKdJs9c", "stacksAll": 25000,
+      "board": { "flop": "Kc7s2h" },
+      "actions": {
+        "preflop": [["UTG", "raise", 900], ["BTN", "raise", 4000], ["UTG", "call", 3100]],
+        "flop": [["UTG", "check"], ["BTN", "bet", 3500], ["UTG", "fold"]]
+      },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "impossible", "field": "streets.0.actions", "id": "action:0", "about": "a pot-limit 3-bet here can be at most 3,200" }
+    ]
+  },
+  {
+    "id": "plo8-cash-nut-low-chop",
+    "source": "text",
+    "game": "PLO8",
+    "tags": ["cash", "pot-limit", "split", "multiway"],
+    "text": "PLO8 $2/$4, 5 handed, everyone ~$400. HJ limps, CO folds, I pot it to 18 on the BTN with As2sKd3h, SB folds, BB calls, HJ calls. Flop 7c4d2h: BB x, HJ x, I bet 40, BB calls, HJ folds. Turn Jh, BB x, I bet 100, BB calls. River Ks, BB leads 200, I call. He shows AhJcJd9s for a set, I have the nut low, chop.",
+    "expect": {
+      "gameType": "PLO8", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 2, "bb": 4 },
+      "players": 5, "heroPosition": "BTN", "heroCards": "As2sKd3h", "stacksAll": 400,
+      "board": { "flop": "7c4d2h", "turn": "Jh", "river": "Ks" },
+      "actions": {
+        "preflop": [["HJ", "call", 4], ["CO", "fold"], ["BTN", "raise", 18], ["SB", "fold"], ["BB", "call", 14], ["HJ", "call", 14]],
+        "flop": [["BB", "check"], ["HJ", "check"], ["BTN", "bet", 40], ["BB", "call", 40], ["HJ", "fold"]],
+        "turn": [["BB", "check"], ["BTN", "bet", 100], ["BB", "call", 100]],
+        "river": [["BB", "bet", 200], ["BTN", "call", 200]]
+      },
+      "showdown": { "BB": "AhJcJd9s" },
+      "winners": { "refs": ["BTN", "BB"], "split": true }
+    }
+  },
+  {
+    "id": "omaha-hilo-limit-or-pot-unclear",
+    "source": "speech",
+    "game": "PLO8",
+    "tags": ["ambiguous-game", "split"],
+    "text": "playing omaha high low three six I've got ace two three king ace of clubs two of diamonds three of hearts king of clubs under the gun I raise to twelve button calls big blind calls. flop queen of clubs seven of clubs five of spades big blind checks I bet button raises big blind folds I call. turn ten of hearts check check. river four of diamonds I bet he calls he has king queen and some other stuff and we chop he gets the high I get the low",
+    "expect": {
+      "heroPosition": "UTG", "heroCards": "Ac2d3hKc",
+      "board": { "flop": "Qc7c5s", "turn": "Th", "river": "4d" },
+      "actions": {
+        "preflop": [["UTG", "raise", 12], ["BTN", "call", null], ["BB", "call", null]],
+        "flop": [["BB", "check"], ["UTG", "bet", null], ["BTN", "raise", null], ["BB", "fold"], ["UTG", "call", null]],
+        "turn": [["UTG", "check"], ["BTN", "check"]],
+        "river": [["UTG", "bet", null], ["BTN", "call", null]]
+      },
+      "showdown": { "BTN": "KxQxxx" },
+      "winners": { "refs": ["UTG", "BTN"], "split": true }
+    },
+    "expectGaps": [
+      { "kind": ["ambiguous", "missing"], "field": "gameType", "id": "game", "about": "'omaha high low' is either pot-limit PLO8 or limit O8, and 'three six' reads differently in each" },
+      { "kind": ["ambiguous", "missing"], "field": "blinds", "id": "blinds", "about": "3/6 is blinds 3/6 in PLO8 but small/big bet 3/6 in limit" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "big-o-wheel-low-chop",
+    "source": "text",
+    "game": "Big O",
+    "tags": ["cash", "pot-limit", "split", "multiway", "limp"],
+    "text": "Big O $1/$2 6max, all 200 deep. LJ limps, HJ limps, I pot it to 11 from CO with Ah2h3dKsQd, BTN and SB fold, BB calls, LJ calls, HJ folds. Flop 4c5h9s: x, x, I bet 25, BB folds, LJ calls. Turn 8d, x, I bet 60, call. River 2c, check check. LJ has JcJd6s7sTh for the straight, I've got the wheel for low. Chop.",
+    "expect": {
+      "gameType": "Big O", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 6, "heroPosition": "CO", "heroCards": "Ah2h3dKsQd", "stacksAll": 200,
+      "board": { "flop": "4c5h9s", "turn": "8d", "river": "2c" },
+      "actions": {
+        "preflop": [["LJ", "call", 2], ["HJ", "call", 2], ["CO", "raise", 11], ["BTN", "fold"], ["SB", "fold"], ["BB", "call", 9], ["LJ", "call", 9], ["HJ", "fold"]],
+        "flop": [["BB", "check"], ["LJ", "check"], ["CO", "bet", 25], ["BB", "fold"], ["LJ", "call", 25]],
+        "turn": [["LJ", "check"], ["CO", "bet", 60], ["LJ", "call", 60]],
+        "river": [["LJ", "check"], ["CO", "check"]]
+      },
+      "showdown": { "LJ": "JcJd6s7sTh" },
+      "winners": { "refs": ["LJ", "CO"], "split": true }
+    }
+  },
+  {
+    "id": "plo-aces-and-junk",
+    "source": "speech",
+    "game": "PLO",
+    "tags": ["pot-limit", "partial-cards"],
+    "text": "pot limit omaha one two I've got aces with a random like ace ace and some junk I'm on the button cutoff opens to seven I re-pot to twenty four he calls. flop eight seven six two hearts he checks I bet thirty he jams for two hundred and ten I fold",
+    "expect": {
+      "gameType": "PLO",
+      "blinds": { "sb": 1, "bb": 2 },
+      "heroPosition": "BTN", "heroCards": "AxAxxx",
+      "board": { "flop": "8x7x6x" },
+      "actions": {
+        "preflop": [["CO", "raise", 7], ["BTN", "raise", 24], ["CO", "call", 17]],
+        "flop": [["CO", "check"], ["BTN", "bet", 30], ["CO", "all-in", null], ["BTN", "fold"]]
+      },
+      "winners": ["CO"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "streets.0.cards.hero", "id": "hero", "about": "only two of hero's four hole cards are named" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks; 'jams for 210' cannot be placed" }
+    ]
+  },
+  {
+    "id": "plo-mtt-cold-4bet-pot",
+    "source": "text",
+    "game": "PLO",
+    "tags": ["mtt", "pot-limit", "4bet", "all-in"],
+    "text": "PLO 6max tourney, 25/50 no ante, everyone 5k. CO opens 125, BTN 3bets pot (450), I cold 4bet pot from the SB with AcAd9h8h — 1525 — BB and CO fold, BTN calls. Flop KsQs2d, I pot 3225, he jams, I call the last 250. He's got KhKcJsTs, set of kings, gg.",
+    "expect": {
+      "gameType": "PLO", "gameMode": "mtt",
+      "blinds": { "sb": 25, "bb": 50 },
+      "players": 6, "heroPosition": "SB", "heroCards": "AcAd9h8h", "stacksAll": 5000,
+      "board": { "flop": "KsQs2d" },
+      "actions": {
+        "preflop": [["CO", "raise", 125], ["BTN", "raise", 450], ["SB", "raise", 1500], ["BB", "fold"], ["CO", "fold"], ["BTN", "call", 1075]],
+        "flop": [["SB", "bet", 3225], ["BTN", "all-in", 3475], ["SB", "call", 250]]
+      },
+      "showdown": { "BTN": "KhKcJsTs" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "plo-three-hole-cards",
+    "source": "text",
+    "game": "PLO",
+    "tags": ["pot-limit", "card-count"],
+    "flaws": ["card-count"],
+    "text": "PLO 2/5, 300 deep both. I open the HJ to 17 with KdQdJc, BB calls. Flop Ts 9s 3c, BB checks, I bet 30, he calls. Turn 2d, check check. River 8h, BB bets 80, I call. He shows 7c6cAh5h, I have the bigger straight.",
+    "expect": {
+      "gameType": "PLO",
+      "blinds": { "sb": 2, "bb": 5 },
+      "heroPosition": "HJ", "heroCards": "KdQdJc",
+      "stacks": { "HJ": 300, "BB": 300 },
+      "board": { "flop": "Ts9s3c", "turn": "2d", "river": "8h" },
+      "actions": {
+        "preflop": [["HJ", "raise", 17], ["BB", "call", 12]],
+        "flop": [["BB", "check"], ["HJ", "bet", 30], ["BB", "call", 30]],
+        "turn": [["BB", "check"], ["HJ", "check"]],
+        "river": [["BB", "bet", 80], ["HJ", "call", 80]]
+      },
+      "showdown": { "BB": "7c6cAh5h" },
+      "winners": ["HJ"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "missing"], "field": "streets.0.cards.hero", "id": "hero", "about": "three hole cards for a four-card game" }
+    ]
+  },
+  {
+    "id": "plo-limp-utg-repot-flop",
+    "source": "speech",
+    "game": "PLO",
+    "tags": ["pot-limit", "multiway", "limp"],
+    "text": "two five PLO eight handed I'm under the gun with five six seven eight double suited five of spades six of hearts seven of spades eight of hearts everybody's around a thousand I limp for five the cutoff limps the button raises pot to twenty seven the small blind folds big blind calls I call cutoff calls. flop nine of spades four of spades two of clubs checks to the button who bets eighty big blind folds I raise pot three fifty the cutoff folds button calls. turn ace of hearts I bet three hundred button folds",
+    "expect": {
+      "gameType": "PLO",
+      "blinds": { "sb": 2, "bb": 5 },
+      "players": 8, "heroPosition": "UTG", "heroCards": "5s6h7s8h", "stacksAll": 1000,
+      "board": { "flop": "9s4s2c", "turn": "Ah" },
+      "actions": {
+        "preflop": [["UTG", "call", 5], ["CO", "call", 5], ["BTN", "raise", 27], ["SB", "fold"], ["BB", "call", 22], ["UTG", "call", 22], ["CO", "call", 22]],
+        "flop": [["BB", "check"], ["UTG", "check"], ["CO", "check"], ["BTN", "bet", 80], ["BB", "fold"], ["UTG", "raise", 350], ["CO", "fold"], ["BTN", "call", 270]],
+        "turn": [["UTG", "bet", 300], ["BTN", "fold"]]
+      },
+      "winners": ["UTG"]
+    }
+  },
+  {
+    "id": "plo8-mtt-bb-defend-turn-lead",
+    "source": "text",
+    "game": "PLO8",
+    "tags": ["mtt", "ante", "pot-limit"],
+    "text": "PLO8 tourney 300/600/600 bba, 7-max, all ~30k. Folds to the BTN who pots to 2700, SB folds, I call in the BB with Ac2c4d5h. Flop 3s 6d Kh, I check, he bets 3000, I call. Turn 7c, I bet 8000, he folds.",
+    "expect": {
+      "gameType": "PLO8", "gameMode": "mtt",
+      "blinds": { "sb": 300, "bb": 600, "ante": 600 },
+      "players": 7, "heroPosition": "BB", "heroCards": "Ac2c4d5h", "stacksAll": 30000,
+      "board": { "flop": "3s6dKh", "turn": "7c" },
+      "actions": {
+        "preflop": [["BTN", "raise", 2700], ["SB", "fold"], ["BB", "call", 2100]],
+        "flop": [["BB", "check"], ["BTN", "bet", 3000], ["BB", "call", 3000]],
+        "turn": [["BB", "bet", 8000], ["BTN", "fold"]]
+      },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "plo-cash-flush-over-set",
+    "source": "text",
+    "game": "PLO",
+    "tags": ["pot-limit", "multiway"],
+    "text": "PLO 5/10, 6max, stacks: me (CO) 2k, BTN 1.5k, BB 3k. I open 30 with QhJhTd9d, BTN calls, SB folds, BB calls. Flop Jc 8h 3d: BB checks, I bet 80, BTN calls, BB folds. Turn 2h: I check, BTN checks. River 7h: I bet 250, BTN calls with JsJd5c4c. Flush > set.",
+    "expect": {
+      "gameType": "PLO",
+      "blinds": { "sb": 5, "bb": 10 },
+      "players": 6, "heroPosition": "CO", "heroCards": "QhJhTd9d",
+      "stacks": { "CO": 2000, "BTN": 1500, "BB": 3000 },
+      "board": { "flop": "Jc8h3d", "turn": "2h", "river": "7h" },
+      "actions": {
+        "preflop": [["CO", "raise", 30], ["BTN", "call", 30], ["SB", "fold"], ["BB", "call", 20]],
+        "flop": [["BB", "check"], ["CO", "bet", 80], ["BTN", "call", 80], ["BB", "fold"]],
+        "turn": [["CO", "check"], ["BTN", "check"]],
+        "river": [["CO", "bet", 250], ["BTN", "call", 250]]
+      },
+      "showdown": { "BTN": "JsJd5c4c" },
+      "winners": ["CO"]
+    }
+  }
+]

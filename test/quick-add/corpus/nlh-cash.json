@@ -1,0 +1,466 @@
+[
+  {
+    "id": "nlh-cash-3bet-pot-river-lead",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "3bet"],
+    "text": "$1/$2 live, 9 handed, everyone around $400 deep. UTG opens to 10, folds to me in the CO with AhQh, I 3b to 30, btn and blinds fold, UTG calls. Flop Qs8d3c, he checks, I bet 35, he calls. Turn 2h check check. River Kd he leads 60, I call, he shows KcJc. Gross.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 9, "heroPosition": "CO", "heroCards": "AhQh", "stacksAll": 400,
+      "board": { "flop": "Qs8d3c", "turn": "2h", "river": "Kd" },
+      "actions": {
+        "preflop": [["UTG", "raise", 10], ["CO", "raise", 30], ["BTN", "fold"], ["SB", "fold"], ["BB", "fold"], ["UTG", "call", 20]],
+        "flop": [["UTG", "check"], ["CO", "bet", 35], ["UTG", "call", 35]],
+        "turn": [["UTG", "check"], ["CO", "check"]],
+        "river": [["UTG", "bet", 60], ["CO", "call", 60]]
+      },
+      "showdown": { "UTG": "KcJc" },
+      "winners": ["UTG"]
+    }
+  },
+  {
+    "id": "nlh-cash-utg-straddle-set-over-set",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "straddle", "all-in", "multiway"],
+    "text": "$2/$5, $10 UTG straddle, 8 handed, everyone about $1k deep. UTG+1 limps the 10, I make it 40 from the HJ with 9s9c, CO calls, straddle calls, limper folds. Flop 9d 7h 2s. Straddle checks, I bet 55, CO folds, straddle check raises to 180, I jam, he snap calls with 7s7d. Turn Jc river 4d, hold.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 2, "bb": 5, "straddle": ["utg"] },
+      "players": 8, "heroPosition": "HJ", "heroCards": "9s9c", "stacksAll": 1000,
+      "board": { "flop": "9d7h2s", "turn": "Jc", "river": "4d" },
+      "actions": {
+        "preflop": [["UTG+1", "call", 10], ["HJ", "raise", 40], ["CO", "call", 40], ["UTG", "call", 30], ["UTG+1", "fold"]],
+        "flop": [["UTG", "check"], ["HJ", "bet", 55], ["CO", "fold"], ["UTG", "raise", 180], ["HJ", "all-in", 905], ["UTG", "call", 780]]
+      },
+      "showdown": { "UTG": "7s7d" },
+      "winners": ["HJ"]
+    }
+  },
+  {
+    "id": "nlh-cash-sb-3bet-checked-down",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["cash", "3bet"],
+    "text": "okay so one two game six handed everybody's about two hundred fifty dollars deep. folds to the cutoff who opens to seven the button calls and I'm in the small blind with pocket jacks jack of hearts jack of diamonds so I three bet to thirty five big blind folds cutoff folds button calls. flop comes ace of spades seven of clubs four of hearts I check he bets fifteen I call. turn six of diamonds I check he checks. river three of spades I check he checks he shows ace of diamonds ten of diamonds and wins",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 6, "heroPosition": "SB", "heroCards": "JhJd", "stacksAll": 250,
+      "board": { "flop": "As7c4h", "turn": "6d", "river": "3s" },
+      "actions": {
+        "preflop": [["CO", "raise", 7], ["BTN", "call", 7], ["SB", "raise", 34], ["BB", "fold"], ["CO", "fold"], ["BTN", "call", 28]],
+        "flop": [["SB", "check"], ["BTN", "bet", 15], ["SB", "call", 15]],
+        "turn": [["SB", "check"], ["BTN", "check"]],
+        "river": [["SB", "check"], ["BTN", "check"]]
+      },
+      "showdown": { "BTN": "AdTd" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "nlh-cash-limped-pot-bb-straight",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "limp", "multiway", "all-in"],
+    "text": "1/3 nlh 7 handed, everyone ~$300. UTG, LJ and BTN limp, SB completes, I check my option w/ 6c5c. Flop 7s4d2h. SB x, I lead 10, UTG calls, LJ folds, BTN raises to 45, SB folds, I call, UTG calls. Turn Kc, x x, BTN bets 100, I shove my last 252, UTG folds, BTN calls (he's all in too). River 8d, he tables 7h7d, I scoop with the straight",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 1, "bb": 3 },
+      "players": 7, "heroPosition": "BB", "heroCards": "6c5c", "stacksAll": 300,
+      "board": { "flop": "7s4d2h", "turn": "Kc", "river": "8d" },
+      "actions": {
+        "preflop": [["UTG", "call", 3], ["LJ", "call", 3], ["BTN", "call", 3], ["SB", "call", 2], ["BB", "check"]],
+        "flop": [["SB", "check"], ["BB", "bet", 10], ["UTG", "call", 10], ["LJ", "fold"], ["BTN", "raise", 45], ["SB", "fold"], ["BB", "call", 35], ["UTG", "call", 35]],
+        "turn": [["BB", "check"], ["UTG", "check"], ["BTN", "bet", 100], ["BB", "all-in", 252], ["UTG", "fold"], ["BTN", "call", 152]]
+      },
+      "showdown": { "BTN": "7h7d" },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "nlh-cash-euro-5bet-jam",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "4bet", "all-in", "shorthand"],
+    "text": "€0.25/0.50 6-max, all 100bb. CO opens 2.5x, I 3b to 4 on the BTN with AsKd, blinds fold, CO 4b to 10, I jam, he calls QsQh. Board Jc8c4s9d2c, no help.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "EUR",
+      "blinds": { "sb": 0.25, "bb": 0.5 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "AsKd", "stacksAll": 50,
+      "board": { "flop": "Jc8c4s", "turn": "9d", "river": "2c" },
+      "actions": {
+        "preflop": [["CO", "raise", 1.25], ["BTN", "raise", 4], ["SB", "fold"], ["BB", "fold"], ["CO", "raise", 8.75], ["BTN", "all-in", 46], ["CO", "call", 40]]
+      },
+      "showdown": { "CO": "QsQh" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "nlh-cash-heads-up-flop-stackoff",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["heads-up", "3bet", "all-in"],
+    "text": "HU 5/10 online, we both have 1000. I'm on the button w/ Th9h, raise to 25, he 3bets to 90, I call. Flop 8h7c2h, he leads 60, I raise to 200, he shoves, I call. He has AhAd. Turn As, river 6c, I hit the straight.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 5, "bb": 10 },
+      "players": 2, "heroPosition": "BTN/SB", "heroCards": "Th9h", "stacksAll": 1000,
+      "board": { "flop": "8h7c2h", "turn": "As", "river": "6c" },
+      "actions": {
+        "preflop": [["BTN/SB", "raise", 20], ["BB", "raise", 80], ["BTN/SB", "call", 65]],
+        "flop": [["BB", "bet", 60], ["BTN/SB", "raise", 200], ["BB", "all-in", 850], ["BTN/SB", "call", 710]]
+      },
+      "showdown": { "BB": "AhAd" },
+      "winners": ["BTN/SB"]
+    }
+  },
+  {
+    "id": "nlh-cash-bellagio-float-turn-stab",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["cash", "rambling"],
+    "text": "so I'm playing the five ten game at the bellagio and it's nine handed and I've got like three thousand in front of me and the guy who's under the gun also has about three K he's been playing super loose all night anyway he opens to thirty five and it folds to me on the button and I look down at king queen of spades and I just call blinds both fold. flop comes king of hearts ten of spades four of diamonds he bets fifty I raise to one fifty he calls. turn is the two of clubs he checks I bet three hundred he folds",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 5, "bb": 10 },
+      "players": 9, "heroPosition": "BTN", "heroCards": "KsQs",
+      "stacks": { "BTN": 3000, "UTG": 3000 },
+      "board": { "flop": "KhTs4d", "turn": "2c" },
+      "actions": {
+        "preflop": [["UTG", "raise", 35], ["BTN", "call", 35], ["SB", "fold"], ["BB", "fold"]],
+        "flop": [["UTG", "bet", 50], ["BTN", "raise", 150], ["UTG", "call", 100]],
+        "turn": [["UTG", "check"], ["BTN", "bet", 300], ["UTG", "fold"]]
+      },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "nlh-cash-squeeze-side-pots",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["multiway", "all-in", "side-pot", "squeeze"],
+    "notes": "Main pot to UTG, side pot to hero: the hand format has one winners list, so winners are not asserted.",
+    "text": "1/2 6max. Stacks: me (BB) 380, UTG 120, CO 500, BTN 200. UTG opens 8, CO calls, BTN calls, SB folds, I squeeze to 45 with AcAs. UTG jams 120, CO calls, BTN jams 200, I jam, CO calls. Board Kh9s5c2d7h. UTG 9c9d, CO KcQc, BTN JhJd. UTG binks a set and takes the main, I take the side pots.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 6, "heroPosition": "BB", "heroCards": "AcAs",
+      "stacks": { "BB": 380, "UTG": 120, "CO": 500, "BTN": 200 },
+      "board": { "flop": "Kh9s5c", "turn": "2d", "river": "7h" },
+      "actions": {
+        "preflop": [["UTG", "raise", 8], ["CO", "call", 8], ["BTN", "call", 8], ["SB", "fold"], ["BB", "raise", 43], ["UTG", "all-in", 112], ["CO", "call", 112], ["BTN", "all-in", 192], ["BB", "all-in", 335], ["CO", "call", 260]]
+      },
+      "showdown": { "UTG": "9c9d", "CO": "KcQc", "BTN": "JhJd" }
+    }
+  },
+  {
+    "id": "nlh-cash-terse-no-stacks-no-sizes",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["shorthand", "terse"],
+    "text": "UTG opens 3x, I 3b AKs on the btn, he calls. Flop K72r, he x, I cbet 1/3, he XR, I call. Turn 5, he bets pot, I fold. 1/2 game",
+    "expect": {
+      "blinds": { "sb": 1, "bb": 2 },
+      "heroPosition": "BTN", "heroCards": "AxKx",
+      "board": { "flop": "Kx7x2x", "turn": "5x" },
+      "actions": {
+        "preflop": [["UTG", "raise", 6], ["BTN", "raise", null], ["UTG", "call", null]],
+        "flop": [["UTG", "check"], ["BTN", "bet", null], ["UTG", "raise", null], ["BTN", "call", null]],
+        "turn": [["UTG", "bet", null], ["BTN", "fold"]]
+      },
+      "winners": ["UTG"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks for anyone" },
+      { "field": "streets.0.actions", "id": "action:0", "about": "the 3-bet size is never given" },
+      { "kind": ["missing", "ambiguous"], "field": "players", "id": ["players", "seats", "table"], "about": "table size never stated" }
+    ]
+  },
+  {
+    "id": "nlh-cash-no-hero-cards",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["cash"],
+    "text": "two five game I'm in the hijack with like a hundred and fifty big blinds folds to me I open to fifteen button three bets to forty five I call. flop jack nine four two clubs I check he bets fifty I call. turn queen of hearts check check. river the ace of clubs I bet one twenty and he folds",
+    "expect": {
+      "blinds": { "sb": 2, "bb": 5 },
+      "heroPosition": "HJ",
+      "stacks": { "HJ": 750 },
+      "board": { "flop": "Jx9x4x", "turn": "Qh", "river": "Ac" },
+      "actions": {
+        "preflop": [["HJ", "raise", 15], ["BTN", "raise", 45], ["HJ", "call", 30]],
+        "flop": [["HJ", "check"], ["BTN", "bet", 50], ["HJ", "call", 50]],
+        "turn": [["HJ", "check"], ["BTN", "check"]],
+        "river": [["HJ", "bet", 120], ["BTN", "fold"]]
+      },
+      "winners": ["HJ"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "streets.0.cards.hero", "id": "hero", "about": "hero's hole cards are never named" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "the button's stack is never given" }
+    ]
+  },
+  {
+    "id": "nlh-cash-micro-limped-straight",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "limp", "blind-vs-blind"],
+    "text": "25c/50c online 6max, everyone 100bb ($50). Folds to the SB, he limps, I check BB w 8d6d. Flop 7c5s2h, SB checks, I bet 1, he calls. Turn 4c gives me the straight, he donks 3, I raise to 9, he calls. River Kh, he checks, I jam for 39.5, he folds.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash",
+      "blinds": { "sb": 0.25, "bb": 0.5 },
+      "players": 6, "heroPosition": "BB", "heroCards": "8d6d", "stacksAll": 50,
+      "board": { "flop": "7c5s2h", "turn": "4c", "river": "Kh" },
+      "actions": {
+        "preflop": [["SB", "call", 0.25], ["BB", "check"]],
+        "flop": [["SB", "check"], ["BB", "bet", 1], ["SB", "call", 1]],
+        "turn": [["SB", "bet", 3], ["BB", "raise", 9], ["SB", "call", 6]],
+        "river": [["SB", "check"], ["BB", "all-in", 39.5], ["SB", "fold"]]
+      },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "nlh-cash-button-straddle-checkraise",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "straddle"],
+    "text": "$5/$10, $20 button straddle, 9 handed. I have 2400 in the CO, SB has 3100. SB just calls the straddle, BB folds, folds around to me and I make it 90 with QdQc, button folds, SB calls. Flop Td6s3s, SB checks, I bet 90, SB calls. Turn 6d, SB checks, I bet 250, SB check-raises to 750, I call. River Jh, SB leads 1000, I fold.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 5, "bb": 10, "straddle": ["button"] },
+      "players": 9, "heroPosition": "CO", "heroCards": "QdQc",
+      "stacks": { "CO": 2400, "SB": 3100 },
+      "board": { "flop": "Td6s3s", "turn": "6d", "river": "Jh" },
+      "actions": {
+        "preflop": [["SB", "call", 15], ["BB", "fold"], ["CO", "raise", 90], ["BTN", "fold"], ["SB", "call", 70]],
+        "flop": [["SB", "check"], ["CO", "bet", 90], ["SB", "call", 90]],
+        "turn": [["SB", "check"], ["CO", "bet", 250], ["SB", "raise", 750], ["CO", "call", 500]],
+        "river": [["SB", "bet", 1000], ["CO", "fold"]]
+      },
+      "winners": ["SB"]
+    }
+  },
+  {
+    "id": "nlh-cash-call-amount-wrong",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["cash", "3bet"],
+    "text": "one three game I raise to fifteen under the gun with ace king off the big blind three bets to forty five and I call thirty five. flop ace ten five rainbow he bets fifty I call. turn three he checks I check. river nine he bets a hundred I call he shows ace ten",
+    "expect": {
+      "blinds": { "sb": 1, "bb": 3 },
+      "heroPosition": "UTG", "heroCards": "AxKx",
+      "board": { "flop": "AxTx5x", "turn": "3x", "river": "9x" },
+      "actions": {
+        "preflop": [["UTG", "raise", 15], ["BB", "raise", 42], ["UTG", "call", null]],
+        "flop": [["BB", "bet", 50], ["UTG", "call", 50]],
+        "turn": [["BB", "check"], ["UTG", "check"]],
+        "river": [["BB", "bet", 100], ["UTG", "call", 100]]
+      },
+      "showdown": { "BB": "AxTx" },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": "streets.0.actions", "id": "action:0", "about": "a call of 35 does not match the 30 owed after raising to 15 and facing 45" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "nlh-cash-nl200-4bet-flush",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "4bet", "all-in", "shorthand"],
+    "text": "NL200 6max, 100bb eff (all $200). HJ opens 5, I 3b 17 from SB w/ KhKs, BB folds, HJ 4bs to 40, I 5b jam, HJ calls with AcKc. Board 9c4c2d Qh 7c — flush for him.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 6, "heroPosition": "SB", "heroCards": "KhKs", "stacksAll": 200,
+      "board": { "flop": "9c4c2d", "turn": "Qh", "river": "7c" },
+      "actions": {
+        "preflop": [["HJ", "raise", 5], ["SB", "raise", 16], ["BB", "fold"], ["HJ", "raise", 35], ["SB", "all-in", 183], ["HJ", "call", 160]]
+      },
+      "showdown": { "HJ": "AcKc" },
+      "winners": ["HJ"]
+    }
+  },
+  {
+    "id": "nlh-cash-duplicate-king",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "impossible-cards"],
+    "flaws": ["duplicate-card"],
+    "text": "$2/5 6 handed everyone 500ish. I open AhKh from LJ to 20, folds to BB who calls. Flop Kh9c4d, BB checks, I bet 25, BB calls. Turn 2s check check, river 8h BB bets 60 I call, BB shows 9s9d.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 2, "bb": 5 },
+      "players": 6, "heroPosition": "LJ", "heroCards": "AhKh", "stacksAll": 500,
+      "board": { "flop": "Kh9c4d", "turn": "2s", "river": "8h" },
+      "actions": {
+        "preflop": [["LJ", "raise", 20], ["BB", "call", 15]],
+        "flop": [["BB", "check"], ["LJ", "bet", 25], ["BB", "call", 25]],
+        "turn": [["BB", "check"], ["LJ", "check"]],
+        "river": [["BB", "bet", 60], ["LJ", "call", 60]]
+      },
+      "showdown": { "BB": "9s9d" },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": "impossible", "field": ["streets.0.cards.hero", "streets.1.cards.board"], "id": "card", "about": "the Kh is in hero's hand and on the flop" }
+    ]
+  },
+  {
+    "id": "nlh-cash-river-jam-straight",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["cash", "multiway", "all-in"],
+    "text": "ten twenty no limit six handed everybody's got about four thousand. lojack opens to fifty hijack calls I'm on the button with seven eight of diamonds and I call blinds fold. flop six of diamonds five of clubs two of diamonds lojack checks hijack checks I bet one hundred lojack folds hijack calls. turn king of spades hijack checks I bet three hundred he calls. river four of hearts he checks I go all in for three thousand five hundred and fifty he calls with six five of hearts and I've got the straight",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 10, "bb": 20 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "8d7d", "stacksAll": 4000,
+      "board": { "flop": "6d5c2d", "turn": "Ks", "river": "4h" },
+      "actions": {
+        "preflop": [["LJ", "raise", 50], ["HJ", "call", 50], ["BTN", "call", 50], ["SB", "fold"], ["BB", "fold"]],
+        "flop": [["LJ", "check"], ["HJ", "check"], ["BTN", "bet", 100], ["LJ", "fold"], ["HJ", "call", 100]],
+        "turn": [["HJ", "check"], ["BTN", "bet", 300], ["HJ", "call", 300]],
+        "river": [["HJ", "check"], ["BTN", "all-in", 3550], ["HJ", "call", 3550]]
+      },
+      "showdown": { "HJ": "6h5h" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "nlh-cash-ambiguous-he",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "multiway", "ambiguous"],
+    "flaws": ["betting"],
+    "text": "1/2, 5 handed. HJ opens 6, CO calls, I call on the BTN with 5s5h, SB folds, BB calls. Flop 5c Jd Ts. BB checks, HJ checks, CO bets 15, I raise to 50, BB folds, and he calls, the other guy folds. Turn 2c he checks I bet 80 he folds.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 5, "heroPosition": "BTN", "heroCards": "5s5h",
+      "board": { "flop": "5cJdTs", "turn": "2c" },
+      "actions": {
+        "preflop": [["HJ", "raise", 6], ["CO", "call", 6], ["BTN", "call", 6], ["SB", "fold"], ["BB", "call", 4]],
+        "flop": [["BB", "check"], ["HJ", "check"], ["CO", "bet", 15], ["BTN", "raise", 50], ["BB", "fold"]]
+      },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "ambiguous", "field": ["streets.1.actions", "streets.2.actions"], "id": "action", "about": "'he calls, the other guy folds' could be the HJ or the CO calling the raise" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "nlh-cash-typos-lowercase-cards",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["typos", "4bet"],
+    "text": "50/100 nlhe, 8 handed, i have 12k, villian in mp2 has 9.5k. mp2 opens 250, i 3bet to 900 from the sb with jj (jc jh), he 4bets to 2200, i call. flop 8s 6s 3d, i check, he shoves 7300, i call. he has ak (as kd). turn 2h river 9c, jacks hold.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 50, "bb": 100 },
+      "players": 8, "heroPosition": "SB", "heroCards": "JcJh",
+      "stacks": { "SB": 12000, "MP2": 9500 },
+      "board": { "flop": "8s6s3d", "turn": "2h", "river": "9c" },
+      "actions": {
+        "preflop": [["MP2", "raise", 250], ["SB", "raise", 850], ["MP2", "raise", 1950], ["SB", "call", 1300]],
+        "flop": [["SB", "check"], ["MP2", "all-in", 7300], ["SB", "call", 7300]]
+      },
+      "showdown": { "MP2": "AsKd" },
+      "winners": ["SB"]
+    }
+  },
+  {
+    "id": "nlh-cash-pocket-rockets-checkraised",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["cash", "slang", "rambling"],
+    "text": "alright so this is from last night at the one two game at parx nine handed I've got about three hundred and the villain in the big blind has like four fifty it folds to me in the hijack and I raise to ten with pocket rockets ace of clubs ace of diamonds folds to the big blind who calls. flop is ten of clubs nine of clubs two of hearts big blind checks I bet twenty he raises to sixty five I call. turn is the four of spades he bets a hundred I call. river eight of diamonds he checks I check he shows queen jack of clubs for the straight",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 1, "bb": 2 },
+      "players": 9, "heroPosition": "HJ", "heroCards": "AcAd",
+      "stacks": { "HJ": 300, "BB": 450 },
+      "board": { "flop": "Tc9c2h", "turn": "4s", "river": "8d" },
+      "actions": {
+        "preflop": [["HJ", "raise", 10], ["BB", "call", 8]],
+        "flop": [["BB", "check"], ["HJ", "bet", 20], ["BB", "raise", 65], ["HJ", "call", 45]],
+        "turn": [["BB", "bet", 100], ["HJ", "call", 100]],
+        "river": [["BB", "check"], ["HJ", "check"]]
+      },
+      "showdown": { "BB": "QcJc" },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "nlh-cash-forgot-turn-card",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "3bet"],
+    "text": "$1/$3, 8 handed. Me (CO) 350, BTN 600. I open 15 with 8s8d, BTN 3b to 45, I call. Flop Ks 8h 4c, I x, he bets 30, I raise to 100, he calls. Turn ??? (forgot, some brick), I bet 120, he folds.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 1, "bb": 3 },
+      "players": 8, "heroPosition": "CO", "heroCards": "8s8d",
+      "stacks": { "CO": 350, "BTN": 600 },
+      "board": { "flop": "Ks8h4c" },
+      "actions": {
+        "preflop": [["CO", "raise", 15], ["BTN", "raise", 45], ["CO", "call", 30]],
+        "flop": [["CO", "check"], ["BTN", "bet", 30], ["CO", "raise", 100], ["BTN", "call", 70]],
+        "turn": [["CO", "bet", 120], ["BTN", "fold"]]
+      },
+      "winners": ["CO"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "streets.2.cards.board", "id": "board", "about": "the turn card is not named although there was turn action" }
+    ]
+  },
+  {
+    "id": "nlh-cash-speech-homophones",
+    "source": "speech",
+    "game": "NLH",
+    "tags": ["homophones"],
+    "text": "one too game I open two ten from the low jack with king ten suited the button three bets two thirty I call the flop is king for six I check he bets for tea I call turn ace he bets eighty I fold",
+    "expect": {
+      "blinds": { "sb": 1, "bb": 2 },
+      "heroPosition": "LJ", "heroCards": "KxTx",
+      "board": { "flop": "Kx4x6x", "turn": "Ax" },
+      "actions": {
+        "preflop": [["LJ", "raise", 10], ["BTN", "raise", 30], ["LJ", "call", 20]],
+        "flop": [["LJ", "check"], ["BTN", "bet", 40], ["LJ", "call", 40]],
+        "turn": [["LJ", "check"], ["BTN", "bet", 80], ["LJ", "fold"]]
+      },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ],
+    "notes": "'two ten' = to ten, 'two thirty' = to thirty, 'king for six' = K-4-6, 'for tea' = forty; hero's turn check is implied by him betting into hero."
+  },
+  {
+    "id": "nlh-cash-hh-shorthand-trips",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["cash", "shorthand", "4bet", "all-in"],
+    "text": "NL100 6max, $0.50/$1, all 100bb. CO opens 2.5, hero BTN 3b 8 w AhTh, SB 4b 22, CO f, hero c. F: Td 6c 3h. SB 25, hero c. T: 2s. SB x, hero x. R: Ts. SB 50, hero jam 53, SB calls the last 3 with AsAc.",
+    "expect": {
+      "gameType": "NLH", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 0.5, "bb": 1 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "AhTh", "stacksAll": 100,
+      "board": { "flop": "Td6c3h", "turn": "2s", "river": "Ts" },
+      "actions": {
+        "preflop": [["CO", "raise", 2.5], ["BTN", "raise", 8], ["SB", "raise", 21.5], ["CO", "fold"], ["BTN", "call", 14]],
+        "flop": [["SB", "bet", 25], ["BTN", "call", 25]],
+        "turn": [["SB", "check"], ["BTN", "check"]],
+        "river": [["SB", "bet", 50], ["BTN", "all-in", 53], ["SB", "call", 3]]
+      },
+      "showdown": { "SB": "AsAc" },
+      "winners": ["BTN"]
+    }
+  }
+]

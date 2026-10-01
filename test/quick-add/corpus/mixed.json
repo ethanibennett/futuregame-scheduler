@@ -1,0 +1,156 @@
+[
+  {
+    "id": "mixed-horse-razz-round",
+    "source": "text",
+    "game": "Razz",
+    "tags": ["mixed", "horse", "stud", "lowball", "bring-in"],
+    "text": "HORSE $10/$20 ($2 ante, $3 bring-in), razz round, 5 handed, all ~$600. Me (2c 4h) 6d. Doors: Qs, 9c, 3h, Kd. Kd brings in for 3, Qs folds, I complete to 10, 9c folds, 3h calls, Kd folds. 4th: me 8s, 3h gets Td. I bet 10, he calls. 5th: me Ac (8-6-4-2-A made), him 5h. I bet 20, he raises, I 3bet, he calls. 6th: me Jc, him 6s. He bets 20, I call. 7th: I get the Kh, he checks, I bet 20, he calls and shows (7c 2d) 9d for a 7-6-5-3-2. Beat.",
+    "expect": {
+      "gameType": "Razz", "gameMode": "cash", "currency": "USD",
+      "blinds": { "ante": 2, "bringIn": 3, "bb": 10, "bigBet": 20 },
+      "players": 5, "heroCards": "2c4h6d", "stacksAll": 600,
+      "heroStreetCards": { "4th": "8s", "5th": "Ac", "6th": "Jc", "7th": "Kh" },
+      "studUp": { "@3h": "3hTd5h6s" },
+      "actions": {
+        "3rd": [["@Kd", "bring-in", 3], ["@Qs", "fold"], ["hero", "bet", 10], ["@9c", "fold"], ["@3h", "call", 10], ["@Kd", "fold"]],
+        "4th": [["hero", "bet", 10], ["@3h", "call", 10]],
+        "5th": [["hero", "bet", 20], ["@3h", "raise", 40], ["hero", "raise", 40], ["@3h", "call", 20]],
+        "6th": [["@3h", "bet", 20], ["hero", "call", 20]],
+        "7th": [["@3h", "check"], ["hero", "bet", 20], ["@3h", "call", 20]]
+      },
+      "showdown": { "@3h": "7c2d3hTd5h6s9d" },
+      "winners": ["@3h"]
+    }
+  },
+  {
+    "id": "mixed-8game-nlh-orbit",
+    "source": "text",
+    "game": "NLH",
+    "tags": ["mixed", "8-game"],
+    "text": "8-game, NLH orbit, blinds 300/600, 6 handed, everyone 40k-ish (call it 40k). UTG min-raises to 1200, I call on the BTN with 6h6c, BB calls. Flop 6d Ks 2c, BB checks, UTG bets 1500, I raise to 4500, BB folds, UTG calls. Turn 9h, UTG checks, I bet 7000, he folds.",
+    "expect": {
+      "gameType": "NLH",
+      "blinds": { "sb": 300, "bb": 600 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "6h6c", "stacksAll": 40000,
+      "board": { "flop": "6dKs2c", "turn": "9h" },
+      "actions": {
+        "preflop": [["UTG", "raise", 1200], ["BTN", "call", 1200], ["BB", "call", 600]],
+        "flop": [["BB", "check"], ["UTG", "bet", 1500], ["BTN", "raise", 4500], ["BB", "fold"], ["UTG", "call", 3000]],
+        "turn": [["UTG", "check"], ["BTN", "bet", 7000], ["UTG", "fold"]]
+      },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "mixed-8game-deuce-round-speech",
+    "source": "speech",
+    "game": "2-7 TD",
+    "tags": ["mixed", "8-game", "draw", "limit"],
+    "text": "eight game we're on deuce seven triple draw four hundred eight hundred blinds two hundred and four hundred. I'm under the gun with two three four eight and a king I raise the button three bets I call. I draw one throwing the king and make an eight seven he draws one. I check he bets I call. I draw one he pats. I check he bets I fold",
+    "expect": {
+      "gameType": "2-7 TD",
+      "blinds": { "sb": 200, "bb": 400, "bigBet": 800 },
+      "heroPosition": "UTG", "heroCards": "2x3x4x8xKx",
+      "actions": {
+        "predraw": [["UTG", "raise", 800], ["BTN", "raise", 1200], ["UTG", "call", 400]],
+        "draw1": [["UTG", "check"], ["BTN", "bet", 400], ["UTG", "call", 400]],
+        "draw2": [["UTG", "check"], ["BTN", "bet", 800], ["UTG", "fold"]]
+      },
+      "draws": {
+        "predraw": [["UTG", 1, "Kx", "7x"], ["BTN", 1]],
+        "draw1": [["UTG", 1], ["BTN", 0]]
+      },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "mixed-horse-holdem-round-speech",
+    "source": "speech",
+    "game": "LHE",
+    "tags": ["mixed", "horse", "limit", "3bet"],
+    "text": "horse we're in the hold em round limit fifteen thirty blinds ten and fifteen eight handed everybody has around twelve hundred. I'm in the hijack with ace queen of diamonds I raise the cutoff three bets the big blind calls I call. flop queen of clubs ten of diamonds four of diamonds big blind checks I check cutoff bets big blind folds I raise he calls. turn three of hearts I bet he calls. river nine of clubs I bet he calls he has kings king of spades king of hearts",
+    "expect": {
+      "gameType": "LHE",
+      "blinds": { "sb": 10, "bb": 15, "bigBet": 30 },
+      "players": 8, "heroPosition": "HJ", "heroCards": "AdQd", "stacksAll": 1200,
+      "board": { "flop": "QcTd4d", "turn": "3h", "river": "9c" },
+      "actions": {
+        "preflop": [["HJ", "raise", 30], ["CO", "raise", 45], ["BB", "call", 30], ["HJ", "call", 15]],
+        "flop": [["BB", "check"], ["HJ", "check"], ["CO", "bet", 15], ["BB", "fold"], ["HJ", "raise", 30], ["CO", "call", 15]],
+        "turn": [["HJ", "bet", 30], ["CO", "call", 30]],
+        "river": [["HJ", "bet", 30], ["CO", "call", 30]]
+      },
+      "showdown": { "CO": "KsKh" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "mixed-plo-nlh-plo-orbit",
+    "source": "text",
+    "game": "PLO",
+    "tags": ["mixed", "pot-limit", "all-in", "cash"],
+    "text": "PLO/NLH mix, PLO orbit, $5/$5 blinds, 6 handed. I have 1500, BTN has 2200. Folds to the BTN who pots it (20), SB folds, I re-pot to 65 from the BB with JsTs9h8h, he calls. Flop Qh7h2s, I lead 100, he raises to 400, I call. Turn Td, I check, he bets 600, I jam, he calls. River 3c, he has AhKhQdQs.",
+    "expect": {
+      "gameType": "PLO", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 5, "bb": 5 },
+      "players": 6, "heroPosition": "BB", "heroCards": "JsTs9h8h",
+      "stacks": { "BB": 1500, "BTN": 2200 },
+      "board": { "flop": "Qh7h2s", "turn": "Td", "river": "3c" },
+      "actions": {
+        "preflop": [["BTN", "raise", 20], ["SB", "fold"], ["BB", "raise", 60], ["BTN", "call", 45]],
+        "flop": [["BB", "bet", 100], ["BTN", "raise", 400], ["BB", "call", 300]],
+        "turn": [["BB", "check"], ["BTN", "bet", 600], ["BB", "all-in", 1035], ["BTN", "call", 435]]
+      },
+      "showdown": { "BTN": "AhKhQdQs" },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "mixed-horse-round-not-named",
+    "source": "text",
+    "game": "LHE",
+    "tags": ["mixed", "horse", "ambiguous-game", "terse"],
+    "text": "HORSE 30/60. I'm in the BB with aces, SB raises, I 3bet, he caps, I call. Then he checks every street, I bet every street and he calls me down with a smaller pair. Ship it.",
+    "expect": {
+      "blinds": { "bb": 30, "bigBet": 60 },
+      "heroPosition": "BB",
+      "actions": {
+        "preflop": [["SB", "raise", null], ["BB", "raise", null], ["SB", "raise", null], ["BB", "call", null]],
+        "flop": [["SB", "check"], ["BB", "bet", null], ["SB", "call", null]],
+        "turn": [["SB", "check"], ["BB", "bet", null], ["SB", "call", null]],
+        "river": [["SB", "check"], ["BB", "bet", null], ["SB", "call", null]]
+      },
+      "winners": ["BB"]
+    },
+    "expectGaps": [
+      { "kind": ["ambiguous", "missing"], "field": "gameType", "id": "game", "about": "HORSE without the round: blinds and three postflop streets fit hold'em or O8" },
+      { "kind": "missing", "field": "streets.0.cards.hero", "id": "hero", "about": "'aces' gives no suits and, for O8, not all four cards" },
+      { "kind": "missing", "field": ["streets.1.cards.board", "streets.2.cards.board", "streets.3.cards.board"], "id": "board", "about": "no board though it went to showdown" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "mixed-10game-single-draw-round",
+    "source": "text",
+    "game": "NL 2-7 SD",
+    "tags": ["mixed", "10-game", "draw", "no-limit"],
+    "text": "10-game, the NL 2-7 single draw round. 500/1000, 3-handed, stacks: me (BTN) 60k, SB 45k, BB 80k. I open to 3000 with 2d 3h 4s 6c Kd, SB folds, BB calls. BB draws 1, I draw 1 (the Kd) and catch the 9s. BB checks, I bet 4000, he folds.",
+    "expect": {
+      "gameType": "NL 2-7 SD",
+      "blinds": { "sb": 500, "bb": 1000 },
+      "players": 3, "heroPosition": "BTN", "heroCards": "2d3h4s6cKd",
+      "stacks": { "BTN": 60000, "SB": 45000, "BB": 80000 },
+      "actions": {
+        "predraw": [["BTN", "raise", 3000], ["SB", "fold"], ["BB", "call", 2000]],
+        "draw": [["BB", "check"], ["BTN", "bet", 4000], ["BB", "fold"]]
+      },
+      "draws": {
+        "predraw": [["BB", 1], ["BTN", 1, "Kd", "9s"]]
+      },
+      "winners": ["BTN"]
+    }
+  }
+]

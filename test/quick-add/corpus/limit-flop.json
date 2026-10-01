@@ -1,0 +1,181 @@
+[
+  {
+    "id": "lhe-cash-4bet-pot-ak-holds",
+    "source": "text",
+    "game": "LHE",
+    "tags": ["cash", "limit", "multiway", "4bet"],
+    "text": "10/20 LHE, blinds 5/10, 9 handed, everyone has 600. UTG raises, I 3-bet AdKc in the CO, BB 4-bets, UTG calls, I call. Flop 9c5d2h: BB bets, UTG calls, I raise, BB calls, UTG folds. Turn Ks: BB checks, I bet, BB calls. River 4c, check, I bet, he calls and mucks QsQh.",
+    "expect": {
+      "gameType": "LHE",
+      "blinds": { "sb": 5, "bb": 10, "bigBet": 20 },
+      "players": 9, "heroPosition": "CO", "heroCards": "AdKc", "stacksAll": 600,
+      "board": { "flop": "9c5d2h", "turn": "Ks", "river": "4c" },
+      "actions": {
+        "preflop": [["UTG", "raise", 20], ["CO", "raise", 30], ["BB", "raise", 30], ["UTG", "call", 20], ["CO", "call", 10]],
+        "flop": [["BB", "bet", 10], ["UTG", "call", 10], ["CO", "raise", 20], ["BB", "call", 10], ["UTG", "fold"]],
+        "turn": [["BB", "check"], ["CO", "bet", 20], ["BB", "call", 20]],
+        "river": [["BB", "check"], ["CO", "bet", 20], ["BB", "call", 20]]
+      },
+      "showdown": { "BB": "QsQh" },
+      "winners": ["CO"]
+    }
+  },
+  {
+    "id": "lhe-speech-capped-flop-fives",
+    "source": "speech",
+    "game": "LHE",
+    "tags": ["limit", "3bet"],
+    "text": "limit hold em twenty forty the blinds are ten and twenty six handed everyone has a thousand. I'm on the button with pocket fives five of clubs five of diamonds it folds to me and I raise the small blind three bets the big blind folds I call. the flop is jack of diamonds eight of clubs five of hearts he bets I raise he three bets I cap it he calls. turn queen of spades he checks I bet he calls. river two of clubs he checks I bet he folds",
+    "expect": {
+      "gameType": "LHE",
+      "blinds": { "sb": 10, "bb": 20, "bigBet": 40 },
+      "players": 6, "heroPosition": "BTN", "heroCards": "5c5d", "stacksAll": 1000,
+      "board": { "flop": "Jd8c5h", "turn": "Qs", "river": "2c" },
+      "actions": {
+        "preflop": [["BTN", "raise", 40], ["SB", "raise", 50], ["BB", "fold"], ["BTN", "call", 20]],
+        "flop": [["SB", "bet", 20], ["BTN", "raise", 40], ["SB", "raise", 40], ["BTN", "raise", 40], ["SB", "call", 20]],
+        "turn": [["SB", "check"], ["BTN", "bet", 40], ["SB", "call", 40]],
+        "river": [["SB", "check"], ["BTN", "bet", 40], ["SB", "fold"]]
+      },
+      "winners": ["BTN"]
+    }
+  },
+  {
+    "id": "lhe-raise-to-twelve-not-a-limit-size",
+    "source": "text",
+    "game": "LHE",
+    "tags": ["limit", "impossible-size", "multiway"],
+    "flaws": ["betting"],
+    "text": "4/8 limit holdem (blinds 2 and 4). I raise to 12 UTG with JhJs, button calls, BB calls. Flop Th6c2s, checked to me, I bet 4, both call. Turn 3d, BB checks, I bet 8, BTN raises, BB folds, I call. River 9c, check check, BTN shows Td9d.",
+    "expect": {
+      "gameType": "LHE",
+      "blinds": { "sb": 2, "bb": 4, "bigBet": 8 },
+      "heroPosition": "UTG", "heroCards": "JhJs",
+      "board": { "flop": "Th6c2s", "turn": "3d", "river": "9c" },
+      "actions": {
+        "preflop": [["UTG", "raise", 12], ["BTN", "call", null], ["BB", "call", null]],
+        "flop": [["BB", "check"], ["UTG", "bet", 4], ["BTN", "call", 4], ["BB", "call", 4]],
+        "turn": [["BB", "check"], ["UTG", "bet", 8], ["BTN", "raise", 16], ["BB", "fold"], ["UTG", "call", 8]],
+        "river": [["UTG", "check"], ["BTN", "check"]]
+      },
+      "showdown": { "BTN": "Td9d" },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": ["impossible", "ambiguous"], "field": "streets.0.actions", "id": "action:0", "about": "a limit raise preflop makes it 8, not 12" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "o8-cash-set-high-a2-low-split",
+    "source": "text",
+    "game": "O8",
+    "tags": ["cash", "limit", "split", "multiway", "limp"],
+    "text": "O8 20/40, blinds 10/20, 8 handed, all 1500ish. Folds to the HJ who limps 20, CO folds, I raise from the BTN with Ad2d3c9h, SB folds, BB calls, HJ calls. Flop 4s 8c Kd: checks to me, I bet, both call. Turn 5h: BB checks, HJ bets, I raise, BB folds, HJ calls. River Jc: HJ checks, I bet, he calls. HJ has KcKs7h6h, set of kings for high, my A-2 low takes the other half.",
+    "expect": {
+      "gameType": "O8",
+      "blinds": { "sb": 10, "bb": 20, "bigBet": 40 },
+      "players": 8, "heroPosition": "BTN", "heroCards": "Ad2d3c9h", "stacksAll": 1500,
+      "board": { "flop": "4s8cKd", "turn": "5h", "river": "Jc" },
+      "actions": {
+        "preflop": [["HJ", "call", 20], ["CO", "fold"], ["BTN", "raise", 40], ["SB", "fold"], ["BB", "call", 20], ["HJ", "call", 20]],
+        "flop": [["BB", "check"], ["HJ", "check"], ["BTN", "bet", 20], ["BB", "call", 20], ["HJ", "call", 20]],
+        "turn": [["BB", "check"], ["HJ", "bet", 40], ["BTN", "raise", 80], ["BB", "fold"], ["HJ", "call", 40]],
+        "river": [["HJ", "check"], ["BTN", "bet", 40], ["HJ", "call", 40]]
+      },
+      "showdown": { "HJ": "KcKs7h6h" },
+      "winners": { "refs": ["HJ", "BTN"], "split": true }
+    }
+  },
+  {
+    "id": "o8-speech-small-blind-unstated",
+    "source": "speech",
+    "game": "O8",
+    "tags": ["limit", "capped"],
+    "text": "omaha eight or better limit fifteen thirty I've got ace two four seven ace of spades two of hearts four of clubs seven of diamonds I raise from the cutoff the button and the big blind call. flop is three of spades six of hearts queen of diamonds checked to me I bet the button raises the big blind folds I three bet he caps I call. turn nine of clubs I bet he calls. river king of hearts I bet he raises I call he shows a set of queens and there's no low",
+    "expect": {
+      "gameType": "O8",
+      "blinds": { "bb": 15, "bigBet": 30 },
+      "heroPosition": "CO", "heroCards": "As2h4c7d",
+      "board": { "flop": "3s6hQd", "turn": "9c", "river": "Kh" },
+      "actions": {
+        "preflop": [["CO", "raise", 30], ["BTN", "call", 30], ["BB", "call", 15]],
+        "flop": [["BB", "check"], ["CO", "bet", 15], ["BTN", "raise", 30], ["BB", "fold"], ["CO", "raise", 30], ["BTN", "raise", 30], ["CO", "call", 15]],
+        "turn": [["CO", "bet", 30], ["BTN", "call", 30]],
+        "river": [["CO", "bet", 30], ["BTN", "raise", 60], ["CO", "call", 30]]
+      },
+      "showdown": { "BTN": "QxQxxx" },
+      "winners": ["BTN"]
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" },
+      { "kind": ["missing", "ambiguous"], "field": "blinds.sb", "id": "blinds", "about": "a 15/30 limit game leaves the small blind unstated (5 or 10)" }
+    ]
+  },
+  {
+    "id": "lhe-heads-up-quads",
+    "source": "text",
+    "game": "LHE",
+    "tags": ["heads-up", "limit", "3bet"],
+    "text": "HU limit 50/100, blinds 25/50, both 5k deep. I'm on the button w AhTc, raise, BB 3bets, I call. Flop Ts7d2c, he bets, I raise, he 3bets, I 4bet, he calls. Turn 7h, he checks, I bet, he calls. River 3s, x x. He has 7c7s, quads. lol.",
+    "expect": {
+      "gameType": "LHE",
+      "blinds": { "sb": 25, "bb": 50, "bigBet": 100 },
+      "players": 2, "heroPosition": "BTN/SB", "heroCards": "AhTc", "stacksAll": 5000,
+      "board": { "flop": "Ts7d2c", "turn": "7h", "river": "3s" },
+      "actions": {
+        "preflop": [["BTN/SB", "raise", 75], ["BB", "raise", 100], ["BTN/SB", "call", 50]],
+        "flop": [["BB", "bet", 50], ["BTN/SB", "raise", 100], ["BB", "raise", 100], ["BTN/SB", "raise", 100], ["BB", "call", 50]],
+        "turn": [["BB", "check"], ["BTN/SB", "bet", 100], ["BB", "call", 100]],
+        "river": [["BB", "check"], ["BTN/SB", "check"]]
+      },
+      "showdown": { "BB": "7c7s" },
+      "winners": ["BB"]
+    }
+  },
+  {
+    "id": "lhe-speech-no-board-at-all",
+    "source": "speech",
+    "game": "LHE",
+    "tags": ["limit", "checkraise"],
+    "text": "eight sixteen limit blinds four and eight I'm in the big blind with king jack of hearts the cutoff raises I call. on the flop I check raise he calls turn I bet he calls river I check he bets I call and he shows aces",
+    "expect": {
+      "gameType": "LHE",
+      "blinds": { "sb": 4, "bb": 8, "bigBet": 16 },
+      "heroPosition": "BB", "heroCards": "KhJh",
+      "actions": {
+        "preflop": [["CO", "raise", 16], ["BB", "call", 8]],
+        "flop": [["BB", "check"], ["CO", "bet", 8], ["BB", "raise", 16], ["CO", "call", 8]],
+        "turn": [["BB", "bet", 16], ["CO", "call", 16]],
+        "river": [["BB", "check"], ["CO", "bet", 16], ["BB", "call", 16]]
+      },
+      "showdown": { "CO": "AxAx" }
+    },
+    "expectGaps": [
+      { "kind": "missing", "field": ["streets.1.cards.board", "streets.2.cards.board", "streets.3.cards.board"], "id": "board", "about": "no board cards at all though it went to showdown" },
+      { "kind": "missing", "field": "result", "id": "result", "about": "a showdown with no winner" },
+      { "kind": "missing", "field": "players.*.startingStack", "id": "stack", "about": "no stacks" }
+    ]
+  },
+  {
+    "id": "lhe-cash-limped-multiway-straight",
+    "source": "text",
+    "game": "LHE",
+    "tags": ["cash", "limit", "limp", "multiway", "capped"],
+    "text": "LHE $15/$30 (blinds 10/15), 7-handed, all ~$900. UTG limps, CO limps, I complete the SB with 7h6h, BB checks. Flop 8c 5d 2s: I bet, BB folds, UTG raises, CO folds, I 3bet, UTG calls. Turn 4h, I've got it: I bet, UTG raises, I 3bet, he caps, I call. River Ks: I bet, he calls, shows Ac3c for the wheel. Mine's better.",
+    "expect": {
+      "gameType": "LHE", "gameMode": "cash", "currency": "USD",
+      "blinds": { "sb": 10, "bb": 15, "bigBet": 30 },
+      "players": 7, "heroPosition": "SB", "heroCards": "7h6h", "stacksAll": 900,
+      "board": { "flop": "8c5d2s", "turn": "4h", "river": "Ks" },
+      "actions": {
+        "preflop": [["UTG", "call", 15], ["CO", "call", 15], ["SB", "call", 5], ["BB", "check"]],
+        "flop": [["SB", "bet", 15], ["BB", "fold"], ["UTG", "raise", 30], ["CO", "fold"], ["SB", "raise", 30], ["UTG", "call", 15]],
+        "turn": [["SB", "bet", 30], ["UTG", "raise", 60], ["SB", "raise", 60], ["UTG", "raise", 60], ["SB", "call", 30]],
+        "river": [["SB", "bet", 30], ["UTG", "call", 30]]
+      },
+      "showdown": { "UTG": "Ac3c" },
+      "winners": ["SB"]
+    }
+  }
+]
