@@ -1471,6 +1471,11 @@ function DrawBadge({ history }) {
   );
 }
 
+// Hand entry controls hidden for now (2026-10-01): the Form/Text and GTO Style/Classic
+// switches, and the notes box. Flip back to true to restore them.
+const SHOW_ENTRY_MODE_TOGGLES = false;
+const SHOW_ENTRY_NOTES = false;
+
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
@@ -4535,13 +4540,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     return (
       <div className="replayer-view replayer-entry-view">
         <div className="gto-sticky-header">
-          <div className="replayer-header"><h2>New Hand</h2></div>
-          {/* Form / Text toggle */}
-          <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
+          {/* Form / Text toggle — hidden for now (2026-10-01); entry opens on Form and
+              GTO Style every time, so hiding the switches pins exactly that. */}
+          {SHOW_ENTRY_MODE_TOGGLES && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
             <button className={entryTab === 'form' ? 'active' : ''} onClick={() => setEntryTab('form')}>Form</button>
             <button className={entryTab === 'text' ? 'active' : ''} onClick={() => setEntryTab('text')}>Text</button>
-          </div>
-          {entryTab === 'form' && currentHand.gameType !== 'OFC' && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
+          </div>}
+          {SHOW_ENTRY_MODE_TOGGLES && entryTab === 'form' && currentHand.gameType !== 'OFC' && <div className="live-update-tabs" style={{marginBottom:'var(--space-md)'}}>
             <button className={entryMode === 'gto' ? 'active' : ''} onClick={() => setEntryMode('gto')}>GTO Style</button>
             <button className={entryMode === 'classic' ? 'active' : ''} onClick={() => setEntryMode('classic')}>Classic</button>
           </div>}
@@ -4580,9 +4585,12 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
                 isPublic went into the save payload with no control that could
                 ever set it. Both were saved and neither was editable. */}
             <div className="replayer-notes-area">
-              <label htmlFor="replayer-notes">Notes</label>
-              <textarea id="replayer-notes" value={notes} placeholder="What were you thinking here?"
-                onChange={e => setNotes(e.target.value)} />
+              {/* The notes box is hidden for now (2026-10-01); saved notes still show in replay. */}
+              {SHOW_ENTRY_NOTES && <>
+                <label htmlFor="replayer-notes">Notes</label>
+                <textarea id="replayer-notes" value={notes} placeholder="What were you thinking here?"
+                  onChange={e => setNotes(e.target.value)} />
+              </>}
               <div className="replayer-settings-row" style={{marginBottom:0}}>
                 <div className="replayer-settings-label">Share publicly</div>
                 <button className={'replayer-settings-toggle' + (isPublic ? ' on' : '')}
