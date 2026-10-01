@@ -1347,6 +1347,51 @@ test('every gap has the contract shape', () => {
   }
 });
 
+// ── Client and server agree (runs once part B's lib/quick-add is in the tree) ──
+{
+  const { existsSync } = await import('node:fs');
+  const { createRequire } = await import('node:module');
+  const { fileURLToPath } = await import('node:url');
+  const libDir = new URL('../../lib/quick-add/', import.meta.url);
+  if (existsSync(new URL('normalize.js', libDir)) && existsSync(new URL('patch.js', libDir))) {
+    const require = createRequire(import.meta.url);
+    const { normalizeDraft, normalizeHand } = require(fileURLToPath(new URL('normalize.js', libDir)));
+    const { applyOps } = require(fileURLToPath(new URL('patch.js', libDir)));
+    const DRAFT = () => ({
+      gameType: 'NLH', gameMode: 'cash', tableSize: null, othersFolded: true, blinds: { sb: 1, bb: 3, ante: 0 },
+      players: [{ position: 'UTG', isHero: false }, { position: 'BTN', isHero: true }, { position: 'BB', isHero: false }],
+      streets: [
+        { name: 'Preflop', cards: [{ player: 1, cards: 'AhQh' }], actions: [
+          { player: 0, action: 'call' }, { player: 1, action: 'raise', toAmount: 15 }, { player: 2, action: 'call' }, { player: 0, action: 'call' }] },
+        { name: 'Flop', board: 'Qs7d2c', actions: [{ player: 2, action: 'check' }, { player: 0, action: 'check' }, { player: 1, action: 'bet', toAmount: 25 }, { player: 2, action: 'fold' }, { player: 0, action: 'call' }] },
+      ],
+    });
+    const pick = (h) => ({ players: h.players.map(p => [p.name, p.position]), heroIdx: h.heroIdx, streets: h.streets.map(s => ({ cards: s.cards, actions: s.actions.map(a => [a.player, a.action, a.amount]) })), quickAdd: h.quickAdd });
+    test('server agreement: seating a narrator hand', () => {
+      for (const n of [6, 8, 9]) {
+        const un = normalizeDraft(DRAFT()).hand;
+        const mine = applyAnswer(un, { id: 'table-size', field: 'tableSize' }, { op: 'setTableSize', n });
+        const theirs = normalizeHand(applyOps(un, [{ op: 'set', path: 'tableSize', value: n }]).hand).hand;
+        eq(pick(mine), pick(theirs), n + '-handed');
+      }
+    });
+    test('server agreement: naming the hero and finishing sizes', () => {
+      const nh = normalizeDraft({ ...DRAFT(), tableSize: 9, players: DRAFT().players.map(p => ({ ...p, isHero: false })) }).hand;
+      const btn = nh.players.findIndex(p => p.position === 'BTN');
+      eq(applyAnswer(nh, { id: 'hero' }, { op: 'setHero', heroIdx: btn }).streets.map(s => s.cards),
+        normalizeHand(applyOps(nh, [{ op: 'set', path: 'heroIdx', value: btn }]).hand).hand.streets.map(s => s.cards));
+      const d = DRAFT(); d.tableSize = 9; d.blinds = { sb: null, bb: null, ante: 0 };
+      d.streets.forEach(s => { s.actions = s.actions.map(a => (a.toAmount ? { player: a.player, action: a.action, toAmountBB: a.toAmount / 3 } : a)); });
+      const pb = normalizeDraft(d).hand;
+      const sets = [{ path: 'blinds.sb', value: 1 }, { path: 'blinds.bb', value: 3 }];
+      eq(applyAnswer(pb, { id: 'blinds.bb' }, { op: 'setMany', sets }).streets.map(s => s.actions.map(a => a.amount)),
+        normalizeHand(applyOps(pb, sets.map(x => ({ op: 'set', ...x }))).hand).hand.streets.map(s => s.actions.map(a => a.amount)));
+    });
+  } else {
+    console.log('(server agreement tests skipped: lib/quick-add is not in this tree)');
+  }
+}
+
 // ── HAND_CONFIG drift (needs utils.js, which touches localStorage at import) ──
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.window = globalThis;
