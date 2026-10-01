@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { API_URL } from '../utils/api.js';
 
 // ── Cash watcher: Heatmaps ──
@@ -6,6 +6,10 @@ import { API_URL } from '../utils/api.js';
 // a venue + game/stake; the grid shows when it runs and how busy. Needs ~2 weeks
 // of collected history to be meaningful.
 
+// Heatmap geometry: a 5g hour column, then seven 4g day columns; every row 2r.
+const HEAT_COLS = 'calc(var(--gu) * 5) repeat(7, calc(var(--gu) * 4))';
+const HEAT_W = 'calc(var(--gu) * 33)';
+const HEAT_ROW_H = 'calc(var(--subrow) * 2)';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const UNIVERS = "var(--font-condensed, 'Univers Condensed', 'Univers', sans-serif)";
 const SEL_KEY = 'cashHeatmapSel';
@@ -112,6 +116,33 @@ export default function CashHeatmap({ token }) {
   const persistSel = useCallback((s) => { setSel(s); try { localStorage.setItem(SEL_KEY, JSON.stringify(s)); } catch { /* ignore */ } setPick(null); }, []);
   const persistMetric = useCallback((m) => { setMetric(m); try { localStorage.setItem(METRIC_KEY, m); } catch { /* ignore */ } }, []);
 
+  /* Seat the grid on the r lines: the pickers and metric buttons above it are not whole-r
+     tall, so its top landed 0.19r off a line (measured). Drop it onto the next line,
+     measured from the grid origin (the top bar's top) with a 100r probe for r. */
+  const gridRef = useRef(null);
+  const [gridDrop, setGridDrop] = useState(0);
+  useLayoutEffect(() => {
+    const el = gridRef.current;
+    if (!el) return undefined;
+    const snap = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;height:calc(var(--subrow) * 100);width:0;visibility:hidden';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+      const bar = document.querySelector('.top-bar');
+      if (!(r > 0) || !bar) return;
+      // The container's own top does not move with its padding-top, so this is stable.
+      const t = (el.getBoundingClientRect().top - bar.getBoundingClientRect().top) / r;
+      const frac = t - Math.floor(t);
+      const drop = frac < 0.01 || frac > 0.99 ? 0 : 1 - frac;
+      if (Math.abs(drop - gridDrop) > 0.005) setGridDrop(drop);
+    };
+    snap();
+    window.addEventListener('resize', snap);
+    return () => window.removeEventListener('resize', snap);
+  });
+
   const cellMap = useMemo(() => {
     const m = new Map();
     for (const c of (cells || [])) m.set(`${c.dow}-${c.hour}`, c);
@@ -180,17 +211,21 @@ export default function CashHeatmap({ token }) {
           {/* Vertical orientation: hours run DOWN as rows, the 7 days ACROSS as
               columns. Seven columns fit the phone width, so no horizontal scroll —
               the grid grows downward instead. */}
-          <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {/* Day axis (column headers) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'calc(var(--subrow) * 0.375)', flexShrink: 0 }}>
+          {/* Every cell is 4g x 2r with no gaps, so the columns sit on whole g: a 5g hour
+              column + 7 x 4g = 33g, centred, putting the cells on 7g..35g; 24 rows x 2r = 48r.
+              Neighbours are told apart by an inset hairline in the background colour, which
+              costs no size. (They stretched to fill the height and width, with 2xs gaps.) */}
+          <div ref={gridRef} style={{ flex: 'none', display: 'flex', flexDirection: 'column', width: HEAT_W, maxWidth: '100%', margin: '0 auto', paddingTop: `calc(var(--subrow) * ${gridDrop.toFixed(4)})` }}>
+            {/* Day axis (column headers), one 2r line */}
+            <div style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, gap: 0, flexShrink: 0 }}>
               <div />
               {DOW.map((day, d) => (
-                <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase' }}>{day}</div>
+                <div key={d} style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', textAlign: 'center', fontFamily: UNIVERS, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{day}</div>
               ))}
             </div>
             {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} style={{ display: 'grid', gridTemplateColumns: 'calc(var(--subrow) * 3.75) repeat(7, minmax(0, 1fr))', gap: 'var(--space-2xs)', marginBottom: 'var(--space-2xs)', flex: '1 1 0', minHeight: 0 }}>
-                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--space-2xs)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
+              <div key={h} style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, gap: 0, flex: 'none' }}>
+                <div style={{ fontSize: 'calc(var(--gu) * 0.884)', color: 'var(--text-muted,#999)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 'var(--gu)', fontFamily: UNIVERS, fontVariantNumeric: 'tabular-nums' }}>{hourLabel(h)}</div>
                 {DOW.map((day, d) => {
                   const c = cellMap.get(`${d}-${h}`);
                   const hasData = !!(c && c.samples > 0);
@@ -205,9 +240,10 @@ export default function CashHeatmap({ token }) {
                       title={hasData ? `${day} ${hourLabel(h)} · ${(c.meanTables || 0).toFixed(1)} tables avg · ran ${Math.round((c.ranFraction || 0) * 100)}% · ${c.samples} polls` : `${day} ${hourLabel(h)} · no data`}
                       style={{
                         position: 'relative',
-                        /* No fixed square: the cell stretches to fill its row, and the
-                           rows share the grid's height so all 24 fit without scroll. */
-                        minHeight: 0, border: active ? 'var(--bw-hair) solid var(--text,#fff)' : 'var(--bw-hair) solid transparent',
+                        /* Exactly the 4g x 2r track: no border (the pick ring and the
+                           separating hairline are inset shadows), so nothing adds size. */
+                        boxSizing: 'border-box', width: '100%', height: '100%', minHeight: 0, border: 0, margin: 0,
+                        boxShadow: active ? 'inset 0 0 0 calc(var(--bw-hair) * 2) var(--text,#fff)' : 'inset 0 0 0 var(--bw-hair) var(--bg,#111)',
                         borderRadius: 'calc(var(--subrow) * 0.25)', background: cellColor(intensity, hasData), cursor: hasData ? 'pointer' : 'default', padding: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 'calc(var(--gu) * 0.736)', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
