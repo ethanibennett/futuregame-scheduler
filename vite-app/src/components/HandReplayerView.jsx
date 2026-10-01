@@ -7563,9 +7563,16 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                type, same card size. Every poker broadcast makes the featured
                player unmistakable, and it is the seat the eye returns to
                after every single action. */
+            /* Side seats (the CL / CR columns) in portrait are anchored by their OUTER edge
+               on the table box's edge, 1g from the screen, rather than centred on their
+               column: a plaque is 8g and grows with a long name, so centring put the left
+               run at 2.16..2.46g and let a long name push off the right. Anchored, a longer
+               name grows inward. pos still drives the shadow and the fold origin. */
             <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
-              + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')}
-              style={{left: pos[0] + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos), ...foldOrigin(pos)}}>
+              + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
+              + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')
+              + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')}
+              style={{left: (!isLandscape && pos[0] === gx(CL) ? 0 : !isLandscape && pos[0] === gx(CR) ? 100 : pos[0]) + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos), ...foldOrigin(pos)}}>
               {/* 12: opponent cards were hidden until showResult and then
                   appeared in a single frame — the only card event in the
                   replayer with no motion, at the moment the whole replay has

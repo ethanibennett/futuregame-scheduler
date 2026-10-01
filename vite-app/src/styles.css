@@ -5264,6 +5264,10 @@
     }
     .replayer-seat.seat-left { transform: translate(0%, -50%); }
     .replayer-seat.seat-right { transform: translate(-100%, -50%); }
+    /* Portrait side seats, anchored by their outer edge on the table box (1g from the
+       screen edge); see the seat-edge-* classes in HandReplayerView. */
+    .replayer-seat.seat-edge-left { transform: translate(0, -50%); }
+    .replayer-seat.seat-edge-right { transform: translate(-100%, -50%); }
     /* Rendered: the board ran under the two mid-height side plaques. That
        predates this pass — at the old 18% inset the clear middle was about
        66px against a 181px board — and widening the felt improved it without
