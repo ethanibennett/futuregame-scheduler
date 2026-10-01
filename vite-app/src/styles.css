@@ -3693,6 +3693,19 @@
     }
     .replayer-entry-view .live-update-tabs button:first-child { box-shadow: inset calc(var(--bw-hair) * -1) 0 0 var(--border); }
     .replayer-entry-view .live-update-tabs button.active { box-shadow: none; }
+    /* Cash tab's Live / Heatmaps: the same strip — 3r, two equal halves, hairlines as inset
+       shadows, label baseline 2r (pb = 0.6956em - r, cond xs). */
+    .cash-mode-tabs {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      height: calc(var(--subrow) * 3); border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .cash-mode-tabs button {
+      box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
+      padding: 0 0 calc(0.6956em - var(--subrow)); border: 0;
+    }
+    .cash-mode-tabs button:first-child { box-shadow: inset calc(var(--bw-hair) * -1) 0 0 var(--border); }
+    .cash-mode-tabs button.active { box-shadow: none; }
     /* Game row: tabs alone span 35g; with Currency, 26g + 1g + 8g (1–27, 28–36)
        and the two tabs split 13g + 13g (1–14–27). */
     .replayer-entry-view .entry-game-row { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--gu); align-items: end; }

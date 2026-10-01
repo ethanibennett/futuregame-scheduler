@@ -172,7 +172,7 @@ function CashLocationPicker({ token }) {
   );
 }
 
-export default function CashView({ token }) {
+export default function CashView({ token, onModeChange }) {
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ok | error
   const [errMsg, setErrMsg] = useState('');
@@ -185,7 +185,11 @@ export default function CashView({ token }) {
     try { const s = localStorage.getItem(HIDDEN_KEY); return new Set(s ? JSON.parse(s) : []); } catch { return new Set(); }
   });
   const [mode, setMode] = useState(() => localStorage.getItem('cashMode') || 'live'); // 'live' | 'heatmap'
-  const setModePersist = useCallback((m) => { setMode(m); try { localStorage.setItem('cashMode', m); } catch { /* ignore */ } }, []);
+  const setModePersist = useCallback((m) => {
+    setMode(m);
+    try { localStorage.setItem('cashMode', m); } catch { /* ignore */ }
+    if (onModeChange) onModeChange(m); // the top bar's subtitle names the mode
+  }, [onModeChange]);
 
   const toggleVariant = useCallback((variant) => {
     setHidden(prev => {
@@ -284,17 +288,11 @@ export default function CashView({ token }) {
         )}
       </div>
 
-      {/* Live / Heatmaps mode */}
-      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash. */}
+      <div className="live-update-tabs cash-mode-tabs" style={{ marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
-          <button key={m} onClick={() => setModePersist(m)}
-            style={{
-              fontFamily: UNIVERS, fontSize: 'calc(var(--gu) * 1.060)', textTransform: 'uppercase', letterSpacing: '0.05em',
-              height: CTRL_H, boxSizing: 'border-box', padding: '0 calc(var(--subrow) * 1.75)', borderRadius: 999, cursor: 'pointer',
-              border: 'var(--bw-hair) solid ' + (mode === m ? 'var(--text, #fff)' : 'var(--border, #333)'),
-              background: mode === m ? 'var(--text, #fff)' : 'transparent',
-              color: mode === m ? 'var(--bg, #111)' : 'var(--text-muted, #888)',
-            }}>{lbl}</button>
+          <button key={m} type="button" className={mode === m ? 'active' : ''} aria-pressed={mode === m}
+            onClick={() => setModePersist(m)}>{lbl}</button>
         ))}
       </div>
 

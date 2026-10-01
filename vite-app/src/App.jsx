@@ -170,6 +170,10 @@ export default function App() {
   // SolverView on mount/update.
   const [pendingSolverSpot, setPendingSolverSpot] = useState(null);
 
+  // Cash tab's Live / Heatmaps mode, for the top bar's subtitle. CashView owns and persists
+  // it ('cashMode'); this reads the same key so the first paint is already right.
+  const [cashMode, setCashMode] = useState(() => { try { return localStorage.getItem('cashMode') || 'live'; } catch { return 'live'; } });
+
   // Shared hand from URL hash
   const [sharedHandData, setSharedHandData] = useState(() => {
     if (HAND_SHORTHAND) {
@@ -1386,7 +1390,7 @@ export default function App() {
           <h1>futurega.me</h1>
           {/* The cash tab is not seasonal, so its subtitle names the tab instead of the
               season's date range. The h2 inside CashView is dropped in favour of this. */}
-          {currentView === 'cash' ? <small>live cash games</small>
+          {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
             : currentView === 'hands' ? <small>hands archive</small>
             : currentView === 'dashboard' ? <small>dashboard</small>
             : (seasonLabel ? <small>{seasonLabel}</small> : null)}
@@ -1727,7 +1731,7 @@ export default function App() {
 
         <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
         {visitedTabs.has('cash') && isAdmin && (
-          <Suspense fallback={<LazyFallback />}><CashView token={token} /></Suspense>
+          <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} /></Suspense>
         )}
         </div>
 
