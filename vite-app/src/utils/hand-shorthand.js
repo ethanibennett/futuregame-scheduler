@@ -145,15 +145,21 @@ export function encodeHand(hand) {
   }
   var actionSection = actionParts.join('/');
 
+  /* Draws: one section per street that has any, 'D' + that street's index + '=' + entries
+     'player:count:discarded:new' (the card fields may be empty). The old 'd' sections carried
+     only the counts and no street index, so a shared draw hand lost every card thrown and drawn
+     (a player who drew one three times ended on two cards) and every draw landed a street late
+     (discards lit up after the last draw). Both fixed; old 'd' links still decode, see below. */
   if (hasDraws) {
     var drawParts = [];
     for (var di = 0; di < streets.length; di++) {
       var draws = streets[di].draws || [];
       if (draws.length > 0) {
         var drawEntries = draws.map(function(d) {
-          return d.player + ':' + (d.discarded || 0);
+          var cardsOnly = function(str) { return String(str || '').replace(/[^0-9A-Za-z]/g, ''); };
+          return d.player + ':' + (d.discarded || 0) + ':' + cardsOnly(d.discardedCards) + ':' + cardsOnly(d.newCards);
         });
-        drawParts.push('d' + drawEntries.join(','));
+        drawParts.push('D' + di + '=' + drawEntries.join(','));
       }
     }
     if (drawParts.length > 0) {
@@ -353,7 +359,8 @@ export function decodeHand(str) {
   var pureActionStreets = [];
   var drawSections = [];
   for (var as = 0; as < actionStreets.length; as++) {
-    if (actionStreets[as].charAt(0) === 'd') {
+    var lead = actionStreets[as].charAt(0);
+    if (lead === 'd' || lead === 'D') {
       drawSections.push(actionStreets[as]);
     } else {
       pureActionStreets.push(actionStreets[as]);
@@ -380,19 +387,33 @@ export function decodeHand(str) {
   }
 
   for (var dsi = 0; dsi < drawSections.length; dsi++) {
-    var drawStr = drawSections[dsi].substring(1);
+    var sec = drawSections[dsi];
+    var drawStreetIdx, drawStr;
+    if (sec.charAt(0) === 'D') {
+      // Current format: the street index is explicit.
+      var eq = sec.indexOf('=');
+      drawStreetIdx = parseInt(sec.substring(1, eq), 10);
+      drawStr = sec.substring(eq + 1);
+    } else {
+      // Old 'd' sections: no index, one per street that had draws, in order. A draw is recorded
+      // on the betting round BEFORE it (the first draw on street 0, as the entry form and the
+      // replay both read it), so the n-th section is street n. This used to read n + 1, which
+      // put every draw a street late.
+      drawStreetIdx = dsi;
+      drawStr = sec.substring(1);
+    }
+    if (!(drawStreetIdx >= 0 && drawStreetIdx < streets.length)) continue;
     var drawEntries = drawStr.split(',');
-    var drawStreetIdx = dsi + 1;
-    if (drawStreetIdx < streets.length) {
-      for (var dei = 0; dei < drawEntries.length; dei++) {
-        var drawParts2 = drawEntries[dei].split(':');
-        if (drawParts2.length === 2) {
-          streets[drawStreetIdx].draws.push({
-            player: parseInt(drawParts2[0], 10),
-            discarded: parseInt(drawParts2[1], 10)
-          });
-        }
-      }
+    for (var dei = 0; dei < drawEntries.length; dei++) {
+      var drawParts2 = drawEntries[dei].split(':');
+      if (drawParts2.length < 2) continue;
+      var entry = {
+        player: parseInt(drawParts2[0], 10),
+        discarded: parseInt(drawParts2[1], 10) || 0,
+        discardedCards: drawParts2[2] || '',
+        newCards: drawParts2[3] || ''
+      };
+      if (!isNaN(entry.player)) streets[drawStreetIdx].draws.push(entry);
     }
   }
 

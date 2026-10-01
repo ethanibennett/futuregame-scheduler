@@ -57,6 +57,12 @@ function computeDrawHand(originalCards, draws, upToStreetIdx, gameType = '') {
       current = kept.map(c => c.rank + c.suit).join('');
     }
     if (draw.newCards) current = sortDrawHand(current + draw.newCards, gameType);
+    /* Cards drawn but not recorded (entry makes them optional, and links made before
+       2026-10-01 never carried them) are still cards in the hand: they show face down rather
+       than vanishing, so a player who drew one three times still holds five. A back is 'Ax' —
+       the parser pairs a rank with a suit, so a rankless 'xx' would be dropped — and
+       sortDrawHand ranks suit 'x' lowest, so it sorts to the end and is never thrown first. */
+    else current = current + 'Ax'.repeat(draw.discarded);
   }
   return current;
 }
@@ -85,7 +91,9 @@ function drawDeadCards(hand, streetIdx, playerIdx) {
   hand.players.forEach((_, pi) => {
     const oppSlot = pi > heroIdx ? pi - 1 : pi;
     const base = pi === heroIdx ? (s0.hero || '') : ((s0.opponents || [])[oppSlot] || '');
-    const held = computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), streetIdx - 1, hand.gameType);
+    // An opponent's stored cards are their showdown hand (entered at showdown), not a
+    // starting hand to replay draws over: every known one is held, as stored.
+    const held = pi === heroIdx ? computeDrawHand(base, getPlayerDrawsByStreet(hand, pi), streetIdx - 1, hand.gameType) : base;
     add(held, pi === playerIdx ? 'already in this hand' : 'in ' + nameOf(pi) + "'s hand");
   });
   // Cards dealt on earlier draws are in their drawer's hand even when that player's starting
@@ -193,8 +201,10 @@ function sortDrawHand(cardStr, gameType) {
   if (cards.length < 2) return cardStr || '';
   const aceLow = ACE_LOW_DRAW.has(drawBase(gameType));
   const rank = (r) => (r === 'A' && aceLow) ? 1 : (RANK_SORT[r] || 0);
+  // A face-down card (suit 'x') ranks below everything, whatever its placeholder rank.
+  const rk = (c) => c.suit === 'x' ? 0 : rank(c.rank);
   return cards.slice().sort((a, b) =>
-    rank(b.rank) - rank(a.rank) || (SUIT_SORT[b.suit] || 0) - (SUIT_SORT[a.suit] || 0)
+    rk(b) - rk(a) || (SUIT_SORT[b.suit] || 0) - (SUIT_SORT[a.suit] || 0)
   ).map(c => c.rank + c.suit).join('');
 }
 // In lowball the cards thrown are the high ones — the FRONT of a rank-ordered hand.
