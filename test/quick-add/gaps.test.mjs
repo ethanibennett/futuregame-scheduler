@@ -917,8 +917,19 @@ test('a showdown with no winner: the cards decide the best guess', () => {
 test('a showdown opponent with no cards: mucked or unknown', () => {
   const h = lhe6max(); h.streets[0].cards.opponents[4] = '';
   const g = gap(h, 'showdown:5');
-  ok(!g.blocking); eq(g.options[0].value.value, 'MUCK');
+  // Asked before the hand is ready (2026-10-01); 'mucked' (no all-in here) and 'I don't know' settle it.
+  ok(g.blocking); eq(g.options[0].value.value, 'MUCK'); ok(g.options.every(o => o.fallback));
   eq(ids(answerFirst(h, g)), []);
+});
+
+test('after an all-in the showdown question offers no muck', () => {
+  const h = { gameType: 'NLH', heroIdx: 0, blinds: { sb: 100, bb: 200, ante: 0 },
+    players: [P('Hero', 'BTN/SB', 10000), P('Opp', 'BB', 10000)],
+    streets: [St('Preflop', 'QdJd', [''], '', [A(0, 'all-in', 9900), A(1, 'call', 9800)]),
+      St('Flop', '', [''], '9d8d2c', []), St('Turn', '', [''], '3h', []), St('River', '', [''], 'Ks', [])] };
+  const g = gap(h, 'showdown:1');
+  ok(g && g.blocking, 'blocking showdown question');
+  ok(!g.options.some(o => /mucked/.test(o.label)), 'no mucked option after an all-in');
 });
 
 test('a folded player cannot win', () => {

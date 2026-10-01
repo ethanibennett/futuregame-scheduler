@@ -315,19 +315,25 @@ export function showdownRules(hand, env, out, ctx) {
       out.push(makeGap({
         id, kind: 'missing', field: 'streets.0.cards.opponents.' + slot,
         question: 'What did ' + name + ' show down?',
-        options: [dismissOption('Not shown / unknown')], allowFree: true, blocking: false,
+        // Stud stays optional: the opponent's up cards are already on the table.
+        options: [{ ...dismissOption('Not shown / unknown'), fallback: true }], allowFree: true, blocking: false,
       }, [STAGE.showdown, 50 + pi]));
       continue;
     }
     if (cardsOf(s0).length) continue;
+    /* Asked BEFORE the hand counts as ready (blocking — 'I don’t know' still settles it): the
+       showdown is the point of the replay, and as an optional question it came after "Open
+       in replayer", so a hand opened with the opponent's cards never shown (seen 2026-10-01).
+       After an all-in the cards are tabled, so 'mucked' is not an answer. */
+    const anyAllIn = hand.streets.some(st => (st.actions || []).some(a => a && a.action === 'all-in'));
     out.push(makeGap({
       id, kind: 'missing', field: 'streets.0.cards.opponents.' + slot,
       question: 'What did ' + name + ' show down?',
       options: [
-        { label: name + ' mucked', value: { op: 'set', path: 'streets.0.cards.opponents.' + slot, value: 'MUCK' } },
-        dismissOption('I don’t know'),
+        ...(anyAllIn ? [] : [{ label: name + ' mucked', fallback: true, value: { op: 'set', path: 'streets.0.cards.opponents.' + slot, value: 'MUCK' } }]),
+        { ...dismissOption('I don’t know'), fallback: true },
       ],
-      allowFree: true, blocking: false,
+      allowFree: true, blocking: true,
     }, [STAGE.showdown, 50 + pi]));
   }
 

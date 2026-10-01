@@ -75,7 +75,7 @@ export function heroCardRules(hand, env, out) {
       question: have
         ? 'Only ' + have + ' of your ' + expect + ' cards ' + (have === 1 ? 'is' : 'are') + ' known (' + bad.known.join(' ') + '). What were the others?'
         : 'What were your cards?',
-      options: [{ label: 'The rest are unknown', value: unknownAnswer(filled) }],
+      options: [{ label: 'The rest are unknown', fallback: true, value: unknownAnswer(filled) }],
       allowFree: true, blocking: true,
     }, key));
     return;
@@ -106,14 +106,14 @@ export function heroCardRules(hand, env, out) {
     out.push(makeGap({
       id: 'cards:hero', kind: 'missing', field,
       question: env.isStud ? 'What were your 3rd street cards (two down, then the door card)?' : 'What were your cards?',
-      options: [{ label: 'I don’t remember', value: unknownAnswer(backs(expect)) }],
+      options: [{ label: 'I don’t remember', fallback: true, value: unknownAnswer(backs(expect)) }],
       allowFree: true, blocking: true,
     }, key));
   } else if (k < expect) {
     out.push(makeGap({
       id: 'cards:hero', kind: 'missing', field,
       question: 'Only ' + k + ' of your ' + expect + (env.isStud ? ' 3rd street' : '') + ' cards ' + (k === 1 ? 'is' : 'are') + ' recorded. What were the others?',
-      options: [{ label: 'The rest are unknown', value: unknownAnswer(cardsOf(s).map(c => c.rank + c.suit).join('') + backs(expect - k)) }],
+      options: [{ label: 'The rest are unknown', fallback: true, value: unknownAnswer(cardsOf(s).map(c => c.rank + c.suit).join('') + backs(expect - k)) }],
       allowFree: true, blocking: true,
     }, key));
   } else {
@@ -271,7 +271,7 @@ export function opponentCardRules(hand, env, out, ctx) {
       out.push(makeGap({
         id: 'oppcards:' + pi, kind: 'missing', field,
         question: 'Only ' + k + ' of ' + name + '’s ' + expect + ' cards ' + (k === 1 ? 'is' : 'are') + ' recorded. What were the others?',
-        options: [{ label: 'The rest are unknown', value: { op: 'set', path: field, value: cardsOf(s).map(c => c.rank + c.suit).join('') + backs(expect - k) } }],
+        options: [{ label: 'The rest are unknown', fallback: true, value: { op: 'set', path: field, value: cardsOf(s).map(c => c.rank + c.suit).join('') + backs(expect - k) } }],
         allowFree: true, blocking: live,
       }, [STAGE.showdown, pi]));
     }
@@ -336,7 +336,7 @@ export function boardRules(hand, env, out, ctx) {
     if (k === 0) {
       const early = redistributable && si < overflowAt;
       const opts = early ? [redist] : [];
-      opts.push({ label: 'I don’t remember', value: { op: 'set', path: field, value: backs(want) } });
+      opts.push({ label: 'I don’t remember', fallback: true, value: { op: 'set', path: field, value: backs(want) } });
       out.push(makeGap({
         id: 'board:' + si, kind: 'missing', field,
         question: early ? 'The ' + word + ' is empty but a later street holds ' + counts[overflowAt] + ' board cards. Deal them in order?' : 'What was the ' + word + '?',
@@ -347,7 +347,7 @@ export function boardRules(hand, env, out, ctx) {
     }
     const opts = [];
     if (redistributable) opts.push(redist);
-    if (k < want) opts.push({ label: 'The rest are unknown', value: { op: 'set', path: field, value: cardsOf(streets[si].cards.board).map(c => c.rank + c.suit).join('') + backs(want - k) } });
+    if (k < want) opts.push({ label: 'The rest are unknown', fallback: true, value: { op: 'set', path: field, value: cardsOf(streets[si].cards.board).map(c => c.rank + c.suit).join('') + backs(want - k) } });
     out.push(makeGap({
       id: 'board:' + si, kind: 'impossible', field,
       question: 'The ' + word + ' has ' + want + ' card' + (want > 1 ? 's' : '') + ', but ' + k + ' ' + (k === 1 ? 'is' : 'are') + ' recorded. What was it?',
@@ -372,7 +372,7 @@ export function studCardRules(hand, env, out, ctx) {
       out.push(makeGap({
         id: 'cards:hero:' + si, kind: 'missing', field,
         question: 'What was your ' + streetName(hand, si) + ' card?',
-        options: [{ label: 'I don’t remember', value: { op: 'set', path: field, value: backs(1) } }],
+        options: [{ label: 'I don’t remember', fallback: true, value: { op: 'set', path: field, value: backs(1) } }],
         allowFree: true, blocking: false,
       }, [STAGE.board, si, 0]));
     } else if (k > 1) {

@@ -334,19 +334,26 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
     const all = options.map(o => ({ ...o }));
     if (!gap.blocking && !options.some(isDismiss)) all.push({ label: 'Skip', value: undefined, skip: true });
     // One filled action per region: once the Open button exists, it is the one.
-    const sendIsPrimary = !options.length && !ready;
+    /* A fallback ("I don't remember", "mucked", "I don't know") is never the gold best guess:
+       it was, and one tap on a card question filled the board with face-down cards (seen
+       2026-10-01). When every tap answer is a fallback, typing the cards is the primary
+       action instead. */
+    const real = options.filter(o => !o.fallback && !isDismiss(o));
+    const firstIsReal = real.length > 0 && options[0] === real[0];
+    const sendIsPrimary = !ready && !real.length && !!gap.allowFree;
+    const cardsField = /cards|board/.test(String(gap.field || ''));
     return (
       <div className="qa-question" key={gap.id}>
         <Bubble side="app" tone="ask" text={(gap.blocking ? '' : 'Optional: ') + gap.question} />
         {all.length > 0 && (
-          <ChipGrid label={gap.question} items={all} busy={!!busy} primaryFirst={!ready}
+          <ChipGrid label={gap.question} items={all} busy={!!busy} primaryFirst={!ready && firstIsReal}
             onPick={o => (o.skip ? skip(gap) : choose(gap, o))} />
         )}
         {gap.allowFree && (
           <form className="qa-reply" onSubmit={e => { e.preventDefault(); sendReply(gap); }}>
             <input type="text" value={reply} disabled={busy === 'answer'}
               aria-label={'Answer: ' + gap.question}
-              placeholder={options.length ? 'Or type your answer' : 'Type your answer'}
+              placeholder={cardsField ? (/board/.test(String(gap.field)) ? 'Type the cards, e.g. 9d 8d 2c' : 'Type the cards, e.g. Qd Jd') : (real.length ? 'Or type your answer' : 'Type your answer')}
               onChange={e => setReply(e.target.value)} />
             <button type="submit" className={'qa-chip' + (sendIsPrimary ? ' is-best' : '')}
               disabled={!reply.trim() || !!busy}>
