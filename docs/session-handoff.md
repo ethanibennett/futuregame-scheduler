@@ -16,9 +16,17 @@ wsop-console side and verified against both live services.
 
 ## Next big effort — quick-add hand histories (text or voice)
 
-Decided 2026-10-01; design and decisions in `docs/quick-add-hands.md`: phone speech recognition
-(no cloud STT), chat-style one-question-at-a-time gap filling driven by the replayer's own
-validation rules, admins only to start. Not started.
+Decided 2026-10-01; design and decisions in `docs/quick-add-hands.md`, the parts' contract in
+`docs/quick-add-contract.md`. **Step 1 (text) shipped to master 2026-10-01 (b05ac2d), admins only:**
+- `lib/quick-add.js` + `lib/quick-add/*` — `POST /api/quick-add/parse` and `/answer` (claude-sonnet-5
+  tool use; simple answers like "100bb" need no model). Needs `ANTHROPIC_API_KEY` (Render has it;
+  the local pm2 env does NOT, so locally both return 503).
+- `vite-app/src/utils/quick-add/` — the deterministic gaps engine (`findGaps`, `applyAnswer`).
+- `vite-app/src/components/QuickAddView.jsx` — the chat screen (Hands tab → "Quick add").
+- `test/quick-add/` — engine tests (`gaps.test.mjs`, 134), server tests (`server.test.js`, 41), and the
+  88-hand corpus + `eval.js` (`--oracle` scores the engine; `--url/--token` scores the real parse).
+Not yet measured against the REAL model — run `eval.js` against an endpoint with the key first.
+Next: step 2 (voice: Web Speech in the browser, a Capacitor speech plugin in the app).
 
 ## 2026-09-30 — Live tournament clocks + event audit
 
