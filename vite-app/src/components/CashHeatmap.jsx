@@ -8,7 +8,8 @@ import { API_URL } from '../utils/api.js';
 
 // Heatmap geometry: a 3g hour column, then seven 3g day columns, 1g between every two
 // columns (31g, centred: labels 3g..6g, cells starting 7, 11, 15 ... 31g, ending 34g, every
-// edge on a whole g); every row 2r. Seven 4g columns with 1g gaps would be 34g and leave no
+// edge on a whole g), then nudged 1g left as a whole (labels 2g..5g, cells 6g..33g); every
+// row 2r. Seven 4g columns with 1g gaps would be 34g and leave no
 // room for the hours, so the cells went to 3g (Ethan's call, 2026-10-01).
 const HEAT_COLS = 'calc(var(--gu) * 3) repeat(7, calc(var(--gu) * 3))';
 const HEAT_COL_GAP = 'var(--gu)';
@@ -218,7 +219,7 @@ export default function CashHeatmap({ token }) {
           {/* Every cell is 3g x 2r, columns 1g apart, every edge on a whole g (see HEAT_COLS);
               24 rows x 2r = 48r with no row gap. Vertically adjacent cells are told apart by an
               inset hairline in the background colour, which costs no size. */}
-          <div ref={gridRef} style={{ flex: 'none', display: 'flex', flexDirection: 'column', width: HEAT_W, maxWidth: '100%', margin: '0 auto', paddingTop: `calc(var(--subrow) * ${gridDrop.toFixed(4)})` }}>
+          <div ref={gridRef} style={{ flex: 'none', display: 'flex', flexDirection: 'column', width: HEAT_W, maxWidth: '100%', margin: '0 auto', position: 'relative', left: 'calc(var(--gu) * -1)', paddingTop: `calc(var(--subrow) * ${gridDrop.toFixed(4)})` }}>
             {/* Day axis (column headers), one 2r line */}
             <div style={{ display: 'grid', gridTemplateColumns: HEAT_COLS, gridAutoRows: HEAT_ROW_H, columnGap: HEAT_COL_GAP, rowGap: 0, flexShrink: 0 }}>
               <div />
