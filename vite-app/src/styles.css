@@ -3698,7 +3698,9 @@
     .replayer-entry-view .entry-game-row { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--gu); align-items: end; }
     .replayer-entry-view .entry-game-row:has(> :nth-child(2)) { grid-template-columns: calc(var(--gu) * 26) minmax(0, 1fr); }
     .replayer-entry-view .entry-game-row:has(> :nth-child(2)) .live-update-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .replayer-entry-view .entry-game-row select { height: calc(var(--subrow) * 3); padding: 0 var(--gu) calc(0.7692em - var(--subrow)); }
+    /* Currency matches the 3r MTT/Cash strip, baseline on its 2r line. It was the same
+       specificity as the 5r field rule below and lost to it; .replayer-field lifts it. */
+    .replayer-entry-view .entry-game-row .replayer-field select { height: calc(var(--subrow) * 3); padding: 0 var(--gu) calc(0.7692em - var(--subrow)); }
 
     /* Field: 2r label track (baseline on its bottom), 1r gap, control. */
     .replayer-entry-view .replayer-field {
