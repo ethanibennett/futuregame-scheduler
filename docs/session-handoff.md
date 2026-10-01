@@ -14,6 +14,12 @@ wsop-console side and verified against both live services.
 
 ---
 
+## Next big effort — quick-add hand histories (text or voice)
+
+Decided 2026-10-01; design and decisions in `docs/quick-add-hands.md`: phone speech recognition
+(no cloud STT), chat-style one-question-at-a-time gap filling driven by the replayer's own
+validation rules, admins only to start. Not started.
+
 ## 2026-09-30 — Live tournament clocks + event audit
 
 **Live clocks.** Bravo and PokerAtlas tournament clocks (both reverse-engineered
