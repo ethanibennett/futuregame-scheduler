@@ -4470,16 +4470,20 @@ app.get('/api/share-buddies', authenticateToken, (req, res) => {
     if (lss.step()) lastSeenShares = lss.getAsObject().last_seen_shares;
     lss.free();
 
-    // Build map of tournament_id -> buddies playing it
+    // Build map of tournament_id -> buddies playing it.
+    // ⚠️ The avatar rides along only when it is a short URL. Avatars are stored as data: URIs,
+    // and copying one onto every event a buddy registered for made this response 17 MB (seen
+    // 2026-10-01, fetched on every app open and resume). The client restores it from `buddies`.
     const buddyEvents = {};
     for (const b of buddies) {
+      const eventAvatar = b.avatar && !/^data:/i.test(String(b.avatar)) && String(b.avatar).length < 500 ? b.avatar : null;
       const bsStmt = db.prepare('SELECT tournament_id, is_anchor FROM user_schedules WHERE user_id = ?');
       bsStmt.bind([b.id]);
       while (bsStmt.step()) {
         const row = bsStmt.getAsObject();
         const tid = row.tournament_id;
         if (!buddyEvents[tid]) buddyEvents[tid] = [];
-        buddyEvents[tid].push({ id: b.id, username: b.username, avatar: b.avatar || null, isAnchor: !!row.is_anchor });
+        buddyEvents[tid].push({ id: b.id, username: b.username, avatar: eventAvatar, isAnchor: !!row.is_anchor });
       }
       bsStmt.free();
     }

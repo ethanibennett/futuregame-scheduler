@@ -650,7 +650,14 @@ export default function App() {
       setShareBuddies(data.buddies || []);
       setPendingIncoming(data.pendingIncoming || []);
       setPendingOutgoing(data.pendingOutgoing || []);
-      setBuddyEvents(data.buddyEvents || {});
+      // The server sends each buddy's avatar once, in `buddies`, not on every event they are
+      // registered for (that copy made this response 17 MB). Put it back on the event entries.
+      const avatarOf = new Map((data.buddies || []).map(b => [b.id, b.avatar || null]));
+      const events = {};
+      for (const [tid, list] of Object.entries(data.buddyEvents || {})) {
+        events[tid] = (list || []).map(e => (e.avatar ? e : { ...e, avatar: avatarOf.get(e.id) || null }));
+      }
+      setBuddyEvents(events);
       setBuddyLiveUpdates(data.buddyLiveUpdates || {});
       const lss = data.lastSeenShares || null;
       setLastSeenShares(lss);
