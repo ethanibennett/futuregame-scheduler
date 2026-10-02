@@ -192,7 +192,7 @@ test('the prompt example: seats, slots, implicit folds and chips added', () => {
   eq(hand.players[6].name, 'Hero');
   eq(hand.streets[0].cards.hero, 'AhQh');
   eq(hand.streets[0].cards.opponents.length, 8);
-  eq(hand.streets[0].cards.opponents[0], 'KxQx');
+  eq(hand.streets[0].cards.opponents[0], 'KdQc'); // KQ with no suits: filled in, offsuit
   eq(acts(hand, 0), [[0, 'call', 3], [1, 'fold', 0], [2, 'fold', 0], [3, 'fold', 0], [4, 'fold', 0], [5, 'fold', 0],
     [6, 'raise', 15], [7, 'fold', 0], [8, 'call', 12], [0, 'call', 12]]);
   eq(acts(hand, 1), [[8, 'check', 0], [0, 'check', 0], [6, 'bet', 25], [8, 'fold', 0], [0, 'call', 25]]);
@@ -227,6 +227,57 @@ test('heads-up shorthand ("x, b 4k, c") alternates; showdown cards move to the h
   assert.ok(notes.some((n) => /Flop actions were put in turn order/.test(n)));
   assert.ok(!notes.some((n) => /Turn actions/.test(n)));
   assert.ok(!notes.some((n) => /were left out/.test(n)));
+});
+
+test('ranks without suits get real suits that fit the story (an x suit draws face down)', () => {
+  // 2026-10-02: "AKo" and "river 6" replayed as card backs.
+  const d = {
+    gameType: 'NLH', gameMode: 'mtt', tableSize: 6, othersFolded: true, blinds: { sb: 300, bb: 600, ante: 600 },
+    players: [{ position: 'CO', startingStack: 90000 }, { position: 'BB', isHero: true, startingStack: 90000 }],
+    streets: [
+      { name: 'Preflop', cards: [{ player: 1, cards: 'AKo' }, { player: 0, cards: '5c3c' }],
+        actions: [{ player: 0, action: 'raise', toAmountBB: 4 }, { player: 1, action: 'call' }] },
+      { name: 'Flop', board: '842cxx', actions: [{ player: 1, action: 'check' }, { player: 0, action: 'check' }] },
+      { name: 'Turn', board: '7c', actions: [{ player: 1, action: 'check' }, { player: 0, action: 'check' }] },
+      { name: 'River', board: '6', actions: [] },
+    ],
+    notes: [],
+  };
+  const { hand, notes } = normalizeDraft(d);
+  const board = hand.streets.map((s) => s.cards.board).join('');
+  assert.ok(!/x/.test(board + hand.streets[0].cards.hero), board + ' ' + hand.streets[0].cards.hero);
+  eq(board.slice(0, 2), '8c');
+  // Only the two clubs the player named: the filled-in cards add no flush draw.
+  eq((board.match(/c/g) || []).length, 2);
+  const [a, k] = [hand.streets[0].cards.hero.slice(0, 2), hand.streets[0].cards.hero.slice(2)];
+  eq([a[0], k[0]], ['A', 'K']);
+  assert.ok(a[1] !== k[1], 'AKo is offsuit');
+  const cards = (board + hand.streets[0].cards.hero + '5c3c').match(/../g);
+  eq(new Set(cards).size, cards.length); // no duplicates
+  assert.ok(notes.some((n) => /Suits that were not given were filled in/.test(n) && /river 6/.test(n)));
+  // "AKs" stays suited.
+  d.streets[0].cards[0].cards = 'AKs';
+  const s = normalizeDraft(d).hand.streets[0].cards.hero;
+  eq(s[1], s[3]);
+});
+
+test('an ambiguous size ("b40") keeps both readings and no single size', () => {
+  const d = {
+    gameType: 'NLH', gameMode: 'mtt', tableSize: 6, othersFolded: true, blinds: { sb: 300, bb: 600, ante: 600 },
+    players: [{ position: 'CO', startingStack: 90000 }, { position: 'BB', isHero: true, startingStack: 90000 }],
+    streets: [
+      { name: 'Preflop', actions: [{ player: 0, action: 'raise', toAmountBB: 4 }, { player: 1, action: 'call' }] },
+      { name: 'Flop', board: 'Qh7s2c', actions: [{ player: 1, action: 'bet', potFraction: 0.4, sizeChoices: [{ potFraction: 0.4 }, { toAmount: 40000 }] }, { player: 0, action: 'call' }] },
+    ],
+    notes: [],
+  };
+  const a = normalizeDraft(d).hand.streets[1].actions[0];
+  eq(a.amount, null);
+  eq(a.sizeChoices, [{ potFraction: 0.4 }, { toAmount: 40000 }]);
+  assert.ok(!('potFraction' in a), 'the single reading is dropped');
+  // One reading is just a size.
+  d.streets[1].actions[0] = { player: 1, action: 'bet', sizeChoices: [{ toAmount: 12000 }] };
+  eq(normalizeDraft(d).hand.streets[1].actions[0].sizeChoices, undefined);
 });
 
 test('the output is a replayer hand: it encodes and decodes through the share link', async () => {
@@ -575,9 +626,9 @@ test('no hero: noted, cards laid out provisionally and moved when the hero is na
   assert.ok(notes.some((n) => /No hero was identified/.test(n)));
   const named = normalizeHand(applyOps(hand, [{ op: 'set', path: 'heroIdx', value: 6 }]).hand).hand;
   // Before, seat 0's cards were the provisional "hero" slot; the BTN's were opponents[5].
-  eq(hand.streets[0].cards.hero, 'KxQx');
+  eq(hand.streets[0].cards.hero, 'KdQc');
   eq(named.streets[0].cards.hero, 'AhQh');
-  eq(named.streets[0].cards.opponents[0], 'KxQx');
+  eq(named.streets[0].cards.opponents[0], 'KdQc');
 });
 
 /* ── Prompts ───────────────────────────────────────────────────────────────── */
@@ -627,7 +678,7 @@ test('answer request: gap, answer, seat table and hand', () => {
   assert.ok(c.includes('"field":"players.6.startingStack"'));
   assert.ok(c.includes('<answer>\nabout 300\n</answer>'));
   assert.ok(c.includes('6: Hero (hero) · position BTN · stack unknown · cards AhQh'));
-  assert.ok(c.includes('0: Opp 1 · position UTG+1 · stack unknown · cards KxQx'));
+  assert.ok(c.includes('0: Opp 1 · position UTG+1 · stack unknown · cards KdQc'));
   assert.ok(c.includes(JSON.stringify(hand)));
 });
 

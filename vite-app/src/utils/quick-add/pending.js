@@ -17,7 +17,7 @@ import { gameConfig, gameCategory } from './game.js';
 import { seatHand, referencedSeats, hasCards, positionMode, DEFAULT_NAME } from './seats.js';
 import { straddles } from './betting.js';
 
-const PENDING_ACTION_KEYS = ['toAmount', 'toAmountBB', 'potFraction'];
+const PENDING_ACTION_KEYS = ['toAmount', 'toAmountBB', 'potFraction', 'sizeChoices'];
 const isObj = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 

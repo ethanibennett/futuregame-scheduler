@@ -715,8 +715,24 @@ function checkAmount(hand, env, t, si, ai, a, kind) {
               ? contrib + roundChips(num(a.potFraction) * t.pot, hand.blinds)
               : roundChips(t.maxBet + num(a.potFraction) * (t.pot + c), hand.blinds)) : NaN));
         const pendingX = pendingTo - contrib;
-        const opts = wagerOptions(NaN, (pendingX > 0 ? [pendingX] : []).concat(standardSizes()));
-        const fromPending = pendingX > 0 && opts.length > 0 && opts[0].value.action.amount === pendingX;
+        /* A size shorthand that reads two ways — "b40" is 40% of the pot to some players and
+           40 (thousand) chips to others (user, 2026-10-02) — arrives as both readings. Each is
+           offered by name, first, and never filled in on its own. */
+        const choiceOpts = [];
+        for (const ch of (Array.isArray(a.sizeChoices) ? a.sizeChoices : [])) {
+          if (!ch || typeof ch !== 'object') continue;
+          const to = num(ch.toAmount) > 0 ? num(ch.toAmount)
+            : num(ch.potFraction) > 0 ? (t.maxBet === 0 || kind === 'bet'
+              ? contrib + roundChips(num(ch.potFraction) * t.pot, hand.blinds)
+              : roundChips(t.maxBet + num(ch.potFraction) * (t.pot + c), hand.blinds)) : NaN;
+          const x = to - contrib;
+          if (!(x > 0) || !legalWager(x) || choiceOpts.some(o => o.value.action.amount === x)) continue;
+          const said = num(ch.potFraction) > 0 ? Math.round(num(ch.potFraction) * 100) + '% of the pot' : fmt(num(ch.toAmount));
+          choiceOpts.push({ label: said + ' (' + wagerLabel(x) + ')', value: replace({ action: wagerKind(), amount: x }) });
+        }
+        const opts = choiceOpts.concat(wagerOptions(NaN, (pendingX > 0 ? [pendingX] : []).concat(standardSizes()))
+          .filter(o => !choiceOpts.some(q => q.value.action.amount === o.value.action.amount)));
+        const fromPending = !choiceOpts.length && pendingX > 0 && opts.length > 0 && opts[0].value.action.amount === pendingX;
         return {
           gap: {
             id, kind: 'missing', field: field + '.amount',
