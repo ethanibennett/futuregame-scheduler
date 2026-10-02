@@ -424,10 +424,15 @@ export function stackRules(hand, env, out) {
        is the likeliest effective stack, so it leads; any deeper depth would contradict the
        all-in and only trade one question for another. */
     const allInPut = Math.max(0, ...hand.players.map((_, i) => (hand.streets || []).some(st => ((st && st.actions) || []).some(a => a && a.player === i && a.action === 'all-in')) ? put[i] : 0));
-    if (allInPut > 0) opts.push({ label: 'Everyone ' + fmt(allInPut) + ' (the all-in)', value: setAll(allInPut) });
+    /* Asked as the EFFECTIVE stack — what a player knows and what the hand turns on — not
+       "everyone's" (user, 2026-10-02). The answer still fills every seat: the players in the
+       pot get exactly it, and the ones who only folded need some stack to be drawn with,
+       which changes nothing in the replay. */
+    const inPot = hand.players.map((_, i) => i).filter(i => i === hero || acts(i));
+    if (allInPut > 0) opts.push({ label: fmt(allInPut) + ' (the all-in)', value: setAll(allInPut) });
     if (unit > 0) {
       const ks = [100, 50, 200, 300, 500, 1000].filter(k => deep(k) >= floor).slice(0, allInPut > 0 ? 2 : 3);
-      for (const k of ks) opts.push({ label: 'Everyone ' + depthLabel(k) + ' (' + fmt(deep(k)) + ')', value: setAll(deep(k)) });
+      for (const k of ks) opts.push({ label: depthLabel(k) + ' (' + fmt(deep(k)) + ')', value: setAll(deep(k)) });
       if (!ks.length) {
         const v = Math.ceil(floor / unit) * unit;
         opts.push({ label: 'Enough to cover the action (' + fmt(v) + ')', value: setAll(v) });
@@ -435,7 +440,9 @@ export function stackRules(hand, env, out) {
     }
     out.push(makeGap({
       id: 'stacks', kind: 'missing', field: 'players.*.startingStack',
-      question: 'How deep were the stacks?',
+      question: inPot.length > 2
+        ? 'What were the effective stacks? One number if they were about the same.'
+        : 'What was the effective stack?',
       options: opts, allowFree: true, blocking: true,
     }, [STAGE.stacks, -1]));
     return;
@@ -486,7 +493,8 @@ export function stackRules(hand, env, out) {
       id: 'stack:' + i, kind: zero ? 'impossible' : 'missing', field: 'players.' + i + '.startingStack',
       question: zero
         ? (isHero ? 'Your stack is recorded as ' + fmt(num(raw)) + '. How deep were you?' : name + '’s stack is recorded as ' + fmt(num(raw)) + '. How deep was ' + name + '?')
-        : (isHero ? 'How deep were you?' : 'How deep was ' + name + '?'),
+        // With your stack known, an opponent's is asked as the effective stack between you.
+        : (isHero ? 'How deep were you?' : heroStack != null ? 'What was the effective stack with ' + name + '?' : 'How deep was ' + name + '?'),
       options: opts, allowFree: true, blocking: acts(i) || isHero, auto: fromBB,
     }, [STAGE.stacks, i]));
   }

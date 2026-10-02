@@ -447,7 +447,7 @@ test('a missing stack for a player who acted blocks; same as hero first', () => 
   const h = nlh6max(); h.players[2].startingStack = null;
   const g = gap(h, 'stack:2');
   ok(g.blocking); eq(g.options[0].value, { op: 'set', path: 'players.2.startingStack', value: 20000 });
-  ok(/How deep was Cal/.test(g.question));
+  ok(/effective stack with Cal/.test(g.question), g.question); // hero's stack is known
   // Seats that only folded share one optional question.
   const h2 = nlh6max(); delete h2.players[0].startingStack; delete h2.players[1].startingStack;
   ok(!ids(h2).includes('stack:0'));
