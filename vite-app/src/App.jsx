@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
@@ -1410,7 +1411,7 @@ export default function App() {
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
             : currentView === 'hands' ? <small>hands archive</small>
             : currentView === 'dashboard' ? <small>dashboard</small>
-            : (seasonLabel ? <small>{seasonLabel}</small> : null)}
+            : (seasonLabel ? <AlternatingSubtitle labels={[seasonLabel, 'scheduler']} /> : null)}
         </div>
         <div className="top-bar-actions">
           <button

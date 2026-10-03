@@ -2173,6 +2173,25 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
+    /* The schedule views alternate the date range with "scheduler" (AlternatingSubtitle.jsx).
+       Both labels share one grid cell, bottom-aligned like the single label, so each trimmed
+       baseline lands on the same 6r line and nothing moves; only opacity crossfades. The
+       trim moves onto the labels because a grid container's own trim does not reach them. */
+    .top-bar-title small.top-bar-alt {
+      display: grid;
+      text-box-trim: none;
+    }
+    .top-bar-alt-label {
+      grid-area: 1 / 1;
+      align-self: end;
+      display: block;
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      opacity: 0;
+      transition: opacity var(--dur-slow) var(--ease-standard);
+    }
+    .top-bar-alt-label.is-shown { opacity: 1; }
+
     /* Three icon buttons (notifications, broadcast, theme). On iOS this group
        is absolutely centered under the Dynamic Island — see the [data-platform="ios"]
        override below. */
