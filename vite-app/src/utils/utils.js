@@ -1522,7 +1522,7 @@ export function getIfIBustEvents(event, allTournaments, scheduleIds) {
     if (tStart >= eventStart) return false;
     return true;
   }).sort(function(a, b) {
-    return parseDateTime(a.date, a.time) - parseDateTime(b.date, b.time);
+    return parseTournamentTime(a) - parseTournamentTime(b);
   });
 }
 
@@ -1548,7 +1548,7 @@ export function getIfIBagEvents(event, allTournaments, scheduleIds) {
     if (!tDate || tDate > thisDate) return false;
     return true;
   }).sort(function(a, b) {
-    return parseDateTime(a.date, a.time) - parseDateTime(b.date, b.time);
+    return parseTournamentTime(a) - parseTournamentTime(b);
   });
 }
 
@@ -1658,19 +1658,23 @@ export function formatConditionBadge(c, allTournaments) {
 export function detectConflicts(schedule) {
   const conflicts = new Set();
   const expectedConflicts = new Set();
-  const sorted = [...schedule].filter(t => t.venue !== 'Personal').sort((a, b) => parseDateTime(a.date, a.time) - parseDateTime(b.date, b.time));
+  /* Two events clash when they start at the same INSTANT. Comparing the time text made
+     4:00 PM EDT and 4:00 PM PDT a clash (they are three hours apart) and missed 4:00 PM EDT
+     against 1:00 PM PDT (the same moment). */
+  const sorted = [...schedule].filter(t => t.venue !== 'Personal')
+    .map(t => ({ t, ts: parseTournamentTime(t) }))
+    .filter(x => Number.isFinite(x.ts))
+    .sort((a, b) => a.ts - b.ts);
   for (let i = 0; i < sorted.length; i++) {
     for (let j = i + 1; j < sorted.length; j++) {
-      const a = sorted[i], b = sorted[j];
-      if (a.date !== b.date) break;
-      if (a.time === b.time) {
-        if (extractConditions(a).length > 0 || extractConditions(b).length > 0) {
-          expectedConflicts.add(a.id);
-          expectedConflicts.add(b.id);
-        } else {
-          conflicts.add(a.id);
-          conflicts.add(b.id);
-        }
+      const a = sorted[i].t, b = sorted[j].t;
+      if (sorted[j].ts !== sorted[i].ts) break;
+      if (extractConditions(a).length > 0 || extractConditions(b).length > 0) {
+        expectedConflicts.add(a.id);
+        expectedConflicts.add(b.id);
+      } else {
+        conflicts.add(a.id);
+        conflicts.add(b.id);
       }
     }
   }

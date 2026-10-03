@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import { API_URL } from '../utils/api.js';
-import { formatBuyin } from '../utils/utils.js';
+import { formatBuyin, parseTournamentTime } from '../utils/utils.js';
 
 // ── Staking Platform ────────────────────────────────────────
 
@@ -1040,7 +1040,10 @@ function StakingEventTracking({ seriesId, agreements, eventStatuses, tournaments
       if (series.start_date && t.date < series.start_date) return false;
       if (series.end_date && t.date > series.end_date) return false;
       return true;
-    }).sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+    // By absolute start (each event in its own room's zone), not by the time as text.
+    }).map(t => ({ t, ts: parseTournamentTime(t) }))
+      .sort((a, b) => (Number.isFinite(a.ts) ? a.ts : Infinity) - (Number.isFinite(b.ts) ? b.ts : Infinity))
+      .map(x => x.t);
   }, [mySchedule, tournaments, series]);
 
   // Build lookup: { tournamentId_agreementId -> status }

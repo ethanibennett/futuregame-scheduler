@@ -395,7 +395,13 @@ export default function DashboardView({
       events.push(...todayEvents);
     }
     const typeOrder = { bagged: 0, anchor: 1, normal: 2, conditional: 3 };
-    events.sort((a, b) => (typeOrder[a._type] || 2) - (typeOrder[b._type] || 2));
+    /* Within a type, by when the event STARTS — an absolute instant, not the clock time in
+       its own room: 4:00 PM EDT comes before 2:00 PM PDT (5:00 PM EDT). The type sort alone
+       left them in the server's order, which compares times as text ("10:00 AM" < "2:00 PM"
+       < "4:00 PM" whatever the zone). */
+    const startOf = new Map(events.map(e => [e, parseTournamentTime(e)]));
+    const at = (e) => { const v = startOf.get(e); return Number.isFinite(v) ? v : Infinity; };
+    events.sort((a, b) => ((typeOrder[a._type] || 2) - (typeOrder[b._type] || 2)) || (at(a) - at(b)));
 
     // Everything still to come, appended after today's in date order, so the
     // carousel swipes through the whole schedule. Today keeps its priority
