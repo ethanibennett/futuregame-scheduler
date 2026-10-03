@@ -124,7 +124,11 @@ test('card notation: every form players and the replayer use', () => {
   eq(c('Ax'), 'Ax');
   eq(c(''), '');
   eq(parseCards('the nuts'), null);
-  eq(parseCards('Ahh'), null);
+  eq(c('Ahh'), 'Ah'); // a texture repeat, as in "4dd" (the second diamond on the board)
+  eq(c('4dd'), '4d');
+  eq(c('KQJ2dd'), 'KdQdJx2x'); // two diamonds, not said which: the first two
+  eq(parseCards('KQJ2dd').partialSuits, true);
+  eq(c('AA64xhhx'), 'AxAh6h4x');
   eq(parseCards('xx'), null); // a rankless card cannot be stored
   eq(parseCards('ZzQq'), null);
 });
@@ -163,7 +167,8 @@ test('positions: vernacular → seat index at every table size', () => {
   eq(at('BTN', 3), 0);
   eq(at('UTG+3', 6), null);    // there is no such seat six-handed
   eq(at('LJ', 5), null);
-  eq(at('early position', 9), null);
+  eq(at('early position', 9), 0); // seated as UTG (2026-10-02)
+  eq(at('LP', 9), null);
   eq(G.canonicalPosition('Seat 3'), 'Seat 3');
 });
 
