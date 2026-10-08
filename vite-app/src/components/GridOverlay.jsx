@@ -25,6 +25,10 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 export default function GridOverlay({ showReadout = true }) {
   const [top, setTop] = useState(0);
   const [dbg, setDbg] = useState('');
+  // Desktop (docs/desktop-layout.md): one column grid per pane instead of one
+  // across the window. A pane of W g holds (W - 1) / 9 columns of 8g; the rail
+  // (10g) holds one. Null on the phone, which keeps the single full-width grid.
+  const [panes, setPanes] = useState(null);
   // Read through a ref: the effect below mounts once, and the readout toggle must not remount it.
   const readoutOn = useRef(showReadout);
   readoutOn.current = showReadout;
@@ -192,7 +196,21 @@ export default function GridOverlay({ showReadout = true }) {
         );
       } catch (e) { setDbg('dbg err: ' + e.message); }
     };
+    const measurePanes = () => {
+      const els = [...document.querySelectorAll('.app-shell.is-desktop .dk-rail, .app-shell.is-desktop .dk-pane')];
+      if (!els.length) { setPanes(null); return; }
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:calc(var(--gu) * 100);height:0';
+      document.body.appendChild(probe);
+      const g = probe.getBoundingClientRect().width / 100;
+      probe.remove();
+      setPanes(els.map(el => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left, width: r.width, n: Math.max(1, Math.round((r.width / g - 1) / 9)) };
+      }));
+    };
     const measure = () => {
+      measurePanes();
       const bar = document.querySelector('.top-bar');
       if (bar) { setTop(bar.getBoundingClientRect().top); } else {
         const shell = document.querySelector('.app-shell');
@@ -218,7 +236,7 @@ export default function GridOverlay({ showReadout = true }) {
     // the peek/pin state.
     const ca = document.querySelector('.content-area');
     if (ca) ca.addEventListener('scroll', readDbg, { passive: true });
-    const dbgTimer = setInterval(readDbg, 500);
+    const dbgTimer = setInterval(() => { readDbg(); measurePanes(); }, 500);
     return () => {
       rafs.forEach(cancelAnimationFrame);
       timers.forEach(clearTimeout);
@@ -233,12 +251,18 @@ export default function GridOverlay({ showReadout = true }) {
     <div aria-hidden="true" className="grid-dev-overlay">
       {showReadout && <div style={{ position: 'fixed', left: 0, right: 'calc(var(--subrow) * 7.5)', bottom: 'calc(var(--nav-h) + var(--subrow))', maxHeight: '42vh', overflow: 'hidden', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>}
       <div className="grid-dev-baseline" style={{ top }} />
-      <div className="grid-dev-cols">
-        <span className="grid-dev-col" />
-        <span className="grid-dev-col" />
-        <span className="grid-dev-col" />
-        <span className="grid-dev-col" />
-      </div>
+      {panes ? panes.map((p, i) => (
+        <div key={i} className="grid-dev-cols" style={{ left: p.left, width: p.width, right: 'auto', gridTemplateColumns: `repeat(${p.n}, 1fr)` }}>
+          {Array.from({ length: p.n }, (_, j) => <span key={j} className="grid-dev-col" />)}
+        </div>
+      )) : (
+        <div className="grid-dev-cols">
+          <span className="grid-dev-col" />
+          <span className="grid-dev-col" />
+          <span className="grid-dev-col" />
+          <span className="grid-dev-col" />
+        </div>
+      )}
     </div>
   );
 }

@@ -301,6 +301,12 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
           const r = toggleRef.current?.getBoundingClientRect();
           if (!r) return { top: 60, left: 8, right: 8 };
           const vh = window.innerHeight || document.documentElement.clientHeight || 700;
+          const pane = toggleRef.current.closest('.dk-pane');
+          if (pane) {
+            const pr = pane.getBoundingClientRect();
+            const g = pr.width / 37;
+            return { top: r.bottom + g, left: pr.left + g, width: pr.width - 2 * g, maxHeight: vh - r.bottom - 2 * g };
+          }
           return { top: r.bottom + 10, left: 8, right: 8, maxHeight: vh - r.bottom - 22 };
         })()}>
           {/* Quick filter pills */}
@@ -1120,7 +1126,10 @@ export default function TournamentsView({
   tournaments, mySchedule, onToggle, gameVariants, venues,
   onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries,
   buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
-  token, onRefreshTournaments, onOpenCalendarView
+  token, onRefreshTournaments, onOpenCalendarView,
+  // Desktop only (docs/desktop-layout.md): a row click selects the event into
+  // the detail pane instead of expanding inline. Absent on the phone.
+  onSelectEvent, selectedEventId
 }) {
   const toast = useToast();
   const [search, setSearch] = useState('');
@@ -1797,6 +1806,7 @@ export default function TournamentsView({
                           focusEventId={focusEventId}
                           onNavigateToEvent={(num, sat) => {
                             const targetId = findBestFlight(num, sat);
+                            if (targetId && onSelectEvent) { onSelectEvent(targetId); return; }
                             if (targetId) { setFocusEventId(null); setTimeout(() => setFocusEventId(targetId), 0); }
                           }}
                           conditions={conditionMap[t.id] || []}
@@ -1815,6 +1825,8 @@ export default function TournamentsView({
                           onAdminEdit={onAdminEdit}
                           onClearOverrides={onClearOverrides}
                           initialOpen={activatedIds.has(t.id)}
+                          onSelect={onSelectEvent}
+                          selected={onSelectEvent ? selectedEventId === t.id : undefined}
                         />
                       ) : (
                         <CalendarEventRowLite
@@ -1823,7 +1835,8 @@ export default function TournamentsView({
                           isPast={past}
                           isAnchor={anchorSet.has(t.id)}
                           conditions={conditionMap[t.id]}
-                          onExpand={() => activateRow(t.id)}
+                          onExpand={() => (onSelectEvent ? onSelectEvent(t.id) : activateRow(t.id))}
+                          selected={onSelectEvent ? selectedEventId === t.id : undefined}
                         />
                       )}
                     </div>

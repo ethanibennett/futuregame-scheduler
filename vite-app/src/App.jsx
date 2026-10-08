@@ -18,6 +18,9 @@ import ForgotPasswordForm from './components/ForgotPasswordForm.jsx';
 import ResetPasswordForm from './components/ResetPasswordForm.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import GridOverlay from './components/GridOverlay.jsx';
+import DesktopRail from './components/DesktopRail.jsx';
+import DesktopEventDetail from './components/DesktopEventDetail.jsx';
+import useDesktopLayout from './hooks/useDesktopLayout.js';
 import DashboardView from './components/DashboardView.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
 import ScheduleView from './components/ScheduleView.jsx';
@@ -1469,6 +1472,37 @@ export default function App() {
     setDebugTimeKey(k => k + 1);
   }, [isAdmin]);
 
+  // ── Desktop layout (docs/desktop-layout.md) ──
+  // Wide landscape windows get a side rail + panes; everything else is the
+  // phone layout, unchanged. dk.desktop is false on every phone.
+  const dk = useDesktopLayout();
+  const isDesktop = dk.desktop;
+  const [dkSelectedId, setDkSelectedId] = useState(null);
+  // Two-pane tier only: which of Event / My schedule the right pane shows.
+  const [dkRight, setDkRight] = useState('event');
+  const selectEvent = useCallback((id) => {
+    setDkSelectedId(id);
+    if (id != null) setDkRight('event');
+  }, []);
+  // Portalled panels (the filter panel) live outside the shell, so the layout
+  // is also published on <html> for CSS to key on.
+  useEffect(() => {
+    const el = document.documentElement;
+    if (isDesktop) el.dataset.layout = 'desktop'; else delete el.dataset.layout;
+  }, [isDesktop]);
+  // My Schedule is a pane of the Schedule tab on desktop, not a view of its
+  // own: route there, and turn a "focus this event" request (the dashboard's
+  // Up Next card) into a selection.
+  useEffect(() => {
+    if (!isDesktop) return;
+    if (currentView === 'schedule') {
+      _setCurrentView('tournaments');
+      setVisitedTabs(s => (s.has('tournaments') ? s : new Set([...s, 'tournaments'])));
+      if (dk.tier === 'two' && !scheduleFocusId) setDkRight('schedule');
+    }
+    if (scheduleFocusId) { selectEvent(scheduleFocusId); setScheduleFocusId(null); }
+  }, [isDesktop, currentView, scheduleFocusId, dk.tier, selectEvent]);
+
   // ── Render: shared schedule page ──
   if (SHARED_TOKEN) {
     return <SharedScheduleView shareToken={SHARED_TOKEN} />;
@@ -1520,9 +1554,393 @@ export default function App() {
   }
 
   // ── Render: main app ──
+  // The content area and the two footer rows that sit above the bottom nav.
+  // The phone renders this fragment exactly where it always was; the desktop
+  // renders it inside the main pane (docs/desktop-layout.md).
+  const primaryColumn = (
+    <>
+          <main className="content-area ptr-container" ref={contentAreaRef} {...ptrProps}>
+            <div className={'ptr-indicator' + (refreshing ? ' visible' : '')} ref={ptrIndicator}>
+              <div className={'ptr-spinner' + (refreshing ? ' spinning' : '')} />
+            </div>
+
+            {/* Tab panels: visited tabs stay mounted, only active is visible */}
+            <div className={'tab-panel' + (currentView === 'dashboard' ? ' tab-active' : '')} data-tab="dashboard" style={{display: currentView === 'dashboard' ? undefined : 'none', height: currentView === 'dashboard' ? '100%' : undefined}}>
+            {visitedTabs.has('dashboard') && (!dataLoaded ? <SkeletonDashboard /> :
+              <DashboardView
+                key={debugTimeKey}
+                demoStates={isAdmin && demoStates}
+                demoCard={isAdmin && /[?&]democard(=|&|$)/.test(window.location.search)}
+                onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
+                mySchedule={mySchedule}
+                myActiveUpdates={myActiveUpdates}
+                trackingData={trackingData}
+                shareBuddies={shareBuddies}
+                buddyLiveUpdates={buddyLiveUpdates}
+                displayName={displayName}
+                buddyEvents={buddyEvents}
+                onPost={postLiveUpdate}
+                onDeleteUpdate={deleteLiveUpdate}
+                onAddTracking={addTracking}
+                onResetResults={resetResults}
+                tournaments={tournaments}
+                onToggle={toggleTournament}
+                onNavigate={(v) => {
+                  if (v === '_liveUpdate') {
+                    const btn = document.querySelector('.live-update-btn');
+                    if (btn) btn.click();
+                    return;
+                  }
+                  if (v === '_share') {
+                    setCurrentView('settings');
+                    return;
+                  }
+                  setCurrentView(v);
+                }}
+              />
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'tournaments' ? ' tab-active' : '')} data-tab="tournaments" style={{display: currentView === 'tournaments' ? undefined : 'none', height: currentView === 'tournaments' ? '100%' : undefined}}>
+            {visitedTabs.has('tournaments') && (!dataLoaded ? <SkeletonSchedule /> :
+              <TournamentsView
+                key={debugTimeKey}
+                tournaments={tournaments}
+                mySchedule={mySchedule}
+                onToggle={toggleTournament}
+                gameVariants={gameVariants}
+                venues={venues}
+                onSetCondition={setCondition}
+                onRemoveCondition={removeCondition}
+                onToggleAnchor={toggleAnchor}
+                onSetPlannedEntries={setPlannedEntries}
+                buddyEvents={buddyEvents}
+                buddyLiveUpdates={buddyLiveUpdates}
+                onBuddySwap={onBuddySwap}
+                isAdmin={isAdmin}
+                onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+                onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
+                token={token}
+                onRefreshTournaments={fetchTournaments}
+                onOpenCalendarView={() => setCurrentView('calendar')}
+                onSelectEvent={isDesktop ? selectEvent : undefined}
+                selectedEventId={isDesktop ? dkSelectedId : undefined}
+              />
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'schedule' ? ' tab-active' : '')} data-tab="schedule" style={{display: currentView === 'schedule' ? undefined : 'none', height: currentView === 'schedule' ? '100%' : undefined}}>
+            {visitedTabs.has('schedule') && (!dataLoaded ? <SkeletonSchedule /> :
+              <ScheduleView
+                key={debugTimeKey}
+                onNavigate={(v) => setCurrentView(v)}
+                focusTournamentId={scheduleFocusId}
+                onFocusConsumed={clearScheduleFocus}
+                mySchedule={mySchedule}
+                onToggle={toggleTournament}
+                shareBuddies={shareBuddies}
+                pendingIncoming={pendingIncoming}
+                lastSeenShares={lastSeenShares}
+                onAcceptRequest={handleAcceptRequest}
+                onRejectRequest={handleRejectRequest}
+                token={token}
+                onSetCondition={setCondition}
+                onRemoveCondition={removeCondition}
+                allTournaments={tournaments}
+                onToggleAnchor={toggleAnchor}
+                onSetPlannedEntries={setPlannedEntries}
+                onAddPersonalEvent={addPersonalEvent}
+                onUpdatePersonalEvent={updatePersonalEvent}
+                buddyEvents={buddyEvents}
+                buddyLiveUpdates={buddyLiveUpdates}
+                onBuddySwap={onBuddySwap}
+                isAdmin={isAdmin}
+                onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+                onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
+              />
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'calendar' ? ' tab-active' : '')} data-tab="calendar" style={{display: currentView === 'calendar' ? undefined : 'none', height: currentView === 'calendar' ? '100%' : undefined}}>
+            {visitedTabs.has('calendar') && (
+              <CalendarView
+                key={debugTimeKey}
+                token={token}
+                allTournaments={tournaments}
+                mySchedule={mySchedule}
+                onToggle={toggleTournament}
+                gameVariants={gameVariants}
+                venues={venues}
+                onSetCondition={setCondition}
+                onRemoveCondition={removeCondition}
+                onToggleAnchor={toggleAnchor}
+                onSetPlannedEntries={setPlannedEntries}
+                buddyEvents={buddyEvents}
+                buddyLiveUpdates={buddyLiveUpdates}
+                onOpenScheduleView={() => setCurrentView('tournaments')}
+                initialSearch={calendarFind}
+                onSearchConsumed={clearCalendarFind}
+              />
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'tracking' ? ' tab-active' : '')} data-tab="tracking" style={{display: currentView === 'tracking' ? undefined : 'none', height: currentView === 'tracking' ? '100%' : undefined}}>
+            {visitedTabs.has('tracking') && (
+              <TrackingView
+                trackingData={trackingData}
+                tournaments={tournaments}
+                mySchedule={mySchedule}
+                onAdd={addTracking}
+                onUpdate={updateTracking}
+                onDelete={deleteTracking}
+                myActiveUpdates={myActiveUpdates}
+              />
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'hands' ? ' tab-active' : '')} data-tab="hands" style={{display: currentView === 'hands' ? undefined : 'none', height: currentView === 'hands' ? '100%' : undefined}}>
+            {visitedTabs.has('hands') && (
+              isAdmin || sharedHandArrived
+                ? <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+                    {/* The tool selector (Replayer / Solver / …) now lives as a second
+                        footer row above the bottom nav — see HANDS_TOOLS below — so it
+                        stays put while the tool content scrolls. */}
+                    <div style={{flex:1,minHeight:0}}>
+                      {handsTool === 'solver' && isAdmin
+                        ? <Suspense fallback={<LazyFallback />}><SolverView pendingSpot={pendingSolverSpot} onConsumeSpot={() => setPendingSolverSpot(null)} /></Suspense>
+                        : handsTool === 'trainer' && isAdmin
+                        ? <Suspense fallback={<LazyFallback />}><SolverTrainerView /></Suspense>
+                        : handsTool === 'watch' && isAdmin
+                        ? <Suspense fallback={<LazyFallback />}><SolverPlayView /></Suspense>
+                        : handsTool === 'razz-trainer' && isAdmin
+                        ? <Suspense fallback={<LazyFallback />}><RazzTrainerView /></Suspense>
+                        : handsTool === 'multiway' && isAdmin
+                        ? <Suspense fallback={<LazyFallback />}><Multiway3TrainerView /></Suspense>
+                        : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} quickAdd={isAdmin} /></Suspense>}
+                    </div>
+                  </div>
+                : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
+                    <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Hand Replayer</h2>
+                    <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
+                  </div>
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'settings' ? ' tab-active' : '')} data-tab="settings" style={{display: currentView === 'settings' ? undefined : 'none', height: currentView === 'settings' ? '100%' : undefined}}>
+            {visitedTabs.has('settings') && (
+              <SettingsView
+                username={username}
+                avatar={avatar}
+                realName={realName}
+                nameMode={nameMode}
+                onToggleNameMode={(mode) => { setNameMode(mode); localStorage.setItem('displayNameMode', mode); }}
+                onAvatarUpload={handleAvatarUpload}
+                onAvatarRemove={handleAvatarRemove}
+                theme={theme}
+                toggleTheme={toggleTheme}
+                contrast={contrast}
+                toggleContrast={toggleContrast}
+                cardSplay={cardSplay}
+                toggleCardSplay={() => { setCardSplay(s => { const next = !s; localStorage.setItem('cardSplay', next ? 'on' : 'off'); return next; }); }}
+                serifFont={serifFont}
+                toggleSerifFont={() => setSerifFont(f => SERIF_ORDER[(SERIF_ORDER.indexOf(f) + 1) % SERIF_ORDER.length])}
+                onLogout={handleLogout}
+                onDebugTimeChange={() => setDebugTimeKey(k => k + 1)}
+                onUpload={handleFileUpload}
+                uploadError={uploadError}
+                uploadSuccess={uploadSuccess}
+                uploadVenue={uploadVenue}
+                onUploadVenueChange={setUploadVenue}
+                shareToken={shareToken}
+                onGenerateShareToken={handleGenerateShareToken}
+                onRevokeShareToken={handleRevokeShareToken}
+                onSendShareRequest={handleSendShareRequest}
+                pendingOutgoing={pendingOutgoing}
+                onCancelRequest={handleCancelRequest}
+                shareBuddies={shareBuddies}
+                onRemoveBuddy={handleRemoveBuddy}
+                shareError={shareError}
+                shareSuccess={shareSuccess}
+                token={token}
+                onRefreshTournaments={fetchTournaments}
+                isAdmin={isAdmin}
+                seasonLabel={seasonLabel}
+                isGuest={isGuest}
+              />
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'admin' ? ' tab-active' : '')} data-tab="admin" style={{display: currentView === 'admin' ? undefined : 'none', height: currentView === 'admin' ? '100%' : undefined}}>
+            {visitedTabs.has('admin') && isAdmin && (
+              <Suspense fallback={<LazyFallback />}><AdminView token={token} onNavigate={(v) => setCurrentView(v)} /></Suspense>
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
+            {visitedTabs.has('cash') && isAdmin && (
+              <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} /></Suspense>
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
+            {visitedTabs.has('staking') && (
+              isAdmin
+                ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={mySchedule} /></Suspense>
+                : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
+                    <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Staking</h2>
+                    <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
+                  </div>
+            )}
+            </div>
+
+            <div className={'tab-panel' + (currentView === 'social' ? ' tab-active' : '')} data-tab="social" style={{display: currentView === 'social' ? undefined : 'none', height: currentView === 'social' ? '100%' : undefined}}>
+            {visitedTabs.has('social') && (
+              <SocialView
+                shareBuddies={shareBuddies}
+                buddyLiveUpdates={buddyLiveUpdates}
+                displayName={displayName}
+                myGroups={myGroups}
+                activeGroupId={activeGroupId}
+                setActiveGroupId={setActiveGroupId}
+                groupFeed={groupFeed}
+                groupSchedule={groupSchedule}
+                fetchGroupFeed={fetchGroupFeed}
+                fetchGroupSchedule={fetchGroupSchedule}
+                fetchMyGroups={fetchMyGroups}
+                token={token}
+                onRemoveBuddy={handleRemoveBuddy}
+                fetchShareBuddies={fetchShareBuddies}
+                onNavigate={(v) => setCurrentView(v)}
+              />
+            )}
+            </div>
+
+            {swapModalData && (
+              <SwapModal
+                buddy={swapModalData.buddy}
+                tournament={swapModalData.tournament}
+                token={token}
+                onClose={() => setSwapModalData(null)}
+              />
+            )}
+          </main>
+
+          {/* Portal target for views that need a control bar pinned directly
+              above the bottom nav (replayer). Sibling of <BottomNav>, in the
+              app-shell flex column — so its bottom edge meets the nav's top
+              edge by layout, not by env() math. */}
+          <div id="above-nav-slot" />
+
+          {/* Hands-tool selector as a second footer row, on top of the primary nav,
+              only while the Hands tab is open. One scrolling row so it never grows
+              the footer, and it stays put as the tool content scrolls under it. */}
+          {/* Grid: rail is 5 subrows tall (3sr pills + 1sr padding each side), 1g side gutter, 1g gaps. */}
+          {currentView === 'hands' && isAdmin && (
+            <div style={{display:'flex',alignItems:'center',gap:'var(--gu)',height:'calc(var(--subrow) * 5)',padding:'0 var(--gu)',boxSizing:'border-box',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'var(--bw-hair) solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+              {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
+                <button key={id} onClick={() => setHandsTool(id)}
+                  style={{flex:'0 0 auto',height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:'0 var(--space-ml)',borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
+                    border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
+                    background: handsTool === id ? 'var(--accent)' : 'transparent',
+                    color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          )}
+    </>
+  );
+  // The floating admin toggles: fixed to the window's corner on the phone,
+  // stacked at the foot of the rail on desktop.
+  const devToggles = (
+    <>
+          {isAdmin && gridOverlay && (
+            <button
+              type="button"
+              className={'grid-dev-toggle' + (gridReadout ? ' is-on' : '')}
+              title={`${gridReadout ? 'Hide' : 'Show'} grid readout (admin)`}
+              aria-pressed={gridReadout}
+              onClick={() => setGridReadout(v => { const next = !v; localStorage.setItem('gridReadout', next ? 'on' : 'off'); return next; })}
+              style={{ bottom: 'calc(calc(var(--subrow) * 21.5) + env(safe-area-inset-bottom, 0))' }}
+            >i</button>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              className={'grid-dev-toggle' + (gridOverlay ? ' is-on' : '')}
+              title={`${gridOverlay ? 'Hide' : 'Show'} layout grid (admin)`}
+              aria-pressed={gridOverlay}
+              onClick={() => setGridOverlay(g => { const next = !g; localStorage.setItem('gridOverlay', next ? 'on' : 'off'); return next; })}
+            >#</button>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              className={'grid-dev-toggle' + (demoStates ? ' is-on' : '')}
+              title={`${demoStates ? 'Hide' : 'Show'} demo dashboard states (admin)`}
+              aria-pressed={demoStates}
+              onClick={() => setDemoStates(d => !d)}
+              style={{ bottom: 'calc(calc(var(--subrow) * 15.5) + env(safe-area-inset-bottom, 0))' }}
+            >D</button>
+          )}
+    </>
+  );
+  // Desktop Schedule tab's secondary panes.
+  const dkDetail = isDesktop ? (
+    <DesktopEventDetail
+      selectedId={dkSelectedId}
+      onSelect={selectEvent}
+      tournaments={tournaments}
+      mySchedule={mySchedule}
+      onToggle={toggleTournament}
+      onSetCondition={setCondition}
+      onRemoveCondition={removeCondition}
+      onToggleAnchor={toggleAnchor}
+      onSetPlannedEntries={setPlannedEntries}
+      onUpdatePersonalEvent={updatePersonalEvent}
+      buddyEvents={buddyEvents}
+      buddyLiveUpdates={buddyLiveUpdates}
+      onBuddySwap={onBuddySwap}
+      isAdmin={isAdmin}
+      onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+      onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
+    />
+  ) : null;
+  const dkMine = isDesktop ? (!dataLoaded ? <SkeletonSchedule /> : (
+    <ScheduleView
+      key={debugTimeKey}
+      onNavigate={(v) => setCurrentView(v)}
+      mySchedule={mySchedule}
+      onToggle={toggleTournament}
+      shareBuddies={shareBuddies}
+      pendingIncoming={pendingIncoming}
+      lastSeenShares={lastSeenShares}
+      onAcceptRequest={handleAcceptRequest}
+      onRejectRequest={handleRejectRequest}
+      token={token}
+      onSetCondition={setCondition}
+      onRemoveCondition={removeCondition}
+      allTournaments={tournaments}
+      onToggleAnchor={toggleAnchor}
+      onSetPlannedEntries={setPlannedEntries}
+      onAddPersonalEvent={addPersonalEvent}
+      onUpdatePersonalEvent={updatePersonalEvent}
+      buddyEvents={buddyEvents}
+      buddyLiveUpdates={buddyLiveUpdates}
+      onBuddySwap={onBuddySwap}
+      isAdmin={isAdmin}
+      onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+      onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
+      onSelectEvent={selectEvent}
+      selectedEventId={dkSelectedId}
+    />
+  )) : null;
   return (
     <DisplayNameProvider value={displayName}>
-    <div className="app-shell">
+    <div
+      className={'app-shell' + (isDesktop ? ' is-desktop dk-' + dk.tier : '')}
+      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols } : undefined}
+    >
       <header className="top-bar">
         <div className="top-bar-title">
           <h1>futurega.me</h1>
@@ -1654,328 +2072,73 @@ export default function App() {
         />
       )}
 
-      <main className="content-area ptr-container" ref={contentAreaRef} {...ptrProps}>
-        <div className={'ptr-indicator' + (refreshing ? ' visible' : '')} ref={ptrIndicator}>
-          <div className={'ptr-spinner' + (refreshing ? ' spinning' : '')} />
-        </div>
-
-        {/* Tab panels: visited tabs stay mounted, only active is visible */}
-        <div className={'tab-panel' + (currentView === 'dashboard' ? ' tab-active' : '')} data-tab="dashboard" style={{display: currentView === 'dashboard' ? undefined : 'none', height: currentView === 'dashboard' ? '100%' : undefined}}>
-        {visitedTabs.has('dashboard') && (!dataLoaded ? <SkeletonDashboard /> :
-          <DashboardView
-            key={debugTimeKey}
-            demoStates={isAdmin && demoStates}
-            demoCard={isAdmin && /[?&]democard(=|&|$)/.test(window.location.search)}
-            onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
-            mySchedule={mySchedule}
-            myActiveUpdates={myActiveUpdates}
-            trackingData={trackingData}
-            shareBuddies={shareBuddies}
-            buddyLiveUpdates={buddyLiveUpdates}
-            displayName={displayName}
-            buddyEvents={buddyEvents}
-            onPost={postLiveUpdate}
-            onDeleteUpdate={deleteLiveUpdate}
-            onAddTracking={addTracking}
-            onResetResults={resetResults}
-            tournaments={tournaments}
-            onToggle={toggleTournament}
-            onNavigate={(v) => {
-              if (v === '_liveUpdate') {
-                const btn = document.querySelector('.live-update-btn');
-                if (btn) btn.click();
-                return;
-              }
-              if (v === '_share') {
-                setCurrentView('settings');
-                return;
-              }
-              setCurrentView(v);
-            }}
-          />
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'tournaments' ? ' tab-active' : '')} data-tab="tournaments" style={{display: currentView === 'tournaments' ? undefined : 'none', height: currentView === 'tournaments' ? '100%' : undefined}}>
-        {visitedTabs.has('tournaments') && (!dataLoaded ? <SkeletonSchedule /> :
-          <TournamentsView
-            key={debugTimeKey}
-            tournaments={tournaments}
-            mySchedule={mySchedule}
-            onToggle={toggleTournament}
-            gameVariants={gameVariants}
-            venues={venues}
-            onSetCondition={setCondition}
-            onRemoveCondition={removeCondition}
-            onToggleAnchor={toggleAnchor}
-            onSetPlannedEntries={setPlannedEntries}
-            buddyEvents={buddyEvents}
-            buddyLiveUpdates={buddyLiveUpdates}
-            onBuddySwap={onBuddySwap}
+      {isDesktop ? (
+        <div className="dk-body">
+          <DesktopRail
             isAdmin={isAdmin}
-            onAdminEdit={canEditEvents ? adminEditTournament : undefined}
-            onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
-            token={token}
-            onRefreshTournaments={fetchTournaments}
-            onOpenCalendarView={() => setCurrentView('calendar')}
-          />
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'schedule' ? ' tab-active' : '')} data-tab="schedule" style={{display: currentView === 'schedule' ? undefined : 'none', height: currentView === 'schedule' ? '100%' : undefined}}>
-        {visitedTabs.has('schedule') && (!dataLoaded ? <SkeletonSchedule /> :
-          <ScheduleView
-            key={debugTimeKey}
-            onNavigate={(v) => setCurrentView(v)}
-            focusTournamentId={scheduleFocusId}
-            onFocusConsumed={clearScheduleFocus}
-            mySchedule={mySchedule}
-            onToggle={toggleTournament}
-            shareBuddies={shareBuddies}
-            pendingIncoming={pendingIncoming}
-            lastSeenShares={lastSeenShares}
-            onAcceptRequest={handleAcceptRequest}
-            onRejectRequest={handleRejectRequest}
-            token={token}
-            onSetCondition={setCondition}
-            onRemoveCondition={removeCondition}
-            allTournaments={tournaments}
-            onToggleAnchor={toggleAnchor}
-            onSetPlannedEntries={setPlannedEntries}
-            onAddPersonalEvent={addPersonalEvent}
-            onUpdatePersonalEvent={updatePersonalEvent}
-            buddyEvents={buddyEvents}
-            buddyLiveUpdates={buddyLiveUpdates}
-            onBuddySwap={onBuddySwap}
-            isAdmin={isAdmin}
-            onAdminEdit={canEditEvents ? adminEditTournament : undefined}
-            onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
-          />
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'calendar' ? ' tab-active' : '')} data-tab="calendar" style={{display: currentView === 'calendar' ? undefined : 'none', height: currentView === 'calendar' ? '100%' : undefined}}>
-        {visitedTabs.has('calendar') && (
-          <CalendarView
-            key={debugTimeKey}
-            token={token}
-            allTournaments={tournaments}
-            mySchedule={mySchedule}
-            onToggle={toggleTournament}
-            gameVariants={gameVariants}
-            venues={venues}
-            onSetCondition={setCondition}
-            onRemoveCondition={removeCondition}
-            onToggleAnchor={toggleAnchor}
-            onSetPlannedEntries={setPlannedEntries}
-            buddyEvents={buddyEvents}
-            buddyLiveUpdates={buddyLiveUpdates}
-            onOpenScheduleView={() => setCurrentView('tournaments')}
-            initialSearch={calendarFind}
-            onSearchConsumed={clearCalendarFind}
-          />
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'tracking' ? ' tab-active' : '')} data-tab="tracking" style={{display: currentView === 'tracking' ? undefined : 'none', height: currentView === 'tracking' ? '100%' : undefined}}>
-        {visitedTabs.has('tracking') && (
-          <TrackingView
-            trackingData={trackingData}
-            tournaments={tournaments}
-            mySchedule={mySchedule}
-            onAdd={addTracking}
-            onUpdate={updateTracking}
-            onDelete={deleteTracking}
-            myActiveUpdates={myActiveUpdates}
-          />
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'hands' ? ' tab-active' : '')} data-tab="hands" style={{display: currentView === 'hands' ? undefined : 'none', height: currentView === 'hands' ? '100%' : undefined}}>
-        {visitedTabs.has('hands') && (
-          isAdmin || sharedHandArrived
-            ? <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
-                {/* The tool selector (Replayer / Solver / …) now lives as a second
-                    footer row above the bottom nav — see HANDS_TOOLS below — so it
-                    stays put while the tool content scrolls. */}
-                <div style={{flex:1,minHeight:0}}>
-                  {handsTool === 'solver' && isAdmin
-                    ? <Suspense fallback={<LazyFallback />}><SolverView pendingSpot={pendingSolverSpot} onConsumeSpot={() => setPendingSolverSpot(null)} /></Suspense>
-                    : handsTool === 'trainer' && isAdmin
-                    ? <Suspense fallback={<LazyFallback />}><SolverTrainerView /></Suspense>
-                    : handsTool === 'watch' && isAdmin
-                    ? <Suspense fallback={<LazyFallback />}><SolverPlayView /></Suspense>
-                    : handsTool === 'razz-trainer' && isAdmin
-                    ? <Suspense fallback={<LazyFallback />}><RazzTrainerView /></Suspense>
-                    : handsTool === 'multiway' && isAdmin
-                    ? <Suspense fallback={<LazyFallback />}><Multiway3TrainerView /></Suspense>
-                    : <Suspense fallback={<LazyFallback />}><HandReplayerView token={token} heroName={realName || username || 'Hero'} cardSplay={cardSplay} initialHand={sharedHandData} onClearInitialHand={() => setSharedHandData(null)} onSolveSpot={isAdmin ? (spot => { setPendingSolverSpot(spot); setHandsTool('solver'); }) : undefined} quickAdd={isAdmin} /></Suspense>}
-                </div>
+            current={currentView === 'schedule' ? 'tournaments' : currentView}
+            onChange={v => setCurrentView(v)}
+          >{devToggles}</DesktopRail>
+          <div className={'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : 'dk-pane-wide')}>
+            {primaryColumn}
+          </div>
+          {currentView === 'tournaments' && (dk.tier === 'three' ? (
+            <>
+              <div className="dk-pane dk-pane-detail">
+                <div className="dk-scroll">{dkDetail}</div>
               </div>
-            : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
-                <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Hand Replayer</h2>
-                <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
+              <div className="dk-pane dk-pane-mine dk-fab-scope">
+                <div className="dk-scroll">{dkMine}</div>
               </div>
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'settings' ? ' tab-active' : '')} data-tab="settings" style={{display: currentView === 'settings' ? undefined : 'none', height: currentView === 'settings' ? '100%' : undefined}}>
-        {visitedTabs.has('settings') && (
-          <SettingsView
-            username={username}
-            avatar={avatar}
-            realName={realName}
-            nameMode={nameMode}
-            onToggleNameMode={(mode) => { setNameMode(mode); localStorage.setItem('displayNameMode', mode); }}
-            onAvatarUpload={handleAvatarUpload}
-            onAvatarRemove={handleAvatarRemove}
-            theme={theme}
-            toggleTheme={toggleTheme}
-            contrast={contrast}
-            toggleContrast={toggleContrast}
-            cardSplay={cardSplay}
-            toggleCardSplay={() => { setCardSplay(s => { const next = !s; localStorage.setItem('cardSplay', next ? 'on' : 'off'); return next; }); }}
-            serifFont={serifFont}
-            toggleSerifFont={() => setSerifFont(f => SERIF_ORDER[(SERIF_ORDER.indexOf(f) + 1) % SERIF_ORDER.length])}
-            onLogout={handleLogout}
-            onDebugTimeChange={() => setDebugTimeKey(k => k + 1)}
-            onUpload={handleFileUpload}
-            uploadError={uploadError}
-            uploadSuccess={uploadSuccess}
-            uploadVenue={uploadVenue}
-            onUploadVenueChange={setUploadVenue}
-            shareToken={shareToken}
-            onGenerateShareToken={handleGenerateShareToken}
-            onRevokeShareToken={handleRevokeShareToken}
-            onSendShareRequest={handleSendShareRequest}
-            pendingOutgoing={pendingOutgoing}
-            onCancelRequest={handleCancelRequest}
-            shareBuddies={shareBuddies}
-            onRemoveBuddy={handleRemoveBuddy}
-            shareError={shareError}
-            shareSuccess={shareSuccess}
-            token={token}
-            onRefreshTournaments={fetchTournaments}
-            isAdmin={isAdmin}
-            seasonLabel={seasonLabel}
-            isGuest={isGuest}
-          />
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'admin' ? ' tab-active' : '')} data-tab="admin" style={{display: currentView === 'admin' ? undefined : 'none', height: currentView === 'admin' ? '100%' : undefined}}>
-        {visitedTabs.has('admin') && isAdmin && (
-          <Suspense fallback={<LazyFallback />}><AdminView token={token} onNavigate={(v) => setCurrentView(v)} /></Suspense>
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
-        {visitedTabs.has('cash') && isAdmin && (
-          <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} /></Suspense>
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'staking' ? ' tab-active' : '')} data-tab="staking" style={{display: currentView === 'staking' ? undefined : 'none', height: currentView === 'staking' ? '100%' : undefined}}>
-        {visitedTabs.has('staking') && (
-          isAdmin
-            ? <Suspense fallback={<LazyFallback />}><StakingView token={token} tournaments={tournaments} mySchedule={mySchedule} /></Suspense>
-            : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'calc(var(--subrow) * 7.5) calc(var(--subrow) * 2.5)',textAlign:'center'}}>
-                <h2 style={{fontFamily:"'Univers Condensed', 'Univers', sans-serif",fontSize:'calc(var(--gu) * 1.914)',fontWeight:700,color:'var(--text)',margin:'0 0 calc(var(--subrow) * 1)'}}>Staking</h2>
-                <p style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.325)',margin:0}}>Coming Soon</p>
+            </>
+          ) : (
+            <div className="dk-pane dk-pane-detail dk-fab-scope">
+              <div className="dk-seg" role="tablist" aria-label="Right pane">
+                <button type="button" role="tab" aria-selected={dkRight === 'event'} className={'dk-seg-btn' + (dkRight === 'event' ? ' is-on' : '')} onClick={() => setDkRight('event')}><span>Event</span></button>
+                <button type="button" role="tab" aria-selected={dkRight === 'schedule'} className={'dk-seg-btn' + (dkRight === 'schedule' ? ' is-on' : '')} onClick={() => setDkRight('schedule')}><span>My schedule</span></button>
               </div>
-        )}
-        </div>
-
-        <div className={'tab-panel' + (currentView === 'social' ? ' tab-active' : '')} data-tab="social" style={{display: currentView === 'social' ? undefined : 'none', height: currentView === 'social' ? '100%' : undefined}}>
-        {visitedTabs.has('social') && (
-          <SocialView
-            shareBuddies={shareBuddies}
-            buddyLiveUpdates={buddyLiveUpdates}
-            displayName={displayName}
-            myGroups={myGroups}
-            activeGroupId={activeGroupId}
-            setActiveGroupId={setActiveGroupId}
-            groupFeed={groupFeed}
-            groupSchedule={groupSchedule}
-            fetchGroupFeed={fetchGroupFeed}
-            fetchGroupSchedule={fetchGroupSchedule}
-            fetchMyGroups={fetchMyGroups}
-            token={token}
-            onRemoveBuddy={handleRemoveBuddy}
-            fetchShareBuddies={fetchShareBuddies}
-            onNavigate={(v) => setCurrentView(v)}
-          />
-        )}
-        </div>
-
-        {swapModalData && (
-          <SwapModal
-            buddy={swapModalData.buddy}
-            tournament={swapModalData.tournament}
-            token={token}
-            onClose={() => setSwapModalData(null)}
-          />
-        )}
-      </main>
-
-      {/* Portal target for views that need a control bar pinned directly
-          above the bottom nav (replayer). Sibling of <BottomNav>, in the
-          app-shell flex column — so its bottom edge meets the nav's top
-          edge by layout, not by env() math. */}
-      <div id="above-nav-slot" />
-
-      {/* Hands-tool selector as a second footer row, on top of the primary nav,
-          only while the Hands tab is open. One scrolling row so it never grows
-          the footer, and it stays put as the tool content scrolls under it. */}
-      {/* Grid: rail is 5 subrows tall (3sr pills + 1sr padding each side), 1g side gutter, 1g gaps. */}
-      {currentView === 'hands' && isAdmin && (
-        <div style={{display:'flex',alignItems:'center',gap:'var(--gu)',height:'calc(var(--subrow) * 5)',padding:'0 var(--gu)',boxSizing:'border-box',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'var(--bw-hair) solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-          {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
-            <button key={id} onClick={() => setHandsTool(id)}
-              style={{flex:'0 0 auto',height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:'0 var(--space-ml)',borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
-                border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
-                background: handsTool === id ? 'var(--accent)' : 'transparent',
-                color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>
-              {lbl}
-            </button>
+              <div className="dk-scroll">{dkRight === 'event' ? dkDetail : dkMine}</div>
+            </div>
           ))}
         </div>
-      )}
+      ) : primaryColumn}
 
-      <BottomNav
-        isAdmin={isAdmin}
-        current={(() => {
-          if (currentView === 'hands' && isAdmin) return 'hands';
-          if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin'].includes(currentView)) return null;
-          return currentView;
-        })()}
-        onChange={v => {
-          if (v === currentView && v === 'tournaments') {
-            const todayEl = document.querySelector('[data-today-scroll]');
-            const container = document.querySelector('.content-area');
-            if (todayEl && container) {
-              const caTop = container.getBoundingClientRect().top;
-              const sticky = container.querySelector('.sticky-filters');
-              const stickyH = sticky ? sticky.getBoundingClientRect().bottom - caTop : 0;
-              const elTop = todayEl.getBoundingClientRect().top - caTop + container.scrollTop;
-              container.scrollTo({ top: Math.max(0, elTop - stickyH), behavior: 'smooth' });
-              setTimeout(() => {
-                const firstCard = todayEl.querySelector('.cal-event-row');
-                if (!firstCard) return;
-                const stickyBottom = measureStickyStack(container);
-                const cardVisualTop = firstCard.getBoundingClientRect().top - container.getBoundingClientRect().top;
-                if (cardVisualTop < stickyBottom + 2) {
-                  container.scrollBy({ top: -(stickyBottom + 2 - cardVisualTop), behavior: 'smooth' });
-                }
-              }, 350);
+      {!isDesktop && (
+        <BottomNav
+          isAdmin={isAdmin}
+          current={(() => {
+            if (currentView === 'hands' && isAdmin) return 'hands';
+            if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin'].includes(currentView)) return null;
+            return currentView;
+          })()}
+          onChange={v => {
+            if (v === currentView && v === 'tournaments') {
+              const todayEl = document.querySelector('[data-today-scroll]');
+              const container = document.querySelector('.content-area');
+              if (todayEl && container) {
+                const caTop = container.getBoundingClientRect().top;
+                const sticky = container.querySelector('.sticky-filters');
+                const stickyH = sticky ? sticky.getBoundingClientRect().bottom - caTop : 0;
+                const elTop = todayEl.getBoundingClientRect().top - caTop + container.scrollTop;
+                container.scrollTo({ top: Math.max(0, elTop - stickyH), behavior: 'smooth' });
+                setTimeout(() => {
+                  const firstCard = todayEl.querySelector('.cal-event-row');
+                  if (!firstCard) return;
+                  const stickyBottom = measureStickyStack(container);
+                  const cardVisualTop = firstCard.getBoundingClientRect().top - container.getBoundingClientRect().top;
+                  if (cardVisualTop < stickyBottom + 2) {
+                    container.scrollBy({ top: -(stickyBottom + 2 - cardVisualTop), behavior: 'smooth' });
+                  }
+                }, 350);
+              }
+              return;
             }
-            return;
-          }
-          setCurrentView(v);
-        }}
-        scheduleCount={mySchedule.filter(t => !t.is_restart).length}
-        newShareCount={newShareCount}
-      />
+            setCurrentView(v);
+          }}
+          scheduleCount={mySchedule.filter(t => !t.is_restart).length}
+          newShareCount={newShareCount}
+        />
+      )}
 
       {activeMilestone && (
         <MilestoneCelebration
@@ -1989,35 +2152,7 @@ export default function App() {
           floating toggle, so alignment can be checked live and layout fixes made
           by eye. Gated on isAdmin; state persists in localStorage. */}
       {isAdmin && gridOverlay && <GridOverlay showReadout={gridReadout} />}
-      {isAdmin && gridOverlay && (
-        <button
-          type="button"
-          className={'grid-dev-toggle' + (gridReadout ? ' is-on' : '')}
-          title={`${gridReadout ? 'Hide' : 'Show'} grid readout (admin)`}
-          aria-pressed={gridReadout}
-          onClick={() => setGridReadout(v => { const next = !v; localStorage.setItem('gridReadout', next ? 'on' : 'off'); return next; })}
-          style={{ bottom: 'calc(calc(var(--subrow) * 21.5) + env(safe-area-inset-bottom, 0))' }}
-        >i</button>
-      )}
-      {isAdmin && (
-        <button
-          type="button"
-          className={'grid-dev-toggle' + (gridOverlay ? ' is-on' : '')}
-          title={`${gridOverlay ? 'Hide' : 'Show'} layout grid (admin)`}
-          aria-pressed={gridOverlay}
-          onClick={() => setGridOverlay(g => { const next = !g; localStorage.setItem('gridOverlay', next ? 'on' : 'off'); return next; })}
-        >#</button>
-      )}
-      {isAdmin && (
-        <button
-          type="button"
-          className={'grid-dev-toggle' + (demoStates ? ' is-on' : '')}
-          title={`${demoStates ? 'Hide' : 'Show'} demo dashboard states (admin)`}
-          aria-pressed={demoStates}
-          onClick={() => setDemoStates(d => !d)}
-          style={{ bottom: 'calc(calc(var(--subrow) * 15.5) + env(safe-area-inset-bottom, 0))' }}
-        >D</button>
-      )}
+      {!isDesktop && devToggles}
     </div>
     </DisplayNameProvider>
   );

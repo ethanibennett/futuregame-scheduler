@@ -119,8 +119,15 @@ export default function ScheduleView({
   allTournaments, onToggleAnchor, onSetPlannedEntries,
   onAddPersonalEvent, onUpdatePersonalEvent,
   buddyEvents, buddyLiveUpdates, onBuddySwap, isAdmin, onAdminEdit, onClearOverrides,
-  onNavigate, focusTournamentId, onFocusConsumed
+  onNavigate, focusTournamentId, onFocusConsumed,
+  // Desktop only (docs/desktop-layout.md): rows select into the detail pane.
+  onSelectEvent, selectedEventId
 }) {
+  // The scroll container is whatever pane this view is mounted in: the phone's
+  // .content-area, or a desktop pane's .dk-scroll. Resolved from the view's own
+  // root, so two scrollers on one page never answer for each other.
+  const rootRef = useRef(null);
+  const scroller = () => (rootRef.current && rootRef.current.closest('.content-area, .dk-scroll')) || document.querySelector('.content-area');
   const displayName = useDisplayName();
   const { conflicts, expectedConflicts } = useMemo(() => detectConflicts(mySchedule), [mySchedule]);
   const scheduleIds = useMemo(() => new Set(mySchedule.map(t => t.id)), [mySchedule]);
@@ -219,7 +226,7 @@ export default function ScheduleView({
   // fabContainerRef, then toggles its `.visible` class based on whether
   // the target group is on screen.
   useEffect(() => {
-    const container = document.querySelector('.content-area');
+    const container = scroller();
     if (!container) return;
     const panel = container.querySelector('.tab-panel[data-tab="schedule"]') || container;
     const hasTodayEvents = sorted.some(t => normaliseDate(t.date) === todayISO);
@@ -272,6 +279,9 @@ export default function ScheduleView({
 
   useEffect(() => {
     if (sorted.length === 0 || hasScrolled.current || !todayRef.current) return;
+    // In a desktop pane this view mounts at page load, not on a tap, so the rows
+    // above today are still mounting in batches; land once they all exist.
+    if (onSelectEvent && visibleCount < sorted.length) return;
     hasScrolled.current = true;
     // Re-fire over a few frames: rows use contentVisibility:auto with a
     // 72px intrinsic placeholder, so the first measured offset is short
@@ -279,7 +289,7 @@ export default function ScheduleView({
     const settle = (remaining) => {
       const el = todayRef.current;
       if (!el) return;
-      const container = el.closest('.content-area') || document.querySelector('.content-area');
+      const container = el.closest('.content-area, .dk-scroll') || document.querySelector('.content-area');
       if (!container) return;
       const cRect = container.getBoundingClientRect();
       const sticky = container.querySelector('.schedule-sticky-header');
@@ -289,7 +299,7 @@ export default function ScheduleView({
       if (remaining > 0) requestAnimationFrame(() => settle(remaining - 1));
     };
     settle(4);
-  }, [sorted]);
+  }, [sorted, visibleCount, onSelectEvent]);
 
   const findBestFlightSchedule = useCallback((eventNum, sat) => {
     const flights = sorted.filter(t => t.event_number === eventNum);
@@ -299,8 +309,9 @@ export default function ScheduleView({
 
   const handleNavigateToEvent = useCallback((num, sat) => {
     const targetId = findBestFlightSchedule(num, sat);
+    if (targetId && onSelectEvent) { onSelectEvent(targetId); return; }
     if (targetId) { setFocusEventId(null); setTimeout(() => setFocusEventId(targetId), 0); }
-  }, [findBestFlightSchedule]);
+  }, [findBestFlightSchedule, onSelectEvent]);
 
   // Arriving from the dashboard's Up Next card. Same null-then-set as above so
   // the row's focus effect re-fires when the same event is opened twice in a
@@ -314,7 +325,7 @@ export default function ScheduleView({
   }, [focusTournamentId, onFocusConsumed]);
 
   return (
-    <div>
+    <div ref={rootRef}>
       {pendingIncoming && pendingIncoming.length > 0 && (
         <div style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <div className="section-header">
@@ -463,6 +474,8 @@ export default function ScheduleView({
                         onAdminEdit={onAdminEdit}
                         onClearOverrides={onClearOverrides}
                         initialOpen={activatedIds.has(t.id)}
+                        onSelect={onSelectEvent}
+                        selected={onSelectEvent ? selectedEventId === t.id : undefined}
                       />
                     ) : (
                       <CalendarEventRowLite
@@ -471,7 +484,8 @@ export default function ScheduleView({
                         isPast={past}
                         isAnchor={!!t.is_anchor}
                         conditionsJson={t.conditions_json}
-                        onExpand={() => activateRow(t.id)}
+                        onExpand={() => (onSelectEvent ? onSelectEvent(t.id) : activateRow(t.id))}
+                        selected={onSelectEvent ? selectedEventId === t.id : undefined}
                       />
                     )}
                   </div>

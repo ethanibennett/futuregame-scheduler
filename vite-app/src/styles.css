@@ -15831,3 +15831,247 @@
     .qa-ready { row-gap: var(--subrow); justify-items: stretch; }
     .qa-ready-actions { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
     /* ══ end Quick Add ═══════════════════════════════════════════════════════ */
+    /* ══ Desktop layout ═══════════════════════════════════════════════════════
+       docs/desktop-layout.md. Everything here is scoped to .app-shell.is-desktop
+       (or html[data-layout="desktop"] for portalled panels), which App sets only
+       when useDesktopLayout() says the window is >= 1024 wide and landscape. A
+       phone never matches any rule in this block.
+
+       g is NOT redefined: --gu is already frozen at 430px/37 above phone width,
+       so every pane is laid out on the phone's own grid. The shell is a whole
+       number of g (--dk-shell-n, from JS), centred in the window:
+         rail 10g | panes of 9N+1 g (N columns of 8g, 1g gutters, 1g margins).
+       The phone canvas is N=4 = 37g. Counts are unitless integers multiplied by
+       --gu here, so no px value is written. */
+    .app-shell.is-desktop {
+      max-width: none;
+      width: calc(var(--gu) * var(--dk-shell-n));
+    }
+
+    /* Header: one bar across the whole shell. The wordmark keeps its 8g column at
+       1g — the rail's column directly below it. The action icons and the user
+       chip sit in flow at the right, each centred on the 4r line exactly as the
+       phone centres them (top 4r, then up by half their own height). */
+    .app-shell.is-desktop .top-bar-actions,
+    .app-shell.is-desktop .top-bar-user {
+      position: relative; left: auto; right: auto;
+      top: calc(var(--subrow) * 4);
+      transform: translateY(-50%);
+      align-self: flex-start;
+      width: auto;
+    }
+    .app-shell.is-desktop .top-bar-actions { margin-left: auto; gap: var(--gu); justify-content: flex-start; }
+    .app-shell.is-desktop .top-bar-user { margin-left: calc(var(--gu) * 2); }
+    .app-shell.is-desktop .username-chip { max-width: calc(var(--gu) * 16); }
+
+    /* --bg, so the shell to the right of a capped single pane reads as page, not as a gap. */
+    .dk-body { flex: 1; min-height: 0; display: flex; align-items: stretch; background: var(--bg); }
+
+    /* ── Rail: 10g = one 8g column inside 1g margins ── */
+    .dk-rail {
+      flex: 0 0 calc(var(--gu) * 10);
+      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2) var(--gu);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      display: flex; flex-direction: column;
+      background: var(--bg);
+    }
+    .dk-rail-group { display: flex; flex-direction: column; }
+    /* 2r of space, a hairline, 2r of space: the group still starts on an r line. */
+    .dk-rail-secondary {
+      margin-top: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2);
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    /* One Row (4r) per item. The item bleeds over the rail's 1g margins so its
+       hover fill and active bar span the rail; its content is the 8g column:
+       a 2g x 2r icon cell, 1g, then the label. Both bottom-seat on the 3r line —
+       the label is a trimmed block in a grid cell (trim is inert on flex boxes,
+       live on grid items), so its baseline IS that line. */
+    .dk-rail-item {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr);
+      column-gap: var(--gu);
+      align-items: end;
+      width: calc(var(--gu) * 10);
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      margin: 0 calc(var(--gu) * -1);
+      padding: 0 var(--gu) var(--subrow);
+      border: 0; border-radius: 0;
+      background: none;
+      color: var(--text-muted);
+      font-family: var(--font-condensed);
+      /* --fs-xs, measured: the longest label, "Dashboard", is 4.64g at --fs-xs
+         and 5.25g at --fs-sm; the label column is 5g. */
+      font-size: var(--fs-xs);
+      font-weight: var(--fw-regular);
+      text-align: left;
+      cursor: pointer;
+      transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+    }
+    .dk-rail-icon { display: grid; place-items: center; width: calc(var(--gu) * 2); height: calc(var(--subrow) * 2); }
+    .dk-rail-icon svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); stroke-width: var(--icon-stroke); }
+    .dk-rail-label {
+      display: block;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      /* No overflow clip: the trimmed box ends at the baseline, so a clip would
+         cut every descender (the g of Settings). The labels fit by measurement. */
+      white-space: nowrap;
+    }
+    .dk-rail-item.is-active {
+      color: var(--brand);
+      font-weight: var(--fw-bold);
+      box-shadow: inset var(--bw-2) 0 0 var(--brand);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .dk-rail-item:hover { color: var(--text); background: var(--hover-overlay); }
+      .dk-rail-item.is-active:hover { color: var(--brand); }
+    }
+    .dk-rail-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }
+    /* The admin toggles (#, D, i): fixed to the window corner on the phone,
+       three 2g x 3r keys across the rail's 8g column here (2+1+2+1+2). */
+    .dk-rail-dev {
+      display: flex; gap: var(--gu);
+      margin-top: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2);
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    .dk-rail-dev .grid-dev-toggle {
+      position: static;
+      width: calc(var(--gu) * 2); height: calc(var(--subrow) * 3);
+      border-radius: var(--radius-sm);
+      box-shadow: none;
+      font-size: var(--fs-sm);
+    }
+
+    /* ── Panes ── */
+    .dk-pane {
+      position: relative;
+      flex: 0 0 auto;
+      display: flex; flex-direction: column;
+      min-height: 0;
+      background: var(--bg);
+    }
+    /* The divider is drawn OVER the pane's left edge, not added to its width, so
+       every pane stays a whole number of g. */
+    .dk-pane::before {
+      content: ''; position: absolute; top: 0; bottom: 0; left: 0;
+      width: var(--bw-hair); background: var(--border);
+      z-index: calc(var(--z-sticky) + 1); pointer-events: none;
+    }
+    .dk-pane-list, .dk-pane-mine { width: calc(var(--gu) * 37); }
+    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1)); }
+    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1)); }
+    /* A pane is the containing block for the views' fixed-position children (the
+       Today/Next button), so each one centres in ITS pane instead of the window.
+       Only on panes whose views have nothing else fixed and unportalled. */
+    .dk-fab-scope { transform: translateZ(0); }
+    .app-shell.is-desktop .back-to-today-fab { bottom: calc(var(--subrow) * 4); }
+
+    /* The main pane's scroller is the phone's .content-area, minus the room it
+       keeps for a bottom nav the desktop does not have. */
+    .app-shell.is-desktop .content-area { padding-bottom: calc(var(--subrow) * 2); }
+    /* Secondary panes scroll on their own; same 1g rails as .content-area. */
+    .dk-scroll {
+      flex: 1; min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      box-sizing: border-box;
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      background: var(--bg);
+    }
+
+    /* The phone's sticky rows, restored. The >=640 / >=1024 viewport media
+       rules above were written for a full-width web column that no longer
+       exists; inside a 37g pane they pushed the filter row to wrap. A pane is a
+       phone canvas, so it gets the phone's values. */
+    .app-shell.is-desktop .sticky-filters {
+      margin: 0 calc(-1 * var(--gu)) 0;
+      padding: calc(var(--subrow) * 2) var(--gu) calc(var(--subrow) * 2);
+    }
+    .app-shell.is-desktop .schedule-sticky-header,
+    .app-shell.is-desktop .gto-sticky-header {
+      top: calc(var(--subrow) * -1.5);
+      margin: calc(var(--subrow) * -1.5) calc(-1 * var(--gu)) 0;
+      padding: var(--space-3xl) var(--space-lg) var(--space-sm);
+    }
+    .app-shell.is-desktop .gto-sticky-footer { padding: var(--space-sm) var(--space-lg); }
+    html[data-layout="desktop"] .filter-panel { grid-template-columns: 1fr 1fr; align-items: normal; }
+    html[data-layout="desktop"] .filter-span2 { grid-column: span 2; }
+
+    /* ── Two-pane tier: Event / My schedule switch, 6r: 2r, 3r keys, 1r ── */
+    .dk-seg {
+      flex: 0 0 auto;
+      display: flex; gap: var(--gu);
+      height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2) var(--gu) var(--subrow);
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+    }
+    /* One column (8g) per key; label trimmed and bottom-seated 1r above the key's
+       foot, so its baseline lands on the pane's 4r line. */
+    .dk-seg-btn {
+      display: grid; align-items: end; justify-items: center;
+      width: var(--col); height: calc(var(--subrow) * 3);
+      box-sizing: border-box;
+      /* 1r to the key's outer foot: the hairline border sits inside that 1r
+         (measured 0.13r high without the subtraction). */
+      padding: 0 0 calc(var(--subrow) - var(--bw-hair));
+      border: var(--bw-hair) solid var(--border);
+      border-radius: var(--radius-pill);
+      background: none; color: var(--text-muted);
+      font-family: var(--font-condensed); font-size: var(--fs-sm);
+      cursor: pointer;
+      transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+    }
+    .dk-seg-btn > span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    .dk-seg-btn.is-on { color: var(--text); border-color: var(--text-muted); background: var(--surface); font-weight: var(--fw-bold); }
+    @media (hover: hover) and (pointer: fine) { .dk-seg-btn:hover { color: var(--text); } }
+    .dk-seg-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+    /* ── Event detail pane: a 6r head (title baseline on 4r), then the card ── */
+    .dk-pane-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 3);
+      align-items: end;
+      height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
+      padding-bottom: calc(var(--subrow) * 2);
+    }
+    .dk-pane-title {
+      margin: 0;
+      font-family: var(--font-title);
+      font-weight: var(--fw-regular);
+      font-size: var(--fs-xl);
+      line-height: 1;
+      color: var(--text);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* 3g x 3r key, foot on the 4r line with the title's baseline. */
+    .dk-pane-close {
+      display: grid; place-items: center;
+      width: calc(var(--gu) * 3); height: calc(var(--subrow) * 3);
+      padding: 0; border: 0; border-radius: var(--radius-sm);
+      background: none; color: var(--text-muted); cursor: pointer;
+    }
+    .dk-pane-close svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); stroke-width: var(--icon-stroke); }
+    @media (hover: hover) and (pointer: fine) { .dk-pane-close:hover { color: var(--text); background: var(--hover-overlay); } }
+    .dk-pane-close:focus-visible { outline: var(--focus-ring); outline-offset: 0; }
+    .dk-detail-empty { padding-top: calc(var(--subrow) * 8); }
+
+    /* The detail card is held open: no collapse chevron, no pointer affordance
+       on its bar. (The chevron row is 1r when open, so the card stays whole r.) */
+    .cal-event-row.is-detail .cal-event-chevron { display: none; }
+    .cal-event-row.is-detail .cal-event-bar,
+    .cal-event-row.is-detail .cal-venue-strip { cursor: default; }
+    @media (hover: hover) and (pointer: fine) {
+      .cal-event-row.is-detail:hover { box-shadow: none; }
+      .cal-event-row.is-detail:hover .cal-event-bar { background: none; }
+    }
+    /* The list row whose event is in the detail pane. An outline, so the card's
+       box (and the list's r rhythm) does not move by a hair. */
+    .cal-event-row.is-selected { outline: var(--bw-2) solid var(--brand); outline-offset: 0; }
+    /* ══ end Desktop layout ══════════════════════════════════════════════════ */
