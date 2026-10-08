@@ -181,7 +181,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'var(--space-sm)'}}>
         <div>
           <div style={{fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
-            {entry.date} \u00b7 #{entry.event_number}
+            {entry.date} · #{entry.event_number}
           </div>
           <div style={{fontSize:'calc(var(--gu) * 1.296)',fontWeight: 'var(--fw-bold)',color:'var(--text)',marginTop:'var(--space-2xs)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             {entry.event_name}
@@ -386,10 +386,10 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
             format={fmtStat}
           />
           <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginTop:'var(--space-md)'}}>
-            {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} played \u00b7 {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''}
-            {stats.poyEventCount > 0 && <> \u00b7 {stats.poyEventCount} POY event{stats.poyEventCount !== 1 ? 's' : ''}</>}
+            {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} played · {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''}
+            {stats.poyEventCount > 0 && <> · {stats.poyEventCount} POY event{stats.poyEventCount !== 1 ? 's' : ''}</>}
             {displayCurrency !== 'NATIVE' && exchangeRates && (
-              <> \u00b7 {ratesStale ? 'fallback rates' : 'live rates'}</>
+              <> · {ratesStale ? 'fallback rates' : 'live rates'}</>
             )}
           </p>
         </div>
@@ -400,7 +400,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div style={{flex:1, minWidth:0}}>
               <div style={{fontSize:'calc(var(--gu) * 1.031)', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
-                {pendingEvent.date} \u00b7 #{pendingEvent.event_number?.replace(/^[A-Za-z]+-/, '')}
+                {pendingEvent.date} · #{pendingEvent.event_number?.replace(/^[A-Za-z]+-/, '')}
               </div>
               <div style={{fontSize:'calc(var(--gu) * 1.252)', fontWeight: 'var(--fw-bold)', color:'var(--text)', marginTop:'var(--space-2xs)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                 {pendingEvent.event_name}

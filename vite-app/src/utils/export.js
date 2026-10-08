@@ -2050,7 +2050,7 @@ export function computeScorecardData(trackingData, venueName, tournaments) {
   // Cumulative P&L, for the curve on the card. The walk below already sorts
   // chronologically for the streak, so this is one accumulator, not a pass.
   const cumulative = (() => {
-    const rows = [...(entries || [])].filter(e => e && e.date)
+    const rows = [...(trackingData || [])].filter(e => e && e.date)
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
     let run = 0;
     return rows.map(e => {
