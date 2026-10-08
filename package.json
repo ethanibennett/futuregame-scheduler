@@ -27,7 +27,8 @@
     "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js",
     "test:clocks": "node test/live-clocks.test.js",
     "test:sse": "node test/sse-ticket.test.js",
-    "test:account": "node test/account-delete.test.js"
+    "test:account": "node test/account-delete.test.js",
+    "test:auth-limit": "node test/auth-limit-and-compression.test.js"
   },
   "keywords": [],
   "author": "",
@@ -43,6 +44,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "bcryptjs": "^3.0.3",
     "canvas": "^3.2.1",
+    "compression": "^1.8.2",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",

@@ -11,6 +11,14 @@ sessions opened here own scheduler work.
   branch `wip/windows-mtt-feed`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
   `JWT_SECRET` env required. `DB_PATH` env overrides the default `poker-tournaments.db`.
+  Responses are gzip/br-compressed (`compression`), except `text/event-stream` — SSE
+  must stay uncompressed or events sit in the zlib buffer. `trust proxy` is 1 hop on
+  Render (`RENDER` env) and off elsewhere; `TRUST_PROXY` overrides, and the first
+  credential request after boot logs `[auth-limit] proxy chain …` with the suggested
+  value. Login/register/forgot/reset are limited by `lib/auth-limiter.js` (10 per
+  15 min, sliding, per IP and per account). `npm run test:auth-limit` boots
+  `server.js` on a scratch port with a stubbed `./solver` — the pattern for any
+  server test in a worktree.
 - **Solver**: NOT in this repo (carved out 2026-08-09). `./solver` here is a **gitignored
   junction** → `D:\projects\futuregame-solver\solver` (server.js requires into it at
   boot for the trainer features). On Render, `build.js` clones the private

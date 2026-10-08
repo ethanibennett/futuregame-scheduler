@@ -9,6 +9,8 @@ const fs = require('fs').promises;
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const { createSlidingWindowLimiter, authLimitMiddleware, ipKey, accountKey, resolveTrustProxy } = require('./lib/auth-limiter');
 const { PDFParse } = require('pdf-parse');
 const initSqlJs = require('sql.js');
 const { parseWSOP2025Schedule, getWSOPRake } = require('./parsers/wsop-parser');
@@ -54,6 +56,12 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Behind Render's proxy every connection comes from the proxy, so without this
+// req.ip is the proxy's address and every IP-keyed limiter (auth, admin,
+// staking) is one bucket shared by all users. One hop on Render by default;
+// TRUST_PROXY overrides. See resolveTrustProxy in lib/auth-limiter.js.
+app.set('trust proxy', resolveTrustProxy());
 
 // ── Exchange rate cache ─────────────────────────────────────
 const SUPPORTED_CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','CHF','SEK','DKK','NOK','CZK','PLN','HKD','SGD','BRL','MXN','INR','CNY'];
@@ -124,14 +132,38 @@ app.use(cors({
   credentials: true,
 }));
 
+// Response compression. Server-Sent Events are excluded: compression buffers
+// its output until a chunk fills, so a gzipped event stream would deliver
+// nothing until ~16 KB of events had queued (the 30 s heartbeat alone would
+// take hours). text/event-stream IS compressible by default, so it has to be
+// excluded explicitly; the Content-Type is set before flushHeaders(), which is
+// when this filter runs.
+app.use(compression({
+  filter: (req, res) => {
+    const type = String(res.getHeader('Content-Type') || '');
+    if (type.startsWith('text/event-stream')) return false;
+    return compression.filter(req, res);
+  },
+}));
+
+// Brute-force protection for the credential routes: 10 attempts per 15 minutes,
+// sliding window, counted per client IP AND per account (the email named in the
+// request), with each route family keeping its own windows. A correct password
+// gives its attempt back and clears the account's window, so only failures
+// accumulate. 429 + Retry-After when any key is full. See lib/auth-limiter.js.
+const AUTH_LIMIT = { limit: 10, windowMs: 15 * 60 * 1000 };
+const authAttempts = createSlidingWindowLimiter(AUTH_LIMIT);
+const authKeys = (scope, accountField) => (req) => {
+  const ip = ipKey(req);
+  const acct = accountField ? accountKey(req.body && req.body[accountField]) : null;
+  return [ip && `${scope}:${ip}`, acct && `${scope}:${acct}`];
+};
+const loginLimit = authLimitMiddleware(authAttempts, authKeys('login', 'email'), { label: 'login' });
+const registerLimit = authLimitMiddleware(authAttempts, authKeys('register'), { label: 'register' });
+const forgotLimit = authLimitMiddleware(authAttempts, authKeys('forgot', 'email'), { label: 'forgot-password' });
+const resetLimit = authLimitMiddleware(authAttempts, authKeys('reset'), { label: 'reset-password' });
+
 // Rate limiters for sensitive endpoints (applied per-route below)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many attempts, please try again later.' },
-});
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -305,11 +337,30 @@ async function requireHamBasic(req, res, next) {
     stmt.free();
     if (!owner) return challenge();
 
+    // Basic Auth checks the OWNER's password on every request that carries it,
+    // so it is a password oracle for the most privileged account and gets the
+    // same brute-force limit as /api/login: per IP and for the owner account.
+    // Only presented credentials count, a correct password gives its attempt
+    // back, and the session-cookie path above never reaches this point — so a
+    // flood of bad guesses cannot lock the owner out of a browser that is
+    // already signed in.
+    const basicKeys = [ipKey(req), 'acct:console-owner'].filter(Boolean).map((k) => `console:${k}`);
+    let wait = 0;
+    for (const k of basicKeys) wait = Math.max(wait, authAttempts.retryAfter(k));
+    if (wait > 0) {
+      console.warn(`[auth-limit] console basic 429 (${basicKeys.join(' ')}) retry in ${wait}s`);
+      res.set('Retry-After', String(wait));
+      return res.status(429).type('txt').send('Too many attempts, please try again later.');
+    }
+    const basicStamps = basicKeys.map((k) => [k, authAttempts.hit(k)]);
+
     const loginNamesOwner =
       String(login).toLowerCase() === String(owner.username || '').toLowerCase() ||
       String(login).toLowerCase() === String(owner.email || '').toLowerCase();
     const ok = loginNamesOwner && (await bcrypt.compare(password, owner.password));
     if (!ok) return challenge();
+    for (const [k, stamp] of basicStamps) authAttempts.refund(k, stamp);
+    authAttempts.clear('console:acct:console-owner');
     // Seed the shared session cookie so subsequent requests (and the main app)
     // recognise the session without re-prompting — this is what stops the popup
     // recurring, and unifies with the futurega.me login.
@@ -3615,7 +3666,7 @@ app.get('/api/events', (req, res) => {
 // API Routes
 
 // User registration
-app.post('/api/register', authLimiter, async (req, res) => {
+app.post('/api/register', registerLimit, async (req, res) => {
   try {
     const { username, email, password, realName } = req.body;
 
@@ -3688,7 +3739,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 });
 
 // User login
-app.post('/api/login', authLimiter, async (req, res) => {
+app.post('/api/login', loginLimit, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -3708,6 +3759,13 @@ app.post('/api/login', authLimiter, async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // A correct password: this attempt does not count, and the account's
+    // earlier failures are forgiven. The IP's earlier failures stand.
+    if (req.authLimit) {
+      req.authLimit.refund();
+      req.authLimit.clear(`login:${accountKey(email)}`);
     }
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, {
@@ -3913,7 +3971,7 @@ app.delete('/api/account', authenticateToken, requireRegistered, async (req, res
 });
 
 // Forgot password — request reset link
-app.post('/api/forgot-password', authLimiter, async (req, res) => {
+app.post('/api/forgot-password', forgotLimit, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -3957,7 +4015,7 @@ app.post('/api/forgot-password', authLimiter, async (req, res) => {
 });
 
 // Reset password — validate token and update password
-app.post('/api/reset-password', authLimiter, async (req, res) => {
+app.post('/api/reset-password', resetLimit, async (req, res) => {
   try {
     const { token, password } = req.body;
 
@@ -7932,126 +7990,6 @@ app.delete('/api/hands/:id', authenticateToken, requireRegistered, async (req, r
 
 // SPA catch-all for backer view
 app.get('/backer/:token', serveIndex);
-
-// ── Saved Hands (Hand Replayer) ──────────────────────────
-
-app.get('/api/hands', authenticateToken, (req, res) => {
-  try {
-    const stmt = db.prepare(`
-      SELECT id, game_type, title, notes, is_public, created_at
-      FROM saved_hands
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-    `);
-    stmt.bind([req.user.id]);
-    const hands = [];
-    while (stmt.step()) hands.push(stmt.getAsObject());
-    stmt.free();
-    res.json(hands);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-app.post('/api/hands', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { handData, gameType, title, notes, isPublic } = req.body;
-    if (!handData || !gameType) return res.status(400).json({ error: 'Hand data and game type are required' });
-
-    db.run(
-      'INSERT INTO saved_hands (user_id, hand_data, game_type, title, notes, is_public) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.user.id, typeof handData === 'string' ? handData : JSON.stringify(handData), gameType, title || null, notes || null, isPublic ? 1 : 0]
-    );
-    await saveDatabase();
-    const idStmt = db.prepare('SELECT last_insert_rowid() as id');
-    idStmt.step();
-    const { id } = idStmt.getAsObject();
-    idStmt.free();
-    res.status(201).json({ message: 'Hand saved', id });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-app.get('/api/hands/public', (req, res) => {
-  try {
-    const stmt = db.prepare(`
-      SELECT sh.id, sh.game_type, sh.title, sh.notes, sh.hand_data, sh.created_at,
-             u.username
-      FROM saved_hands sh
-      JOIN users u ON sh.user_id = u.id
-      WHERE sh.is_public = 1
-      ORDER BY sh.created_at DESC
-      LIMIT 50
-    `);
-    const hands = [];
-    while (stmt.step()) hands.push(stmt.getAsObject());
-    stmt.free();
-    res.json(hands);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-app.get('/api/hands/:id', authenticateToken, (req, res) => {
-  try {
-    const { id } = req.params;
-    const stmt = db.prepare(`
-      SELECT sh.*, u.username
-      FROM saved_hands sh
-      JOIN users u ON sh.user_id = u.id
-      WHERE sh.id = ? AND (sh.user_id = ? OR sh.is_public = 1)
-    `);
-    stmt.bind([id, req.user.id]);
-    if (!stmt.step()) {
-      stmt.free();
-      return res.status(404).json({ error: 'Hand not found' });
-    }
-    const hand = stmt.getAsObject();
-    stmt.free();
-    res.json(hand);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-app.put('/api/hands/:id', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { handData, gameType, title, notes, isPublic } = req.body;
-    const checkStmt = db.prepare('SELECT id FROM saved_hands WHERE id = ? AND user_id = ?');
-    checkStmt.bind([id, req.user.id]);
-    const owns = checkStmt.step();
-    checkStmt.free();
-    if (!owns) return res.status(404).json({ error: 'Hand not found' });
-
-    db.run(
-      'UPDATE saved_hands SET hand_data = ?, game_type = ?, title = ?, notes = ?, is_public = ? WHERE id = ? AND user_id = ?',
-      [typeof handData === 'string' ? handData : JSON.stringify(handData), gameType, title || null, notes || null, isPublic ? 1 : 0, id, req.user.id]
-    );
-    await saveDatabase();
-    res.json({ message: 'Hand updated' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-app.delete('/api/hands/:id', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { id } = req.params;
-    db.run('DELETE FROM saved_hands WHERE id = ? AND user_id = ?', [id, req.user.id]);
-    await saveDatabase();
-    res.json({ message: 'Hand deleted' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
 
 /// ── Hand Replayer API ──────────────────────────────────
 
