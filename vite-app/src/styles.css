@@ -890,11 +890,6 @@
       text-transform: uppercase;
       color: var(--text-muted);
     }
-    .cal-meta-line + .cal-meta-line::before {
-      content: '\00b7';
-      margin: 0 var(--space-sm);
-      opacity: 0.7;
-    }
 
 
     /* The strip is the navigation control for the whole calendar tab and
@@ -9279,7 +9274,6 @@
       line-height: 1;
     }
 
-    .badge-event { background: rgba(136,136,136,0.2); color: #999999; }
     .badge-variant { background: rgba(160,160,160,0.12); color: var(--accent); }
     .badge-clickable { cursor: pointer; }
     .badge-clickable:active { opacity: 0.6; }
@@ -10609,10 +10603,42 @@
          full card width under the buy-in. The accolade cluster occupies the same
          right cell as the money, under it. */
       display: grid;
-      grid-template-columns: 1fr calc(var(--subcol) * 3);
+      /* title | event-number pill (auto: 0 wide when the event has no number) | 6g money column */
+      grid-template-columns: 1fr auto calc(var(--subcol) * 3);
       align-items: end;
       gap: 0;
       --cal-title-line: calc(var(--subrow) * 2);
+    }
+    .cal-bar-row2 > .cal-event-name { grid-column: 1; }
+    .cal-bar-row2 > .cal-accolades { grid-column: 3; }
+    /* The event-number pill on the title line (CalendarEventRow EventNumberPill). Own column, so
+       it can never overlap an accolade icon or the guarantee: 1g clear of the title, right edge
+       1g inside the money column (28g); width a whole g from eventPillWidthG (4g holds "#500C").
+       A 3r pill like the expanded panel's badges, top on the title line's top (r6), bottom r9 —
+       inside the bar's 2r bottom pad (r8..r10), so the -1r margin keeps row 2 at 2r and the card
+       at 12r. Seating: a 2r line box at --fs-xs bold puts the baseline 1.5174r below the box top
+       (measured in WebKit); 0.4826r of top padding lands it on 2r, i.e. r8 — the title's baseline
+       — and centres the 1.08r capitals in the pill to within 0.04r. No text-box-trim. */
+    .cal-event-num {
+      grid-column: 2;
+      align-self: start;
+      justify-self: end;
+      box-sizing: border-box;
+      width: calc(var(--gu) * var(--num-w, 4));
+      height: calc(var(--subrow) * 3);
+      margin: 0 var(--gu) calc(var(--subrow) * -1);
+      padding: calc(var(--subrow) * 0.4826) 0 0;
+      line-height: calc(var(--subrow) * 2);
+      border-radius: var(--radius-lg);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-tight);
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      pointer-events: none;
     }
     /* Single-line name: a 2-subrow cell, bottom-aligned, lands the title's
        trimmed baseline on r8 (row1 is 6r, + 2r) with no nudge — a line below the
@@ -10694,6 +10720,18 @@
          (4 - 0.786)px = 0.419r under the baseline. Measured 7.581r against r8 on every
          single-line and wrapped card; the offset scales with g (font and r both do), so it is
          one constant in r. Relative offset: layout and card heights are unchanged. */
+      position: relative;
+      top: calc(var(--subrow) * 0.419);
+    }
+    /* The open card shows the whole title, unclamped, seated the same way: whole 2r line boxes
+       (no trim, so a two-line title is exactly 4r, not 2r + the 1.297r trimmed second line,
+       which left everything under a wrapped open title 0.297r off the grid) and the same 0.419r
+       to put each baseline on its r-line (r8, r10, ...). Titles wrap more since the event-number
+       pill took the right end of the line. */
+    .cal-event-row.open .cal-bar-row2:not(:has(.cal-event-stage)) .cal-event-name {
+      display: block;
+      white-space: normal;
+      text-box-trim: none;
       position: relative;
       top: calc(var(--subrow) * 0.419);
     }
@@ -11008,19 +11046,59 @@
       gap: var(--space-xs) var(--gu);
       align-items: start;
     }
-    /* The game label ("PLO") is a 2r cell at the top of the 3r badge row, its text trimmed to
-       cap..baseline and bottom-aligned, so its baseline is the row's 2r line — level with the
-       event-number pill's centred text (2.02r), and on the grid even when there is no pill. */
-    .cal-badges-left { display: flex; gap: var(--gu); flex-wrap: wrap; align-items: flex-start; }
-    /* Whole-g pills. The event number is a 4g pill (4..8g; the game label then starts on 9g),
-       the rake pill 7g (20..27g). min-width, so an unusually long number still fits. */
-    .cal-badges-left .badge-event { min-width: calc(var(--gu) * 4); padding: 0 calc(var(--gu) * 0.5); }
+    /* The game label ("PLO", "HORSE", "9-GAME MIX") is one exact 2r cell at the top of the badge
+       row, its baseline on the cell's bottom line (the row's r2): a 2r line box at --fs-2xs puts
+       the baseline 1.4526r below the box top (measured in WebKit), so 0.5474r of top padding
+       lands it on 2r. No text-box-trim, which is inert under flex and absent on iOS 15. */
+    .cal-badges-left { display: flex; align-items: flex-start; min-width: 0; }
+    /* The rake pill is 7g (20..27g). */
     .cal-event-detail .badge-rake { min-width: calc(var(--gu) * 7); padding: 0 calc(var(--gu) * 0.4); }
-    .cal-badges-left .cal-meta-line { display: flex; align-items: flex-end; height: calc(var(--subrow) * 2); }
-    .cal-badges-left .cal-meta-line > span,
-    .cal-badges-left .cal-meta-line + .cal-meta-line::before {
-      display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    .cal-badges-left .cal-meta-line {
+      display: block;
+      box-sizing: border-box;
+      height: calc(var(--subrow) * 2);
+      padding: calc(var(--subrow) * 0.5474) 0 0;
+      line-height: calc(var(--subrow) * 2);
+      white-space: nowrap;
     }
+    /* A mix whose games are known: the label is a toggle (caret like the rake pill's) that lists
+       them in .cal-mix-games below. Reset to read as the plain label it replaces. */
+    .cal-badges-left .cal-game-mix {
+      appearance: none;
+      -webkit-appearance: none;
+      background: none;
+      border: 0;
+      margin: 0;
+      padding-left: 0;
+      padding-right: 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cal-badges-left .cal-game-mix:active { opacity: 0.6; }
+    /* The mix's games: a grid of exact 7g x 2r cells, four to a row (4 x 7g + 3 x 1g = the 31g
+       content width, so the columns start on 4, 12, 20 and 28g), 1r between rows (a 3r pitch).
+       Each cell seats its caps label like the game label above. A name too long for 7g (titles
+       can list their own games) spans two cells. */
+    .cal-mix-games {
+      display: grid;
+      grid-template-columns: repeat(4, calc(var(--gu) * 7));
+      column-gap: var(--gu);
+      row-gap: var(--subrow);
+    }
+    .cal-mix-game {
+      box-sizing: border-box;
+      height: calc(var(--subrow) * 2);
+      padding: calc(var(--subrow) * 0.5474) 0 0;
+      line-height: calc(var(--subrow) * 2);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-regular);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .cal-mix-game.wide { grid-column: span 2; }
     .cal-badges-right { display: flex; flex-direction: column; gap: var(--space-sm); align-items: flex-start; }
 
     /* A seated 2r cell: the link is trimmed to cap..baseline and the cell bottom-aligns it, so its

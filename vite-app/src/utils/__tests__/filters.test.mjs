@@ -3,7 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 // Dynamic, because a static import is hoisted above the stub above it.
-const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber } =
+const { isOnline, isWsopOnline, matchesLocation, matchesOnline, getVenueTimezone, eventAvailability, isSeriesEvent, isBraceletEvent, isRingEvent, isWsopOnlineCircuit, shortEventNumber, eventPillWidthG, describeGame, getGamePills } =
   await import('../utils.js');
 
 let pass = 0, fail = 0;
@@ -304,6 +304,51 @@ eq('a flight suffix survives', shortEventNumber('12H'), '12H');
 eq('empty', shortEventNumber(''), null);
 eq('null', shortEventNumber(null), null);
 eq('undefined', shortEventNumber(undefined), null);
+
+console.log('eventPillWidthG');
+eq('a one-digit number is a 4g pill', eventPillWidthG('#1'), 4);
+eq('"#" and four characters still fit 4g', eventPillWidthG('#500C'), 4);
+eq('five characters take 5g', eventPillWidthG('#1234A'), 5);
+eq('a combined-flight list grows in whole g', eventPillWidthG('#2, 6, 8, 10'), 9);
+
+/* Every title below is a real row (scratch copy of the live DB, 2026-10-08). */
+console.log('describeGame');
+const dg = (v, n) => { const d = describeGame(v, n); return d ? `${d.label} [${d.games.length}]` : null; };
+eq('a single game', dg('PLO', 'PLO Bounty'), 'PLO [0]');
+eq('a single game keeps its short name', dg('NL 2-7 Single Draw', '2-7 NL Single Draw PKO'), 'NL 2-7 SD [0]');
+eq('HORSE by variant', dg('HORSE', 'HORSE Championship - Day 1'), 'HORSE [5]');
+eq('9-Game by variant', dg('9-Game Mix', '9 Game Mix'), '9-Game Mix [9]');
+eq('8-Game by variant', dg('8-Game Mix', '8-Game Mixed'), '8-Game Mix [8]');
+eq('10-Game by variant', dg('10-Game Mix', '10 -Game Mix'), '10-Game Mix [10]');
+eq("Dealer's Choice by variant", dg("Dealer's Choice", "Dealer's Choice"), "Dealer's Choice [21]");
+eq('9-Game named only by the title', dg('Mixed', '9-Game Mixed Championship'), '9-Game Mix [9]');
+eq('8-Game after "Mixed", with a stage', dg('Mixed', 'Mixed 8-Game Championship High Roller - Final'), '8-Game Mix [8]');
+eq('"Mixed 10-Game Mix"', dg('Mixed', 'Mixed 10-Game Mix'), '10-Game Mix [10]');
+eq('"(9-game)" in parentheses', dg('9-Game Mix', 'The Sunday Mixer (9-game)'), '9-Game Mix [9]');
+eq('a title N-game outranks a single-game variant', dg('PLO', '10 Game Mix (HORSE-NLH-PLO-Limit 2-7 Triple Draw-Badugi-A5)'), '10-Game Mix [10]');
+eq('an N-game mix the map does not know keeps its name', dg('2-7 Triple Draw', '2-7 Triple Draw 5-Game Draw Mix'), '5-Game Mix [0]');
+eq('dotted TORSE under Mixed', dg('Mixed', 'T.O.R.S.E.'), 'TORSE [5]');
+eq('H.O.R.S.E without the last dot', dg('Mixed', 'H.O.R.S.E'), 'HORSE [5]');
+eq('TORSE named in a flight suffix', dg('Mixed', 'Mixed Game Championship - Flight B (TORSE)'), 'TORSE [5]');
+eq('"Mixed Toe" in any case', dg('Mixed', 'Mixed Toe'), 'TOE [3]');
+eq('Big Bet Mixed Dealers Choice', dg('Mixed', 'Big Bet Mixed Dealers Choice'), "Big Bet Dealer's Choice [7]");
+eq('Mixed Triple Draw with its list', dg('Mixed', 'Mixed Triple Draw (2-7, A-5, Badugi)'), 'Mixed Triple Draw [3]');
+eq('Mixed PLO named with slashes', dg('Mixed', 'Mixed PLO / PLO8 / Big O'), 'Mixed PLO [3]');
+eq('Poker Players Championship', dg('Mixed', '$50,000 Poker Players Championship - Day 1'), 'Poker Players Championship [10]');
+eq('a listed mix with no name', dg('Mixed', 'Mixed Dramaha (High, 2-7, Badugi)'), 'Mixed [3]');
+eq('a slash variant lists its games', dg('NLH/PLO', 'NLH / PLO'), 'NLH/PLO [2]');
+eq('an unspelled mix keeps its own name', dg('Fun Mix', 'Fun Mix'), 'Fun Mix [0]');
+eq('an unnamed mix is "Mixed", not a slice of the title', dg('Mixed', 'Mixed Wynn Mix Championship'), 'Mixed [0]');
+eq('the word "toe" inside another word is not TOE', dg('Mixed', 'Tiptoe Classic'), 'Mixed [0]');
+eq('no variant and a plain title', dg('', 'Main Event'), null);
+eq('a title naming a mix outranks a single-game variant', dg('2-7 Triple Draw', 'Mixed Triple Draw (A-5, 2-7, Badugi)'), 'Mixed Triple Draw [3]');
+eq('a title listing a mix outranks a single-game variant', dg('2-7 Triple Draw', 'Mix Triple Draw (A-5, Badugi, 2-7)'), 'Mixed [3]');
+eq('a "mixed" format is not a mix', dg('NLH', 'Mixed-Max NLH'), 'NLH [0]');
+eq('a mixed title that names no games keeps the variant', dg('2-7 Triple Draw', 'Mixed Game Championship - Flight C (Limit Triple Draw)'), '2-7 TD [0]');
+eq('getGamePills: a mix gives its games', getGamePills('Mixed', '9-Game Mixed Championship').join(','), 'NLH,PLO,2-7 TD,LHE,O8,Razz,Stud Hi,Stud 8,NL 2-7 SD');
+eq('getGamePills: a single game gives itself', getGamePills('2-7 Triple Draw', 'x').join(','), '2-7 TD');
+eq('getGamePills: an unspelled mix gives its name', getGamePills('Circus Mix', 'Super Circus Mix').join(','), 'Circus Mix');
+eq('getGamePills: no variant', getGamePills('', 'Main Event').length, 0);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -139,6 +139,9 @@ export const MULTI_GAME_MAP = {
     'O8', 'L 2-7 TD', 'A-5 TD', 'Badugi', 'Badeucy', 'Badacy',
     'NL 2-7 SD', 'PL 5CD Hi', '2-7 Razz'
   ],
+  // Named by the WSOP event title rather than by game_variant (which is just 'Mixed').
+  'Poker Players Championship': ['NLH', 'PLO', '2-7 TD', 'LHE', 'O8', 'Razz', 'Stud Hi', 'Stud 8', 'NL 2-7 SD', 'PLO8'],
+  'Mixed Big Bet':    ['NLH', 'PLO', 'PLO8', 'Big O', 'PL 2-7 TD', 'NL 2-7 SD', 'PL 5CD Hi'],
 };
 
 export const PILL_DISPLAY = {
@@ -147,23 +150,78 @@ export const PILL_DISPLAY = {
 };
 export function pillName(g) { return PILL_DISPLAY[g] || g; }
 
-export function getGamePills(gameVariant, eventName) {
-  if (!gameVariant) return [];
-  if (MULTI_GAME_MAP[gameVariant]) return MULTI_GAME_MAP[gameVariant];
-  if (gameVariant === 'Mixed' && eventName) {
-    const base = eventName.replace(/ - Day \d+$/, '').replace(/ - Flight [A-Z]$/, '');
-    if (/Poker Players Championship/i.test(base))
-      return ['NLH', 'PLO', '2-7 TD', 'LHE', 'O8', 'Razz', 'Stud Hi', 'Stud 8', 'NL 2-7 SD', 'PLO8'];
-    if (/Mixed Big Bet/i.test(base))
-      return ['NLH', 'PLO', 'PLO8', 'Big O', 'PL 2-7 TD', 'NL 2-7 SD', 'PL 5CD Hi'];
-    const colonMatch = base.match(/Mixed:\s*(.+)/i);
-    if (colonMatch) return colonMatch[1].split(/,\s*/).map(s => s.trim()).filter(Boolean);
-    const slashMatch = base.match(/^([\w']+)\s*\/\s*([\w']+)/);
-    if (slashMatch) return [slashMatch[1], slashMatch[2]];
-    const mixedPrefix = base.match(/^Mixed\s+(.+)/i);
-    if (mixedPrefix) return mixedPrefix[1].split(/,\s*/).map(s => pillName(s.trim())).filter(Boolean);
+/* ── What game is this event? ONE answer for every shape the feeds send ──
+   describeGame(game_variant, event_name) -> { label, games } | null
+     label  the name to show: the mix's own name ("9-Game Mix", "HORSE", "Dealer's Choice")
+            or the single game ("PLO", "NL 2-7 SD")
+     games  the mix's component games, [] for a single game or a mix nobody has spelled out
+
+   The feeds describe one mix many ways. game_variant may name it ('9-Game Mix'), or say only
+   'Mixed' and leave the event title to name it ("9-Game Mixed Championship", "Mixed 8-Game
+   Championship High Roller", "The Sunday Mixer (9-game)", "T.O.R.S.E.", "Big Bet Mixed Dealers
+   Choice"), or list the games ("Mixed Triple Draw (2-7, A-5, Badugi)", "NLH/PLO Mix"). So the
+   title is normalised once (dotted acronyms closed up, "N Game"/"N-game Mixed" -> "N-Game Mix",
+   "Dealers" -> "Dealer's") and then matched against MULTI_GAME_MAP's own keys, longest first —
+   a mix added to the map is recognised in titles with no new code. An N-game mix the map does
+   not know ("7-Game Mix") keeps its name with whatever games the title lists. The old version
+   special-cased a handful of titles and, for everything else, split the title after "Mixed" on
+   commas — so "9-Game Mixed Championship" rendered as plain "MIXED" and "Mixed 8-Game
+   Championship High Roller - Final" became one 40-character "game". */
+const MIX_KEYS = Object.keys(MULTI_GAME_MAP).sort((a, b) => b.length - a.length);
+/* Word-bounded, case-insensitive. A leading group rather than a lookbehind, which iOS 15's
+   JavaScriptCore rejects at parse time. */
+const MIX_KEY_RE = Object.fromEntries(MIX_KEYS.map(k =>
+  [k, new RegExp("(^|[^\\w'])" + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "(?![\\w'])", 'i')]));
+
+function canonMixTitle(name) {
+  return String(name || '')
+    .replace(/[‘’]/g, "'")
+    .replace(/\b(?:[A-Za-z]\.){2,}[A-Za-z]?\.?/g, m => m.replace(/\./g, ''))     // H.O.R.S.E. -> HORSE
+    .replace(/\b(\d{1,2})\s*-?\s*games?\b(?:\s+mix(?:ed)?\b)?/gi, '$1-Game Mix') // 9 Game Mixed -> 9-Game Mix
+    .replace(/\bdealers\b/gi, "Dealer's")
+    .replace(/\bmixed\s+(?=dealer's choice)/gi, '');                             // Big Bet Mixed Dealer's Choice
+}
+
+/* The games a title spells out: "Mixed: A, B", "(A, B, C)", "A / B / C" or "A/B Mix". */
+function listedGames(name) {
+  const s = String(name || '');
+  const split = t => t.split(/\s*[,/]\s*/).map(x => pillName(x.trim())).filter(Boolean);
+  for (const re of [/mixed:\s*(.+)$/i, /\(([^()]*[,/][^()]*)\)/, /^(?:mixed\s+)?([^():,]+?\/[^():,]+?)(?:\s+mix(?:ed)?)?$/i]) {
+    const m = s.match(re);
+    if (m) { const list = split(m[1]); if (list.length >= 2) return list; }
   }
-  return [pillName(gameVariant)];
+  return [];
+}
+
+export function describeGame(gameVariant, eventName) {
+  const variant = String(gameVariant || '').trim();
+  if (MULTI_GAME_MAP[variant]) return { label: variant, games: MULTI_GAME_MAP[variant] };
+  // The variant is a mix (or no answer at all) — the title gets to say which one.
+  const mixVariant = !variant || variant === 'Mixed' || /mix|choice|\//i.test(variant);
+  const title = canonMixTitle(eventName);
+  // A title that declares an N-game mix outranks a single-game variant ("10 Game Mix (HORSE-NLH-
+  // PLO-...)" is stored as PLO).
+  const nGame = title.match(/\b(\d{1,2})-Game Mix\b/);
+  // So does one that calls itself a mix: "Mixed Triple Draw (A-5, 2-7, Badugi)" is stored as
+  // 2-7 Triple Draw. It only wins if it names or lists the games — "Mixed-Max NLH" stays NLH.
+  const titleSaysMix = /\bmix(ed)?\b/i.test(title);
+  if (mixVariant || nGame || titleSaysMix) {
+    const key = MIX_KEYS.find(k => MIX_KEY_RE[k].test(title));
+    if (key) return { label: key, games: MULTI_GAME_MAP[key] };
+    if (nGame) return { label: `${nGame[1]}-Game Mix`, games: listedGames(eventName) };
+    const games = listedGames(eventName);
+    const ownName = mixVariant && variant && variant !== 'Mixed' ? variant : 'Mixed';
+    if (games.length) return { label: ownName, games };
+    if (mixVariant) return variant ? { label: ownName, games: [] } : null;
+  }
+  return { label: pillName(variant), games: [] };
+}
+
+/* The games to offer for an event: the component games of a mix, else its one game. */
+export function getGamePills(gameVariant, eventName) {
+  const d = describeGame(gameVariant, eventName);
+  if (!d) return [];
+  return d.games.length ? d.games : [d.label];
 }
 
 export const HAND_CONFIG_DEFAULT = { heroCards: 2, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AKhd', boardPlaceholder: 'QJ6hch' };
@@ -697,6 +755,15 @@ export function shortEventNumber(v) {
      a comma-separated LIST of them: 333 live rows are combined-flight events
      numbered "2, 6, 8, 10", and the list is exactly what that row covers. */
   return /^\d{1,8}[A-Za-z]{0,2}(?:\s*,\s*\d{1,8}[A-Za-z]{0,2})*$/.test(base) ? base : null;
+}
+
+/* Width, in whole g, of the event-number pill for a label such as "#13". 4g holds "#" plus
+   four characters at --fs-xs bold condensed (at most 0.6g each: tabular figures 0.48g,
+   capitals to 0.66g) inside 0.5g of padding a side; longer labels — the comma-listed
+   combined flights — grow a whole g at a time, so both pill edges stay on g lines. */
+export function eventPillWidthG(label) {
+  // In tenths of a g, so 5 x 0.6 + 1 is exactly 4 rather than 4.0000000000000004 -> 5.
+  return Math.max(4, Math.ceil((String(label || '').length * 6 + 10) / 10));
 }
 
 
