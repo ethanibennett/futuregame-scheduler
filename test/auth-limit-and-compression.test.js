@@ -349,6 +349,12 @@ async function integration() {
     assert.strictEqual(login.status, 200, `login for token: ${login.status}`);
     const token = login.json.token;
     const auth = { Authorization: `Bearer ${token}` };
+    // The SSE check below triggers a broadcast through the field-size route, which is admin-only
+    // since 2026-10-08. Admin rights come from the username in a token the server signed; with
+    // this test's own secret the test can sign one for the same (real) account.
+    const jwtLib = require(path.join(ROOT, 'node_modules', 'jsonwebtoken'));
+    const me = jwtLib.decode(token);
+    const adminAuth = { Authorization: `Bearer ${jwtLib.sign({ id: me.id, username: 'ham' }, 'test-secret-not-for-prod', { expiresIn: '5m' })}` };
 
     // An explicit window, because the default is "upcoming only" and the seeded
     // sample schedule (WSOP 2026) is in the past.
@@ -393,7 +399,7 @@ async function integration() {
           });
           // Headers are flushed immediately; fire a broadcast once we're subscribed.
           setTimeout(() => {
-            request('PUT', '/api/tournaments/1/total-entries', { body: { totalEntries: 1234 }, headers: auth })
+            request('PUT', '/api/tournaments/1/total-entries', { body: { totalEntries: 1234 }, headers: adminAuth })
               .then((r) => { if (r.status !== 200) reject(new Error(`trigger ${r.status} ${r.buf}`)); }, reject);
           }, 200);
         });
