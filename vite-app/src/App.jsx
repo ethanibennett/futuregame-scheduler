@@ -3,7 +3,7 @@ import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
-import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, getDebugNow, setDebugNow } from './utils/utils.js';
+import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones, measureStickyStack } from './utils/milestones.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
@@ -485,11 +485,16 @@ export default function App() {
   // ── Data fetching ──
   const fetchTournaments = async () => {
     try {
+      // Venue coordinates ride alongside: the location filters run the moment the list lands,
+      // so they must be registered first. Plain fetch — the route is public, and a failure
+      // here costs only the server-placed venues, never the list (or the session).
+      const coordsP = fetch(`${API_URL}/venue-coords`).then(r => (r.ok ? r.json() : null)).catch(() => null);
       const res = await guardedFetch(`${API_URL}/tournaments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res) return;
       const data = await res.json();
+      registerVenueCoords(await coordsP);
       // Before render: every start time and zone label reads the zone the row declares.
       registerRowTimezones(Array.isArray(data) ? data : []);
       setTournaments(Array.isArray(data) ? data : []);

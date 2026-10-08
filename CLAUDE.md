@@ -66,9 +66,15 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   marked `city-level` are rooms OSM doesn't map by name and sit on the town centre — fine
   at the 100-mile default, replace if a tight radius matters. Each entry carries a `region`
   (US state or country code) because `LOCATION_REGIONS` tests states, not bounding boxes: a
-  rectangle around Texas also catches Bossier City LA and Hard Rock Tulsa OK. **A new
-  series needs a `VENUE_MAP` entry to be locatable** — without one it has no coordinate and
-  both location filters exclude it.
+  rectangle around Texas also catches Bossier City LA and Hard Rock Tulsa OK. Those curated
+  maps win; behind them, **every live venue is placed from data** by the server
+  (`resolveVenueCoords`, table `venue_coords`, `GET /api/venue-coords` → `registerVenueCoords`):
+  the feed row's own `venue_lat/venue_lng`, else the room's PokerAtlas coordinates by exact
+  `property` name (`data/venue-directory.json`, regenerated read-only from the watcher DB by
+  `scripts/build-venue-directory.js`), else Nominatim for the room + town the source named.
+  Never a bare room name or a series title. Non-US regions whose ISO code is also a US state
+  code use the country name (`PANAMA`, `MALTA`), or they land in "Northeast US". The watcher
+  side (per-row coordinates) is `docs/venue-coords-watcher.diff`; see `docs/venue-coords.md`.
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).

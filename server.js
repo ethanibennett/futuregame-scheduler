@@ -1500,6 +1500,19 @@ async function initDatabase() {
     color TEXT NOT NULL
   )`);
 
+  // ── Venue coordinates resolved from source data (see resolveVenueCoords) ──
+  // Keyed by the tournaments.venue string — the one thing every row has. lat NULL records a miss
+  // (detail says why) so a venue the sources cannot place is not re-geocoded every hour.
+  db.run(`CREATE TABLE IF NOT EXISTS venue_coords (
+    venue TEXT PRIMARY KEY,
+    lat REAL,
+    lng REAL,
+    region TEXT,
+    source TEXT NOT NULL,
+    detail TEXT,
+    updated_at TEXT NOT NULL
+  )`);
+
   // ── Data migrations (for updating existing persistent-disk DBs) ──
   db.run(`CREATE TABLE IF NOT EXISTS _applied_migrations (
     name TEXT PRIMARY KEY,
@@ -3259,6 +3272,8 @@ async function initDatabase() {
   // watcher's :15 emits without needing a restart.
   await ingestMttFeed();
   await ingestOnlineFeed();
+  // Place the live venues (background: a first pass geocodes, and boot must not wait on it).
+  resolveVenueCoords('VenueCoords:boot').catch((e) => console.error('[VenueCoords] boot pass failed:', e.message));
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tracking_entries (
@@ -10650,6 +10665,173 @@ function supersedeBridges(feedVenueSet, label) {
   return removed;
 }
 
+// ── Venue coordinates (lib/venue-coords.js) ──
+// The location filters hide any event whose venue has no coordinate, and the client's curated
+// maps only know rooms someone typed in — 32 of 92 live venues (423 events) on 2026-10-08. This
+// places every live venue from what its source publishes: the row's own venue_lat/venue_lng
+// when the watcher sends them, else the room's PokerAtlas directory entry, else Nominatim for
+// the room and town the source named. The client consults the result only AFTER its curated
+// maps (GET /api/venue-coords → registerVenueCoords).
+const venueCoordsLib = require('./lib/venue-coords');
+let venueDirectory = null;
+function getVenueDirectory() {
+  if (venueDirectory) return venueDirectory;
+  try {
+    const json = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'data', 'venue-directory.json'), 'utf8'));
+    venueDirectory = venueCoordsLib.loadVenueDirectory(json);
+  } catch (e) {
+    console.error('[VenueCoords] venue directory unavailable:', e.message);
+    venueDirectory = venueCoordsLib.loadVenueDirectory(null);
+  }
+  return venueDirectory;
+}
+const venueGeocoder = venueCoordsLib.makeNominatim({ userAgent: 'FutureGame-PokerScheduler/1.0' });
+
+// Per-venue location hints carried by feed rows, refreshed by every ingest on BOTH write paths
+// (ingestFeed and the feed-sync receiver). The watcher does not send these yet; when it does
+// (docs/venue-coords.md) they outrank everything else.
+const feedVenueHints = new Map();
+function noteVenueHints(rows) {
+  for (const t of rows || []) {
+    if (!t || !t.venue || t.is_online) continue;
+    const lat = t.venue_lat != null ? Number(t.venue_lat) : null;
+    const lng = t.venue_lng != null ? Number(t.venue_lng) : null;
+    const location = typeof t.venue_location === 'string' && t.venue_location.trim() ? t.venue_location.trim().slice(0, 200) : null;
+    const country = typeof t.venue_country === 'string' && /^[A-Za-z]{2}$/.test(t.venue_country) ? t.venue_country.toUpperCase() : null;
+    const region = typeof t.venue_region === 'string' && /^[A-Z][A-Z -]{1,19}$/.test(t.venue_region) ? t.venue_region : null;
+    const hasCoords = venueCoordsLib.validLatLng(lat, lng);
+    if (!hasCoords && !location && !country) continue;
+    feedVenueHints.set(t.venue, { lat: hasCoords ? lat : null, lng: hasCoords ? lng : null, location, country, region });
+  }
+}
+
+function readVenueCoordsRows(venues) {
+  const out = new Map();
+  const stmt = db.prepare('SELECT * FROM venue_coords');
+  while (stmt.step()) {
+    const r = stmt.getAsObject();
+    if (!venues || venues.has(r.venue)) out.set(r.venue, r);
+  }
+  stmt.free();
+  return out;
+}
+
+function writeVenueCoord(venue, r) {
+  db.run(
+    `INSERT INTO venue_coords (venue, lat, lng, region, source, detail, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(venue) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, region = excluded.region,
+       source = excluded.source, detail = excluded.detail, updated_at = excluded.updated_at`,
+    [venue, r.lat, r.lng, r.region || null, r.source, r.detail || null, new Date().toISOString()]
+  );
+}
+
+// Upcoming live venues (with their most common property), the set the filters can show.
+function liveVenuesForCoords() {
+  const cutoff = Date.now() - 3 * 86400000; // same grace as GET /api/tournaments
+  const stmt = db.prepare(
+    `SELECT venue, property, date FROM tournaments
+      WHERE venue != 'Personal' AND COALESCE(is_online, 0) = 0`
+  );
+  const byVenue = new Map();
+  while (stmt.step()) {
+    const r = stmt.getAsObject();
+    const ms = Date.parse(r.date);
+    if (!Number.isNaN(ms) && ms < cutoff) continue;
+    const e = byVenue.get(r.venue) || byVenue.set(r.venue, { props: new Map() }).get(r.venue);
+    if (r.property) e.props.set(r.property, (e.props.get(r.property) || 0) + 1);
+  }
+  stmt.free();
+  const out = new Map();
+  for (const [venue, e] of byVenue) {
+    const property = [...e.props].sort((a, b) => b[1] - a[1])[0];
+    out.set(venue, property ? property[0] : null);
+  }
+  return out;
+}
+
+// One pass at a time; a call during a pass schedules exactly one more after it.
+let venueCoordsRunning = null, venueCoordsAgain = false;
+async function resolveVenueCoords(label = 'VenueCoords', { geocode = true } = {}) {
+  if (venueCoordsRunning) { venueCoordsAgain = true; return venueCoordsRunning; }
+  venueCoordsRunning = (async () => {
+    const venues = liveVenuesForCoords();
+    const existing = readVenueCoordsRows(new Set(venues.keys()));
+    const directory = getVenueDirectory();
+    const tally = {};
+    const misses = [];
+    let changed = 0;
+    for (const [venue, property] of venues) {
+      const prev = existing.get(venue) || null;
+      let r;
+      try {
+        r = await venueCoordsLib.resolveVenue(
+          { venue, property, hint: feedVenueHints.get(venue) },
+          { directory, geocoder: geocode ? venueGeocoder : null, existing: prev }
+        );
+      } catch (e) {
+        console.error(`[${label}] ${venue}: ${e.message}`);
+        continue;
+      }
+      // A pass that could not geocode must not overwrite a placed venue with a miss.
+      if (r.lat == null && prev && prev.lat != null) { tally.kept = (tally.kept || 0) + 1; continue; }
+      tally[r.source] = (tally[r.source] || 0) + 1;
+      if (r.lat == null) misses.push(`${venue} (${r.detail})`);
+      if (r.cached) continue;
+      const same = prev && prev.lat === r.lat && prev.lng === r.lng && (prev.region || null) === (r.region || null) &&
+        prev.source === r.source && (prev.detail || null) === (r.detail || null);
+      if (same) continue;
+      writeVenueCoord(venue, r);
+      changed++;
+    }
+    if (changed) await saveDatabase();
+    console.log(`[${label}] ${venues.size} live venue(s): ${Object.entries(tally).map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}` +
+      `${changed ? ` — ${changed} updated` : ''}`);
+    if (misses.length) console.log(`[${label}] unplaced: ${misses.join('; ')}`);
+    if (changed) broadcastToAll('schedule-refetch', { source: 'venue-coords', changed });
+    return { venues: venues.size, changed, misses };
+  })();
+  try { return await venueCoordsRunning; } finally {
+    venueCoordsRunning = null;
+    if (venueCoordsAgain) { venueCoordsAgain = false; resolveVenueCoords(label, { geocode }).catch(() => {}); }
+  }
+}
+
+// Coordinates production receives with the feed push — it runs the same resolver, but this way
+// it does not repeat this box's geocoding, and a venue placed here is placed there.
+function applyPushedVenueCoords(map) {
+  if (!map || typeof map !== 'object') return 0;
+  let n = 0;
+  for (const [venue, c] of Object.entries(map)) {
+    if (!venue || !c || typeof c !== 'object') continue;
+    const lat = Number(c.lat), lng = Number(c.lng);
+    if (!venueCoordsLib.validLatLng(lat, lng)) continue;
+    const region = typeof c.region === 'string' && c.region.length <= 20 ? c.region : null;
+    const source = typeof c.source === 'string' && c.source.length <= 32 ? c.source : 'push';
+    const detail = typeof c.detail === 'string' ? c.detail.slice(0, 300) : null;
+    writeVenueCoord(venue, { lat, lng, region, source, detail });
+    n++;
+  }
+  return n;
+}
+
+// Public: venue → { lat, lng, region } for every placed venue. ~100 entries, a few KB; the client
+// consults it only after its curated maps. Public like /api/venue-colors — these are casinos'
+// published locations, and a shared-schedule page has no token.
+app.get('/api/venue-coords', (req, res) => {
+  try {
+    const out = {};
+    for (const [venue, r] of readVenueCoordsRows(null)) {
+      if (r.lat == null) continue;
+      out[venue] = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+    }
+    res.json(out);
+  } catch (err) {
+    console.error('[VenueCoords] read failed:', err.message);
+    res.json({});
+  }
+});
+
 async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT feed', 'MTT'); }
 // Online tournaments arrive the same way the live ones do, from a sibling watcher, but under
 // their own tag and directory so the two can never prune each other.
@@ -10688,6 +10870,9 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
       const filePath = path.join(__dirname, feedDir, entry.file);
       if (!fs.existsSync(filePath)) continue;
       const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      // Location fields the row may carry (venue_lat/venue_lng/venue_location/venue_country) feed
+      // the venue-coordinate resolver, not a tournaments column — the receiver does the same.
+      noteVenueHints(rows);
       for (const t of rows) {
         try {
         const seen = seenByVenue.get(t.venue) || seenByVenue.set(t.venue, new Set()).get(t.venue);
@@ -10790,10 +10975,16 @@ async function pushMttFeedToProd() {
     // feed rows outside it, so a series ending here also ends there — without it, prod
     // accumulated series the watcher had long dropped.
     const feedVenues = [...new Set(rows.map(r => r.venue))];
+    // Where each venue is, as resolved here (resolveVenueCoords). Coordinates are not a
+    // tournaments column, so SELECT * above does not carry them.
+    const venueCoords = {};
+    for (const [venue, c] of readVenueCoordsRows(new Set(feedVenues))) {
+      if (c.lat != null) venueCoords[venue] = { lat: c.lat, lng: c.lng, region: c.region, source: c.source, detail: c.detail };
+    }
     const res = await fetch(`${FEED_SYNC_BASE_URL}/api/tournaments/feed-sync/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tournaments: rows, feedVenues })
+      body: JSON.stringify({ tournaments: rows, feedVenues, venueCoords })
     });
     if (!res.ok) { console.log('[MTT feed] prod push failed:', res.status); return; }
     const result = await res.json();
@@ -12808,13 +12999,20 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
   if (!expected || req.params.token !== expected) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { tournaments, feedVenues } = req.body;
+  const { tournaments, feedVenues, venueCoords } = req.body;
   if (!tournaments || !Array.isArray(tournaments)) {
     return res.status(400).json({ error: 'Expected { tournaments: [...] }' });
   }
 
   try {
     const result = await upsertTournamentsByStableId(tournaments, 'mtt-feed');
+    // Venue coordinates: the pusher's resolved map first, then any per-row location fields, then
+    // this side's own resolver for whatever is still unplaced (in the background — Nominatim is
+    // rate-limited and the push must not wait on it).
+    noteVenueHints(tournaments);
+    const pushedCoords = applyPushedVenueCoords(venueCoords);
+    if (pushedCoords) await saveDatabase();
+    resolveVenueCoords('VenueCoords:feed-sync').catch((e) => console.error('[VenueCoords] feed-sync pass failed:', e.message));
     // Retire any hand-added bridge series the feed now carries (keyed on the pushed rows' venues),
     // so a manually-imported series stops double-listing once the watcher owns it.
     const supersededBridge = supersedeBridges(new Set(tournaments.map(t => t.venue)), 'FeedSync');
@@ -13261,6 +13459,8 @@ initDatabase().then(() => {
       cron.schedule('20 * * * *', async () => {
         await ingestMttFeed();
         await ingestOnlineFeed();
+        // Before the push, so the push carries this hour's coordinates.
+        await resolveVenueCoords('VenueCoords').catch((e) => console.error('[VenueCoords] pass failed:', e.message));
         await pushMttFeedToProd();
       }, { timezone: CONSOLE_TZ });
     } catch (err) {

@@ -1,0 +1,197 @@
+diff --git a/src/db/read.ts b/src/db/read.ts
+index 7c0111d..5c7f368 100644
+--- a/src/db/read.ts
++++ b/src/db/read.ts
+@@ -68,6 +68,9 @@ export function readRawBody(db: Database.Database, rawResponseId: number): strin
+   return blob ? gunzipSync(blob.bodyGz).toString('utf8') : null;
+ }
+ 
++export interface VenueGeo { lat: number; lng: number; cityState: string | null }
++export interface WsopStopVenue { property: string; location: string; country: string }
++
+ export interface Reader {
+   db: Database.Database;
+   // Latest snapshot per source_key (the current view of the forward schedule), filterable.
+@@ -82,6 +85,14 @@ export interface Reader {
+   // venue_id -> the venue's name from the venue directory (latest observation wins). The same
+   // room-name source for non-series dailies, which have no series_directory row.
+   venueNames(): Map<string, string>;
++  // venue_id -> where PokerAtlas says the venue is. /api/venues carries latitude/longitude for
++  // every venue, but venue_directory keeps only id/name/url/city_state, so this reads them from the
++  // stored raw payloads (newest first, unioned — a partial page covers a different subset). The
++  // scheduler's location filters hide any event whose venue it cannot place.
++  venueGeo(): Map<string, VenueGeo>;
++  // WSOP.com circuit-stop slug -> the room, town and ISO country its page names. The adapter emits
++  // these stops with no property, so the page is the only place the room is stated.
++  wsopStopVenues(): Map<string, WsopStopVenue>;
+   health(): unknown;
+   close(): void;
+ }
+@@ -155,6 +166,70 @@ export function createReader(dbPath: string): Reader {
+         .all() as { venueId: string; name: string }[];
+       return new Map(rows.map((r) => [r.venueId, r.name]));
+     },
++    venueGeo() {
++      const out = new Map<string, VenueGeo>();
++      const rows = db
++        .prepare(
++          `SELECT body, body_hash AS bodyHash, MAX(ts) AS ts FROM raw_response
++            WHERE source = 'pokeratlas-schedule' AND venue_id = 'venue-directory' AND status = 200
++            GROUP BY body_hash ORDER BY ts DESC LIMIT 40`,
++        )
++        .all() as { body: string | null; bodyHash: string | null }[];
++      for (const r of rows) {
++        let body = r.body;
++        if (body == null && r.bodyHash) {
++          const blob = db.prepare('SELECT body_gz AS bodyGz FROM raw_blob WHERE hash = ?').get(r.bodyHash) as
++            | { bodyGz: Buffer }
++            | undefined;
++          body = blob ? gunzipSync(blob.bodyGz).toString('utf8') : null;
++        }
++        if (!body) continue;
++        let venues: { id?: unknown; latitude?: unknown; longitude?: unknown; city_state?: unknown }[] = [];
++        try {
++          venues = (JSON.parse(body) as { venues?: typeof venues }).venues ?? [];
++        } catch {
++          continue;
++        }
++        for (const v of venues) {
++          if (v.id == null || out.has(String(v.id))) continue; // newest payload wins
++          const lat = Number(v.latitude);
++          const lng = Number(v.longitude);
++          if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) continue;
++          const cs = typeof v.city_state === 'string' && v.city_state.trim() ? v.city_state.trim() : null;
++          out.set(String(v.id), { lat, lng, cityState: cs });
++        }
++      }
++      return out;
++    },
++    wsopStopVenues() {
++      const out = new Map<string, WsopStopVenue>();
++      const rows = db
++        .prepare(
++          `SELECT r.venue_id AS slug, r.body, r.body_hash AS bodyHash FROM raw_response r
++             JOIN (SELECT venue_id, MAX(ts) AS ts FROM raw_response
++                    WHERE source = 'wsop-circuit' AND status = 200 GROUP BY venue_id) m
++               ON m.venue_id = r.venue_id AND m.ts = r.ts
++            WHERE r.source = 'wsop-circuit'`,
++        )
++        .all() as { slug: string; body: string | null; bodyHash: string | null }[];
++      // The page's Nuxt payload: …,title,brandName,countryId,venueTitle,venueLocation,startDate,endDate,tz
++      const NUXT =
++        /"[^"]*","[A-Z]+","([A-Z]{2})","([^"]*)","([^"]*)","\d{4}-\d\d-\d\d","\d{4}-\d\d-\d\d","[^"]*"/;
++      const clean = (s: string): string => s.replace(/\\u0026/g, '&').replace(/&amp;/g, '&').trim();
++      for (const r of rows) {
++        let body = r.body;
++        if (body == null && r.bodyHash) {
++          const blob = db.prepare('SELECT body_gz AS bodyGz FROM raw_blob WHERE hash = ?').get(r.bodyHash) as
++            | { bodyGz: Buffer }
++            | undefined;
++          body = blob ? gunzipSync(blob.bodyGz).toString('utf8') : null;
++        }
++        const m = body?.match(NUXT);
++        if (!m || !m[2] || !m[3]) continue;
++        out.set(r.slug, { country: m[1]!, property: clean(m[2]), location: clean(m[3]) });
++      }
++      return out;
++    },
+     health() {
+       const overall = db
+         .prepare(
+diff --git a/src/emit/snbwsop.ts b/src/emit/snbwsop.ts
+index 64c007d..8719f7d 100644
+--- a/src/emit/snbwsop.ts
++++ b/src/emit/snbwsop.ts
+@@ -78,8 +78,25 @@ interface SnbwsopRow {
+   // The IANA zone `date` and `time` are written in: the room's own (PokerAtlas time_zone_name), or
+   // America/New_York where the source names none.
+   timezone: string;
++  // Where the room is, so the scheduler's location filters can place it (an unplaced venue is
++  // hidden by both). venue_lat/venue_lng are PokerAtlas's own coordinates (/api/venues) — never a
++  // geocode; venue_location is the town as the source states it ("Durant, OK" / "Panama City,
++  // Panama") and venue_country an ISO code where the source gives one. The scheduler geocodes
++  // room + town only when no coordinates came. Null when the source says nothing.
++  venue_lat: number | null;
++  venue_lng: number | null;
++  venue_location: string | null;
++  venue_country: string | null;
+ }
+ 
++interface RowGeo {
++  lat: number | null;
++  lng: number | null;
++  location: string | null;
++  country: string | null;
++}
++const NO_GEO: RowGeo = { lat: null, lng: null, location: null, country: null };
++
+ function kebab(s: string): string {
+   return s
+     .toLowerCase()
+@@ -110,6 +127,7 @@ function toSnbwsopRow(
+   structureUrl: string | null = null,
+   property: string | null = null,
+   site: string | null = null, // non-null marks the row ONLINE
++  geo: RowGeo = NO_GEO,
+ ): SnbwsopRow | null {
+   // In the ROOM's zone when PokerAtlas names it, Eastern otherwise; `timezone` below says which,
+   // so the scheduler never has to guess. event_number keeps its Eastern date key, so an event's
+@@ -177,6 +195,10 @@ function toSnbwsopRow(
+     site,
+     clock_ref: r.clockRef ?? null,
+     timezone: zone,
++    venue_lat: site ? null : geo.lat,
++    venue_lng: site ? null : geo.lng,
++    venue_location: site ? null : geo.location,
++    venue_country: site ? null : geo.country,
+   };
+ }
+ 
+@@ -202,12 +224,24 @@ function main(): void {
+   // (venue directory) for dailies and for series rows the directory hasn't named.
+   const seriesRooms = reader.seriesVenueNames();
+   const venueRooms = reader.venueNames();
++  // WSOP.com stops name their room on the page; the series directory never sees them.
++  const wsopStops = reader.wsopStopVenues();
+   const roomFor = (r: ScheduleRecord): string | null =>
+     (r.seriesId ? seriesRooms.get(r.seriesId) : undefined) ??
+     venueRooms.get(r.venueId) ??
+     // Online + venue-site series venue_ids have no PokerAtlas directory presence; config-declared.
+     onlineRoomFor(r.venueId) ??
+-    venueSeriesRoomFor(r.venueId);
++    venueSeriesRoomFor(r.venueId) ??
++    (r.source === 'wsop-circuit' ? wsopStops.get(r.venueId)?.property ?? null : null);
++  // Where the room is: PokerAtlas coordinates by venue_id, else the town a WSOP.com page names.
++  const venueGeo = reader.venueGeo();
++  const geoFor = (r: ScheduleRecord): RowGeo => {
++    const g = venueGeo.get(r.venueId);
++    if (g) return { lat: g.lat, lng: g.lng, location: g.cityState, country: null };
++    const stop = r.source === 'wsop-circuit' ? wsopStops.get(r.venueId) : undefined;
++    if (stop) return { lat: null, lng: null, location: stop.location, country: stop.country };
++    return NO_GEO;
++  };
+   const feedDir = join(SNBWSOP_DIR, FEED_SUBDIR);
+   mkdirSync(feedDir, { recursive: true });
+ 
+@@ -263,7 +297,9 @@ function main(): void {
+   }
+ 
+   for (const { venue, slug, site, rows } of bySeries.values()) {
+-    const out = rows.map((r) => toSnbwsopRow(r, venue, structureFor(r), roomFor(r), site)).filter((x): x is SnbwsopRow => x !== null);
++    const out = rows
++      .map((r) => toSnbwsopRow(r, venue, structureFor(r), roomFor(r), site, geoFor(r)))
++      .filter((x): x is SnbwsopRow => x !== null);
+     if (out.length === 0) continue;
+     out.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+     const file = `${slug}.json`;
+@@ -283,7 +319,9 @@ function main(): void {
+     for (const [venueSlug, rows] of byVenueSlug.entries()) {
+       const label = rows[0] ? `${venueSlug} dailies` : venueSlug;
+       const venue = `${venueSlug}-dailies`;
+-      const out = rows.map((r) => toSnbwsopRow(r, venue, structureFor(r), roomFor(r))).filter((x): x is SnbwsopRow => x !== null);
++      const out = rows
++        .map((r) => toSnbwsopRow(r, venue, structureFor(r), roomFor(r), null, geoFor(r)))
++        .filter((x): x is SnbwsopRow => x !== null);
+       if (out.length === 0) continue;
+       out.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+       const file = `${venue}.json`;

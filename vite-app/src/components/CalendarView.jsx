@@ -6,9 +6,9 @@ import {
   getVenueInfo, normaliseDate, parseDateTime, parseTournamentTime, parseDateTimeInTz,
   getToday, getNow, fmtShortDate, addDays, daysBetween,
   isBraceletEvent, extractConditions, detectConflicts, findClosestFlight,
-  haptic, VENUE_MAP, getVenueBrandColor, getVenueCoords, haversineDistance,
-  VENUE_TO_SERIES, LOCATION_REGIONS,
-  isSideEvent, isOnline, passesSiteRule,
+  haptic, VENUE_MAP, getVenueBrandColor,
+  VENUE_TO_SERIES,
+  isSideEvent, isOnline, passesSiteRule, matchesLocation,
 } from '../utils/utils.js';
 import { isSiteAvailable } from '../utils/online-sites.js';
 import { readLocalLocation, writeLocalLocation, pushServerLocation,
@@ -826,17 +826,9 @@ export default function CalendarView({ token, allTournaments, mySchedule, onTogg
           // Per-room rules — the SAME function matchesOnline calls.
           if (!passesSiteRule(t, filters.siteRules && t.site ? filters.siteRules[t.site] : null)) return false;
         }
-        if (!isOnline(t) && filters.maxDistance && filters.userLocation) {
-          const coords = getVenueCoords(t.venue, t.property);
-          if (!coords) return false;
-          const dist = haversineDistance(filters.userLocation.lat, filters.userLocation.lng, coords.lat, coords.lng);
-          if (dist > Number(filters.maxDistance)) return false;
-        }
-        if (!isOnline(t) && filters.locationRegion) {
-          const coords = getVenueCoords(t.venue, t.property);
-          const regionDef = typeof LOCATION_REGIONS !== 'undefined' && LOCATION_REGIONS[filters.locationRegion];
-          if (regionDef) { if (!coords || !regionDef.test(coords)) return false; }
-        }
+        // Radius and region: the list's own predicate, so the calendar and the list can never
+        // disagree about where a venue is (it abstains for online events, handled above).
+        if (!matchesLocation(t, filters)) return false;
         {
           const specialActive = filters.bountyOnly || filters.mysteryBountyOnly || filters.headsUpOnly || filters.tagTeamOnly || filters.employeesOnly || filters.ladiesOnly || filters.seniorsOnly;
           if (specialActive) {

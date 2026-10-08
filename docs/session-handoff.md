@@ -483,6 +483,12 @@ again. If builds break and no push arrives, check `pm2 list` first.
    credential store". Worked around with `gh auth login --insecure-storage` plus
    `gh auth setup-git`, which stores the token in plaintext in `hosts.yml` — fine,
    but a downgrade. Repairing the store itself is a Windows-side job.
+7. **Apply the watcher's venue-coordinate patch** (`docs/venue-coords-watcher.diff`,
+   in mtt-series-watcher, then `npm run emit`). The scheduler already places every
+   live venue from `data/venue-directory.json` + Nominatim (2026-10-08: 32 unplaced
+   venues → 0). Until the patch lands, a room that is NEW to PokerAtlas after the
+   snapshot stays unplaced until `node scripts/build-venue-directory.js` is re-run.
+   See `docs/venue-coords.md`.
 
 ---
 
