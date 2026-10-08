@@ -4,12 +4,49 @@ import Avatar from './Avatar.jsx';
 import { THEME_ORDER, THEME_LABEL, THEME_ICON, SERIF_LABEL, SERIF_STACK, SERIF_ORDER, setDebugNow, getDebugNow, haptic, getStoredSeasonLabel } from '../utils/utils.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
-import { SITE_URL } from '../utils/api.js';
+import { SITE_URL, API_URL } from '../utils/api.js';
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel }) {
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel, isGuest }) {
   const toast = useToast();
   const displayName = useDisplayName();
   const [debugInput, setDebugInput] = useState(getDebugNow());
+  // Account deletion (App Store 5.1.1(v)): an in-page confirmation, not a
+  // dialog, that only arms once the user has typed their own username.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTyped, setDeleteTyped] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const deleteArmed = !!username && deleteTyped.trim().replace(/^@/, '').toLowerCase() === String(username).toLowerCase();
+
+  const closeDelete = () => { setDeleteOpen(false); setDeleteTyped(''); setDeleteError(''); };
+  const confirmDelete = async (e) => {
+    if (e) e.preventDefault();
+    if (!deleteArmed || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError('');
+    try {
+      const res = await fetch(`${API_URL}/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: deleteTyped.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.deleted) {
+        setDeleteError(data.error || 'Could not delete the account. Please try again.');
+        setDeleteBusy(false);
+        return;
+      }
+      haptic(30);
+      if (toast?.success) toast.success('Your account has been deleted');
+      // The view stays mounted across sign-out, so leave nothing armed behind.
+      closeDelete();
+      setDeleteBusy(false);
+      onLogout();
+    } catch {
+      setDeleteError('Network error — nothing was deleted. Please try again.');
+      setDeleteBusy(false);
+    }
+  };
 
   const applyDebugTime = (val) => {
     setDebugInput(val);
@@ -195,6 +232,49 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               >Reset to real time</button>
             )}
           </div>
+        </div>
+      </div>
+      )}
+
+      {!isGuest && username && (
+      <div className="settings-section">
+        <div className="settings-section-label">Delete account</div>
+        <div className="settings-card">
+          {!deleteOpen ? (
+            <button className="settings-row-btn danger" onClick={() => setDeleteOpen(true)}>
+              Delete account
+            </button>
+          ) : (
+            <form className="settings-row settings-row--stack" onSubmit={confirmDelete}>
+              <span className="settings-row-label">Delete your account permanently?</span>
+              <p className="settings-help">
+                Your schedules, saved hands, results, staking records, buddies and the
+                groups you own are removed for good. This cannot be undone.
+              </p>
+              <p className="settings-help">Type <b>{username}</b> to confirm.</p>
+              <input
+                className="settings-debug-input"
+                value={deleteTyped}
+                onChange={e => setDeleteTyped(e.target.value)}
+                placeholder={username}
+                aria-label="Type your username to confirm"
+                autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                disabled={deleteBusy}
+              />
+              {deleteError && <p className="settings-help settings-help--danger" role="alert">{deleteError}</p>}
+              <div className="settings-inline-row">
+                <button type="button" className="btn btn-ghost btn-sm settings-btn" onClick={closeDelete} disabled={deleteBusy}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-sm settings-btn settings-btn--destroy" disabled={!deleteArmed || deleteBusy}>
+                  {deleteBusy ? 'Deleting…' : 'Delete account'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
       )}

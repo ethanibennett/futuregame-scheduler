@@ -134,7 +134,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     }
     console.log(`server up on scratch port ${port}, DB ${dbPath}`);
 
-    const token = jwt.sign({ id: 4242, username: 'sse-tester' }, JWT_SECRET, { expiresIn: '5m' });
+    // A real account: authenticateToken refuses a signed token whose user no longer
+    // exists (account deletion), so the test registers and logs in through the API.
+    const postJson = (p, body) => new Promise((resolve, reject) => {
+      const data = JSON.stringify(body);
+      const r = http.request({ host: '127.0.0.1', port, method: 'POST', path: p, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => {
+        let b = ''; res.setEncoding('utf8'); res.on('data', (c) => { b += c; }); res.on('end', () => resolve({ status: res.statusCode, body: b }));
+      });
+      r.on('error', reject); r.end(data);
+    });
+    const reg = await postJson('/api/register', { username: 'ssetester', email: 'sse-tester@x.test', password: 'sse-tester-pw-1', realName: 'Sse Tester' });
+    assert.strictEqual(reg.status, 201, 'register: ' + reg.body);
+    const login = await postJson('/api/login', { email: 'sse-tester@x.test', password: 'sse-tester-pw-1' });
+    assert.strictEqual(login.status, 200, 'login: ' + login.body);
+    const token = JSON.parse(login.body).token;
+    assert.ok(token, 'login returned a token');
 
     // No auth → no ticket.
     assert.strictEqual((await request(port, 'POST', '/api/events/ticket')).status, 401);

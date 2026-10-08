@@ -26,7 +26,8 @@
     "test:hilo": "node test/hilo-split-awards.mjs",
     "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js",
     "test:clocks": "node test/live-clocks.test.js",
-    "test:sse": "node test/sse-ticket.test.js"
+    "test:sse": "node test/sse-ticket.test.js",
+    "test:account": "node test/account-delete.test.js"
   },
   "keywords": [],
   "author": "",
