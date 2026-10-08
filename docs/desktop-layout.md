@@ -14,19 +14,23 @@ Code: `vite-app/src/hooks/useDesktopLayout.js` (the decision and the counts),
 ## 1. The breakpoint
 
 ```
-desktop  ⇔  (min-width: 1024px) and (min-aspect-ratio: 1/1)
+desktop  ⇔  (min-width: 1024px)
 ```
 
 - **1024** is the narrowest window that holds the rail and two phone canvases
   side by side: 10g + 37g + 37g = 84g = 976px at g = 11.62px, leaving room for
   scrollbars and window chrome.
-- **Landscape-ish** (at least as wide as tall), so a portrait tablet or a tall
-  narrow browser window stays on the phone column, which is the better use of a
-  tall canvas.
-- Anything that fails the query renders the phone layout. An iPhone can never
-  match it (932 CSS px is the widest landscape iPhone). An iPad in landscape and
-  the Mac Catalyst app with a wide window **will** match it. That is intended:
-  both are desktop-shaped.
+- **Any shape.** Width alone decides (owner decision 2026-10-08: the iPad and
+  Mac apps get the desktop layout). The first cut also required landscape, so a
+  portrait tablet stayed on the phone column; that clause is gone.
+- Anything narrower renders the phone layout. An iPhone can never match it
+  (932 CSS px is the widest landscape iPhone). Every iPad in landscape matches
+  (1133 mini … 1376 13-inch), and so does a 13-inch iPad in portrait (1024); the
+  smaller iPads in portrait (744–834) do not, because two 37g panes and the rail
+  need 976px at the frozen g. The iPad app allows landscape for exactly this
+  (`UISupportedInterfaceOrientations~ipad` in `ios/App/App/Info.plist`; iPhone
+  stays portrait-only). The Mac Catalyst app matches whenever its window is
+  wider than 1024 CSS px, which is about 790 screen points at the 0.77 scale.
 - The query is in px because media queries cannot read custom properties. It is
   the only px value the change adds, and it is a breakpoint, not a dimension.
 
@@ -305,8 +309,9 @@ read from **pixel ink** of the first glyph.
   pixel for pixel against master's build: all identical. The one exception is
   Settings, which differs only by the scratch servers' port number printed in
   the share link. Expanding and collapsing a card in Schedule and My Schedule
-  was also identical. The same holds for 800×900 and 1024×1366 (portrait), which
-  stay on the phone column.
+  was also identical. The same holds for 800×900, which stays on the
+  phone column. (1024×1366 portrait was also measured on the phone column; since
+  2026-10-08 it gets the desktop layout.)
 - **Desktop on grid** at 1024×768, 1440×900 and 1920×1080 (all three
   `ALL ON GRID` apart from the inherited item below):
   - rail and panes at whole g: 10 / 37 / 37 / 37, and 64 at 1920

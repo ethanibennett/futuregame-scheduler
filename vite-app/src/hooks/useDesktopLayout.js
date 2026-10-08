@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 /*
  * The desktop layout decision, in one place (docs/desktop-layout.md).
  *
- * Desktop = a window at least 1024 CSS px wide AND at least as wide as it is
- * tall. Everything else (every phone, the iOS app, a narrow or portrait browser
- * window) gets the phone layout, untouched.
+ * Desktop = a window at least 1024 CSS px wide, whatever its shape. That takes
+ * in the iPad app (landscape, and a 13-inch iPad in portrait) and the Mac app at
+ * any window wider than that. Everything narrower (every iPhone, a smaller iPad
+ * in portrait, a narrow browser or Mac window) gets the phone layout, untouched.
  *
  * On desktop g does not change: --gu is already frozen at 430px/37 above phone
  * width (styles.css), so every pane is laid out on exactly the grid the phone
@@ -22,7 +23,7 @@ import { useEffect, useState } from 'react';
  * The flexible pane takes as many whole columns as fit, N clamped to 4..7 —
  * 7 columns (64g, ~744px) is the widest measure a single event card reads well at.
  */
-export const DESKTOP_QUERY = '(min-width: 1024px) and (min-aspect-ratio: 1/1)';
+export const DESKTOP_QUERY = '(min-width: 1024px)';
 export const RAIL_G = 10;
 export const PHONE_PANE_G = 37;
 const MIN_COLS = 4;
