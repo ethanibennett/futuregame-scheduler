@@ -3,7 +3,7 @@ import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
-import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones } from './utils/utils.js';
+import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones, measureStickyStack } from './utils/milestones.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
@@ -77,6 +77,33 @@ const FIND_PARAM = FIND_MATCH ? decodeURIComponent(FIND_MATCH[1].replace(/\+/g, 
 // without a search. Only 'calendar' is honored; anything else falls through to the default view.
 const VIEW_MATCH = window.location.search.match(/[?&]view=([a-z]+)/);
 const VIEW_PARAM = VIEW_MATCH ? VIEW_MATCH[1] : null;
+
+// The admin gates below read the username claim INSIDE the signed session token, never the
+// 'username' storage key: that key is plain localStorage, and setting it to 'ham' by hand used to
+// unlock every admin surface (Hands/Solver, Staking, Admin, Cash, the grid and demo toggles) on a
+// session that kept working. A hand-made token can claim any name too, but the server refuses it
+// on the first authenticated call and guardedFetch signs the session out. Display still uses the
+// stored username; only authorisation-shaped decisions use this.
+const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES
+const EVENT_EDITOR_USERNAMES = ['ham', 'ham5'];          // mirrors the server's write allowlist
+function tokenUsername(tok) {
+  try {
+    const part = String(tok || '').split('.')[1];
+    if (!part) return '';
+    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    if (!claims || claims.isGuest) return '';
+    return typeof claims.username === 'string' ? claims.username.toLowerCase() : '';
+  } catch { return ''; }
+}
+
+// debugNow (utils.js) is the admin-only simulated clock. It lives in localStorage and getNow()
+// honours it for whoever is signed in, so a value an admin left behind (or anyone typed in)
+// shifted every date in the app for a normal user. Drop it before the first render unless the
+// stored session is an admin's; the effect in App covers sign-in/out without a reload.
+try {
+  const bootToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (getDebugNow() && !APP_ADMIN_USERNAMES.includes(tokenUsername(bootToken))) setDebugNow('');
+} catch { /* storage unavailable — nothing persisted to clear */ }
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
@@ -1307,7 +1334,8 @@ export default function App() {
   const nativePush = !!(window.Capacitor && window.Capacitor.isNativePlatform());
   const pushSupported = nativePush ||
     ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
-  const isPushAdmin = !!token && !isGuest && ['ham', 'ham5', 'claude'].includes((username || '').toLowerCase());
+  const authUsername = useMemo(() => tokenUsername(token), [token]);
+  const isPushAdmin = !!token && !isGuest && APP_ADMIN_USERNAMES.includes(authUsername);
   const [pushPerm, setPushPerm] = useState(() =>
     nativePush ? 'default' : (pushSupported ? Notification.permission : 'denied'));
 
@@ -1420,12 +1448,21 @@ export default function App() {
   // solver/replayer panel and StakingView — none of whose endpoints are admin-gated server side —
   // so narrowing it to match the server's write allowlist would revoke working features from
   // 'claude' rather than fix anything.
-  const isAdmin = ['ham', 'ham5', 'claude'].includes((username || '').toLowerCase());
+  // Read from the signed token's claim (authUsername), not the editable 'username' storage key.
+  const isAdmin = !isGuest && APP_ADMIN_USERNAMES.includes(authUsername);
   // The write capability is separate and DOES have to match the server, which gates every admin
   // route on ['ham','ham5'] in 8 places. Passing the callbacks conditionally is enough: the row
   // renders its Edit button on `isAdmin && onAdminEdit`, so an account without the capability
   // keeps the rollout features and simply never sees an editor it cannot save from.
-  const canEditEvents = ['ham', 'ham5'].includes((username || '').toLowerCase());
+  const canEditEvents = !isGuest && EVENT_EDITOR_USERNAMES.includes(authUsername);
+
+  // A non-admin session never runs on the simulated clock (see the boot-time clear above): this
+  // catches an admin signing out and someone else signing in without a reload.
+  useEffect(() => {
+    if (isAdmin || !getDebugNow()) return;
+    setDebugNow('');
+    setDebugTimeKey(k => k + 1);
+  }, [isAdmin]);
 
   // ── Render: shared schedule page ──
   if (SHARED_TOKEN) {
@@ -1622,7 +1659,8 @@ export default function App() {
         {visitedTabs.has('dashboard') && (!dataLoaded ? <SkeletonDashboard /> :
           <DashboardView
             key={debugTimeKey}
-            demoStates={demoStates}
+            demoStates={isAdmin && demoStates}
+            demoCard={isAdmin && /[?&]democard(=|&|$)/.test(window.location.search)}
             onOpenInSchedule={(id) => { setScheduleFocusId(id); setCurrentView('schedule'); }}
             mySchedule={mySchedule}
             myActiveUpdates={myActiveUpdates}
