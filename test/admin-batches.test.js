@@ -76,7 +76,7 @@ const SERIES = [
   const env = { ...process.env };
   for (const k of ['SYNC_TOKEN', 'DASHBOARD_TOKEN', 'TESTFLIGHT_WATCHDOG', 'RENDER_DEPLOY_WATCHDOG', 'SMTP_HOST', 'SMTP_USER',
     'SMTP_PASS', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'ANTHROPIC_API_KEY', 'RENDER', 'TRUST_PROXY']) delete env[k];
-  Object.assign(env, { JWT_SECRET: 'batches-test-secret', PORT: String(PORT), DB_PATH: dbPath, SYNC_TOKEN: SYNC });
+  Object.assign(env, { DISABLE_FEED_INGEST: '1', JWT_SECRET: 'batches-test-secret', PORT: String(PORT), DB_PATH: dbPath, SYNC_TOKEN: SYNC });
 
   const pw = 'batches-test-password';
   let child = boot(env);

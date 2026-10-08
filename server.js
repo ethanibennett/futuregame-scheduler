@@ -10859,6 +10859,9 @@ async function ingestOnlineFeed() { return ingestFeed('online-feed', 'online-fee
 
 async function ingestFeed(feedDir, tag, label, idPrefix) {
   const fs = require('fs');
+  // Tests boot server.js from the repo, whose mtt-feed/ and online-feed/ hold real feed files on
+  // the live box; DISABLE_FEED_INGEST=1 keeps a scratch DB free of them.
+  if (process.env.DISABLE_FEED_INGEST === '1') return;
   try {
     const manifestPath = path.join(__dirname, feedDir, 'manifest.json');
     if (!fs.existsSync(manifestPath)) return;
