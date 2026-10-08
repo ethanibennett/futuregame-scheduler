@@ -1165,6 +1165,12 @@ const ABBR_BY_PROPERTY = (() => {
 // that means rather than assuming a match. Before the property arm existed, every uncurated
 // feed series lacked coordinates and BOTH location filters silently hid it — 110 of 194 feed
 // venues, including entire series the watcher had just added (Big Stax XL, the 2026 RRPO).
+//
+// Last comes RESOLVED_COORDS: what the server placed from the sources themselves (PokerAtlas's own
+// venue coordinates, or the room and town a WSOP.com stop page names — server.js
+// resolveVenueCoords). It is a fallback, never an override: a curated entry above always wins.
+// Without it every room nobody had hand-added was invisible to both location filters — 32 of 92
+// live venues, 423 events, on 2026-10-08.
 export function getVenueCoords(venue, property) {
   const direct = VENUE_COORDS[venue];
   if (direct) return direct;
@@ -1175,9 +1181,23 @@ export function getVenueCoords(venue, property) {
   if (prop) {
     if (VENUE_COORDS[prop]) return VENUE_COORDS[prop];
     const abbr = ABBR_BY_PROPERTY.get(prop);
-    if (abbr) return COORDS_BY_ABBR.get(abbr) || null;
+    const byProp = abbr && COORDS_BY_ABBR.get(abbr);
+    if (byProp) return byProp;
   }
-  return null;
+  return RESOLVED_COORDS.get(venue) || null;
+}
+
+// venue string → { lat, lng, region } from GET /api/venue-coords. Registered before the
+// tournament list renders (App.jsx fetchTournaments), the same way registerRowTimezones is,
+// so a filter never runs against a list whose coordinates have not arrived.
+const RESOLVED_COORDS = new Map();
+export function registerVenueCoords(map) {
+  if (!map || typeof map !== 'object') return;
+  for (const [venue, c] of Object.entries(map)) {
+    const lat = Number(c && c.lat), lng = Number(c && c.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    RESOLVED_COORDS.set(venue, { lat, lng, region: (c.region && String(c.region)) || null });
+  }
 }
 
 // ── Location Regions ─────────────────────────────────────
