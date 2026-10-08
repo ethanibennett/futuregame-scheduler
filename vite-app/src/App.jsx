@@ -1098,98 +1098,176 @@ export default function App() {
   }, [token]);
 
   // ── SSE: real-time buddy updates ──
+  // The stream is opened with a short-lived, single-use ticket, never the JWT: the
+  // URL lands in request logs and EventSource cannot send an Authorization header.
+  // Because the ticket is spent on first use, EventSource's own auto-reconnect (which
+  // replays the same URL) can never succeed — so on any error we close the stream and
+  // reopen it ourselves with a fresh ticket, backing off 2 s → 30 s, and reopen at once
+  // when the app returns to the foreground or the network comes back.
   useEffect(() => {
     if (!token) return;
-    const es = new EventSource(`${API_URL}/events?token=${token}`);
+    const MIN_BACKOFF = 2000, MAX_BACKOFF = 30000;
+    let es = null;
+    let disposed = false;
+    let connecting = false;
+    let retryTimer = null;
+    let backoff = MIN_BACKOFF;
 
-    es.addEventListener('buddy-live-update', (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d.cleared) {
-          setBuddyLiveUpdates(prev => {
-            const next = { ...prev };
-            delete next[d.buddyId];
-            return next;
-          });
-        } else {
-          setBuddyLiveUpdates(prev => ({ ...prev, [d.buddyId]: {
-            tournamentId: d.tournamentId, eventName: d.eventName, venue: d.venue,
-            stack: d.stack, sb: d.sb, bb: d.bb, bbAnte: d.bbAnte,
-            isItm: d.isItm, isRegClosed: d.isRegClosed, bubble: d.bubble,
-            lockedAmount: d.lockedAmount, isFinalTable: d.isFinalTable,
-            placesLeft: d.placesLeft, firstPlacePrize: d.firstPlacePrize,
-            isDeal: d.isDeal, dealPlace: d.dealPlace, dealPayout: d.dealPayout,
-            isBusted: d.isBusted, totalEntries: d.totalEntries,
-            isBagged: d.isBagged, bagDay: d.bagDay,
-            playStartedAt: d.playStartedAt, updatedAt: d.updatedAt
-          }}));
-        }
-      } catch (err) { console.error('SSE buddy-live-update error:', err); }
-    });
+    const wireListeners = (es) => {
+      es.addEventListener('buddy-live-update', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.cleared) {
+            setBuddyLiveUpdates(prev => {
+              const next = { ...prev };
+              delete next[d.buddyId];
+              return next;
+            });
+          } else {
+            setBuddyLiveUpdates(prev => ({ ...prev, [d.buddyId]: {
+              tournamentId: d.tournamentId, eventName: d.eventName, venue: d.venue,
+              stack: d.stack, sb: d.sb, bb: d.bb, bbAnte: d.bbAnte,
+              isItm: d.isItm, isRegClosed: d.isRegClosed, bubble: d.bubble,
+              lockedAmount: d.lockedAmount, isFinalTable: d.isFinalTable,
+              placesLeft: d.placesLeft, firstPlacePrize: d.firstPlacePrize,
+              isDeal: d.isDeal, dealPlace: d.dealPlace, dealPayout: d.dealPayout,
+              isBusted: d.isBusted, totalEntries: d.totalEntries,
+              isBagged: d.isBagged, bagDay: d.bagDay,
+              playStartedAt: d.playStartedAt, updatedAt: d.updatedAt
+            }}));
+          }
+        } catch (err) { console.error('SSE buddy-live-update error:', err); }
+      });
 
-    es.addEventListener('buddy-schedule-change', () => fetchShareBuddies());
-    es.addEventListener('buddy-request', () => { fetchShareBuddies(); fetchNotifications(); });
-    es.addEventListener('buddy-tracking', () => {});
+      es.addEventListener('buddy-schedule-change', () => fetchShareBuddies());
+      es.addEventListener('buddy-request', () => { fetchShareBuddies(); fetchNotifications(); });
+      es.addEventListener('buddy-tracking', () => {});
 
-    es.addEventListener('group-message', (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        setGroupFeed(prev => [...prev, {
-          id: Date.now(), type: 'message',
-          user_id: d.userId, username: d.username, avatar: d.avatar,
-          content: d.message, created_at: d.createdAt
-        }]);
-        fetchMyGroups();
-      } catch (err) { console.error('SSE group-message error:', err); }
-    });
-    es.addEventListener('group-updated', () => fetchMyGroups());
-    es.addEventListener('group-deleted', (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        fetchMyGroups();
-        setActiveGroupId(prev => prev === d.groupId ? null : prev);
-      } catch (err) { console.error('SSE group-removed:', err); }
-    });
-    es.addEventListener('group-live-update', (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (!d.cleared) {
+      es.addEventListener('group-message', (e) => {
+        try {
+          const d = JSON.parse(e.data);
           setGroupFeed(prev => [...prev, {
-            id: Date.now(), type: 'live-update',
-            user_id: d.userId, username: d.username,
-            content: null, liveData: d, created_at: d.updatedAt
+            id: Date.now(), type: 'message',
+            user_id: d.userId, username: d.username, avatar: d.avatar,
+            content: d.message, created_at: d.createdAt
           }]);
+          fetchMyGroups();
+        } catch (err) { console.error('SSE group-message error:', err); }
+      });
+      es.addEventListener('group-updated', () => fetchMyGroups());
+      es.addEventListener('group-deleted', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          fetchMyGroups();
+          setActiveGroupId(prev => prev === d.groupId ? null : prev);
+        } catch (err) { console.error('SSE group-removed:', err); }
+      });
+      es.addEventListener('group-live-update', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (!d.cleared) {
+            setGroupFeed(prev => [...prev, {
+              id: Date.now(), type: 'live-update',
+              user_id: d.userId, username: d.username,
+              content: null, liveData: d, created_at: d.updatedAt
+            }]);
+          }
+        } catch (err) { console.error('SSE group-live-update error:', err); }
+      });
+      es.addEventListener('group-invite', () => fetchNotifications());
+      es.addEventListener('group-invite-response', () => { fetchNotifications(); fetchMyGroups(); });
+
+      // Tournament data live-sync: optimistically merge single-row edits
+      es.addEventListener('tournament-changed', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (!d || !d.id || !d.fields) return;
+          setTournaments(prev => prev.map(t => t.id === d.id ? { ...t, ...d.fields } : t));
+          setMySchedule(prev => prev.map(t => t.id === d.id ? { ...t, ...d.fields } : t));
+        } catch (err) { console.error('SSE tournament-changed error:', err); }
+      });
+
+      // Bulk imports / structure parses / sync — full refetch
+      es.addEventListener('schedule-refetch', () => {
+        fetchTournaments();
+      });
+
+      // Venue color updates — apply directly to CSS vars (no React state)
+      es.addEventListener('venue-colors-changed', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d && typeof d === 'object') applyVenueColors(d);
+        } catch (err) { console.error('SSE venue-colors-changed error:', err); }
+      });
+    };
+
+    const scheduleReconnect = () => {
+      if (disposed || retryTimer) return;
+      const delay = backoff;
+      backoff = Math.min(backoff * 2, MAX_BACKOFF);
+      retryTimer = setTimeout(() => { retryTimer = null; connect(); }, delay);
+    };
+
+    const connect = async () => {
+      if (disposed || connecting || es) return;
+      connecting = true;
+      try {
+        const res = await fetch(`${API_URL}/events/ticket`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (disposed) return;
+        if (res.status === 401 || res.status === 403) {
+          // The session itself is bad; retrying won't help. A foreground/online retries once.
+          console.warn(`SSE ticket refused (${res.status})`);
+          return;
         }
-      } catch (err) { console.error('SSE group-live-update error:', err); }
-    });
-    es.addEventListener('group-invite', () => fetchNotifications());
-    es.addEventListener('group-invite-response', () => { fetchNotifications(); fetchMyGroups(); });
+        if (!res.ok) throw new Error(`ticket request failed (${res.status})`);
+        const { ticket } = await res.json();
+        if (disposed) return;
+        const src = new EventSource(`${API_URL}/events?ticket=${encodeURIComponent(ticket)}`);
+        es = src;
+        wireListeners(src);
+        src.onopen = () => { backoff = MIN_BACKOFF; };
+        src.onerror = () => {
+          if (es !== src) return;
+          // Don't let the browser retry: it would replay the spent ticket.
+          src.close();
+          es = null;
+          console.warn('SSE connection lost; reconnecting with a fresh ticket');
+          scheduleReconnect();
+        };
+      } catch (err) {
+        console.warn('SSE connect failed:', err && err.message);
+        scheduleReconnect();
+      } finally {
+        connecting = false;
+      }
+    };
 
-    // Tournament data live-sync: optimistically merge single-row edits
-    es.addEventListener('tournament-changed', (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (!d || !d.id || !d.fields) return;
-        setTournaments(prev => prev.map(t => t.id === d.id ? { ...t, ...d.fields } : t));
-        setMySchedule(prev => prev.map(t => t.id === d.id ? { ...t, ...d.fields } : t));
-      } catch (err) { console.error('SSE tournament-changed error:', err); }
-    });
+    // Back in the foreground (or back online) with no live stream: reconnect now,
+    // rather than waiting out whatever backoff was pending.
+    const onResume = () => {
+      if (disposed) return;
+      if (document.visibilityState !== 'visible') return;
+      if (es && es.readyState !== EventSource.CLOSED) return;
+      if (es) { es.close(); es = null; }
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      backoff = MIN_BACKOFF;
+      connect();
+    };
+    document.addEventListener('visibilitychange', onResume);
+    window.addEventListener('online', onResume);
 
-    // Bulk imports / structure parses / sync — full refetch
-    es.addEventListener('schedule-refetch', () => {
-      fetchTournaments();
-    });
-
-    // Venue color updates — apply directly to CSS vars (no React state)
-    es.addEventListener('venue-colors-changed', (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d && typeof d === 'object') applyVenueColors(d);
-      } catch (err) { console.error('SSE venue-colors-changed error:', err); }
-    });
-
-    es.onerror = () => console.warn('SSE connection error, will auto-reconnect');
-    return () => es.close();
+    connect();
+    return () => {
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      document.removeEventListener('visibilitychange', onResume);
+      window.removeEventListener('online', onResume);
+      if (es) es.close();
+      es = null;
+    };
   }, [token]);
 
   // ── Refetch tournaments when tab regains focus / network comes back online ──
