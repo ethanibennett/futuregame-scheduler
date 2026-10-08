@@ -165,12 +165,17 @@ Host sched solver cash mtt dash
     IdentityFile ~/.ssh/id_ed25519_win
     IdentitiesOnly yes
     RequestTTY force
-    RemoteCommand C:\msys64\usr\bin\bash.exe -lc "tmux new -A -s %n"
+    RemoteCommand C:/msys64/usr/bin/bash.exe -l /d/projects/scheduler/scripts/ssh-tmux.sh %n
     ServerAliveInterval 30
     ServerAliveCountMax 6
     TCPKeepAlive yes
 ```
-`ssh sched` creates or reattaches; `-A` covers both. Keep a plain `Host win`
+`ssh sched` creates or reattaches; `-A` covers both. `scripts/ssh-tmux.sh` wraps the
+attach in `script` because Windows' sshd runs the command through PowerShell (its
+DefaultShell), which hands MSYS2 a console instead of a pty, so a bare `tmux attach`
+fails "open terminal failed: not a terminal" (2026-10-07; the alias had drifted to a
+WSL Ubuntu tmux with no Claude in it). Forward slashes in the path on purpose: the
+quoting layers between the Mac and PowerShell eat backslashes. Keep a plain `Host win`
 with neither `RequestTTY` nor `RemoteCommand`, because `RemoteCommand` breaks
 `scp` (or pass `-o RemoteCommand=none`).
 
