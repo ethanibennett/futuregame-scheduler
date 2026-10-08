@@ -40,7 +40,7 @@ function formatEventName(name) {
 // the user signed off on for the Schedule tab. Same code path is used
 // by every view; gap scales with that view's sticky stack.
 function scrollBelowSticky(el) {
-  const container = el.closest('.content-area');
+  const container = el.closest('.content-area, .dk-scroll');
   if (!container) return;
   const caTop = container.getBoundingClientRect().top;
   // CRITICAL: every tab-panel lives inside .content-area, just hidden
@@ -67,7 +67,7 @@ function scrollBelowSticky(el) {
   // actually landed, which is immune to any device viewport quirk). Calendar has
   // no date-break and its page-sticky draws a box-shadow half a subrow below its
   // rect; add that back so its stop matches, in r.
-  const r = (window.innerWidth / 37) * 0.71;
+  const r = (Math.min(window.innerWidth, 430) / 37) * 0.71; // g freezes at 430px (styles.css --gu)
   const stickyShadowComp = (dateBreakH === 0) ? r * 0.5 : 0;
   const target = elAbsTop - filtersH - dateBreakH - stickyShadowComp;
   if (Math.abs(container.scrollTop - target) <= 2) return;
@@ -497,14 +497,22 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
   );
 }
 
-function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, buddyLiveUpdates, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, onNavigateToEvent, initialOpen }) {
+function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMiniLateReg, focusEventId, readOnly, conditions: conditionsProp, conditionsJson, onSetCondition, onRemoveCondition, allTournaments, isAnchor, onToggleAnchor, plannedEntries, onSetPlannedEntries, onUpdatePersonalEvent, buddyEvents, buddyLiveUpdates, onBuddySwap, scheduleIds, isAdmin, onAdminEdit, onClearOverrides, onNavigateToEvent, initialOpen, onSelect, selected, detail }) {
   // Support both conditions array (legacy) and conditionsJson string (memo-friendly)
   const conditions = conditionsProp || React.useMemo(() => {
     if (!conditionsJson) return [];
     try { const c = JSON.parse(conditionsJson); return Array.isArray(c) ? c : []; }
     catch { return []; }
   }, [conditionsJson]);
-  const [open, setOpen] = useState(!!initialOpen);
+  const [open, setOpen] = useState(!!initialOpen || !!detail);
+  // Desktop (docs/desktop-layout.md): a list row with onSelect never expands —
+  // it selects, and the detail pane renders the open card (detail), which is
+  // held open. On the phone neither prop is passed and this is plain setOpen.
+  const toggle = useCallback(() => {
+    if (onSelect) { onSelect(tournament.id); return; }
+    if (detail) return;
+    setOpen(o => !o);
+  }, [onSelect, detail, tournament.id]);
   const [showConditionUI, setShowConditionUI] = useState(false);
   const [showRakeBreakdown, setShowRakeBreakdown] = useState(false);
   const [travelNotes, setTravelNotes] = useState(tournament.notes || '');
@@ -573,6 +581,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   // related satellite).
   useEffect(() => {
     if (focusEventId && tournament.id === focusEventId) {
+      if (onSelect) { onSelect(tournament.id); return; }
       setOpen(true);
     }
   }, [focusEventId]);
@@ -582,7 +591,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   // scales per view (Schedule = filters + date-break, My Schedule =
   // schedule-header + date-break, Calendar = filters only).
   useEffect(() => {
-    if (!open || !rowRef.current) return;
+    if (!open || detail || !rowRef.current) return;
     const raf = requestAnimationFrame(() => {
       if (rowRef.current) scrollBelowSticky(rowRef.current);
     });
@@ -604,6 +613,8 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const rowClasses = [
     'cal-event-row',
     open ? 'open' : '',
+    detail ? 'is-detail' : '',
+    selected ? 'is-selected' : '',
     isInSchedule ? 'saved' : '',
     isAnchor ? 'anchor' : (conditions && conditions.length > 0 ? 'conditional' : ''),
     venueClass,
@@ -624,15 +635,15 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
-        onClick={() => setOpen(o => !o)}
+        onClick={toggle}
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
-        <div className="cal-event-bar" onClick={() => setOpen(o => !o)} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}>
+        <div className="cal-event-bar" onClick={toggle} role="button" tabIndex={0} aria-expanded={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}>
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
               <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
@@ -672,7 +683,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
             </>
           )}
         </div>
-        <div className={`cal-event-chevron ${open ? 'open' : ''}`} onClick={() => setOpen(o => !o)}>
+        <div className={`cal-event-chevron ${open ? 'open' : ''}`} onClick={toggle}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -683,7 +694,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
           const tag = e.target.tagName;
           if (tag === 'A' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
           if (e.target.closest('.badge-clickable') || e.target.closest('.condition-picker') || e.target.closest('.cal-action-row') || e.target.closest('.admin-edit-panel')) return;
-          setOpen(false);
+          if (!detail) setOpen(false);
         }}>
           <div className="cal-event-detail-inner">
             <div className="cal-event-detail">
@@ -1151,7 +1162,7 @@ The feed's own values return at the next hourly sync — your edits stay visible
 // Zero hooks, zero context. ScheduleView renders this for rows that
 // haven't been expanded yet, swapping in the full CalendarEventRow on
 // first tap. Eliminates ~15 hook calls per row on initial mount.
-function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand }) {
+function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand, selected }) {
   const venue = getVenueInfo(tournament.venue, tournament.property);
   const venueClass = getVenueClass(tournament);
   const stripColor = getVenueBrandColor(venue.abbr);
@@ -1178,6 +1189,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
     isAnchor ? 'anchor' : (hasConditions ? 'conditional' : ''),
     venueClass,
     bracelet ? 'bracelet' : '',
+    selected ? 'is-selected' : '',
     tournament.clock_ended_at ? 'completed' : (isPast ? 'past' : ''),
   ].filter(Boolean).join(' ');
   return (
@@ -1248,6 +1260,8 @@ const CalendarEventRow = React.memo(CalendarEventRow_, (prev, next) => {
   if (prev.showMiniLateReg !== next.showMiniLateReg) return false;
   if (prev.readOnly !== next.readOnly) return false;
   if (prev.isAdmin !== next.isAdmin) return false;
+  // Desktop selection (docs/desktop-layout.md).
+  if (prev.selected !== next.selected || prev.detail !== next.detail || !prev.onSelect !== !next.onSelect) return false;
   // focusEventId: only re-render if focus state changed for THIS row
   if ((prev.focusEventId === prev.tournament.id) !== (next.focusEventId === next.tournament.id)) return false;
   // buddyEvents: only check this tournament's entry
