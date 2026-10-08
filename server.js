@@ -462,6 +462,20 @@ function requireEventEditor(req, res, next) {
   next();
 }
 
+// App admins only (the APP_ADMIN_USERNAMES the client also gates on). For whole feature areas the
+// app shows only to admins: the solver/trainer API and staking. Those routes used to check just
+// for a token, so a guest token could drive the solver and any account could use staking; the UI
+// hid them but the server didn't (owner decision 2026-10-08: gate them).
+function requireAppAdmin(req, res, next) {
+  const u = String((req.user && req.user.username) || '').toLowerCase();
+  if (!req.user || req.user.isGuest || !APP_ADMIN_USERNAMES.has(u)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+}
+app.use('/api/solver', authenticateToken, requireAppAdmin);
+app.use('/api/staking', authenticateToken, requireAppAdmin);
+
 // Every admin check in this file (the two sets above, the inline ['ham','ham5'] checks, the
 // quick-add gate) trusts the USERNAME in the JWT. Registration already refuses case-insensitive
 // duplicates, so an admin name is safe once its account exists — but a name in the list with no
@@ -5810,7 +5824,10 @@ app.get('/api/venues', authenticateToken, (req, res) => {
 
 // ── Tournament field size (for POY calculation) ─────────────
 
-app.put('/api/tournaments/:id/total-entries', authenticateToken, requireRegistered, async (req, res) => {
+// Field size is written onto the SHARED event and broadcast to everyone, so only admins set it
+// (owner decision 2026-10-08). A non-admin's result logging still calls this; it gets 403 and
+// the shared row keeps whatever an admin entered.
+app.put('/api/tournaments/:id/total-entries', authenticateToken, requireRegistered, requireAppAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { totalEntries } = req.body;
@@ -12918,7 +12935,15 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
 // ── Table Scanner: parse seating list image via Claude Vision ──
 const scanUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-app.post('/api/scan-table', authenticateToken, scanUpload.single('image'), async (req, res) => {
+// The table scanner is a paid model call per image. It was open to guests with no limit; now it
+// needs an account, and each account gets 20 scans an hour (owner decision 2026-10-08).
+const scanLimiter = require('./lib/quick-add').createRateLimiter({ limit: 20, windowMs: 60 * 60 * 1000 });
+function limitScans(req, res, next) {
+  const r = scanLimiter.take(String(req.user.id));
+  if (!r.ok) { res.set('Retry-After', String(r.retryAfterSec)); return res.status(429).json({ error: `Scan limit reached; try again in ${Math.ceil(r.retryAfterSec / 60)} min.` }); }
+  next();
+}
+app.post('/api/scan-table', authenticateToken, requireRegistered, limitScans, scanUpload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image provided' });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
