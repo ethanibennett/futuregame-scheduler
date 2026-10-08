@@ -3495,15 +3495,62 @@ function broadcastToAll(eventType, payload) {
   }
 }
 
-app.get('/api/events', (req, res) => {
-  const token = req.query.token;
-  if (!token) return res.status(401).json({ error: 'Token required' });
+// ── SSE tickets ──────────────────────────────────────────────
+// EventSource cannot send an Authorization header, so the stream used to take
+// the user's 90-day JWT as ?token= — and request logs (Render) record full URLs,
+// which put every user's login token in the logs. Instead the client POSTs for a
+// ticket WITH its Authorization header and opens the stream with ?ticket=. A
+// ticket is 32 random bytes, lives 60 s, and is deleted on first use, so the
+// one that lands in a log is already spent. Kept in memory on purpose: the SSE
+// clients themselves are in-memory, and a restart drops every stream anyway.
+// SSE_TICKET_TTL_MS exists only so the test can exercise expiry quickly; it can
+// shorten the lifetime but never lengthen it past 60 s.
+const SSE_TICKET_TTL_MS = Math.max(1000, Math.min(60000, Number(process.env.SSE_TICKET_TTL_MS) || 60000));
+const SSE_TICKET_MAX = 20000; // memory backstop; Map order = issue order, oldest goes first
+const sseTickets = new Map(); // ticket -> { user: { id, username, isGuest? }, expiresAt }
 
+function sweepSseTickets(now = Date.now()) {
+  for (const [ticket, t] of sseTickets) {
+    if (t.expiresAt <= now) sseTickets.delete(ticket);
+  }
+}
+setInterval(sweepSseTickets, 60000).unref();
+
+app.post('/api/events/ticket', authenticateToken, (req, res) => {
+  if (sseTickets.size >= SSE_TICKET_MAX) sweepSseTickets();
+  while (sseTickets.size >= SSE_TICKET_MAX) sseTickets.delete(sseTickets.keys().next().value);
+  const ticket = crypto.randomBytes(32).toString('base64url');
+  // Carry exactly the identity fields the JWT path produced (the decoded payload's
+  // id/username/isGuest), so sseClients and every broadcast see the same user.
+  const { id, username, isGuest } = req.user;
+  const user = isGuest ? { id, username, isGuest } : { id, username };
+  sseTickets.set(ticket, { user, expiresAt: Date.now() + SSE_TICKET_TTL_MS });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ticket, expiresIn: Math.floor(SSE_TICKET_TTL_MS / 1000) });
+});
+
+app.get('/api/events', (req, res) => {
   let user;
-  try {
-    user = jwt.verify(token, JWT_SECRET);
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
+  const ticket = typeof req.query.ticket === 'string' ? req.query.ticket : null;
+  if (ticket) {
+    const t = sseTickets.get(ticket);
+    sseTickets.delete(ticket); // single use — spent even if it turns out to be expired
+    if (!t || t.expiresAt <= Date.now()) {
+      return res.status(401).json({ error: 'Invalid or expired ticket' });
+    }
+    user = t.user;
+  } else if (typeof req.query.token === 'string' && req.query.token) {
+    // DEPRECATED: ?token=<JWT>. Only installed iOS/Android builds that predate the
+    // ticket flow still send this — the native app bundles its own JS, so they keep
+    // doing it until they update. Remove once those builds have aged out. Never log
+    // req.url / req.query here: that is the leak this path exists to retire.
+    try {
+      user = jwt.verify(req.query.token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+  } else {
+    return res.status(401).json({ error: 'Ticket required' });
   }
 
   res.set({
