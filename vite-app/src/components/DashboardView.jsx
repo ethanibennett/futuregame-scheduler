@@ -239,7 +239,7 @@ export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, shareBuddies,
   buddyLiveUpdates, buddyEvents, displayName, onPost, onDeleteUpdate,
   onAddTracking, onResetResults, onNavigate, tournaments, onToggle, onRefresh,
-  onOpenInSchedule, demoStates = false
+  onOpenInSchedule, demoStates = false, demoCard = false
 }) {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
@@ -360,8 +360,10 @@ export default function DashboardView({
     // (demoStates) injects the conditional card states — playing, busted,
     // expanded stats — that Ethan's all-future schedule never renders, so the
     // grid overlay can measure them in the native app. The ?democard URL path
-    // stays as the single seated anchor card (safaridriver use).
-    const demo = demoStates || (typeof window !== 'undefined' && window.location.search.includes('democard'));
+    // stays as the single seated anchor card (safaridriver use) — App passes it
+    // in as demoCard, admin-gated: read here directly, any visitor's URL could
+    // replace their real Up Next with a fake event.
+    const demo = demoStates || demoCard;
     if (demo) {
       const mk = (o) => {
         const d = new Date(); d.setDate(d.getDate() + (o.days ?? 11));
@@ -424,7 +426,7 @@ export default function DashboardView({
       });
 
     return [...events, ...later];
-  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates]);
+  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard]);
 
   /* Live tournament clocks (server: lib/live-clocks.js). For every selected event that has
      passed its scheduled start, ask for the real clock — PokerAtlas by the event's own clock id,

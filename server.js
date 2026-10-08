@@ -397,6 +397,26 @@ app.use('/cash', requireHamBasic, async (req, res) => {
 // data. Read-only, and the ingest routes are refused here as under /cash.
 const APP_ADMIN_USERNAMES = new Set(['ham', 'ham5', 'claude']);
 
+// The write allowlist for SHARED tournament data — the same ['ham','ham5'] every admin write route
+// (event edit, overrides, venue colours, sync, subscription grant) checks inline. As middleware for
+// the schedule-import routes, which had only requireRegistered: any signed-up user could upsert
+// over the shared schedule and spend the server's Anthropic key. Mount it BEFORE multer so a
+// refused request never writes its upload to disk.
+const EVENT_EDITOR_USERNAMES = new Set(['ham', 'ham5']);
+function requireEventEditor(req, res, next) {
+  const u = String((req.user && req.user.username) || '').toLowerCase();
+  if (!req.user || req.user.isGuest || !EVENT_EDITOR_USERNAMES.has(u)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+}
+
+// Every admin check in this file (the two sets above, the inline ['ham','ham5'] checks, the
+// quick-add gate) trusts the USERNAME in the JWT. Registration already refuses case-insensitive
+// duplicates, so an admin name is safe once its account exists — but a name in the list with no
+// account behind it is free for anyone to sign up as. Reserve them all outright.
+const RESERVED_USERNAMES = new Set([...APP_ADMIN_USERNAMES, ...EVENT_EDITOR_USERNAMES]);
+
 app.use('/api/cash', authenticateToken, (req, res) => {
   const u = String((req.user && req.user.username) || '').toLowerCase();
   if (!APP_ADMIN_USERNAMES.has(u)) {
@@ -3551,6 +3571,11 @@ app.post('/api/register', authLimiter, async (req, res) => {
     if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
       return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, hyphens, and dots' });
     }
+    // Admin names are authorisation, not just names — see RESERVED_USERNAMES. Same answer as a
+    // taken name, so the response doesn't advertise which names are privileged.
+    if (RESERVED_USERNAMES.has(String(username).toLowerCase())) {
+      return res.status(409).json({ error: 'Username or email already taken' });
+    }
 
     // Validate email
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -3747,7 +3772,7 @@ app.post('/api/reset-password', authLimiter, async (req, res) => {
 });
 
 // Upload and parse PDF
-app.post('/api/upload-schedule', authenticateToken, requireRegistered, upload.single('pdf'), async (req, res) => {
+app.post('/api/upload-schedule', authenticateToken, requireRegistered, requireEventEditor, upload.single('pdf'), async (req, res) => {
   try {
     const dataBuffer = await fs.readFile(req.file.path);
     const uint8Array = new Uint8Array(dataBuffer);
@@ -11485,7 +11510,7 @@ function postProcessEvents(allEvents, userVenue) {
 // ── Quick-add hand histories ── END ────────────────────────────────────────────
 
 // ── Parse schedule from file upload ──
-app.post('/api/parse-schedule', authenticateToken, requireRegistered, scheduleUpload.array('file', 20), async (req, res) => {
+app.post('/api/parse-schedule', authenticateToken, requireRegistered, requireEventEditor, scheduleUpload.array('file', 20), async (req, res) => {
   const files = req.files || (req.file ? [req.file] : []);
   if (files.length === 0) return res.status(400).json({ error: 'No files provided' });
 
@@ -11553,7 +11578,7 @@ app.post('/api/parse-schedule', authenticateToken, requireRegistered, scheduleUp
 });
 
 // ── Parse schedule from URL ──
-app.post('/api/parse-schedule-url', authenticateToken, requireRegistered, express.json(), async (req, res) => {
+app.post('/api/parse-schedule-url', authenticateToken, requireRegistered, requireEventEditor, express.json(), async (req, res) => {
   const { url, venue } = req.body || {};
   if (!url) return res.status(400).json({ error: 'No URL provided' });
 
@@ -11965,7 +11990,7 @@ app.get('/api/schedule-docs/:venue/:type/:filename', async (req, res) => {
 });
 
 // ── Parse structure sheet and update tournament records ──
-app.post('/api/parse-structure', authenticateToken, requireRegistered, scheduleUpload.array('file', 20), async (req, res) => {
+app.post('/api/parse-structure', authenticateToken, requireRegistered, requireEventEditor, scheduleUpload.array('file', 20), async (req, res) => {
   const files = req.files || [];
   if (files.length === 0) return res.status(400).json({ error: 'No files provided' });
 
@@ -12104,7 +12129,7 @@ Return ONLY the JSON array, no markdown or explanation.`;
 });
 
 // ── Batch import schedules from multiple URLs ──
-app.post('/api/batch-import-urls', authenticateToken, requireRegistered, express.json(), async (req, res) => {
+app.post('/api/batch-import-urls', authenticateToken, requireRegistered, requireEventEditor, express.json(), async (req, res) => {
   const { urls } = req.body || {};
   if (!urls || !Array.isArray(urls) || urls.length === 0) {
     return res.status(400).json({ error: 'No URLs provided. Expected { urls: [{ url, venue }, ...] }' });
@@ -12283,7 +12308,7 @@ app.post('/api/batch-import-urls', authenticateToken, requireRegistered, express
 });
 
 // ── Check for duplicate events before import ──
-app.post('/api/check-schedule-duplicates', authenticateToken, express.json({ limit: '5mb' }), async (req, res) => {
+app.post('/api/check-schedule-duplicates', authenticateToken, requireEventEditor, express.json({ limit: '5mb' }), async (req, res) => {
   const { events } = req.body;
   if (!events || !Array.isArray(events)) return res.json({ existing: 0, new: 0 });
 
@@ -12322,7 +12347,7 @@ app.post('/api/check-schedule-duplicates', authenticateToken, express.json({ lim
 });
 
 // ── Import parsed schedule events into database ──
-app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, express.json({ limit: '5mb' }), async (req, res) => {
+app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, requireEventEditor, express.json({ limit: '5mb' }), async (req, res) => {
   const { events, sourceFile } = req.body;
   if (!events || !Array.isArray(events) || events.length === 0) {
     return res.status(400).json({ error: 'No events provided' });
