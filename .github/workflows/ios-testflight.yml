@@ -69,7 +69,7 @@ jobs:
         # at this line. Nothing in this job needs history: the build script runs
         # with --no-pull, the build number comes from App Store Connect, and the
         # only git calls below work fine at depth 1.
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Deepen history for the build-number floor
         # Commits only — no blobs, no trees. The build number is floored by the

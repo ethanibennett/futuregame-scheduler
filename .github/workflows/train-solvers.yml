@@ -43,15 +43,15 @@ jobs:
           - { game: badugi, iters: "4000000" }
           - { game: stud8, iters: "100000000" }   # high cap: chained nights accumulate
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "20"
       # Resume from the most recent checkpoint for this game — chained
       # training across nights, so iterations ACCUMULATE instead of
       # restarting from scratch (the lever Stud 8 needs).
       - name: Restore checkpoint
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: solver/strategies/${{ matrix.game }}.ckpt.json
           key: ckpt-${{ matrix.game }}-${{ github.run_id }}
@@ -83,13 +83,13 @@ jobs:
       # Persist the updated checkpoint so the next run resumes from it.
       - name: Save checkpoint
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: solver/strategies/${{ matrix.game }}.ckpt.json
           key: ckpt-${{ matrix.game }}-${{ github.run_id }}
       - name: Upload strategy artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: strategy-${{ matrix.game }}
           path: |
@@ -104,7 +104,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Branch from the COMMIT THAT WAS TRAINED (not master) so the
           # staged branch carries the abstraction/engine code together
@@ -112,7 +112,7 @@ jobs:
           # mismatched code would make every infoset lookup miss.
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: /tmp/strategies
       - name: Commit strategies to a review branch
