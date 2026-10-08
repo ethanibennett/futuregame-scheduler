@@ -14,6 +14,18 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-08 — Admin "New events" batches
+
+Each new-series alert from the MTT watcher (`POST /api/admin/notify/new-series`) is stored
+in `admin_batches` and the push now links to `/?batch=<id>` instead of `/?find=` or `/`.
+`GET /api/admin/batches[/:id]` (requireAppAdmin) lists batches and resolves each series to
+schedule rows AT READ TIME: exact `venue === name`, then normalised, then a loose whole-word
+containment corroborated per row by property + dates. A series with no rows yet reads
+"Not in the schedule yet" (prod gets rows only after the :20 ingest + push). Client:
+`AdminBatchesView.jsx`, opened by the deep link, user menu > New Events, or the desktop
+rail's admin-only New Events entry (main pane); non-admins'
+`?batch=` is dropped. Tests: `test/admin-batches.test.js`.
+
 ## Next big effort — quick-add hand histories (text or voice)
 
 Decided 2026-10-01; design and decisions in `docs/quick-add-hands.md`, the parts' contract in

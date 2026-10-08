@@ -26,6 +26,8 @@ export default function DesktopRail({ current, onChange, isAdmin, children }) {
     { id: 'tracking', label: 'Results', icon: Icon.tracking },
     { id: 'settings', label: 'Settings', icon: Icon.gear },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Icon.lock }] : []),
+    // The admin alerts' "what this batch added" lists (AdminBatchesView); App opens the newest.
+    ...(isAdmin ? [{ id: 'batches', label: 'New Events', icon: Icon.bell }] : []),
   ];
   const item = (tab) => (
     <button

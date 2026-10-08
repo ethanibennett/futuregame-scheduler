@@ -3426,6 +3426,26 @@ async function initDatabase() {
     db.run('ALTER TABLE users ADD COLUMN trial_used_at INTEGER');
   } catch (e) { /* already exists */ }
 
+  // ── Admin notification batches ──
+  // Every admin alert that goes out (today: the MTT watcher's new-series push) is kept as one
+  // batch, and the notification links to /?batch=<id> — an admin-only list of exactly what that
+  // alert added. A batched alert used to link to '/', so "6 new series" opened the dashboard and
+  // left the admin to go find six series by hand. `payload` is the entries as the caller sent
+  // them (sanitised); the matching scheduler events are looked up at READ time, because the feed
+  // ingests after the alert (local :20, prod after the push) and a stored match would be empty.
+  // created_at is ISO-8601 UTC with a 'Z' — CURRENT_TIMESTAMP's bare 'YYYY-MM-DD HH:MM:SS' parses
+  // as LOCAL time in the browser.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_batches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      title TEXT,
+      body TEXT,
+      payload TEXT NOT NULL
+    )
+  `);
+
   console.log('Database initialized');
 }
 
@@ -13116,17 +13136,236 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
     return res.json({ ok: true, dryRun: true, subscribers, vapidConfigured, byHost });
   }
   try {
-    const count = Array.isArray(series) ? series.length : 0;
-    // Deep link from the caller (the MTT watcher sends /?find=<series>). Relative paths only:
-    // this token-gated route must not become an open redirect to an arbitrary origin.
-    const link = typeof url === 'string' && /^\/[A-Za-z0-9_\-.~/?=&%+ ]*$/.test(url) ? url : '/';
+    const entries = sanitizeSeriesEntries(series);
+    const count = entries.length;
+    // The push opens the batch: /?batch=<id>, the admin-only list of what this alert added. The
+    // caller's own url (/?find=<series> for one, '/' for several) is only the fallback for a batch
+    // that could not be stored. Relative paths only either way: this token-gated route must not
+    // become an open redirect to an arbitrary origin.
+    let batchId = null;
+    try {
+      batchId = recordAdminBatch('new-series', String(title), String(body), entries);
+      await saveDatabase();
+    } catch (err) {
+      console.error('[NewSeries] batch not stored:', err.message);
+      batchId = null;
+    }
+    const wanted = batchId != null ? `/?batch=${batchId}` : url;
+    const link = typeof wanted === 'string' && /^\/[A-Za-z0-9_\-.~/?=&%+ ]*$/.test(wanted) ? wanted : '/';
     const send = await sendPushToAdmin(String(title), String(body), link);
     const delivered = (send.results || []).filter((r) => r.ok).length;
-    console.log(`[NewSeries] pushed "${title}" (${count} series → ${delivered}/${subscribers} accepted)`);
-    res.json({ ok: true, seriesCount: count, subscribers, vapidConfigured, delivered, pruned: send.pruned, results: send.results });
+    console.log(`[NewSeries] pushed "${title}" (${count} series, batch ${batchId} → ${delivered}/${subscribers} accepted)`);
+    res.json({ ok: true, seriesCount: count, batchId, link, subscribers, vapidConfigured, delivered, pruned: send.pruned, results: send.results });
   } catch (err) {
     console.error('[NewSeries] Error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin batches (what one admin alert added) ──
+// The watcher's SeriesDirEntry, field for field (mtt-series-watcher src/discovery.ts). Anything
+// else in a posted entry is dropped, and every value is a bounded string or null.
+const SERIES_ENTRY_FIELDS = ['seriesId', 'name', 'shortName', 'slug', 'startDate', 'endDate', 'venueId', 'venueName', 'cityState'];
+function sanitizeSeriesEntries(series) {
+  if (!Array.isArray(series)) return [];
+  const out = [];
+  for (const e of series.slice(0, 500)) {
+    if (!e || typeof e !== 'object') continue;
+    const clean = {};
+    for (const k of SERIES_ENTRY_FIELDS) {
+      const v = e[k];
+      clean[k] = v == null || String(v).trim() === '' ? null : String(v).trim().slice(0, 300);
+    }
+    out.push(clean);
+  }
+  return out;
+}
+
+function recordAdminBatch(kind, title, body, entries) {
+  db.run('INSERT INTO admin_batches (created_at, kind, title, body, payload) VALUES (?, ?, ?, ?, ?)',
+    [new Date().toISOString(), kind, title, body, JSON.stringify(entries)]);
+  const r = db.exec('SELECT last_insert_rowid() AS id');
+  return r[0].values[0][0];
+}
+
+// Series-name normaliser for matching a directory entry to the feed's `venue`. Case, accents,
+// apostrophes (PokerAtlas writes both "Bally's" and "Bally’s"), '&' vs 'and', and every other run of
+// punctuation/whitespace are not differences between two spellings of one series.
+function normSeriesName(s) {
+  return String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/['`‘’ʼ]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// tournaments.date is ISO for imports but 'October 11, 2026' from the feed. Date.parse reads the
+// latter as LOCAL midnight, so the day comes from local components — toISOString would move it a
+// day back anywhere east of UTC.
+function isoDay(v) {
+  const s = String(v || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const ms = Date.parse(s);
+  if (Number.isNaN(ms)) return null;
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function clockMinutes(t) {
+  const m = /^(\d{1,2}):(\d{2})\s*([AP]M)?/i.exec(String(t || '').trim());
+  if (!m) return 24 * 60;
+  let h = Number(m[1]) % 12;
+  if (!m[3]) h = Number(m[1]);
+  else if (/p/i.test(m[3])) h += 12;
+  return h * 60 + Number(m[2]);
+}
+function shiftDay(day, n) {
+  const d = new Date(day + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// One pass over the schedule: rows grouped by venue, with each venue's exact and normalised name.
+function scheduleVenueIndex() {
+  const byVenue = new Map();
+  const stmt = db.prepare("SELECT id, venue, property, date FROM tournaments WHERE venue != 'Personal'");
+  while (stmt.step()) {
+    const r = stmt.getAsObject();
+    let v = byVenue.get(r.venue);
+    if (!v) { v = { venue: r.venue, norm: normSeriesName(r.venue), rows: [] }; byVenue.set(r.venue, v); }
+    v.rows.push({ id: r.id, property: r.property, day: isoDay(r.date) });
+  }
+  stmt.free();
+  return [...byVenue.values()];
+}
+
+// Which schedule rows belong to one directory entry. The feed's `venue` IS the series name
+// (mtt-series-watcher emit/snbwsop.ts: venue = seriesName.trim(), PokerAtlas's series.name — the
+// same string the directory lists as `name`), so the tiers, best first:
+//   exact       venue === name (or shortName)
+//   normalized  equal after normSeriesName — case, quotes, punctuation
+//   loose       one normalised name contains the other as whole words (≥ 2 words), e.g. directory
+//               "WPT Prime Lodge Championship" vs feed "2026 WPT PRIME LODGE CHAMPIONSHIP" (the
+//               event row came from another source that names it differently). Containment alone
+//               is too weak, so each ROW must also be corroborated against the entry: its property
+//               (vs venueName) and its date (vs the series' dates ± 1 day) — neither may contradict,
+//               and at least one must confirm. Two series of one name at two rooms (Trailblazer
+//               Tour at Dallas and at Las Colinas) split on property.
+// The first tier that finds anything wins. shortName is skipped when PokerAtlas truncated it
+// ("WPT Prime Lodge C..."), and is never used for the loose tier: short names are generic
+// ("Deep Stack Series", "Poker Palooza").
+function matchSeriesEntry(entry, index) {
+  const names = [entry.name, entry.shortName && !/(\.\.\.|…)$/.test(entry.shortName) ? entry.shortName : null]
+    .filter(Boolean);
+  const pick = (pred) => index.filter(pred);
+  let tier = null;
+  let venues = pick((v) => names.some((n) => v.venue.trim() === n));
+  if (venues.length) tier = 'exact';
+  if (!tier) {
+    const norms = names.map(normSeriesName).filter(Boolean);
+    venues = pick((v) => norms.includes(v.norm));
+    if (venues.length) tier = 'normalized';
+  }
+  let rows = [];
+  if (tier) {
+    rows = venues.flatMap((v) => v.rows);
+  } else {
+    const n = normSeriesName(entry.name);
+    const words = (s) => s.split(' ').length;
+    const contains = (a, b) => (' ' + a + ' ').includes(' ' + b + ' ');
+    const room = entry.venueName ? normSeriesName(entry.venueName) : null;
+    const start = isoDay(entry.startDate), end = isoDay(entry.endDate);
+    const lo = start ? shiftDay(start, -1) : null, hi = end ? shiftDay(end, 1) : null;
+    const rowOk = (r) => {
+      const propOk = room && r.property ? normSeriesName(r.property) === room : null;
+      const dateOk = (lo || hi) && r.day ? (!lo || r.day >= lo) && (!hi || r.day <= hi) : null;
+      if (propOk === false || dateOk === false) return false;
+      return propOk === true || dateOk === true;
+    };
+    if (n && words(n) >= 2) {
+      venues = pick((v) => v.norm && v.norm !== n && words(v.norm) >= 2 &&
+        (contains(v.norm, n) || contains(n, v.norm)));
+      rows = venues.flatMap((v) => v.rows.filter(rowOk));
+      venues = venues.filter((v) => v.rows.some(rowOk));
+      if (rows.length) tier = 'loose';
+    }
+  }
+  return { match: tier || 'none', venues: venues.map((v) => v.venue), ids: rows.map((r) => r.id) };
+}
+
+function readAdminBatch(id) {
+  const stmt = db.prepare('SELECT id, created_at, kind, title, body, payload FROM admin_batches WHERE id = ?');
+  stmt.bind([id]);
+  const row = stmt.step() ? stmt.getAsObject() : null;
+  stmt.free();
+  if (!row) return null;
+  let entries = [];
+  try { entries = JSON.parse(row.payload) || []; } catch (_) { entries = []; }
+  delete row.payload;
+  return { ...row, entries: Array.isArray(entries) ? entries : [] };
+}
+
+app.get('/api/admin/batches', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 30));
+    const stmt = db.prepare('SELECT id FROM admin_batches ORDER BY id DESC LIMIT ?');
+    stmt.bind([limit]);
+    const ids = [];
+    while (stmt.step()) ids.push(stmt.getAsObject().id);
+    stmt.free();
+    const index = scheduleVenueIndex();
+    const batches = ids.map((id) => {
+      const b = readAdminBatch(id);
+      const matches = b.entries.map((e) => matchSeriesEntry(e, index));
+      return {
+        id: b.id, created_at: b.created_at, kind: b.kind, title: b.title, body: b.body,
+        seriesCount: b.entries.length,
+        scheduledSeries: matches.filter((m) => m.ids.length).length,
+        eventCount: matches.reduce((n, m) => n + m.ids.length, 0),
+      };
+    });
+    res.json({ batches });
+  } catch (err) {
+    console.error('[AdminBatches] list failed:', err.message);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+app.get('/api/admin/batches/:id', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id < 1) return res.status(404).json({ error: 'Not found' });
+    const b = readAdminBatch(id);
+    if (!b) return res.status(404).json({ error: 'Not found' });
+    const index = scheduleVenueIndex();
+    const series = b.entries.map((e) => {
+      const m = matchSeriesEntry(e, index);
+      let events = [];
+      for (let i = 0; i < m.ids.length; i += 500) { // under SQLite's bound-variable cap
+        const chunk = m.ids.slice(i, i + 500);
+        const stmt = db.prepare(`SELECT * FROM tournaments WHERE id IN (${chunk.map(() => '?').join(',')})`);
+        stmt.bind(chunk);
+        while (stmt.step()) events.push(stmt.getAsObject());
+        stmt.free();
+      }
+      events.sort((a, b) => String(isoDay(a.date) || a.date).localeCompare(String(isoDay(b.date) || b.date)) ||
+        clockMinutes(a.time) - clockMinutes(b.time));
+      attachOverrideFields(events);
+      // 'pending' = the directory listed the series but no row of it is in the schedule yet: the
+      // watcher has not collected its events, or this side has not ingested them (local :20; prod
+      // after the push that follows). Distinct from an empty match so the UI can say so.
+      return { ...e, match: m.match, venues: m.venues, status: events.length ? 'scheduled' : 'pending', eventCount: events.length, events };
+    });
+    res.json({
+      batch: {
+        id: b.id, created_at: b.created_at, kind: b.kind, title: b.title, body: b.body,
+        seriesCount: series.length, eventCount: series.reduce((n, s) => n + s.eventCount, 0),
+      },
+      series,
+    });
+  } catch (err) {
+    console.error('[AdminBatches] read failed:', err.message);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
 

@@ -51,6 +51,7 @@ const RazzTrainerView = lazy(() => import('./components/RazzTrainerView.jsx'));
 const Multiway3TrainerView = lazy(() => import('./components/Multiway3TrainerView.jsx'));
 const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
+const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'));
 const CashView = lazy(() => import('./components/CashView.jsx'));
 
 const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.252)'}}>Loading…</div>;
@@ -80,6 +81,10 @@ const FIND_PARAM = FIND_MATCH ? decodeURIComponent(FIND_MATCH[1].replace(/\+/g, 
 // without a search. Only 'calendar' is honored; anything else falls through to the default view.
 const VIEW_MATCH = window.location.search.match(/[?&]view=([a-z]+)/);
 const VIEW_PARAM = VIEW_MATCH ? VIEW_MATCH[1] : null;
+// /?batch=<id> — an admin alert's own list of what it added (server: admin_batches). Admin-only:
+// for anyone else the param is dropped without effect (the API refuses them anyway).
+const batchIdFrom = (s) => { const m = String(s || '').match(/[?&]batch=(\d{1,9})(?:&|$)/); return m ? Number(m[1]) : null; };
+const BATCH_PARAM = batchIdFrom(window.location.search);
 
 // The admin gates below read the username claim INSIDE the signed session token, never the
 // 'username' storage key: that key is plain localStorage, and setting it to 'ham' by hand used to
@@ -123,6 +128,8 @@ export default function App() {
   // and jump to the first matching day, then clears it — same idiom as scheduleFocusId.
   const [calendarFind, setCalendarFind] = useState(null);
   const clearCalendarFind = useCallback(() => setCalendarFind(null), []);
+  // The admin batch on show in the 'batches' view (null = the newest).
+  const [batchId, setBatchId] = useState(null);
   const tapListenerArmed = useRef(false); // the push effect re-runs on token changes; arm once
   const [viewKey, setViewKey] = useState(0);
   const [visitedTabs, setVisitedTabs] = useState(new Set(['dashboard']));
@@ -1362,6 +1369,22 @@ export default function App() {
     if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname);
   }, [token, applyFindLink, setCurrentView]);
 
+  const openBatch = useCallback((id) => {
+    setBatchId(id);
+    setCurrentView('batches');
+    const c = document.querySelector('.content-area');
+    if (c) requestAnimationFrame(() => { c.scrollTop = 0; });
+  }, [setCurrentView]);
+  // /?batch=<id>: an admin push tap. Waits for a session, then opens the batch only for an app
+  // admin; anyone else just loses the param.
+  const batchLinkHandled = useRef(false);
+  useEffect(() => {
+    if (!token || BATCH_PARAM == null || batchLinkHandled.current) return;
+    batchLinkHandled.current = true;
+    if (!isGuest && APP_ADMIN_USERNAMES.includes(tokenUsername(token))) openBatch(BATCH_PARAM);
+    if (window.history.replaceState) window.history.replaceState(null, '', window.location.pathname);
+  }, [token, isGuest, openBatch]);
+
   const nativePermState = (p) =>
     p.receive === 'granted' ? 'granted' : (p.receive === 'denied' ? 'denied' : 'default');
 
@@ -1435,6 +1458,8 @@ export default function App() {
             PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
               const url = a && a.notification && a.notification.data && a.notification.data.url;
               if (typeof url !== 'string') return;
+              const b = batchIdFrom(url);
+              if (b != null) { openBatch(b); return; }
               const m = url.match(/[?&]find=([^&]*)/);
               if (m) applyFindLink(decodeURIComponent(m[1].replace(/\+/g, ' ')));
               else if (/[?&]view=calendar/.test(url)) setCurrentView('calendar');
@@ -1776,6 +1801,25 @@ export default function App() {
             )}
             </div>
 
+            <div className={'tab-panel' + (currentView === 'batches' ? ' tab-active' : '')} data-tab="batches" style={{display: currentView === 'batches' ? undefined : 'none', height: currentView === 'batches' ? '100%' : undefined}}>
+            {visitedTabs.has('batches') && isAdmin && (
+              <Suspense fallback={<LazyFallback />}>
+                <AdminBatchesView
+                  token={token}
+                  batchId={batchId}
+                  onSelectBatch={openBatch}
+                  onShowInSchedule={applyFindLink}
+                  tournaments={tournaments}
+                  mySchedule={mySchedule}
+                  onToggle={toggleTournament}
+                  isAdmin={isAdmin}
+                  onAdminEdit={canEditEvents ? adminEditTournament : undefined}
+                  onClearOverrides={canEditEvents ? clearTournamentOverrides : undefined}
+                />
+              </Suspense>
+            )}
+            </div>
+
             <div className={'tab-panel' + (currentView === 'cash' ? ' tab-active' : '')} data-tab="cash" style={{display: currentView === 'cash' ? undefined : 'none', height: currentView === 'cash' ? '100%' : undefined}}>
             {visitedTabs.has('cash') && isAdmin && (
               <Suspense fallback={<LazyFallback />}><CashView token={token} onModeChange={setCashMode} /></Suspense>
@@ -2022,6 +2066,12 @@ export default function App() {
                     Admin
                   </button>
                 )}
+                {isAdmin && (
+                  <button onClick={() => { setShowUserMenu(false); openBatch(null); }}
+                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    New Events
+                  </button>
+                )}
                 <div style={{height:'calc(var(--subrow) * 0.125)',background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
                 <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
                   style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
@@ -2077,7 +2127,7 @@ export default function App() {
           <DesktopRail
             isAdmin={isAdmin}
             current={currentView === 'schedule' ? 'tournaments' : currentView}
-            onChange={v => setCurrentView(v)}
+            onChange={v => (v === 'batches' ? openBatch(null) : setCurrentView(v))}
           >{devToggles}</DesktopRail>
           <div className={'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : 'dk-pane-wide')}>
             {primaryColumn}
@@ -2108,7 +2158,7 @@ export default function App() {
           isAdmin={isAdmin}
           current={(() => {
             if (currentView === 'hands' && isAdmin) return 'hands';
-            if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin'].includes(currentView)) return null;
+            if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
             return currentView;
           })()}
           onChange={v => {

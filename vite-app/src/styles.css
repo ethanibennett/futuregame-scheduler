@@ -11776,7 +11776,8 @@
        and controls beside them (they sat on +3r, a whole r below the pill text):
        trimmed block, padding-top 2r - 1cap, top-aligned in the 3r header. */
     .dashboard-view .dashboard-section-header > .dashboard-section-title,
-    .social-view .dashboard-section-header > .dashboard-section-title {
+    .social-view .dashboard-section-header > .dashboard-section-title,
+    .batch-view .dashboard-section-header > .dashboard-section-title {
       align-self: flex-start;
       padding-top: calc(var(--subrow) * 2 - 1cap);
       white-space: nowrap;
@@ -11787,7 +11788,8 @@
        trimmed to cap..alphabetic with padding-top 2r - 1cap, so the baseline sits on
        +2r: cap 0.94r -> 1.06r above, 1r below = centred. */
     .dashboard-view .dashboard-section-badge,
-    .social-view .dashboard-section-badge {
+    .social-view .dashboard-section-badge,
+    .batch-view .dashboard-section-badge {
       display: block;
       flex: 0 0 auto;
       width: calc(var(--gu) * 4);
@@ -11809,7 +11811,8 @@
       border-radius: var(--radius);
     }
     .dashboard-view .dashboard-section-badge.dashboard-section-badge--wide,
-    .social-view .dashboard-section-badge.dashboard-section-badge--wide { width: calc(var(--gu) * 6); }
+    .social-view .dashboard-section-badge.dashboard-section-badge--wide,
+    .batch-view .dashboard-section-badge.dashboard-section-badge--wide { width: calc(var(--gu) * 6); }
 
     /* What's Next event cards */
     .dash-event-card {
@@ -16075,3 +16078,148 @@
        box (and the list's r rhythm) does not move by a hair. */
     .cal-event-row.is-selected { outline: var(--bw-2) solid var(--brand); outline-offset: 0; }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
+
+    /* ══ Admin "New events" (one alert's batch) ══════════════════════════════
+       Social's skeleton: the view starts on the content top (8r from the bar),
+       Dashboard section headers (3r, title + badge on +2r), 1r between blocks.
+       Text is seated the Social/Settings way: a trimmed block whose padding-top
+       is (baseline - 1cap) inside a fixed whole-r height, so each box stays whole
+       even where text-box-trim is unsupported.
+         head      title 3r (baseline +3r) | time line 2r (+5r)          = 5r
+         card      1r | name 3r (+2r) & 9g button 3r (+2r) | room 2r (+6r)
+                   | count 2r (+8r) | 1r                                 = 9r
+         events    1r below the card: the schedule's DateBreak + cal-event-row
+                   cards (1r below each), held to whole r by WholeRows
+         recent    header 3r, then 4r rows (baselines +3r), title 22g | 1g |
+                   meta 12g across the 35g content                        */
+    .batch-view {
+      display: flex;
+      flex-direction: column;
+      gap: var(--subrow);
+    }
+    /* 2r between series: the events list ends with its last card's 1r margin,
+       plus the view's 1r gap; a series with no list pads that 1r itself. */
+    .batch-series.is-empty { padding-bottom: var(--subrow); }
+
+    .batch-msg,
+    .batch-title,
+    .batch-sub,
+    .batch-series-name,
+    .batch-series-meta,
+    .batch-series-count,
+    .batch-show-btn > span,
+    .batch-recent-title,
+    .batch-recent-meta {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    .batch-msg {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-sm);
+      color: var(--text-muted);
+    }
+
+    .batch-head { display: flex; flex-direction: column; }
+    .batch-title {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-lg);
+      color: var(--text);
+    }
+    .batch-sub {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+
+    .batch-series-card {
+      display: flex;
+      flex-direction: column;
+      height: calc(var(--subrow) * 9);
+      box-sizing: border-box;
+      padding: var(--subrow) var(--gu);
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .batch-series-top {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 3);
+    }
+    .batch-series-name {
+      flex: 1 1 auto;
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-md);
+      color: var(--text);
+    }
+    /* The header's 3r badge, widened to 9g and filled brand (as Social's + New). */
+    .batch-show-btn {
+      flex: 0 0 calc(var(--gu) * 9);
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      height: calc(var(--subrow) * 3);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      border: none;
+      border-radius: var(--radius);
+      background: var(--brand);
+      color: var(--on-brand);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+    .batch-series-meta,
+    .batch-series-count {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+    }
+    .batch-series-meta { color: var(--text-muted); }
+    .batch-series-count { color: var(--text); font-weight: var(--fw-bold); }
+    .batch-series-count.is-pending { color: var(--brand); font-weight: var(--fw-regular); }
+
+    .batch-events { margin-top: var(--subrow); }
+    .batch-events-inner { display: flow-root; }
+
+    .batch-recent { display: flex; flex-direction: column; }
+    .batch-recent > .dashboard-section-header { margin-bottom: var(--subrow); }
+    .batch-recent-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 12);
+      column-gap: var(--gu);
+      align-items: end;
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      background: none;
+      border: none;
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .batch-recent-title { font-size: var(--fs-sm); }
+    .batch-recent-meta { font-size: var(--fs-xs); color: var(--text-muted); text-align: right; }
+    .batch-recent-row.is-current .batch-recent-title { color: var(--brand); font-weight: var(--fw-bold); }
+    /* ══ end New events ══════════════════════════════════════════════════════ */
