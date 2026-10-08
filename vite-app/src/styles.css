@@ -9371,6 +9371,7 @@
       line-height: 1;
     }
 
+    .badge-event { background: rgba(136,136,136,0.2); color: #999999; }
     .badge-variant { background: rgba(160,160,160,0.12); color: var(--accent); }
     .badge-clickable { cursor: pointer; }
     .badge-clickable:active { opacity: 0.6; }
@@ -10700,42 +10701,10 @@
          full card width under the buy-in. The accolade cluster occupies the same
          right cell as the money, under it. */
       display: grid;
-      /* title | event-number pill (auto: 0 wide when the event has no number) | 6g money column */
-      grid-template-columns: 1fr auto calc(var(--subcol) * 3);
+      grid-template-columns: 1fr calc(var(--subcol) * 3);
       align-items: end;
       gap: 0;
       --cal-title-line: calc(var(--subrow) * 2);
-    }
-    .cal-bar-row2 > .cal-event-name { grid-column: 1; }
-    .cal-bar-row2 > .cal-accolades { grid-column: 3; }
-    /* The event-number pill on the title line (CalendarEventRow EventNumberPill). Own column, so
-       it can never overlap an accolade icon or the guarantee: 1g clear of the title, right edge
-       1g inside the money column (28g); width a whole g from eventPillWidthG (4g holds "#500C").
-       A 3r pill like the expanded panel's badges, top on the title line's top (r6), bottom r9 —
-       inside the bar's 2r bottom pad (r8..r10), so the -1r margin keeps row 2 at 2r and the card
-       at 12r. Seating: a 2r line box at --fs-xs bold puts the baseline 1.5174r below the box top
-       (measured in WebKit); 0.4826r of top padding lands it on 2r, i.e. r8 — the title's baseline
-       — and centres the 1.08r capitals in the pill to within 0.04r. No text-box-trim. */
-    .cal-event-num {
-      grid-column: 2;
-      align-self: start;
-      justify-self: end;
-      box-sizing: border-box;
-      width: calc(var(--gu) * var(--num-w, 4));
-      height: calc(var(--subrow) * 3);
-      margin: 0 var(--gu) calc(var(--subrow) * -1);
-      padding: calc(var(--subrow) * 0.4826) 0 0;
-      line-height: calc(var(--subrow) * 2);
-      border-radius: var(--radius-lg);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-tight);
-      font-variant-numeric: tabular-nums;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      pointer-events: none;
     }
     /* Single-line name: a 2-subrow cell, bottom-aligned, lands the title's
        trimmed baseline on r8 (row1 is 6r, + 2r) with no nudge — a line below the
@@ -10823,8 +10792,7 @@
     /* The open card shows the whole title, unclamped, seated the same way: whole 2r line boxes
        (no trim, so a two-line title is exactly 4r, not 2r + the 1.297r trimmed second line,
        which left everything under a wrapped open title 0.297r off the grid) and the same 0.419r
-       to put each baseline on its r-line (r8, r10, ...). Titles wrap more since the event-number
-       pill took the right end of the line. */
+       to put each baseline on its r-line (r8, r10, ...). */
     .cal-event-row.open .cal-bar-row2:not(:has(.cal-event-stage)) .cal-event-name {
       display: block;
       white-space: normal;
@@ -11147,7 +11115,10 @@
        row, its baseline on the cell's bottom line (the row's r2): a 2r line box at --fs-2xs puts
        the baseline 1.4526r below the box top (measured in WebKit), so 0.5474r of top padding
        lands it on 2r. No text-box-trim, which is inert under flex and absent on iOS 15. */
-    .cal-badges-left { display: flex; align-items: flex-start; min-width: 0; }
+    .cal-badges-left { display: flex; gap: var(--gu); align-items: flex-start; min-width: 0; }
+    /* The event-number pill leads the row: whole-g, 4g (4..8g), so the game label starts on 9g.
+       min-width, so an unusually long number still fits. */
+    .cal-badges-left .badge-event { min-width: calc(var(--gu) * 4); padding: 0 calc(var(--gu) * 0.5); }
     /* The rake pill is 7g (20..27g). */
     .cal-event-detail .badge-rake { min-width: calc(var(--gu) * 7); padding: 0 calc(var(--gu) * 0.4); }
     .cal-badges-left .cal-meta-line {

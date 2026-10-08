@@ -8,7 +8,7 @@ import {
   normaliseDate, parseDateTime, parseDateTimeInTz, parseLateRegEnd, parseTournamentTime,
   getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
   extractConditions, formatConditionLabel, formatConditionBadge,
-  getIfIBustEvents, getIfIBagEvents, describeGame, eventPillWidthG, calculateCountdown, haptic,
+  getIfIBustEvents, getIfIBagEvents, describeGame, calculateCountdown, haptic,
   currencySymbol, nativeCurrency, CURRENCY_CONFIG, formatCurrencyAmount,
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
   HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords,
@@ -30,23 +30,6 @@ function formatEventName(name) {
       <span className="cal-event-base">{base}</span>
       <span className="cal-event-stage">{stage}</span>
     </>
-  );
-}
-
-// ── Event-number pill, on the title line ──
-// The number is what you say out loud at the desk, so it lives on the card face in the strip
-// colour, not only inside the expanded panel. It sits in its own grid column between the title
-// and the accolade icons (.cal-bar-row2 is title | pill | 6g money column), right edge on 28g,
-// so it can never overlap a ring, bracelet or bounty icon (29g..35g) or the guarantee above
-// them, and every card's number lines up down the list. Rendered only when shortEventNumber
-// finds a real number — most online rooms publish none.
-function EventNumberPill({ tournament, background, color }) {
-  const num = shortEventNumber(tournament.event_number);
-  if (!num) return null;
-  const label = '#' + num;
-  return (
-    <span className="cal-event-num" title={`Event ${label}`}
-          style={{ background, color, '--num-w': eventPillWidthG(label) }}>{label}</span>
   );
 }
 
@@ -678,7 +661,6 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
               </div>
               <div className="cal-bar-row2">
                 <span className="cal-event-name">{formatEventName(tournament.event_name)}</span>
-                <EventNumberPill tournament={tournament} background={stripColor} color={badgeTextColor} />
                 {(isBounty || isSat || isRestart || bracelet || ringEvent) && (
                   <span className="cal-accolades">
                     {isBounty && !isSat && <span className="cal-bounty-icon"><Icon.crosshairs /></span>}
@@ -749,11 +731,20 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                 <>
                   <div className="cal-detail-badges">
                     <div className="cal-badges-left">
+                      {/* The event-number pill leads this row, in the strip colour. Back here
+                          on the owner's call (2026-10-08) after a few minutes on the title line.
+                          Rendered only when shortEventNumber finds a real number: most online
+                          rooms publish none. */}
+                      {shortEventNumber(tournament.event_number) && (
+                        <span className="badge badge-event"
+                              style={{ background: stripColor, color: badgeTextColor }}>
+                          #{shortEventNumber(tournament.event_number)}
+                        </span>
+                      )}
                       {/* The game, by name: one label whatever the shape — "NLH", "HORSE",
                           "9-Game Mix". A mix whose games are known is a toggle that lists them
                           below (the rake pill's pattern), rather than every game inline: nine
-                          or twenty-one labels wrapped the left half over four ragged lines.
-                          (The event-number pill that led this row is now on the title line.) */}
+                          or twenty-one labels wrapped the left half over four ragged lines. */}
                       {game && (game.games.length > 0 ? (
                         <button type="button" className="cal-meta-line cal-game-mix"
                           aria-expanded={showMixGames}
@@ -1238,8 +1229,6 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
               </div>
               <div className="cal-bar-row2">
                 <span className="cal-event-name">{formatEventName(tournament.event_name)}</span>
-                <EventNumberPill tournament={tournament} background={stripColor}
-                  color={venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff'} />
                 {(isBounty || isSat || isRestart || bracelet || ringEvent) && (
                   <span className="cal-accolades">
                     {isBounty && !isSat && <span className="cal-bounty-icon"><Icon.crosshairs /></span>}
