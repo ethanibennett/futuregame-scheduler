@@ -1439,45 +1439,52 @@
     /* Display-font picker: two tiles, each showing the wordmark in the face it
        selects. The old control was a single button that rendered its own label
        in the CURRENT stack, so it previewed the state you were leaving. */
-    /* Two tiles side by side: gap = 1g so each tile is 16g and its edges land on
-       g-lines (18g / 19g). Height 64 = 8 subrows: 8 pad + 24 wordmark + 24
-       sublabel + 8 pad. The wordmark is a per-face type specimen, so its own
-       baseline shifts with the font on show; the sublabel (condensed, constant)
-       is the seated baseline, at tile-top + 56. */
+    /* On the grid (2026-10-08): two 16g tiles with a 1g gap (2..18g, 19..35g),
+       8r tall. Each line is a trimmed block whose padding-top is its baseline
+       minus 1cap: the wordmark on +4r, the sublabel on +6r. Trim seats each
+       face on its OWN cap/alphabetic metrics, so the per-face specimen lands
+       on the same line whichever font it shows. A button's own box is flex, so
+       the tile is a grid of block children (trim is inert on a flex box). */
     .font-pick { display: flex; gap: var(--gu); }
     .font-pick-tile {
       flex: 1;
       min-width: 0;
-      /* inset-shadow frame (like the card) so the tile is exactly 64 tall
-         (8 pad + 24 + 24 + 8) with no border adding layout height */
+      display: grid;
+      align-content: start;
+      height: calc(var(--subrow) * 8);
+      min-height: 0;
+      box-sizing: border-box;
+      /* inset-shadow frame (like the card): no border adding layout height */
       border: none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       border-radius: var(--radius-sm);
       background: none;
       color: var(--text);
-      padding: var(--subrow) 0;                  /* text centred; tile edges stay on the g-lines */
+      padding: 0;
       font-size: var(--fs-lg);
-      line-height: calc(var(--subrow) * 3);      /* 24 */
       letter-spacing: var(--track-wordmark);
       cursor: pointer;
       text-align: center;
     }
+    .font-pick-word {
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 4 - 1cap);   /* baseline +4r */
+    }
     .font-pick-tile i {
-      display: block;
       font-style: normal;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
-      line-height: calc(var(--subrow) * 3);      /* 24, baseline seated */
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* baseline +6r */
       margin: 0;
     }
     .font-pick-tile.is-on {
       box-shadow: inset 0 0 0 var(--bw-1) var(--brand);
       background: var(--brand-quiet);
     }
-
 
     /* ==================================================================
        Auth text controls. AuthScreen, ForgotPasswordForm and
@@ -8537,42 +8544,62 @@
     }
 
     /* ── Settings ──
-       Sub-grid law: g = 100vw/37, subrow = 8px. Every box edge on a g-line
-       (horizontal) or subrow line (vertical); every text baseline on a subrow
-       line. The content-area already supplies the 1g side rails, so the view
-       carries no side padding and the cards span 1g→36g (35g). Card frames and
-       row dividers are drawn with inset box-shadow, NOT layout borders, so the
-       hairlines land ON the grid line without insetting the rows off it or
-       accumulating a 1px drift down the card. Line-heights are subrow multiples
-       and the seated font-sizes were tuned by measurement so each baseline lands
-       on a subrow line (see docs/session-handoff.md). */
+       On the g/r grid (2026-10-08; measured at 402x874 from the .top-bar top,
+       the view starting on 8r). Every box is whole r tall and starts on a
+       whole-r line; every edge sits on a g line: cards 1..36g (the content-area
+       supplies the 1g rails), row content 2..35g, buttons and inputs whole g.
+       Text is seated the dashboard way: a trimmed block (cap..alphabetic) whose
+       padding-top is (its baseline - 1cap) inside a FIXED whole-r height, so the
+       baseline is a grid line and the box stays whole even where text-box-trim
+       is unsupported (iOS 15). Buttons are grids that bottom-align a trimmed
+       <span> above a whole-r bottom pad (trim is inert on a button's own flex
+       box). Rhythm: a label cell is 3r with its baseline on +2r, each further
+       line steps 2r; a single-line row is 5r (1r pad + 3r + 1r) with its
+       baseline on +3r — the same line as a 3r control beside it (box at +1r,
+       baseline +2r inside). Frames and dividers are inset shadows, so no
+       hairline adds layout height. */
     .settings-view {
       padding: 0;
-      /* seated label size: the condensed metrics land the baseline exactly on a
-         subrow line at 11.5px (measured, offset +16 in a 24 line); larger sizes
-         drift off the 8px grid. Hierarchy over the help text comes from colour,
-         weight and case, not size. */
-      --settings-label: var(--fs-xs);   /* 11.5, seated */
+      --settings-label: var(--fs-xs);
     }
     .settings-section {
-      margin-bottom: var(--space-3xl);           /* 24 = 3 subrows */
+      margin-bottom: calc(var(--subrow) * 3);
+    }
+    /* The shared seat: one line, trimmed, ellipsis without clipping descenders. */
+    .settings-section-label,
+    .settings-row-label,
+    .settings-acct-name,
+    .settings-acct-handle,
+    .settings-people-hd,
+    .settings-people-name,
+    .settings-about h3,
+    .settings-about p,
+    .settings-view .settings-btn > span,
+    .settings-row-btn > span,
+    .settings-seg-btn > span,
+    .font-pick-word,
+    .font-pick-tile i {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .settings-section-label {
       font-family: var(--font-condensed);
-      font-size: var(--fs-xs);                   /* 11.5 caps */
+      font-size: var(--fs-xs);
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
-      display: block;
-      line-height: calc(var(--subrow) * 3);      /* 24: box 3 subrows, baseline seats +16 */
-      margin: 0;                                 /* card follows at label-top + 24 */
-      padding: 0;                                /* text edge on the 1g rail */
+      height: calc(var(--subrow) * 3);
+      padding: calc(var(--subrow) * 2 - 1cap) 0 0;   /* baseline +2r; card follows at +3r */
+      margin: 0;
     }
     .settings-card {
       background: var(--surface);
-      /* frame drawn inside the border-box so its edges stay on 1g/36g and the
-         card takes no layout border to inset the rows by 1px */
       border: none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       border-radius: var(--radius-sm);
@@ -8580,29 +8607,30 @@
     }
     .settings-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      padding: var(--subrow) var(--gu);          /* 8 vertical (1 subrow), 1g horizontal */
+      padding: var(--subrow) var(--gu);          /* 1r, 1g: content 2..35g */
       gap: var(--gu);
-      /* divider as inset shadow: 1px line on the row's bottom subrow line, zero
-         layout height, so rows tile the 8px grid with no cumulative drift */
       box-shadow: inset 0 calc(-1 * var(--bw-1)) 0 0 var(--border);
     }
     .settings-card > :last-child { box-shadow: none; }
     .settings-row-label {
-      display: inline-block;
-      /* condensed (not the -apple-system body stack): its metrics seat the
-         baseline at +16 in a 24 line for sizes near the app's 13px base */
       font-family: var(--font-condensed);
-      font-size: var(--settings-label);          /* 12, seated */
-      line-height: calc(var(--subrow) * 3);      /* 24 */
+      font-size: var(--settings-label);
       color: var(--text);
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* baseline +2r = row +3r */
     }
+    /* Help lines continue the label's rhythm: pulled up 1r so its first baseline
+       is 2r below the label's, 2r per line, and 1r below the last baseline. A
+       block of n lines is 2n r. */
     .settings-help {
-      font-size: var(--fs-xs);                   /* 11.5 */
-      line-height: calc(var(--subrow) * 3);      /* 24: baseline seats +16 per line */
+      font-size: var(--fs-xs);
+      line-height: calc(var(--subrow) * 2);
       color: var(--text-muted);
-      margin: 0;
+      margin: calc(var(--subrow) * -1) 0 0;
+      padding: calc(var(--subrow) * 2 - 1cap) 0 var(--subrow);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .settings-row-value {
       font-size: var(--fs-sm);
@@ -8610,21 +8638,24 @@
       color: var(--text-muted);
       text-align: right;
     }
+    /* Sign out: a 5r row, label baseline +3r, 2g.. like every row label. */
     .settings-row-btn {
+      display: grid;
+      align-items: end;
+      justify-items: start;
       width: 100%;
-      padding: var(--subrow) var(--gu);          /* height 40 = 8 + 24 line + 8 */
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
       background: none;
       border: none;
       box-shadow: inset 0 calc(-1 * var(--bw-1)) 0 0 var(--border);
       color: var(--text);
       font-family: var(--font-condensed);
-      font-size: var(--settings-label);          /* 11.5, seated baseline +24 */
-      line-height: calc(var(--subrow) * 3);      /* 24 */
+      font-size: var(--settings-label);
       text-align: left;
       cursor: pointer;
-      /* block, not flex: a single left-aligned label seats its baseline via
-         line-height + padding; flex align-items:center shifts it off the line */
-      display: block;
     }
     .settings-row-btn:active { background: var(--hover-overlay); }
     /* #b91c1c was fixed across all four themes and computes to about 3.1:1 on
@@ -8633,112 +8664,163 @@
        and picked the wrong one for its own default theme. */
     .settings-row-btn.danger { color: var(--danger); }
 
-    /* Account row: avatar (48 = 6 subrows) + name/handle stack + action buttons,
-       all inside a 64px (8 subrow) row. */
-    .settings-acct { align-items: center; gap: var(--gu); }
+    /* Account row, 7r: 1r | 5r | 1r. Avatar 5r centred in a 4g cell (2..6g; a
+       circle can't be whole g and whole r), name 7g.. with baselines on +3r and
+       +5r, buttons 5r (baseline +4r) ending on 35g. */
+    .settings-acct { height: calc(var(--subrow) * 7); box-sizing: border-box; }
+    .settings-acct-avatar {
+      flex: 0 0 calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 5);
+      display: flex;
+      justify-content: center;
+    }
     .settings-acct-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .settings-acct-name {
       font-family: var(--font-condensed);
-      font-size: var(--settings-label);          /* 12, baseline +24 */
-      line-height: calc(var(--subrow) * 3);      /* 24 */
+      font-size: var(--settings-label);
       font-weight: var(--fw-bold);
       color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* row +3r */
     }
     .settings-acct-handle {
-      font-size: var(--fs-xs);                   /* 11.5, baseline +48 */
-      line-height: calc(var(--subrow) * 3);      /* 24 */
+      font-size: var(--fs-xs);
       color: var(--text-muted);
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* row +5r */
     }
-    .settings-acct-actions { display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0; }
+    .settings-acct-actions { display: flex; align-items: flex-start; gap: var(--gu); flex-shrink: 0; }
 
-    /* Display-names row: label + help stacked left, segmented control right.
-       Top-aligned so the 24px segmented control lands on the +8 subrow line. */
-    .settings-namemode { align-items: flex-start; }
-    .settings-namemode-text { display: flex; flex-direction: column; min-width: 0; }
-
+    /* Display-names row, 7r: label +3r, help +5r; the 3r segmented control at
+       +1r puts its labels on the label's +3r. Real 4g | Username 6g = 25..35g. */
+    .settings-namemode-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
     .settings-seg {
       display: flex;
-      gap: var(--space-xs);
+      gap: 0;
       background: var(--bg);
       border-radius: var(--radius-sm);
-      height: calc(var(--subrow) * 3);           /* 24 = 3 subrows */
+      height: calc(var(--subrow) * 3);
       flex-shrink: 0;
     }
     .settings-seg-btn {
-      padding: 0 var(--space-ml);
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      width: calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 3);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);                /* baseline +2r */
       border: none;
       border-radius: var(--radius-xs);
       cursor: pointer;
       font-size: var(--fs-xs);
-      line-height: calc(var(--subrow) * 3);      /* fills the 24 track, baseline seated */
       font-weight: var(--fw-bold);
       background: transparent;
       color: var(--text-muted);
     }
+    .settings-seg-btn + .settings-seg-btn { width: calc(var(--gu) * 6); }
     .settings-seg-btn.is-on { background: var(--brand); color: var(--on-brand); }
 
-    /* Stacked rows: a single column with a 1-subrow gap, every child a whole
-       number of subrows tall, so the stack tiles the grid regardless of wrap. */
+    /* Stacked rows: label (3r), help (2r a line), then each control 1r below. */
     .settings-row--stack {
       flex-direction: column;
       align-items: stretch;
-      gap: var(--subrow);
+      gap: 0;
     }
-    .settings-inline-row { display: flex; align-items: center; gap: var(--space-sm); }
+    .settings-row--stack > :not(.settings-row-label):not(.settings-help) { margin-top: var(--subrow); }
+    .settings-inline-row { display: flex; align-items: flex-start; gap: var(--gu); }
 
-    /* Settings ghost buttons: 32px (4 subrows) tall, seated. Scoped to the page
-       so the shared .btn-sm elsewhere is untouched. */
+    /* Ghost buttons: 5r, label baseline +3r (cap ~1.2r: 1.8r above, 2r below),
+       whole-g widths so the input beside them fills a whole-g remainder. The
+       frame is an inset shadow so it adds no size. Scoped to the page so the
+       shared .btn-sm elsewhere is untouched. */
     .settings-view .settings-btn.btn-sm {
-      height: calc(var(--subrow) * 4);           /* 32 */
-      padding: 0 var(--space-ml);
+      display: grid;
+      grid-auto-flow: column;
+      align-items: end;
+      justify-content: center;
+      column-gap: calc(var(--gu) * 0.5);
+      flex: 0 0 auto;
+      width: calc(var(--gu) * 6);
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 calc(var(--subrow) * 2);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       font-size: var(--fs-sm);
       line-height: 1;
     }
-    .settings-view .settings-btn.btn-sm svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); }
+    @media (hover: hover) and (pointer: fine) {
+      .settings-view .settings-btn.btn-sm:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    }
+    /* Icon centred on the label's cap: bottom-aligned, then dropped by half the
+       difference between the icon (1.75r) and the cap height. */
+    .settings-view .settings-btn.btn-sm svg {
+      width: calc(var(--subrow) * 1.75);
+      height: calc(var(--subrow) * 1.75);
+      margin-bottom: calc(1cap / 2 - var(--subrow) * 0.875);
+    }
     .settings-btn--danger { color: var(--danger); }
     .settings-btn--start { align-self: flex-start; }
     /* Delete account: the one irreversible action in Settings, so it is the only
-       filled red button on the page. Same 32px (4 subrow) seated box as the
-       ghost buttons beside it; the frame is a token hairline in the danger hue. */
-    .settings-btn--destroy {
+       filled red button on the page. Same 5r seated box as the ghost buttons
+       beside it (label on +3r), 10g wide to hold its label; the frame is an
+       inset hairline in the danger hue, so it adds no size. */
+    .settings-view .settings-btn--destroy.btn-sm {
+      width: calc(var(--gu) * 10);
       background: var(--danger-bg);
       color: var(--danger);
-      border: var(--bw-1) solid var(--danger);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--danger);
     }
     .settings-btn--destroy:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
-    .settings-help--danger { color: var(--danger); }
-    /* Inline control button (Theme) matches the 24px control-row track. */
-    .settings-view .settings-btn--icon.btn-sm { height: calc(var(--subrow) * 3); }  /* 24 */
+    /* The error line follows the 5r field, not a label: no pull-up, so its
+       baseline is 2r below the field (and it keeps the 2r line pitch). */
+    .settings-help--danger { color: var(--danger); margin-top: 0; }
+    .settings-view .settings-btn--w7.btn-sm { width: calc(var(--gu) * 7); }
+    .settings-view .settings-btn--w12.btn-sm { width: calc(var(--gu) * 12); }
+    .settings-view .settings-btn--w14.btn-sm { width: calc(var(--gu) * 14); }
+    /* Theme: a 3r in-row control like the toggle and the segmented control. */
+    .settings-view .settings-btn--icon.btn-sm {
+      width: calc(var(--gu) * 7);
+      height: calc(var(--subrow) * 3);
+      padding-bottom: var(--subrow);             /* baseline +2r = row +3r */
+    }
 
-    /* People lists (pending / connected). Each row 40px (5 subrows). */
+    /* People lists (pending / connected): a 3r header, then 5r rows — avatar
+       3r centred in a 3g cell (2..5g), name 6g.. on the row's +3r, a 6g button
+       (29..35g) whose label shares that baseline. */
     .settings-people { display: flex; flex-direction: column; }
     .settings-people-hd {
-      display: block;
       font-size: var(--fs-xs);
-      line-height: calc(var(--subrow) * 3);      /* 24 */
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
     }
     .settings-people-item {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: calc(var(--subrow) * 5);           /* 40 */
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 5);
       box-shadow: inset 0 calc(-1 * var(--bw-1)) 0 0 var(--border);
     }
-    .settings-people-name {
+    .settings-people-avatar {
+      flex: 0 0 calc(var(--gu) * 3);
+      height: calc(var(--subrow) * 5);
       display: flex;
       align-items: center;
-      gap: var(--space-md);
-      min-width: 0;
+      justify-content: center;
+    }
+    .settings-people-name {
+      flex: 1 1 auto;
       font-family: var(--font-condensed);
-      font-size: var(--settings-label);          /* 12 */
-      line-height: calc(var(--subrow) * 3);      /* 24 */
+      font-size: var(--settings-label);
       color: var(--text);
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
     }
 
     /* Three problems in one control. The pill shape was a COINCIDENCE -
@@ -8775,43 +8857,58 @@
     }
     .settings-toggle.on::after { background: var(--on-brand); }
     .settings-toggle.on::after { transform: translateX(calc(var(--subrow) * 2.5)); }
+    /* On the Settings page the switch is 4g x 3r (31..35g); the knob travels
+       4g - 3r (the 2.5r knob plus its two 0.25r insets). */
+    .settings-view .settings-toggle { width: calc(var(--gu) * 4); }
+    .settings-view .settings-toggle.on::after { transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3)); }
 
+    /* Inputs: 5r, frame as an inset shadow. Text baseline on +3r: the line box
+       is centred in the content box, so with content = line-height the baseline
+       is pt + L/2 + (A - D)/2; Univers Condensed has A - D = 0.7333em (the
+       Calendar search uses the same constant), so pt = 2r - 0.7333em and
+       L = 2r + 0.7333em with 1r below put it on exactly 3r. */
     .settings-debug-input {
       background: var(--surface2);
-      border: var(--bw-1) solid var(--border);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       border-radius: var(--radius-sm);
       color: var(--text);
       font-family: var(--font-condensed);
       font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 3);      /* 24 */
-      padding: 0 var(--space-ml);
-      height: calc(var(--subrow) * 4);           /* 32 = 4 subrows */
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2 - 0.7333em) var(--gu) var(--subrow);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
+      margin: 0;
       width: 100%;
     }
     .settings-share-input { flex: 1; min-width: 0; }
     .settings-debug-input:focus {
-      border-color: var(--brand-line);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line);
     }
 
+    /* About: wordmark on +3r, the two lines on +5r and +7r — 8r in all. */
     .settings-about {
       text-align: center;
       padding: 0;
       color: var(--text-muted);
-      font-size: var(--fs-sm);
     }
     .settings-about h3 {
       font-family: var(--serif);
       font-size: var(--fs-lg);
-      line-height: calc(var(--subrow) * 4);      /* 32: box 4 subrows */
+      font-weight: var(--fw-regular);
       color: var(--text);
       margin: 0;
       letter-spacing: var(--track-wordmark);
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
     }
     .settings-about p {
       font-family: var(--font-condensed);
-      font-size: var(--settings-label);          /* 12, seated */
-      line-height: calc(var(--subrow) * 3);      /* 24 */
+      font-size: var(--settings-label);
       margin: 0;
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
     }
     .settings-about-ver { opacity: 0.5; }
 
@@ -11707,7 +11804,8 @@
     /* Dashboard section titles share the header's +2r baseline with the 3r pills
        and controls beside them (they sat on +3r, a whole r below the pill text):
        trimmed block, padding-top 2r - 1cap, top-aligned in the 3r header. */
-    .dashboard-view .dashboard-section-header > .dashboard-section-title {
+    .dashboard-view .dashboard-section-header > .dashboard-section-title,
+    .social-view .dashboard-section-header > .dashboard-section-title {
       align-self: flex-start;
       padding-top: calc(var(--subrow) * 2 - 1cap);
       white-space: nowrap;
@@ -11717,7 +11815,8 @@
        block (6g --wide) on the 32/30g lines, caps micro-label (--fs-2xs is caps-only),
        trimmed to cap..alphabetic with padding-top 2r - 1cap, so the baseline sits on
        +2r: cap 0.94r -> 1.06r above, 1r below = centred. */
-    .dashboard-view .dashboard-section-badge {
+    .dashboard-view .dashboard-section-badge,
+    .social-view .dashboard-section-badge {
       display: block;
       flex: 0 0 auto;
       width: calc(var(--gu) * 4);
@@ -11738,7 +11837,8 @@
       background: var(--surface2);
       border-radius: var(--radius);
     }
-    .dashboard-view .dashboard-section-badge.dashboard-section-badge--wide { width: calc(var(--gu) * 6); }
+    .dashboard-view .dashboard-section-badge.dashboard-section-badge--wide,
+    .social-view .dashboard-section-badge.dashboard-section-badge--wide { width: calc(var(--gu) * 6); }
 
     /* What's Next event cards */
     .dash-event-card {
@@ -13153,109 +13253,189 @@
     }
     .dash-conn-dropdown-event .muted { color: var(--text-muted); }
 
-    /* ── Social View ── */
+    /* ── Social View ──
+       On the g/r grid (2026-10-08; measured at 402x874 from the .top-bar top,
+       the view starting on 8r). Section headers use the Dashboard's seated
+       header (title and 3r badge sharing the +2r baseline; rules extended to
+       .social-view there). Cards are 7r (1r | 5r row | 1r) at 1..36g with the
+       content 2..35g: a 4g avatar cell (2..6g; the 5r avatar centred in it, a
+       circle can't be whole g and whole r), the text from 7g with baselines on
+       the card's +3r and +5r, and a 2g chevron cell ending on 35g. Text is
+       seated as on Settings: a trimmed block whose padding-top is (baseline -
+       1cap) inside a fixed whole-r height, so the box stays whole where
+       text-box-trim is unsupported; buttons bottom-align a trimmed <span>.
+       Every frame and divider is an inset shadow. */
     .social-view {
       display: flex;
       flex-direction: column;
-      gap: var(--space-md);
+      gap: var(--subrow);
+    }
+    .social-view > .dashboard-section-header { margin-bottom: var(--subrow); }
+    .social-view > .social-section-gap { margin-top: calc(var(--subrow) * 2); }
+
+    /* The shared seat: one line, trimmed, ellipsis without clipping descenders. */
+    .social-buddy-name,
+    .social-buddy-status,
+    .social-group-meta,
+    .social-group-avatar,
+    .social-chev,
+    .social-detail-label,
+    .social-detail-value,
+    .social-sched-hd,
+    .social-sched-grid > span,
+    .social-sched-msg,
+    .social-search-msg,
+    .social-search-note,
+    .social-confirm-text,
+    .social-cell,
+    .social-new-btn > span,
+    .social-connect-btn > span,
+    .social-action-btn > span,
+    .social-text-btn > span,
+    .social-confirm-btn > span {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    .social-buddy-card {
+    /* "+ New": the header's 3r x 4g badge, filled brand. A button's own box is
+       flex, so the label is a trimmed span bottom-aligned above 1r (+2r). */
+    .social-view .social-new-btn {
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      min-height: 0;
+      padding: 0 0 var(--subrow);
+      border: none;
+      background: var(--brand);
+      color: var(--on-brand);
+      cursor: pointer;
+    }
+
+    .social-buddy-card,
+    .social-group-card {
       display: flex;
       flex-direction: column;
       gap: 0;
       background: var(--surface);
-      /* Hairline as inset shadow, not border, so it stays out of the box model:
-         outer height = 2×8 padding + 40 row = 56 (7 subrows), on grid. */
       border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
-      /* 1 subrow vertical (collapsed row is 40 → card 56 = 7 subrows), 1g horizontal */
-      padding: var(--subrow) var(--gu);
+      padding: var(--subrow) var(--gu);          /* 1r | 5r row | 1r = 7r */
       cursor: pointer;
       transition: background var(--dur-fast);
       text-align: left;
       color: var(--text);
       font-family: inherit;
       width: 100%;
+      min-height: 0;
+      box-sizing: border-box;
     }
     @media (hover: hover) and (pointer: fine) {
-      .social-buddy-card:hover { background: var(--hover-overlay); }
+      .social-buddy-card:hover,
+      .social-group-card:hover { background: var(--hover-overlay); }
     }
-    .social-buddy-card.live { box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--accent); }
+    .social-buddy-card.live { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
 
     .social-buddy-row {
       display: flex;
-      align-items: center;
-      gap: var(--gu); /* one gutter */
-      min-height: calc(var(--subrow) * 5); /* 40px = avatar height, keeps row on grid */
+      align-items: flex-start;
+      gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 5);
     }
-
+    .social-avatar-cell {
+      flex: 0 0 calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 5);
+      display: flex;
+      justify-content: center;
+    }
     .social-buddy-info {
       flex: 1;
       min-width: 0;
-      /* Seat the name baseline on a subrow line. The 32px text block is centered
-         in the 40px row (+4 offset); this nudge lands the first baseline on a
-         line and, with the 1.5px pair-gap below, the second baseline too. */
-      position: relative;
-      top: calc(var(--subrow) * -0.125);
+      display: flex;
+      flex-direction: column;
     }
-
     .social-buddy-name {
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       font-size: var(--fs-md);
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* card +3r */
     }
-
-    .social-buddy-status {
+    .social-buddy-status,
+    .social-group-meta {
       font-size: var(--fs-xs);
       color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
-      margin-top: calc(var(--subrow) * 0.25); /* pair-gap: makes the two baselines exactly 16px (2 subrows) apart */
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);   /* card +5r */
     }
+    /* Live: the dot takes a 1g cell, so the text starts on 8g; it is centred on
+       the cap (the trimmed content box ends on the baseline). */
     .social-buddy-status.live {
       color: #22c55e;
-      display: flex;
-      align-items: baseline; /* hand the text baseline to the grid like the block status */
-      gap: var(--space-sm);
+      position: relative;
+      padding-left: var(--gu);
     }
     .social-buddy-status.busted { color: #ef4444; }
-
     .social-live-dot {
+      position: absolute;
+      left: calc((var(--gu) - var(--subrow) * 0.75) / 2);
+      bottom: calc((1cap - var(--subrow) * 0.75) / 2);
       width: calc(var(--subrow) * 0.75); height: calc(var(--subrow) * 0.75);
       border-radius: var(--radius-circle);
       background: #22c55e;
-      flex-shrink: 0;
       animation: livePulse 2s ease-in-out infinite;
     }
-
     @keyframes livePulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
 
+    /* Chevron: a 2g x 5r cell (33..35g), glyph on the row's +3r (ink 1.94r..3.02r
+       down the cell). Open swaps the glyph to an up-pointing one on the same
+       baseline rather than rotating: a rotate(180deg) on this trimmed cell landed
+       the flipped glyph 0.07-0.10r below the closed one in WebKit whatever
+       transform-origin said (computed origin honoured, ink not), so it could not
+       be seated. */
+    .social-chev {
+      flex: 0 0 calc(var(--gu) * 2);
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-align: center;
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+    .social-chev--go { font-size: var(--fs-lg); color: var(--text-secondary); }
+
+    /* Expanded live detail: 1r gap, divider, 1r, then 2r rows whose label and
+       value share the row's bottom line. */
     .social-buddy-detail {
-      margin-top: var(--space-md);
-      padding-top: var(--space-md);
-      box-shadow: inset 0 calc(var(--subrow) * 0.125) 0 0 var(--border); /* top divider out of the box model */
+      margin-top: var(--subrow);
+      padding-top: var(--subrow);
+      box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
       display: flex;
       flex-direction: column;
       gap: 0;
     }
-
     .social-detail-row {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
-      font-size: var(--fs-xs);
-      line-height: calc(var(--subrow) * 2); /* 16px rows */
+      align-items: flex-end;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 2);
     }
-
+    .social-detail-label,
+    .social-detail-value {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+    }
     .social-detail-label {
+      flex: 0 0 auto;
       color: var(--text-muted);
       text-transform: uppercase;
       font-family: var(--font-condensed);
@@ -13263,101 +13443,386 @@
       letter-spacing: var(--track-caps);
       font-size: var(--fs-2xs);
     }
-
     .social-detail-value {
+      flex: 0 1 auto;
+      font-size: var(--fs-xs);
       color: var(--text);
       font-weight: var(--fw-bold);
       font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    /* Upcoming schedule: divider, a 3r header, 3r rows (baselines +2r). Columns
+       on whole g across the card's 33g: day 2g | date 5g | room 5g | time 5g |
+       name (12g, 1g lead) | buy-in 4g. */
+    .social-sched {
+      margin-top: var(--subrow);
+      padding-top: var(--subrow);                /* header cap clears the divider like the actions do */
+      box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
+    }
+    .social-sched-hd {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+      font-weight: var(--fw-bold);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--track-caps);
+    }
+    .social-sched-grid {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 2) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 5) minmax(0, 1fr) calc(var(--gu) * 4);
+      grid-auto-rows: calc(var(--subrow) * 3);
+    }
+    .social-sched-grid > span {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+    }
+    .social-sched-dow,
+    .social-sched-date {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-weight: var(--fw-bold);
+    }
+    .social-sched-dow { color: var(--text-muted); }
+    .social-sched-date { color: var(--text); }
+    .social-sched-grid > .social-sched-abbr { font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-align: center; }
+    .social-sched-time { color: var(--text-muted); text-align: right; }
+    .social-sched-grid > .social-sched-name { font-size: var(--fs-sm); color: var(--text); padding-left: var(--gu); }
+    .social-sched-buyin { color: var(--text-muted); font-weight: var(--fw-bold); text-align: right; }
+    .social-sched-msg {
+      margin-top: var(--subrow);
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-sm);
+      color: var(--text-muted);
+    }
+
+    /* Actions: divider, 1r, then 5r buttons 1r apart (labels on +3r). */
+    .social-actions {
+      margin-top: var(--subrow);
+      padding-top: var(--subrow);
+      box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: var(--subrow);
+    }
+    .social-actions-list { display: flex; flex-direction: column; gap: var(--subrow); }
+    .social-actions-list > .social-sched-hd { margin-bottom: calc(var(--subrow) * -1); }
+    .social-action-btn {
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      background: none;
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      border-radius: calc(var(--subrow) * 0.75);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-sm);
+      cursor: pointer;
+    }
+    .social-action-btn.is-danger { color: #b91c1c; }
+    .social-action-btn.is-split {
+      grid-template-columns: minmax(0, 1fr) auto;
+      justify-items: start;
+      column-gap: var(--gu);
+    }
+    .social-action-btn.is-split > .social-action-status { justify-self: end; font-size: var(--fs-xs); }
+    .social-text-btn {
+      display: grid;
+      align-items: end;
+      justify-items: start;
+      width: calc(var(--gu) * 6);
+      height: calc(var(--subrow) * 3);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+    .social-confirm {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 5);
+    }
+    .social-confirm-text {
+      flex: 1 1 auto;
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-xs);
+      color: #ef4444;
+    }
+    .social-confirm-btn {
+      flex: 0 0 calc(var(--gu) * 6);
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 calc(var(--subrow) * 2);
+      background: none;
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      border-radius: calc(var(--subrow) * 0.75);
+      color: var(--text-muted);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+    .social-confirm-btn.is-danger { background: #b91c1c; color: #fff; box-shadow: none; font-weight: var(--fw-bold); }
+
+    /* Search: a 5r field, text baseline on +3r (the Settings / Calendar input
+       recipe: Univers Condensed A - D = 0.7333em). Results drop from its bottom
+       edge in 7r rows shaped like the cards. */
+    .social-search { position: relative; margin-bottom: calc(var(--subrow) * 2); }
+    .social-search-input {
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: 0;
+      padding: calc(var(--subrow) * 2 - 0.7333em) var(--gu) var(--subrow);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-sm);
+      outline: none;
+    }
+    .social-search-input:focus-visible { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+    .social-search-msg {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+      color: var(--accent);
+    }
+    .social-search-results {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
+      border-radius: var(--radius-sm);
+      max-height: calc(var(--subrow) * 28);
+      overflow-y: auto;
+    }
+    .social-search-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 7);
+      box-sizing: border-box;
+      padding: var(--subrow) var(--gu);
+      box-shadow: inset 0 calc(-1 * var(--bw-hair)) 0 0 var(--border);
+    }
+    .social-connect-btn {
+      flex: 0 0 calc(var(--gu) * 6);
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      height: calc(var(--subrow) * 3);
+      min-height: 0;
+      margin-top: var(--subrow);                 /* row +2..+5r, label on +4r */
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--accent);
+      border-radius: calc(var(--subrow) * 0.75);
+      background: transparent;
+      color: var(--accent);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+    .social-search-note {
+      height: calc(var(--subrow) * 5);
+      padding: calc(var(--subrow) * 3 - 1cap) var(--gu) 0;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-sm);
+      color: var(--text-muted);
+    }
+
+    /* Share placeholder: 7r box, the line on +4r. */
+    .social-share-box {
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      border-radius: var(--radius-sm);
+      padding: calc(var(--subrow) * 2) var(--gu);
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .social-cell {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-sm);
+    }
+
+    /* Empty-state prose: 2r lines, first baseline +2r, 2r clear below. */
+    .social-empty {
+      font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 2);
+      color: var(--text-muted);
+      padding: calc(var(--subrow) * 2 - 1cap) 0 calc(var(--subrow) * 2);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* ── Groups ── */
-    .social-group-card {
-      display: flex;
-      flex-direction: column;
-      background: var(--surface);
-      border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border); /* hairline out of the box model */
-      border-radius: var(--radius);
-      padding: var(--subrow) var(--gu); /* matches buddy card: 56px box */
-      cursor: pointer;
-      transition: background var(--dur-fast);
-      text-align: left;
-      color: var(--text);
-      font-family: inherit;
-      width: 100%;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .social-group-card:hover { background: var(--hover-overlay); }
-    }
-
     .social-group-avatar {
-      width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); /* 40px square = 5 subrows */
+      width: calc(var(--gu) * 4);                /* fills the 4g cell: 4g x 5r */
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
       border-radius: var(--radius);
       background: var(--accent);
       color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      text-align: center;
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       font-size: var(--fs-lg);
-      flex-shrink: 0;
     }
 
-    .social-group-meta {
-      font-size: var(--fs-xs);
-      color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
-      margin-top: calc(var(--subrow) * 0.25); /* pair-gap: two baselines exactly 16px (2 subrows) apart */
-    }
-
-    /* ── Group Detail View ── */
+    /* ── Group Detail View ──
+       On the grid (2026-10-08), the same recipe as the Social list: whole-r
+       boxes from the 8r content top, g-line edges, text as trimmed blocks with
+       padding-top = baseline - 1cap inside fixed whole-r heights, button
+       labels as trimmed spans bottom-aligned above a whole-r pad, frames as
+       inset shadows. The view's height is floored to a whole r so the feed's
+       input row, pinned to its foot, lands on a line whatever the screen. */
     .group-detail-view {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      height: 100%;                              /* fallback where round() is unsupported (< iOS 15.4) */
+      height: round(down, 100%, var(--subrow));
+    }
+    .group-detail-view .group-back-btn > span,
+    .group-detail-view .group-header-btn > span,
+    .group-segment-btn > span,
+    .group-feed-item-name,
+    .group-feed-item-time,
+    .group-feed-input button > span,
+    .group-schedule-name,
+    .group-schedule-venue,
+    .group-schedule-meta,
+    .group-schedule-names,
+    .leaderboard-rank,
+    .leaderboard-stats,
+    .leaderboard-won,
+    .group-invite-btn > span,
+    .create-group-buddy-name,
+    .create-group-buddy-mark,
+    .group-list-hd,
+    .group-member-name,
+    .group-member-sub,
+    .group-member-btn > span,
+    .group-member-tag,
+    .leaderboard-toggle-label,
+    .group-exit-btn > span,
+    .create-group-title,
+    .create-group-close > span,
+    .create-group-label,
+    .create-group-error,
+    .create-group-submit > span {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
+    /* Header, 6r: back 1..4g, name on +3r / members on +5r from 5g, Delete or
+       Leave 30..36g; the arrow and the action share +4r. */
     .group-detail-header {
       display: flex;
-      align-items: center;
-      gap: var(--gu); /* one gutter */
-      min-height: calc(var(--subrow) * 5); /* 40px content row */
-      padding: 0 0 var(--subrow); /* 1 subrow below → 48px box (6 subrows) */
-      /* Divider as a shadow at the box bottom, out of the box model, so the
-         header occupies exactly 48px and the segments below stay on grid. */
-      box-shadow: 0 calc(var(--subrow) * 0.125) 0 0 var(--border);
-      margin-bottom: var(--space-md); /* 1 subrow */
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 6);
+      flex-shrink: 0;
+      padding: 0;
+      /* divider as a shadow below the box, out of the box model */
+      box-shadow: 0 var(--bw-hair) 0 0 var(--border);
+      margin-bottom: var(--subrow);
     }
-
     .group-back-btn {
+      flex: 0 0 calc(var(--gu) * 3);
+      display: grid;
+      align-items: end;
+      justify-items: start;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
       background: none;
       border: none;
       color: var(--accent);
       font-size: var(--fs-xl);
-      line-height: calc(var(--subrow) * 5); /* 40px, on grid */
       cursor: pointer;
-      padding: 0 var(--space-md) 0 0;
       font-family: inherit;
     }
-
-    .group-segments {
+    .group-detail-title {
+      flex: 1;
+      min-width: 0;
       display: flex;
-      gap: 0;
+      flex-direction: column;
+      padding-top: var(--subrow);
+    }
+    .group-header-btn {
+      flex: 0 0 calc(var(--gu) * 6);
+      display: grid;
+      align-items: end;
+      justify-items: end;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: var(--fs-sm);
+      cursor: pointer;
+    }
+
+    /* Segments, 5r: whole-g columns across 35g (12|12|11, or 9|9|9|8 with the
+       leaderboard), labels on +3r. */
+    .group-segments {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 12) calc(var(--gu) * 12) calc(var(--gu) * 11);
+      flex-shrink: 0;
+      height: calc(var(--subrow) * 5);
       background: var(--surface);
       border-radius: var(--radius);
       border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border); /* hairline out of the box model */
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       overflow: hidden;
-      margin-bottom: var(--space-xl); /* 2 subrows */
+      margin-bottom: calc(var(--subrow) * 2);
     }
-
+    .group-segments.segs-4 { grid-template-columns: calc(var(--gu) * 9) calc(var(--gu) * 9) calc(var(--gu) * 9) calc(var(--gu) * 8); }
     .group-segment-btn {
-      flex: 1;
-      padding: var(--subrow) 0; /* 8/8 → 32px button (4 subrows) with 16px line */
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 0 0 calc(var(--subrow) * 2);
       background: none;
       border: none;
       color: var(--text-muted);
@@ -13365,7 +13830,6 @@
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       font-size: var(--fs-xs);
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
       font-weight: var(--fw-regular);
       cursor: pointer;
       transition: background var(--dur-fast), color var(--dur-fast);
@@ -13379,95 +13843,125 @@
       font-weight: var(--fw-bold);
     }
 
-    /* ── Group Feed ── */
+    /* Empty states: centred prose on 2r lines, first baseline +5r, 3r below. */
+    .group-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 2);
+      padding: calc(var(--subrow) * 5 - 1cap) var(--gu) calc(var(--subrow) * 3);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    /* ── Group Feed ──
+       Items 1r apart: a 5r avatar in a 4g cell (1..5g), the body from 6g with
+       the name / time on +2r and the message lines on +4r, +6r ... */
     .group-feed-container {
       display: flex;
       flex-direction: column;
       flex: 1;
       min-height: 0;
     }
-
     .group-feed {
       flex: 1;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: var(--space-md);
-      padding-bottom: var(--space-md);
+      gap: var(--subrow);
+      padding-bottom: var(--subrow);
       max-height: 60vh;
+      max-height: round(down, 60vh, var(--subrow));
     }
-
     .group-feed-item {
       display: flex;
-      gap: var(--space-md);
+      gap: var(--gu);
       align-items: flex-start;
+      flex-shrink: 0;
+      min-height: calc(var(--subrow) * 5);
     }
-
+    .group-feed-avatar {
+      flex: 0 0 calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 5);
+      display: flex;
+      justify-content: center;
+    }
     .group-feed-item-body {
       flex: 1;
       min-width: 0;
     }
-
     .group-feed-item-header {
       display: flex;
-      align-items: baseline;
-      gap: var(--space-sm);
+      align-items: flex-end;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 2);
     }
-
+    .group-feed-item-name,
+    .group-feed-item-time {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+    }
     .group-feed-item-name {
       font-family: var(--font-condensed);
       font-weight: var(--fw-bold);
       font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
     }
-
     .group-feed-item-time {
       font-size: var(--fs-2xs);
       color: var(--text-muted);
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
     }
-
     .group-feed-item-text {
       font-size: var(--fs-sm);
       color: var(--text);
       word-break: break-word;
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
+      line-height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-
     .group-feed-item.live-update .group-feed-item-text {
       color: var(--accent);
       font-size: var(--fs-xs);
     }
-
+    /* Input row, 6r: divider, 1r, a 5r field (1..29g, text on +3r) and a 6g
+       Send (30..36g, label on +3r). */
     .group-feed-input {
       display: flex;
-      gap: var(--gu); /* one gutter */
-      padding-top: var(--space-md); /* 1 subrow */
-      box-shadow: 0 calc(var(--subrow) * -0.125) 0 0 var(--border); /* divider out of the box model */
+      gap: var(--gu);
+      flex-shrink: 0;
+      height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
+      padding-top: var(--subrow);
+      box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
     }
-
     .group-feed-input input {
       flex: 1;
-      height: calc(var(--subrow) * 5); /* 40px, 5 subrows */
+      min-width: 0;
+      height: calc(var(--subrow) * 5);
       box-sizing: border-box;
+      margin: 0;
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
       color: var(--text);
-      padding: 0 var(--gu);
-      font-family: inherit;
+      font-family: var(--font-condensed);
       font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 2);
+      padding: calc(var(--subrow) * 2 - 0.7333em) var(--gu) var(--subrow);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
     }
-    .group-feed-input input:focus { border-color: var(--brand-line); }
-
+    .group-feed-input input:focus { box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); }
     .group-feed-input button {
-      height: calc(var(--subrow) * 5); /* 40px, 5 subrows */
+      flex: 0 0 calc(var(--gu) * 6);
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 calc(var(--subrow) * 2);
       background: var(--accent);
       color: #fff;
       border: none;
       border-radius: var(--radius);
-      padding: 0 var(--gu);
       font-family: var(--font-condensed);
       text-transform: uppercase;
       font-weight: var(--fw-bold);
@@ -13477,37 +13971,59 @@
     }
     .group-feed-input button:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
 
-    /* ── Group Schedule ── */
+    /* ── Group Schedule ──
+       10r cards 1r apart: name and room on +3r, the when line on +5r, then 1r
+       and a 3r member strip (3r avatars on a 2g pitch, names on its +2r). */
     .group-schedule {
       display: flex;
       flex-direction: column;
-      gap: var(--space-md);
+      gap: var(--subrow);
     }
-
     .group-schedule-card {
+      flex-shrink: 0;
+      /* fixed, so the card is ONE 1/64px layout rounding, not one per child */
+      height: calc(var(--subrow) * 10);
+      box-sizing: border-box;
       background: var(--surface);
       border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
       padding: var(--subrow) var(--gu);
     }
-
     .group-schedule-card-top {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: var(--space-sm);
+      align-items: flex-end;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 2);
     }
-
+    .group-schedule-name,
+    .group-schedule-venue,
+    .group-schedule-meta {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+    }
+    .group-schedule-name { flex: 1 1 auto; font-weight: var(--fw-bold); font-size: var(--fs-sm); }
+    .group-schedule-venue { flex: 0 0 auto; font-size: var(--fs-2xs); color: var(--text-secondary); }
+    .group-schedule-meta { font-size: var(--fs-xs); color: var(--text-secondary); }
     .group-schedule-members {
       display: flex;
-      align-items: center;
-      gap: var(--space-2xs);
-      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0;
+      height: calc(var(--subrow) * 3);
+      margin-top: var(--subrow);
     }
-
     .group-schedule-member {
-      margin-right: calc(var(--subrow) * -0.5);
+      flex: 0 0 calc(var(--gu) * 2);
+      height: calc(var(--subrow) * 3);
+    }
+    .group-schedule-names {
+      flex: 1 1 auto;
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      margin-left: var(--gu);
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
     }
 
     /* ── Group Members ── */
@@ -13515,144 +14031,294 @@
       display: flex;
       flex-direction: column;
     }
+    .group-invite-btn.create-group-submit {
+      margin: 0 0 var(--subrow);
+      font-size: var(--fs-sm);
+    }
+    .group-invite-list { margin-bottom: calc(var(--subrow) * 2); }
+    .group-list-hd {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--track-caps);
+    }
+    /* 7r rows: 5r avatar (1..5g), name on +3r and its line on +5r from 6g; a
+       6g Remove ending on 36g shares the name's +3r, Pending sits on +4r
+       between the two lines it labels. */
+    .group-member-card {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 7);
+      box-sizing: border-box;
+      padding: var(--subrow) 0;
+      box-shadow: inset 0 calc(-1 * var(--bw-hair)) 0 0 var(--border);
+    }
+    .group-member-card:last-child { box-shadow: none; }
+    .group-member-name,
+    .group-member-sub {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+    }
+    .group-member-name { font-size: var(--fs-sm); font-weight: var(--fw-regular); }
+    .group-member-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+    .group-member-sub.is-owner { color: var(--accent); }
+    .group-member-btn {
+      flex: 0 0 calc(var(--gu) * 6);
+      display: grid;
+      align-items: end;
+      justify-items: end;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 calc(var(--subrow) * 3);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+    .group-member-tag {
+      flex: 0 0 calc(var(--gu) * 6);
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-align: right;
+      font-size: var(--fs-xs);
+      font-style: italic;
+      color: var(--text-muted);
+    }
+    .group-pending { margin-top: calc(var(--subrow) * 2); }
+    .group-exit-btn {
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      margin-top: calc(var(--subrow) * 2);
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      background: none;
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      border-radius: var(--radius-sm);
+      color: #ef4444;
+      font-size: var(--fs-sm);
+      cursor: pointer;
+    }
+    .group-exit-btn.is-delete { box-shadow: inset 0 0 0 var(--bw-hair) #ef4444; }
 
-    /* ── Create Group Modal ── */
+    /* ── Create Group Modal ──
+       The panel hangs from a fixed r offset under the top inset (centring put
+       its top wherever the viewport height did) and spans 1..36g. 2r padding;
+       title 4r (+3r), labels 3r (+2r), 5r field and rows, 5r submit. */
     .create-group-modal {
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.6);
       z-index: var(--z-modal);
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: var(--space-2xl);
+      padding: calc(var(--sa-t) + var(--subrow) * 12) 0 0;
     }
-
     .create-group-panel {
       background: var(--surface);
       border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
-      padding: var(--space-xl); /* 2 subrows all round */
-      width: 100%;
-      max-width: calc(var(--subrow) * 45);
+      padding: calc(var(--subrow) * 2) var(--gu);
+      width: calc(var(--gu) * 35);
+      box-sizing: border-box;
       max-height: 80vh;
+      max-height: round(down, 80vh, var(--subrow));
       overflow-y: auto;
     }
-
     .create-group-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--space-xl);
+      align-items: flex-start;
+      height: calc(var(--subrow) * 4);
+      margin-bottom: var(--subrow);
     }
-
+    .create-group-title {
+      margin: 0;
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-md);
+      text-transform: uppercase;
+      letter-spacing: var(--track-caps);
+    }
+    .create-group-close {
+      flex: 0 0 calc(var(--gu) * 3);
+      display: grid;
+      align-items: end;
+      justify-items: end;
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0 0 var(--subrow);
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: var(--fs-lg);
+      cursor: pointer;
+    }
     .create-group-label {
-      display: block;
       font-family: var(--font-condensed);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
       font-size: var(--fs-xs);
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
       font-weight: var(--fw-regular);
       color: var(--text-muted);
-      margin-bottom: var(--space-md);
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      margin: 0;
     }
-
+    .create-group-label--gap { margin-top: calc(var(--subrow) * 2); }
     .create-group-input {
+      display: block;
       width: 100%;
-      height: calc(var(--subrow) * 5); /* 40px, 5 subrows */
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: 0;
       background: var(--bg);
-      border: var(--bw-hair) solid var(--border);
+      border: none;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
       color: var(--text);
-      padding: 0 var(--gu);
-      font-family: inherit;
+      font-family: var(--font-condensed);
       font-size: var(--fs-md);
-      line-height: calc(var(--subrow) * 2);
-      box-sizing: border-box;
+      padding: calc(var(--subrow) * 2 - 0.7333em) var(--gu) var(--subrow);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
     }
-    .create-group-input:focus { border-color: var(--brand-line); }
-
+    .create-group-input:focus { box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); }
     .create-group-buddies {
       display: flex;
       flex-direction: column;
-      gap: var(--space-xs);
+      gap: var(--subrow);
       max-height: calc(var(--subrow) * 25);
       overflow-y: auto;
     }
-
+    /* 5r rows: a 3r avatar in a 3g cell, the name on +3r, the mark on +3r. */
     .create-group-buddy-btn {
       display: flex;
-      align-items: center;
-      gap: var(--gu); /* one gutter */
-      height: calc(var(--subrow) * 5); /* 40px row with a 24px avatar */
+      align-items: flex-start;
+      flex-shrink: 0;
+      gap: var(--gu);
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
       padding: 0 var(--gu);
       background: var(--bg);
       border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
       color: var(--text);
       cursor: pointer;
       font-family: inherit;
       font-size: var(--fs-sm);
-      line-height: calc(var(--subrow) * 2);
       text-align: left;
       width: 100%;
       transition: box-shadow var(--dur-fast);
     }
     @media (hover: hover) and (pointer: fine) {
-      .create-group-buddy-btn:hover { box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--accent); }
+      .create-group-buddy-btn:hover { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
     }
-    .create-group-buddy-btn.selected { box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--accent); background: var(--hover-overlay); }
-
+    .create-group-buddy-btn.selected { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); background: var(--hover-overlay); }
+    .create-group-buddy-avatar {
+      flex: 0 0 calc(var(--gu) * 3);
+      height: calc(var(--subrow) * 5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .create-group-buddy-name,
+    .create-group-buddy-mark {
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+    }
+    .create-group-buddy-name { flex: 1 1 auto; }
+    .create-group-buddy-mark { flex: 0 0 auto; font-size: var(--fs-xs); color: var(--accent); }
+    .create-group-error {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      margin-top: var(--subrow);
+      color: #ef4444;
+      font-size: var(--fs-sm);
+    }
     .create-group-submit {
+      display: grid;
+      align-items: end;
+      justify-items: center;
       width: 100%;
-      margin-top: var(--space-xl);
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      margin-top: calc(var(--subrow) * 2);
       background: var(--brand);
       color: var(--on-brand);
       border: none;
       border-radius: var(--radius);
-      /* 8px vertical + 16px line = 32px (4 subrows) when a caller doesn't
-         override padding; compact callers override with their own grid padding. */
-      padding: var(--subrow) var(--gu);
+      padding: 0 var(--gu) calc(var(--subrow) * 2);
       font-family: var(--font-condensed);
       text-transform: uppercase;
       font-weight: var(--fw-bold);
       font-size: var(--fs-md);
-      line-height: calc(var(--subrow) * 2);
       letter-spacing: var(--track-caps);
       cursor: pointer;
     }
     .create-group-submit:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
 
-    /* ── Leaderboard ── */
+    /* ── Leaderboard ──
+       10r cards: rank 3g (2..5g) on +4r and the 5r avatar (6..10g), the body
+       from 11g: name +3r, stats +5r, the 0.5r net bar centred in a 1r cell
+       1r below (+6..+7r), totals +9r. */
     .group-leaderboard {
-      padding: var(--space-md) 0; /* 1 subrow vertical, cards on the 1g rail */
+      padding: var(--subrow) 0;
       display: flex;
       flex-direction: column;
-      gap: var(--space-md);
+      gap: var(--subrow);
     }
     .leaderboard-card {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--gu);
+      flex-shrink: 0;
       background: var(--surface);
       border: 0;
-      box-shadow: inset 0 0 0 calc(var(--subrow) * 0.125) var(--border); /* hairline out of the box model */
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
       border-radius: var(--radius);
-      padding: var(--subrow) var(--gu); /* 1 subrow vertical, 1g horizontal */
+      padding: var(--subrow) var(--gu);
     }
     .leaderboard-rank {
+      flex: 0 0 calc(var(--gu) * 3);
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
       font-weight: var(--fw-bold);
       font-size: var(--fs-lg);
-      line-height: calc(var(--subrow) * 4); /* 32px, matches avatar */
-      min-width: calc(var(--subrow) * 4); /* 32px */
       text-align: center;
       color: var(--text-muted);
     }
-    .leaderboard-stats {
+    .leaderboard-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .leaderboard-stats,
+    .leaderboard-won {
       font-size: var(--fs-xs);
       color: var(--text-muted);
-      line-height: calc(var(--subrow) * 2); /* 16px, 2 subrows */
-      margin-top: var(--space-2xs);
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      margin: 0;
+    }
+    .leaderboard-bar-cell {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: var(--subrow);
+      margin-top: var(--subrow);
     }
     .leaderboard-net-pos { color: #22c55e; font-weight: var(--fw-bold); }
     .leaderboard-net-neg { color: #ef4444; font-weight: var(--fw-bold); }
@@ -13670,16 +14336,26 @@
       background: var(--accent);
       transition: width var(--dur-base) var(--ease-out);
     }
+    /* Owner settings: divider, 2r, a 3r header, a 5r row with the label on +3r
+       and the 4g x 3r switch at +1r (32..36g: this list has no card). */
     .leaderboard-toggle-section {
-      margin-top: var(--space-xl);
-      padding-top: var(--space-xl);
-      border-top: var(--bw-hair) solid var(--border);
+      margin-top: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2);
+      border-top: 0;
+      box-shadow: inset 0 var(--bw-hair) 0 0 var(--border);
     }
     .leaderboard-toggle-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      padding: var(--space-md) 0;
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      padding: var(--subrow) 0;
+    }
+    .leaderboard-toggle-label {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-sm);
     }
     .toggle-switch {
       position: relative;
@@ -13709,6 +14385,10 @@
     }
     .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
     .toggle-switch input:checked + .toggle-slider::before { transform: translateX(calc(var(--subrow) * 2)); }
+    /* In the group view the switch is 4g wide (a whole-g box); the knob
+       travels 4g - 3r (the 2r knob plus its two 0.5r insets). */
+    .group-detail-view .toggle-switch { width: calc(var(--gu) * 4); flex-shrink: 0; }
+    .group-detail-view .toggle-switch input:checked + .toggle-slider::before { transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3)); }
 
     /* ── Staking ── */
     .staking-series-card {
@@ -13911,14 +14591,6 @@
       padding: var(--space-3xl) var(--space-xl);
       font-size: var(--fs-sm);
     }
-    .group-member-card {
-      display: flex;
-      align-items: center;
-      gap: var(--gu); /* one gutter */
-      padding: var(--space-md) 0; /* 1 subrow each → 48px row with a 32px avatar */
-      box-shadow: 0 calc(var(--subrow) * 0.125) 0 0 var(--border); /* divider out of the box model */
-    }
-    .group-member-card:last-child { box-shadow: none; }
 
     /* Quick Actions pill bar */
     .dash-actions-bar {

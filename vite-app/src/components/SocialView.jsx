@@ -4,6 +4,20 @@ import Avatar from './Avatar.jsx';
 import { API_URL } from '../utils/api.js';
 import { getVenueInfo, getVenueBrandColor, normaliseDate, getToday, formatBuyin, formatLiveUpdate, parseTournamentTime } from '../utils/utils.js';
 
+// Avatars on the r grid (a px size floored each card to 7.18r): 5r, centred in
+// a 4g cell (a circle can't be whole g and whole r), the initial a trimmed
+// block with its baseline on the avatar's +3r — the dashboard's recipe.
+const AVATAR_5R = 'calc(var(--subrow) * 5)';
+const AVATAR_3R = 'calc(var(--subrow) * 3)';
+const seatedInitial = (baselineR) => ({
+  display: 'block', textAlign: 'center', boxSizing: 'border-box',
+  paddingTop: `calc(var(--subrow) * ${baselineR} - 1cap)`,
+  textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
+});
+// Initial baselines: 5r avatar +3r, 3r avatar +2r (cap 0.94r, centred).
+const SEATED_INITIAL_5R = seatedInitial(3);
+const SEATED_INITIAL_3R = seatedInitial(2);
+
 // ── Create Group Modal ──────────────────────────────────────
 function CreateGroupModal({ shareBuddies, displayName, token, onClose, onCreated }) {
   const [name, setName] = useState('');
@@ -61,8 +75,8 @@ function CreateGroupModal({ shareBuddies, displayName, token, onClose, onCreated
     <div className="create-group-modal" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="create-group-panel">
         <div className="create-group-header">
-          <h3 style={{margin:0,fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)'}}>Create Group</h3>
-          <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text)',fontSize:'calc(var(--subrow) * 2.5)',cursor:'pointer',padding:'var(--space-xs)'}}>&#x2715;</button>
+          <h3 className="create-group-title">Create Group</h3>
+          <button className="create-group-close" onClick={onClose} aria-label="Close"><span>&#x2715;</span></button>
         </div>
 
         <label className="create-group-label">Group Name</label>
@@ -77,7 +91,7 @@ function CreateGroupModal({ shareBuddies, displayName, token, onClose, onCreated
 
         {shareBuddies.length > 0 && (
           <React.Fragment>
-            <label className="create-group-label" style={{marginTop:'var(--space-lg)'}}>Add Members</label>
+            <label className="create-group-label create-group-label--gap">Add Members</label>
             <div className="create-group-buddies">
               {shareBuddies.map(b => (
                 <button
@@ -85,23 +99,25 @@ function CreateGroupModal({ shareBuddies, displayName, token, onClose, onCreated
                   className={`create-group-buddy-btn${selected.has(b.id) ? ' selected' : ''}`}
                   onClick={() => toggleBuddy(b.id)}
                 >
-                  <Avatar src={b.avatar} username={b.username} size={24} />
-                  <span>{displayName(b)}</span>
-                  {selected.has(b.id) && <span style={{marginLeft:'auto',color:'var(--accent)'}}>&#x2713;</span>}
+                  <span className="create-group-buddy-avatar">
+                    <Avatar src={b.avatar} username={b.username} size={AVATAR_3R} style={b.avatar ? undefined : SEATED_INITIAL_3R} />
+                  </span>
+                  <span className="create-group-buddy-name">{displayName(b)}</span>
+                  {selected.has(b.id) && <span className="create-group-buddy-mark">&#x2713;</span>}
                 </button>
               ))}
             </div>
           </React.Fragment>
         )}
 
-        {error && <div style={{color:'#ef4444',fontSize:'calc(var(--subrow) * 1.625)',marginTop:'var(--space-md)'}}>{error}</div>}
+        {error && <div className="create-group-error">{error}</div>}
 
         <button
           className="create-group-submit"
           onClick={handleCreate}
           disabled={loading || !name.trim()}
         >
-          {loading ? 'Creating\u2026' : 'Create Group'}
+          <span>{loading ? 'Creating…' : 'Create Group'}</span>
         </button>
       </div>
     </div>
@@ -278,47 +294,51 @@ function GroupDetailView({
     <div className="group-detail-view">
       {/* Header */}
       <div className="group-detail-header">
-        <button className="group-back-btn" onClick={onBack}>&larr;</button>
-        <div style={{flex:1,position:'relative',top:'calc(var(--subrow) * -0.125)'}}>
-          <div className="social-buddy-name" style={{fontSize:'calc(var(--subrow) * 2)',lineHeight:'calc(var(--subrow) * 2)'}}>{group.name}</div>
-          <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',marginTop:'calc(var(--subrow) * 0.1875)',color:'var(--text-secondary)'}}>{group.member_count} member{group.member_count !== 1 ? 's' : ''}{group.owner_name ? ` \u00b7 Owner: ${group.owner_name}` : ''}</div>
+        <button className="group-back-btn" onClick={onBack} aria-label="Back"><span>&larr;</span></button>
+        <div className="group-detail-title">
+          <div className="social-buddy-name">{group.name}</div>
+          <div className="social-buddy-status">{group.member_count} member{group.member_count !== 1 ? 's' : ''}{group.owner_name ? ` · Owner: ${group.owner_name}` : ''}</div>
         </div>
         {isOwner ? (
-          <button onClick={handleDeleteGroup} style={{background:'none',border:'none',color:'var(--text-secondary)',fontSize:'calc(var(--subrow) * 1.625)',cursor:'pointer'}}>Delete</button>
+          <button className="group-header-btn" onClick={handleDeleteGroup}><span>Delete</span></button>
         ) : (
-          <button onClick={handleLeaveGroup} style={{background:'none',border:'none',color:'var(--text-secondary)',fontSize:'calc(var(--subrow) * 1.625)',cursor:'pointer'}}>Leave</button>
+          <button className="group-header-btn" onClick={handleLeaveGroup}><span>Leave</span></button>
         )}
       </div>
 
       {/* Segment tabs */}
-      <div className="group-segments">
-        {(() => {
-          const segs = ['feed', 'schedule'];
-          if (group.leaderboard_enabled) segs.push('leaderboard');
-          segs.push('members');
-          return segs;
-        })().map(s => (
-          <button
-            key={s}
-            className={`group-segment-btn${segment === s ? ' active' : ''}`}
-            onClick={() => setSegment(s)}
-          >
-            {s === 'feed' ? 'Live Feed' : s === 'schedule' ? 'Schedule' : s === 'leaderboard' ? 'Leaderboard' : 'Members'}
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const segs = ['feed', 'schedule'];
+        if (group.leaderboard_enabled) segs.push('leaderboard');
+        segs.push('members');
+        return (
+          <div className={`group-segments segs-${segs.length}`}>
+            {segs.map(s => (
+              <button
+                key={s}
+                className={`group-segment-btn${segment === s ? ' active' : ''}`}
+                onClick={() => setSegment(s)}
+              >
+                <span>{s === 'feed' ? 'Live Feed' : s === 'schedule' ? 'Schedule' : s === 'leaderboard' ? 'Leaderboard' : 'Members'}</span>
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Feed tab */}
       {segment === 'feed' && (
         <div className="group-feed-container">
           <div className="group-feed">
             {groupFeed.length === 0 ? (
-              <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'calc(var(--subrow) * 5) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>
+              <div className="group-empty">
                 No messages yet. Say something!
               </div>
             ) : groupFeed.map((item, i) => (
               <div key={item.id || i} className={`group-feed-item ${item.type}`}>
-                <Avatar src={item.avatar} username={item.username || '?'} size={32} />
+                <div className="group-feed-avatar">
+                  <Avatar src={item.avatar} username={item.username || '?'} size={AVATAR_5R} style={item.avatar ? undefined : SEATED_INITIAL_5R} />
+                </div>
                 <div className="group-feed-item-body">
                   <div className="group-feed-item-header">
                     <span className="group-feed-item-name">{displayName(item)}</span>
@@ -327,7 +347,7 @@ function GroupDetailView({
                   {item.type === 'message' ? (
                     <div className="group-feed-item-text">{item.content}</div>
                   ) : item.type === 'live-update' && item.liveData ? (
-                    <div className="group-feed-item-text" style={{color:'var(--accent)',fontSize:'calc(var(--subrow) * 1.5)'}}>
+                    <div className="group-feed-item-text">
                       &#x2660; {item.liveData.eventName || 'Tournament'} &mdash; {formatLiveUpdate(item.liveData)}
                     </div>
                   ) : (
@@ -342,11 +362,11 @@ function GroupDetailView({
             <input
               value={msgText}
               onChange={e => setMsgText(e.target.value)}
-              placeholder="Type a message\u2026"
+              placeholder="Type a message…"
               maxLength={500}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             />
-            <button onClick={handleSend} disabled={sending || !msgText.trim()}>Send</button>
+            <button onClick={handleSend} disabled={sending || !msgText.trim()}><span>Send</span></button>
           </div>
         </div>
       )}
@@ -355,25 +375,23 @@ function GroupDetailView({
       {segment === 'schedule' && (
         <div className="group-schedule">
           {groupSchedule.length === 0 ? (
-            <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'calc(var(--subrow) * 5) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>
+            <div className="group-empty">
               No members have scheduled any tournaments yet.
             </div>
           ) : groupSchedule.map(t => (
             <div key={t.id} className="group-schedule-card">
               <div className="group-schedule-card-top">
-                <div>
-                  <div style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)'}}>{t.event_name}</div>
-                  <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-secondary)'}}>{t.date} \u00b7 {t.time} \u00b7 ${Number(t.buyin).toLocaleString()}</div>
-                </div>
-                <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-secondary)'}}>{getVenueInfo(t.venue, t.property).abbr}</div>
+                <div className="group-schedule-name">{t.event_name}</div>
+                <div className="group-schedule-venue">{getVenueInfo(t.venue, t.property).abbr}</div>
               </div>
+              <div className="group-schedule-meta">{`${t.date} · ${t.time} · $${Number(t.buyin).toLocaleString()}`}</div>
               <div className="group-schedule-members">
                 {t.members.map(m => (
                   <div key={m.id} className="group-schedule-member" title={displayName(m)}>
-                    <Avatar src={m.avatar} username={m.username} size={24} />
+                    <Avatar src={m.avatar} username={m.username} size={AVATAR_3R} style={m.avatar ? undefined : SEATED_INITIAL_3R} />
                   </div>
                 ))}
-                <span style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--text-secondary)',marginLeft:'var(--space-xs)'}}>
+                <span className="group-schedule-names">
                   {t.members.map(m => m.username).join(', ')}
                 </span>
               </div>
@@ -386,44 +404,45 @@ function GroupDetailView({
       {segment === 'leaderboard' && (
         <div className="group-leaderboard">
           {leaderboardData.length === 0 ? (
-            <div style={{textAlign:'center',color:'var(--text-secondary)',padding:'calc(var(--subrow) * 5) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>
+            <div className="group-empty">
               No results tracked yet. Members' tournament results will appear here.
             </div>
           ) : (() => {
-            const maxWon = Math.max(...leaderboardData.map(m => m.total_won), 1);
             // Scale the diverging bar by the largest ABSOLUTE net in the
             // group, so the axis means the same thing for every member.
             const maxAbsNet = Math.max(...leaderboardData.map(m => Math.abs(m.net_pl || 0)), 1);
             return leaderboardData.map((m, i) => (
               <div key={m.id} className="leaderboard-card">
-                <div style={{display:'flex',alignItems:'center',gap:'var(--gu)'}}>
-                  <div className="leaderboard-rank">
-                    {i === 0 ? '\ud83c\udfc6' : `#${i + 1}`}
+                <div className="leaderboard-rank">
+                  {i === 0 ? '🏆' : `#${i + 1}`}
+                </div>
+                <div className="social-avatar-cell">
+                  <Avatar src={m.avatar} username={m.username} size={AVATAR_5R} style={m.avatar ? undefined : SEATED_INITIAL_5R} />
+                </div>
+                <div className="leaderboard-body">
+                  <div className="social-buddy-name">{displayName(m)}</div>
+                  <div className="leaderboard-stats">
+                    <span className={m.net_pl >= 0 ? 'leaderboard-net-pos' : 'leaderboard-net-neg'}>
+                      {m.net_pl >= 0 ? '+' : ''}{formatBuyin(m.net_pl)} net
+                    </span>
+                    {' · '}{m.cashes} cash{m.cashes !== 1 ? 'es' : ''}
+                    {' · '}{m.final_tables} FT{m.final_tables !== 1 ? 's' : ''}
+                    {' · '}{m.wins}W
                   </div>
-                  <Avatar src={m.avatar} username={m.username} size={32} />
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)'}}>{displayName(m)}</div>
-                    <div className="leaderboard-stats">
-                      <span className={m.net_pl >= 0 ? 'leaderboard-net-pos' : 'leaderboard-net-neg'}>
-                        {m.net_pl >= 0 ? '+' : ''}{formatBuyin(m.net_pl)} net
-                      </span>
-                      {' \u00b7 '}{m.cashes} cash{m.cashes !== 1 ? 'es' : ''}
-                      {' \u00b7 '}{m.final_tables} FT{m.final_tables !== 1 ? 's' : ''}
-                      {' \u00b7 '}{m.wins}W
-                    </div>
-                    {/* Diverging on NET, the figure directly above it. Scaled
-                        by gross winnings, this bar said the opposite: buy in
-                        for 60k, win 50k, and you got the longest bar on the
-                        board under a headline reading minus 10,000. */}
+                  {/* Diverging on NET, the figure directly above it. Scaled
+                      by gross winnings, this bar said the opposite: buy in
+                      for 60k, win 50k, and you got the longest bar on the
+                      board under a headline reading minus 10,000. */}
+                  <div className="leaderboard-bar-cell">
                     <div className="leaderboard-bar-track">
                       <div
                         className={'leaderboard-bar-fill ' + (m.net_pl >= 0 ? 'pos' : 'neg')}
                         style={{width: `${Math.min(50, Math.max(Math.abs(m.net_pl) / (maxAbsNet || 1) * 50, 1))}%`}}
                       />
                     </div>
-                    <div style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--text-muted)',lineHeight:'calc(var(--subrow) * 2)',marginTop:'var(--space-2xs)'}}>
-                      {formatBuyin(m.total_won)} won \u00b7 {m.events_played} event{m.events_played !== 1 ? 's' : ''}
-                    </div>
+                  </div>
+                  <div className="leaderboard-won">
+                    {`${formatBuyin(m.total_won)} won · ${m.events_played} event${m.events_played !== 1 ? 's' : ''}`}
                   </div>
                 </div>
               </div>
@@ -435,64 +454,67 @@ function GroupDetailView({
       {/* Members tab */}
       {segment === 'members' && (
         <div className="group-members-list">
-          <div style={{marginBottom:'var(--space-lg)'}}>
-            <button
-              className="create-group-submit"
-              style={{fontSize:'calc(var(--subrow) * 1.625)',padding:'var(--space-md) var(--space-xl)',marginBottom:'var(--space-md)'}}
-              onClick={() => setShowAddMember(!showAddMember)}
-            >
-              {showAddMember ? 'Cancel' : '+ Invite Buddy'}
-            </button>
+          <button
+            className="create-group-submit group-invite-btn"
+            onClick={() => setShowAddMember(!showAddMember)}
+          >
+            <span>{showAddMember ? 'Cancel' : '+ Invite Buddy'}</span>
+          </button>
 
-            {showAddMember && (
-              <div className="create-group-buddies" style={{marginBottom:'var(--space-lg)'}}>
-                {shareBuddies
-                  .filter(b => !members.some(m => m.id === b.id) && !pendingInvites.some(p => p.invited_user_id === b.id))
-                  .map(b => (
-                  <button
-                    key={b.id}
-                    className="create-group-buddy-btn"
-                    onClick={() => handleAddMember(b)}
-                  >
-                    <Avatar src={b.avatar} username={b.username} size={24} />
-                    <span>{displayName(b)}</span>
-                    <span style={{marginLeft:'auto',fontSize:'calc(var(--subrow) * 1.5)',color:'var(--accent)'}}>Invite</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {showAddMember && (
+            <div className="create-group-buddies group-invite-list">
+              {shareBuddies
+                .filter(b => !members.some(m => m.id === b.id) && !pendingInvites.some(p => p.invited_user_id === b.id))
+                .map(b => (
+                <button
+                  key={b.id}
+                  className="create-group-buddy-btn"
+                  onClick={() => handleAddMember(b)}
+                >
+                  <span className="create-group-buddy-avatar">
+                    <Avatar src={b.avatar} username={b.username} size={AVATAR_3R} style={b.avatar ? undefined : SEATED_INITIAL_3R} />
+                  </span>
+                  <span className="create-group-buddy-name">{displayName(b)}</span>
+                  <span className="create-group-buddy-mark">Invite</span>
+                </button>
+              ))}
+            </div>
+          )}
 
-          <div style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontFamily:'Univers Condensed, Univers, sans-serif',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-md)'}}>
+          <div className="group-list-hd">
             Members ({members.length || group.member_count})
           </div>
           {members.map(m => (
             <div key={m.id} className="group-member-card">
-              <Avatar src={m.avatar} username={m.username} size={32} />
-              <div style={{flex:1}}>
-                <div style={{fontSize:'calc(var(--subrow) * 1.625)',lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-regular)'}}>{displayName(m)}</div>
-                {m.role === 'owner' && <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--accent)'}}>Owner</div>}
+              <div className="social-avatar-cell">
+                <Avatar src={m.avatar} username={m.username} size={AVATAR_5R} style={m.avatar ? undefined : SEATED_INITIAL_5R} />
+              </div>
+              <div className="social-buddy-info">
+                <div className="group-member-name">{displayName(m)}</div>
+                {m.role === 'owner' && <div className="group-member-sub is-owner">Owner</div>}
               </div>
               {isOwner && m.role !== 'owner' && (
-                <button onClick={() => handleRemoveMember(m.id)} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--subrow) * 1.375)'}}>Remove</button>
+                <button className="group-member-btn" onClick={() => handleRemoveMember(m.id)}><span>Remove</span></button>
               )}
             </div>
           ))}
 
           {/* Pending invites */}
           {pendingInvites.length > 0 && (
-            <div style={{marginBottom:'var(--space-lg)'}}>
-              <div style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontFamily:'Univers Condensed, Univers, sans-serif',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-md)'}}>
+            <div className="group-pending">
+              <div className="group-list-hd">
                 Pending Invites
               </div>
               {pendingInvites.map(inv => (
                 <div key={inv.id} className="group-member-card" style={{opacity:0.6}}>
-                  <Avatar src={inv.avatar} username={inv.username} size={32} />
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'calc(var(--subrow) * 1.625)',lineHeight:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-regular)'}}>{displayName(inv)}</div>
-                    <div style={{fontSize:'calc(var(--subrow) * 1.375)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>Invited by {inv.invited_by_real_name || inv.invited_by_username}</div>
+                  <div className="social-avatar-cell">
+                    <Avatar src={inv.avatar} username={inv.username} size={AVATAR_5R} style={inv.avatar ? undefined : SEATED_INITIAL_5R} />
                   </div>
-                  <span style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--text-muted)',fontStyle:'italic'}}>Pending</span>
+                  <div className="social-buddy-info">
+                    <div className="group-member-name">{displayName(inv)}</div>
+                    <div className="group-member-sub">Invited by {inv.invited_by_real_name || inv.invited_by_username}</div>
+                  </div>
+                  <span className="group-member-tag">Pending</span>
                 </div>
               ))}
             </div>
@@ -501,11 +523,11 @@ function GroupDetailView({
           {/* Owner settings */}
           {isOwner && (
             <div className="leaderboard-toggle-section">
-              <div style={{fontSize:'calc(var(--subrow) * 1.375)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontFamily:'Univers Condensed, Univers, sans-serif',lineHeight:'calc(var(--subrow) * 2)',marginBottom:'var(--space-md)'}}>
+              <div className="group-list-hd">
                 Owner Settings
               </div>
               <div className="leaderboard-toggle-row">
-                <span style={{fontSize:'calc(var(--subrow) * 1.625)'}}>Enable Leaderboard</span>
+                <span className="leaderboard-toggle-label">Enable Leaderboard</span>
                 <label className="toggle-switch">
                   <input
                     type="checkbox"
@@ -519,20 +541,10 @@ function GroupDetailView({
           )}
 
           {!isOwner && (
-            <button
-              onClick={handleLeaveGroup}
-              style={{background:'none',border:'var(--bw-hair) solid var(--border)',borderRadius:'var(--radius-sm)',color:'#ef4444',cursor:'pointer',padding:'var(--space-md) var(--space-xl)',fontSize:'calc(var(--subrow) * 1.625)',width:'100%',marginTop:'var(--space-lg)'}}
-            >
-              Leave Group
-            </button>
+            <button className="group-exit-btn" onClick={handleLeaveGroup}><span>Leave Group</span></button>
           )}
           {isOwner && (
-            <button
-              onClick={handleDeleteGroup}
-              style={{background:'none',border:'var(--bw-hair) solid #ef4444',borderRadius:'var(--radius-sm)',color:'#ef4444',cursor:'pointer',padding:'var(--space-md) var(--space-xl)',fontSize:'calc(var(--subrow) * 1.625)',width:'100%',marginTop:'var(--space-lg)'}}
-            >
-              Delete Group
-            </button>
+            <button className="group-exit-btn is-delete" onClick={handleDeleteGroup}><span>Delete Group</span></button>
           )}
         </div>
       )}
@@ -659,59 +671,40 @@ export default function SocialView({
   const hasGroups = myGroups && myGroups.length > 0;
 
   const searchBar = (
-    <div style={{position:'relative',marginBottom:'var(--space-xl)'}}>
+    <div className="social-search">
       <input
         type="text"
+        className="social-search-input"
         placeholder="Search by username or name..."
         value={searchQuery}
         onChange={e => handleSearchChange(e.target.value)}
-        style={{
-          width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',padding:'0 var(--gu)',
-          border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
-          background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",
-          fontSize:'calc(var(--gu) * 1.208)',outline:'none',lineHeight:'calc(var(--subrow) * 2)',
-        }}
       />
       {searchMsg && (
-        <div style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--accent)',fontFamily:"'Univers Condensed','Univers',sans-serif",marginTop:'var(--space-xs)'}}>{searchMsg}</div>
+        <div className="social-search-msg">{searchMsg}</div>
       )}
       {(searchResults.length > 0 || searchLoading) && searchQuery.trim().length >= 2 && (
-        <div style={{
-          position:'absolute',top:'100%',left:0,right:0,zIndex:20,
-          background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',
-          borderRadius:'var(--radius-sm)',marginTop:'var(--space-2xs)',
-          maxHeight:'calc(var(--subrow) * 30)',overflowY:'auto',
-          boxShadow:'0 calc(var(--subrow) * 0.5) var(--space-xl) rgba(0,0,0,0.3)',
-        }}>
+        <div className="social-search-results">
           {searchLoading && !searchResults.length && (
-            <div style={{padding:'var(--space-ml) var(--space-lg)',fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>Searching...</div>
+            <div className="social-search-note">Searching...</div>
           )}
           {searchResults.map(u => (
-            <div key={u.id} style={{
-              display:'flex',alignItems:'center',gap:'var(--space-md)',padding:'var(--space-md) var(--space-lg)',
-              borderBottom:'var(--bw-hair) solid var(--border)',cursor:'default',
-            }}>
-              <Avatar src={u.avatar} username={u.username} size={32} />
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:'calc(var(--gu) * 1.149)',fontWeight: 'var(--fw-bold)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                  {u.real_name || u.username}
-                </div>
+            <div key={u.id} className="social-search-row">
+              <div className="social-avatar-cell">
+                <Avatar src={u.avatar} username={u.username} size={AVATAR_5R} style={u.avatar ? undefined : SEATED_INITIAL_5R} />
+              </div>
+              <div className="social-buddy-info">
+                <div className="social-buddy-name">{u.real_name || u.username}</div>
                 {u.real_name && (
-                  <div style={{fontSize:'calc(var(--gu) * 0.913)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>@{u.username}</div>
+                  <div className="social-buddy-status">@{u.username}</div>
                 )}
               </div>
-              <button
-                onClick={() => handleSendRequest(u.username)}
-                style={{
-                  padding:'calc(var(--subrow) * 0.375) var(--space-ml)',borderRadius:'calc(var(--subrow) * 0.75)',border:'var(--bw-hair) solid var(--accent)',
-                  background:'transparent',color:'var(--accent)',fontFamily:"'Univers Condensed','Univers',sans-serif",
-                  fontSize:'calc(var(--gu) * 0.957)',cursor:'pointer',whiteSpace:'nowrap',
-                }}
-              >Connect</button>
+              <button className="social-connect-btn" onClick={() => handleSendRequest(u.username)}>
+                <span>Connect</span>
+              </button>
             </div>
           ))}
           {!searchLoading && searchResults.length === 0 && searchQuery.trim().length >= 2 && (
-            <div style={{padding:'var(--space-ml) var(--space-lg)',fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>No users found</div>
+            <div className="social-search-note">No users found</div>
           )}
         </div>
       )}
@@ -720,28 +713,23 @@ export default function SocialView({
 
   const shareSection = (
     <>
-      <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)',marginTop:'var(--space-xl)'}}>
+      <div className="dashboard-section-header social-section-gap">
         <div className="dashboard-section-title">Share</div>
       </div>
-      <div style={{
-        background:'var(--surface)',boxShadow:'inset 0 0 0 calc(var(--subrow) * 0.125) var(--border)',
-        borderRadius:'var(--radius-sm)',padding:'var(--space-xl) var(--gu)',
-        textAlign:'center',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.149)',
-        lineHeight:'calc(var(--subrow) * 3)',
-      }}>
-        Social media integrations coming soon
+      <div className="social-share-box">
+        <div className="social-cell">Social media integrations coming soon</div>
       </div>
     </>
   );
 
   if (!hasBuddies && !hasGroups) {
     return (
-      <div style={{maxWidth:'calc(var(--subrow) * 75)',margin:'0 auto'}}>
-        <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)'}}>
+      <div className="social-view">
+        <div className="dashboard-section-header">
           <div className="dashboard-section-title">Connections</div>
         </div>
         {searchBar}
-        <div style={{textAlign:'left',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.208)',lineHeight:'calc(var(--subrow) * 3)',padding:'var(--space-xl) 0 var(--space-3xl)'}}>
+        <div className="social-empty">
           No connections yet. Search for friends above to get started.
         </div>
         {shareSection}
@@ -761,14 +749,13 @@ export default function SocialView({
   return (
     <div className="social-view">
       {/* Groups section */}
-      <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)'}}>
+      <div className="dashboard-section-header">
         <div className="dashboard-section-title">Groups</div>
         {hasBuddies && (
           <button
-            className="dashboard-section-badge"
-            style={{cursor:'pointer',background:'var(--brand)',color:'var(--on-brand)',border:'none',borderRadius:'var(--radius-pill)',padding:'0 var(--gu)',height:'calc(var(--subrow) * 2)',lineHeight:'calc(var(--subrow) * 2)',fontSize:'calc(var(--subrow) * 1.5)',fontWeight:700}}
+            className="dashboard-section-badge social-new-btn"
             onClick={() => setShowCreateGroup(true)}
-          >+ New</button>
+          ><span>+ New</span></button>
         )}
       </div>
 
@@ -782,29 +769,31 @@ export default function SocialView({
           }}
         >
           <div className="social-buddy-row">
-            <div className="social-group-avatar">{g.name.charAt(0).toUpperCase()}</div>
+            <div className="social-avatar-cell">
+              <div className="social-group-avatar">{g.name.charAt(0).toUpperCase()}</div>
+            </div>
             <div className="social-buddy-info">
               <div className="social-buddy-name">{g.name}</div>
               <div className="social-group-meta">
-                {g.member_count} member{g.member_count !== 1 ? 's' : ''}{g.owner_name ? ` \u00b7 Owner: ${g.owner_name}` : ''}
+                {g.member_count} member{g.member_count !== 1 ? 's' : ''}{g.owner_name ? ` · Owner: ${g.owner_name}` : ''}
                 {g.last_message && (
-                  <span> \u00b7 {g.last_message_by}: &quot;{g.last_message.length > 25 ? g.last_message.slice(0, 25) + '\u2026' : g.last_message}&quot; {timeAgo(g.last_message_at)}</span>
+                  <span>{` · ${g.last_message_by}: `}&quot;{g.last_message.length > 25 ? g.last_message.slice(0, 25) + '…' : g.last_message}&quot; {timeAgo(g.last_message_at)}</span>
                 )}
               </div>
             </div>
-            <span style={{marginLeft:'auto',color:'var(--text-secondary)',fontSize:'calc(var(--subrow) * 2.25)'}}>&rsaquo;</span>
+            <span className="social-chev social-chev--go" aria-hidden="true">&rsaquo;</span>
           </div>
         </button>
       )) : (
-        <div style={{color:'var(--text-secondary)',fontSize:'calc(var(--subrow) * 1.625)',padding:'var(--space-md) 0 var(--space-xl)'}}>
+        <div className="social-empty">
           {hasBuddies ? 'No groups yet. Create one to share schedules and chat with friends.' : 'Add connections first to create groups.'}
         </div>
       )}
 
       {/* Connections section */}
-      <div className="dashboard-section-header" style={{marginBottom:'var(--space-md)',marginTop:'var(--space-xl)'}}>
+      <div className="dashboard-section-header social-section-gap">
         <div className="dashboard-section-title">Connections</div>
-        {hasBuddies && <span className="dashboard-section-badge">{shareBuddies.length} friend{shareBuddies.length !== 1 ? 's' : ''}</span>}
+        {hasBuddies && <span className="dashboard-section-badge dashboard-section-badge--wide">{shareBuddies.length} friend{shareBuddies.length !== 1 ? 's' : ''}</span>}
       </div>
       {searchBar}
       {hasBuddies && (
@@ -819,7 +808,9 @@ export default function SocialView({
                 className={`social-buddy-card${isLive ? ' live' : ''}`}
               >
                 <div className="social-buddy-row" onClick={() => toggleBuddy(buddy.id)} style={{cursor:'pointer'}}>
-                  <Avatar src={buddy.avatar} username={buddy.username} size={40} />
+                  <div className="social-avatar-cell">
+                    <Avatar src={buddy.avatar} username={buddy.username} size={AVATAR_5R} style={buddy.avatar ? undefined : SEATED_INITIAL_5R} />
+                  </div>
                   <div className="social-buddy-info">
                     <div className="social-buddy-name">{displayName(buddy)}</div>
                     {isLive ? (
@@ -835,13 +826,13 @@ export default function SocialView({
                       </div>
                     )}
                   </div>
-                  <span style={{marginLeft:'auto',color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.031)',transition:'transform 0.15s',transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}}>&#x25BC;</span>
+                  <span className={'social-chev' + (isExpanded ? ' open' : '')} aria-hidden="true">{isExpanded ? '▲' : '▼'}</span>
                 </div>
                 {isExpanded && isLive && (
                   <div className="social-buddy-detail">
                     <div className="social-detail-row">
                       <span className="social-detail-label">Stack</span>
-                      <span className="social-detail-value">{lu.stack ? Number(lu.stack).toLocaleString() : '\u2014'}</span>
+                      <span className="social-detail-value">{lu.stack ? Number(lu.stack).toLocaleString() : '—'}</span>
                     </div>
                     {lu.bb && (
                       <div className="social-detail-row">
@@ -874,7 +865,7 @@ export default function SocialView({
                     )}
                     <div className="social-detail-row">
                       <span className="social-detail-label">Venue</span>
-                      <span className="social-detail-value">{lu.venue || '\u2014'}</span>
+                      <span className="social-detail-value">{lu.venue || '—'}</span>
                     </div>
                   </div>
                 )}
@@ -882,10 +873,10 @@ export default function SocialView({
                   const sched = buddySchedules[buddy.id];
                   const todayISO = getToday();
                   if (loadingSchedule === buddy.id) {
-                    return <div style={{padding:'var(--space-lg)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)'}}>Loading schedule...</div>;
+                    return <div className="social-sched-msg">Loading schedule...</div>;
                   }
                   if (!sched || sched.length === 0) {
-                    return <div style={{padding:'var(--space-lg)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)'}}>No events scheduled</div>;
+                    return <div className="social-sched-msg">No events scheduled</div>;
                   }
                   // Decorate-sort-undecorate with parseTournamentTime so the
                   // sort uses each event's VENUE timezone (matches My
@@ -896,7 +887,7 @@ export default function SocialView({
                     .sort((a, b) => a.ts - b.ts)
                     .map(x => x.t);
                   if (upcoming.length === 0) {
-                    return <div style={{padding:'var(--space-lg)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)'}}>No upcoming events</div>;
+                    return <div className="social-sched-msg">No upcoming events</div>;
                   }
                   // Group by date
                   const groups = [];
@@ -907,11 +898,11 @@ export default function SocialView({
                     cur.events.push(t);
                   }
                   return (
-                    <div style={{borderTop:'var(--bw-hair) solid var(--border)',marginTop:'var(--space-xs)',paddingTop:'var(--space-xs)'}}>
-                      <div style={{padding:'var(--space-sm) var(--space-lg) var(--space-xs)',fontSize:'calc(var(--gu) * 1.060)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+                    <div className="social-sched">
+                      <div className="social-sched-hd">
                         Upcoming Schedule ({upcoming.length} event{upcoming.length !== 1 ? 's' : ''})
                       </div>
-                      <div style={{display:'grid',gridTemplateColumns:'auto auto auto auto 1fr auto',gap:'0 var(--space-sm)',padding:'0 var(--space-lg)',fontSize:'calc(var(--gu) * 1.178)',alignItems:'center'}}>
+                      <div className="social-sched-grid">
                       {groups.map(group => {
                         const dateObj = new Date(group.date + 'T12:00:00');
                         const dayAbbr = group.date === todayISO ? '' : ['Su','M','Tu','W','Th','F','Sa'][dateObj.getDay()];
@@ -923,12 +914,12 @@ export default function SocialView({
                               const v = getVenueInfo(t.venue, t.property);
                               return (
                                 <React.Fragment key={t.id}>
-                                  <span style={{fontSize:'calc(var(--gu) * 1.060)',fontWeight:700,color:'var(--text-muted)',fontFamily:"'Libre Baskerville', Georgia, serif",whiteSpace:'nowrap',padding:'var(--space-xs) 0'}}>{i === 0 ? dayAbbr : ''}</span>
-                                  <span style={{fontSize:'calc(var(--gu) * 1.060)',fontWeight:700,color:'var(--text)',fontFamily:"'Libre Baskerville', Georgia, serif",whiteSpace:'nowrap',padding:'var(--space-xs) 0'}}>{i === 0 ? dateLabel : ''}</span>
-                                  <span style={{color: getVenueBrandColor(v.abbr),fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--gu) * 0.957)',whiteSpace:'nowrap',textAlign:'center'}}>{v.abbr}</span>
-                                  <span style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)',whiteSpace:'nowrap',textAlign:'right'}}>{t.time || 'TBD'}</span>
-                                  <span style={{color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{t.event_name}</span>
-                                  <span style={{color:'var(--text-muted)',fontSize:'calc(var(--gu) * 1.060)',fontWeight: 'var(--fw-bold)',whiteSpace:'nowrap',textAlign:'right'}}>{formatBuyin(t.buyin, t.venue)}</span>
+                                  <span className="social-sched-dow">{i === 0 ? dayAbbr : ''}</span>
+                                  <span className="social-sched-date">{i === 0 ? dateLabel : ''}</span>
+                                  <span className="social-sched-abbr" style={{color: getVenueBrandColor(v.abbr)}}>{v.abbr}</span>
+                                  <span className="social-sched-time">{t.time || 'TBD'}</span>
+                                  <span className="social-sched-name">{t.event_name}</span>
+                                  <span className="social-sched-buyin">{formatBuyin(t.buyin, t.venue)}</span>
                                 </React.Fragment>
                               );
                             })}
@@ -940,69 +931,57 @@ export default function SocialView({
                   );
                 })()}
                 {isExpanded && (
-                  <div style={{boxShadow:'inset 0 calc(var(--subrow) * 0.125) 0 0 var(--border)',marginTop:'var(--space-xs)',padding:'var(--space-md) var(--gu)',display:'flex',flexDirection:'column',gap:'var(--space-md)'}}>
+                  <div className="social-actions">
                     {myGroups && myGroups.length > 0 && (
                       addToGroupBuddyId === buddy.id ? (
-                        <div>
-                          <div style={{fontSize:'calc(var(--gu) * 1.060)',fontWeight: 'var(--fw-bold)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em',fontFamily:'Univers Condensed, Univers, sans-serif',marginBottom:'var(--space-sm)'}}>
-                            Add to Group
-                          </div>
+                        <div className="social-actions-list">
+                          <div className="social-sched-hd">Add to Group</div>
                           {myGroups.map(g => {
                             const status = inviteStatus[buddy.id]?.[g.id];
                             return (
                               <button
                                 key={g.id}
+                                className="social-action-btn is-split"
                                 disabled={!!status}
                                 onClick={(e) => { e.stopPropagation(); handleInviteToGroup(buddy.id, g.id, buddy.username); }}
-                                style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',
-                                  padding:'var(--space-sm) var(--space-md)',background:'none',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
-                                  color:'var(--text)',cursor: status ? 'default' : 'pointer',fontSize:'calc(var(--gu) * 1.178)',marginBottom:'var(--space-xs)',
-                                  opacity: status ? 0.6 : 1}}
+                                style={{cursor: status ? 'default' : 'pointer', opacity: status ? 0.6 : 1}}
                               >
                                 <span>{g.name}</span>
-                                <span style={{fontSize:'calc(var(--gu) * 1.060)',color: status === 'sent' ? '#22c55e' : status === 'member' ? 'var(--text-muted)' : status === 'error' ? '#ef4444' : 'var(--accent)'}}>
+                                <span className="social-action-status" style={{color: status === 'sent' ? '#22c55e' : status === 'member' ? 'var(--text-muted)' : status === 'error' ? '#ef4444' : 'var(--accent)'}}>
                                   {status === 'sent' ? 'Invited' : status === 'member' ? 'Already in group' : status === 'error' ? 'Failed' : 'Invite'}
                                 </span>
                               </button>
                             );
                           })}
                           <button
+                            className="social-text-btn"
                             onClick={(e) => { e.stopPropagation(); setAddToGroupBuddyId(null); }}
-                            style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.104)',marginTop:'var(--space-xs)',padding:0}}
-                          >Cancel</button>
+                          ><span>Cancel</span></button>
                         </div>
                       ) : (
                         <button
+                          className="social-action-btn"
                           onClick={(e) => { e.stopPropagation(); setAddToGroupBuddyId(buddy.id); }}
-                          style={{background:'none',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
-                            color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.178)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--gu)',width:'100%',
-                            fontFamily:'Univers Condensed, Univers, sans-serif'}}
-                        >+ Add to Group</button>
+                        ><span>+ Add to Group</span></button>
                       )
                     )}
                     {confirmRemoveId === buddy.id ? (
-                      <div style={{display:'flex',alignItems:'center',gap:'var(--space-md)',justifyContent:'space-between'}}>
-                        <span style={{fontSize:'calc(var(--gu) * 1.104)',color:'#ef4444'}}>Remove {displayName(buddy)}?</span>
-                        <div style={{display:'flex',gap:'var(--space-sm)'}}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(null); }}
-                            style={{background:'none',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
-                              color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.104)',padding:'var(--space-xs) var(--space-ml)'}}
-                          >Cancel</button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onRemoveBuddy(buddy.id); setConfirmRemoveId(null); setExpandedId(null); }}
-                            style={{background:'#b91c1c',border:'none',borderRadius:'calc(var(--subrow) * 0.75)',
-                              color:'#fff',cursor:'pointer',fontSize:'calc(var(--gu) * 1.104)',padding:'var(--space-xs) var(--space-ml)',fontWeight: 'var(--fw-bold)'}}
-                          >Remove</button>
-                        </div>
+                      <div className="social-confirm">
+                        <span className="social-confirm-text">Remove {displayName(buddy)}?</span>
+                        <button
+                          className="social-confirm-btn"
+                          onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(null); }}
+                        ><span>Cancel</span></button>
+                        <button
+                          className="social-confirm-btn is-danger"
+                          onClick={(e) => { e.stopPropagation(); onRemoveBuddy(buddy.id); setConfirmRemoveId(null); setExpandedId(null); }}
+                        ><span>Remove</span></button>
                       </div>
                     ) : (
                       <button
+                        className="social-action-btn is-danger"
                         onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(buddy.id); }}
-                        style={{background:'none',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
-                          color:'#b91c1c',cursor:'pointer',fontSize:'calc(var(--gu) * 1.178)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--gu)',width:'100%',
-                          fontFamily:'Univers Condensed, Univers, sans-serif'}}
-                      >Remove Connection</button>
+                      ><span>Remove Connection</span></button>
                     )}
                   </div>
                 )}
