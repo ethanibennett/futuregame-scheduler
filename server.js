@@ -3403,9 +3403,22 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(401).json({ error: 'Invalid token' });
     }
+    // A token outlives its account (90-day expiry), so a deleted account's token
+    // must stop working here — otherwise it keeps any username-based rights.
+    if (user && !user.isGuest && !userIdExists(user.id)) {
+      return res.status(401).json({ error: 'Account no longer exists' });
+    }
     req.user = user;
     next();
   });
+}
+function userIdExists(id) {
+  try {
+    const r = db.exec('SELECT 1 FROM users WHERE id = ?', [Number(id)]);
+    return !!(r.length && r[0].values.length);
+  } catch (_) {
+    return true; // DB not ready: fall back to the signature check alone
+  }
 }
 
 function requireRegistered(req, res, next) {
@@ -3505,6 +3518,9 @@ app.get('/api/events', (req, res) => {
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
+  if (user && !user.isGuest && !userIdExists(user.id)) {
+    return res.status(401).json({ error: 'Account no longer exists' });
+  }
 
   res.set({
     'Content-Type': 'text/event-stream',
@@ -3550,6 +3566,12 @@ app.post('/api/register', authLimiter, async (req, res) => {
     }
     if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
       return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, hyphens, and dots' });
+    }
+    // Admin rights are granted by USERNAME (APP_ADMIN_USERNAMES and the ham/ham5
+    // checks), so an admin name must never be claimable by sign-up — not even
+    // after that account deletes itself through DELETE /api/account.
+    if (APP_ADMIN_USERNAMES.has(username.toLowerCase())) {
+      return res.status(409).json({ error: 'Username or email already taken' });
     }
 
     // Validate email
@@ -3657,6 +3679,168 @@ app.put('/api/profile', authenticateToken, requireRegistered, async (req, res) =
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// ── Account deletion (App Store Guideline 5.1.1(v)) ──
+// Removes every row the user owns, then the users row, in one transaction.
+// Ownership by table:
+//   - deleted outright: user_schedules, schedule_conditions, tracking_entries,
+//     live_updates, saved_hands, replayer_games, trainer_hands, shared_hands
+//     (uploaded_by), share_tokens, password_resets, push_subscriptions,
+//     apns_tokens, subscriptions, staking_sell_params, staking_markup_settings,
+//     share_requests and schedule_permissions (both directions), swap_suggestions
+//     (both directions), group_messages and group_invites they wrote/received,
+//     their group memberships, and their Personal events (tournaments with
+//     venue 'Personal' they created, plus anything pointing at them).
+//   - staking tree: their staking_series and backers, every backer_agreements
+//     row under either, and the agreements' backer_event_overrides,
+//     backer_event_status and backer_tokens; backer_settlements by series or backer.
+//   - groups they own are deleted with all their members, messages and invites
+//     (no transfer: an ownerless group has no one who can manage it).
+//   - OTHER users' rows that merely point at this user are kept and unlinked:
+//     backer_agreements.swap_user_id / crossbook_user_id, backers.app_user_id
+//     and tournaments.uploaded_by (shared events stay; only the pointer goes).
+// Not touched: backer_public / backer_events / backer_push_subs and
+// console_records are keyed by dashboard backer tokens, not app users;
+// admin_overrides.updated_by is an admin audit field on shared events.
+function tableExists(name) {
+  const r = db.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [name]);
+  return !!(r.length && r[0].values.length);
+}
+function columnIds(sql, args) {
+  const r = db.exec(sql, args);
+  return r.length ? r[0].values.map(v => Number(v[0])) : [];
+}
+function deleteUserAccount(userId) {
+  const uid = Number(userId);
+  if (!Number.isInteger(uid) || uid <= 0) throw new Error('invalid user id');
+  const has = {};
+  const need = (t) => (has[t] === undefined ? (has[t] = tableExists(t)) : has[t]);
+  const counts = {};
+  const run = (table, sql, args) => {
+    if (!need(table)) return;
+    db.run(sql, args);
+    counts[table] = (counts[table] || 0) + db.getRowsModified();
+  };
+  const inList = (ids) => ids.length ? ids.join(',') : 'NULL'; // ids are Number()-coerced integers
+
+  // Collect the id sets first; deletes below would otherwise erase the evidence.
+  const ownedGroups = need('groups') ? columnIds(
+    `SELECT id FROM groups WHERE created_by = ?
+     UNION SELECT group_id FROM group_members WHERE user_id = ? AND role = 'owner'`, [uid, uid]) : [];
+  const memberGroups = need('group_members')
+    ? columnIds('SELECT group_id FROM group_members WHERE user_id = ?', [uid]).filter(g => !ownedGroups.includes(g))
+    : [];
+  const ownedGroupMembers = {};
+  for (const g of ownedGroups) ownedGroupMembers[g] = getGroupMemberIds(g).filter(m => m !== uid);
+  const series = need('staking_series') ? columnIds('SELECT id FROM staking_series WHERE user_id = ?', [uid]) : [];
+  const backerIds = need('backers') ? columnIds('SELECT id FROM backers WHERE user_id = ?', [uid]) : [];
+  const agreements = need('backer_agreements') ? columnIds(
+    `SELECT id FROM backer_agreements WHERE series_id IN (${inList(series)}) OR backer_id IN (${inList(backerIds)})`, []) : [];
+  const personal = columnIds(
+    `SELECT id FROM tournaments WHERE venue = 'Personal' AND (uploaded_by = ? OR stable_id LIKE ?)`,
+    [uid, `PERSONAL-${uid}-%`]);
+
+  db.run('BEGIN');
+  try {
+    // Staking, leaves first (FKs are enforced).
+    const ag = inList(agreements);
+    run('backer_event_overrides', `DELETE FROM backer_event_overrides WHERE agreement_id IN (${ag})`, []);
+    run('backer_event_status', `DELETE FROM backer_event_status WHERE agreement_id IN (${ag})`, []);
+    run('backer_tokens', `DELETE FROM backer_tokens WHERE agreement_id IN (${ag})`, []);
+    run('backer_settlements', `DELETE FROM backer_settlements WHERE series_id IN (${inList(series)}) OR backer_id IN (${inList(backerIds)})`, []);
+    run('backer_agreements', `DELETE FROM backer_agreements WHERE id IN (${ag})`, []);
+    run('backer_agreements', 'UPDATE backer_agreements SET swap_user_id = NULL WHERE swap_user_id = ?', [uid]);
+    run('backer_agreements', 'UPDATE backer_agreements SET crossbook_user_id = NULL WHERE crossbook_user_id = ?', [uid]);
+    run('backers', 'UPDATE backers SET app_user_id = NULL WHERE app_user_id = ?', [uid]);
+    run('backers', 'DELETE FROM backers WHERE user_id = ?', [uid]);
+    run('staking_series', 'DELETE FROM staking_series WHERE user_id = ?', [uid]);
+    run('staking_sell_params', 'DELETE FROM staking_sell_params WHERE user_id = ?', [uid]);
+    run('staking_markup_settings', 'DELETE FROM staking_markup_settings WHERE user_id = ?', [uid]);
+    run('swap_suggestions', 'DELETE FROM swap_suggestions WHERE from_user_id = ? OR to_user_id = ?', [uid, uid]);
+
+    // Groups: owned ones go entirely; elsewhere only the user's own traces.
+    const og = inList(ownedGroups);
+    run('group_invites', `DELETE FROM group_invites WHERE group_id IN (${og}) OR invited_by = ? OR invited_user_id = ?`, [uid, uid]);
+    run('group_messages', `DELETE FROM group_messages WHERE group_id IN (${og}) OR user_id = ?`, [uid]);
+    run('group_members', `DELETE FROM group_members WHERE group_id IN (${og}) OR user_id = ?`, [uid]);
+    run('groups', `DELETE FROM groups WHERE id IN (${og})`, []);
+
+    // Buddies and sharing.
+    run('share_requests', 'DELETE FROM share_requests WHERE from_user_id = ? OR to_user_id = ?', [uid, uid]);
+    run('schedule_permissions', 'DELETE FROM schedule_permissions WHERE owner_id = ? OR viewer_id = ?', [uid, uid]);
+    run('share_tokens', 'DELETE FROM share_tokens WHERE user_id = ?', [uid]);
+
+    // Personal events are tournaments rows only this user can see: clear anything
+    // that references them (whoever's it is), then the rows themselves.
+    if (personal.length) {
+      const pe = inList(personal);
+      // FEED_REF_TABLES is the canonical list of tables that reference tournaments.
+      for (const t of FEED_REF_TABLES) run(t, `DELETE FROM ${t} WHERE tournament_id IN (${pe})`, []);
+      run('schedule_conditions', `DELETE FROM schedule_conditions WHERE depends_on_tournament_id IN (${pe})`, []);
+      run('tournaments', `DELETE FROM tournaments WHERE id IN (${pe}) AND venue = 'Personal'`, []);
+    }
+
+    // Schedules, results, hands, devices, billing.
+    for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
+                     'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
+                     'push_subscriptions', 'apns_tokens', 'subscriptions']) {
+      run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
+    }
+    run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
+
+    // Shared events they imported stay; only the pointer to them goes.
+    run('tournaments', 'UPDATE tournaments SET uploaded_by = NULL WHERE uploaded_by = ?', [uid]);
+
+    run('users', 'DELETE FROM users WHERE id = ?', [uid]);
+    db.run('COMMIT');
+  } catch (err) {
+    try { db.run('ROLLBACK'); } catch (_) { /* the BEGIN may not have landed */ }
+    throw err;
+  }
+  return { counts, ownedGroups, ownedGroupMembers, memberGroups };
+}
+
+app.delete('/api/account', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const uid = Number(req.user && req.user.id);
+    const row = db.exec('SELECT username FROM users WHERE id = ?', [uid]);
+    const username = row.length && row[0].values.length ? String(row[0].values[0][0]) : null;
+    if (!username) return res.status(404).json({ error: 'Account not found' });
+    // Re-confirmation: the typed username must match the account's own (case-
+    // insensitively, as login names are), so a stray or replayed request can't delete.
+    const confirm = String((req.body && req.body.confirm) || '').trim().replace(/^@/, '');
+    if (!confirm || confirm.toLowerCase() !== username.toLowerCase()) {
+      return res.status(400).json({ error: 'Type your username to confirm' });
+    }
+
+    const result = deleteUserAccount(uid);
+    await saveDatabase();
+    if (HAM_OWNER_ID === uid) HAM_OWNER_ID = null; // the console must not trust a deleted owner's cookie
+
+    // Groups that went with the account: tell their remaining members (ids only).
+    for (const [gid, members] of Object.entries(result.ownedGroupMembers)) {
+      const msg = `event: group-deleted\ndata: ${JSON.stringify({ groupId: Number(gid) })}\n\n`;
+      for (const m of members) {
+        const clients = sseClients.get(m);
+        if (clients) for (const c of clients) { try { c.write(msg); } catch (_) {} }
+      }
+    }
+    for (const gid of result.memberGroups) {
+      broadcastToGroup(gid, 'group-updated', { groupId: gid, action: 'member-removed', userId: uid });
+    }
+    // Drop the account's own live connections.
+    const own = sseClients.get(uid);
+    if (own) { for (const c of own) { try { c.end(); } catch (_) {} } sseClients.delete(uid); }
+
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    const total = Object.values(result.counts).reduce((a, b) => a + b, 0);
+    console.log(`[account] deleted user ${uid} (${total} rows)`);
+    res.json({ deleted: true });
+  } catch (error) {
+    console.error('Account delete error:', error && error.message);
+    res.status(500).json({ error: 'Could not delete the account. Nothing was removed.' });
   }
 });
 

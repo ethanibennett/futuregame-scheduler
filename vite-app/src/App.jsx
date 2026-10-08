@@ -1737,6 +1737,7 @@ export default function App() {
             onRefreshTournaments={fetchTournaments}
             isAdmin={isAdmin}
             seasonLabel={seasonLabel}
+            isGuest={isGuest}
           />
         )}
         </div>

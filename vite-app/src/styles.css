@@ -8705,6 +8705,16 @@
     .settings-view .settings-btn.btn-sm svg { width: calc(var(--subrow) * 1.75); height: calc(var(--subrow) * 1.75); }
     .settings-btn--danger { color: var(--danger); }
     .settings-btn--start { align-self: flex-start; }
+    /* Delete account: the one irreversible action in Settings, so it is the only
+       filled red button on the page. Same 32px (4 subrow) seated box as the
+       ghost buttons beside it; the frame is a token hairline in the danger hue. */
+    .settings-btn--destroy {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: var(--bw-1) solid var(--danger);
+    }
+    .settings-btn--destroy:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
+    .settings-help--danger { color: var(--danger); }
     /* Inline control button (Theme) matches the 24px control-row track. */
     .settings-view .settings-btn--icon.btn-sm { height: calc(var(--subrow) * 3); }  /* 24 */
 
