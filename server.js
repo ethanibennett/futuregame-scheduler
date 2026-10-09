@@ -12860,6 +12860,9 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
 
     if (inserted > 0 || updated > 0) {
       broadcastToAll('schedule-refetch', { source: 'import-parsed-schedule', inserted, updated });
+      // Place any new venue now rather than at the next hourly pass: until then the location
+      // filters hide every row of a series nobody has a coordinate for.
+      resolveVenueCoords('VenueCoords:import').catch((e) => console.error('[VenueCoords] import pass failed:', e.message));
     }
 
     // Notify admin of new schedule upload
