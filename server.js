@@ -447,6 +447,8 @@ app.use('/cash', requireHamBasic, async (req, res) => {
 // owner id, and the chosen policy is that every app admin sees the owner's cash
 // data. Read-only, and the ingest routes are refused here as under /cash.
 const APP_ADMIN_USERNAMES = new Set(['ham', 'ham5', 'claude']);
+// The same list as a SQL IN-list, for the admin-alert recipient queries. Constants, never input.
+const ADMIN_USERNAMES_SQL = [...APP_ADMIN_USERNAMES].map((u) => `'${u.replace(/'/g, "''")}'`).join(', ');
 
 // The write allowlist for SHARED tournament data — the same ['ham','ham5'] every admin write route
 // (event edit, overrides, venue colours, sync, subscription grant) checks inline. As middleware for
@@ -10252,7 +10254,7 @@ async function sendApnsToAdmin(title, body, url) {
   const stmt = db.prepare(`
     SELECT at.token, at.env FROM apns_tokens at
     JOIN users u ON at.user_id = u.id
-    WHERE LOWER(u.username) = 'ham'
+    WHERE LOWER(u.username) IN (${ADMIN_USERNAMES_SQL})
   `);
   const rows = [];
   while (stmt.step()) rows.push(stmt.getAsObject());
@@ -10279,10 +10281,10 @@ async function sendPushToAdmin(title, body, url) {
   if (!process.env.VAPID_PUBLIC_KEY) return { configured: false, results: [], pruned: 0 };
   try {
     const stmt = db.prepare(`
-      SELECT ps.endpoint, ps.keys_p256dh, ps.keys_auth
+      SELECT ps.endpoint, ps.keys_p256dh, ps.keys_auth, ps.user_id
       FROM push_subscriptions ps
       JOIN users u ON ps.user_id = u.id
-      WHERE LOWER(u.username) = 'ham'
+      WHERE LOWER(u.username) IN (${ADMIN_USERNAMES_SQL})
     `);
     let subs = [];
     while (stmt.step()) subs.push(stmt.getAsObject());
@@ -10294,18 +10296,18 @@ async function sendPushToAdmin(title, body, url) {
     // deleting the row wouldn't stick (the PWA re-subscribes itself on open with granted
     // permission), and if the native app is ever removed its token prunes on 410 and web push
     // resumes on its own. Desktop browsers (FCM/Mozilla) are unaffected.
+    // Per admin account: each one's own native token supersedes only its own Apple web push.
     const apnsCheck = db.prepare(`
-      SELECT COUNT(*) AS n FROM apns_tokens at
-      JOIN users u ON at.user_id = u.id WHERE LOWER(u.username) = 'ham'
+      SELECT DISTINCT at.user_id FROM apns_tokens at
+      JOIN users u ON at.user_id = u.id WHERE LOWER(u.username) IN (${ADMIN_USERNAMES_SQL})
     `);
-    apnsCheck.step();
-    const hasNative = (apnsCheck.getAsObject().n || 0) > 0;
+    const nativeUsers = new Set();
+    while (apnsCheck.step()) nativeUsers.add(apnsCheck.getAsObject().user_id);
     apnsCheck.free();
-    if (hasNative) {
-      subs = subs.filter((s) => {
-        try { return new URL(s.endpoint).host !== 'web.push.apple.com'; } catch (_) { return true; }
-      });
-    }
+    subs = subs.filter((s) => {
+      if (!nativeUsers.has(s.user_id)) return true;
+      try { return new URL(s.endpoint).host !== 'web.push.apple.com'; } catch (_) { return true; }
+    });
 
     const payload = JSON.stringify({ title, body, url: url || '/', tag: 'admin' });
     const results = [];
@@ -13121,7 +13123,7 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
     const sub = db.prepare(
       `SELECT COUNT(*) AS n FROM push_subscriptions ps
        JOIN users u ON ps.user_id = u.id
-       WHERE LOWER(u.username) = 'ham'`
+       WHERE LOWER(u.username) IN (${ADMIN_USERNAMES_SQL})`
     );
     if (sub.step()) subscribers = sub.getAsObject().n;
     sub.free();
@@ -13138,7 +13140,7 @@ app.post('/api/admin/notify/new-series', express.json({ limit: '256kb' }), async
       const rows = db.prepare(
         `SELECT ps.endpoint, ps.created_at FROM push_subscriptions ps
          JOIN users u ON ps.user_id = u.id
-         WHERE LOWER(u.username) = 'ham'`
+         WHERE LOWER(u.username) IN (${ADMIN_USERNAMES_SQL})`
       );
       while (rows.step()) {
         const r = rows.getAsObject();
