@@ -112,6 +112,7 @@ to the account and readable with WebFetch.
 |---|---|---|
 | Design audit | 20 numbered plates diagnosing the frontend, each with measured evidence and a live before/after | https://claude.ai/code/artifact/f6ae8a63-8772-45e3-ac16-085637f40cd3 |
 | Design directions | The five judgment-call items, 2–3 built options each, for picking a direction | https://claude.ai/code/artifact/9589127b-77ae-4e33-a71f-29ba63cd7f51 |
+| Element catalog | Every element type (2,034) with its crop, px and g/r sizes, paint and type, plus the 94 captured screens; built from `D:\projects\element-catalog-2026-10-08.zip` | https://claude.ai/artifact/74MoH91LgUPSokba1A5Lfg |
 | Master to-do | Cross-repo state for all five suite projects, assembled from PRs, commits and checklists | https://claude.ai/code/artifact/5d07cb8c-73fc-4c56-a06f-61473455be46 |
 | Graphics backlog | 100 measured graphic upgrades across the whole app, each naming the file and quoting the current value | https://claude.ai/code/artifact/f5f543f9-33b7-44e3-94d6-c9e7779eefcd |
 
