@@ -13374,6 +13374,27 @@ function readAdminBatch(id) {
   return { ...row, entries: Array.isArray(entries) ? entries : [] };
 }
 
+// A test alert, on demand: batches the most recently added events (the last day's worth before the
+// newest insert, at most 200) and pushes it to the admin devices exactly as a feed sync would, so
+// the tap-through can be checked without waiting for the feed to add something.
+app.post('/api/admin/batches/test-push', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    const stmt = db.prepare(`SELECT stable_id FROM tournaments
+      WHERE stable_id IS NOT NULL AND venue != 'Personal'
+        AND created_at >= (SELECT datetime(MAX(created_at), '-1 day') FROM tournaments WHERE venue != 'Personal')
+      ORDER BY created_at DESC, id DESC LIMIT 200`);
+    const ids = [];
+    while (stmt.step()) ids.push(stmt.getAsObject().stable_id);
+    stmt.free();
+    if (!ids.length) return res.status(404).json({ error: 'No recently added events to show.' });
+    pushNewEventsBatch('Test: New Events', `${ids.length} recently added events (test alert)`, ids, '/?view=calendar');
+    res.json({ ok: true, events: ids.length });
+  } catch (err) {
+    console.error('[AdminBatches] test push failed:', err.message);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 app.get('/api/admin/batches', authenticateToken, requireAppAdmin, (req, res) => {
   try {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 30));
