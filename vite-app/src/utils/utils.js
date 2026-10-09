@@ -315,6 +315,10 @@ export const VENUE_MAP = {
   '2026 WPT bestbet Scramble':                              { abbr: 'BESTBET',          color: '#204fb6', longName: 'bestbet Jacksonville' },
   '2026-27 WSOP International Circuit Mexico':              { abbr: 'BIG BOLA',         color: '#188918', longName: 'WSOPC Big Bola Casinos Santa Fe' },
   'The Borgata Big, Big Series':                            { abbr: 'BORGATA',          color: '#7b21a8', longName: 'Borgata Hotel Casino & Spa' },
+  // Hand-imported from Borgata's own schedule sheets (2026-10-09): PokerAtlas never listed it.
+  'Borgata Fall Poker Open 2026':                           { abbr: 'BORGATA',          color: '#6b21a8', longName: 'Borgata Hotel Casino & Spa' },
+  // Its BetMGM online companion schedule, imported alongside (is_online rows, site 'betmgm').
+  'BetMGM Fall Poker Open 2026':                            { abbr: 'BETMGM',           color: '#a8874f', longName: 'BetMGM Poker' },
   "The Mini Grind Series - Aug. '26":                       { abbr: 'BORGATA',          color: '#8a21a8', longName: 'Borgata Hotel Casino & Spa' },
   "The Mini Grind Series - Sept. '26":                      { abbr: 'BORGATA',          color: '#9a21a8', longName: 'Borgata Hotel Casino & Spa' },
   "The Pure Grind Series: Alpha Stack Madness - Aug. '26":  { abbr: 'BORGATA',          color: '#a821a6', longName: 'Borgata Hotel Casino & Spa' },

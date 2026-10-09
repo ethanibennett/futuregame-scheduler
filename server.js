@@ -12805,15 +12805,16 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
       if (ev.table_size) notes.push(ev.table_size);
 
       db.run(
-        `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, game_variant, venue, notes, is_satellite, target_event, is_restart, parent_event, prize_pool, day_length, uploaded_by, source_pdf, is_deepstack, category)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, starting_chips, level_duration, reentry, late_reg, game_variant, venue, notes, is_satellite, target_event, is_restart, parent_event, prize_pool, day_length, uploaded_by, source_pdf, is_deepstack, category, is_online, site, property)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(stable_id) DO UPDATE SET
            event_name=excluded.event_name, date=excluded.date, time=excluded.time,
            buyin=excluded.buyin, starting_chips=excluded.starting_chips, level_duration=excluded.level_duration,
            reentry=excluded.reentry, late_reg=excluded.late_reg, game_variant=excluded.game_variant,
            venue=excluded.venue, notes=excluded.notes, is_satellite=excluded.is_satellite,
            target_event=excluded.target_event, is_restart=excluded.is_restart, parent_event=excluded.parent_event,
-           prize_pool=excluded.prize_pool, day_length=excluded.day_length, category=excluded.category`,
+           prize_pool=excluded.prize_pool, day_length=excluded.day_length, category=excluded.category,
+           is_online=excluded.is_online, site=excluded.site, property=excluded.property`,
         [
           sid,
           evNumber,
@@ -12837,7 +12838,16 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
           req.user.id,
           sourceFile || 'Vision Upload',
           0,
-          (ev.category === 'deepstack' ? 'side' : ev.category) || null
+          (ev.category === 'deepstack' ? 'side' : ev.category) || null,
+          // A hand-imported series can carry online events (a live festival's companion online
+          // schedule). Same two columns the online feed sets: is_online drives the Online toggle
+          // and the location filters, site keys the availability table (online-sites.js).
+          ev.is_online ? 1 : 0,
+          ev.is_online && ev.site ? String(ev.site) : null,
+          // The hosting room, exactly as the feed would name it. A series title the client has no
+          // VENUE_MAP row for (an app build older than the import) still gets its room's strip and
+          // coordinate from this, the same way an uncurated feed series does.
+          ev.property ? String(ev.property) : null
         ]
       );
       if (existingRow) updated++;
