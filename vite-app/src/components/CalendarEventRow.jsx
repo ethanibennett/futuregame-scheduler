@@ -601,7 +601,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     return () => cancelAnimationFrame(raf);
   }, [open]);
 
-  const tzAbbr = getVenueTzAbbr(tournament.venue);
+  const tzAbbr = getVenueTzAbbr(tournament.venue, tournament.date);
   const timeLabel = (tournament.time || '\u2014') + (tzAbbr ? ' ' + tzAbbr : '');
   const bracelet = isBraceletEvent(tournament);
   // The summer bracelet PDF's page for this event, only when that PDF is actually its sheet.
@@ -1191,7 +1191,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
   const isSat = !!tournament.is_satellite;
   const isRestart = !!tournament.is_restart;
   const ringEvent = isRingEvent(tournament);
-  const tzAbbr = getVenueTzAbbr(tournament.venue);
+  const tzAbbr = getVenueTzAbbr(tournament.venue, tournament.date);
   const timeLabel = (tournament.time || '—') + (tzAbbr ? ' ' + tzAbbr : '');
   let hasConditions = false;
   if (conditions && conditions.length > 0) {

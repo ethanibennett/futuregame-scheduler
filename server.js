@@ -12753,6 +12753,7 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
+    const newIds = [];
 
     for (const ev of events) {
       if (!ev.date || !ev.game_variant) {
@@ -12795,8 +12796,12 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
       const evNumber = ev.event_number || '';
       const sid = ev.stable_id || generateStableId(evVenue, evNumber, evName, date, ev.time, ev.buyin);
 
-      // Check if this event already exists
-      const existingRow = db.prepare('SELECT stable_id FROM tournaments WHERE stable_id = ?').get(sid);
+      // Check if this event already exists. Not Statement.get(): sql.js returns a truthy empty
+      // array on no match, which counted every insert as an update.
+      const sel = db.prepare('SELECT id FROM tournaments WHERE stable_id = ?');
+      sel.bind([sid]);
+      const existingRow = sel.step();
+      sel.free();
 
       // Build notes from optional fields
       const notes = [];
@@ -12851,7 +12856,7 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
         ]
       );
       if (existingRow) updated++;
-      else inserted++;
+      else { inserted++; newIds.push(sid); }
     }
 
     await saveDatabase();
@@ -12868,11 +12873,9 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
     // Notify admin of new schedule upload
     const uploaderName = req.user.username || 'Unknown';
     const venue = events[0]?.venue || 'Unknown venue';
-    sendPushToAdmin(
-      'Schedule Uploaded',
-      `${uploaderName} imported ${inserted} new + ${updated} updated events for ${venue}`,
-      `/?find=${encodeURIComponent(venue)}`
-    ).catch(() => {});
+    const uploadBody = `${uploaderName} imported ${inserted} new + ${updated} updated events for ${venue}`;
+    if (newIds.length) pushNewEventsBatch('Schedule Uploaded', uploadBody, newIds, `/?find=${encodeURIComponent(venue)}`);
+    else sendPushToAdmin('Schedule Uploaded', uploadBody, `/?find=${encodeURIComponent(venue)}`).catch(() => {});
 
     // Auto-sync to production in background
     const authHeader = req.headers.authorization;
@@ -12950,6 +12953,7 @@ app.get('/api/tournaments/export', authenticateToken, (req, res) => {
 // skipped (there is nothing stable to key the upsert on).
 async function upsertTournamentsByStableId(tournaments, source) {
   let inserted = 0, updated = 0, skipped = 0;
+  const newIds = [];
   for (const t of tournaments) {
     if (!t.stable_id || !t.date || !t.event_name) { skipped++; continue; }
 
@@ -12988,7 +12992,7 @@ async function upsertTournamentsByStableId(tournaments, source) {
         t.is_online ? 1 : 0, t.site || null, t.clock_ref || null, t.timezone || null
       ]
     );
-    if (existing) updated++; else inserted++;
+    if (existing) updated++; else { inserted++; newIds.push(t.stable_id); }
   }
 
   // Same reason as in ingestMttFeed: the upsert above has just overwritten every feed-owned field,
@@ -13003,7 +13007,8 @@ async function upsertTournamentsByStableId(tournaments, source) {
     broadcastToAll('schedule-refetch', { source: 'tournaments-sync', inserted, updated });
   }
   if (inserted > 0) {
-    sendPushToAdmin('Events Synced', `${inserted} new events added via sync`, '/?view=calendar').catch(() => {});
+    const body = `${inserted} new events added via sync`;
+    pushNewEventsBatch('Events Synced', body, newIds, '/?view=calendar');
   }
   return { inserted, updated, skipped };
 }
@@ -13197,6 +13202,54 @@ function sanitizeSeriesEntries(series) {
   return out;
 }
 
+// An admin alert about events that just landed (a feed sync, a hand import) opens the list of
+// exactly those events: the batch stores their stable_ids, which survive the re-keying an upsert
+// can do to ids, and is resolved to rows when read. `fallback` is the old link, used only when the
+// batch could not be stored.
+function pushNewEventsBatch(title, body, stableIds, fallback) {
+  let link = fallback;
+  try {
+    const id = recordAdminBatch('new-events', title, body, stableIds.slice(0, 5000).map((stableId) => ({ stableId: String(stableId) })));
+    link = `/?batch=${id}`;
+    saveDatabase().catch(() => {});
+  } catch (err) {
+    console.error('[AdminBatches] new-events batch not stored:', err.message);
+  }
+  sendPushToAdmin(title, body, link).catch(() => {});
+}
+
+// A 'new-events' batch, grouped by series into the same shape a 'new-series' batch resolves to,
+// so the client renders both alike. A row pruned since the alert simply drops out.
+function resolveNewEventsBatch(entries) {
+  const ids = entries.map((e) => e && e.stableId).filter(Boolean);
+  const rows = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    const stmt = db.prepare(`SELECT * FROM tournaments WHERE stable_id IN (${chunk.map(() => '?').join(',')})`);
+    stmt.bind(chunk);
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+  }
+  attachOverrideFields(rows);
+  const byVenue = new Map();
+  for (const r of rows) {
+    if (!byVenue.has(r.venue)) byVenue.set(r.venue, []);
+    byVenue.get(r.venue).push(r);
+  }
+  const series = [...byVenue].map(([venue, events]) => {
+    events.sort((a, b) => String(isoDay(a.date) || a.date).localeCompare(String(isoDay(b.date) || b.date)) ||
+      clockMinutes(a.time) - clockMinutes(b.time));
+    const days = events.map((e) => isoDay(e.date)).filter(Boolean);
+    return {
+      seriesId: null, name: venue, shortName: null,
+      venueName: (events.find((e) => e.property) || {}).property || null, cityState: null,
+      startDate: days[0] || null, endDate: days[days.length - 1] || null,
+      match: 'exact', venues: [venue], status: 'scheduled', eventCount: events.length, events,
+    };
+  });
+  return series.sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || a.name.localeCompare(b.name));
+}
+
 function recordAdminBatch(kind, title, body, entries) {
   db.run('INSERT INTO admin_batches (created_at, kind, title, body, payload) VALUES (?, ?, ?, ?, ?)',
     [new Date().toISOString(), kind, title, body, JSON.stringify(entries)]);
@@ -13332,6 +13385,14 @@ app.get('/api/admin/batches', authenticateToken, requireAppAdmin, (req, res) => 
     const index = scheduleVenueIndex();
     const batches = ids.map((id) => {
       const b = readAdminBatch(id);
+      if (b.kind === 'new-events') {
+        const series = resolveNewEventsBatch(b.entries);
+        return {
+          id: b.id, created_at: b.created_at, kind: b.kind, title: b.title, body: b.body,
+          seriesCount: series.length, scheduledSeries: series.length,
+          eventCount: series.reduce((n, s) => n + s.eventCount, 0),
+        };
+      }
       const matches = b.entries.map((e) => matchSeriesEntry(e, index));
       return {
         id: b.id, created_at: b.created_at, kind: b.kind, title: b.title, body: b.body,
@@ -13353,8 +13414,8 @@ app.get('/api/admin/batches/:id', authenticateToken, requireAppAdmin, (req, res)
     if (!Number.isInteger(id) || id < 1) return res.status(404).json({ error: 'Not found' });
     const b = readAdminBatch(id);
     if (!b) return res.status(404).json({ error: 'Not found' });
-    const index = scheduleVenueIndex();
-    const series = b.entries.map((e) => {
+    const index = b.kind === 'new-events' ? null : scheduleVenueIndex();
+    const series = b.kind === 'new-events' ? resolveNewEventsBatch(b.entries) : b.entries.map((e) => {
       const m = matchSeriesEntry(e, index);
       let events = [];
       for (let i = 0; i < m.ids.length; i += 500) { // under SQLite's bound-variable cap

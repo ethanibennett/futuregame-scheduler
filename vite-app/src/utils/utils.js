@@ -1297,10 +1297,17 @@ export function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function getVenueTzAbbr(venue) {
+// The abbreviation in force ON THE EVENT'S DAY, not today's: a November event read in October
+// said "EDT" when daylight time would be over by then. Noon UTC of that day sits inside the same
+// calendar day in every US zone, clear of the 2 AM switch. No date (or an unreadable one) falls
+// back to now.
+export function getVenueTzAbbr(venue, date) {
   var tz = getVenueTimezone(venue);
   try {
-    var parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(new Date());
+    var iso = date ? normaliseDate(date) : null;
+    var at = iso ? new Date(iso + 'T12:00:00Z') : new Date();
+    if (isNaN(at.getTime())) at = new Date();
+    var parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(at);
     var tzPart = parts.find(function(p) { return p.type === 'timeZoneName'; });
     return tzPart ? tzPart.value : '';
   } catch(e) { return ''; }

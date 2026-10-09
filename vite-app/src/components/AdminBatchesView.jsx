@@ -4,8 +4,10 @@ import { getToday, normaliseDate, registerRowTimezones } from '../utils/utils.js
 import CalendarEventRow, { CalendarEventRowLite } from './CalendarEventRow.jsx';
 import DateBreak from './DateBreak.jsx';
 
-// Admin-only "New events": what one admin alert (a new-series push) added. Reached by the push's
-// /?batch=<id> deep link, or from the user menu / Admin header (which opens the newest batch).
+// Admin-only "New events": what one admin alert added. Two kinds, one shape: a new-series push
+// (the watcher found series) and a new-events push (a feed sync or an import inserted events — the
+// server groups those by series). Reached by the push's /?batch=<id> deep link, or from the user
+// menu / Admin header (which opens the newest batch).
 // The server resolves each series to its schedule rows at read time, so a series the feed has not
 // ingested yet reads "Not in the schedule yet" rather than an empty list.
 

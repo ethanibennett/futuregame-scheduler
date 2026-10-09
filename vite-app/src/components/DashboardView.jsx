@@ -651,7 +651,7 @@ export default function DashboardView({
                 {normaliseDate(event.date) !== todayISO && (
                   <span><Icon.calendar /><span className="dash-t">{fmtShortDate(normaliseDate(event.date))}</span></span>
                 )}
-                <span><Icon.clock /><span className="dash-t">{event.time || 'TBD'}{event.venue ? ' ' + getVenueTzAbbr(event.venue) : ''}</span></span>
+                <span><Icon.clock /><span className="dash-t">{event.time || 'TBD'}{event.venue ? ' ' + getVenueTzAbbr(event.venue, event.date) : ''}</span></span>
               </div>
             )}
           </div>
