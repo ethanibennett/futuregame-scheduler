@@ -14,6 +14,23 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-09 — iPad/Mac desktop layout, Borgata Fall Poker Open, MTT watcher dedupe
+- **Desktop layout is width-only** (`DESKTOP_QUERY = '(min-width: 1024px)'`), and the iPad app
+  takes all four orientations (`UISupportedInterfaceOrientations~ipad`; iPhone stays portrait).
+  Every iPad held sideways, a 13-inch iPad upright, and any Mac window over 1024 CSS px get the
+  rail and panes. TestFlight run 37907299568 carries it.
+- **Borgata Fall Poker Open 2026** is a hand import (`source_pdf` 'Borgata Fall Poker Open 2026',
+  stable_ids `BFPO26-*`, 98 rows on prod): 81 live + 17 BetMGM online (`is_online`, site
+  `betmgm`, venue 'BetMGM Fall Poker Open 2026'). Event #31 (invitation-only) left out.
+  PokerAtlas has never listed it; if the feed ever does, add a `BRIDGE_SUPERSEDE` row for the
+  venue string it uses, or both will list.
+- `/api/import-parsed-schedule` now writes `is_online`, `site` and `property`, and runs
+  `resolveVenueCoords` after an import. Pass `property` = the room's PokerAtlas name, or the
+  series has no coordinate and every location filter hides it.
+- **mtt-series-watcher** `fix/wsopc-flight-dedupe` is merged (3bd1a36), restarted, renormalized
+  (9,975 names) and re-emitted. The audit's one HIGH (`unlabeled-repeat` on "$40K Multi-Flight -
+  Oct. '26") is a false positive: the emitted file has Flights 1-4 correctly.
+
 ## 2026-10-08 — Admin "New events" batches
 
 Each new-series alert from the MTT watcher (`POST /api/admin/notify/new-series`) is stored
