@@ -9,7 +9,7 @@ sessions opened here own scheduler work.
   server, and wrapped by Capacitor for iOS/Android — see `capacitor.config.json` webDir).
   The legacy single-file `public/index.html` era is dead; its final tree is preserved on
   branch `wip/windows-mtt-feed`.
-- **Desktop layout**: a browser window >= 1024px wide and landscape gets a side rail +
+- **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
   2-3 panes (Schedule = list | event | my schedule) on the SAME g as the phone (g stays
   430px/37; panes are 9N+1 g). Everything narrower, and every phone, is the phone layout,
   pixel-identical. Design, tiers and per-tab plan: `docs/desktop-layout.md`.
