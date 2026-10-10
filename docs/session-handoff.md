@@ -14,6 +14,19 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-10 — Results betas (admins only): bankrolls, analytics, tax report
+- **Bankrolls** (`lib/bankrolls.js`, `docs/bankrolls.md`): tables `bankrolls` + `bankroll_adjustments`,
+  `tracking_entries.bankroll_id` (NULL = the virtual "Main"). `?bankroll=<all|main|id>` is the shared
+  filter (`bankrolls.filterFromQuery` server side, `utils/bankrolls.js` client side).
+- **Analytics** (`lib/analytics.js`, `GET /api/analytics`): follows the Results-tab bankroll. ROI CI is a
+  seeded percentile bootstrap over events; groups under 30 entries get no estimate.
+- **Tax report** (`utils/tax-report.js`, `GET /api/tax-report/entries`, `docs/tax-report.md`): always
+  all bankrolls. W-2G poker threshold is >$5,000 net of buy-in through 2025, >=$2,000 from 2026; losses
+  90% from 2026 (OBBBA §70114). `W2G_POKER_RULES` needs the 2027 figure when the IRS publishes it.
+- **Cash heatmap** offers only the watcher's active (location-derived) rooms once they match the picked
+  location. ⚠ The hosted cash watcher on Render lacks `HOME_LOCATION_PATH` / `ACTIVE_VENUES_PATH`
+  (render.yaml has them), so each redeploy resets the picked location to its default — awaiting Ethan.
+
 ## 2026-10-09 — iPad/Mac desktop layout, Borgata Fall Poker Open, MTT watcher dedupe
 - **Desktop layout is width-only** (`DESKTOP_QUERY = '(min-width: 1024px)'`), and the iPad app
   takes all four orientations (`UISupportedInterfaceOrientations~ipad`; iPhone stays portrait).
