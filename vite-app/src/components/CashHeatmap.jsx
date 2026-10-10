@@ -37,8 +37,13 @@ function cellColor(intensity, hasData) {
   return `rgba(74, 170, 120, ${a.toFixed(3)})`;
 }
 
-export default function CashHeatmap({ token }) {
+export default function CashHeatmap({ token, locationVersion = 0 }) {
   const [catalog, setCatalog] = useState(null); // { vNames, byVenue }
+  // The cash location picker steers which rooms the watcher collects; the heatmap offers the
+  // same rooms. While the watcher is still switching to a newly picked location the list can't
+  // be trusted yet, so it says so and re-checks (pending = the label it is switching to).
+  const [pending, setPending] = useState(null);
+  const [recheck, setRecheck] = useState(0);
   const [sel, setSel] = useState(() => { try { return JSON.parse(localStorage.getItem(SEL_KEY)) || null; } catch { return null; } });
   const [metric, setMetric] = useState(() => localStorage.getItem(METRIC_KEY) || 'tables'); // 'tables' | 'reliability'
   const [cells, setCells] = useState(null);
@@ -52,9 +57,10 @@ export default function CashHeatmap({ token }) {
     (async () => {
       const headers = { Authorization: 'Bearer ' + token };
       try {
-        const [gRes, vRes] = await Promise.all([
+        const [gRes, vRes, lRes] = await Promise.all([
           fetch(`${API_URL}/cash/games`, { headers }),
           fetch(`${API_URL}/cash/venues`, { headers }).catch(() => null),
+          fetch(`${API_URL}/cash/location`, { headers }).catch(() => null),
         ]);
         if (!gRes.ok) {
           setErr(gRes.status === 403 ? 'This account is not an admin.' : gRes.status === 503 ? 'Cash watcher is offline.' : 'Could not load the game catalog.');
@@ -72,6 +78,9 @@ export default function CashHeatmap({ token }) {
            and trusting the list alone hid a room that was being collected right then. A live room
            with no name gets its slug prettified. If the list didn't load, everything is offered. */
         const named = Object.keys(vNames).length > 0;
+        let loc = null;
+        if (lRes && lRes.ok) { try { loc = await lRes.json(); } catch { /* treat as unknown */ } }
+        const switching = !!(loc && loc.pending);
         const RECENT_MS = 2 * 24 * 3600 * 1000;
         const lastBySlug = {};
         (g.games || []).forEach(row => {
@@ -79,7 +88,12 @@ export default function CashHeatmap({ token }) {
           if (Number.isFinite(t)) lastBySlug[row.venueSlug] = Math.max(lastBySlug[row.venueSlug] || 0, t);
         });
         const live = slug => Date.now() - (lastBySlug[slug] || 0) < RECENT_MS;
-        const rows = (g.games || []).filter(row => !named || vNames[row.venueSlug] || live(row.venueSlug));
+        /* The active list IS the set of rooms near the picked location (the watcher derives it from
+           that point and radius). Once it matches the picked location it is the whole answer: the
+           two-day "recent data" allowance kept every room from the previous location on offer for
+           two days after a change, which is why moving the picker changed nothing. The allowance
+           stays only while the switch is still pending, so the list is never empty mid-change. */
+        const rows = (g.games || []).filter(row => !named || vNames[row.venueSlug] || (switching && live(row.venueSlug)));
         rows.forEach(row => {
           if (!vNames[row.venueSlug]) vNames[row.venueSlug] = String(row.venueSlug).replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         });
@@ -87,6 +101,7 @@ export default function CashHeatmap({ token }) {
         rows.forEach(row => { (byVenue[row.venueSlug] = byVenue[row.venueSlug] || []).push(row); });
         for (const k of Object.keys(byVenue)) byVenue[k].sort((a, b) => (b.samples || 0) - (a.samples || 0));
         if (!live) return;
+        setPending(switching ? ((loc.requested && loc.requested.label) || loc.label || 'the new location') : null);
         setCatalog({ vNames, byVenue });
         setSel(prev => {
           if (prev && byVenue[prev.venue] && byVenue[prev.venue].some(x => x.gameType === prev.gameType && x.stakes === prev.stakes)) return prev;
@@ -97,7 +112,17 @@ export default function CashHeatmap({ token }) {
       } catch { if (live) { setErr('Could not reach the server.'); setStatus('error'); } }
     })();
     return () => { live = false; };
-  }, [token]);
+  }, [token, locationVersion, recheck]);
+
+  // While the watcher is switching, look again every 45 s (it re-derives on its next poll, then
+  // pushes the new list); stop after ~15 minutes rather than polling forever.
+  const rechecks = useRef(0);
+  useEffect(() => { rechecks.current = 0; }, [locationVersion]);
+  useEffect(() => {
+    if (!pending || rechecks.current >= 20) return undefined;
+    const id = setTimeout(() => { rechecks.current += 1; setRecheck(n => n + 1); }, 45000);
+    return () => clearTimeout(id);
+  }, [pending, recheck]);
 
   // Heatmap for the current selection.
   useEffect(() => {
@@ -175,6 +200,11 @@ export default function CashHeatmap({ token }) {
 
   return (
     <div style={wrap}>
+      {pending && (
+        <div style={{ height: 'calc(var(--subrow) * 3)', lineHeight: 'calc(var(--subrow) * 3)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted,#aaa)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 'var(--space-sm)' }}>
+          Switching rooms to {pending}. The list updates within about ten minutes.
+        </div>
+      )}
       {/* Pickers */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-ml)' }}>
         <select value={sel.venue} style={{ ...selectStyle, flex: '1 1 calc(var(--subrow) * 20)' }}

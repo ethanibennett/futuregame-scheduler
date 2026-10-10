@@ -122,7 +122,7 @@ function openLabel(startMs, endMs, windowStartMs) {
 // cash location is a single poll point the watcher steers around). It seeds from
 // the user's saved scheduler location so it is never empty, then the watcher's
 // own /cash/location (if set) overrides that, and picking a point POSTs it back.
-function CashLocationPicker({ token }) {
+function CashLocationPicker({ token, onSaved }) {
   const toast = useToast();
   const [filters, setFiltersState] = useState(() => {
     const saved = readLocalLocation() || {};
@@ -158,8 +158,9 @@ function CashLocationPicker({ token }) {
   const saveToCash = useCallback((f) => {
     if (!f.userLocation) return;
     const body = { lat: f.userLocation.lat, lon: f.userLocation.lng, radiusMiles: Math.max(5, Math.min(1000, Number(f.maxDistance) || 100)), label: f.locationLabel || 'Location' };
-    fetch(`${API_URL}/cash/location`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
-  }, [token]);
+    fetch(`${API_URL}/cash/location`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(() => { if (onSaved) onSaved(); }).catch(() => {});
+  }, [token, onSaved]);
 
   const setFilters = useCallback((updater) => {
     setFiltersState(prev => {
@@ -194,6 +195,9 @@ function CashLocationPicker({ token }) {
 
 export default function CashView({ token, onModeChange }) {
   const [data, setData] = useState(null);
+  // Bumped each time the cash location is saved, so the heatmap re-reads which rooms are near it.
+  const [locationVersion, setLocationVersion] = useState(0);
+  const bumpLocation = useCallback(() => setLocationVersion(v => v + 1), []);
   const [status, setStatus] = useState('loading'); // loading | ok | error
   const [errMsg, setErrMsg] = useState('');
   const [fetchedAt, setFetchedAt] = useState(null);
@@ -292,7 +296,7 @@ export default function CashView({ token, onModeChange }) {
   return (
     <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
       {/* The cash location, in the Schedule tab's location-field spot, on both views. */}
-      <CashLocationPicker token={token} />
+      <CashLocationPicker token={token} onSaved={bumpLocation} />
 
       {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, 1r under the
           location field on BOTH views (7r under the header), so it never moves when you switch.
@@ -306,7 +310,7 @@ export default function CashView({ token, onModeChange }) {
 
       {mode === 'heatmap' && (
         <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <CashHeatmap token={token} />
+          <CashHeatmap token={token} locationVersion={locationVersion} />
         </div>
       )}
 
