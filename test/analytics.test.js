@@ -328,10 +328,17 @@ async function serverTests() {
       assert.deepStrictEqual(a.breakdowns.format.rows.map(x => x.label), ['Live', 'Online']);
       assert.strictEqual(a.currency, 'USD');
     });
-    await test('unsupported currency falls back to USD; bankroll is accepted and reported unapplied', async () => {
+    await test('unsupported currency falls back to USD; ?bankroll= filters (main = no bankroll set)', async () => {
+      // Since the bankrolls merge, tracking_entries carries bankroll_id, so the filter applies.
       const a = JSON.parse((await request('GET', '/api/analytics?currency=XYZ&bankroll=3', { headers: admin })).body);
       assert.strictEqual(a.currency, 'USD');
-      assert.deepStrictEqual(a.bankroll, { requested: '3', applied: false });
+      assert.deepStrictEqual(a.bankroll, { requested: '3', applied: true });
+      const all = JSON.parse((await request('GET', '/api/analytics', { headers: admin })).body);
+      const main = JSON.parse((await request('GET', '/api/analytics?bankroll=main', { headers: admin })).body);
+      assert.deepStrictEqual(main.bankroll, { requested: 'main', applied: true });
+      // Every seeded result is in Main (none was filed under a bankroll), so Main equals All.
+      assert.ok(all.totals && all.totals.entries > 0, 'admin has results to compare');
+      assert.strictEqual(JSON.stringify(main.totals), JSON.stringify(all.totals));
     });
     await test('normal users see no change: GET /api/tracking still serves them', async () => {
       const r = await request('GET', '/api/tracking', { headers: normal });

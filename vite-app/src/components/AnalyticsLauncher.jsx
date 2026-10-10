@@ -9,7 +9,7 @@ const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
  * app admins (isAdmin, the staged-rollout flag), so everyone else sees no change; the
  * server gates GET /api/analytics on requireAppAdmin as well.
  */
-export default function AnalyticsLauncher() {
+export default function AnalyticsLauncher({ bankroll = 'all' }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   return (
@@ -20,7 +20,7 @@ export default function AnalyticsLauncher() {
       </button>
       {open && (
         <Suspense fallback={null}>
-          <AnalyticsView onClose={close} />
+          <AnalyticsView onClose={close} bankroll={bankroll} />
         </Suspense>
       )}
     </>

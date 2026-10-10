@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import ShareMenu from './ShareMenu.jsx';
@@ -14,6 +14,8 @@ import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.j
 import useBankrolls from '../hooks/useBankrolls.js';
 import { filterByBankroll, computeBalances, defaultBankrollFor } from '../utils/bankrolls.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
+// BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
+const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
 function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, bankrolls }) {
@@ -266,6 +268,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const [pendingFormId, setPendingFormId] = useState(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showWrapUp, setShowWrapUp] = useState(false);
+  const [showTaxReport, setShowTaxReport] = useState(false);
   const [displayCurrency, setDisplayCurrency] = useState(
     () => localStorage.getItem('trackingCurrency') || 'NATIVE'
   );
@@ -337,6 +340,14 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       })[0] || null;
   }, [mySchedule, existingEntryIds]);
 
+  if (showTaxReport && isAdmin) {
+    return (
+      <Suspense fallback={null}>
+        <TaxReportView token={token} onClose={() => setShowTaxReport(false)} />
+      </Suspense>
+    );
+  }
+
   return (
     <div>
       {bk.enabled && (
@@ -348,6 +359,11 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       <div className="section-header">
         <h2>Tracking</h2>
         <div style={{display:'flex',gap:'var(--space-md)',alignItems:'center'}}>
+          {isAdmin && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowTaxReport(true)} title="Tax report (beta)">
+              Tax report
+            </button>
+          )}
           {trackingData.length > 0 && (
             <button className="btn-share-overlay" onClick={() => setShowShareMenu(true)} title="Share & Social">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -423,7 +439,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
-      {isAdmin && trackingData.length > 0 && <AnalyticsLauncher />}
+      {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
         <div className="tracking-card" style={{padding:'calc(var(--subrow) * 1.75)', marginBottom:'var(--space-lg)', border:'var(--bw-1) dashed var(--accent)'}}>

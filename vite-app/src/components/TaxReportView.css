@@ -1,0 +1,246 @@
+/* ══ Tax report (BETA, app admins) ═══════════════════════════════════════════
+   Lazy-loaded with TaxReportView, so nobody else downloads it. Every measurement is g or r.
+   The view starts on the Tracking tab's content top, 35g wide (the content area's 1g margins).
+   Every block is a whole number of r with 1r between blocks (the view's gap). Text uses the New
+   Events recipe: a trimmed block (cap..alphabetic) whose padding-top is (baseline - 1cap) inside a
+   fixed whole-r height, so the baseline lands on an r line and the box stays whole.
+     header   3r: title + badge, baselines +2r
+     bar      3r: back 7g | year 11g (3g < | 5g year | 3g >) | CSV 7g | PDF 7g, 1g gaps = 35g
+     card     1r | paragraph n x 2r (baselines every 2r) | 1r
+     rows     3r, baseline +2r, hairline at the foot: label 21g | 1g | value 13g
+     months   3r rows: 5g | 4g | 9g | 8g | 9g = 35g
+     items    6r: name 3r (+2r) & amount | meta 2r (+5r) | 1r:  22g | 1g | 12g
+     seg      3r: 17g | 1g | 17g
+     filing   3r rows: 15g | 10g | 10g = 35g                                        */
+.taxr-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--subrow);
+  padding-bottom: calc(var(--subrow) * 2);
+  color: var(--text);
+}
+.taxr-block { display: flex; flex-direction: column; }
+
+.taxr-t {
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  white-space: nowrap;
+  overflow-x: clip; overflow-y: visible;
+  text-overflow: ellipsis;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.taxr-t3 {
+  height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+}
+
+/* Header: the Dashboard section header's look. */
+.taxr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gu);
+  height: calc(var(--subrow) * 3);
+}
+.taxr-title {
+  flex: 1 1 auto;
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--text-muted);
+}
+.taxr-badge {
+  display: block;
+  flex: 0 0 auto;
+  width: calc(var(--gu) * 4);
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  padding: calc(var(--subrow) * 2 - 1cap) 0 0;
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border-radius: var(--radius);
+}
+
+/* Buttons: 3r, the label a 3r trimmed cell with its baseline on +2r. */
+.taxr-btn {
+  display: block;
+  height: calc(var(--subrow) * 3);
+  min-height: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-align: center;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.taxr-btn > .taxr-t {
+  height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+}
+.taxr-btn.is-brand,
+.taxr-btn.is-on { background: var(--brand); color: var(--on-brand); }
+.taxr-btn:disabled { opacity: 0.4; cursor: default; }
+
+.taxr-bar {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 11) calc(var(--gu) * 7) calc(var(--gu) * 7);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 3);
+}
+.taxr-year {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 3) calc(var(--gu) * 5) calc(var(--gu) * 3);
+  height: calc(var(--subrow) * 3);
+  background: var(--surface2);
+  border-radius: var(--radius);
+}
+.taxr-year > .taxr-btn { background: none; font-size: var(--fs-sm); }
+.taxr-year-label {
+  height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  text-align: center;
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+
+/* Paragraphs: 2r lines. Trimmed, with padding-top 2r - 1cap, a paragraph of n lines is exactly
+   n x 2r tall with its baselines on +2r, +4r, ... */
+.taxr-p {
+  margin: 0;
+  box-sizing: border-box;
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  font-size: var(--fs-xs);
+  line-height: calc(var(--subrow) * 2);
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.taxr-p.is-muted { color: var(--text-muted); }
+.taxr-p.is-strong { font-weight: var(--fw-bold); }
+
+.taxr-card {
+  box-sizing: border-box;
+  padding: var(--subrow) var(--gu);
+  background: var(--surface2);
+  border-radius: var(--radius);
+}
+
+.taxr-msg { font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* Label / value rows. */
+.taxr-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 13);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 3);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.taxr-row-label { font-size: var(--fs-sm); }
+.taxr-row-value {
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  text-align: right;
+}
+
+/* Month table. */
+.taxr-mrow,
+.taxr-frow {
+  display: grid;
+  height: calc(var(--subrow) * 3);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.taxr-mrow {
+  grid-template-columns: calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 9) calc(var(--gu) * 8) calc(var(--gu) * 9);
+}
+.taxr-frow {
+  grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 10) calc(var(--gu) * 10);
+}
+.taxr-mrow > .taxr-t,
+.taxr-frow > .taxr-t {
+  height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  text-align: right;
+}
+.taxr-mrow > .taxr-t:first-child,
+.taxr-frow > .taxr-t:first-child { text-align: left; }
+.taxr-frow > .taxr-t:first-child { font-family: inherit; }
+.taxr-mrow.is-head > .taxr-t,
+.taxr-frow.is-head > .taxr-t {
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Two-line items (W-2G candidates, the session log). */
+.taxr-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 12);
+  grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 2);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 6);
+  box-sizing: border-box;
+  padding-bottom: var(--subrow);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.taxr-item-name,
+.taxr-item-amt {
+  height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+.taxr-item-amt { text-align: right; }
+.taxr-item-meta {
+  height: calc(var(--subrow) * 2);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.taxr-item-meta.is-right { text-align: right; font-family: var(--font-condensed); }
+
+.taxr-seg {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 3);
+}
+
+/* WholeRows: the outer box is sized in whole r by script; .taxr-run is a plain stack of items. */
+.taxr-whole { flex: 0 0 auto; }
+.taxr-run { display: flex; flex-direction: column; }
+/* Source list: one 2r line each, baseline +2r. */
+.taxr-src {
+  height: calc(var(--subrow) * 2);
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+/* A note followed by rows gets 1r of air (its last baseline is its box bottom). */
+.taxr-block .taxr-p:not(:last-child) { margin-bottom: var(--subrow); }

@@ -191,14 +191,14 @@ function Breakdowns({ a, money }) {
   );
 }
 
-export default function AnalyticsView({ onClose }) {
+export default function AnalyticsView({ onClose, bankroll = 'all' }) {
   const [state, setState] = useState({ status: 'loading', data: null });
   const closeRef = useRef(null);
   const currency = displayCurrency();
 
   useEffect(() => {
     let live = true;
-    fetchApi(`/analytics?currency=${encodeURIComponent(currency)}`)
+    fetchApi(`/analytics?currency=${encodeURIComponent(currency)}${bankroll && bankroll !== 'all' ? `&bankroll=${encodeURIComponent(bankroll)}` : ''}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
@@ -206,7 +206,7 @@ export default function AnalyticsView({ onClose }) {
       })
       .catch(() => { if (live) setState({ status: 'error', data: null }); });
     return () => { live = false; };
-  }, [currency]);
+  }, [currency, bankroll]);
 
   useEffect(() => {
     closeRef.current && closeRef.current.focus();

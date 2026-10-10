@@ -31,6 +31,7 @@
     "test:analytics": "node test/analytics.test.js",
     "test:auth-limit": "node test/auth-limit-and-compression.test.js",
     "test:gates": "node test/server-gates.test.js",
+    "test:tax-report": "node --test vite-app/src/utils/__tests__/tax-report.test.mjs && node test/tax-report-route.test.js",
     "test:venue-coords": "node test/venue-coords.test.js",
     "test:bankrolls": "node test/bankrolls.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs"
   },
