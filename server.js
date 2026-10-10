@@ -6021,6 +6021,34 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
   }
 });
 
+// Results analytics (BETA): breakdowns, variance and "where the edge is", from the
+// caller's own results. App admins only while in beta. The math is lib/analytics.js.
+//   ?currency=EUR  display currency (default USD; anything unsupported → USD)
+//   ?bankroll=<id> reserved for multiple bankrolls: a no-op until tracking_entries
+//                  carries bankroll_id (te.* below picks it up when it does).
+app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT te.*, t.event_name, t.date, t.time, t.buyin, t.game_variant, t.venue,
+             t.property, t.total_entries, t.is_online, t.site
+      FROM tracking_entries te
+      JOIN tournaments t ON te.tournament_id = t.id
+      WHERE te.user_id = ?
+    `);
+    stmt.bind([req.user.id]);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    const cur = String(req.query.currency || 'USD').toUpperCase();
+    const currency = SUPPORTED_CURRENCIES.includes(cur) ? cur : 'USD';
+    const { rates } = await fetchExchangeRates(); // cached 6 h; falls back to fixed rates offline
+    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll }));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // ── Live Updates ──────────────────────────────────────────
 
 app.post('/api/live-update', authenticateToken, requireRegistered, async (req, res) => {
