@@ -1719,6 +1719,7 @@ export default function App() {
                 onUpdate={updateTracking}
                 onDelete={deleteTracking}
                 myActiveUpdates={myActiveUpdates}
+                isAdmin={isAdmin}
               />
             )}
             </div>

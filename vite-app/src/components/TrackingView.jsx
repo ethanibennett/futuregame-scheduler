@@ -10,6 +10,7 @@ import {
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
 } from '../utils/utils.js';
 import ResultsCurve from './ResultsCurve.jsx';
+import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 
 // ── Tracking Entry Form ─────────────────────────────────────
 function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit }) {
@@ -250,7 +251,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, myActiveUpdates }) {
+export default function TrackingView({ trackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, myActiveUpdates, isAdmin }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
@@ -394,6 +395,9 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
           </p>
         </div>
       )}
+
+      {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
+      {isAdmin && trackingData.length > 0 && <AnalyticsLauncher />}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
         <div className="tracking-card" style={{padding:'calc(var(--subrow) * 1.75)', marginBottom:'var(--space-lg)', border:'var(--bw-1) dashed var(--accent)'}}>
