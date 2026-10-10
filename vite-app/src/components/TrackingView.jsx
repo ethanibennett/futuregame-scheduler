@@ -10,9 +10,12 @@ import {
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
 } from '../utils/utils.js';
 import ResultsCurve from './ResultsCurve.jsx';
+import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
+import useBankrolls from '../hooks/useBankrolls.js';
+import { filterByBankroll, computeBalances, defaultBankrollFor } from '../utils/bankrolls.js';
 
 // ── Tracking Entry Form ─────────────────────────────────────
-function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit }) {
+function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, bankrolls }) {
   const [tournamentId, setTournamentId] = useState(initialValues?.tournamentId || '');
   const [numEntries, setNumEntries] = useState(initialValues?.numEntries || 1);
   const [cashed, setCashed] = useState(initialValues?.cashed || false);
@@ -21,6 +24,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
   const [notes, setNotes] = useState(initialValues?.notes || '');
   const [totalFieldSize, setTotalFieldSize] = useState(initialValues?.totalEntries || '');
   const [showLfg, setShowLfg] = useState(false);
+  const [bankrollId, setBankrollId] = useState(initialValues?.bankrollId || 'main'); // beta: only sent when `bankrolls` is
 
   const tournamentOptions = useMemo(() => {
     if (isEdit) return [];
@@ -52,7 +56,8 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
       finishPlace: cashed && finishPlace ? parseInt(finishPlace) : null,
       cashAmount: cashed && cashAmount ? parseInt(cashAmount) : 0,
       notes: notes || null,
-      totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null
+      totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null,
+      ...(bankrolls ? { bankrollId } : {})
     });
   };
 
@@ -122,6 +127,8 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
         </div>
       )}
 
+      {bankrolls && <BankrollPicker bankrolls={bankrolls} value={bankrollId} onChange={setBankrollId} />}
+
       <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 1.75)'}}>
         <label>Notes (optional)</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
@@ -141,7 +148,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
 }
 
 // ── Tracking Entry Row ──────────────────────────────────────
-function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates }) {
+function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls }) {
   const from = nativeCurrency(entry.venue);
   const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
   const cv = (val) => convertAmount(val, from, to, exchangeRates);
@@ -165,8 +172,10 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
           finishPlace: entry.finish_place,
           cashAmount: entry.cash_amount,
           notes: entry.notes,
-          totalEntries: entry.total_entries
+          totalEntries: entry.total_entries,
+          bankrollId: entry.bankroll_id ?? 'main'
         }}
+        bankrolls={bankrolls}
         entryForPOY={entry}
         tournamentLabel={`#${entry.event_number} ${entry.event_name}`}
         onSubmit={onUpdate}
@@ -250,7 +259,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, myActiveUpdates }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, myActiveUpdates, isAdmin, token }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
@@ -268,6 +277,17 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
       .then(data => { setExchangeRates(data.rates); setRatesStale(data.stale); })
       .catch(() => { setExchangeRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); setRatesStale(true); });
   }, []);
+
+  // Bankrolls (beta, admins only). For everyone else `bk.selected` is 'all', the filter is the
+  // identity, and `formBankrolls` is null so the form neither shows nor sends a bankroll.
+  const bk = useBankrolls({ enabled: !!isAdmin, token });
+  const [showBankrolls, setShowBankrolls] = useState(false);
+  const trackingData = useMemo(() => filterByBankroll(allTrackingData, bk.selected), [allTrackingData, bk.selected]);
+  const bankrollBalances = useMemo(() => computeBalances(bk.bankrolls, allTrackingData, {
+    nativeCurrency, convert: (v, from, to) => convertAmount(v, from, to, exchangeRates),
+  }), [bk.bankrolls, allTrackingData, exchangeRates]);
+  const formBankrolls = bk.enabled && bk.bankrolls.length ? bk.bankrolls : null;
+  const newEntryBankroll = { bankrollId: defaultBankrollFor(bk.selected, bk.bankrolls) };
 
   const onCurrencyChange = useCallback((c) => {
     setDisplayCurrency(c);
@@ -301,7 +321,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
     return formatCurrencyAmount(val, code);
   };
 
-  const existingEntryIds = useMemo(() => new Set(trackingData.map(e => e.tournament_id)), [trackingData]);
+  const existingEntryIds = useMemo(() => new Set(allTrackingData.map(e => e.tournament_id)), [allTrackingData]);
 
   // Find most recent scheduled event that hasn't been tracked yet
   const pendingEvent = useMemo(() => {
@@ -318,6 +338,12 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
 
   return (
     <div>
+      {bk.enabled && (
+        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)} />
+      )}
+      {showBankrolls && (
+        <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
+      )}
       <div className="section-header">
         <h2>Tracking</h2>
         <div style={{display:'flex',gap:'var(--space-md)',alignItems:'center'}}>
@@ -422,7 +448,8 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
           tournaments={tournaments}
           mySchedule={mySchedule}
           existingEntryIds={existingEntryIds}
-          initialValues={{ tournamentId: pendingFormId }}
+          initialValues={{ tournamentId: pendingFormId, ...newEntryBankroll }}
+          bankrolls={formBankrolls}
           tournamentLabel={`#${(pendingEvent.event_number || '').replace(/^[A-Za-z]+-/, '')} ${pendingEvent.event_name}`}
           entryForPOY={pendingEvent}
           onSubmit={(data) => { onAdd({ ...data, tournamentId: pendingFormId }); setPendingFormId(null); }}
@@ -436,6 +463,8 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
           tournaments={tournaments}
           mySchedule={mySchedule}
           existingEntryIds={existingEntryIds}
+          initialValues={newEntryBankroll}
+          bankrolls={formBankrolls}
           onSubmit={(data) => { onAdd(data); setShowAddForm(false); }}
           onCancel={() => setShowAddForm(false)}
         />
@@ -461,13 +490,14 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
             onCancelEdit={() => setEditingId(null)}
             displayCurrency={displayCurrency}
             exchangeRates={exchangeRates}
+            bankrolls={formBankrolls}
           />
         ))
       )}
 
       {showShareMenu && (
         <ShareMenu
-          trackingData={trackingData}
+          trackingData={allTrackingData}
           tournaments={tournaments}
           mySchedule={mySchedule}
           myActiveUpdates={myActiveUpdates || []}
@@ -478,7 +508,7 @@ export default function TrackingView({ trackingData, tournaments, mySchedule, on
 
       {showWrapUp && (
         <WrapUpViewer
-          trackingData={trackingData}
+          trackingData={allTrackingData}
           tournaments={tournaments}
           onClose={() => setShowWrapUp(false)}
         />
