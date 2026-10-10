@@ -28,6 +28,7 @@
     "test:clocks": "node test/live-clocks.test.js",
     "test:sse": "node test/sse-ticket.test.js",
     "test:account": "node test/account-delete.test.js",
+    "test:analytics": "node test/analytics.test.js",
     "test:auth-limit": "node test/auth-limit-and-compression.test.js",
     "test:gates": "node test/server-gates.test.js",
     "test:venue-coords": "node test/venue-coords.test.js",

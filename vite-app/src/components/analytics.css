@@ -1,0 +1,163 @@
+/* ==================================================================
+   Results analytics (BETA, app admins only) — AnalyticsView.jsx.
+   Its own file so the Results tab's stylesheet is untouched; every
+   class is an- prefixed.
+
+   GRID. Every measurement is g or r. The sheet is fixed at the app's
+   origin (the .top-bar's top, i.e. the safe-area inset), 37g wide, so
+   r-lines inside it are the overlay's r-lines.
+
+   BASELINES. Every text cell is a whole-r box (--h) whose single line
+   is pushed down by --p and given the rest of the box as line-height:
+       baseline (from the cell top) = p + (h - p)/2 + c = h/2 + p/2 + c
+   where c = baseline - lineHeight/2 is a property of the face and size,
+   MEASURED in Playwright WebKit at 402x874 (scratch metrics.js, probe =
+   a zero-size inline-block on the baseline):
+       Univers Condensed  --fs-2xs .4564  --fs-xs .5213  --fs-sm .6511
+       Libre Baskerville  --fs-md  .7160  (title face) --fs-xl .9108
+       Univers            --fs-xs  .5213
+   So for a baseline on line k of the cell: p = 2(k - h/2 - c). No
+   text-box-trim (inert under flex, absent on iOS 15) and no relative
+   nudges — the box is whole r and the baseline is placed by layout.
+   ================================================================== */
+
+.an-cell {
+  display: block;
+  box-sizing: border-box;
+  height: calc(var(--subrow) * var(--h));
+  padding-top: calc(var(--subrow) * var(--p));
+  line-height: calc(var(--subrow) * (var(--h) - var(--p)));
+  white-space: nowrap;
+  min-width: 0;
+}
+.an-clip { overflow: hidden; text-overflow: ellipsis; }
+
+/* Type roles. Each fixes face + size (so c is known) and declares its h/p. */
+.an-lbl  { font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+           text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-muted); }
+.an-lbl-2  { --h: 2; --p: 1.0872; }   /* baseline on line 2 of 2 */
+.an-lbl-3b { --h: 3; --p: 0.0872; }   /* baseline on line 2 of 3 (table header) */
+.an-lbl-3  { --h: 3; --p: 2.0872; }   /* baseline on line 3 of 3 */
+.an-sec  { --h: 3; --p: 1.9574;       /* Univers Condensed xs, baseline on line 3 of 3 */
+           font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+           text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text); }
+.an-val  { --h: 3; --p: 1.568;        /* Libre Baskerville md, baseline on line 3 of 3 */
+           font-family: var(--font-display); font-size: var(--fs-md); color: var(--text);
+           font-variant-numeric: var(--num-tabular); }
+.an-note { --h: 2; --p: 0.9574;       /* Univers Condensed xs, baseline on line 2 of 2 */
+           font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+           font-variant-numeric: var(--num-tabular); }
+.an-td   { --h: 4; --p: 0.6978;       /* Univers Condensed sm, baseline on line 3 of 4 */
+           font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+           font-variant-numeric: var(--num-tabular); }
+.an-title { --h: 3; --p: 1.1784;      /* title face xl, baseline on line 3 of 3 */
+           font-family: var(--font-title); font-size: var(--fs-xl); font-weight: var(--fw-regular); color: var(--text); }
+.an-num  { text-align: right; }
+.an-pos  { color: var(--pos); }
+.an-neg  { color: var(--neg); }
+.an-beta { font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+           letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand);
+           margin-left: var(--gu); }
+
+/* Prose: Univers xs on a 2r line. First baseline on 2r (p = 2 - 1 - c), the
+   bottom pad makes the block 2m + 1 r, so the next block starts on a line. */
+.an-p {
+  font-family: var(--font-sans); font-size: var(--fs-xs); color: var(--text-muted);
+  line-height: calc(var(--subrow) * 2);
+  padding-top: calc(var(--subrow) * 0.4787);
+  padding-bottom: calc(var(--subrow) * 0.5213);
+  margin: 0;
+}
+.an-p strong { color: var(--text); font-weight: var(--fw-bold); }
+
+/* ── Sheet ─────────────────────────────────────────────────────── */
+.an-scrim { position: fixed; inset: 0; z-index: var(--z-scrim); background: var(--ov-black-3, rgba(0,0,0,0.5)); }
+.an-sheet {
+  position: fixed; z-index: var(--z-modal);
+  top: 0; bottom: 0; left: 0; right: 0; margin-inline: auto;
+  width: calc(var(--gu) * 37); max-width: 100vw;
+  box-sizing: border-box;
+  padding-top: var(--sa-t);
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+.an-head {
+  flex: none; position: relative;
+  height: var(--header-h);                     /* 8r, the app's top bar */
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.an-head .an-title { position: absolute; left: var(--gu); top: calc(var(--subrow) * 2); width: calc(var(--gu) * 26); }
+.an-close {
+  --h: 4; --p: 0.6978;                         /* as .an-td: baseline on line 3 of 4 */
+  position: absolute; left: calc(var(--gu) * 28); top: calc(var(--subrow) * 2);
+  width: var(--col); margin: 0; border: 0; border-radius: var(--radius-sm);
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+  text-align: center; cursor: pointer;
+}
+.an-close:focus-visible, .an-chip:focus-visible, .an-launch:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.an-body {
+  flex: 1; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding-inline: var(--gu);
+  padding-block: calc(var(--subrow) * 2) calc(var(--subrow) * 4 + var(--sa-b));
+}
+
+/* ── Sections ──────────────────────────────────────────────────── */
+.an-sheet :is(h2, h3) { margin: 0; }
+.an-section + .an-section { margin-top: calc(var(--subrow) * 4); }
+.an-section > .an-sec { margin-bottom: var(--subrow); }
+.an-sub { margin-top: calc(var(--subrow) * 2); }
+
+/* Stat grid: two 17g cells per row (17 + 1 + 17 = 35g), each 7r. */
+.an-stats {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17);
+  column-gap: var(--gu); row-gap: var(--subrow);
+}
+.an-stat { height: calc(var(--subrow) * 7); min-width: 0; }
+.an-stats + .an-p { margin-top: var(--subrow); }
+
+/* Tables: whole-g columns, 3r header, 4r rows, hairlines drawn inset. */
+.an-row {
+  display: grid; align-items: start;
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.an-row.is-head { height: calc(var(--subrow) * 3); }
+.an-row.is-body { height: calc(var(--subrow) * 4); }
+.an-row.is-small .an-td { color: var(--text-muted); }
+.an-row.is-small .an-td.an-pos, .an-row.is-small .an-td.an-neg { color: var(--text-muted); }
+.an-row.is-clear .an-td:first-child { font-weight: var(--fw-bold); }
+.an-cols-bd   { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 5) calc(var(--gu) * 5) calc(var(--gu) * 6) calc(var(--gu) * 8); }
+.an-cols-edge { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 5) calc(var(--gu) * 6) calc(var(--gu) * 13); }
+.an-table + .an-p, .an-p + .an-table { margin-top: var(--subrow); }
+
+/* Dimension picker: 3 x 2 chips of 11g x 4r (11 + 1 + 11 + 1 + 11 = 35g). */
+.an-chips {
+  display: grid;
+  grid-template-columns: repeat(3, calc(var(--gu) * 11));
+  column-gap: var(--gu); row-gap: var(--subrow);
+  margin-bottom: calc(var(--subrow) * 2);
+}
+.an-chip {
+  --h: 4; --p: 0.6978;
+  width: calc(var(--gu) * 11); margin: 0; border: 0; border-radius: var(--radius-sm);
+  background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text-muted);
+  text-align: center; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.an-chip[aria-pressed="true"] { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); color: var(--text); }
+
+/* Entry point on the Results tab: one 35g x 5r row, baseline on its line 4. */
+.an-launch {
+  --h: 5; --p: 1.6978;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  width: calc(var(--gu) * 35); margin: 0 0 var(--space-md); border: 0; border-radius: var(--radius-sm);
+  padding-inline: var(--gu);
+  background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+  text-align: left; cursor: pointer;
+}
+.an-launch .an-beta { margin-left: var(--gu); }
+.an-launch-go { color: var(--text-muted); font-weight: var(--fw-regular); }

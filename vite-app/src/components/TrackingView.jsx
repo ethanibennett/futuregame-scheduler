@@ -13,6 +13,7 @@ import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import useBankrolls from '../hooks/useBankrolls.js';
 import { filterByBankroll, computeBalances, defaultBankrollFor } from '../utils/bankrolls.js';
+import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 
 // ── Tracking Entry Form ─────────────────────────────────────
 function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, bankrolls }) {
@@ -420,6 +421,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           </p>
         </div>
       )}
+
+      {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
+      {isAdmin && trackingData.length > 0 && <AnalyticsLauncher />}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
         <div className="tracking-card" style={{padding:'calc(var(--subrow) * 1.75)', marginBottom:'var(--space-lg)', border:'var(--bw-1) dashed var(--accent)'}}>
