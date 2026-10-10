@@ -16231,3 +16231,289 @@
     .batch-recent-meta { font-size: var(--fs-xs); color: var(--text-muted); text-align: right; }
     .batch-recent-row.is-current .batch-recent-title { color: var(--brand); font-weight: var(--fw-bold); }
     /* ══ end New events ══════════════════════════════════════════════════════ */
+
+    /* ══ Bankrolls (beta, app admins) ════════════════════════════════════════
+       components/Bankrolls.jsx. Every box is whole g wide and whole r tall, and
+       every line of text is a trimmed block whose padding-top is (baseline - 1cap)
+       inside a fixed whole-r height, so the baseline sits on an r line and the
+       box stays whole even where text-box-trim is unsupported (the batch-view
+       recipe). Nothing is content-sized.
+         switcher  head 3r (title | Beta 4g | Manage 8g, baselines +2r), 1r,
+                   then 8g x 5r cells on the 4 columns, 1r between rows:
+                   name +2r, balance +4r, 1r below; 2r below the strip
+         sheet     37g, 1g sides. head 5r (title +3r | Done 6g x 5r, +3r),
+                   sections 2r apart: title 4r (+3r), rows 4r (+3r),
+                   fields: label 3r (+2r) over a 4r input, two 17g columns,
+                   buttons 5r (+3r), ledger rows 4r (+3r)                    */
+    .bk-bar { display: flex; flex-direction: column; margin-bottom: calc(var(--subrow) * 2); }
+    .bk-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 3); }
+
+    .bk-head-title, .bk-beta, .bk-head-btn > span,
+    .bk-cell-name, .bk-cell-bal,
+    .bk-sheet-title, .bk-section-title, .bk-line,
+    .bk-row > span, .bk-field-label, .bk-btn > span, .bk-seg-btn > span,
+    .bk-ledger-row > span, .bk-ledger-x > span {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      margin: 0;
+      white-space: nowrap;
+      overflow-x: clip; overflow-y: visible;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+
+    .bk-head-title {
+      flex: 1 1 auto;
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-md);
+      color: var(--text);
+    }
+    .bk-beta {
+      flex: 0 0 calc(var(--gu) * 4);
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--brand);
+      background: var(--brand-quiet);
+      border-radius: var(--radius);
+    }
+    .bk-head-btn {
+      flex: 0 0 var(--col);
+      display: grid;
+      align-items: start;
+      height: calc(var(--subrow) * 3);
+      min-height: 0;
+      box-sizing: border-box;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-xs);
+      cursor: pointer;
+    }
+    .bk-head-btn > span { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap); text-align: center; }
+
+    .bk-grid {
+      display: grid;
+      grid-template-columns: repeat(4, var(--col));
+      column-gap: var(--gu);
+      row-gap: var(--subrow);
+      margin-top: var(--subrow);
+    }
+    .bk-cell {
+      display: flex;
+      flex-direction: column;
+      width: var(--col);
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 var(--gu);
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .bk-cell.is-on { box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+    .bk-cell-name {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+    .bk-cell.is-on .bk-cell-name { color: var(--brand); }
+    .bk-cell-bal {
+      height: calc(var(--subrow) * 2);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+      font-variant-numeric: var(--num-tabular);
+    }
+    .bk-bar .is-neg, .bk-sheet .is-neg { color: var(--neg); }
+
+    /* The log / edit form's Bankroll field: the form's own .filter-group, spaced as its siblings. */
+    .bk-picker { margin-bottom: var(--space-lg); }
+
+    .bk-scrim {
+      position: fixed; inset: 0; z-index: var(--z-modal);
+      background: var(--scrim);
+    }
+    .bk-sheet {
+      position: absolute; top: 0; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: calc(var(--gu) * 37);
+      box-sizing: border-box;
+      padding: env(safe-area-inset-top, 0) var(--gu) calc(var(--subrow) * 4);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--bg);
+    }
+    .bk-sheet-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 5); }
+    .bk-sheet-title {
+      flex: 1 1 auto;
+      height: calc(var(--subrow) * 5);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-lg);
+      color: var(--text);
+    }
+    .bk-section { display: flex; flex-direction: column; margin-top: calc(var(--subrow) * 2); }
+    .bk-section-title {
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-md);
+      color: var(--text);
+    }
+    .bk-line {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text);
+      font-variant-numeric: var(--num-tabular);
+    }
+    .bk-sheet .bk-muted { color: var(--text-muted); }
+
+    .bk-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 10) calc(var(--gu) * 9);
+      column-gap: var(--gu);
+      align-items: start;
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .bk-row > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); }
+    .bk-row-name { font-size: var(--fs-sm); }
+    .bk-row.is-open .bk-row-name { color: var(--brand); font-weight: var(--fw-bold); }
+    .bk-row-meta { font-size: var(--fs-xs); color: var(--text-muted); }
+    .bk-row-bal { font-size: var(--fs-sm); font-weight: var(--fw-bold); text-align: right; font-variant-numeric: var(--num-tabular); }
+    .bk-editor { display: flex; flex-direction: column; padding-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
+
+    .bk-fields {
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--gu) * 17));
+      column-gap: var(--gu);
+    }
+    .bk-field { display: grid; grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 4); min-width: 0; }
+    .bk-field.is-wide { grid-column: 1 / -1; }
+    .bk-field-label {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+    .bk-field input, .bk-field select {
+      -webkit-appearance: none; appearance: none;
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 var(--gu);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: var(--fs-sm);
+      line-height: calc(var(--subrow) * 4);
+    }
+    .bk-field input:focus-visible, .bk-field select:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+    /* appearance:none leaves WebKit's number spinner, and strips the select's chevron. */
+    .bk-field input::-webkit-inner-spin-button, .bk-field input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .bk-field input[type="number"] { -moz-appearance: textfield; }
+    .bk-field select {
+      padding-right: calc(var(--gu) * 3);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23808080' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right var(--gu) center;
+      background-size: var(--gu) auto;
+    }
+
+    .bk-actions { display: flex; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
+    .bk-btn, .bk-seg-btn {
+      display: grid;
+      align-items: start;
+      flex: 0 0 auto;
+      height: calc(var(--subrow) * 5);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-sm);
+      cursor: pointer;
+    }
+    .bk-btn > span, .bk-seg-btn > span { height: calc(var(--subrow) * 5); padding-top: calc(var(--subrow) * 3 - 1cap); text-align: center; }
+    .bk-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+    .bk-btn--danger { background: none; color: var(--danger); box-shadow: inset 0 0 0 var(--bw-1) var(--danger); }
+    .bk-btn:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
+    .bk-w6 { width: calc(var(--gu) * 6); }
+    .bk-w8 { width: var(--col); }
+    .bk-seg { display: grid; grid-template-columns: repeat(3, calc(var(--gu) * 11)); column-gap: var(--gu); }
+    .bk-seg-btn.is-on { box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand); }
+
+    .bk-ledger-row {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr) var(--col) calc(var(--gu) * 3);
+      column-gap: var(--gu);
+      align-items: start;
+      height: calc(var(--subrow) * 4);
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+    }
+    .bk-ledger-row > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); font-size: var(--fs-xs); }
+    .bk-ledger-date { color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
+    .bk-ledger-row > .bk-ledger-amt { text-align: right; font-weight: var(--fw-bold); font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); }
+    .bk-ledger-x {
+      display: grid;
+      align-items: start;
+      width: calc(var(--gu) * 3);
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--text-muted);
+      font-size: var(--fs-md);
+      cursor: pointer;
+    }
+    .bk-ledger-x > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); text-align: center; }
+    /* ══ end Bankrolls ═══════════════════════════════════════════════════════ */

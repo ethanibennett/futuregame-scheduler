@@ -542,6 +542,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 // these win.
 const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
+const bankrolls = require('./lib/bankrolls');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3221,6 +3222,15 @@ async function initDatabase() {
         console.log('Created apns_tokens table');
       }
     },
+    {
+      // Multiple bankrolls (beta, app admins only): bankrolls + bankroll_adjustments, and a
+      // nullable tracking_entries.bankroll_id (NULL = the user's Main). See lib/bankrolls.js.
+      name: 'bankrolls-beta-2026-10',
+      fn: () => {
+        bankrolls.migrate(db);
+        console.log('Created bankrolls tables');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -3288,6 +3298,7 @@ async function initDatabase() {
       cash_amount INTEGER DEFAULT 0,
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      bankroll_id INTEGER,
       FOREIGN KEY (user_id) REFERENCES users(id),
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
       UNIQUE(user_id, tournament_id)
@@ -3962,7 +3973,8 @@ function deleteUserAccount(userId) {
     // Schedules, results, hands, devices, billing.
     for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
-                     'push_subscriptions', 'apns_tokens', 'subscriptions']) {
+                     'push_subscriptions', 'apns_tokens', 'subscriptions',
+                     'bankroll_adjustments', 'bankrolls']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
@@ -5900,20 +5912,26 @@ app.get('/api/exchange-rates', async (req, res) => {
   });
 });
 
+// ── Bankrolls (beta, app admins) ── lib/bankrolls.js; docs/bankrolls.md for the ?bankroll= filter.
+const isAppAdminReq = (req) => !!req.user && !req.user.isGuest && APP_ADMIN_USERNAMES.has(String(req.user.username || '').toLowerCase());
+bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES });
+
 // ── Tracking endpoints ──────────────────────────────────────
 
 app.get('/api/tracking', authenticateToken, (req, res) => {
   try {
+    const bk = bankrolls.filterFromQuery(db, req.user.id, req.query.bankroll, 'te.bankroll_id');
+    if (bk.error) return res.status(bk.status).json({ error: bk.error });
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin,
              t.game_variant, t.venue, t.is_satellite, t.total_entries
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id
-      WHERE te.user_id = ?
+      WHERE te.user_id = ?${bk.sql}
       ORDER BY t.date DESC, t.time DESC
     `);
-    stmt.bind([req.user.id]);
+    stmt.bind([req.user.id, ...bk.params]);
     const entries = [];
     while (stmt.step()) { entries.push(stmt.getAsObject()); }
     stmt.free();
@@ -5934,16 +5952,19 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
     if (!exists) return res.status(400).json({ error: 'Tournament not found' });
 
     // Upsert: update existing entry if one exists for this user+tournament
-    const existStmt = db.prepare('SELECT id FROM tracking_entries WHERE user_id = ? AND tournament_id = ?');
+    const existStmt = db.prepare('SELECT id, bankroll_id FROM tracking_entries WHERE user_id = ? AND tournament_id = ?');
     existStmt.bind([req.user.id, tournamentId]);
     const existing = existStmt.step() ? existStmt.getAsObject() : null;
     existStmt.free();
+    const bk = bankrolls.resolveEntryBankroll(db, req, req.body.bankrollId, existing ? existing.bankroll_id : undefined, isAppAdminReq);
+    if (bk.error) return res.status(bk.status).json({ error: bk.error });
 
     if (existing) {
       db.run(
         'UPDATE tracking_entries SET num_entries = ?, cashed = ?, finish_place = ?, cash_amount = ?, notes = ? WHERE id = ? AND user_id = ?',
         [numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null, existing.id, req.user.id]
       );
+      if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bk.value, existing.id, req.user.id]);
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
       res.json({ message: 'Entry updated' });
@@ -5952,6 +5973,7 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         'INSERT INTO tracking_entries (user_id, tournament_id, num_entries, cashed, finish_place, cash_amount, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [req.user.id, tournamentId, numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null]
       );
+      if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE user_id = ? AND tournament_id = ?', [bk.value, req.user.id, tournamentId]);
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
       res.status(201).json({ message: 'Entry tracked' });
@@ -5966,16 +5988,19 @@ app.put('/api/tracking/:entryId', authenticateToken, requireRegistered, async (r
   try {
     const { entryId } = req.params;
     const { numEntries, cashed, finishPlace, cashAmount, notes } = req.body;
-    const checkStmt = db.prepare('SELECT id FROM tracking_entries WHERE id = ? AND user_id = ?');
+    const checkStmt = db.prepare('SELECT id, bankroll_id FROM tracking_entries WHERE id = ? AND user_id = ?');
     checkStmt.bind([entryId, req.user.id]);
-    const owns = checkStmt.step();
+    const owned = checkStmt.step() ? checkStmt.getAsObject() : null;
     checkStmt.free();
-    if (!owns) return res.status(404).json({ error: 'Entry not found' });
+    if (!owned) return res.status(404).json({ error: 'Entry not found' });
+    const bk = bankrolls.resolveEntryBankroll(db, req, req.body.bankrollId, owned.bankroll_id, isAppAdminReq);
+    if (bk.error) return res.status(bk.status).json({ error: bk.error });
 
     db.run(
       'UPDATE tracking_entries SET num_entries = ?, cashed = ?, finish_place = ?, cash_amount = ?, notes = ? WHERE id = ? AND user_id = ?',
       [numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null, entryId, req.user.id]
     );
+    if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bk.value, entryId, req.user.id]);
     await saveDatabase();
     res.json({ message: 'Entry updated' });
   } catch (error) {
