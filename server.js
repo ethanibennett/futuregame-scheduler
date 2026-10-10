@@ -3286,6 +3286,7 @@ async function initDatabase() {
   await ingestOnlineFeed();
   // Place the live venues (background: a first pass geocodes, and boot must not wait on it).
   resolveVenueCoords('VenueCoords:boot').catch((e) => console.error('[VenueCoords] boot pass failed:', e.message));
+  refreshHandImportTwins('Dedupe:boot');
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tracking_entries (
@@ -4325,7 +4326,10 @@ app.get('/api/tournaments', authenticateToken, (req, res) => {
     
     const tournaments = [];
     while (stmt.step()) {
-      tournaments.push(stmt.getAsObject());
+      const row = stmt.getAsObject();
+      // A feed row that duplicates a hand-imported event (refreshHandImportTwins) is not listed.
+      if (hiddenFeedIds.has(row.id)) continue;
+      tournaments.push(row);
     }
     stmt.free();
     
@@ -10763,6 +10767,48 @@ const BRIDGE_SUPERSEDE = [
 // Given the set of venue strings a feed currently carries, drop any bridge series the feed has now
 // taken over. Returns the number of rows removed. Safe to call from either database's ingest path:
 // where no bridge rows exist (the local box), it is a no-op.
+// ── Hand imports vs the feed, event by event (lib/feed-dedupe.js) ──
+// A feed row that duplicates a hand-imported event is hidden from the schedule list, and anything
+// someone saved or logged against it moves to the hand-imported copy first (the same
+// UPDATE OR IGNORE re-pointing remapStaleReferences uses), so hiding it loses nothing. Recomputed
+// at boot and after every ingest, feed sync and import; the set lives in memory because the feed
+// re-upserts its rows hourly and a stored flag would have to survive that.
+const feedDedupe = require('./lib/feed-dedupe');
+let hiddenFeedIds = new Set();
+function refreshHandImportTwins(label = 'Dedupe') {
+  try {
+    const stmt = db.prepare(`SELECT id, source_pdf, venue, property, date, time, buyin, event_name
+      FROM tournaments WHERE property IS NOT NULL AND property != '' AND venue != 'Personal'`);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    const pairs = feedDedupe.findHandImportTwins(rows, { feedTags: FEED_TAGS });
+    const present = FEED_REF_TABLES.filter(name => db.exec(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [name]).length);
+    let moved = 0;
+    for (const { hand, feed } of pairs) {
+      for (const t of present) {
+        db.run(`UPDATE OR IGNORE ${t} SET tournament_id = ? WHERE tournament_id = ?`, [hand, feed]);
+        moved += db.getRowsModified();
+      }
+      if (present.includes('schedule_conditions')) {
+        db.run('UPDATE schedule_conditions SET depends_on_tournament_id = ? WHERE depends_on_tournament_id = ?', [hand, feed]);
+      }
+      // A save left behind means the person already had the hand-imported copy saved: drop the extra.
+      if (present.includes('user_schedules')) db.run('DELETE FROM user_schedules WHERE tournament_id = ?', [feed]);
+    }
+    const next = new Set(pairs.map(p => p.feed));
+    const changed = next.size !== hiddenFeedIds.size || [...next].some(id => !hiddenFeedIds.has(id));
+    hiddenFeedIds = next;
+    if (moved) { console.log(`[${label}] moved ${moved} saved reference(s) from feed duplicates to their hand-imported copies`); saveDatabase().catch(() => {}); }
+    if (changed) console.log(`[${label}] ${next.size} feed row(s) hidden as duplicates of hand-imported events`);
+    return { hidden: next.size, moved, changed };
+  } catch (err) {
+    console.error(`[${label}] hand-import dedupe failed:`, err.message);
+    return { hidden: hiddenFeedIds.size, moved: 0, changed: false };
+  }
+}
+
 function supersedeBridges(feedVenueSet, label) {
   const guard = feedRefGuardSql();
   let removed = 0;
@@ -11066,6 +11112,7 @@ async function ingestFeed(feedDir, tag, label, idPrefix) {
       await saveDatabase();
       console.log(`${label} sync: ${inserts} inserted, ${upserts} updated, ${pruned} pruned from ${manifest.length} file(s)`);
     }
+    refreshHandImportTwins(`Dedupe:${label}`);
   } catch (e) {
     console.log(`${label} sync skipped:`, e.message);
   }
@@ -12959,6 +13006,7 @@ app.post('/api/import-parsed-schedule', authenticateToken, requireRegistered, re
     console.log(`[ImportSchedule] ${inserted} new, ${updated} updated, ${skipped} skipped from "${sourceFile}"`);
 
     if (inserted > 0 || updated > 0) {
+      refreshHandImportTwins('Dedupe:import');
       broadcastToAll('schedule-refetch', { source: 'import-parsed-schedule', inserted, updated });
       // Place any new venue now rather than at the next hourly pass: until then the location
       // filters hide every row of a series nobody has a coordinate for.
@@ -13180,6 +13228,9 @@ app.post('/api/tournaments/feed-sync/:token', express.json({ limit: '50mb' }), a
         console.log(`[FeedSync] pruned ${pruned} row(s) from series no longer in the feed`);
         broadcastToAll('schedule-refetch', { source: 'mtt-feed-prune', pruned });
       }
+    }
+    if (refreshHandImportTwins('Dedupe:FeedSync').changed) {
+      broadcastToAll('schedule-refetch', { source: 'feed-dedupe' });
     }
     // A supersede can land rows to delete even when prune was skipped (empty feedVenues, or an
     // update-only push): persist and refresh in that case too.

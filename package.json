@@ -33,7 +33,8 @@
     "test:gates": "node test/server-gates.test.js",
     "test:tax-report": "node --test vite-app/src/utils/__tests__/tax-report.test.mjs && node test/tax-report-route.test.js",
     "test:venue-coords": "node test/venue-coords.test.js",
-    "test:bankrolls": "node test/bankrolls.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs"
+    "test:bankrolls": "node test/bankrolls.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs",
+    "test:feed-dedupe": "node test/feed-dedupe.test.js"
   },
   "keywords": [],
   "author": "",
