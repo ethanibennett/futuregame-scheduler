@@ -6021,6 +6021,46 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
   }
 });
 
+// ── Tax-ready year-end report (BETA, app admins only) ─────
+// The caller's tracking rows with what a session log needs that GET /api/tracking leaves out: the
+// room (property), online flag + site, and the room's city/state from the PokerAtlas directory
+// (else the venue's region from venue_coords). All years: the client picks the year and does the
+// math (vite-app/src/utils/tax-report.js). te.* carries bankroll_id once that column exists.
+app.get('/api/tax-report/entries', authenticateToken, requireAppAdmin, (req, res) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT te.*,
+             t.event_number, t.event_name, t.date, t.time, t.buyin, t.game_variant,
+             t.venue, t.property, t.is_online, t.site, vc.region
+      FROM tracking_entries te
+      JOIN tournaments t ON te.tournament_id = t.id
+      LEFT JOIN venue_coords vc ON vc.venue = t.venue
+      WHERE te.user_id = ?
+      ORDER BY t.date, t.time
+    `);
+    stmt.bind([req.user.id]);
+    const dir = getVenueDirectory();
+    const entries = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      const stop = dir.wsopStop(row.venue);
+      const room = row.property || (stop && stop.property) || null;
+      const hit = !row.is_online && room ? dir.lookup(room, row.venue) : null;
+      entries.push({
+        ...row,
+        property: room,
+        city_state: row.is_online ? null : ((hit && hit.cityState) || (stop && stop.location) || null),
+        country: (stop && stop.country) || null,
+      });
+    }
+    stmt.free();
+    res.json({ entries });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // ── Live Updates ──────────────────────────────────────────
 
 app.post('/api/live-update', authenticateToken, requireRegistered, async (req, res) => {
