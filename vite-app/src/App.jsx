@@ -1983,7 +1983,7 @@ export default function App() {
     <DisplayNameProvider value={displayName}>
     <div
       className={'app-shell' + (isDesktop ? ' is-desktop dk-' + dk.tier : '')}
-      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols } : undefined}
+      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols, '--dk-sb-g': dk.sbG } : undefined}
     >
       <header className="top-bar">
         <div className="top-bar-title">

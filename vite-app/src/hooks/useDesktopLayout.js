@@ -16,6 +16,8 @@ import { useEffect, useState } from 'react';
  *
  *   rail   = 10g   (one 8g column inside 1g margins — the wordmark's column)
  *   pane   = 9N+1g (N columns of 8g, 1g gutters, 1g margins; N=4 is the 37g phone canvas)
+ *            + the scrollbar's width where scrollbars take space (sbG, 0 on overlay scrollbars),
+ *            so the content inside the scrollbar is still exactly 9N+1g
  *
  * Tiers (W = floor(window / g), whole g):
  *   'two'   rail 10 | list 37 | right pane 9N+1 (Event / My schedule, switchable)
@@ -41,6 +43,21 @@ function measureG() {
   return g || 430 / 37;
 }
 
+// The width a classic (always-visible) scrollbar takes from a scroller, in g. 0 where scrollbars
+// overlay the content (macOS with a trackpad, iOS, iPadOS). A Mac with a mouse, or "Always show
+// scroll bars", gives ~15 CSS px, and that came straight out of each pane's 37g: the Schedule
+// filter row (exactly 35g) wrapped its calendar button. Each scrolling pane is widened by this so
+// its content keeps the whole phone canvas.
+function measureScrollbarG(g) {
+  if (typeof document === 'undefined' || !document.body) return 0;
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;overflow:scroll;width:calc(var(--gu) * 10);height:calc(var(--gu) * 10)';
+  document.body.appendChild(probe);
+  const px = probe.offsetWidth - probe.clientWidth;
+  probe.remove();
+  return px > 0 ? Math.round((px / g) * 1e4) / 1e4 : 0;
+}
+
 function colsFor(availG) {
   return Math.max(MIN_COLS, Math.min(MAX_COLS, Math.floor((availG - 1) / 9)));
 }
@@ -50,15 +67,17 @@ export function computeDesktopLayout() {
     return { desktop: false };
   }
   const g = measureG();
+  const sbG = measureScrollbarG(g);
   const W = Math.floor(window.innerWidth / g + 1e-6);
-  const tier = W >= RAIL_G + PHONE_PANE_G * 3 ? 'three' : 'two';
+  const tier = W - 3 * sbG >= RAIL_G + PHONE_PANE_G * 3 ? 'three' : 'two';
+  const panes = tier === 'three' ? 3 : 2;
   const fixed = RAIL_G + PHONE_PANE_G + (tier === 'three' ? PHONE_PANE_G : 0);
-  const detailCols = colsFor(W - fixed);
-  const shellG = fixed + paneG(detailCols);
+  const detailCols = colsFor(W - fixed - panes * sbG);
+  const shellG = fixed + paneG(detailCols) + panes * sbG;
   // A single-pane tab (Dashboard, Social, …) uses the same shell; its one pane
   // is as many whole columns as fit after the rail, capped at the same 7.
-  const wideCols = colsFor(shellG - RAIL_G);
-  return { desktop: true, g, W, tier, detailCols, shellG, wideCols };
+  const wideCols = colsFor(shellG - RAIL_G - sbG);
+  return { desktop: true, g, W, tier, detailCols, shellG, wideCols, sbG };
 }
 
 export default function useDesktopLayout() {

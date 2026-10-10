@@ -15965,9 +15965,11 @@
       width: var(--bw-hair); background: var(--border);
       z-index: calc(var(--z-sticky) + 1); pointer-events: none;
     }
-    .dk-pane-list, .dk-pane-mine { width: calc(var(--gu) * 37); }
-    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1)); }
-    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1)); }
+    /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
+       beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
+    .dk-pane-list, .dk-pane-mine { width: calc(var(--gu) * (37 + var(--dk-sb-g, 0))); }
+    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + var(--dk-sb-g, 0))); }
+    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + var(--dk-sb-g, 0))); }
     /* A pane is the containing block for the views' fixed-position children (the
        Today/Next button), so each one centres in ITS pane instead of the window.
        Only on panes whose views have nothing else fixed and unportalled. */
@@ -15976,11 +15978,12 @@
 
     /* The main pane's scroller is the phone's .content-area, minus the room it
        keeps for a bottom nav the desktop does not have. */
-    .app-shell.is-desktop .content-area { padding-bottom: calc(var(--subrow) * 2); }
+    .app-shell.is-desktop .content-area { padding-bottom: calc(var(--subrow) * 2); scrollbar-gutter: stable; }
     /* Secondary panes scroll on their own; same 1g rails as .content-area. */
     .dk-scroll {
       flex: 1; min-height: 0;
       overflow-y: auto;
+      scrollbar-gutter: stable; /* the width is reserved whether or not this pane overflows */
       overscroll-behavior: contain;
       box-sizing: border-box;
       padding: 0 var(--gu) calc(var(--subrow) * 2);
@@ -16077,6 +16080,11 @@
     /* The list row whose event is in the detail pane. An outline, so the card's
        box (and the list's r rhythm) does not move by a hair. */
     .cal-event-row.is-selected { outline: var(--bw-2) solid var(--brand); outline-offset: 0; }
+    /* Clicking a row focuses its bar, and Safari matches :focus-visible on that click, so the
+       selected card drew the inset focus ring INSIDE the selection outline: two gold rings. The
+       selection outline already says where you are; keyboard focus on any other row still rings. */
+    .cal-event-row.is-selected .cal-event-bar:focus-visible,
+    .cal-event-row.is-selected .cal-venue-strip:focus-visible { box-shadow: none; }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════
