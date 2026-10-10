@@ -24,8 +24,10 @@ wsop-console side and verified against both live services.
   all bankrolls. W-2G poker threshold is >$5,000 net of buy-in through 2025, >=$2,000 from 2026; losses
   90% from 2026 (OBBBA §70114). `W2G_POKER_RULES` needs the 2027 figure when the IRS publishes it.
 - **Cash heatmap** offers only the watcher's active (location-derived) rooms once they match the picked
-  location. ⚠ The hosted cash watcher on Render lacks `HOME_LOCATION_PATH` / `ACTIVE_VENUES_PATH`
-  (render.yaml has them), so each redeploy resets the picked location to its default — awaiting Ethan.
+  location. The hosted cash watcher on Render was missing `HOME_LOCATION_PATH` / `ACTIVE_VENUES_PATH` /
+  `ACTIVE_VENUES_META_PATH`, so every redeploy reset the picked location to the default and the box
+  pulled that over the pick. Set on the service 2026-10-10 (and the meta path added to render.yaml);
+  location restored to Philadelphia, 60 mi.
 
 ## 2026-10-09 — iPad/Mac desktop layout, Borgata Fall Poker Open, MTT watcher dedupe
 - **Desktop layout is width-only** (`DESKTOP_QUERY = '(min-width: 1024px)'`), and the iPad app
