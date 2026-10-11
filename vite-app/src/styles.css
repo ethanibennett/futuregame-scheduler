@@ -321,6 +321,9 @@
          its own height AND by .replayer-bottom-fixed for `bottom` so the
          two positions can never drift relative to each other. */
       --nav-h:     max(calc(var(--subrow) * 6), calc(var(--tab-h) + var(--sa-b)));
+      /* The fraction of an r that drops the bottom nav's top onto a grid line (see .bottom-nav).
+         On the root so anything fixed above the nav can stand on that same line. */
+      --nav-snap:  mod(100dvh - var(--sa-t) - var(--tab-h) - var(--sa-b), var(--subrow));
       /* Venue brand colors — muted for dark mode */
       --venue-wsop:          #a63030;
       --venue-wsop-cond:     #999;
@@ -2205,7 +2208,9 @@
        and the user chip right via the bar's space-between. Desktop (≥640px) has
        room to let them sit in normal right-aligned flow. */
     .top-bar-actions {
-      display: flex; align-items: center; gap: var(--space-sm);
+      /* 3g buttons with 1g between: n of them span 4n - 1 g, an odd count, so centred on the
+         screen's 18.5g middle the group starts on a whole g (19 - 2n). */
+      display: flex; align-items: center; gap: var(--gu);
       /* Centred in the 8r bar (its own centre on the 4r line). The bar is now
          align-items:flex-start, so this absolute group sets its own vertical
          centre rather than inheriting the old align-items:center. */
@@ -2217,7 +2222,7 @@
       .top-bar-actions { position: static; top: auto; transform: none; margin-left: auto; align-self: center; }
     }
     .top-bar-actions .btn-icon {
-      width: calc(var(--subrow) * 4); height: calc(var(--subrow) * 4); min-width: calc(var(--subrow) * 4);
+      width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); min-width: calc(var(--gu) * 3);
       padding: 0; display: flex; align-items: center; justify-content: center;
       border-radius: var(--radius-circle);
     }
@@ -2234,10 +2239,14 @@
       display: flex; align-items: center; min-width: 0;
     }
 
+    /* A 4r box centred on the 4r line like the icons (top 2r), its width the avatar and name
+       rounded up to a whole g (class snap-g), the pair centred in it. */
     .username-chip {
+      height: calc(var(--subrow) * 4);
+      justify-content: center;
       font-size: var(--fs-sm);
       color: var(--text-muted);
-      max-width: calc(var(--subrow) * 12.5);
+      max-width: calc(var(--gu) * 9);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -2245,9 +2254,7 @@
       transition: color var(--dur-fast);
       font-family: inherit;
     }
-    /* Trim the name to its cap box (cap top to baseline), so the chip's align-items:center centres
-       the capitals — not the line box with its descender space — on the avatar's centre line. */
-    .username-chip span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    .username-chip span { display: block; line-height: 1; }
     @media (hover: hover) and (pointer: fine) {
       .username-chip:hover { color: var(--text); }
     }
@@ -2824,17 +2831,16 @@
     }
     .replayer-view.is-list .replayer-list-heading { display:grid; align-items:end; height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
     /* Create: full width (35g) — a variant name can run to "Pot Limit Stud Hi/Lo
-       Regular", which no narrower whole-g box holds. 5r, baseline 3r down: the cap
-       (~1.2r) then has 1.8r above it and 2r below, i.e. centred. */
+       Regular", which no narrower whole-g box holds. 5r, the label centred. */
     .replayer-view.is-list .replayer-list-create { height: calc(var(--subrow) * 5); }
     .replayer-view.is-list .replayer-list-create .btn,
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-actions .btn {
-      display:grid; align-items:end; justify-items:center; width:100%; height: calc(var(--subrow) * 5);
-      box-sizing:border-box; padding: 0 var(--gu) calc(var(--subrow) * 2); border:none;
+      display:grid; align-items:center; justify-items:center; width:100%; height: calc(var(--subrow) * 5);
+      box-sizing:border-box; padding: 0 var(--gu); border:none;
     }
     .replayer-view.is-list .replayer-hand-card-actions .btn.btn-ghost {
-      display:grid; align-items:end; justify-items:center; width:100%; height: calc(var(--subrow) * 4);
-      box-sizing:border-box; padding: 0 var(--space-xs) var(--subrow); border:none;
+      display:grid; align-items:center; justify-items:center; width:100%; height: calc(var(--subrow) * 4);
+      box-sizing:border-box; padding: 0 var(--space-xs); border:none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
     }
     @media (hover: hover) and (pointer: fine) {
@@ -8166,7 +8172,6 @@
          it (108.30r / 105.45r / 115.82r at 874 / 852 / 932 tall). --nav-snap is the fraction of
          an r that drops the top onto a line, added at the BOTTOM so the content keeps its place
          from the top: 1r of space, the icon (2.5r), the label's baseline on the 5r line. */
-      --nav-snap: mod(100dvh - var(--sa-t) - var(--tab-h) - var(--sa-b), var(--subrow));
       height: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap));
       min-height: var(--tab-h);
       /* 1r from the bar's top edge to the icon: the hairline border sits inside that 1r. */
@@ -8179,6 +8184,10 @@
       border-top: var(--bw-hair) solid var(--border);
       display: flex;
       align-items: stretch;
+      /* Whole-g tabs, centred: BottomNav sets --nav-tab-w and --nav-gap (unitless g counts) so
+         n tabs and their gutters span 35g or less with whole-g margins either side. */
+      justify-content: center;
+      column-gap: calc(var(--gu) * var(--nav-gap, 0));
       flex-shrink: 0;
       position: relative;
       z-index: var(--z-sticky);
@@ -8245,15 +8254,17 @@
     }
 
     .nav-tab {
-      flex: 1;
+      flex: 0 0 calc(var(--gu) * var(--nav-tab-w, 7));
+      /* A whole-g by 4r box (under the bar's 1r of space); the icon over its label, the pair
+         centred in it — a button's label is centred, not seated (owner rule, 2026-10-10). */
+      height: calc(var(--subrow) * 4);
       display: flex;
       flex-direction: column;
       align-items: center;
-      /* From the top: the icon right under the bar's 1r of space, the label pushed to the
-         bottom of the 4r content box (margin-top:auto below) so its trimmed baseline is the
-         5r line. Was centred, which floated both off the grid. */
-      justify-content: flex-start;
-      gap: 0;
+      justify-content: center;
+      /* Icon to capitals ~0.53r, as before (the label's line box adds 0.125em of its own): the
+         icon and the label's ink then fill the 4r box. */
+      gap: calc(var(--subrow) * 0.375);
       background: none;
       border: none;
       color: var(--text-muted);
@@ -8268,13 +8279,9 @@
       text-transform: none;
     }
     .nav-tab svg { flex: none; }
-    /* A block child (trim is inert on the flex button itself), trimmed to cap..baseline and at
-       the content box's foot, so the baseline sits exactly on the 5r line. */
     .nav-tab-label {
       display: block;
-      margin-top: auto;
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* Inactive #808080 vs active #a0a0a0 reads 3.9:1 and 5.4:1 against the
@@ -8413,16 +8420,70 @@
       .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
     }
 
-    .btn-sm { padding: var(--space-md) var(--space-xl); font-size: var(--fs-sm); }
+    /* Heights in whole r, padding sideways only: the box is on the grid and .btn's flex centres
+       the label in it (the padding had made these 5.06r and 3.94r). Widths stay content-sized
+       here; each place that uses one gives it a whole-g width (or class snap-g). */
+    .btn { height: calc(var(--subrow) * 5); padding-block: 0; }
+    .btn-sm { height: calc(var(--subrow) * 4); padding: 0 var(--space-xl); font-size: var(--fs-sm); }
 
     .btn-full { width: 100%; }
 
+    /* ── Pills and buttons: the box on the grid, the label centred (owner rule, 2026-10-10) ──
+       Every pill and every button: the CONTAINER is whole g wide and whole r tall with its edges
+       on grid lines; the LABEL inside is centred on both axes, ignoring the grid. So inside a
+       control there is no baseline seating — no text-box-trim, no align-items:end, no padding or
+       offset computed from font metrics. The box centres its content (flex, align-items and
+       justify-content: center) and that centres the ink: Univers Condensed's ascent less its
+       descent is its cap height, so the middle of its line box IS the middle of its capitals.
+       .ctl is that, for a control that has no class of its own to carry it. Variable-width
+       content (a username, a count) takes class snap-g: utils/grid-snap.js rounds its width up
+       to a whole g. Guard: npm run check:controls (WebKit, phone + desktop) measures every
+       control's box against the grid and its label's ink centre against the box's. */
+    /* A control labelled in the DISPLAY face (Libre Baskerville and kin): that face's line box is
+       not centred on its capitals (ascent less descent exceeds the cap height by ~0.1em), so a flex
+       centre would sit the label ~1px low. Its label line is trimmed to cap-top..baseline, which
+       makes the label's box its ink, and the control's flex centre then centres the ink exactly.
+       (The same trim serves a label stacked under an icon — .cal-action-label — where the line
+       box's room below the baseline would otherwise lift the pair.)
+       This trim centres; it seats nothing on the grid (on iOS 15, which lacks it, the label is
+       simply ~1px low). Univers Condensed needs none of this. */
+    .ctl-cap {
+      display: block;
+      white-space: nowrap;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* The Hands tools row over the nav: 5r, its 3r pills 1r down from its top. The top rule is an
+       inset hairline (a border would push the pills a pixel off their line). On desktop there is
+       no nav below it, so it also takes up the fraction of an r the window height leaves over,
+       which puts its top on a line counted from the bar. */
+    .hands-tool-row {
+      align-items: flex-start;
+      height: calc(var(--subrow) * 5);
+      padding: var(--subrow) var(--gu) 0;
+      box-sizing: border-box;
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    .app-shell.is-desktop .hands-tool-row { height: calc(var(--subrow) * 5 + mod(100dvh - var(--sa-t), var(--subrow))); }
+    .ctl {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding-block: 0;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
     /* ── Alerts ── */
+    /* Whole r: 2r lines inside 1.5r of padding a side, the hairline border taken out of the
+       padding, so a one-line alert is a 5r block and whatever follows it stays on the grid. */
     .alert {
-      padding: var(--space-lg) var(--space-xl);
+      padding: calc(var(--subrow) * 1.5 - var(--bw-hair)) var(--gu);
       border-radius: var(--radius-sm);
       font-size: var(--fs-md);
-      margin-bottom: var(--space-lg);
+      line-height: calc(var(--subrow) * 2);
+      margin-bottom: calc(var(--subrow) * 2);
       display: flex;
       align-items: flex-start;
       gap: var(--space-md);
@@ -8734,14 +8795,13 @@
     .settings-row--stack > :not(.settings-row-label):not(.settings-help) { margin-top: var(--subrow); }
     .settings-inline-row { display: flex; align-items: flex-start; gap: var(--gu); }
 
-    /* Ghost buttons: 5r, label baseline +3r (cap ~1.2r: 1.8r above, 2r below),
-       whole-g widths so the input beside them fills a whole-g remainder. The
-       frame is an inset shadow so it adds no size. Scoped to the page so the
-       shared .btn-sm elsewhere is untouched. */
+    /* Ghost buttons: 5r, the label (and any icon) centred in the box, whole-g widths so the
+       input beside them fills a whole-g remainder. The frame is an inset shadow so it adds no
+       size. Scoped to the page so the shared .btn-sm elsewhere is untouched. */
     .settings-view .settings-btn.btn-sm {
       display: grid;
       grid-auto-flow: column;
-      align-items: end;
+      align-items: center;
       justify-content: center;
       column-gap: calc(var(--gu) * 0.5);
       flex: 0 0 auto;
@@ -8758,18 +8818,15 @@
     @media (hover: hover) and (pointer: fine) {
       .settings-view .settings-btn.btn-sm:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
     }
-    /* Icon centred on the label's cap: bottom-aligned, then dropped by half the
-       difference between the icon (1.75r) and the cap height. */
     .settings-view .settings-btn.btn-sm svg {
       width: calc(var(--subrow) * 1.75);
       height: calc(var(--subrow) * 1.75);
-      margin-bottom: calc(1cap / 2 - var(--subrow) * 0.875);
     }
     .settings-btn--danger { color: var(--danger); }
     .settings-btn--start { align-self: flex-start; }
     /* Delete account: the one irreversible action in Settings, so it is the only
-       filled red button on the page. Same 5r seated box as the ghost buttons
-       beside it (label on +3r), 10g wide to hold its label; the frame is an
+       filled red button on the page. Same 5r box as the ghost buttons beside it,
+       label centred, 10g wide to hold its label; the frame is an
        inset hairline in the danger hue, so it adds no size. */
     .settings-view .settings-btn--destroy.btn-sm {
       width: calc(var(--gu) * 10);
@@ -8788,7 +8845,6 @@
     .settings-view .settings-btn--icon.btn-sm {
       width: calc(var(--gu) * 7);
       height: calc(var(--subrow) * 3);
-      padding-bottom: var(--subrow);             /* baseline +2r = row +3r */
     }
 
     /* People lists (pending / connected): a 3r header, then 5r rows — avatar
@@ -10980,14 +11036,21 @@
          Mirror the nav's height formula exactly so Safari's max()
          parsing can't drop the safe-area term, then add a 22px gap
          (was 16px) and a final +6px hedge for iOS hairline rounding. */
-      bottom: calc(max(calc(var(--subrow) * 5.5), calc(var(--tab-h) + var(--sa-b))) + calc(var(--subrow) * 3.5));
-      left: 50%;
+      /* A 9g x 4r pill 2r above the bottom nav's top (an r line, see --nav-snap), so its edges are
+         on the grid. Centred by its left edge, rounded to the nearest g line (14g on a phone's
+         37g; on a desktop pane of even width it sits a half-g off true centre, on the grid). */
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 2);
+      width: calc(var(--gu) * 9);
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      justify-content: center;
+      left: round(nearest, 50% - var(--gu) * 4.5, var(--gu));
       z-index: var(--z-fab);
       background: var(--accent);
       color: var(--bg);
       border: none;
       border-radius: var(--radius-pill);
-      padding: var(--space-md) var(--space-2xl);
+      padding: 0;
       font-family: var(--serif);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
@@ -11388,14 +11451,17 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
+      line-height: 1;
       color: var(--text-muted);
-      align-self: end;
+      /* Under an icon, the label's line box would add its space below the baseline to the
+         stack and sit the pair high; trimmed to cap..baseline (as .ctl-cap), its box is its ink
+         and the stack centres on the ink. A centring trim — it seats nothing on the grid. */
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-action-btn:active { background: rgba(160,160,160,0.1); }
     /* Buddy chip name, trimmed and bottom-aligned 1r above the 3r chip's bottom, so its baseline
        sits on the r-line 2r below the chip top (it was centred, 0.064r off). */
-    .buddy-chip-name { align-self: flex-end; margin-bottom: var(--subrow); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    .buddy-chip-name { line-height: 1; } /* centred in the 3r chip by its flex centre */
     .cal-action-btn.remove .cal-action-icon { color: #ef4444; }
     .cal-action-btn.anchor-btn.locked .cal-action-icon { color: #60a5fa; }
     :is([data-theme="light"],[data-theme="cloudy"]) .cal-action-btn.anchor-btn.locked .cal-action-icon { color: #2563eb; }
@@ -14567,7 +14633,8 @@
       flex-shrink: 0;
     }
     .btn-xs {
-      padding: calc(var(--subrow) * 0.375) var(--space-ml) !important;
+      height: calc(var(--subrow) * 3) !important; /* a whole 3r box; .btn centres the label */
+      padding: 0 var(--space-ml) !important;
       font-size: var(--fs-xs) !important;
       line-height: 1 !important;
       border-radius: var(--radius-sm) !important;
@@ -15383,11 +15450,13 @@
     /* The grid unit is responsive (100vw/37), so the overlay needs no
        per-breakpoint margin overrides — it tracks the screen at every width. */
 
-    /* Floating admin toggle for the grid overlay. */
+    /* Floating admin toggles for the grid overlay: 4g x 5r keys on the 1g right margin, stacked
+       up from the bottom nav's top (an r line), --dev-up r above it (clear of the 5r Hands tools row),
+       so each sits on the grid. */
     .grid-dev-toggle {
-      position: fixed; right: calc(var(--subrow) * 1.5);
-      bottom: calc(calc(var(--subrow) * 9.5) + env(safe-area-inset-bottom, 0));
-      z-index: 9999; width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); border-radius: var(--radius-circle);
+      position: fixed; right: var(--gu);
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * var(--dev-up, 7));
+      z-index: 9999; width: calc(var(--gu) * 4); height: calc(var(--subrow) * 5); border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center;
       border: var(--bw-hair) solid var(--border); box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.25) rgba(0,0,0,0.3);
       font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: calc(var(--gu) * 1.4726);
@@ -15903,19 +15972,18 @@
     }
     /* One Row (4r) per item. The item bleeds over the rail's 1g margins so its
        hover fill and active bar span the rail; its content is the 8g column:
-       a 2g x 2r icon cell, 1g, then the label. Both bottom-seat on the 3r line —
-       the label is a trimmed block in a grid cell (trim is inert on flex boxes,
-       live on grid items), so its baseline IS that line. */
+       a 2g x 2r icon cell, 1g, then the label, each centred on the item's middle
+       (a button's label is centred, not seated — owner rule, 2026-10-10). */
     .dk-rail-item {
       display: grid;
       grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr);
       column-gap: var(--gu);
-      align-items: end;
+      align-items: center;
       width: calc(var(--gu) * 10);
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
       margin: 0 calc(var(--gu) * -1);
-      padding: 0 var(--gu) var(--subrow);
+      padding: 0 var(--gu);
       border: 0; border-radius: 0;
       background: none;
       color: var(--text-muted);
@@ -15933,9 +16001,7 @@
     .dk-rail-label {
       display: block;
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-      /* No overflow clip: the trimmed box ends at the baseline, so a clip would
-         cut every descender (the g of Settings). The labels fit by measurement. */
+      /* No overflow clip: the labels fit by measurement. */
       white-space: nowrap;
     }
     .dk-rail-item.is-active {
@@ -16564,3 +16630,33 @@
        panes' scrollbar allowance (useDesktopLayout measureScrollbarG) still measures the real one. */
     :root { color-scheme: dark; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
     :root:is([data-theme="light"], [data-theme="cloudy"]) { color-scheme: light; }
+
+    /* ══ Labels inside pills and buttons: untrimmed (owner rule, 2026-10-10) ══════════════════
+       These spans share a seated-text rule with the rows around them (trimmed to cap..baseline,
+       clipped sideways). Inside a control the label is centred by the control's own centre, so
+       here it is a plain line box again — which holds its descenders, so nothing needs clipping.
+       Last in the file so it outranks those shared rules at equal specificity. */
+    .social-new-btn > span,
+    .social-connect-btn > span,
+    .social-action-btn > span,
+    .social-text-btn > span,
+    .social-confirm-btn > span,
+    .group-detail-view .group-back-btn > span,
+    .group-detail-view .group-header-btn > span,
+    .group-segment-btn > span,
+    .group-feed-input button > span,
+    .group-invite-btn > span,
+    .group-member-btn > span,
+    .group-exit-btn > span,
+    .create-group-close > span,
+    .create-group-submit > span,
+    .batch-show-btn > span,
+    .dk-seg-btn > span,
+    .cp-btn > span,
+    .game-check-more-btn {
+      text-box-trim: none;
+      padding-block: 0;
+      margin-block: 0;
+      overflow: visible;
+      line-height: 1;
+    }

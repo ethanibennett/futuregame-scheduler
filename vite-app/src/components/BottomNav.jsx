@@ -14,8 +14,16 @@ export default function BottomNav({ current, onChange, scheduleCount, newShareCo
     ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
 
+  // Whole-g tabs (owner rule, 2026-10-10: every button's box on the grid). The widest whole-g
+  // tab that fits n across the 35g between the 1g margins; when what is left over is odd, 1g
+  // gutters go between the tabs instead, so the margins either side are whole too (3 tabs: 11g
+  // with 2g margins; 4: 8g + 1g gutters, the column grid; 5: 7g).
+  const n = tabs.length;
+  let tabW = Math.floor(35 / n), navGap = 0;
+  if ((37 - n * tabW) % 2) { navGap = 1; tabW = Math.floor((35 - (n - 1)) / n); }
+
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" style={{ '--nav-tab-w': tabW, '--nav-gap': navGap }}>
       {tabs.map(tab => (
         <button
           key={tab.id}
