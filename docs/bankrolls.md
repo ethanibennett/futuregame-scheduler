@@ -181,3 +181,40 @@ Later, the clean seams are:
    `deposit`. Gross results − settlements = the player's net, without re-deriving shares.
 3. Optionally a "my share" view: per entry, results × (1 − sold %) from the agreement, for a
    bankroll that wants net-of-action figures before settlement.
+
+## Cash game sessions (beta, admins)
+
+`lib/cash-sessions.js` (migration `cash-sessions-2026-10`), UI `vite-app/src/components/CashSessions.jsx`
+(the Cash half of the Results tab, behind its Tournaments | Cash strip) and `CashLive.jsx` (the strip,
+and the live bar). Tests: `npm run test:cash-sessions`.
+
+| `cash_sessions` | id, user_id, bankroll_id (NULL = Main), started_at / ended_at (ISO; ended_at NULL = **live**), session_date (the player's LOCAL day it started — tax years), room, venue_slug (the cash watcher's, when picked from its rooms), game, stakes (normalised: `$2/$5`, `2-5` → `2/5`), buy_in (TOTAL, rebuys included), rebuys (count), cash_out, tips, expenses, currency (defaults to the bankroll's), notes, tags (JSON array) |
+|---|---|
+
+`net = cash_out - buy_in - tips - expenses`. A live session counts nowhere (stats, ledger) until it is
+ended. At most one live session per user (409).
+
+Routes, `/api/cash-sessions` (not `/api/cash/…`, which is the cash-watcher proxy), admin-only, every
+query scoped to `req.user.id` (another user's id is a 404):
+
+| method | path | |
+|---|---|---|
+| GET | `/api/cash-sessions` | `?bankroll=&from=&to=` → `{ sessions, games }`, newest first |
+| GET | `/api/cash-sessions/live` | `{ session \| null, now }` |
+| GET | `/api/cash-sessions/stats` | `?bankroll=&from=&to=&currency=` → net, hours, hourly, wins/losses, biggest win/loss, average length, `byStakes` / `byGame` / `byRoom`; mixed currencies converted at the server's cached rates |
+| GET | `/api/cash-sessions/export.csv` | `?bankroll=&from=&to=` |
+| POST | `/api/cash-sessions` | log a finished session `{ startedAt, endedAt, date?, buyIn, rebuys?, cashOut, tips?, expenses?, room?, venueSlug?, game?, stakes?, bankroll?, currency?, notes?, tags? }` |
+| POST | `/api/cash-sessions/start` | `{ buyIn, room?, venueSlug?, game?, stakes?, bankroll?, date?, … }` → live |
+| POST | `/api/cash-sessions/:id/rebuy` | `{ amount }`, live only |
+| POST | `/api/cash-sessions/:id/end` | `{ cashOut, tips?, expenses?, endedAt?, notes? }`, live only |
+| PUT / DELETE | `/api/cash-sessions/:id` | edit (a live session keeps its end and cash-out for `/end`) / delete |
+
+The bankroll ledger reads ended sessions through `lib/ledger-sources/cash-sessions.js`. A bankroll
+with cash sessions cannot be deleted (409, `cash_sessions` count in the body). Until the ledger lands,
+the bankroll switcher's balances do NOT include cash.
+
+**The live bar.** While a session runs, `LiveCashBar` (App.jsx, a 5r bar directly above the bottom nav)
+shows its clock and what is in play on every tab, and Open goes to Results › Cash. It hides on that
+view (which shows the full live card) and on Hands. The session is server-side, so the clock survives
+reloads and other devices; `hooks/useLiveCashSession.js` mirrors it (on mount, on return to the
+foreground, every 5 min) and corrects for clock skew with the server's `now`.

@@ -15,6 +15,10 @@ import useBankrolls from '../hooks/useBankrolls.js';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
+import { ResultsKindTabs } from './CashLive.jsx';
+import { useResultsKind } from '../hooks/useLiveCashSession.js';
+// BETA cash sessions, admins only: lazy like the tax report.
+const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
 const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
 
@@ -294,6 +298,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   // results this tab happens to hold — see docs/bankrolls.md "The combined ledger".
   const bankrollBalances = useMemo(() => balancesFromSummary(bk.summary), [bk.summary]);
   const formBankrolls = bk.enabled && bk.bankrolls.length ? bk.bankrolls : null;
+  const resultsKind = useResultsKind();
   const newEntryBankroll = { bankrollId: defaultBankrollFor(bk.selected, bk.bankrolls) };
 
   const onCurrencyChange = useCallback((c) => {
@@ -360,6 +365,11 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {showBankrolls && (
         <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
       )}
+      {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
+      {isAdmin && <ResultsKindTabs />}
+      {isAdmin && resultsKind === 'cash' ? (
+        <Suspense fallback={null}><CashSessionsView token={token} bk={bk} /></Suspense>
+      ) : (<>
       <div className="section-header">
         <h2>Tracking</h2>
         <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
@@ -538,6 +548,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           onClose={() => setShowWrapUp(false)}
         />
       )}
+      </>)}
     </div>
   );
 }

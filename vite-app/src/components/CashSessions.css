@@ -1,0 +1,264 @@
+/* ══ Cash sessions (beta, app admins) ═════════════════════════════════════════
+   components/CashLive.jsx (Results' Tournaments | Cash strip, the live bar above the nav) and
+   components/CashSessions.jsx (the Cash half of the Results tab).
+
+   Every box is whole g wide and whole r tall. Every line of text is a .cs-t block: a fixed height
+   of --h r with its baseline --b r down (padding-top = --b r - 1cap over a cap..baseline trimmed
+   line — the bankroll sheet's recipe), so baselines sit on r lines and boxes stay whole. A .cs-t
+   that truncates gets the room its descenders need from padding-bottom cancelled by an equal
+   negative margin, so clipping the ellipsis never cuts a g or a y (check:clipping).
+   Labels inside buttons and the segmented strips are centred in their box, not seated
+   (CLAUDE.md "Pills and buttons").
+
+     strip      Tournaments | Cash: 3r, 17g + 18g, 2r below
+     head       4r: title (+3r) | CSV 5g | Log past 7g | Start 7g, buttons 4r; 2r below
+     live card  35g, 1g inside: line 3r (+2r) · clock 5r (+4r) | In play 8g (+2r, +4r) ·
+                line 3r (+2r) · [fields] · 2r · buttons 5r · 2r; 2r below
+     forms      title 4r (+3r); fields: label 3r (+2r) over a 4r input, two 17g columns
+                (16g in the card); 2r; buttons 5r; 2r below
+     stats      4 x 8g cells, 5r (+2r, +4r), 1r between rows; 2r; By strip 3r (11g 12g 12g);
+                head 3r (+2r); rows 4r (+3r): label | 6g | 8g | 7g; 2r below
+     list       title 4r (+3r); rows 7r: date · game (+3r) | net 10g, room · length · money
+                (+6r) | per hour; open: extra 3r (+2r), 1r, buttons 5r, 2r
+     bar        5r over the nav: text 3r (+2r) 1r down | Open 6g x 3r                         */
+
+.cs-t {
+  --cs-desc: 0.4em;
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0 0 calc(-1 * var(--cs-desc));
+  height: calc(var(--subrow) * var(--h, 3) + var(--cs-desc));
+  padding: calc(var(--subrow) * var(--b, 2) - 1cap) 0 var(--cs-desc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.cs-view .is-pos, .cs-bar .is-pos { color: var(--pos); }
+.cs-view .is-neg, .cs-bar .is-neg { color: var(--neg); }
+.cs-dot { color: var(--neg); }
+
+/* ── Results: Tournaments | Cash ── (the Cash tab's Live | Heatmaps strip). Two classes: styles.css loads
+   after this file and its .live-update-tabs / .cash-mode-tabs would otherwise win. */
+.live-update-tabs.results-kind-tabs { margin: 0 0 calc(var(--subrow) * 2); }
+
+.cs-view { display: flex; flex-direction: column; }
+
+/* ── Buttons ── */
+.cs-btn {
+  display: grid;
+  align-items: center;
+  flex: 0 0 auto;
+  width: calc(var(--gu) * var(--w, 8));
+  height: calc(var(--subrow) * var(--h, 5));
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.cs-btn > span {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+.cs-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+.cs-btn--danger { background: none; color: var(--danger); box-shadow: inset 0 0 0 var(--bw-1) var(--danger); }
+.cs-btn:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
+.cs-btn:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.cs-actions { display: flex; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
+
+/* ── Head ── */
+.cs-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 4); margin-bottom: calc(var(--subrow) * 2); }
+.cs-title {
+  --h: 4; --b: 3;
+  flex: 1 1 auto;
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
+  color: var(--text);
+}
+
+/* ── Forms ── */
+.cs-form { display: flex; flex-direction: column; height: calc(var(--subrow) * (11 + 7 * var(--rows, 0))); margin-bottom: calc(var(--subrow) * 2); }
+.cs-form-title {
+  --h: 4; --b: 3;
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
+  color: var(--text);
+}
+/* Heights stated, not summed: WebKit truncates every box to 1/64 px, so nine stacked 7r rows
+   come out 0.15px short and everything under them drifts off its line. One stated height is one
+   truncation. --rows (field rows; a wide field is a row of its own) is set on the form or card by
+   the component and states their heights too. */
+.cs-fields {
+  height: calc(var(--subrow) * 7 * var(--rows, 1));
+  display: grid;
+  grid-template-columns: repeat(2, calc(var(--gu) * var(--cs-col, 17)));
+  column-gap: var(--gu);
+}
+.cs-field { display: grid; grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 4); height: calc(var(--subrow) * 7); min-width: 0; }
+.cs-field.is-wide { grid-column: 1 / -1; }
+.cs-field-label { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-field input, .cs-field select {
+  -webkit-appearance: none; appearance: none;
+  display: block;
+  width: 100%;
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  line-height: calc(var(--subrow) * 4);
+}
+.cs-field input:focus-visible, .cs-field select:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.cs-field input::-webkit-inner-spin-button, .cs-field input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.cs-field input[type="number"] { -moz-appearance: textfield; }
+.cs-field input::-webkit-date-and-time-value { text-align: left; }
+.cs-field input::-webkit-calendar-picker-indicator { opacity: var(--state-disabled); }
+.cs-field select {
+  padding-right: calc(var(--gu) * 3);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23808080' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--gu) center;
+  background-size: var(--gu) auto;
+}
+
+/* ── The running session ── */
+.cs-live {
+  --cs-col: 16;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: calc(var(--subrow) * (20 + 7 * var(--rows, 0)));
+  padding: 0 var(--gu) calc(var(--subrow) * 2);
+  margin-bottom: calc(var(--subrow) * 2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.cs-live-top { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-live-main { display: grid; grid-template-columns: minmax(0, 1fr) var(--col); column-gap: var(--gu); height: calc(var(--subrow) * 5); }
+.cs-live-clock {
+  --h: 5; --b: 4;
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-3xl);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
+}
+.cs-live-inplay { display: flex; flex-direction: column; text-align: right; }
+.cs-live-inplay .cs-cell-value { --h: 3; }
+.cs-live-sub { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ── Stats ── */
+.cs-stats { display: flex; flex-direction: column; margin-bottom: calc(var(--subrow) * 2); }
+.cs-grid {
+  height: calc(var(--subrow) * 11);
+  display: grid;
+  grid-template-columns: repeat(4, var(--col));
+  column-gap: var(--gu);
+  row-gap: var(--subrow);
+}
+.cs-cell {
+  display: flex;
+  flex-direction: column;
+  width: var(--col);
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.cs-cell-label { --h: 2; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-cell-value {
+  --h: 2; --b: 2;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
+}
+.cs-note { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cash-mode-tabs.cs-seg {
+  width: calc(var(--gu) * 35);
+  grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 12) calc(var(--gu) * 12);
+  margin: calc(var(--subrow) * 2) 0 0;
+}
+.cash-mode-tabs.cs-seg button:first-child { box-shadow: none; }
+.cash-mode-tabs.cs-seg button + button { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
+.cash-mode-tabs.cs-seg button.active { box-shadow: none; }
+.cs-brow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 6) var(--col) calc(var(--gu) * 7);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.cs-brow > .cs-t { --h: 4; --b: 3; font-size: var(--fs-xs); color: var(--text); font-variant-numeric: var(--num-tabular); }
+.cs-brow > .cs-t + .cs-t { text-align: right; }
+.cs-brow > .cs-t:first-child { font-size: var(--fs-sm); }
+.cs-brow--head { height: calc(var(--subrow) * 3); }
+.cs-brow--head > .cs-t { --h: 3; --b: 2; color: var(--text-muted); }
+
+/* ── Sessions ── */
+.cs-list { display: flex; flex-direction: column; }
+.cs-row { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
+.cs-row-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 10);
+  grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 3);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 7);
+  cursor: pointer;
+}
+.cs-row-main:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.cs-row-what, .cs-row-net { --h: 4; --b: 3; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); }
+.cs-row.is-open .cs-row-what { color: var(--brand); }
+.cs-row-sub, .cs-row-rate { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-row-net, .cs-row-rate { text-align: right; font-variant-numeric: var(--num-tabular); }
+.cs-row-more { padding-bottom: calc(var(--subrow) * 2); }
+.cs-row-more .cs-actions { margin-top: var(--subrow); }
+.cs-row-extra { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text); }
+.cs-confirm { padding-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
+.cs-confirm .cs-actions { margin-top: var(--subrow); }
+
+/* ── The live bar over the nav ── (the Hands tool row's geometry; on desktop, where no nav sits
+   under it, it also takes the fraction of an r the window height leaves over) */
+.cs-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gu);
+  flex-shrink: 0;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  padding: var(--subrow) var(--gu) 0;
+  background: var(--bg);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.app-shell.is-desktop .cs-bar { height: calc(var(--subrow) * 5 + mod(100dvh - var(--sa-t), var(--subrow))); }
+.cs-bar-text { --h: 3; --b: 2; flex: 1 1 auto; font-size: var(--fs-sm); color: var(--text); }
+.cs-bar-clock { font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); }
+
+/* Schedule's "back to today" pill floats 2r above the nav; with the bar there, 2r above the bar. */
+.app-shell:has(.cs-bar) .back-to-today-fab { bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 7); }

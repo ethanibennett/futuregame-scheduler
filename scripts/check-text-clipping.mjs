@@ -5,9 +5,11 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule (and, for an admin, each tab of the bankroll dashboard), and for every text node inside those views measures its glyph box (a Range over the
-// text, which spans ascent to descent) against every ancestor that clips (overflow other than
-// visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px below a clipping
+// Schedule (and, for an admin, each tab of the bankroll dashboard, then Results > Cash: cash
+// sessions, forms, the live bar), and for every text node inside those views measures its glyph
+// box (a Range over the text, which spans ascent to descent) against every ancestor that clips
+// (overflow other than visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px
+// below a clipping
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';

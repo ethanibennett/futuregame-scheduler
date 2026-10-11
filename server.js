@@ -546,6 +546,7 @@ const bankrolls = require('./lib/bankrolls');
 const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
+const cashSessions = require('./lib/cash-sessions');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3244,6 +3245,15 @@ async function initDatabase() {
         console.log('Created bankroll_prefs and bankroll_import_keys');
       }
     },
+    {
+      // Cash game sessions (beta, app admins only): one row per sitting, live while ended_at is
+      // NULL; bankroll_id NULL = Main. See lib/cash-sessions.js.
+      name: 'cash-sessions-2026-10',
+      fn: () => {
+        cashSessions.migrate(db);
+        console.log('Created cash_sessions table');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -3988,7 +3998,7 @@ function deleteUserAccount(userId) {
     for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
-                     'bankroll_adjustments', 'bankrolls', 'bankroll_prefs', 'bankroll_import_keys']) {
+                     'cash_sessions', 'bankroll_adjustments', 'bankrolls', 'bankroll_prefs', 'bankroll_import_keys']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
@@ -5940,6 +5950,8 @@ bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, r
   bankrollManagement.mountRoutes(app, deps);
   bankrollImport.mountRoutes(app, deps);
 }
+// ── Cash game sessions (beta, app admins) ── lib/cash-sessions.js. /api/cash-sessions, not /api/cash (the watcher proxy).
+cashSessions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates });
 
 // ── Tracking endpoints ──────────────────────────────────────
 

@@ -155,6 +155,10 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     // the combined ledger's state: a rules/goals row and an import dedupe key
     run("INSERT INTO bankroll_prefs (user_id, bankroll_key, prefs, updated_at) VALUES (?, 'all', '{}', '2026-10-10T00:00:00Z')", [u]);
     run("INSERT INTO bankroll_import_keys (user_id, fingerprint, ref_table, ref_id, created_at) VALUES (?, ?, 'bankroll_adjustments', 1, '2026-10-10T00:00:00Z')", [u, `fp-${u}`]);
+    // cash sessions (beta): one ended under the bankroll above, one live in Main
+    run(`INSERT INTO cash_sessions (user_id, bankroll_id, started_at, ended_at, session_date, buy_in, cash_out, created_at)
+         VALUES (?, (SELECT id FROM bankrolls WHERE user_id = ?), '2026-10-10T18:00:00Z', '2026-10-10T22:00:00Z', '2026-10-10', 500, 800, 'x')`, [u, u]);
+    run("INSERT INTO cash_sessions (user_id, started_at, session_date, buy_in, created_at) VALUES (?, '2026-10-11T18:00:00Z', '2026-10-11', 300, 'x')", [u]);
   }
   // buddies, both directions, and a stranger pair that must survive
   run("INSERT INTO share_requests (from_user_id, to_user_id, status) VALUES (?, ?, 'accepted')", [A, B]);
@@ -235,7 +239,7 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     schedule_permissions: ['owner_id', 'viewer_id'], swap_suggestions: ['from_user_id', 'to_user_id'],
     groups: ['created_by'], group_members: ['user_id'], group_messages: ['user_id'],
     group_invites: ['invited_by', 'invited_user_id'], shared_hands: ['uploaded_by'], tournaments: ['uploaded_by'],
-    bankrolls: ['user_id'], bankroll_adjustments: ['user_id'],
+    bankrolls: ['user_id'], bankroll_adjustments: ['user_id'], cash_sessions: ['user_id'],
     bankroll_prefs: ['user_id'], bankroll_import_keys: ['user_id'],
   };
   check('no row anywhere still points at the deleted user', () => {
@@ -299,6 +303,7 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_adjustments WHERE user_id = ?', [B]), 2);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_prefs WHERE user_id = ?', [B]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_import_keys WHERE user_id = ?', [B]), 1);
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM cash_sessions WHERE user_id = ?', [B]), 2);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM share_requests WHERE from_user_id = ? AND to_user_id = ?', [B, C]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM swap_suggestions WHERE from_user_id = ? AND to_user_id = ?', [B, C]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM users WHERE id IN (?, ?)', [B, C]), 2);
