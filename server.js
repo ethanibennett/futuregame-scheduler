@@ -543,6 +543,9 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const bankrolls = require('./lib/bankrolls');
+const bankrollLedger = require('./lib/bankroll-ledger');
+const bankrollManagement = require('./lib/bankroll-management');
+const bankrollImport = require('./lib/bankroll-import');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3231,6 +3234,16 @@ async function initDatabase() {
         console.log('Created bankrolls tables');
       }
     },
+    {
+      // The combined ledger's own state (beta, app admins): per-bankroll rules and goals
+      // (lib/bankroll-management.js) and the CSV import's dedupe keys (lib/bankroll-import.js).
+      name: 'bankroll-ledger-2026-10',
+      fn: () => {
+        bankrollManagement.migrate(db);
+        bankrollImport.migrate(db);
+        console.log('Created bankroll_prefs and bankroll_import_keys');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -3975,7 +3988,7 @@ function deleteUserAccount(userId) {
     for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
-                     'bankroll_adjustments', 'bankrolls']) {
+                     'bankroll_adjustments', 'bankrolls', 'bankroll_prefs', 'bankroll_import_keys']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
@@ -5919,6 +5932,14 @@ app.get('/api/exchange-rates', async (req, res) => {
 // ── Bankrolls (beta, app admins) ── lib/bankrolls.js; docs/bankrolls.md for the ?bankroll= filter.
 const isAppAdminReq = (req) => !!req.user && !req.user.isGuest && APP_ADMIN_USERNAMES.has(String(req.user.username || '').toLowerCase());
 bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES });
+// The combined ledger (every lib/ledger-sources/*.js), rules / goals / risk, and CSV import.
+// docs/bankrolls.md "The combined ledger".
+{
+  const deps = { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, fetchExchangeRates };
+  bankrollLedger.mountRoutes(app, { ...deps, management: bankrollManagement });
+  bankrollManagement.mountRoutes(app, deps);
+  bankrollImport.mountRoutes(app, deps);
+}
 
 // ── Tracking endpoints ──────────────────────────────────────
 
