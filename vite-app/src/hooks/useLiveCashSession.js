@@ -3,7 +3,8 @@
 // in one updates the other at once. The session lives on the server (GET /api/cash-sessions/live),
 // which is what makes the running clock survive a reload, a closed app, or a second device; this
 // store only mirrors it, re-reading on mount, when the app comes back to the foreground, and every
-// few minutes.
+// few minutes. It also holds the session's stack updates (`stacks`, oldest first), which /live,
+// /rebuy and /stack all return, so the live screen's swing graph is the same on every device.
 //
 // Also here: which half of the Results tab is showing (Tournaments | Cash), so the bar can open
 // the Cash half and hide itself while that half — which shows the full live card — is on screen.
