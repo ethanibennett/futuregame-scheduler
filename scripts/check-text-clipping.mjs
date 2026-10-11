@@ -5,8 +5,9 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule (and, for an admin, each tab of the bankroll dashboard, then Results > Cash: cash
-// sessions, forms, the live bar), and for every text node inside those views measures its glyph
+// Schedule (and, for an admin, each tab of the bankroll dashboard, then Results > Cash: the running
+// session and its panels, the session list, Stats, a session, the add form, the live bar), and for
+// every text node inside those views measures its glyph
 // box (a Range over the text, which spans ascent to descent) against every ancestor that clips
 // (overflow other than visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px
 // below a clipping
@@ -152,27 +153,46 @@ function scan(rootSel) {
       await run(`bankroll dashboard ${tab}`, '.an-sheet');
     }
   } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
-  // Results > Cash (cash sessions beta): the strip, head, live card, stats, rows; the log form and
-  // the live card's cash-out panel; and the live-session bar over the nav on another tab.
+  // Results > Cash (cash sessions beta), each screen: the running session (it opens by itself while
+  // one runs) and its rebuy and cash-out panels; the list (chip graph, month headers, rows with
+  // notes); Stats; a session's page; the add form with More open; and the live-session bar over the
+  // nav on another tab. Each screen scrolled through, since rows and fields truncate.
   const CASH = '.results-kind-tabs, .cs-view, .cs-bar';
+  const cashScreen = async (label, steps) => {
+    try {
+      await openResults();
+      await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+      await p.waitForTimeout(1500);
+      for (const sel of steps) {
+        await p.locator(sel).first().click({ timeout: 4000 });
+        await p.waitForTimeout(700);
+      }
+      for (let i = 0; i < 4; i++) {
+        await run(i ? `${label} (scrolled)` : label, CASH);
+        await p.mouse.wheel(0, H * 0.7);
+        await p.waitForTimeout(500);
+      }
+    } catch (e) {
+      console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`);
+    }
+  };
+  const back = '.cs-head button:has-text("Sessions")';
+  await cashScreen('cash live', []);
+  await cashScreen('cash live rebuy', ['.cs-livescreen button:has-text("Rebuy")']);
+  await cashScreen('cash live cash-out', ['.cs-livescreen button:has-text("Cash out")']);
+  await cashScreen('cash list', [back]);
+  await cashScreen('cash stats', [back, '.cs-tabs button:has-text("Stats")']);
+  await cashScreen('cash session', [back, '.cs-row']);
+  await cashScreen('cash add', [back, '.cs-head button:has-text("Add")', '.cs-form-foot button']);
   try {
     await openResults();
     await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
-    await p.waitForTimeout(1500);
-    await run('results cash', CASH);
-    await p.locator('.cs-head button:has-text("Log past")').first().click({ timeout: 4000 });
-    await p.locator('.cs-live button:has-text("Cash out")').first().click({ timeout: 1000 }).catch(() => {});
-    await p.waitForTimeout(600);
-    for (let i = 0; i < 4; i++) {
-      await run('results cash (scrolled)', CASH);
-      await p.mouse.wheel(0, H * 0.7);
-      await p.waitForTimeout(500);
-    }
-    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000 }).catch(() => {});
+    await p.waitForTimeout(1200);
+    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
     await run('cash bar', CASH);
   } catch (e) {
-    console.log(`  (results cash skipped: ${e.message.split('\n')[0]})`);
+    console.log(`  (cash bar skipped: ${e.message.split('\n')[0]})`);
   }
 
   // Results → Expenses & income (admin beta) and its sheets: rows, cells and trip lines truncate
