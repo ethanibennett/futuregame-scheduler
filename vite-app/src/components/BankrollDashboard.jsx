@@ -335,7 +335,7 @@ export default function BankrollDashboard({ bk, onClose }) {
   return createPortal(
     <>
       <div className="an-scrim" onClick={onClose} />
-      <div className="an-sheet" role="dialog" aria-modal="true" aria-labelledby="bd-title">
+      <div className="an-sheet bd-sheet" role="dialog" aria-modal="true" aria-labelledby="bd-title">
         <header className="an-head">
           <h2 className="an-cell an-title" id="bd-title">Bankroll<span className="an-beta">Beta</span></h2>
           <button ref={closeRef} type="button" className="bk-btn bk-w8 bd-close" onClick={importing ? () => setImporting(false) : onClose}>

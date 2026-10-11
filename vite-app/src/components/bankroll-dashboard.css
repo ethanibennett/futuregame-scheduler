@@ -20,6 +20,15 @@
 /* Head: the title as AnalyticsView's; Done is an 8g x 4r button on 28g, 2r down the 8r bar. */
 .bd-close { position: absolute; left: calc(var(--gu) * 28); top: calc(var(--subrow) * 2); height: calc(var(--subrow) * 4); }
 
+/* Truncating cells (an-clip: overflow hidden for the ellipsis) get their descenders' painted room
+   from 1r of padding below the line, cancelled by an equal negative margin — the box grows, the
+   layout and the baseline do not (CLAUDE.md, clipped-text guard). */
+.bd-sheet .an-clip {
+  height: calc(var(--subrow) * (var(--h) + 1));
+  padding-bottom: var(--subrow);
+  margin-bottom: calc(var(--subrow) * -1);
+}
+
 .bd-block { margin-top: calc(var(--subrow) * 2); }
 .bd-section { margin-top: calc(var(--subrow) * 4); }
 .bd-section > .an-sec { margin-bottom: var(--subrow); }
