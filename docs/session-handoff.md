@@ -14,6 +14,25 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-11 (later) — Bankroll tracker, Poker Bankroll Tracker-style pass
+Three parallel branches, merged on `merge/bankroll-pbt`; details in `docs/bankrolls.md`.
+- **Overview** (`BankrollOverview.jsx`, was the Balance tab): hero balance + range profit, the
+  cumulative graph (Profit | Balance, 1M/3M/YTD/1Y/All, remembered per device), grouped label/value
+  stats, the six latest results. Tab strip is one 35g segmented control that re-divides by tab count.
+  Ledger entries gained `fx_display`; cash-session entries `started_at` and `hours`.
+- **Reports** (`BankrollReports.jsx`, `BankrollFilters.jsx`, `lib/bankroll-reports.js`,
+  `GET /api/bankrolls/reports`): one "fact" per result/session/expense; filters applied client-side
+  (date, type, bankroll, game, stakes/buy-in, room, live/online, weekday, part of day); breakdowns by
+  room, game, stakes, buy-in, weekday, start hour, session length, month, category. Cash "online" is
+  guessed from the room name (`ONLINE_ROOM`).
+- **Cash sessions** (`CashSessions.jsx`): month-grouped list led by profit, Stats as rows, a session
+  page, a short add form with prefill, a live screen with STACK updates (`cash_session_stacks`,
+  migration `cash-session-stacks-2026-10`, in account deletion). Results › Cash opens on the live
+  screen while a session runs.
+- Open owner questions: Overview default range (YTD) and graph (Profit); drawdown on balance (counts
+  withdrawals) vs results only; whether the dashboard's bankroll and the Reports bankroll filter should
+  stay linked one way only; Cash opening on the live screen; muted vs coloured month headers.
+
 ## 2026-10-11 — Bankroll suite (admins only): ledger, cash sessions, expenses, rules, import
 Three parallel branches, merged on `merge/bankroll-suite`. All of it is documented in `docs/bankrolls.md`.
 - **The combined ledger** (`lib/bankroll-ledger.js`): every `lib/ledger-sources/*.js` is auto-loaded
