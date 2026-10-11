@@ -470,7 +470,11 @@ export function deriveVenueInfo(v) {
     .replace(/['’]\d{2}\b/g, ' ')                   // "'26"
     .replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\b/gi, ' ')
     .replace(/[^\w\s&-]/g, ' ');
+  // A lone "&" or "-" is not a word: "Borgata Hotel Casino & Spa" derived "BORGATA &", which is
+  // also the coordinate lookup key, so every uncurated Borgata series fell out of the location
+  // filters. Only tokens with a letter or digit count.
   const words = cleaned.split(/\s+/).filter(Boolean)
+    .filter(w => /[a-z0-9]/i.test(w))
     .filter(w => !DERIVE_STOPWORDS.has(w.toLowerCase()));
   // Take whole words while they fit the strip (existing entries top out ~14 chars).
   let abbr = '';
@@ -539,6 +543,9 @@ const PROPERTY_OVERRIDES = {
   'ACR':                    { longName: 'Americas Cardroom' },
   'Phenom':                 { longName: 'Phenom Poker' },
   'Lodge Card Club Austin': { abbr: 'LODGE' },
+  // Borgata's uncurated series (Lions of the East '26, ...) derived "BORGATA &" / "BORGATA SPA" from
+  // the room name; join them to the curated BORGATA, its colour and its coordinate.
+  'Borgata Hotel Casino & Spa': { abbr: 'BORGATA' },
   // "Big Poker Oktober" (130 events) derived "PARKWEST", with no coordinate; the Legends of
   // Poker entry in VENUE_MAP already used THE BIKE.
   'Parkwest Bicycle Casino': { abbr: 'THE BIKE' },
