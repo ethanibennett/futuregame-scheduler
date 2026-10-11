@@ -35,6 +35,7 @@
     "test:venue-coords": "node test/venue-coords.test.js",
     "test:bankrolls": "node test/bankrolls.test.js && node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs src/utils/__tests__/bankroll-ledger.test.mjs",
     "test:transactions": "node test/ledger-source-transactions.test.js && node test/bankroll-transactions.test.js && cd vite-app && node --test src/utils/__tests__/transactions.test.mjs",
+    "test:bankroll-reports": "node test/bankroll-reports.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-reports.test.mjs",
     "test:feed-dedupe": "node test/feed-dedupe.test.js",
     "test:cash-sessions": "node test/cash-sessions-ledger.test.js && node test/cash-sessions.test.js",
     "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900",
