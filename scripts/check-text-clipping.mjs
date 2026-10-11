@@ -126,9 +126,8 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run('schedule list (scrolled)', '.cal-event-row');
   }
-  // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.
-  // Skipped quietly when the account has no bankroll strip (not an admin).
-  try {
+  // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
+  const openResults = async () => {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
@@ -140,6 +139,11 @@ function scan(rootSel) {
       await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
     }
     await p.waitForTimeout(1800);
+  };
+  // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.
+  // Skipped quietly when the account has no bankroll strip (not an admin).
+  try {
+    await openResults();
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
     for (const tab of ['Balance', 'Rules', 'Goals', 'Import']) {
@@ -148,6 +152,28 @@ function scan(rootSel) {
       await run(`bankroll dashboard ${tab}`, '.an-sheet');
     }
   } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
+  // Results > Cash (cash sessions beta): the strip, head, live card, stats, rows; the log form and
+  // the live card's cash-out panel; and the live-session bar over the nav on another tab.
+  const CASH = '.results-kind-tabs, .cs-view, .cs-bar';
+  try {
+    await openResults();
+    await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1500);
+    await run('results cash', CASH);
+    await p.locator('.cs-head button:has-text("Log past")').first().click({ timeout: 4000 });
+    await p.locator('.cs-live button:has-text("Cash out")').first().click({ timeout: 1000 }).catch(() => {});
+    await p.waitForTimeout(600);
+    for (let i = 0; i < 4; i++) {
+      await run('results cash (scrolled)', CASH);
+      await p.mouse.wheel(0, H * 0.7);
+      await p.waitForTimeout(500);
+    }
+    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000 }).catch(() => {});
+    await p.waitForTimeout(800);
+    await run('cash bar', CASH);
+  } catch (e) {
+    console.log(`  (results cash skipped: ${e.message.split('\n')[0]})`);
+  }
 
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {
