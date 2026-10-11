@@ -298,16 +298,17 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
       )}
       {open && createPortal(
         <div ref={panelRef} className="filter-panel" style={(() => {
+          // On the grid: 1r under the filter button (whose foot is an r line), across the 1g
+          // margins of the screen or the pane, so every row inside starts on grid lines too.
           const r = toggleRef.current?.getBoundingClientRect();
-          if (!r) return { top: 60, left: 8, right: 8 };
+          if (!r) return { top: 'calc(var(--subrow) * 8)', left: 'var(--gu)', right: 'var(--gu)' };
           const vh = window.innerHeight || document.documentElement.clientHeight || 700;
           const pane = toggleRef.current.closest('.dk-pane');
           if (pane) {
             const pr = pane.getBoundingClientRect();
-            const g = pr.width / 37;
-            return { top: r.bottom + g, left: pr.left + g, width: pr.width - 2 * g, maxHeight: vh - r.bottom - 2 * g };
+            return { top: `calc(${r.bottom}px + var(--subrow))`, left: `calc(${pr.left}px + var(--gu))`, width: `calc(${pr.width}px - var(--gu) * 2)`, maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
           }
-          return { top: r.bottom + 10, left: 8, right: 8, maxHeight: vh - r.bottom - 22 };
+          return { top: `calc(${r.bottom}px + var(--subrow))`, left: 'var(--gu)', right: 'var(--gu)', maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
         })()}>
           {/* Quick filter pills */}
           {(() => {
@@ -335,10 +336,10 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
               return true;
             });
             return (
-              <div style={{display:'flex',gap:'calc(var(--subrow) * 0.75)',marginBottom:'calc(var(--subrow) * 1.25)',gridColumn:'1 / -1'}}>
+              <div className="filter-quick-row">
                 {quickFilters.map(qf => (
                   <button key={qf.label} className={`filter-chip ${qf.isActive ? 'active' : ''}`}
-                    style={{flex:'1 1 0',minWidth:0,justifyContent:'center',textAlign:'center'}}
+                    style={{minWidth:0,padding:0}}
                     onClick={qf.toggle}
                   >{qf.label}</button>
                 ))}
@@ -347,7 +348,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
           })()}
 
           {/* Search — desktop pairs with Date Range via .filter-row layout */}
-          <div className="filter-group filter-row filter-search-cell" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
+          <div className="filter-group filter-row filter-search-cell" style={{marginBottom:'var(--subrow)'}}>
             <div className="search-bar" style={{marginBottom:0,height:'calc(var(--subrow) * 4)'}}>
               <Icon.search />
               <input type="text" placeholder={"Search events, games\u2026"} value={search} onChange={e => setSearch(e.target.value)} style={{padding:'calc(var(--subrow) * 0.5) 0'}} />
@@ -367,8 +368,8 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             const pctL = (fromIdx / totalDays) * 100;
             const pctR = (toIdx / totalDays) * 100;
             return (
-              <div className="filter-group filter-row filter-daterange-cell" style={{marginBottom:'calc(var(--subrow) * 0.75)'}}>
-                <label style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginBottom:'calc(var(--subrow) * 0.75)',display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
+              <div className="filter-group filter-row filter-daterange-cell" style={{marginBottom:'var(--subrow)'}}>
+                <label style={{fontSize:'calc(var(--gu) * 1.104)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)',marginBottom:0,display:'block',fontWeight: 'var(--fw-bold)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Date Range</label>
                 <div style={{padding:'0 calc(var(--subrow) * 0.75)'}}>
                   <div className="date-slider-wrap">
                     <div className="date-slider-track" />
@@ -661,13 +662,13 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             )}
           </div>
 
-          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'calc(var(--subrow) * 1)',justifyContent:'flex-end',alignItems:'center',marginTop:'calc(var(--subrow) * 0.5)'}}>
+          <div className="filter-group filter-actions" style={{gridColumn:'1 / -1',display:'flex',flexDirection:'row',gap:'var(--gu)',justifyContent:'flex-end',alignItems:'center',marginTop:'var(--subrow)'}}>
             {hasActive && (
-              <button className="btn btn-ghost btn-sm" onClick={() =>
+              <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}} onClick={() =>
                 setFilters(f => ({minBuyin:'',maxBuyin:'',buyinRanges:[],rakeRanges:[],selectedGames:[],hiddenVenues:[],bountyOnly:false,mysteryBountyOnly:false,headsUpOnly:false,tagTeamOnly:false,employeesOnly:false,hideSatellites:true,hideRestarts:true,hideSideEvents:false,hiddenMonths:[],ladiesOnly:false,seniorsOnly:false,mixedOnly:false,dateFrom:'',dateTo:'',/* Location survives a clear: it is a standing choice about where the user IS, not a filter they set for one look at the list. It changes only when they change it. */maxDistance:f.maxDistance,userLocation:f.userLocation,locationRegion:f.locationRegion,locationLabel:f.locationLabel,jurisdiction:f.jurisdiction,jurisdictionManual:f.jurisdictionManual,showOnline:true,onlyAvailableOnline:false,siteRules:{}}))
               }>Clear all filters</button>
             )}
-            <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>Save &amp; Close</button>
+            <button className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 9)',padding:0}} onClick={() => setOpen(false)}>Save &amp; Close</button>
           </div>
         </div>,
         document.body
@@ -1589,7 +1590,7 @@ export default function TournamentsView({
     const fab = document.createElement('button');
     fab.className = 'back-to-today-fab';
     fab.dataset.dir = 'up';
-    fab.innerHTML = '<svg class="fab-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="18 15 12 9 6 15"/></svg><svg class="fab-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="6 9 12 15 18 9"/></svg>' + fabLabel;
+    fab.innerHTML = '<svg class="fab-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="18 15 12 9 6 15"/></svg><svg class="fab-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="6 9 12 15 18 9"/></svg><span class="ctl-cap">' + fabLabel + '</span>';
     fab.addEventListener('click', () => {
       const target = findTarget();
       if (target) scrollDateGroupToTop(target);
@@ -1688,7 +1689,7 @@ export default function TournamentsView({
             ref={locationBtnRef}
             className={`filter-chip ${filters.locationRegion || filters.userLocation ? 'active' : ''}`}
             onClick={() => setLocationDropdownOpen(o => !o)}
-            style={{flex:'0 0 auto',width:'calc(var(--col) * 3 + var(--gu) * 2)',minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'flex-start',gap:'calc(var(--subrow) * 1)',padding:'0 calc(var(--subrow) * 1.25)'}}
+            style={{flex:'0 0 auto',width:'calc(var(--col) * 3 + var(--gu) * 2)',minWidth:0,height:'calc(var(--subrow) * 4)',boxSizing:'border-box',display:'flex',alignItems:'center',justifyContent:'center',gap:'calc(var(--subrow) * 1)',padding:'0 var(--gu)'}}
             title={filters.locationRegion && LOCATION_REGIONS[filters.locationRegion]
               ? LOCATION_REGIONS[filters.locationRegion].label
               : filters.userLocation && filters.maxDistance

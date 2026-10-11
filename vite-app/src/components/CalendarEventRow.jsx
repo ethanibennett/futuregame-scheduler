@@ -293,11 +293,12 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
         return (
           <span
             key={b.id ?? i}
-            className="buddy-chip"
+            className="buddy-chip snap-g"
             style={{
               cursor: onBuddyClick ? 'pointer' : 'default',
               display: 'inline-flex',
               alignItems: 'center',
+              justifyContent: 'center', /* snap-g rounds the chip to whole g; the face centres in it */
               gap: 'calc(var(--gu) * 0.5)',
               /* A whole 3r chip: the avatar is 2r inside 0.5r of padding each way (it was a
                  22px avatar plus padding and borders = 3.861r, pushing all below off-grid). */

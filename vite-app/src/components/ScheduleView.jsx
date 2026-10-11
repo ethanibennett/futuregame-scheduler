@@ -242,7 +242,7 @@ export default function ScheduleView({
     const fab = document.createElement('button');
     fab.className = 'back-to-today-fab';
     fab.dataset.dir = 'up';
-    fab.innerHTML = '<svg class="fab-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="18 15 12 9 6 15"/></svg><svg class="fab-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="6 9 12 15 18 9"/></svg>' + fabLabel;
+    fab.innerHTML = '<svg class="fab-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="18 15 12 9 6 15"/></svg><svg class="fab-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:calc(var(--subrow) * 1.75);height:calc(var(--subrow) * 1.75)"><polyline points="6 9 12 15 18 9"/></svg><span class="ctl-cap">' + fabLabel + '</span>';
     fab.addEventListener('click', () => {
       const target = findTarget();
       if (!target) return;
@@ -345,9 +345,9 @@ export default function ScheduleView({
                 <strong>{displayName(req)}</strong>
                 <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)'}}>wants to share schedules</span>
               </span>
-              <span style={{display:'flex',gap:'calc(var(--subrow) * 0.75)'}}>
-                <button className="btn btn-ghost btn-sm" style={{color:'#22c55e',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.25)',fontWeight: 'var(--fw-bold)'}} onClick={() => onAcceptRequest(req.id)}>Accept</button>
-                <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1)'}} onClick={() => onRejectRequest(req.id)}>Decline</button>
+              <span style={{display:'flex',gap:'var(--gu)'}}>
+                <button className="btn btn-ghost btn-sm" style={{color:'#22c55e',width:'calc(var(--gu) * 6)',padding:0,fontWeight: 'var(--fw-bold)'}} onClick={() => onAcceptRequest(req.id)}>Accept</button>
+                <button className="btn btn-ghost btn-sm" style={{color:'#b91c1c',width:'calc(var(--gu) * 6)',padding:0}} onClick={() => onRejectRequest(req.id)}>Decline</button>
               </span>
             </div>
           ))}
@@ -365,7 +365,7 @@ export default function ScheduleView({
       ) : (
       <div>
       <div className="schedule-sticky-header" ref={schedHeaderRef}>
-        <div className="section-header" style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)',marginBottom:0}}>
+        <div className="section-header" style={{display:'flex',alignItems:'center',gap:'var(--gu)',marginBottom:0}}>
           <h2 style={{marginRight:'auto',display:'flex',alignItems:'baseline',gap:'calc(var(--subrow) * 0.75)'}}>
             My Schedule
             <span style={{fontSize:'calc(var(--gu) * 1.060)',fontWeight:400,color:'var(--text-muted)'}}>
@@ -375,12 +375,12 @@ export default function ScheduleView({
           {onAddPersonalEvent && (
             <>
               <button className="btn btn-ghost btn-sm"
-                style={{display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.25)'}}
+                style={{width:'calc(var(--gu) * 5)',flex:'0 0 auto',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:0}}
                 onClick={() => setShowTravelPicker(v => !v)}>
                 Travel
               </button>
               <button className="btn btn-ghost btn-sm"
-                style={{display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.25)'}}
+                style={{width:'calc(var(--gu) * 6)',flex:'0 0 auto',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:0}}
                 onClick={() => dayOffDateRef.current?.showPicker()}>
                 Day Off
               </button>
@@ -390,7 +390,7 @@ export default function ScheduleView({
             </>
           )}
           <button className="btn btn-ghost btn-sm"
-            style={{display:'inline-flex',alignItems:'center',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1.25)'}}
+            style={{width:'calc(var(--gu) * 7)',flex:'0 0 auto',gap:'calc(var(--subrow) * 0.5)',fontSize:'calc(var(--gu) * 1.149)',padding:0}}
             onClick={() => setShowExportModal(true)}
             title="Export schedule">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -425,7 +425,7 @@ export default function ScheduleView({
         document.body
       )}
       {conflicts.size > 0 && (
-        <div className="alert alert-error" style={{marginBottom:'calc(var(--subrow) * 1.5)'}}>
+        <div className="alert alert-error" style={{marginBottom:'var(--subrow)'}}>
           <Icon.warn /> {conflicts.size} event{conflicts.size !== 1 ? 's have' : ' has'} a time conflict
         </div>
       )}
