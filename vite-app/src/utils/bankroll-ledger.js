@@ -134,6 +134,126 @@ export function goalProgress(goal, entries, today) {
   return { done, target, fraction, elapsed, window: w, ahead: fraction >= elapsed };
 }
 
+// ── The overview (the dashboard's first tab) ──────────────────────────────────────────────
+// A trailing range ending today, as a tracker's chart picker: 1M, 3M, YTD, 1Y, All.
+export const RANGES = [['1m', '1M'], ['3m', '3M'], ['ytd', 'YTD'], ['1y', '1Y'], ['all', 'All']];
+export const RANGE_NOUN = { '1m': 'last month', '3m': 'last 3 months', ytd: 'this year', '1y': 'last 12 months', all: 'all time' };
+
+/** YYYY-MM-DD n months before `iso`, the day clamped to that month's length. */
+function monthsBefore(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const idx = y * 12 + (m - 1) - n;
+  const yy = Math.floor(idx / 12), mm = idx - yy * 12 + 1;
+  const last = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+  return `${yy}-${pad(mm)}-${pad(Math.min(d, last))}`;
+}
+function dayAfter(iso) { return new Date(Date.parse(iso + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10); }
+
+/** The window a range covers: { from, to } with to = today; 'all' has no bounds. */
+export function rangeWindow(range, today) {
+  if (range === 'ytd') return { from: `${today.slice(0, 4)}-01-01`, to: today };
+  const n = { '1m': 1, '3m': 3, '1y': 12 }[range];
+  if (n) return { from: dayAfter(monthsBefore(today, n)), to: today };
+  return { from: null, to: null };
+}
+
+/**
+ * Cumulative RESULTS (won or lost; money moved left out) for the chart's profit mode: starts at 0
+ * on the window's first day, one point per day that had a result, value = the running sum at that
+ * day's close. Same shape as balanceSeries.
+ */
+export function profitSeries(entries, { from = null } = {}) {
+  const res = entries.filter((e) => !isMove(e));
+  const pts = [{ date: from || (res[0] ? res[0].date : null), value: 0, start: true }];
+  let run = 0;
+  for (const e of res) {
+    run += Number(e.amount_display) || 0;
+    const last = pts[pts.length - 1];
+    if (last.date === e.date && !last.start) last.value = run;
+    else pts.push({ date: e.date, value: run });
+  }
+  for (const p of pts) p.value = Math.round(p.value * 100) / 100;
+  return pts;
+}
+
+/** The highest point of a series, and the first day it was reached. */
+export function peakOf(points) {
+  let best = null;
+  for (const p of points) if (!best || p.value > best.value) best = p;
+  return best ? { value: best.value, date: best.date } : { value: 0, date: null };
+}
+
+// Display units per one unit of the entry's own currency (the server's fx_display; 1 if absent).
+const fx = (e) => (e.fx_display != null && Number.isFinite(Number(e.fx_display)) ? Number(e.fx_display) : 1);
+
+/**
+ * Everything the overview's statistics show, over ledger rows already cut to the range.
+ *   results      every result (tournaments, cash, expenses / income, any other source); moved
+ *   bySource     results per group: tournaments, cash, other
+ *   mtt          tournaments: profit, cost and cashes on the display scale (fx_display), roi
+ *                (profit / cost), events (rows), bullets (units), cashes (rows that cashed), itm
+ *                (cashes / events), avgBuyin (cost / bullets)
+ *   cash         cash sessions: profit, sessions, hours (sessions with both ends), hourly (the
+ *                timed sessions' profit / their hours), wins, winRate, avgHours
+ *   biggestWin / biggestLoss   the single best and worst game entry (tournament or cash session)
+ * A ratio with nothing under it is null, never 0.
+ */
+export function overviewStats(entries) {
+  const out = {
+    results: 0, moved: 0, bySource: { tournaments: 0, cash: 0, other: 0 },
+    mtt: { profit: 0, cost: 0, cashed: 0, roi: null, events: 0, bullets: 0, cashes: 0, itm: null, avgBuyin: null },
+    cash: { profit: 0, sessions: 0, hours: 0, hourly: null, wins: 0, winRate: null, avgHours: null },
+    biggestWin: null, biggestLoss: null,
+  };
+  let timedProfit = 0, timed = 0;
+  for (const e of entries) {
+    const a = Number(e.amount_display) || 0;
+    if (isMove(e)) { out.moved += a; continue; }
+    out.results += a;
+    if (e.source === 'tournaments') {
+      const m = out.mtt;
+      out.bySource.tournaments += a;
+      m.profit += a; m.events++;
+      m.cost += (Number(e.cost) || 0) * fx(e);
+      m.cashed += (Number(e.cash) || 0) * fx(e);
+      m.bullets += Number(e.units) > 0 ? Number(e.units) : 1;
+      if (Number(e.cash) > 0) m.cashes++;
+    } else if (e.source === 'cash-sessions') {
+      const c = out.cash;
+      out.bySource.cash += a;
+      c.profit += a; c.sessions++;
+      if (a > 0) c.wins++;
+      if (Number(e.hours) > 0) { c.hours += Number(e.hours); timedProfit += a; timed++; }
+    } else {
+      out.bySource.other += a;
+      continue;
+    }
+    if (a > 0 && (!out.biggestWin || a > out.biggestWin.amount_display)) out.biggestWin = e;
+    if (a < 0 && (!out.biggestLoss || a < out.biggestLoss.amount_display)) out.biggestLoss = e;
+  }
+  const { mtt: m, cash: c } = out;
+  if (m.cost > 0) m.roi = m.profit / m.cost;
+  if (m.events > 0) m.itm = m.cashes / m.events;
+  if (m.bullets > 0 && m.cost > 0) m.avgBuyin = m.cost / m.bullets;
+  if (c.hours > 0) c.hourly = timedProfit / c.hours;
+  if (c.sessions > 0) c.winRate = c.wins / c.sessions;
+  if (timed > 0) c.avgHours = c.hours / timed;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  for (const o of [out, out.bySource, m, c]) {
+    for (const k of ['results', 'moved', 'tournaments', 'cash', 'other', 'profit', 'cost', 'cashed', 'hours']) {
+      if (typeof o[k] === 'number') o[k] = r2(o[k]);
+    }
+  }
+  return out;
+}
+
+/** The latest n game entries (tournaments and cash sessions), newest first. */
+export function recentResults(entries, n = 6) {
+  const out = [];
+  for (let i = entries.length - 1; i >= 0 && out.length < n; i--) if (GAME_SOURCES.has(entries[i].source)) out.push(entries[i]);
+  return out;
+}
+
 // ── "Of your roll" (event cards) ─────────────────────────────────────────────────────────
 /**
  * One entry's buy-in against the roll and its MTT rule. `guide` = summary.guide.byKey[key]

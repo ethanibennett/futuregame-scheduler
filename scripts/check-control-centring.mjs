@@ -438,7 +438,7 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     if (tab) await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
     await p.waitForTimeout(600);
   };
-  await step('bankroll-dashboard', () => dash(null), 2);
+  await step('bankroll-dashboard', () => dash(null), 4);   // the Overview: hero, graph, statistics, latest sessions
   await step('bankroll-rules', () => dash('Rules'), 2);
   await step('bankroll-goals', () => dash('Goals'), 1);
   await step('bankroll-import', async () => {

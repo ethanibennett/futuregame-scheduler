@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import {
   periodWindow, periodElapsed, balanceSeries, drawdowns, periodTable, bySource, within, goalProgress,
   ledgerToCsv, rollShare, fmtShare, fmtRule, sourceLabel,
+  RANGES, rangeWindow, profitSeries, peakOf, overviewStats, recentResults,
 } from '../bankroll-ledger.js';
 import { parseCsv, parseNumber, parseDate, detectPreset, applyPreset, guessMapping, applyMapping } from '../bankroll-csv.js';
 import { balancesFromSummary, BANKROLL_ALL, BANKROLL_MAIN } from '../bankrolls.js';
@@ -182,4 +183,70 @@ test('generic mapping: guessed columns, results and signed deposits', () => {
   const adj = applyMapping(parseCsv('date,amount,note\n2025-01-01,500,in\n2025-01-02,-120,out\n2025-01-03,0,'),
     { date: 0, amount: 1, note: 2 }, { rowsAre: 'adjustment' });
   assert.deepEqual(adj.map((a) => a.row ? [a.row.type, a.row.amount] : a.skip), [['deposit', 500], ['withdrawal', 120], 'Amount of 0']);
+});
+
+// ── The overview tab ──────────────────────────────────────────────────────────────────────
+test('rangeWindow: trailing windows ending today, YTD from Jan 1, month ends clamped', () => {
+  assert.deepEqual(RANGES.map((r) => r[0]), ['1m', '3m', 'ytd', '1y', 'all']);
+  assert.deepEqual(rangeWindow('1m', '2026-10-11'), { from: '2026-09-12', to: '2026-10-11' });
+  assert.deepEqual(rangeWindow('3m', '2026-10-11'), { from: '2026-07-12', to: '2026-10-11' });
+  assert.deepEqual(rangeWindow('ytd', '2026-10-11'), { from: '2026-01-01', to: '2026-10-11' });
+  assert.deepEqual(rangeWindow('1y', '2026-10-11'), { from: '2025-10-12', to: '2026-10-11' });
+  assert.deepEqual(rangeWindow('all', '2026-10-11'), { from: null, to: null });
+  // 31 March less a month is 28 February (clamped), so the window opens on 1 March.
+  assert.deepEqual(rangeWindow('1m', '2026-03-31'), { from: '2026-03-01', to: '2026-03-31' });
+  assert.deepEqual(rangeWindow('1m', '2026-01-15'), { from: '2025-12-16', to: '2026-01-15' });
+});
+
+test('profitSeries: cumulative results from 0, money moved left out, one point per day', () => {
+  const pts = profitSeries(within(ledger, { from: '2026-01-01', to: null }), { from: '2026-01-01' });
+  assert.deepEqual(pts.map((p) => [p.date, p.value]), [
+    ['2026-01-01', 0], ['2026-01-05', 700], ['2026-02-10', 100], ['2026-03-01', 500]]);
+  assert.deepEqual(peakOf(pts), { value: 700, date: '2026-01-05' });
+  assert.deepEqual(profitSeries([], {}).map((p) => p.value), [0]);
+});
+
+// Tournament rows carry cost / cash in their own currency, scaled by fx_display; cash rows hours.
+const T = (date, amount, cost, cash, extra = {}) => E(date, 'tournaments', 'tournament', amount, 0, { cost, cash, units: 1, ...extra });
+const C = (date, amount, hours) => E(date, 'cash-sessions', 'cash_session', amount, 0, { hours });
+const rows = [
+  E('2026-01-01', 'adjustments', 'deposit', 1000, 0),
+  T('2026-01-02', -200, 200, 0),
+  T('2026-01-03', 1300, 300, 1600, { units: 2 }),
+  // A EUR event in a USD view: 100 EUR buy-in at 1.25 USD per EUR -> cost 125, net -125.
+  T('2026-01-04', -125, 100, 0, { currency: 'EUR', fx_display: 1.25 }),
+  C('2026-01-05', 400, 4),
+  C('2026-01-06', -150, 2),
+  C('2026-01-07', 50, null), // no end time: a session, but not in the hourly rate
+  E('2026-01-08', 'transactions', 'expense', -80, 0),
+  E('2026-01-09', 'adjustments', 'withdrawal', -300, 0),
+];
+
+test('overviewStats: results split by source, tournament ROI / ITM on the display scale, cash hourly', () => {
+  const s = overviewStats(rows);
+  assert.equal(s.results, -200 + 1300 - 125 + 400 - 150 + 50 - 80);
+  assert.equal(s.moved, 700);
+  assert.deepEqual(s.bySource, { tournaments: 975, cash: 300, other: -80 });
+  assert.deepEqual([s.mtt.events, s.mtt.bullets, s.mtt.cashes, s.mtt.cost, s.mtt.cashed], [3, 4, 1, 625, 1600]);
+  assert.equal(s.mtt.roi, 975 / 625);
+  assert.equal(s.mtt.itm, 1 / 3);
+  assert.equal(s.mtt.avgBuyin, 625 / 4);
+  assert.deepEqual([s.cash.sessions, s.cash.hours, s.cash.wins], [3, 6, 2]);
+  assert.equal(s.cash.hourly, (400 - 150) / 6, 'the timed sessions only');
+  assert.equal(s.cash.winRate, 2 / 3);
+  assert.equal(s.cash.avgHours, 3);
+  assert.equal(s.biggestWin.amount_display, 1300);
+  assert.equal(s.biggestLoss.amount_display, -200, 'an expense is not a session lost');
+});
+
+test('overviewStats: an empty range has null ratios, not zeros', () => {
+  const s = overviewStats([]);
+  assert.equal(s.results, 0);
+  assert.deepEqual([s.mtt.roi, s.mtt.itm, s.mtt.avgBuyin, s.cash.hourly, s.cash.winRate, s.cash.avgHours], [null, null, null, null, null, null]);
+  assert.equal(s.biggestWin, null);
+});
+
+test('recentResults: newest game entries first, deposits and expenses skipped', () => {
+  assert.deepEqual(recentResults(rows, 4).map((e) => e.date), ['2026-01-07', '2026-01-06', '2026-01-05', '2026-01-04']);
+  assert.equal(recentResults(rows, 50).length, 6);
 });

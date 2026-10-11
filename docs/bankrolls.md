@@ -118,7 +118,8 @@ REAL to the cent. A source that stores cents must divide before returning.
   is a **result** (won/lost). Summaries, goals and the dashboard split on that.
 - Built-in: `tournaments.js` (net = (cashed ? cash : 0) − buy-in × max(1, entries), in the venue's
   currency — exactly the Results tab and `lib/analytics.js`; extra fields `units`, `cost`, `cash`,
-  `buyin_per_entry`) and `adjustments.js` (the ledger above). `cash-sessions.js` and
+  `buyin_per_entry`) and `adjustments.js` (the ledger above). `cash-sessions.js` (extra fields
+  `started_at`, `hours` = ended − started to the hundredth, null without both ends) and
   `transactions.js` belong to the cash-session and expense features.
 
 Balance of a bankroll = starting balance + Σ its entries, in ITS currency (entries in another
@@ -127,11 +128,40 @@ date, then entries without a ts first, then source, then ref id.
 
 | method | path | |
 |---|---|---|
-| GET | `/api/bankrolls/ledger?bankroll=&from=&to=&currency=` | `{ entries: [...each + bankroll, amount_bankroll, amount_display, balance, balance_display, total_display], opening, closing, sources, dropped }` — `opening` is the balance carried into `from` |
+| GET | `/api/bankrolls/ledger?bankroll=&from=&to=&currency=` | `{ entries: [...each + bankroll, amount_bankroll, amount_display, fx_display, balance, balance_display, total_display], opening, closing, sources, dropped }` — `opening` is the balance carried into `from`; `fx_display` = display units per 1 of the entry's own currency, to put a source's extra money fields (a tournament's `cost` / `cash`) on the display scale |
 | GET | `/api/bankrolls/summary?currency=` | `{ bankrolls: [{ id, start, moved, results, balance, by_source, by_kind, count, currency }], all, rates, guide, sources }` |
 | GET / PUT | `/api/bankrolls/prefs` / `/api/bankrolls/prefs/:key` | rules + goals per key (`all`, `main`, id); `{ rules: { mtt: { buyins }, cash: { buyins } }, goals: [...], reset: ['mtt'] }` |
 | GET | `/api/bankrolls/risk?bankroll=&currency=` | risk of ruin, tournaments (`lib/bankroll-management.js` riskOfRuin) |
 | POST | `/api/bankrolls/import` | `{ bankroll, commit, rows }` — preview (commit false) or write; dedupe by fingerprint |
+
+### The dashboard (`BankrollDashboard.jsx`, behind the bankroll strip's Dashboard button)
+
+A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
+**Overview / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the
+width in whole g by `data-n` (4 tabs 9+9+9+8g, 5 tabs 5 × 7g, 6 tabs 5 × 6g + 5g), so a new tab is one
+entry in `TABS` plus one render line (`{tab === 'key' && …}`, marked in the JSX); the guards walk
+every tab in the strip on their own.
+
+**Overview** (`BankrollOverview.jsx`), laid out the way a dedicated poker tracker lays out its home
+screen, in this app's own type, tokens and grid:
+
+| block | what | the tracker pattern it borrows |
+|---|---|---|
+| Hero (2 × 17g, 9r) | balance now · profit over the range, coloured by sign, with the event / session count | the headline profit over the graph |
+| Graph (4r head, 35g × 24r plot, 2r foot) | **Profit** (cumulative results from 0, a hairline at 0, line green / red by where it ends) or **Balance** (deposits included); drawdown from the peak shaded in both | the cumulative "chip graph" |
+| Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage) | the time filter on the graph |
+| Statistics (label 21g \| value 14g, 4r rows, `<dl>`) | **Results**: profit (and its tournament / cash / expenses split), ROI *tournaments*, in the money *k of n*, hourly *cash*, winning sessions *k of n*, biggest win, biggest loss. **Volume**: tournaments (bullets), average buy-in per bullet, cash sessions, hours, average session. **Bankroll**: balance, peak (all time, with its date), below the peak, deepest drawdown in the range, deposits and withdrawals in the range, risk of ruin *tournaments* | plain label-left / value-right rows grouped under headings, each figure qualified where it means something for one game type only |
+| Latest sessions (6r rows, 14g \| 21g) | the six newest tournament / cash results in the range, each led by its signed profit in the display face, with date, event or game, and hours / bullets; buttons to Results' Tournaments and Cash halves (they also select the dashboard's bankroll on the Results tab) | the session list led by a big green / red profit |
+| By month / year | results, moved, net per month in the range (per year for All) | — |
+
+The arithmetic is pure and tested in `utils/bankroll-ledger.js`: `overviewStats(entries)` (ROI =
+profit / cost with each tournament's cost × `fx_display`, so mixed currencies add up; ITM = rows that
+cashed / rows; hourly = the profit of sessions with both ends / their hours; every ratio null, not 0,
+when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`.
+
+Baselines: hero figures are the display face at `--fs-2xl` (c measured 1.0983r at 402 wide, 1.1238r at
+1440 — the face's ascent rounds to whole px, so `p` splits the difference, ≤ 0.03r off); the latest
+sessions' profits the display face at `--fs-xl`, likewise. Every other cell uses analytics.css's roles.
 
 ### Rules, goals, risk (`lib/bankroll-management.js`, table `bankroll_prefs`)
 

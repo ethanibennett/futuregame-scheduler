@@ -146,11 +146,39 @@ function scan(rootSel) {
     await openResults();
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
-    for (const tab of ['Balance', 'Rules', 'Goals', 'Import']) {
-      await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
+    // The sheet scrolls, and only text on screen is measured: run at the top, then page down
+    // through the sheet's body to its end.
+    const runSheet = async (label) => {
+      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+      await run(label, '.an-sheet');
+      for (let i = 1; i < 12; i++) {
+        const moved = await p.evaluate((h) => {
+          const s = document.querySelector('.an-sheet .an-body');
+          if (!s) return false;
+          const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
+        }, H);
+        if (!moved) break;
+        await p.waitForTimeout(300);
+        await run(`${label} (scrolled ${i})`, '.an-sheet');
+      }
+    };
+    // Every tab in the strip, whatever it holds (Overview, Rules, Goals, Import, and any added
+    // later), then the Overview again with its graph switched to Balance and the range to All.
+    const tabs = p.locator('.an-sheet .bd-tabs button');
+    const n = await tabs.count();
+    for (let i = 0; i < n; i++) {
+      const tab = (await tabs.nth(i).innerText()).trim();
+      await tabs.nth(i).click({ timeout: 4000 });
       await p.waitForTimeout(800);
-      await run(`bankroll dashboard ${tab}`, '.an-sheet');
+      await runSheet(`bankroll dashboard ${tab}`);
     }
+    await tabs.first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
+    await p.locator('.an-sheet .bd-range button:has-text("All")').click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await runSheet('bankroll dashboard overview (balance, all time)');
+    await p.locator('.an-sheet .bd-mode button:has-text("Profit")').click({ timeout: 4000 });
+    await p.locator('.an-sheet .bd-range button:has-text("YTD")').click({ timeout: 4000 });
   } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
   // Results > Cash (cash sessions beta): the strip, head, live card, stats, rows; the log form and
   // the live card's cash-out panel; and the live-session bar over the nav on another tab.

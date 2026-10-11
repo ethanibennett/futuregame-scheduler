@@ -188,6 +188,15 @@ function addEvent(db, { user = 1, name, date, time = '12:00 PM', buyin, venue = 
     near(led.closing.total_display, 1470 * 0.8, 1e-6);
     assert.strictEqual(led.entries[0].amount_bankroll, 2000);
     assert.strictEqual(led.entries[0].amount_display, 1600);
+    assert.strictEqual(led.entries[0].fx_display, 0.8, 'display units per 1 of the entry currency (USD -> EUR)');
+  });
+  await test("running balance: fx_display puts an entry's own-currency figures on the display scale", () => {
+    const { entries } = ledger.collect(db, 1, { bankroll: 'all' }, L2);
+    const led = ledger.runningBalances(entries, { bankrollList: list, scope: 'all', currency: 'USD', rates: RATES });
+    for (const e of led.entries) {
+      assert.strictEqual(e.fx_display, e.currency === 'EUR' ? 1.25 : 1, e.label);
+      near(e.amount * e.fx_display, e.amount_display, 0.01, e.label);
+    }
   });
   await test('summary: results vs moved, by source, and the total', () => {
     const { entries } = ledger.collect(db, 1, { bankroll: 'all' }, L2);
