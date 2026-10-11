@@ -16105,12 +16105,24 @@
        it is saved. Unselected rows keep every marker. */
     .cal-event-row.is-selected .cal-event-row-content { box-shadow: none; outline: none; }
     .cal-event-row.is-selected::after { display: none; }
-    /* The right pane's two blocks: the selected event, then My Schedule, divided by a hairline
-       with 2r of room so My Schedule's own header starts on a whole r. */
-    .dk-detail-block + .dk-mine-block {
-      border-top: var(--bw-hair) solid var(--border);
-      margin-top: calc(var(--subrow) * 2);
+    /* The right pane's two blocks, each its own scroller: the selected event on top at its
+       natural height (at most about half the pane), My Schedule filling the rest below a hairline. */
+    .dk-pane-detail > .dk-detail-block {
+      flex: 0 1 auto; max-height: 55%;
+      /* Opening an event (owner, 2026-10-10): the details grow DOWNWARD from the top of the pane
+         and My Schedule, the flex:1 block below, is pushed down with them — its own scroll
+         position is untouched, so the event it was showing slides down rather than jumping. */
+      animation: dkDetailOpen var(--dur-base) var(--ease-out) both;
     }
+    @keyframes dkDetailOpen {
+      from { max-height: 0; opacity: 0; }
+      to   { max-height: 55%; opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dk-pane-detail > .dk-detail-block { animation: none; }
+    }
+    .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
+    .dk-detail-block + .dk-mine-block { border-top: var(--bw-hair) solid var(--border); }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════

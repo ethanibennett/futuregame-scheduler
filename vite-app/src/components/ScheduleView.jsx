@@ -293,7 +293,11 @@ export default function ScheduleView({
       if (!container) return;
       const cRect = container.getBoundingClientRect();
       const sticky = container.querySelector('.schedule-sticky-header');
-      const stickyH = sticky ? Math.max(0, sticky.getBoundingClientRect().bottom - cRect.top) : 0;
+      // Where the header's bottom sits once it is STUCK: its sticky `top` plus its height. Measuring
+      // its bottom at scrollTop 0 counted whatever sits above it in flow too, and landed the next
+      // event 26px low on a phone, with a strip of the past day still showing above it.
+      const stuckTop = sticky ? (parseFloat(getComputedStyle(sticky).top) || 0) : 0;
+      const stickyH = sticky ? Math.max(0, stuckTop + sticky.getBoundingClientRect().height) : 0;
       const elAbsTop = el.getBoundingClientRect().top - cRect.top + container.scrollTop;
       container.scrollTop = Math.max(0, elAbsTop - stickyH);
       if (remaining > 0) requestAnimationFrame(() => settle(remaining - 1));
@@ -427,7 +431,10 @@ export default function ScheduleView({
       )}
       <div style={{minHeight:'100vh', paddingBottom:'100vh'}}>
         {(() => {
-          let scrollRefAssigned = false;
+          // Land on the next event; with nothing upcoming, on the most recent one (the end of the
+          // list) rather than leaving the oldest past event on top.
+          const nextIdx = groups.findIndex(g => g.date >= todayISO);
+          const anchorIdx = nextIdx >= 0 ? nextIdx : groups.length - 1;
           return groups.map((group, gi) => {
             const isGroupToday = group.date === todayISO;
             const dateObj = new Date(group.date + 'T12:00:00');
@@ -435,8 +442,7 @@ export default function ScheduleView({
             const dayOfWeek = ['Su','M','Tu','W','Th','F','Sa'][dateObj.getDay()];
             const dayNum = String(dateObj.getDate()).padStart(2, '0');
             const past = group.date < todayISO;
-            const needsRef = !scrollRefAssigned && group.date >= todayISO;
-            if (needsRef) scrollRefAssigned = true;
+            const needsRef = gi === anchorIdx;
             return (
               <div key={group.date} ref={needsRef ? todayRef : null} data-today-scroll={needsRef ? 'true' : undefined} data-date-group={group.date} style={{marginTop: gi === 0 ? 0 : 'calc(var(--subrow) * 1)'}}>
                 <DateBreak date={group.date} top={schedDateTop} isToday={isGroupToday} />

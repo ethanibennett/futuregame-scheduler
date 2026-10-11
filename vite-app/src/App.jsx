@@ -149,7 +149,9 @@ export default function App() {
             const todayEl = panel ? panel.querySelector('[data-today-scroll]') : null;
             if (todayEl) {
               const sticky = panel.querySelector('.schedule-sticky-header');
-              const stickyH = sticky ? Math.max(0, sticky.getBoundingClientRect().bottom - c.getBoundingClientRect().top) : 0;
+              // The header's bottom once STUCK (its sticky top + its height), not where it sits in
+              // flow right now — that over-counted and landed the next event 26px low (ScheduleView).
+              const stickyH = sticky ? Math.max(0, (parseFloat(getComputedStyle(sticky).top) || 0) + sticky.getBoundingClientRect().height) : 0;
               const groupAbsTop = todayEl.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
               c.scrollTop = Math.max(0, groupAbsTop - stickyH);
             } else {
@@ -1507,7 +1509,7 @@ export default function App() {
     setDkSelectedId(id);
     // The details are the top block of the right pane: bring them into view.
     if (id != null) requestAnimationFrame(() => {
-      const sc = document.querySelector('.dk-pane-detail .dk-scroll');
+      const sc = document.querySelector('.dk-pane-detail .dk-detail-block');
       if (sc) sc.scrollTop = 0;
     });
   }, []);
@@ -2142,10 +2144,11 @@ export default function App() {
               scroll. With nothing selected, My Schedule is the whole pane. */}
           {currentView === 'tournaments' && (
             <div className="dk-pane dk-pane-detail dk-fab-scope">
-              <div className="dk-scroll">
-                {dkSelectedId != null && <div className="dk-detail-block">{dkDetail}</div>}
-                <div className="dk-mine-block">{dkMine}</div>
-              </div>
+              {/* Two scrollers, not one: My Schedule lands on the next event by scrolling ITS
+                  scroller (ScheduleView resolves the nearest .dk-scroll), which must not drag the
+                  event details out of view, nor be reset when an event is selected. */}
+              {dkSelectedId != null && <div className="dk-scroll dk-detail-block">{dkDetail}</div>}
+              <div className="dk-scroll dk-mine-block">{dkMine}</div>
             </div>
           )}
         </div>
