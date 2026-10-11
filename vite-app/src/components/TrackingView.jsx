@@ -12,7 +12,8 @@ import {
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
 import useBankrolls from '../hooks/useBankrolls.js';
-import { filterByBankroll, computeBalances, defaultBankrollFor } from '../utils/bankrolls.js';
+import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
+import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
 const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
@@ -284,12 +285,14 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
   // Bankrolls (beta, admins only). For everyone else `bk.selected` is 'all', the filter is the
   // identity, and `formBankrolls` is null so the form neither shows nor sends a bankroll.
-  const bk = useBankrolls({ enabled: !!isAdmin, token });
+  const bk = useBankrolls({ enabled: !!isAdmin, token, version: allTrackingData });
   const [showBankrolls, setShowBankrolls] = useState(false);
+  const [showBankrollDashboard, setShowBankrollDashboard] = useState(false);
+  const closeBankrollDashboard = useCallback(() => setShowBankrollDashboard(false), []);
   const trackingData = useMemo(() => filterByBankroll(allTrackingData, bk.selected), [allTrackingData, bk.selected]);
-  const bankrollBalances = useMemo(() => computeBalances(bk.bankrolls, allTrackingData, {
-    nativeCurrency, convert: (v, from, to) => convertAmount(v, from, to, exchangeRates),
-  }), [bk.bankrolls, allTrackingData, exchangeRates]);
+  // Balances come from the server's combined ledger (every ledger source), not from summing the
+  // results this tab happens to hold — see docs/bankrolls.md "The combined ledger".
+  const bankrollBalances = useMemo(() => balancesFromSummary(bk.summary), [bk.summary]);
   const formBankrolls = bk.enabled && bk.bankrolls.length ? bk.bankrolls : null;
   const newEntryBankroll = { bankrollId: defaultBankrollFor(bk.selected, bk.bankrolls) };
 
@@ -351,7 +354,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   return (
     <div>
       {bk.enabled && (
-        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)} />
+        <BankrollSwitcher bk={bk} balances={bankrollBalances} onManage={() => setShowBankrolls(true)}
+          onDashboard={() => setShowBankrollDashboard(true)} />
       )}
       {showBankrolls && (
         <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
@@ -439,6 +443,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
+      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} />}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (

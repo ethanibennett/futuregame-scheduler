@@ -1,0 +1,100 @@
+/* ==================================================================
+   Bankroll dashboard (BETA, app admins) — BankrollDashboard.jsx,
+   BankrollChart.jsx, BankrollImport.jsx. bd- prefixed.
+
+   Built from parts already on the grid: the sheet, the type roles and
+   the tables of analytics.css (an-cell / an-td / an-note / an-lbl /
+   an-val / an-sec / an-p, their baselines measured in WebKit), and the
+   bankroll sheet's controls in styles.css (bk-seg-btn 5r, bk-btn 5r,
+   bk-field 3r label over a 4r input, bk-ledger-x 3g x 4r). Every
+   label inside a control is centred by its container (owner rule
+   2026-10-10); every other line of text sits on an r line.
+
+   Content is 35g (the 37g sheet less 1g each side):
+     bankrolls   4 x 8g + 3 x 1g        period     3 x 11g + 2 x 1g
+     stats       2 x 17g + 1g           tables     columns below, sum 35g
+     chart       35g x 16r, a 2r label row above and below
+     goal bar    35g x 1r
+   ================================================================== */
+
+/* Head: the title as AnalyticsView's; Done is an 8g x 4r button on 28g, 2r down the 8r bar. */
+.bd-close { position: absolute; left: calc(var(--gu) * 28); top: calc(var(--subrow) * 2); height: calc(var(--subrow) * 4); }
+
+/* Truncating cells (an-clip: overflow hidden for the ellipsis) get their descenders' painted room
+   from 1r of padding below the line, cancelled by an equal negative margin — the box grows, the
+   layout and the baseline do not (CLAUDE.md, clipped-text guard). */
+.bd-sheet .an-clip {
+  height: calc(var(--subrow) * (var(--h) + 1));
+  padding-bottom: var(--subrow);
+  margin-bottom: calc(var(--subrow) * -1);
+}
+
+.bd-block { margin-top: calc(var(--subrow) * 2); }
+.bd-section { margin-top: calc(var(--subrow) * 4); }
+.bd-section > .an-sec { margin-bottom: var(--subrow); }
+
+/* Selectors */
+.bd-seg4 {
+  display: grid;
+  grid-template-columns: repeat(4, var(--col));
+  column-gap: var(--gu); row-gap: var(--subrow);
+}
+.bd-seg3 { display: grid; grid-template-columns: repeat(3, calc(var(--gu) * 11)); column-gap: var(--gu); }
+.bd-seg2 { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
+.bd-seg4 .bk-seg-btn, .bd-seg3 .bk-seg-btn, .bd-seg2 .bk-seg-btn { width: 100%; }
+.bk-seg-btn > span { font-variant-numeric: var(--num-tabular); }
+
+/* Chart: 2r label row, 16r plot, 2r label row. */
+.bd-axis { display: grid; grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17); column-gap: var(--gu); }
+.bd-axis > :last-child { text-align: right; }
+.bd-chart { display: block; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 16); }
+.bd-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.bd-line { fill: none; stroke: var(--brand); stroke-width: var(--bw-2); stroke-linejoin: round; }
+.bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-1); stroke-dasharray: var(--bw-2) var(--bw-2); }
+.bd-dd { fill: var(--neg-quiet); stroke: none; }
+.bd-edge { stroke: var(--border); stroke-width: var(--bw-hair); }
+.bd-chart-empty { height: calc(var(--subrow) * 16); }
+
+/* Tables: 11 + 8 + 8 + 8 = 35g. */
+.bd-cols-4 { grid-template-columns: calc(var(--gu) * 11) var(--col) var(--col) var(--col); }
+/* Preview: line 3g, date 8g, what 13g, amount 6g, status 5g = 35g. */
+.bd-cols-preview { grid-template-columns: calc(var(--gu) * 3) var(--col) calc(var(--gu) * 13) calc(var(--gu) * 6) calc(var(--gu) * 5); }
+/* Mapping: field 17g, column 18g. */
+.bd-row-2 { display: grid; grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 18); align-items: start; }
+
+/* Goals: a 4r head row (what | progress | ×), a 1r bar, a 2r note. */
+.bd-goal + .bd-goal { margin-top: calc(var(--subrow) * 2); }
+.bd-goal-head { display: grid; grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 17) calc(var(--gu) * 3); align-items: start; }
+/* Remove: a 3g x 4r control whose label is a 1g drawn cross, centred by the grid. */
+.bd-x {
+  display: grid; place-items: center;
+  width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4);
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--text-muted);
+}
+.bd-x svg { display: block; width: var(--gu); height: var(--gu); fill: none; stroke: currentColor; stroke-width: var(--bw-2); stroke-linecap: round; }
+.bd-x:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
+.bd-bar {
+  position: relative;
+  width: calc(var(--gu) * 35); height: var(--subrow);
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.bd-bar-fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--brand); }
+.bd-bar-fill.is-done { background: var(--pos); }
+.bd-bar-pace { position: absolute; top: 0; bottom: 0; width: var(--bw-2); background: var(--text); }
+
+/* Buttons in a row, 2r below what they follow. */
+.bd-actions { display: flex; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
+.bd-actions + .an-p, .bd-block + .an-p { margin-top: var(--subrow); }
+.bd-file { display: none; }
+
+/* Fields: the bankroll sheet's 2 x 17g grid, with 1r between field rows. */
+.bd-fields { row-gap: var(--subrow); }
+
+.an-sheet .bd-down { color: var(--neg); }
+.an-sheet .bd-up { color: var(--pos); }
+.an-sheet .is-neg { color: var(--neg); }
+.an-sheet .is-pos { color: var(--pos); }
+.an-row.is-body .bd-status-error, .an-row.is-body .bd-status-skip { color: var(--text-muted); }

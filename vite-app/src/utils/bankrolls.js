@@ -46,6 +46,36 @@ export function entryNet(entry) {
 }
 
 /**
+ * The switcher's and manager's balances, from the SERVER's combined ledger
+ * (GET /api/bankrolls/summary, lib/bankroll-ledger.js) — every ledger source counts (results,
+ * deposits/transfers, and whatever cash-session or expense sources are installed), not just
+ * tournaments and adjustments. Same Map shape computeBalances returns:
+ *   Map<key, { start, adjustments, results, balance, entries, currency }>, plus 'all' (USD or the
+ * summary's currency). `adjustments` = money moved (deposits, withdrawals, transfers); `results`
+ * = everything else. An empty Map until the summary arrives.
+ */
+export function balancesFromSummary(summary) {
+  const out = new Map();
+  if (!summary || !Array.isArray(summary.bankrolls)) return out;
+  for (const b of summary.bankrolls) {
+    out.set(b.id === BANKROLL_MAIN ? BANKROLL_MAIN : Number(b.id), {
+      start: b.start, adjustments: b.moved, results: b.results, balance: b.balance,
+      entries: b.count, currency: b.currency || 'USD',
+    });
+  }
+  const a = summary.all || {};
+  out.set(BANKROLL_ALL, {
+    start: a.start || 0, adjustments: a.moved || 0, results: a.results || 0, balance: a.balance || 0,
+    entries: a.count || 0, currency: summary.currency || 'USD',
+  });
+  return out;
+}
+
+/**
+ * SUPERSEDED for display by balancesFromSummary (the server ledger, which also sees sources this
+ * client knows nothing about). Kept as the reference implementation of the tournaments +
+ * adjustments arithmetic, which the server's two built-in sources reproduce.
+ *
  * balance = starting_balance + adjustments_net + net results, per bankroll, in the BANKROLL'S
  * currency. `bankrolls` is GET /api/bankrolls's list; `entries` GET /api/tracking's rows.
  * opts.nativeCurrency(venue) and opts.convert(amount, from, to) come from utils.js

@@ -9,7 +9,7 @@ import {
   getMaxEntries, getVenueTimezone, getVenueTzAbbr, getNow,
   extractConditions, formatConditionLabel, formatConditionBadge,
   getIfIBustEvents, getIfIBagEvents, describeGame, calculateCountdown, haptic,
-  currencySymbol, nativeCurrency, CURRENCY_CONFIG, formatCurrencyAmount,
+  currencySymbol, nativeCurrency, CURRENCY_CONFIG, formatCurrencyAmount, convertAmount,
   VENUE_TO_SERIES, VENUE_BRAND_VAR, isPOYEligible, calculatePOYPoints, isSixMax,
   HAND_CONFIG, HAND_CONFIG_DEFAULT, splitEventStage, formatChips, getVenueCoords,
 } from '../utils/utils.js';
@@ -17,6 +17,9 @@ import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmt
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
+import useRollGuide from '../hooks/useRollGuide.js';
+import { rollShare, fmtShare, fmtRule } from '../utils/bankroll-ledger.js';
+import { toBankrollKey } from '../utils/bankrolls.js';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
 // splitEventStage is shared with CalendarEventRow and mirrors the server's
@@ -515,6 +518,17 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     setOpen(o => !o);
   }, [onSelect, detail, tournament.id]);
   const [showConditionUI, setShowConditionUI] = useState(false);
+  // Bankrolls (beta, app admins): this entry's buy-in as a share of the roll the Results tab has
+  // selected, against that roll's MTT rule. Fetched only once a card is open.
+  const rollSummary = useRollGuide(!!isAdmin && open && tournament.venue !== 'Personal');
+  const roll = useMemo(() => {
+    if (!rollSummary || !rollSummary.guide || !(Number(tournament.buyin) > 0)) return null;
+    let key = 'all';
+    try { key = String(toBankrollKey(localStorage.getItem('resultsBankroll'))); } catch (_) { /* private mode */ }
+    const guide = rollSummary.guide.byKey[key] || rollSummary.guide.byKey.all;
+    const buyin = convertAmount(Number(tournament.buyin), nativeCurrency(tournament.venue), guide.currency, rollSummary.rates);
+    return rollShare(guide, buyin);
+  }, [rollSummary, tournament.buyin, tournament.venue]);
   const [showRakeBreakdown, setShowRakeBreakdown] = useState(false);
   const [showMixGames, setShowMixGames] = useState(false);
   const game = useMemo(() => describeGame(tournament.game_variant, tournament.event_name),
@@ -818,6 +832,14 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         is what let the two meanings share one field, and a $600 event
                         ended up advertising a $504 guarantee. buyin - rake_dollars is
                         exactly this number and cannot drift from the rake beside it. */}
+                    {roll && (
+                      <div className="cal-detail-item cal-roll" title={`Your rule: ${roll.buyins} buy-ins, so at most ${fmtRule(roll.buyins)} of the roll per entry`}>
+                        <span className="cal-detail-label">Of your roll</span>
+                        <span className={'cal-detail-value' + (roll.over ? ' is-over' : '')}>
+                          {roll.empty ? 'Roll at zero' : fmtShare(roll.share)}{roll.over && !roll.empty ? ` · over ${fmtRule(roll.buyins)} rule` : ''}
+                        </span>
+                      </div>
+                    )}
                     {showRakeBreakdown && tournament.buyin > 0 && tournament.rake_dollars > 0 && (
                       <div className="cal-detail-item">
                         <span className="cal-detail-label">Prize Pool</span>

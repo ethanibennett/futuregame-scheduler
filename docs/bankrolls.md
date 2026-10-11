@@ -78,13 +78,89 @@ Client — `vite-app/src/utils/bankrolls.js`, dependency-free:
 
 - `filterByBankroll(entries, key)` — the same semantics on already-fetched rows
 - `bankrollQuery(key, '?' | '&')` — `''` for All, else `?bankroll=…`
-- `computeBalances(bankrolls, entries, { nativeCurrency, convert })` — per-bankroll
+- `balancesFromSummary(summary)` — the switcher's balances, from the SERVER ledger
+  (`GET /api/bankrolls/summary`, below). This is what the Results tab shows since the combined
+  ledger landed.
+- `computeBalances(bankrolls, entries, { nativeCurrency, convert })` — superseded for display (it
+  only sees tournaments + adjustments); kept as the reference arithmetic. Per-bankroll
   `{ start, adjustments, results, balance, entries, currency }`, plus an `'all'` row in USD
 - `useBankrolls({ enabled: isAdmin, token })` — the list and the Results tab's selected key
   (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's choice.
 
 A tax report probably wants the ledger too (deposits/withdrawals are not income):
 `GET /api/bankrolls/adjustments?bankroll=…`.
+
+## The combined ledger (`lib/bankroll-ledger.js`)
+
+Every module in **`lib/ledger-sources/*.js`** is a ledger source, loaded at boot in filename
+order (`BANKROLL_LEDGER_SOURCES_DIR` points the loader elsewhere — the tests use a temp dir). Adding
+money to the ledger is one new file there; nothing else changes.
+
+```js
+module.exports = {
+  name: 'cash-sessions',                      // unique; tags every entry
+  entries(db, userId, { bankroll, from, to }) // bankroll: 'all' | 'main' | id (already the caller's)
+    // → [{ date: 'YYYY-MM-DD', ts: ISO | null, amount: signed, currency: 'USD',
+    //      bankroll_id: number | null, kind, label, ref: { table, id } }]
+};
+```
+
+- `amount` is signed (+ in, − out) in `currency`; `bankroll_id` null is Main. Extra fields pass
+  through. Filter on `bankroll` in SQL (the loader filters again). The loader asks with
+  `from = null` because a running balance needs everything before the window.
+- A malformed entry is dropped and counted (`invalid`); a source that throws is reported
+  (`ok: false` in `sources`) and the rest of the ledger still loads.
+- Kinds `deposit`, `withdrawal`, `transfer_in`, `transfer_out` are **money moved**; every other kind
+  is a **result** (won/lost). Summaries, goals and the dashboard split on that.
+- Built-in: `tournaments.js` (net = (cashed ? cash : 0) − buy-in × max(1, entries), in the venue's
+  currency — exactly the Results tab and `lib/analytics.js`; extra fields `units`, `cost`, `cash`,
+  `buyin_per_entry`) and `adjustments.js` (the ledger above). `cash-sessions.js` and
+  `transactions.js` belong to the cash-session and expense features.
+
+Balance of a bankroll = starting balance + Σ its entries, in ITS currency (entries in another
+currency converted through USD at the current rates — what the Results tab has always done). Order:
+date, then entries without a ts first, then source, then ref id.
+
+| method | path | |
+|---|---|---|
+| GET | `/api/bankrolls/ledger?bankroll=&from=&to=&currency=` | `{ entries: [...each + bankroll, amount_bankroll, amount_display, balance, balance_display, total_display], opening, closing, sources, dropped }` — `opening` is the balance carried into `from` |
+| GET | `/api/bankrolls/summary?currency=` | `{ bankrolls: [{ id, start, moved, results, balance, by_source, by_kind, count, currency }], all, rates, guide, sources }` |
+| GET / PUT | `/api/bankrolls/prefs` / `/api/bankrolls/prefs/:key` | rules + goals per key (`all`, `main`, id); `{ rules: { mtt: { buyins }, cash: { buyins } }, goals: [...], reset: ['mtt'] }` |
+| GET | `/api/bankrolls/risk?bankroll=&currency=` | risk of ruin, tournaments (`lib/bankroll-management.js` riskOfRuin) |
+| POST | `/api/bankrolls/import` | `{ bankroll, commit, rows }` — preview (commit false) or write; dedupe by fingerprint |
+
+### Rules, goals, risk (`lib/bankroll-management.js`, table `bankroll_prefs`)
+
+- **Rules**: per bankroll (and All), MTT and cash, each "N buy-ins in the roll". Defaults 100 / 30,
+  shown as defaults, not advice. The guide (in `summary.guide.byKey[key]`): `mtt.cap` = roll / N;
+  `signal` `down` when the last 20 tournament entries average above the cap (or the roll is ≤ 0),
+  `up` when the cap reaches the next `BUYIN_BANDS` tier, `hold` otherwise, null under 5 entries.
+- **Event cards**: an open card's detail grid shows "Of your roll" (admins only) for the bankroll
+  the Results tab has selected, in the loss colour with "over N% rule" past the MTT cap
+  (`hooks/useRollGuide.js`, one shared summary fetch).
+- **Goals**: monthly / yearly, profit (every result, not money moved) or volume (tournament
+  bullets + cash sessions), progress computed client-side from the ledger.
+- **Risk of ruin**: diffusion approximation exp(−2μB/σ²) on per-entry returns in buy-ins (the
+  analytics sample), plus the same at the ROI interval's low end; nothing under 100 entries. The
+  assumptions are in the code comment and the dashboard footnote.
+
+### Import / export (`lib/bankroll-import.js`, `utils/bankroll-csv.js`, table `bankroll_import_keys`)
+
+- Export: the dashboard's Import tab writes the selected bankroll's (or every) ledger as CSV with
+  running balances (`ledgerToCsv`).
+- Import presets, only where the maker publishes the columns: **Poker Bankroll Tracker**
+  (pokerbankrolltracker.net/faq + the vendor's sample file; the sample is the test fixture) and
+  **Pokerbase's Custom Sheet** template. Poker Income / Poker Analytics publish no column list →
+  generic column mapping. Cash-game rows are skipped (cash sessions are their own source).
+- Imported tournament results become private `Personal` tournaments (stable_id
+  `PERSONAL-<uid>-imp-…`, swept by account deletion) + tracking entries, so they count everywhere;
+  non-USD results are converted to USD at today's rate with the originals in the notes.
+- Dedupe: sha1 of the normalised row + its occurrence number in the file; a key whose row was
+  deleted is stale and the row imports again.
+
+Tests: `npm run test:bankroll-ledger` (loader with a fake source in a temp dir, both built-in
+sources against scratch sql.js, running balances, guide, risk, import, routes incl. isolation) —
+also part of `npm run test:bankrolls`.
 
 ## Staking, and how they could connect
 

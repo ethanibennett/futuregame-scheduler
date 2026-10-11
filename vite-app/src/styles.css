@@ -11243,6 +11243,8 @@
     .admin-revert-btn:disabled { opacity: var(--state-disabled); cursor: default; }
 
     .cal-detail-value { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; font-family: var(--serif); font-size: var(--fs-sm); color: var(--text); font-weight: var(--fw-regular); }
+    /* Bankrolls beta: "Of your roll" turns the loss colour when the entry is over the roll's MTT rule. */
+    .cal-detail-value.is-over { color: var(--neg); }
 
     .cal-detail-badges {
       display: grid;
