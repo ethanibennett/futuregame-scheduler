@@ -122,7 +122,7 @@ function openLabel(startMs, endMs, windowStartMs) {
 // cash location is a single poll point the watcher steers around). It seeds from
 // the user's saved scheduler location so it is never empty, then the watcher's
 // own /cash/location (if set) overrides that, and picking a point POSTs it back.
-function CashLocationPicker({ token, onSaved }) {
+function CashLocationPicker({ token, onSaved, trailing = null }) {
   const toast = useToast();
   const [filters, setFiltersState] = useState(() => {
     const saved = readLocalLocation() || {};
@@ -177,13 +177,15 @@ function CashLocationPicker({ token, onSaved }) {
   return (
     /* Where the Schedule tab's location field is, and the same field: 2r under the header,
        26g wide (three columns, 1g..27g) and 4r tall, lit when a point is set. Shown on Live
-       and Heatmaps alike, above the mode strip. */
-    <div style={{ marginTop: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)' }}>
+       and Heatmaps alike, above the mode strip. `trailing` (the Refresh button) takes the
+       fourth column of the same row: 1g gutter, then 8g. */
+    <div style={{ marginTop: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)', display: 'flex', alignItems: 'center', gap: 'var(--gu)' }}>
       <button ref={btnRef} type="button" className={'filter-chip' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
         style={{ width: 'calc(var(--col) * 3 + var(--gu) * 2)', minWidth: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 'calc(var(--subrow) * 1)', padding: '0 calc(var(--subrow) * 1.25)' }}>
         <Icon.mapPin />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
       </button>
+      {trailing}
       {open && createPortal(<div className="dropdown-backdrop" onClick={() => setOpen(false)} />, document.body)}
       {open && btnRef.current && createPortal(
         <LocationDropdown rect={btnRef.current.getBoundingClientRect()} filters={filters} setFilters={setFilters} onClose={() => setOpen(false)} toast={toast} token={token} pointOnly />,
@@ -296,20 +298,17 @@ export default function CashView({ token, onModeChange }) {
   return (
     <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
       {/* The cash location, in the Schedule tab's location-field spot, on both views. */}
-      <CashLocationPicker token={token} onSaved={bumpLocation} />
-
-      {/* Refresh, right-aligned directly above the Heatmaps half of the mode strip (owner request
-          2026-10-10). On BOTH views so the strip below never moves when you switch: Live reloads the
-          board, Heatmaps re-reads its room list. */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
-        <button onClick={mode === 'heatmap' ? bumpLocation : load}
-          style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
+      {/* Refresh shares the location field's row (owner, 2026-10-10), in its fourth column, on both
+          views: Live reloads the board, Heatmaps re-reads its room list. */}
+      <CashLocationPicker token={token} onSaved={bumpLocation} trailing={
+        <button type="button" onClick={mode === 'heatmap' ? bumpLocation : load}
+          style={{ width: 'var(--col)', flex: '0 0 auto', height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
           {mode === 'live' && status === 'loading' ? 'Loading…' : 'Refresh'}
         </button>
-      </div>
+      } />
 
-      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, under the
-          Refresh row on BOTH views, so it never moves when you switch. */}
+      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, 1r under the
+          location row on BOTH views, so it never moves when you switch. */}
       <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: 0, marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} type="button" className={mode === m ? 'active' : ''} aria-pressed={mode === m}
