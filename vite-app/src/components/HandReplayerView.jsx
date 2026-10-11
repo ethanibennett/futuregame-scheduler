@@ -1322,6 +1322,10 @@ function PotChipVisual({ amount }) {
    hand, so the fan opened around a hinge under the middle of it and came out
    perfectly symmetrical. A hand pivots around the bottom corner nearest the
    thumb, which is why every real fan is lopsided. Symmetry is the tell.
+   (2026-10: the lopsidedness is now SIDEWAYS only. The 18% pivot also tipped
+   the right of every fan down and, with the growth, lifted single cards like
+   stud up-cards — see getSplayStyle, where the pivot is now 50% 118% plus
+   the sideways travel the 18% pivot gave.)
 
    34: and the fan was a pure 2D rotation, which is cards printed on a page.
    A real fan also lifts each successive card slightly out of the plane, so it
@@ -1436,19 +1440,47 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
   const scale = 1 + lift * 0.05;
   const shadow = 'drop-shadow(' + (-1 - lift * 2).toFixed(1) + 'px '
     + (1 + lift * 2).toFixed(1) + 'px ' + (2 + lift * 3).toFixed(1) + 'px rgba(0,0,0,0.5))';
+  /* Hold'em and Omaha hands were drawn with a stud lift they never asked for.
+     Nothing stud-specific leaked in — the lift came from the fan itself, in two
+     parts, both of them the transform ORIGIN, which sat at 18% 118%: below the
+     card and left of its centre.
+     1. The growth. scale() grows a card about the origin, and an origin 118%
+        down the card turns a 5% growth into a 0.05 x 1.18 = 5.9%-of-height
+        LIFT of the top edge — half the 11.4% stud lift, on the last card and
+        proportionally on every card before it.
+     2. The rotation. Turning a card about a point left of its centre moves the
+        centre DOWN by 0.32 x width x sin(angle) on the right of the fan and UP
+        by the same on the left — an antisymmetric tilt that has nothing to do
+        with the arc, and which the growth had been partly cancelling.
+     The bottom of a held hand is behind the plaque, so the top edge is all of
+     a card anyone sees move. Measured on a hold'em hero at 402x874 the K index
+     sat 4.25px (0.072 of the card) above the A beside it: a door card beside a
+     hole card. A four-card Omaha hand stepped 5.7px up from A to J.
+     So both are anchored on the card's own centre line. The rotation turns
+     about 50% 118%, directly under the centre, and `swing` puts back the
+     -0.32 x width x (1 - cos) of sideways travel the old origin gave, so the
+     fan opens exactly as wide as it did; only the antisymmetric drop is gone.
+     The growth is anchored on the card's TOP edge, at the 18% the old origin
+     stood on (a translate of (s-1) x (32%, 118%) before the scale), so the
+     card still grows toward the viewer and sideways exactly as it did, but
+     down behind the plaque, without its top edge moving. What remains vertically is
+     the arc, which is symmetric about the middle card, and the stud lift — the
+     only thing that lifts a card again. */
+  const rad = rot * Math.PI / 180;
+  const swing = (-32 * (1 - Math.cos(rad))).toFixed(3) + '%';
+  const grow = scale === 1 ? '' : ' translate(' + ((scale - 1) * 32).toFixed(3) + '%, '
+    + ((scale - 1) * 118).toFixed(3) + '%) scale(' + scale.toFixed(3) + ')';
   if (total <= 2) {
     return {
-      transform: 'rotate(' + rot + 'deg) scale(' + scale.toFixed(3) + ')',
-      transformOrigin: '18% 118%',
+      transform: 'translateX(' + swing + ') rotate(' + rot + 'deg)' + grow,
+      transformOrigin: '50% 118%',
       marginLeft: index === 0 ? 0 : 'calc(var(--card-w) * -0.65)',
       marginTop: extraY || undefined,
       filter: shadow,
       zIndex: z,
     };
   }
-  // 3+ cards: arc from a true shared pivot point using trig. The pivot sits
-  // left of centre, so the arc opens the way a thumb opens it.
-  const rad = rot * Math.PI / 180;
+  // 3+ cards: arc from a true shared pivot point using trig.
   /* In CARD WIDTHS, not pixels. A fixed 66px arc holds its shape only at the
      size the cards happened to be when it was chosen: at a phone's 34px card
      it advances each card about 0.55 of a width, which reads as a hand, and at
@@ -1485,10 +1517,10 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
     position: 'absolute',
     left: '50%',
     bottom: 0,
-    transform: 'translate(calc(-50% + ' + x.toFixed(3) + ' * var(--card-w)), calc('
+    transform: 'translate(calc(-50% + ' + swing + ' + ' + x.toFixed(3) + ' * var(--card-w)), calc('
       + y.toFixed(3) + ' * var(--card-w)' + (extraY ? ' + ' + extraY : '') + ')) rotate('
-      + rot + 'deg) scale(' + scale.toFixed(3) + ')',
-    transformOrigin: '18% 118%',
+      + rot + 'deg)' + grow,
+    transformOrigin: '50% 118%',
     filter: shadow,
     zIndex: z,
   };
