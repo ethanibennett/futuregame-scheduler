@@ -1,6 +1,6 @@
 /* ══ Cash sessions (beta, app admins) ═════════════════════════════════════════
    components/CashLive.jsx (Results' Tournaments | Cash strip, the live bar above the nav) and
-   components/CashSessions.jsx (the Cash half of the Results tab).
+   components/CashSessions.jsx (the Cash half of the Results tab: list, detail, forms, live).
 
    Every box is whole g wide and whole r tall. Every line of text is a .cs-t block: a fixed height
    of --h r with its baseline --b r down (padding-top = --b r - 1cap over a cap..baseline trimmed
@@ -10,16 +10,26 @@
    Labels inside buttons and the segmented strips are centred in their box, not seated
    (CLAUDE.md "Pills and buttons").
 
-     strip      Tournaments | Cash: 3r, 17g + 18g, 2r below
-     head       4r: title (+3r) | CSV 5g | Log past 7g | Start 7g, buttons 4r; 2r below
-     live card  35g, 1g inside: line 3r (+2r) · clock 5r (+4r) | In play 8g (+2r, +4r) ·
-                line 3r (+2r) · [fields] · 2r · buttons 5r · 2r; 2r below
-     forms      title 4r (+3r); fields: label 3r (+2r) over a 4r input, two 17g columns
-                (16g in the card); 2r; buttons 5r; 2r below
-     stats      4 x 8g cells, 5r (+2r, +4r), 1r between rows; 2r; By strip 3r (11g 12g 12g);
-                head 3r (+2r); rows 4r (+3r): label | 6g | 8g | 7g; 2r below
-     list       title 4r (+3r); rows 7r: date · game (+3r) | net 10g, room · length · money
-                (+6r) | per hour; open: extra 3r (+2r), 1r, buttons 5r, 2r
+   Phone (35g between the rails); desktop keeps the same fixed columns and lets the 1fr ones grow.
+     strip      Tournaments | Cash: 3r, 2r below
+     head       4r: [‹ Sessions 9g] title (+3r) [buttons 4r: CSV 5g, Add 5g, Start 6g | Edit 6g,
+                Delete 7g]; 2r below
+     tabs       Sessions | Stats 3r, 2r below
+     live row   5r card: text 3r (+2r) 1r down | Open 6g x 3r; 2r below
+     summary    3r (+2r) label | 17g; 5r (+4r) net | 17g per hour; 1r; chart 12r
+     month      2r above; 5r (+4r): name | 17g net · hours · count; hairline
+     row        11g | 1g | rest: net 5r (+4r) / what 5r (+4r); per hour 3r (+2r) / when 3r (+2r);
+                [note 3r (+2r)]; 1r below; hairline. 9r, or 12r with a note
+     stats      2 x 17g columns of 4r (+3r) rows: label | 8g value; 2r; By strip 3r (11g 12g
+                12g); head 3r (+2r); rows 4r (+3r): label | 6g | 8g | 7g
+     detail     6r (+5r) net | 12g per hour; 4r (+3r) what; 3r (+2r) when; [5r (+4r) title,
+                chart 10r]; 2r; rows 4r (+3r) label | 20g; 5r (+4r) Notes; notes at 3r a line
+                (+2r first, 2r after the last); [confirm]
+     forms      fields in two 17g columns: label 3r (+2r) over a 4r input, 6r when big, an 8r
+                textarea for notes; 2r; foot 4r: More 13g | net (+3r); 2r; buttons 5r; 2r below
+     live       what 3r (+2r); clock 8r (+7r); started 3r (+2r); 2r; tiles 3 x 11g x 7r (label
+                +2r, value +6r); 2r; chart 12r; 2r; label 3r + 6r input | 11g button; 2r;
+                buttons 5r; [3r; title 5r (+4r); updates 4r (+3r): 8g | amount | 9g | 3g]; 2r
      bar        5r over the nav: text 3r (+2r) 1r down | Open 6g x 3r                         */
 
 .cs-t {
@@ -38,12 +48,21 @@
 .cs-view .is-pos, .cs-bar .is-pos { color: var(--pos); }
 .cs-view .is-neg, .cs-bar .is-neg { color: var(--neg); }
 .cs-dot { color: var(--neg); }
+.cs-r { text-align: right; }
 
 /* ── Results: Tournaments | Cash ── (the Cash tab's Live | Heatmaps strip). Two classes: styles.css loads
    after this file and its .live-update-tabs / .cash-mode-tabs would otherwise win. */
 .live-update-tabs.results-kind-tabs { margin: 0 0 calc(var(--subrow) * 2); }
+.live-update-tabs.cs-tabs { margin: 0 0 calc(var(--subrow) * 2); }
 
 .cs-view { display: flex; flex-direction: column; }
+/* Room to scroll the last row clear of the nav. App.jsx gives each tab panel height: 100%, so a
+   view taller than the content area overflows the PANEL, and .content-area's padding-bottom (which
+   is there to clear the nav) lands after the panel, not after the view: without this the last
+   ~6r of a long list can only be scrolled to behind the nav (measured: 15px of scroll for 10r of
+   overflow on a session's page). Every tab has that; this covers the Cash half. */
+.cs-view::after { content: ''; flex: 0 0 auto; height: calc(var(--nav-h) + var(--subrow) * 2); }
+.app-shell.is-desktop .cs-view::after { height: calc(var(--subrow) * 2); }
 
 /* ── Buttons ── */
 .cs-btn {
@@ -74,11 +93,19 @@
   text-overflow: ellipsis;
   text-align: center;
 }
+.cs-btn > span > svg {
+  display: block;
+  width: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 2);
+  margin: 0 auto;
+  stroke-width: var(--bw-1);
+}
 .cs-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
 .cs-btn--danger { background: none; color: var(--danger); box-shadow: inset 0 0 0 var(--bw-1) var(--danger); }
 .cs-btn:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
 .cs-btn:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
 .cs-actions { display: flex; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
+.cs-actions-net { --h: 5; --b: 3; flex: 1 1 auto; text-align: right; font-size: var(--fs-md); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); }
 
 /* ── Head ── */
 .cs-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 4); margin-bottom: calc(var(--subrow) * 2); }
@@ -90,30 +117,61 @@
   font-size: var(--fs-lg);
   color: var(--text);
 }
-
-/* ── Forms ── */
-.cs-form { display: flex; flex-direction: column; height: calc(var(--subrow) * (11 + 7 * var(--rows, 0))); margin-bottom: calc(var(--subrow) * 2); }
-.cs-form-title {
-  --h: 4; --b: 3;
+.cs-sec-title {
+  --h: 5; --b: 4;
   font-family: var(--font-condensed);
   font-weight: var(--fw-bold);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   color: var(--text);
 }
-/* Heights stated, not summed: WebKit truncates every box to 1/64 px, so nine stacked 7r rows
-   come out 0.15px short and everything under them drifts off its line. One stated height is one
-   truncation. --rows (field rows; a wide field is a row of its own) is set on the form or card by
-   the component and states their heights too. */
+.cs-note { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ── Charts ── (an SVG in a whole-r box; the viewBox is stretched to it, strokes stay their width) */
+.cs-chart { position: relative; height: calc(var(--subrow) * var(--ch, 12)); }
+.cs-chart > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.cs-chart-zero { stroke: var(--border); stroke-width: var(--bw-hair); stroke-dasharray: var(--subrow) calc(var(--subrow) * 0.5); }
+/* Above zero in the win colour, below it in the loss colour (each drawn clipped to its side). */
+.cs-chart-line { fill: none; stroke-width: var(--bw-2); stroke-linejoin: round; stroke-linecap: round; }
+.cs-chart-line.is-pos { stroke: var(--pos); }
+.cs-chart-line.is-neg { stroke: var(--neg); }
+.cs-chart-area { stroke: none; }
+.cs-chart-area.is-pos { fill: var(--pos-quiet); }
+.cs-chart-area.is-neg { fill: var(--neg-quiet); }
+.cs-chart--sum { margin-top: var(--subrow); }
+.cs-chart--live, .cs-chart--detail {
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+/* Stated sizes: an absolutely placed svg with auto width/height takes the viewBox's aspect ratio
+   rather than stretching to its insets. */
+.cs-chart--live > svg, .cs-chart--detail > svg {
+  top: var(--subrow); left: var(--gu);
+  width: calc(100% - var(--gu) * 2); height: calc(100% - var(--subrow) * 2);
+}
+.cs-chart--live { margin-top: calc(var(--subrow) * 2); }
+.cs-chart--detail { --ch: 10; }
+.cs-chart-empty {
+  --h: 12; --b: 7;
+  position: absolute; top: 0; left: 0; right: 0;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* ── Forms ── */
+.cs-form { display: flex; flex-direction: column; }
 .cs-fields {
-  height: calc(var(--subrow) * 7 * var(--rows, 1));
   display: grid;
-  grid-template-columns: repeat(2, calc(var(--gu) * var(--cs-col, 17)));
+  grid-template-columns: repeat(2, calc(var(--gu) * 17));
   column-gap: var(--gu);
 }
-.cs-field { display: grid; grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 4); height: calc(var(--subrow) * 7); min-width: 0; }
+.cs-field { display: grid; grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 4); min-width: 0; }
 .cs-field.is-wide { grid-column: 1 / -1; }
+.cs-field.is-big { grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 6); }
+.cs-field.is-note { grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 8); }
 .cs-field-label { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
-.cs-field input, .cs-field select {
+.cs-field input, .cs-field select, .cs-field textarea, .cs-entry input {
   -webkit-appearance: none; appearance: none;
   display: block;
   width: 100%;
@@ -131,9 +189,28 @@
   font-size: var(--fs-sm);
   line-height: calc(var(--subrow) * 4);
 }
-.cs-field input:focus-visible, .cs-field select:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
-.cs-field input::-webkit-inner-spin-button, .cs-field input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.cs-field input[type="number"] { -moz-appearance: textfield; }
+/* Money is the point of the form: big figures in the condensed bold face. */
+.cs-field.is-big input, .cs-entry input {
+  height: calc(var(--subrow) * 6);
+  line-height: calc(var(--subrow) * 6);
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xl);
+  font-variant-numeric: var(--num-tabular);
+}
+.cs-field textarea {
+  height: calc(var(--subrow) * 8);
+  padding: var(--subrow) var(--gu);
+  line-height: calc(var(--subrow) * 3);
+  resize: none;
+}
+.cs-field input::placeholder, .cs-field textarea::placeholder, .cs-entry input::placeholder { color: var(--text-muted); opacity: var(--state-disabled); }
+.cs-field input:focus-visible, .cs-field select:focus-visible, .cs-field textarea:focus-visible, .cs-entry input:focus-visible {
+  outline: none; box-shadow: var(--focus-ring-inset);
+}
+.cs-field input::-webkit-inner-spin-button, .cs-field input::-webkit-outer-spin-button,
+.cs-entry input::-webkit-inner-spin-button, .cs-entry input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.cs-field input[type="number"], .cs-entry input[type="number"] { -moz-appearance: textfield; }
 .cs-field input::-webkit-date-and-time-value { text-align: left; }
 .cs-field input::-webkit-calendar-picker-indicator { opacity: var(--state-disabled); }
 .cs-field select {
@@ -143,63 +220,167 @@
   background-position: right var(--gu) center;
   background-size: var(--gu) auto;
 }
+.cs-form-foot {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 13) minmax(0, 1fr);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 4);
+  margin-top: calc(var(--subrow) * 2);
+}
+.cs-form-net {
+  --h: 4; --b: 3;
+  grid-column: 2;
+  text-align: right;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text-muted);
+}
 
-/* ── The running session ── */
-.cs-live {
-  --cs-col: 16;
+/* ── The running session in the list ── (the live bar's geometry, as a card) */
+.cs-liverow {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gu);
+  height: calc(var(--subrow) * 5);
   box-sizing: border-box;
-  height: calc(var(--subrow) * (20 + 7 * var(--rows, 0)));
-  padding: 0 var(--gu) calc(var(--subrow) * 2);
+  padding: var(--subrow) var(--gu) 0;
   margin-bottom: calc(var(--subrow) * 2);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
 }
-.cs-live-top { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
-.cs-live-main { display: grid; grid-template-columns: minmax(0, 1fr) var(--col); column-gap: var(--gu); height: calc(var(--subrow) * 5); }
+
+/* ── The running session, focused ── */
+/* The focused screens (live, one session, the forms) keep the phone's 35g column on a desktop pane
+   too: a label 60g from its value, or three 11g tiles over an 86g graph, reads as scattered. The
+   list and Stats use the whole pane. */
+.cs-view.is-focus { max-width: calc(var(--gu) * 35); }
+.cs-livescreen { display: flex; flex-direction: column; }
+.cs-live-what { --h: 3; --b: 2; font-size: var(--fs-sm); color: var(--text-muted); text-align: center; }
 .cs-live-clock {
-  --h: 5; --b: 4;
+  --h: 8; --b: 7;
   font-family: var(--font-condensed);
   font-weight: var(--fw-bold);
-  font-size: var(--fs-3xl);
+  font-size: var(--fs-hero);
   font-variant-numeric: var(--num-tabular);
   color: var(--text);
+  text-align: center;
 }
-.cs-live-inplay { display: flex; flex-direction: column; text-align: right; }
-.cs-live-inplay .cs-cell-value { --h: 3; }
-.cs-live-sub { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
-
-/* ── Stats ── */
-.cs-stats { display: flex; flex-direction: column; margin-bottom: calc(var(--subrow) * 2); }
-.cs-grid {
-  height: calc(var(--subrow) * 11);
+.cs-live-sub { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); text-align: center; }
+.cs-tiles {
   display: grid;
-  grid-template-columns: repeat(4, var(--col));
+  grid-template-columns: repeat(3, calc(var(--gu) * 11));
   column-gap: var(--gu);
-  row-gap: var(--subrow);
+  margin-top: calc(var(--subrow) * 2);
 }
-.cs-cell {
+.cs-tile {
   display: flex;
   flex-direction: column;
-  width: var(--col);
-  height: calc(var(--subrow) * 5);
+  height: calc(var(--subrow) * 7);
   box-sizing: border-box;
   padding: 0 var(--gu);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
 }
-.cs-cell-label { --h: 2; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
-.cs-cell-value {
-  --h: 2; --b: 2;
-  font-size: var(--fs-sm);
+.cs-tile-label { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-tile-value {
+  --h: 4; --b: 3;
+  font-family: var(--font-condensed);
   font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
   font-variant-numeric: var(--num-tabular);
   color: var(--text);
 }
-.cs-note { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-entry-block { display: flex; flex-direction: column; margin-top: calc(var(--subrow) * 2); }
+.cs-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 11);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 6);
+}
+.cs-end { margin-top: calc(var(--subrow) * 2); }
+.cs-upds { display: flex; flex-direction: column; margin-top: calc(var(--subrow) * 3); }
+.cs-upd {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 8) minmax(0, 1fr) calc(var(--gu) * 9) calc(var(--gu) * 3);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.cs-upd > .cs-t { --h: 4; --b: 3; font-size: var(--fs-sm); color: var(--text); font-variant-numeric: var(--num-tabular); }
+.cs-upd > .cs-t:first-child { color: var(--text-muted); }
+.cs-upd-amt { text-align: right; font-weight: var(--fw-bold); }
+.cs-upd .cs-btn { background: none; box-shadow: none; color: var(--text-muted); }
+
+/* ── Summary: net, per hour, the cumulative graph ── */
+.cs-sum { display: flex; flex-direction: column; }
+.cs-sum-line, .cs-sum-main, .cs-month {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 17);
+  column-gap: var(--gu);
+}
+.cs-sum-line { height: calc(var(--subrow) * 3); }
+.cs-sum-label { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+.cs-sum-main { height: calc(var(--subrow) * 5); }
+.cs-sum-net {
+  --h: 5; --b: 4;
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-2xl);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
+}
+.cs-sum-rate { --h: 5; --b: 4; font-size: var(--fs-md); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); color: var(--text); }
+
+/* ── Sessions, month by month ── */
+.cs-list { display: flex; flex-direction: column; }
+.cs-month {
+  height: calc(var(--subrow) * 5);
+  margin-top: calc(var(--subrow) * 2);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.cs-month-name { --h: 5; --b: 4; font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-md); color: var(--text); }
+.cs-month-sum { --h: 5; --b: 4; text-align: right; font-size: var(--fs-xs); color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
+.cs-month-sum > span { font-weight: var(--fw-bold); }
+.cs-row {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 11) minmax(0, 1fr);
+  grid-template-rows: calc(var(--subrow) * 5) calc(var(--subrow) * 3);
+  column-gap: var(--gu);
+  padding-bottom: var(--subrow);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+  cursor: pointer;
+}
+.cs-row.has-note { grid-template-rows: calc(var(--subrow) * 5) calc(var(--subrow) * 3) calc(var(--subrow) * 3); }
+.cs-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) { .cs-row:hover { background: var(--state-hover); } }
+.cs-row-net {
+  --h: 5; --b: 4;
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xl);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
+}
+.cs-row-what { --h: 5; --b: 4; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); }
+.cs-row-rate, .cs-row-when { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
+.cs-row-note { --h: 3; --b: 2; grid-column: 2; font-size: var(--fs-xs); font-style: oblique; color: var(--text); }
+
+/* ── Label-left, value-right rows (stats in two columns, a session's fields in one) ── */
+.cs-stats { display: flex; flex-direction: column; }
+.cs-kv2 { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
+.cs-kv1 { display: flex; flex-direction: column; margin-top: calc(var(--subrow) * 2); --kv-v: calc(var(--gu) * 20); }
+.cs-kv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--kv-v, calc(var(--gu) * 8));
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+}
+.cs-kv-label { --h: 4; --b: 3; font-size: var(--fs-sm); color: var(--text-muted); }
+.cs-kv-value { --h: 4; --b: 3; text-align: right; font-size: var(--fs-sm); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); color: var(--text); }
 .cash-mode-tabs.cs-seg {
   width: calc(var(--gu) * 35);
   grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 12) calc(var(--gu) * 12);
@@ -221,26 +402,35 @@
 .cs-brow--head { height: calc(var(--subrow) * 3); }
 .cs-brow--head > .cs-t { --h: 3; --b: 2; color: var(--text-muted); }
 
-/* ── Sessions ── */
-.cs-list { display: flex; flex-direction: column; }
-.cs-row { box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
-.cs-row-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 10);
-  grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 3);
-  column-gap: var(--gu);
-  height: calc(var(--subrow) * 7);
-  cursor: pointer;
+/* ── One session ── */
+.cs-detail { display: flex; flex-direction: column; }
+.cs-hero { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 12); column-gap: var(--gu); height: calc(var(--subrow) * 6); }
+.cs-hero-net {
+  --h: 6; --b: 5;
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-3xl);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
 }
-.cs-row-main:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
-.cs-row-what, .cs-row-net { --h: 4; --b: 3; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text); }
-.cs-row.is-open .cs-row-what { color: var(--brand); }
-.cs-row-sub, .cs-row-rate { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
-.cs-row-net, .cs-row-rate { text-align: right; font-variant-numeric: var(--num-tabular); }
-.cs-row-more { padding-bottom: calc(var(--subrow) * 2); }
-.cs-row-more .cs-actions { margin-top: var(--subrow); }
-.cs-row-extra { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text); }
-.cs-confirm { padding-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border); }
+.cs-hero-rate { --h: 6; --b: 5; font-size: var(--fs-md); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); color: var(--text); }
+.cs-detail-what { --h: 4; --b: 3; font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text); }
+.cs-detail-when { --h: 3; --b: 2; font-size: var(--fs-xs); color: var(--text-muted); }
+/* Notes wrap: 3r a line, the first baseline 2r down and 2r under the last, so the block is whole r
+   at any length (trimmed to cap..baseline, padding + (lines - 1) x 3r + padding). */
+.cs-notes {
+  display: block;
+  margin: 0;
+  padding: calc(var(--subrow) * 2 - 1cap) 0 calc(var(--subrow) * 2);
+  font-size: var(--fs-sm);
+  line-height: calc(var(--subrow) * 3);
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-box-trim: trim-both; text-box-edge: cap alphabetic;
+}
+.cs-notes.is-empty { color: var(--text-muted); }
+.cs-confirm { display: flex; flex-direction: column; }
 .cs-confirm .cs-actions { margin-top: var(--subrow); }
 
 /* ── The live bar over the nav ── (the Hands tool row's geometry; on desktop, where no nav sits

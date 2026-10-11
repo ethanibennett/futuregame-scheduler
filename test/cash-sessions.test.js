@@ -68,6 +68,7 @@ async function down(child) {
 
   const pw = 'cash-sessions-test-password';
   let child = boot(env);
+  let deletedLiveId = null; // read back from the saved DB once the server has stopped
   try {
     await up(child);
     for (const u of ['alicex', 'bobx', 'normal']) {
@@ -109,6 +110,9 @@ async function down(child) {
         assert.strictEqual((await get(`${S}/export.csv`, h)).status, 403);
         assert.strictEqual((await post(S, h, past())).status, 403);
         assert.strictEqual((await post(`${S}/start`, h, { buyIn: 100 })).status, 403);
+        assert.strictEqual((await get(`${S}/1`, h)).status, 403);
+        assert.strictEqual((await post(`${S}/1/stack`, h, { amount: 100 })).status, 403);
+        assert.strictEqual((await del(`${S}/1/stacks/1`, h)).status, 403);
       }
     });
     await test('the /api/cash watcher proxy does not swallow /api/cash-sessions', async () => {
@@ -205,6 +209,55 @@ async function down(child) {
       assert.strictEqual(r.status, 200);
       assert.deepStrictEqual([r.json.session.buy_in, r.json.session.rebuys], [800, 2]);
     });
+
+    // ── stack updates ──
+    let stackA;
+    await test('stack: validates the amount and the time', async () => {
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, A, {})).status, 400);
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, A, { amount: -1 })).status, 400);
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, A, { amount: 'lots' })).status, 400);
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, A, { amount: 100, at: '2020-01-01T00:00:00Z' })).status, 400);
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, A, { amount: 100, at: '2099-01-01T00:00:00Z' })).status, 400);
+    });
+    await test('stack: 201, each update keeps the buy-in at that moment (result = amount - invested)', async () => {
+      const r1 = await post(`${S}/${live.id}/stack`, A, { amount: 650 });
+      assert.strictEqual(r1.status, 201, r1.body);
+      assert.deepStrictEqual(r1.json.stacks.map((x) => [x.amount, x.invested, x.result]), [[650, 800, -150]]);
+      stackA = r1.json.stacks[0].id;
+      await post(`${S}/${live.id}/rebuy`, A, { amount: 100 });
+      const r2 = await post(`${S}/${live.id}/stack`, A, { amount: 1300 });
+      assert.deepStrictEqual(r2.json.stacks.map((x) => [x.amount, x.invested, x.result]), [[650, 800, -150], [1300, 900, 400]]);
+      assert.strictEqual(r2.json.session.buy_in, 900);
+    });
+    await test('stack: /live, a rebuy and GET /:id carry the updates, oldest first', async () => {
+      const lv = (await get(`${S}/live`, A)).json;
+      assert.deepStrictEqual(lv.stacks.map((x) => x.amount), [650, 1300]);
+      const one = await get(`${S}/${live.id}`, A);
+      assert.strictEqual(one.status, 200);
+      assert.deepStrictEqual([one.json.session.id, one.json.stacks.length], [live.id, 2]);
+      assert.strictEqual((await get(`${S}/999999`, A)).status, 404);
+    });
+    await test('stack: isolation — B cannot read, add to or delete A\'s updates (404)', async () => {
+      assert.strictEqual((await get(`${S}/${live.id}`, B)).status, 404);
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, B, { amount: 1 })).status, 404);
+      assert.strictEqual((await del(`${S}/${live.id}/stacks/${stackA}`, B)).status, 404);
+      assert.strictEqual((await get(`${S}/${live.id}`, A)).json.stacks.length, 2);
+    });
+    await test('stack: delete one; a stack id from another session is a 404', async () => {
+      assert.strictEqual((await del(`${S}/${s1.id}/stacks/${stackA}`, A)).status, 404);
+      const r = await del(`${S}/${live.id}/stacks/${stackA}`, A);
+      assert.strictEqual(r.status, 200, r.body);
+      assert.deepStrictEqual(r.json.stacks.map((x) => x.amount), [1300]);
+      assert.strictEqual((await del(`${S}/${live.id}/stacks/${stackA}`, A)).status, 404);
+      // back to two for the rest of the run, the second being the newer one
+      await post(`${S}/${live.id}/stack`, A, { amount: 700 });
+    });
+    await test('stack: a live session\'s rebuy keeps going: buy-in back to 800 for the tests below', async () => {
+      // The rebuy test above fixed the live buy-in at 800 with 2 rebuys; the extra 100 is edited away.
+      const r = await put(`${S}/${live.id}`, A, { buyIn: 800, rebuys: 2 });
+      assert.strictEqual(r.status, 200, r.body);
+      assert.deepStrictEqual([r.json.session.buy_in, r.json.session.rebuys], [800, 2]);
+    });
     await test('live: PUT cannot end it (use /end), but can fix its details', async () => {
       assert.strictEqual((await put(`${S}/${live.id}`, A, { cashOut: 10 })).status, 400);
       const r = await put(`${S}/${live.id}`, A, { room: 'Live! Casino Philadelphia', tags: ['tired'] });
@@ -225,6 +278,11 @@ async function down(child) {
       assert.strictEqual((await post(`${S}/${live.id}/end`, A, { cashOut: 5 })).status, 409);
       assert.strictEqual((await post(`${S}/${live.id}/rebuy`, A, { amount: 5 })).status, 409);
       assert.strictEqual((await get(`${S}/live`, A)).json.session, null);
+    });
+    await test('stack: an ended session takes no more updates (409) but keeps its record', async () => {
+      assert.strictEqual((await post(`${S}/${live.id}/stack`, A, { amount: 5 })).status, 409);
+      assert.deepStrictEqual((await get(`${S}/${live.id}`, A)).json.stacks.map((x) => x.amount), [1300, 700]);
+      assert.deepStrictEqual((await get(`${S}/live`, A)).json.stacks, []);
     });
 
     // ── isolation ──
@@ -304,7 +362,21 @@ async function down(child) {
       assert.strictEqual((await del(`${S}/${s1.id}`, A)).status, 404);
       assert.ok(!(await get(S, A)).json.sessions.some((s) => s.id === s1.id));
     });
+    await test('delete: a session\'s stack updates go with it', async () => {
+      assert.strictEqual((await del(`${S}/${live.id}`, A)).status, 200);
+      assert.strictEqual((await get(`${S}/${live.id}`, A)).status, 404);
+      deletedLiveId = live.id;
+    });
   } finally { await down(child); }
+
+  await test('delete: no stack row is left for the deleted session (read from the saved DB)', async () => {
+    assert.ok(deletedLiveId);
+    const after = new SQL.Database(fs.readFileSync(dbPath));
+    try {
+      const n = after.exec('SELECT COUNT(*) FROM cash_session_stacks WHERE session_id = ?', [deletedLiveId])[0].values[0][0];
+      assert.strictEqual(n, 0);
+    } finally { after.close(); }
+  });
 
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(`\n${passed} passed, ${failed} failed`);

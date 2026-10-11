@@ -83,7 +83,7 @@ const CONTROLS = [
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row'];
+const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -460,22 +460,27 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     });
     await p.waitForTimeout(500);
   }, 2);
-  // Results > Cash (cash sessions beta): the strip, head, live card, stats and list; then the log
-  // form and the live card's cash-out panel; then the live-session bar over the nav (only drawn
-  // while the account has a session running).
-  const cashHalf = async () => {
+  // Results > Cash (cash sessions beta), screen by screen: the running session (it opens by itself
+  // while one runs) with its rebuy and cash-out panels; the list (Sessions | Stats, the live row,
+  // month headers, rows); Stats; a session's page; the add form with More open (the start form has
+  // the same fields and is only reachable with no session running); then the live-session bar over the nav (only drawn while the account has a session running).
+  const cashHalf = async (...steps) => {
     await menu('Results & Tracking', 'Results');
     await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000, force: overlay });
     await p.waitForTimeout(1500);
+    for (const sel of steps) {
+      await p.locator(sel).first().click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(700);
+    }
   };
-  await step('cash-sessions', cashHalf, 2);
-  await step('cash-sessions-forms', async () => {
-    await cashHalf();
-    await p.locator('.cs-head button:has-text("Log past")').first().click({ timeout: 4000, force: overlay });
-    await p.locator('.cs-live button:has-text("Cash out")').first().click({ timeout: 1000, force: overlay }).catch(() => {});
-    await p.locator('.cs-row-main').first().click({ timeout: 1000, force: overlay }).catch(() => {});
-    await p.waitForTimeout(600);
-  }, 3);
+  const csBack = '.cs-head button:has-text("Sessions")';
+  await step('cash-sessions-live', () => cashHalf(), 2);
+  await step('cash-sessions-live-rebuy', () => cashHalf('.cs-livescreen button:has-text("Rebuy")'), 1);
+  await step('cash-sessions-live-end', () => cashHalf('.cs-livescreen button:has-text("Cash out")'), 2);
+  await step('cash-sessions', () => cashHalf(csBack), 2);
+  await step('cash-sessions-stats', () => cashHalf(csBack, '.cs-tabs button:has-text("Stats")'), 1);
+  await step('cash-sessions-detail', () => cashHalf(csBack, '.cs-row'), 2);
+  await step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
   await step('cash-bar', async () => {
     await cashHalf();
     await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000, force: overlay });

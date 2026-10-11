@@ -3,22 +3,29 @@
 // in one updates the other at once. The session lives on the server (GET /api/cash-sessions/live),
 // which is what makes the running clock survive a reload, a closed app, or a second device; this
 // store only mirrors it, re-reading on mount, when the app comes back to the foreground, and every
-// few minutes.
+// few minutes. It also holds the session's stack updates (`stacks`, oldest first), which /live,
+// /rebuy and /stack all return, so the live screen's swing graph is the same on every device.
 //
 // Also here: which half of the Results tab is showing (Tournaments | Cash), so the bar can open
 // the Cash half and hide itself while that half — which shows the full live card — is on screen.
 import { useEffect, useSyncExternalStore } from 'react';
 import { API_URL } from '../utils/api.js';
 
-let state = { session: null, skew: 0, loaded: false };
+let state = { session: null, stacks: [], skew: 0, loaded: false };
 const subs = new Set();
 const emit = () => { for (const f of subs) f(); };
 const subscribe = (f) => { subs.add(f); return () => subs.delete(f); };
 
-/** Put a session the server just returned (or null) into the store. serverNow: the response's `now`. */
-export function setLiveSession(session, serverNow) {
+/**
+ * Put a session the server just returned (or null) into the store. serverNow: the response's `now`.
+ * stacks: its stack updates, when the response carried them; omitted, the ones already held for the
+ * same session are kept (a different session starts with none).
+ */
+export function setLiveSession(session, serverNow, stacks) {
   const skew = serverNow ? Date.parse(serverNow) - Date.now() : state.skew;
-  state = { session: session && session.live ? session : null, skew: Number.isFinite(skew) ? skew : 0, loaded: true };
+  const next = session && session.live ? session : null;
+  const keep = next && state.session && state.session.id === next.id ? state.stacks : [];
+  state = { session: next, stacks: next ? (Array.isArray(stacks) ? stacks : keep) : [], skew: Number.isFinite(skew) ? skew : 0, loaded: true };
   emit();
 }
 
@@ -28,7 +35,7 @@ export async function refreshLiveSession(token) {
     const res = await fetch(`${API_URL}/cash-sessions/live`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return;
     const data = await res.json();
-    setLiveSession(data.session, data.now);
+    setLiveSession(data.session, data.now, data.stacks);
   } catch { /* offline: keep what we had */ }
 }
 
@@ -49,7 +56,7 @@ export default function useLiveCashSession({ enabled, token }) {
     }
     return () => { pollers -= 1; if (pollers === 0 && stopPolling) { stopPolling(); stopPolling = null; } };
   }, [enabled, token]);
-  return enabled ? snap : { session: null, skew: 0, loaded: false };
+  return enabled ? snap : { session: null, stacks: [], skew: 0, loaded: false };
 }
 
 // ── Results tab half: 'tournaments' | 'cash' ──

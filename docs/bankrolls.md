@@ -225,8 +225,18 @@ and the live bar). Tests: `npm run test:cash-sessions`.
 | `cash_sessions` | id, user_id, bankroll_id (NULL = Main), started_at / ended_at (ISO; ended_at NULL = **live**), session_date (the player's LOCAL day it started — tax years), room, venue_slug (the cash watcher's, when picked from its rooms), game, stakes (normalised: `$2/$5`, `2-5` → `2/5`), buy_in (TOTAL, rebuys included), rebuys (count), cash_out, tips, expenses, currency (defaults to the bankroll's), notes, tags (JSON array) |
 |---|---|
 
+| `cash_session_stacks` (migration `cash-session-stacks-2026-10`) | id, session_id, user_id, at (ISO), amount (the chips in front of the player, whole units), invested (the session's buy_in when it was recorded), created_at |
+|---|---|
+
 `net = cash_out - buy_in - tips - expenses`. A live session counts nowhere (stats, ledger) until it is
 ended. At most one live session per user (409).
+
+**Stack updates** are a record of how a session went, not money: nothing in stats or the ledger reads
+them. Each row keeps `invested` so `amount - invested` is where the session stood at that moment, and a
+later rebuy does not rewrite earlier points. The swing graph (`swingSeries()` in
+`vite-app/src/utils/cash-sessions.js`) runs 0 at the start → each update → `cash_out - buy_in` at the
+end. Updates can only be added while the session is live (409 after), and are removed one at a time or
+with their session; account deletion covers the table. At most 500 per session.
 
 Routes, `/api/cash-sessions` (not `/api/cash/…`, which is the cash-watcher proxy), admin-only, every
 query scoped to `req.user.id` (another user's id is a 404):
@@ -234,18 +244,47 @@ query scoped to `req.user.id` (another user's id is a 404):
 | method | path | |
 |---|---|---|
 | GET | `/api/cash-sessions` | `?bankroll=&from=&to=` → `{ sessions, games }`, newest first |
-| GET | `/api/cash-sessions/live` | `{ session \| null, now }` |
-| GET | `/api/cash-sessions/stats` | `?bankroll=&from=&to=&currency=` → net, hours, hourly, wins/losses, biggest win/loss, average length, `byStakes` / `byGame` / `byRoom`; mixed currencies converted at the server's cached rates |
+| GET | `/api/cash-sessions/live` | `{ session \| null, stacks, now }` |
+| GET | `/api/cash-sessions/stats` | `?bankroll=&from=&to=&currency=` → net, hours, hourly, wins/losses, biggest win/loss, average length, `byStakes` / `byGame` / `byRoom`, `byMonth` (per `YYYY-MM`, newest first: the list's month headers) and `series` (`[{ id, date, net, cum }]`, oldest first: the cumulative graph); mixed currencies converted at the server's cached rates |
+| GET | `/api/cash-sessions/:id` | `{ session, stacks }` (stack updates oldest first) |
+| POST | `/api/cash-sessions/:id/stack` | `{ amount ≥ 0, at? }` (default now, not before the start), live only → 201 `{ session, stacks }` |
+| DELETE | `/api/cash-sessions/:id/stacks/:stackId` | → `{ session, stacks }` |
 | GET | `/api/cash-sessions/export.csv` | `?bankroll=&from=&to=` |
 | POST | `/api/cash-sessions` | log a finished session `{ startedAt, endedAt, date?, buyIn, rebuys?, cashOut, tips?, expenses?, room?, venueSlug?, game?, stakes?, bankroll?, currency?, notes?, tags? }` |
 | POST | `/api/cash-sessions/start` | `{ buyIn, room?, venueSlug?, game?, stakes?, bankroll?, date?, … }` → live |
-| POST | `/api/cash-sessions/:id/rebuy` | `{ amount }`, live only |
+| POST | `/api/cash-sessions/:id/rebuy` | `{ amount }`, live only → `{ session, stacks }` |
 | POST | `/api/cash-sessions/:id/end` | `{ cashOut, tips?, expenses?, endedAt?, notes? }`, live only |
-| PUT / DELETE | `/api/cash-sessions/:id` | edit (a live session keeps its end and cash-out for `/end`) / delete |
+| PUT / DELETE | `/api/cash-sessions/:id` | edit (a live session keeps its end and cash-out for `/end`) / delete (its stack updates with it) |
 
 The bankroll ledger reads ended sessions through `lib/ledger-sources/cash-sessions.js`. A bankroll
 with cash sessions cannot be deleted (409, `cash_sessions` count in the body). The switcher's balances (the server ledger's `/summary`)
 include ended sessions; a live one counts nowhere until it ends.
+
+**The Cash view** (2026-10-11, modelled on how Poker Bankroll Tracker structures a tracker — its
+structure and density, in this app's own type, colours and grid). One screen at a time, all in
+`CashSessions.jsx`:
+
+| screen | what it is | the pattern it borrows |
+|---|---|---|
+| list › Sessions | net and per hour over a cumulative graph (x = session, from `stats.series`); then every session grouped by month, the header carrying the month's net, hours and count (`stats.byMonth`, already converted to one currency); each 9r row LEADS with the big signed, coloured result, then game · room, date · start · length, per hour, and a line of the notes (12r) | the chip graph front and centre; a session list scanned by its profit |
+| list › Stats | label-left / value-right rows in two 17g columns (net, per hour, hours, sessions, won-lost with %, average length, per session, best, worst, bought in, cashed out, tips and costs), then the stakes / game / room table | stats as plain rows |
+| a session | result and per hour, what and when, the in-session stack graph (when it had updates), every field as a row, the notes in full; Edit and Delete in the head | session notes, the detail behind a row |
+| add / edit | buy-in and cash-out as big 6r inputs; date, start, and the length by end time OR hours (typing either fills the other); room; game and stakes; notes. The LAST session's room, game, stakes, start/end and buy-in are filled in. Rebuys, bankroll, tips, expenses, currency and tags sit behind one button (open by default when editing a session that uses them). A running net and length under the fields | "no unnecessary fields" |
+| start | buy-in and stakes big, room, game, bankroll, the last session's values filled in | |
+| live | opens by itself while a session runs (the list's live row and the bar's Open go there; "‹ Sessions" leaves it): a large clock, In play / Stack / Up-down tiles, the swing graph, a big "Stack now" input with Update, Rebuy, Cash out (cash-out, tips, expenses, notes; ending lands on that session's page), and the list of updates with a remove button each | live tracking with in-session stack updates |
+
+Tournament results are deliberately NOT rows in this list: they are the Results tab's Tournaments half,
+and every total, month header and stat here is cash-only — mixing in tournaments would change what each
+number means. The focused screens (live, a session, the forms) keep a 35g column on a desktop pane; the
+list and Stats use the whole pane. Filters beyond the Results tab's bankroll are the reports work's.
+
+Layout notes: every box is whole g × whole r and every baseline is on an r line (the CSS header of
+`CashSessions.css` lists each screen's rows). Graphs are an SVG stretched over a whole-r box, strokes
+non-scaling; above zero is drawn in the win colour and below it in the loss colour (each side clipped).
+The view ends in a nav-height spacer because App.jsx's tab panels are `height: 100%`: a view taller
+than the content area overflows the panel, and `.content-area`'s padding-bottom then lands after the
+panel, leaving the last rows scrollable only to behind the nav (every tab has this; measured 15px of
+scroll for 10r of overflow).
 
 **The live bar.** While a session runs, `LiveCashBar` (App.jsx, a 5r bar directly above the bottom nav)
 shows its clock and what is in play on every tab, and Open goes to Results › Cash. It hides on that
