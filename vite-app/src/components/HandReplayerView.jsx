@@ -1589,6 +1589,37 @@ function DrawBadge({ history }) {
 const SHOW_ENTRY_MODE_TOGGLES = false;
 const SHOW_ENTRY_NOTES = false;
 
+/* The D on the dealer button, centred on its INK - as an outline, not as text.
+   It was a <span> flex-centred in the disc, which centres the TEXT BOX, and a
+   capital's box is not its ink: the em box runs from ascender to descender, so
+   a D (baseline to cap height, nothing below) sits high in it, by an amount
+   that depends on WHICH ascent and descent the engine reads. Univers Bold
+   carries hhea 724/-276 and win 938/250 with USE_TYPO_METRICS off, so Apple's
+   WebKit and Windows' engines put the same glyph at different heights in the
+   same box. CSS text-box trimming centred it live, but the exporters' DOM clone
+   (modern-screenshot) drops text-box, and the exported D sat 4-7% of the disc
+   low; an SVG <text> placed by its baseline then came out up to 6% of the disc
+   off in the export, where the clone's text snaps on its own grid.
+   So the D is Univers Bold's own outline (univers-bold.woff2, glyph "D", bbox
+   65,0..676,721 in a 1000-unit em), scaled to 62 units of a 100-unit box -
+   0.62 of the disc, a cap height of 45% of its diameter, the 47% it had on a
+   phone - and translated so its ink box is centred on (50, 50) BY
+   CONSTRUCTION: x 31.06..68.94, y 27.65..72.35. No font loads, no metric and
+   no renderer can move it off the disc's centre. fill is currentColor, so the
+   themes' button colours still apply. The two offset copies are the engraving
+   the span's text-shadow drew (a light edge below, a dark one above). */
+const DEALER_D_PATH = 'M31.06 72.35V27.65L45.88 27.71Q55.86 27.71 61.31 31.74Q65.28 34.66 67.11 39.37Q68.94 44.08 68.94 49.35Q68.94 59.08 64.45 64.85Q59.95 70.61 53.07 71.86Q50.4 72.35 45.01 72.35ZM40.79 34.9V64.97Q42.9 65.1 44.58 65.1Q48.23 65.1 50.65 64.51Q53.07 63.92 54.99 62Q59.02 57.97 59.02 49.35Q59.02 44.2 57.04 40.45Q55.05 36.7 50.84 35.52Q47.55 34.59 40.79 34.9Z';
+const DEALER_D_ENGRAVE = 3.5;
+function DealerGlyph() {
+  return (
+    <svg className="replayer-dealer-glyph" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <path d={DEALER_D_PATH} transform={'translate(0 ' + DEALER_D_ENGRAVE + ')'} className="dg-light" />
+      <path d={DEALER_D_PATH} transform={'translate(0 ' + -DEALER_D_ENGRAVE + ')'} className="dg-dark" />
+      <path d={DEALER_D_PATH} className="dg-face" />
+    </svg>
+  );
+}
+
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
 
@@ -7992,7 +8023,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                     text, so nothing outside it can know where its corner is.
                     Three earlier attempts all landed on somebody's name. */}
                 {pi === btnIdx && (
-                  <div className={'replayer-dealer-btn corner-' + btnCorner}><span>D</span></div>
+                  <div className={'replayer-dealer-btn corner-' + btnCorner} role="img" aria-label="Dealer button">
+                    <DealerGlyph />
+                  </div>
                 )}
                 {/* On the plaque's top-right corner, straddling it, which is
                     where the reference puts the draw count. It was a pill
