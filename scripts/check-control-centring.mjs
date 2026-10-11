@@ -4,7 +4,7 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
 // Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
-// the bankroll sheet.
+// the bankroll sheet, the bankroll dashboard and its CSV import step.
 //
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
 //        [--json out.json] [--only "schedule,cash"] [--dump] [--shots dir [--overlay]]
@@ -425,6 +425,27 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await p.locator('.bk-head-btn').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
   }, 0);
+  // The bankroll dashboard (the bankroll strip's Dashboard button): each of its four tabs, and
+  // the CSV import step with a file mapped.
+  const dash = async (tab) => {
+    await menu('Results & Tracking', 'Results');
+    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1500);
+    if (tab) await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
+    await p.waitForTimeout(600);
+  };
+  await step('bankroll-dashboard', () => dash(null), 2);
+  await step('bankroll-rules', () => dash('Rules'), 2);
+  await step('bankroll-goals', () => dash('Goals'), 1);
+  await step('bankroll-import', async () => {
+    await dash('Import');
+    await p.locator('.an-sheet button:has-text("Import CSV")').click({ timeout: 4000 });
+    await p.locator('.an-sheet input[type=file]').setInputFiles({
+      name: 'check.csv', mimeType: 'text/csv',
+      buffer: Buffer.from(['Date,Event,Buy-in,Winnings', '2024-03-02,Check Event,215,0', '2024-03-09,Check Event,215,900', ''].join('\n')),
+    });
+    await p.waitForTimeout(500);
+  }, 2);
 
   // One row per distinct control (same element description + label), worst case kept.
   const key = (c) => c.view.split(' (')[0] + '|' + c.el + '|' + c.text;

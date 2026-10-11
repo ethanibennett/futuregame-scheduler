@@ -5,7 +5,7 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule, and for every text node inside those views measures its glyph box (a Range over the
+// Schedule (and, for an admin, each tab of the bankroll dashboard), and for every text node inside those views measures its glyph box (a Range over the
 // text, which spans ascent to descent) against every ancestor that clips (overflow other than
 // visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px below a clipping
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
@@ -124,6 +124,29 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run('schedule list (scrolled)', '.cal-event-row');
   }
+  // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.
+  // Skipped quietly when the account has no bankroll strip (not an admin).
+  try {
+    await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(3500);
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    if (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'))) {
+      await p.locator('.dk-rail-item:has-text("Results")').first().click({ timeout: 4000 });
+    } else {
+      await p.locator('.username-chip').first().click({ timeout: 4000 });
+      await p.waitForTimeout(400);
+      await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
+    }
+    await p.waitForTimeout(1800);
+    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1800);
+    for (const tab of ['Balance', 'Rules', 'Goals', 'Import']) {
+      await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
+      await p.waitForTimeout(800);
+      await run(`bankroll dashboard ${tab}`, '.an-sheet');
+    }
+  } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
+
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {
     console.log(`CLIPPED TEXT at ${W}x${H}: ${uniq.length}`);

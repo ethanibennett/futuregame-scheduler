@@ -1,7 +1,8 @@
 // Bankrolls (beta, app admins only). Three pieces the Results tab mounts:
 //   BankrollSwitcher  the strip at the top of the tab: one 8g cell per bankroll (All, Main, then
 //                     each active bankroll) with its balance; picking one filters the summary,
-//                     ROI, the curve and the list below it.
+//                     ROI, the curve and the list below it. Its head opens the dashboard
+//                     (BankrollDashboard.jsx) and the manager.
 //   BankrollManager   the sheet behind "Manage" (portalled to document.body): create, rename,
 //                     archive, delete, deposits / withdrawals / transfers, and the ledger.
 //   BankrollPicker    the "Bankroll" field in the log / edit result form.
@@ -17,13 +18,14 @@ const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
 const tone = (v) => (v < 0 ? ' is-neg' : '');
 
 // ── Switcher ────────────────────────────────────────────────────────────────
-export function BankrollSwitcher({ bk, balances, onManage }) {
+export function BankrollSwitcher({ bk, balances, onManage, onDashboard }) {
   const cells = [{ id: BANKROLL_ALL, name: 'All' }, ...bk.visible];
   return (
     <section className="bk-bar" aria-label="Bankroll">
       <div className="bk-head">
         <span className="bk-head-title">Bankroll</span>
         <span className="bk-beta">Beta</span>
+        {onDashboard && <button type="button" className="bk-head-btn" onClick={onDashboard}><span>Dashboard</span></button>}
         <button type="button" className="bk-head-btn" onClick={onManage}><span>Manage</span></button>
       </div>
       <div className="bk-grid" role="radiogroup" aria-label="Show results for">

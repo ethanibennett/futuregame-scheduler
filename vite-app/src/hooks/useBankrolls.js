@@ -1,15 +1,20 @@
-// Bankrolls (beta, app admins): the list, the Results tab's selected bankroll, and the API calls.
+// Bankrolls (beta, app admins): the list, the Results tab's selected bankroll, the server ledger's
+// summary (balances — lib/bankroll-ledger.js), and the API calls.
 // With `enabled` false (every non-admin) it fetches nothing and selects 'all', so the Results tab
 // renders exactly what it rendered before bankrolls existed.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_URL } from '../utils/api.js';
 import { BANKROLL_ALL, toBankrollKey } from '../utils/bankrolls.js';
+import { publishSummary } from './useRollGuide.js';
 
 const STORE_KEY = 'resultsBankroll';
 const readSelected = () => { try { return toBankrollKey(localStorage.getItem(STORE_KEY)); } catch { return BANKROLL_ALL; } };
 
-export default function useBankrolls({ enabled, token }) {
+// `version` is anything that changes when results change (TrackingView passes its entries), so the
+// balances, which the server now computes, are refetched after a result is logged or edited.
+export default function useBankrolls({ enabled, token, version }) {
   const [bankrolls, setBankrolls] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [selected, setSelectedState] = useState(() => (enabled ? readSelected() : BANKROLL_ALL));
 
   const call = useCallback(async (method, path, body) => {
@@ -23,12 +28,28 @@ export default function useBankrolls({ enabled, token }) {
     return data;
   }, [token]);
 
+  const refreshSummary = useCallback(async () => {
+    if (!enabled || !token) return;
+    try {
+      const s = await call('GET', '/summary?currency=USD');
+      setSummary(s);
+      publishSummary(s); // the event cards' "of your roll" reads the same summary
+    } catch (e) { console.error('Fetch bankroll summary:', e); }
+  }, [enabled, token, call]);
+
   const refresh = useCallback(async () => {
     if (!enabled || !token) return;
     try { setBankrolls((await call('GET', '')).bankrolls || []); } catch (e) { console.error('Fetch bankrolls:', e); }
-  }, [enabled, token, call]);
+    await refreshSummary();
+  }, [enabled, token, call, refreshSummary]);
 
   useEffect(() => { refresh(); }, [refresh]);
+  // Results changed: only the balances move, the list does not.
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    refreshSummary();
+  }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!enabled) setSelectedState(BANKROLL_ALL); }, [enabled]);
 
   // A selection that no longer exists (deleted, archived, another account's) falls back to All.
@@ -51,6 +72,8 @@ export default function useBankrolls({ enabled, token }) {
   return {
     enabled: !!enabled,
     bankrolls,
+    summary,
+    call,
     visible,
     selected: effective,
     setSelected,
