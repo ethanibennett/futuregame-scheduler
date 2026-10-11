@@ -5,9 +5,10 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule, and for every text node inside those views measures its glyph box (a Range over the
-// text, which spans ascent to descent) against every ancestor that clips (overflow other than
-// visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px below a clipping
+// Schedule, then Results > Cash (cash sessions, forms, the live bar), and for every text node
+// inside those views measures its glyph box (a Range over the text, which spans ascent to
+// descent) against every ancestor that clips (overflow other than visible, or overflow-y clip).
+// A glyph box that ends more than 0.5 CSS px below a clipping
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';
@@ -123,6 +124,35 @@ function scan(rootSel) {
     await p.mouse.wheel(0, H * 0.8);
     await p.waitForTimeout(500);
     await run('schedule list (scrolled)', '.cal-event-row');
+  }
+  // Results > Cash (cash sessions beta): the strip, head, live card, stats, rows; the log form and
+  // the live card's cash-out panel; and the live-session bar over the nav on another tab.
+  const CASH = '.results-kind-tabs, .cs-view, .cs-bar';
+  try {
+    if (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'))) {
+      await p.locator('.dk-rail-item:has-text("Results")').first().click({ timeout: 4000 });
+    } else {
+      await p.locator('.username-chip').first().click({ timeout: 4000 });
+      await p.waitForTimeout(400);
+      await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
+    }
+    await p.waitForTimeout(1500);
+    await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1500);
+    await run('results cash', CASH);
+    await p.locator('.cs-head button:has-text("Log past")').first().click({ timeout: 4000 });
+    await p.locator('.cs-live button:has-text("Cash out")').first().click({ timeout: 1000 }).catch(() => {});
+    await p.waitForTimeout(600);
+    for (let i = 0; i < 4; i++) {
+      await run('results cash (scrolled)', CASH);
+      await p.mouse.wheel(0, H * 0.7);
+      await p.waitForTimeout(500);
+    }
+    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000 }).catch(() => {});
+    await p.waitForTimeout(800);
+    await run('cash bar', CASH);
+  } catch (e) {
+    console.log(`  (results cash skipped: ${e.message.split('\n')[0]})`);
   }
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {

@@ -29,6 +29,7 @@ import TrackingView from './components/TrackingView.jsx';
 import SettingsView from './components/SettingsView.jsx';
 import SocialView from './components/SocialView.jsx';
 import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
+import { LiveCashBar } from './components/CashLive.jsx';
 import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
@@ -1881,6 +1882,9 @@ export default function App() {
               app-shell flex column — so its bottom edge meets the nav's top
               edge by layout, not by env() math. */}
           <div id="above-nav-slot" />
+
+          {/* A running cash session (beta, admins): its clock over the nav on every tab. */}
+          <LiveCashBar enabled={isAdmin} token={token} currentView={currentView} onOpen={() => setCurrentView('tracking')} />
 
           {/* Hands-tool selector as a second footer row, on top of the primary nav,
               only while the Hands tab is open. One scrolling row so it never grows

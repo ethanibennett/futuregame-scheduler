@@ -4,7 +4,7 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
 // Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
-// the bankroll sheet.
+// the bankroll sheet, Results > Cash (cash sessions: list, forms, the live bar).
 //
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
 //        [--json out.json] [--only "schedule,cash"] [--dump] [--shots dir [--overlay]]
@@ -424,6 +424,27 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await menu('Results & Tracking', 'Results');
     await p.locator('.bk-head-btn').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
+  }, 0);
+  // Results > Cash (cash sessions beta): the strip, head, live card, stats and list; then the log
+  // form and the live card's cash-out panel; then the live-session bar over the nav (only drawn
+  // while the account has a session running).
+  const cashHalf = async () => {
+    await menu('Results & Tracking', 'Results');
+    await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(1500);
+  };
+  await step('cash-sessions', cashHalf, 2);
+  await step('cash-sessions-forms', async () => {
+    await cashHalf();
+    await p.locator('.cs-head button:has-text("Log past")').first().click({ timeout: 4000, force: overlay });
+    await p.locator('.cs-live button:has-text("Cash out")').first().click({ timeout: 1000, force: overlay }).catch(() => {});
+    await p.locator('.cs-row-main').first().click({ timeout: 1000, force: overlay }).catch(() => {});
+    await p.waitForTimeout(600);
+  }, 3);
+  await step('cash-bar', async () => {
+    await cashHalf();
+    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(600);
   }, 0);
 
   // One row per distinct control (same element description + label), worst case kept.

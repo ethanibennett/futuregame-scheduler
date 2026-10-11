@@ -1,0 +1,66 @@
+// Cash sessions (beta, app admins): the ONE live session, shared by the bar above the bottom nav
+// (LiveCashBar, mounted in App) and the Results tab's Cash view, so starting, rebuying or ending
+// in one updates the other at once. The session lives on the server (GET /api/cash-sessions/live),
+// which is what makes the running clock survive a reload, a closed app, or a second device; this
+// store only mirrors it, re-reading on mount, when the app comes back to the foreground, and every
+// few minutes.
+//
+// Also here: which half of the Results tab is showing (Tournaments | Cash), so the bar can open
+// the Cash half and hide itself while that half — which shows the full live card — is on screen.
+import { useEffect, useSyncExternalStore } from 'react';
+import { API_URL } from '../utils/api.js';
+
+let state = { session: null, skew: 0, loaded: false };
+const subs = new Set();
+const emit = () => { for (const f of subs) f(); };
+const subscribe = (f) => { subs.add(f); return () => subs.delete(f); };
+
+/** Put a session the server just returned (or null) into the store. serverNow: the response's `now`. */
+export function setLiveSession(session, serverNow) {
+  const skew = serverNow ? Date.parse(serverNow) - Date.now() : state.skew;
+  state = { session: session && session.live ? session : null, skew: Number.isFinite(skew) ? skew : 0, loaded: true };
+  emit();
+}
+
+export async function refreshLiveSession(token) {
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_URL}/cash-sessions/live`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    const data = await res.json();
+    setLiveSession(data.session, data.now);
+  } catch { /* offline: keep what we had */ }
+}
+
+let pollers = 0;
+let stopPolling = null;
+/** Read the live session; `enabled` (admins) also keeps it fresh while mounted. */
+export default function useLiveCashSession({ enabled, token }) {
+  const snap = useSyncExternalStore(subscribe, () => state);
+  useEffect(() => {
+    if (!enabled || !token) return undefined;
+    pollers += 1;
+    if (pollers === 1) {
+      refreshLiveSession(token);
+      const onVis = () => { if (document.visibilityState === 'visible') refreshLiveSession(token); };
+      document.addEventListener('visibilitychange', onVis);
+      const id = setInterval(() => refreshLiveSession(token), 5 * 60 * 1000);
+      stopPolling = () => { document.removeEventListener('visibilitychange', onVis); clearInterval(id); };
+    }
+    return () => { pollers -= 1; if (pollers === 0 && stopPolling) { stopPolling(); stopPolling = null; } };
+  }, [enabled, token]);
+  return enabled ? snap : { session: null, skew: 0, loaded: false };
+}
+
+// ── Results tab half: 'tournaments' | 'cash' ──
+const KIND_KEY = 'resultsKind';
+let kind = (() => { try { return localStorage.getItem(KIND_KEY) === 'cash' ? 'cash' : 'tournaments'; } catch { return 'tournaments'; } })();
+const kindSubs = new Set();
+export function setResultsKind(k) {
+  kind = k === 'cash' ? 'cash' : 'tournaments';
+  try { localStorage.setItem(KIND_KEY, kind); } catch { /* private mode */ }
+  for (const f of kindSubs) f();
+}
+export function useResultsKind() {
+  return useSyncExternalStore((f) => { kindSubs.add(f); return () => kindSubs.delete(f); }, () => kind);
+}
