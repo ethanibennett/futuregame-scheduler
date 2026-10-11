@@ -248,6 +248,10 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   "- Day 1"/"- Flight A" suffixes; include format only when distinctive ("7-Max", "Freezeout").
 - "Opponent" not "villain". Card notation `AhKs`, suits h/d/c/s, x = face-down.
 - Dropdowns/panels use portals to document.body to escape stacking contexts.
+- **Pills and buttons** (owner rule, 2026-10-10): the CONTAINER sits on the grid (whole g × whole
+  r, edges on grid lines); the LABEL inside is centred vertically and horizontally, ignoring the
+  grid — no baseline seating, text-box-trim or metric nudges inside a control. Every other piece of
+  text still seats its baseline on an r-line.
 - **Clipped text guard**: `npm run check:clipping` (WebKit, phone + desktop) fails on any glyph cut
   off by a clipping ancestor — the descender bug that kept recurring. Text that truncates must
   get its painted room from padding cancelled by an equal negative margin (or a clip-path that
