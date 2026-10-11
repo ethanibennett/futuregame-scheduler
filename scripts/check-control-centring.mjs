@@ -2,8 +2,14 @@
 // r tall, left edge on a g line, top edge on an r line — and the LABEL inside is centred in it on
 // both axes, disregarding the grid. This measures both, for every visible control, in WebKit.
 //
+// Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
+// Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
+// the bankroll sheet.
+//
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
-//        [--json out.json] [--only "schedule,cash"] [--dump]
+//        [--json out.json] [--only "schedule,cash"] [--dump] [--shots dir [--overlay]]
+//   (--dump lists passing controls too; --shots saves a screenshot of each view as scanned,
+//   --overlay with the grid overlay on)
 //   npm run check:controls          (both sizes; base URL from CHECK_BASE_URL, else :3001)
 //
 //   CHECK_BASE_URL  the server to check, when no baseUrl argument is given
@@ -35,7 +41,8 @@
 //       positioned descendants (a notification dot) are decoration, not label, and are measured on
 //       their own if they match.
 //
-// Exits 1 when any control fails. WebKit, because the app ships in WKWebView.
+// Exits 1 when any control fails, 2 when nothing could be measured (a view that did not open is
+// reported and skipped). WebKit, because the app ships in WKWebView.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -49,6 +56,8 @@ const W = Number(opt('--width', 402)), H = Number(opt('--height', 874));
 const jsonOut = opt('--json', null);
 const only = opt('--only', null);
 const dump = args.includes('--dump');
+const shots = opt('--shots', null);          // a directory: a screenshot of each view as scanned
+const overlay = args.includes('--overlay');  // with the grid overlay on (for --shots)
 const USER = process.env.CHECK_USERNAME || 'ham5';
 
 function token() {
@@ -72,13 +81,14 @@ const CONTROLS = [
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn'];
+const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
 const TILES = ['.bk-cell', '.font-pick-tile'];
-// Navigation rows: icon then label, start-aligned like a list. Centred vertically only.
-const START_ALIGNED = ['.dk-rail-item'];
+// Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
+// Centred vertically only.
+const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head'];
 // Not a control even though the class matches: wrappers, rows, lists.
 const GROUP_CLASS = /(^|[-_])(row|rows|list|group|wrap|wrapper|strip|bar|container|tabs|area|grid|stack|line|section|panel|menu|header|body|col|cell)$/;
 
@@ -203,7 +213,11 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     const b = el.getBoundingClientRect();
     const wg = b.width / g, hr = b.height / r;
     const lo = layoutOffset(el);
-    const lx = (b.left + lo.dx - ox) / g, ty = (b.top + lo.dy - oy) / r;
+    // The `translate` property is a paint-time correction some scrollers apply to their items
+    // (the Calendar date strip shifts each button by its scroll's whole-px remainder); the layout
+    // position is the box without it.
+    const tr = (cs.translate && cs.translate !== 'none') ? cs.translate.split(/\s+/).map(parseFloat) : [0, 0];
+    const lx = (b.left + lo.dx - (tr[0] || 0) - ox) / g, ty = (b.top + lo.dy - (tr[1] || 0) - oy) / r;
     const geo = {
       w: +wg.toFixed(2), h: +hr.toFixed(2), x: +lx.toFixed(2), y: +ty.toFixed(2),
     };
@@ -244,8 +258,11 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       const text = transform(n.textContent.replace(/\s+/g, ' ').trim(), hs.textTransform);
       texts.push(text);
       const m = metrics(hs, text);
+      // The Range spans the text without its leading and trailing white space (a label split
+      // into "Create ", a name and " Hand" would otherwise start a space early).
+      const raw = n.textContent, s0 = raw.search(/\S/), s1 = raw.length - (raw.match(/\s*$/)[0].length);
       const range = document.createRange();
-      range.selectNodeContents(n);
+      range.setStart(n, s0); range.setEnd(n, s1);
       const rects = [...range.getClientRects()].filter(q => q.width > 0 && q.height > 0);
       if (!rects.length) continue;
       const symbol = !/[\p{L}\p{N}]/u.test(text);
@@ -303,7 +320,6 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   return { g: +g.toFixed(3), r: +r.toFixed(3), ox: +ox.toFixed(2), oy: +oy.toFixed(2), controls: out };
 }
 
-const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social', 'results', 'settings', 'cash-live', 'cash-heatmaps', 'hands'];
 
 (async () => {
   const b = await webkit.launch();
@@ -314,7 +330,7 @@ const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
   }, { t, u: USER });
   const p = await ctx.newPage();
-  await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
+  await p.goto(base + '/' + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(4000);
   const desktop = await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
   const all = [];
@@ -324,6 +340,10 @@ const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social
     const res = await p.evaluate(scan, { CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLASS_SRC: GROUP_CLASS.source, view });
     grid = grid || res;
     all.push(...res.controls);
+    if (shots) {
+      fs.mkdirSync(shots, { recursive: true });
+      await p.screenshot({ path: `${shots}/${W}x${H}-${view.replace(/[^\w-]+/g, '_')}.png` });
+    }
   };
   const scrollMain = async (n) => {
     for (let i = 0; i < n; i++) {
@@ -338,7 +358,8 @@ const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social
   const nav = async (name) => {
     // Phone: the bottom nav. Desktop: the rail.
     const sel = desktop ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
-    await p.locator(sel).first().click({ timeout: 4000 });
+    // force with the overlay on: its admin readout panel sits over the rail's foot.
+    await p.locator(sel).first().click({ timeout: 4000, force: overlay });
     await p.waitForTimeout(1800);
   };
   const menu = async (name, railName) => {
@@ -351,9 +372,9 @@ const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social
   // Every view starts from a fresh load, so a panel or menu left open by the last one cannot
   // cover this one.
   const fresh = async () => {
-    await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
+    await p.goto(base + '/' + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
-    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000, force: overlay }).catch(() => {});
   };
   const step = async (view, fn, scrolls = 0) => {
     if (!want(view)) return;
@@ -385,6 +406,25 @@ const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social
     await p.waitForTimeout(1500);
   }, 1);
   await step('hands', () => nav('Hands'), 1);
+  // Beyond the core list: the Calendar view (month and date buttons) with its filter sheet, and
+  // the bankroll sheet behind Results' Manage.
+  await step('calendar', async () => {
+    await nav('Schedule');
+    await p.locator('.filter-chip-square[title="Calendar view"]').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1500);
+  }, 1);
+  await step('calendar-filters', async () => {
+    await nav('Schedule');
+    await p.locator('.filter-chip-square[title="Calendar view"]').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1500);
+    await p.locator('.filter-chip-square:not([title])').last().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+  }, 0);
+  await step('bankrolls', async () => {
+    await menu('Results & Tracking', 'Results');
+    await p.locator('.bk-head-btn').first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+  }, 0);
 
   // One row per distinct control (same element description + label), worst case kept.
   const key = (c) => c.view.split(' (')[0] + '|' + c.el + '|' + c.text;
@@ -407,6 +447,11 @@ const VIEWS = ['schedule', 'filters', 'card', 'myschedule', 'dashboard', 'social
     console.log(`  [${c.view.split(' (')[0]}] ${c.fail.length ? 'FAIL ' + c.fail.join(',') : 'ok'}  ${c.el} "${c.text}"  ${c.w}g x ${c.h}r @ x${c.x}g y${c.y}r  ink dx ${c.dx} dy ${c.dy}  in ${c.ctx}`);
   }
   const distinct = new Set(failing.map(c => c.el + '|' + c.text)).size;
+  if (!rows.length) {
+    console.log(`NO CONTROLS MEASURED at ${W}x${H} — the views did not open (is the server up, the token an admin's?)`);
+    await b.close();
+    process.exit(2);
+  }
   console.log(failing.length ? `CONTROLS OFF GRID OR OFF CENTRE at ${W}x${H}: ${failing.length} of ${rows.length} (by view; ${distinct} distinct)` : `all ${rows.length} controls on the grid and centred at ${W}x${H}`);
   if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify({ width: W, height: H, desktop, grid, rows }, null, 1));
   await b.close();
