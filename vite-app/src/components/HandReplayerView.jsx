@@ -1322,6 +1322,10 @@ function PotChipVisual({ amount }) {
    hand, so the fan opened around a hinge under the middle of it and came out
    perfectly symmetrical. A hand pivots around the bottom corner nearest the
    thumb, which is why every real fan is lopsided. Symmetry is the tell.
+   (2026-10: the lopsidedness is now SIDEWAYS only. The 18% pivot also tipped
+   the right of every fan down and, with the growth, lifted single cards like
+   stud up-cards — see getSplayStyle, where the pivot is now 50% 118% plus
+   the sideways travel the 18% pivot gave.)
 
    34: and the fan was a pure 2D rotation, which is cards printed on a page.
    A real fan also lifts each successive card slightly out of the plane, so it
@@ -1436,19 +1440,47 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
   const scale = 1 + lift * 0.05;
   const shadow = 'drop-shadow(' + (-1 - lift * 2).toFixed(1) + 'px '
     + (1 + lift * 2).toFixed(1) + 'px ' + (2 + lift * 3).toFixed(1) + 'px rgba(0,0,0,0.5))';
+  /* Hold'em and Omaha hands were drawn with a stud lift they never asked for.
+     Nothing stud-specific leaked in — the lift came from the fan itself, in two
+     parts, both of them the transform ORIGIN, which sat at 18% 118%: below the
+     card and left of its centre.
+     1. The growth. scale() grows a card about the origin, and an origin 118%
+        down the card turns a 5% growth into a 0.05 x 1.18 = 5.9%-of-height
+        LIFT of the top edge — half the 11.4% stud lift, on the last card and
+        proportionally on every card before it.
+     2. The rotation. Turning a card about a point left of its centre moves the
+        centre DOWN by 0.32 x width x sin(angle) on the right of the fan and UP
+        by the same on the left — an antisymmetric tilt that has nothing to do
+        with the arc, and which the growth had been partly cancelling.
+     The bottom of a held hand is behind the plaque, so the top edge is all of
+     a card anyone sees move. Measured on a hold'em hero at 402x874 the K index
+     sat 4.25px (0.072 of the card) above the A beside it: a door card beside a
+     hole card. A four-card Omaha hand stepped 5.7px up from A to J.
+     So both are anchored on the card's own centre line. The rotation turns
+     about 50% 118%, directly under the centre, and `swing` puts back the
+     -0.32 x width x (1 - cos) of sideways travel the old origin gave, so the
+     fan opens exactly as wide as it did; only the antisymmetric drop is gone.
+     The growth is anchored on the card's TOP edge, at the 18% the old origin
+     stood on (a translate of (s-1) x (32%, 118%) before the scale), so the
+     card still grows toward the viewer and sideways exactly as it did, but
+     down behind the plaque, without its top edge moving. What remains vertically is
+     the arc, which is symmetric about the middle card, and the stud lift — the
+     only thing that lifts a card again. */
+  const rad = rot * Math.PI / 180;
+  const swing = (-32 * (1 - Math.cos(rad))).toFixed(3) + '%';
+  const grow = scale === 1 ? '' : ' translate(' + ((scale - 1) * 32).toFixed(3) + '%, '
+    + ((scale - 1) * 118).toFixed(3) + '%) scale(' + scale.toFixed(3) + ')';
   if (total <= 2) {
     return {
-      transform: 'rotate(' + rot + 'deg) scale(' + scale.toFixed(3) + ')',
-      transformOrigin: '18% 118%',
+      transform: 'translateX(' + swing + ') rotate(' + rot + 'deg)' + grow,
+      transformOrigin: '50% 118%',
       marginLeft: index === 0 ? 0 : 'calc(var(--card-w) * -0.65)',
       marginTop: extraY || undefined,
       filter: shadow,
       zIndex: z,
     };
   }
-  // 3+ cards: arc from a true shared pivot point using trig. The pivot sits
-  // left of centre, so the arc opens the way a thumb opens it.
-  const rad = rot * Math.PI / 180;
+  // 3+ cards: arc from a true shared pivot point using trig.
   /* In CARD WIDTHS, not pixels. A fixed 66px arc holds its shape only at the
      size the cards happened to be when it was chosen: at a phone's 34px card
      it advances each card about 0.55 of a width, which reads as a hand, and at
@@ -1485,10 +1517,10 @@ function getSplayStyle(index, total, angle, yOffset, reverseZ, fanTotal, spanSca
     position: 'absolute',
     left: '50%',
     bottom: 0,
-    transform: 'translate(calc(-50% + ' + x.toFixed(3) + ' * var(--card-w)), calc('
+    transform: 'translate(calc(-50% + ' + swing + ' + ' + x.toFixed(3) + ' * var(--card-w)), calc('
       + y.toFixed(3) + ' * var(--card-w)' + (extraY ? ' + ' + extraY : '') + ')) rotate('
-      + rot + 'deg) scale(' + scale.toFixed(3) + ')',
-    transformOrigin: '18% 118%',
+      + rot + 'deg)' + grow,
+    transformOrigin: '50% 118%',
     filter: shadow,
     zIndex: z,
   };
@@ -1556,6 +1588,37 @@ function DrawBadge({ history }) {
 // switches, and the notes box. Flip back to true to restore them.
 const SHOW_ENTRY_MODE_TOGGLES = false;
 const SHOW_ENTRY_NOTES = false;
+
+/* The D on the dealer button, centred on its INK - as an outline, not as text.
+   It was a <span> flex-centred in the disc, which centres the TEXT BOX, and a
+   capital's box is not its ink: the em box runs from ascender to descender, so
+   a D (baseline to cap height, nothing below) sits high in it, by an amount
+   that depends on WHICH ascent and descent the engine reads. Univers Bold
+   carries hhea 724/-276 and win 938/250 with USE_TYPO_METRICS off, so Apple's
+   WebKit and Windows' engines put the same glyph at different heights in the
+   same box. CSS text-box trimming centred it live, but the exporters' DOM clone
+   (modern-screenshot) drops text-box, and the exported D sat 4-7% of the disc
+   low; an SVG <text> placed by its baseline then came out up to 6% of the disc
+   off in the export, where the clone's text snaps on its own grid.
+   So the D is Univers Bold's own outline (univers-bold.woff2, glyph "D", bbox
+   65,0..676,721 in a 1000-unit em), scaled to 62 units of a 100-unit box -
+   0.62 of the disc, a cap height of 45% of its diameter, the 47% it had on a
+   phone - and translated so its ink box is centred on (50, 50) BY
+   CONSTRUCTION: x 31.06..68.94, y 27.65..72.35. No font loads, no metric and
+   no renderer can move it off the disc's centre. fill is currentColor, so the
+   themes' button colours still apply. The two offset copies are the engraving
+   the span's text-shadow drew (a light edge below, a dark one above). */
+const DEALER_D_PATH = 'M31.06 72.35V27.65L45.88 27.71Q55.86 27.71 61.31 31.74Q65.28 34.66 67.11 39.37Q68.94 44.08 68.94 49.35Q68.94 59.08 64.45 64.85Q59.95 70.61 53.07 71.86Q50.4 72.35 45.01 72.35ZM40.79 34.9V64.97Q42.9 65.1 44.58 65.1Q48.23 65.1 50.65 64.51Q53.07 63.92 54.99 62Q59.02 57.97 59.02 49.35Q59.02 44.2 57.04 40.45Q55.05 36.7 50.84 35.52Q47.55 34.59 40.79 34.9Z';
+const DEALER_D_ENGRAVE = 3.5;
+function DealerGlyph() {
+  return (
+    <svg className="replayer-dealer-glyph" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <path d={DEALER_D_PATH} transform={'translate(0 ' + DEALER_D_ENGRAVE + ')'} className="dg-light" />
+      <path d={DEALER_D_PATH} transform={'translate(0 ' + -DEALER_D_ENGRAVE + ')'} className="dg-dark" />
+      <path d={DEALER_D_PATH} className="dg-face" />
+    </svg>
+  );
+}
 
 const FAN_SLIDE_MS = 460;
 const FAN_SLIDE_SAMPLES = 16;
@@ -6253,6 +6316,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const cards = [0, 1, 2].map(i => row.querySelector('[data-slot="' + i + '"]'));
     if (cards.some(c => !c) || typeof cards[0].animate !== 'function') return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* Not during an export. The [data-capturing] freeze pauses CSS animations
+       only; this is a Web Animation, so it ran on, and the exporters' one still
+       per step (~120ms after the step) caught the flop as a half-transparent
+       stack in the first slot — measured: all three cards at the same centre,
+       opacity 0.52, scale 0.95. */
+    if (row.closest('[data-capturing]')) return;
     flopAnimsRef.current.forEach(a => a.cancel());
     const x0 = cards[0].getBoundingClientRect().left;
     flopAnimsRef.current = cards.map(el => {
@@ -6266,6 +6335,74 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       ], { duration: 820, fill: 'backwards' });
     });
   }, [flopAnimKey]);
+
+  /* The board is a centred row, so a turn or river card re-centres everything
+     already on it: the flop moved half a card left in one frame while the new
+     card slid in, and stepping back moved it right the same way. FLIP instead:
+     each card's layout centre (relative to the table, so the board area's own
+     centring cancels out) is remembered after every commit; when the set of
+     cards changes, a card that stayed is put back where it was SEEN and glides
+     to its new slot on the motion tokens. "Where it was seen" is the remembered
+     layout plus any translate still on it, so a slide that is interrupted (fast
+     playback, or a step back mid-glide) continues from where the card is rather
+     than snapping. Centres, because every transform on a board card (the deal's
+     scale, the flop spread's translate) is about the card's centre, so the
+     centre minus the matrix's translate is the layout position exactly.
+     Off for reduced motion, with the board animation switched off, and during
+     an export: beginCapture() marks the table [data-capturing] and captures one
+     still per step ~120ms after it, so a slide there would freeze the flop
+     mid-way across the felt. */
+  const boardLayoutRef = useRef(null);
+  const boardSlidesRef = useRef(new Map());
+  useLayoutEffect(() => {
+    const row = boardRowRef.current;
+    const prev = boardLayoutRef.current;
+    if (!row) { boardLayoutRef.current = null; return; }
+    const table = row.closest('.replayer-table') || row.parentElement;
+    const originX = table.getBoundingClientRect().left;
+    const cards = [...row.children].filter(el => el.dataset && el.dataset.ck);
+    const shiftOf = (el) => {
+      const t = getComputedStyle(el).transform;
+      return t && t !== 'none' ? new DOMMatrixReadOnly(t).m41 : 0;
+    };
+    const now = new Map();
+    const shift = new Map();
+    for (const el of cards) {
+      const r = el.getBoundingClientRect();
+      const s = shiftOf(el);
+      shift.set(el, s);
+      now.set(el.dataset.ck, (r.left + r.right) / 2 - s - originX);
+    }
+    boardLayoutRef.current = now;
+    if (!prev) return;
+    const changed = now.size !== prev.size || [...now.keys()].some(k => !prev.has(k));
+    if (!changed) return;
+    if (!rSettings.animateBoard || typeof row.animate !== 'function') return;
+    if (row.closest('[data-capturing]')) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cs = getComputedStyle(row);
+    // WebKit hands a time token back as "0.32s", Blink as "320ms".
+    const durTok = cs.getPropertyValue('--dur-base').trim();
+    const duration = (parseFloat(durTok) || 0) * (/[^m]s$/.test(durTok) ? 1000 : 1);
+    const easing = cs.getPropertyValue('--ease-out').trim() || 'ease-out';
+    if (!duration) return;
+    for (const el of cards) {
+      const k = el.dataset.ck;
+      if (!prev.has(k)) continue;
+      const dx = prev.get(k) + shift.get(el) - now.get(k);
+      const running = boardSlidesRef.current.get(el);
+      if (running) { running.cancel(); boardSlidesRef.current.delete(el); }
+      if (Math.abs(dx) < 0.5) continue;
+      const anim = el.animate([
+        { transform: 'translateX(' + dx.toFixed(2) + 'px)' },
+        { transform: 'translateX(0)' },
+      ], { duration, easing });
+      boardSlidesRef.current.set(el, anim);
+      anim.onfinish = anim.oncancel = () => {
+        if (boardSlidesRef.current.get(el) === anim) boardSlidesRef.current.delete(el);
+      };
+    }
+  });
 
   // Share as image
   const shareReplayImage = async () => {
@@ -7479,16 +7616,16 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   // gap class existed for it and had never been rendered.
                   let card;
                   if (c.suit === 'x') {
-                    card = <div key={key} data-slot={i} className="card-unknown" />;
+                    card = <div key={key} data-slot={i} data-ck={key} className="card-unknown" />;
                   } else if (cardTheme === 'classic') {
                     card = (
-                      <div key={key} data-slot={i} className={'card-classic card-classic-' + c.suit}>
+                      <div key={key} data-slot={i} data-ck={key} className={'card-classic card-classic-' + c.suit}>
                         <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
                         <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
                       </div>
                     );
                   } else {
-                    card = <img key={key} data-slot={i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
+                    card = <img key={key} data-slot={i} data-ck={key} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
                   }
                   return card;
                 })}
@@ -7886,7 +8023,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                     text, so nothing outside it can know where its corner is.
                     Three earlier attempts all landed on somebody's name. */}
                 {pi === btnIdx && (
-                  <div className={'replayer-dealer-btn corner-' + btnCorner}><span>D</span></div>
+                  <div className={'replayer-dealer-btn corner-' + btnCorner} role="img" aria-label="Dealer button">
+                    <DealerGlyph />
+                  </div>
                 )}
                 {/* On the plaque's top-right corner, straddling it, which is
                     where the reference puts the draw count. It was a pill

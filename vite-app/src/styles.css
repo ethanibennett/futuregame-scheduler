@@ -5445,16 +5445,25 @@
     .replayer-dealer-btn {
       position: absolute;
       z-index: 3;
-      width: clamp(16px, 4.6cqmin, 56px);
-      height: clamp(16px, 4.6cqmin, 56px);
+      /* The disc is sized off the PLAQUE, which the table sizes, and the D off
+         the disc — the same chain the cards hang from. It was
+         clamp(16px, 4.6cqmin, 56px), a table-relative size with pixel floors,
+         so it was 0.20 of a portrait plaque and 0.17 to 0.18 of a landscape one,
+         and the D inside it was --fs-2xs whatever the disc did: 47% of the disc
+         on a phone, 27% on a desktop. 0.2 is the portrait ratio, where the size
+         was settled. */
+      --dealer-d: calc(var(--plaque-w, min(calc(var(--subrow) * 25), 25cqmin)) * 0.2);
+      width: var(--dealer-d);
+      height: var(--dealer-d);
       border-radius: var(--radius-circle);
       background: linear-gradient(145deg, #f3ead6 0%, #e6dabf 45%, #d8caab 100%);
       color: #3a3020;
-      font-family: 'Libre Baskerville', 'Baskerville MT Std', Georgia, serif;
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      letter-spacing: var(--track-display);
-      line-height: 1;
+      /* The D is Univers Bold (DealerGlyph), not the condensed cut: a single
+         capital on a ROUND disc wants a round letter, and the condensed D is
+         0.49em of ink across against 0.61em for the regular width - on a 17px
+         disc it read as a sliver. Libre Baskerville before that, chosen only
+         to stop the button following [data-serif="univers"]; an outline
+         follows nothing at all. Its size (0.62 of the disc) lives there too. */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -5466,13 +5475,26 @@
         inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(255,255,255,0.6),
         inset 0 calc(var(--subrow) * -0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.12);
       pointer-events: none;
-      text-shadow: 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.45);
     }
-    /* The engraved D, rather than a letter printed on a disc. */
-    .replayer-dealer-btn > span {
+    /* The engraved D, rather than a letter printed on a disc. The glyph is
+       Univers Bold's outline, centred by construction - see DealerGlyph for why
+       a centred span was not centred. It is the size of the WHOLE disc, border
+       included, so its 100 units are the disc's diameter, and the disc's flex
+       centring centres it (overflowing the border equally on every side). Not
+       absolutely positioned with a negative inset: the export clone snaps the
+       border to a whole pixel where the page does not, which moved an inset
+       box by half the border — measured 0.4-0.8px up and left in every
+       exported frame — while a centred box moves with both sides at once. */
+    .replayer-dealer-glyph {
       display: block;
-      text-shadow: 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.7), 0 calc(var(--subrow) * -0.125) 0 rgba(0,0,0,0.25);
+      flex: none;
+      width: var(--dealer-d);
+      height: var(--dealer-d);
+      overflow: visible;
     }
+    .replayer-dealer-glyph .dg-face { fill: currentColor; }
+    .replayer-dealer-glyph .dg-light { fill: rgba(255,255,255,0.7); }
+    .replayer-dealer-glyph .dg-dark { fill: rgba(0,0,0,0.25); }
 
     /* Seat plaques. These used --surface on --border, i.e. the exact chrome of every event card in
        the app, so the seats read as interface floating over a picture of a table rather than as
