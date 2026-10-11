@@ -268,6 +268,30 @@ export default function CashView({ token, onModeChange }) {
     return () => clearInterval(id);
   }, [load]);
 
+  // After a location save the board must change, but the new room list only exists once the box
+  // has pulled the location, re-derived and pushed it back (about 30-60 s). The board used to keep
+  // its old rooms until the 5-minute refresh, so the picker looked like it did nothing. Now it
+  // checks every 8 s until the watcher reports the new location applied, then reloads.
+  const [switchingTo, setSwitchingTo] = useState(null);
+  useEffect(() => {
+    if (!locationVersion) return undefined;
+    let live = true, tries = 0, timer = null;
+    const check = async () => {
+      tries += 1;
+      try {
+        const r = await fetch(`${API_URL}/cash/location`, { headers: { Authorization: 'Bearer ' + token } });
+        const loc = r.ok ? await r.json() : null;
+        if (!live) return;
+        if (loc && !loc.pending) { setSwitchingTo(null); load(); return; }
+        if (loc) setSwitchingTo((loc.requested && loc.requested.label) || loc.label || 'the new location');
+      } catch { /* try again */ }
+      if (live && tries < 25) timer = setTimeout(check, 8000);
+      else if (live) setSwitchingTo(null);
+    };
+    timer = setTimeout(check, 1500);
+    return () => { live = false; clearTimeout(timer); };
+  }, [locationVersion, token, load]);
+
   const snapMs = (data && Date.parse(data.ts)) || Date.now();
   const rawVenues = (data && Array.isArray(data.venues) ? data.venues : []);
 
@@ -343,6 +367,12 @@ export default function CashView({ token, onModeChange }) {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {switchingTo && (
+        <div style={{ height: 'calc(var(--subrow) * 3)', lineHeight: 'calc(var(--subrow) * 3)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted, #aaa)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 'var(--space-md)' }}>
+          Updating rooms for {switchingTo}…
         </div>
       )}
 
