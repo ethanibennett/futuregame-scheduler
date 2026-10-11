@@ -10,9 +10,10 @@ sessions opened here own scheduler work.
   The legacy single-file `public/index.html` era is dead; its final tree is preserved on
   branch `wip/windows-mtt-feed`.
 - **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
-  2-3 panes (Schedule = list | event | my schedule) on the SAME g as the phone (g stays
-  430px/37; panes are 9N+1 g). Everything narrower, and every phone, is the phone layout,
-  pixel-identical. Design, tiers and per-tab plan: `docs/desktop-layout.md`.
+  2 panes (Schedule = list | right pane, the selected event on top and My Schedule under it;
+  the third column was dropped 2026-10-10) on the SAME g as the phone (g stays 430px/37; panes
+  are 9N+1 g, widened by a classic scrollbar's width where one shows). Everything narrower, and
+  every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
   `JWT_SECRET` env required. `DB_PATH` env overrides the default `poker-tournaments.db`.
   Responses are gzip/br-compressed (`compression`), except `text/event-stream` — SSE
@@ -247,6 +248,11 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   "- Day 1"/"- Flight A" suffixes; include format only when distinctive ("7-Max", "Freezeout").
 - "Opponent" not "villain". Card notation `AhKs`, suits h/d/c/s, x = face-down.
 - Dropdowns/panels use portals to document.body to escape stacking contexts.
+- **Clipped text guard**: `npm run check:clipping` (WebKit, phone + desktop) fails on any glyph cut
+  off by a clipping ancestor — the descender bug that kept recurring. Text that truncates must
+  get its painted room from padding cancelled by an equal negative margin (or a clip-path that
+  reaches below the box), never from `overflow-x: clip; overflow-y: visible`, which WebKit
+  clips on both axes. Run it before deploying any change to card or list text.
 - **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
   tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
   for the steps and what each replaces. Never write a bare literal for anything a

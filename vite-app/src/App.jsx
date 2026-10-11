@@ -1503,11 +1503,13 @@ export default function App() {
   const dk = useDesktopLayout();
   const isDesktop = dk.desktop;
   const [dkSelectedId, setDkSelectedId] = useState(null);
-  // Two-pane tier only: which of Event / My schedule the right pane shows.
-  const [dkRight, setDkRight] = useState('event');
   const selectEvent = useCallback((id) => {
     setDkSelectedId(id);
-    if (id != null) setDkRight('event');
+    // The details are the top block of the right pane: bring them into view.
+    if (id != null) requestAnimationFrame(() => {
+      const sc = document.querySelector('.dk-pane-detail .dk-scroll');
+      if (sc) sc.scrollTop = 0;
+    });
   }, []);
   // Portalled panels (the filter panel) live outside the shell, so the layout
   // is also published on <html> for CSS to key on.
@@ -1523,7 +1525,8 @@ export default function App() {
     if (currentView === 'schedule') {
       _setCurrentView('tournaments');
       setVisitedTabs(s => (s.has('tournaments') ? s : new Set([...s, 'tournaments'])));
-      if (dk.tier === 'two' && !scheduleFocusId) setDkRight('schedule');
+      // My Schedule sits under the event details: clear the selection so it is at the top.
+      if (!scheduleFocusId) setDkSelectedId(null);
     }
     if (scheduleFocusId) { selectEvent(scheduleFocusId); setScheduleFocusId(null); }
   }, [isDesktop, currentView, scheduleFocusId, dk.tier, selectEvent]);
@@ -2134,24 +2137,17 @@ export default function App() {
           <div className={'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : 'dk-pane-wide')}>
             {primaryColumn}
           </div>
-          {currentView === 'tournaments' && (dk.tier === 'three' ? (
-            <>
-              <div className="dk-pane dk-pane-detail">
-                <div className="dk-scroll">{dkDetail}</div>
-              </div>
-              <div className="dk-pane dk-pane-mine dk-fab-scope">
-                <div className="dk-scroll">{dkMine}</div>
-              </div>
-            </>
-          ) : (
+          {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,
+              not in a third column): the selected event on top, My Schedule below it in the same
+              scroll. With nothing selected, My Schedule is the whole pane. */}
+          {currentView === 'tournaments' && (
             <div className="dk-pane dk-pane-detail dk-fab-scope">
-              <div className="dk-seg" role="tablist" aria-label="Right pane">
-                <button type="button" role="tab" aria-selected={dkRight === 'event'} className={'dk-seg-btn' + (dkRight === 'event' ? ' is-on' : '')} onClick={() => setDkRight('event')}><span>Event</span></button>
-                <button type="button" role="tab" aria-selected={dkRight === 'schedule'} className={'dk-seg-btn' + (dkRight === 'schedule' ? ' is-on' : '')} onClick={() => setDkRight('schedule')}><span>My schedule</span></button>
+              <div className="dk-scroll">
+                {dkSelectedId != null && <div className="dk-detail-block">{dkDetail}</div>}
+                <div className="dk-mine-block">{dkMine}</div>
               </div>
-              <div className="dk-scroll">{dkRight === 'event' ? dkDetail : dkMine}</div>
             </div>
-          ))}
+          )}
         </div>
       ) : primaryColumn}
 

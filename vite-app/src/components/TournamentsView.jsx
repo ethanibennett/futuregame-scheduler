@@ -230,7 +230,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             const toggle = (
               <button key={label} type="button"
                       className={`kind-toggle${on ? ' active' : ''}`} aria-pressed={on}
-                      onClick={() => setFiltersRaw(f => ({ ...f, ...patch(!on) }))}>
+                      onClick={() => pinListTopAcross(() => setFiltersRaw(f => ({ ...f, ...patch(!on) })))}>
                 <span className="kind-toggle-label">{label}</span>
               </button>
             );
@@ -260,7 +260,7 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
             <div className="online-room-head">
               <label className="online-room-master">
                 <input type="checkbox" checked={filters.showOnline !== false}
-                       onChange={e => setFiltersRaw(f => ({ ...f, showOnline: e.target.checked }))} />
+                       onChange={e => { const on = e.target.checked; pinListTopAcross(() => setFiltersRaw(f => ({ ...f, showOnline: on }))); }} />
                 <span>Show online events</span>
               </label>
               {/* Only rooms that can serve the state the schedule's location is in. The state is
@@ -1122,6 +1122,36 @@ const DEFAULT_FILTERS = {
 };
 
 // LocationDropdown lives in its own file now (shared with CalendarView).
+
+/* Keep the list's top row where it is while a filter adds or removes rows ABOVE it (owner, 2026-10-10:
+   turning Online on made the schedule jump; it should hold still and only grow downward). Safari has
+   no CSS scroll anchoring (overflow-anchor), so: before the change, note the first event row showing
+   under the sticky filters and its distance from that line; after React commits, scroll so the same
+   row is back at the same distance. If that row is gone (Online turned OFF while an online event was
+   on top), its date group stands in. Measured both times, nothing assumed. */
+function pinListTopAcross(apply) {
+  const c = document.querySelector('.content-area');
+  if (!c) { apply(); return; }
+  const sticky = c.querySelector('.sticky-filters');
+  const line = sticky ? sticky.getBoundingClientRect().bottom : c.getBoundingClientRect().top;
+  const firstBelow = (sel) => [...c.querySelectorAll(sel)].find(el => el.getBoundingClientRect().bottom > line + 1);
+  const row = firstBelow('.cal-event-row[data-tid]');
+  const group = row ? row.closest('[data-date-group]') : firstBelow('[data-date-group]');
+  const tid = row && row.getAttribute('data-tid');
+  const day = group && group.getAttribute('data-date-group');
+  const offset = (row || group) ? (row || group).getBoundingClientRect().top - line : 0;
+  apply();
+  if (!tid && !day) return;
+  // Two frames: one for React's commit, one for the browser's layout of it.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const target = (tid && c.querySelector(`.cal-event-row[data-tid="${tid}"]`)) ||
+      (day && c.querySelector(`[data-date-group="${day}"]`));
+    if (!target) return;
+    const delta = target.getBoundingClientRect().top - line - offset;
+    if (Math.abs(delta) > 0.5) c.scrollTop += delta;
+  }));
+}
+
 export default function TournamentsView({
   tournaments, mySchedule, onToggle, gameVariants, venues,
   onSetCondition, onRemoveCondition, onToggleAnchor, onSetPlannedEntries,

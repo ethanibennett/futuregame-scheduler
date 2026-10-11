@@ -298,9 +298,18 @@ export default function CashView({ token, onModeChange }) {
       {/* The cash location, in the Schedule tab's location-field spot, on both views. */}
       <CashLocationPicker token={token} onSaved={bumpLocation} />
 
-      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, 1r under the
-          location field on BOTH views (7r under the header), so it never moves when you switch.
-          Live's Refresh row sits below it. */}
+      {/* Refresh, right-aligned directly above the Heatmaps half of the mode strip (owner request
+          2026-10-10). On BOTH views so the strip below never moves when you switch: Live reloads the
+          board, Heatmaps re-reads its room list. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
+        <button onClick={mode === 'heatmap' ? bumpLocation : load}
+          style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
+          {mode === 'live' && status === 'loading' ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
+
+      {/* Live / Heatmaps: the same segmented strip as the hand entry's MTT / Cash, under the
+          Refresh row on BOTH views, so it never moves when you switch. */}
       <div className="live-update-tabs cash-mode-tabs" style={{ marginTop: 0, marginBottom: 'var(--space-xl)' }}>
         {[['live', 'Live'], ['heatmap', 'Heatmaps']].map(([m, lbl]) => (
           <button key={m} type="button" className={mode === m ? 'active' : ''} aria-pressed={mode === m}
@@ -315,14 +324,6 @@ export default function CashView({ token, onModeChange }) {
       )}
 
       {mode === 'live' && (<>
-
-      {/* Refresh, right-aligned under the mode strip (Live only). */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-lg)', minHeight: 'calc(var(--subrow) * 4)', marginBottom: 'var(--space-xl)' }}>
-        <button onClick={load}
-          style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border, #333)', background: 'transparent', color: 'var(--text-muted, #aaa)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.060)', whiteSpace: 'nowrap' }}>
-          {status === 'loading' ? 'Loading…' : 'Refresh'}
-        </button>
-      </div>
 
 
       {/* Persistent variant filter */}

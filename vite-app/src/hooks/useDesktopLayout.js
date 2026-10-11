@@ -69,9 +69,11 @@ export function computeDesktopLayout() {
   const g = measureG();
   const sbG = measureScrollbarG(g);
   const W = Math.floor(window.innerWidth / g + 1e-6);
-  const tier = W - 3 * sbG >= RAIL_G + PHONE_PANE_G * 3 ? 'three' : 'two';
-  const panes = tier === 'three' ? 3 : 2;
-  const fixed = RAIL_G + PHONE_PANE_G + (tier === 'three' ? PHONE_PANE_G : 0);
+  // One tier since 2026-10-10: My Schedule sits under the event details in the right pane instead
+  // of taking a third column, so every desktop width is rail | list | right pane.
+  const tier = 'two';
+  const panes = 2;
+  const fixed = RAIL_G + PHONE_PANE_G;
   const detailCols = colsFor(W - fixed - panes * sbG);
   const shellG = fixed + paneG(detailCols) + panes * sbG;
   // A single-pane tab (Dashboard, Social, …) uses the same shell; its one pane

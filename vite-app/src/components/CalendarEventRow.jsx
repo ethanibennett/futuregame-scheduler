@@ -634,7 +634,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const badgeTextColor = venue.abbr === 'WSOP' ? 'var(--bg)' : '#ffffff';
 
   return (
-    <div ref={rowRef} className={rowClasses} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
+    <div ref={rowRef} className={rowClasses} data-tid={tournament.id} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
@@ -1209,7 +1209,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
     tournament.clock_ended_at ? 'completed' : (isPast ? 'past' : ''),
   ].filter(Boolean).join(' ');
   return (
-    <div className={rowClasses} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
+    <div className={rowClasses} data-tid={tournament.id} style={isInSchedule && isAnchor ? {'--anchor-color': stripColor} : undefined}>
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}

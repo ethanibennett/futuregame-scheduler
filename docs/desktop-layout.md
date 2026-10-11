@@ -34,13 +34,15 @@ desktop  ⇔  (min-width: 1024px)
 - The query is in px because media queries cannot read custom properties. It is
   the only px value the change adds, and it is a breakpoint, not a dimension.
 
-Inside the desktop range there are two tiers. Both are counted in whole g (see
-§2), from W = floor(window width / g):
+One arrangement at every desktop width (since 2026-10-10; the two-tier/three-tier split is gone):
 
-| Tier | Condition | Arrangement |
-|---|---|---|
-| two | W < 121g (window < 1406px) | rail 10 · list 37 · right pane 9N+1, switchable between **Event** and **My schedule** |
-| three | W ≥ 121g | rail 10 · list 37 · event 9N+1 · my schedule 37 |
+| Layout | Arrangement |
+|---|---|
+| desktop | rail 10 · list 37 · right pane 9N+1 — the selected event on top, My Schedule below it in the same scroll; with nothing selected, My Schedule is the whole pane |
+
+The owner asked for My Schedule under the event details rather than in a third column. Each pane is
+also widened by a classic scrollbar's width where one is drawn (`--dk-sb-g`), so its content keeps the
+whole 9N+1 g.
 
 ## 2. The grid on desktop: g stays the phone's g
 

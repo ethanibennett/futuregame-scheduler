@@ -34,7 +34,8 @@
     "test:tax-report": "node --test vite-app/src/utils/__tests__/tax-report.test.mjs && node test/tax-report-route.test.js",
     "test:venue-coords": "node test/venue-coords.test.js",
     "test:bankrolls": "node test/bankrolls.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs",
-    "test:feed-dedupe": "node test/feed-dedupe.test.js"
+    "test:feed-dedupe": "node test/feed-dedupe.test.js",
+    "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900"
   },
   "keywords": [],
   "author": "",

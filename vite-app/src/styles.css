@@ -604,6 +604,9 @@
       --surface-overlay: rgba(26,26,26,0.94);
       --border-quiet:    var(--n-3);
       --border-strong:   var(--n-5);
+      /* Scrollbars follow the theme: thumb one step above the border, track on the page ground. */
+      --scrollbar-thumb: var(--n-5);
+      --scrollbar-track: var(--n-0);
 
       /* --- Typography roles ---------------------------------------------
          --font-display resolves through --serif so the data-serif themes
@@ -10733,12 +10736,14 @@
       font-weight: var(--fw-regular);
       color: var(--text);
       min-width: 0;
-      /* text-box-trim ends the box at the baseline. Clip only the INLINE axis
-         (keeps the ellipsis) and leave the block axis visible, so descenders
-         render below the baseline instead of being cut at the grid line — with no
-         padding/margin, the baseline stays exactly on its r-line. */
-      overflow-x: clip;
-      overflow-y: visible;
+      /* text-box-trim ends the box at the baseline, so the box itself has no room for descenders.
+         overflow-x:clip + overflow-y:visible was meant to clip sideways only, but WebKit clips both
+         axes, which shaved every descender (measured 0.79px at 402 wide). So: hide overflow, and
+         give the painted box 1/2 r above and below that the layout does not see (padding cancelled
+         by an equal negative margin) — ellipsis kept, baseline unmoved, descenders whole. */
+      overflow: hidden;
+      padding-block: calc(var(--subrow) * 0.5);
+      margin-block: calc(var(--subrow) * -0.5);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* The Flight/Day sub-line as a block with a fixed 24px (3-subrow) line box,
@@ -10751,8 +10756,9 @@
       display: block;
       line-height: var(--cal-title-line);
       white-space: nowrap;
-      overflow-x: clip;
-      overflow-y: visible; /* descenders render below the baseline, no clip */
+      overflow: hidden; /* with room for descenders, invisible to layout (see .cal-event-name) */
+      padding-block: calc(var(--subrow) * 0.5);
+      margin-block: calc(var(--subrow) * -0.5);
       text-overflow: ellipsis;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
@@ -10780,7 +10786,13 @@
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       white-space: normal;
-      overflow: hidden;
+      /* NOT overflow:hidden. The 13px serif is taller (ascent + descent ~16px) than its 2r line
+         box (15.4px), so clipping at the box sliced ~0.8px off line 2's descenders (g, p, y).
+         The clip reaches a quarter-r below the box instead: enough for any descender, while a
+         third line's glyphs (which line-clamp leaves laid out) start ~0.36r below and stay hidden.
+         scripts/check-text-clipping.mjs is the guard. */
+      overflow: visible;
+      clip-path: inset(calc(var(--subrow) * -1) 0 calc(var(--subrow) * -0.25) 0);
       /* -webkit-box switches text-box-trim off, so the baseline sits where the untrimmed 2r
          line box puts it: the 13px serif's 13/4px ascent/descent in a 15.43px (2r) line leave
          (4 - 0.786)px = 0.419r under the baseline. Measured 7.581r against r8 on every
@@ -10812,8 +10824,10 @@
       display: grid;
       grid-template-rows: var(--cal-title-line) calc(var(--subrow) * 2);
       align-items: end;
-      overflow-x: clip;
-      overflow-y: visible;
+      /* The grid only lays out; each line clips itself (.cal-event-base). */
+      overflow: visible;
+      padding-block: 0;
+      margin-block: 0;
     }
     .cal-event-base { grid-row: 1; min-width: 0; }
     .cal-event-stage { grid-row: 2; min-width: 0; }
@@ -16085,6 +16099,18 @@
        selection outline already says where you are; keyboard focus on any other row still rings. */
     .cal-event-row.is-selected .cal-event-bar:focus-visible,
     .cal-event-row.is-selected .cal-venue-strip:focus-visible { box-shadow: none; }
+    /* One ring on the selected row. A saved event's venue-coloured outline (and a priority or
+       conditional one) drew a second ring just inside the gold selection outline; while a row is
+       the one in the detail pane, the selection outline is its only ring — the pane says whether
+       it is saved. Unselected rows keep every marker. */
+    .cal-event-row.is-selected .cal-event-row-content { box-shadow: none; outline: none; }
+    .cal-event-row.is-selected::after { display: none; }
+    /* The right pane's two blocks: the selected event, then My Schedule, divided by a hairline
+       with 2r of room so My Schedule's own header starts on a whole r. */
+    .dk-detail-block + .dk-mine-block {
+      border-top: var(--bw-hair) solid var(--border);
+      margin-top: calc(var(--subrow) * 2);
+    }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════
@@ -16517,3 +16543,12 @@
     }
     .bk-ledger-x > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); text-align: center; }
     /* ══ end Bankrolls ═══════════════════════════════════════════════════════ */
+
+    /* ══ Scrollbars and native controls follow the theme ════════════════════
+       Chrome/Firefox take scrollbar-color from the theme's own neutrals (data-theme is on <html>,
+       where these resolve, and scrollbar-color inherits). Safari ignores scrollbar-color but draws
+       its scrollbars, selects and inputs from color-scheme — which nothing set, so a dark theme
+       got light-grey scrollbars and a white currency <select>. Width is untouched, so the desktop
+       panes' scrollbar allowance (useDesktopLayout measureScrollbarG) still measures the real one. */
+    :root { color-scheme: dark; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+    :root:is([data-theme="light"], [data-theme="cloudy"]) { color-scheme: light; }
