@@ -105,6 +105,10 @@ module.exports = {
 };
 ```
 
+**Units.** Every source returns `amount` in MAJOR units of its `currency` (dollars, not cents).
+Tournaments, adjustments and cash sessions store whole units (INTEGER); expenses and income store
+REAL to the cent. A source that stores cents must divide before returning.
+
 - `amount` is signed (+ in, − out) in `currency`; `bankroll_id` null is Main. Extra fields pass
   through. Filter on `bankroll` in SQL (the loader filters again). The loader asks with
   `from = null` because a running balance needs everything before the window.
@@ -210,14 +214,15 @@ query scoped to `req.user.id` (another user's id is a 404):
 | PUT / DELETE | `/api/cash-sessions/:id` | edit (a live session keeps its end and cash-out for `/end`) / delete |
 
 The bankroll ledger reads ended sessions through `lib/ledger-sources/cash-sessions.js`. A bankroll
-with cash sessions cannot be deleted (409, `cash_sessions` count in the body). Until the ledger lands,
-the bankroll switcher's balances do NOT include cash.
+with cash sessions cannot be deleted (409, `cash_sessions` count in the body). The switcher's balances (the server ledger's `/summary`)
+include ended sessions; a live one counts nowhere until it ends.
 
 **The live bar.** While a session runs, `LiveCashBar` (App.jsx, a 5r bar directly above the bottom nav)
 shows its clock and what is in play on every tab, and Open goes to Results › Cash. It hides on that
 view (which shows the full live card) and on Hands. The session is server-side, so the clock survives
 reloads and other devices; `hooks/useLiveCashSession.js` mirrors it (on mount, on return to the
 foreground, every 5 min) and corrects for clock skew with the server's `now`.
+
 ## Expenses, non-game income and trips (beta)
 
 What a player spends and earns outside a tournament result: flights, rooms, food, tips, coaching,
@@ -249,8 +254,8 @@ income: `rakeback bonus staking sponsorship coaching other`. The client list mus
 - A bankroll with transactions or trips cannot be deleted (409, counts in the body);
   `GET /api/bankrolls` lists `transaction_count`. Account deletion removes both tables.
 - Deleting a trip **untags** its rows; it does not delete them.
-- Not wired into `computeBalances()` (the switcher's balances) — that is the ledger's job
-  (`lib/bankroll-ledger.js`, which loads the source below).
+- Balances: the switcher reads the server ledger (`lib/bankroll-ledger.js` loads the source below),
+  so expenses and income move every balance, per bankroll and in All.
 - No receipts. Uploads in this app are stored as base64 in the DB (avatars, staking proofs), which
   is wrong for receipts, and Render's disk is not persistent; photo receipts need object storage first.
 

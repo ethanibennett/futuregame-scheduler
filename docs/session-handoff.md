@@ -14,6 +14,26 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-11 — Bankroll suite (admins only): ledger, cash sessions, expenses, rules, import
+Three parallel branches, merged on `merge/bankroll-suite`. All of it is documented in `docs/bankrolls.md`.
+- **The combined ledger** (`lib/bankroll-ledger.js`): every `lib/ledger-sources/*.js` is auto-loaded
+  (tournaments, adjustments, cash-sessions, transactions). `/api/bankrolls/ledger|summary|prefs|risk|import`.
+  The switcher's balances now come from the server's `/summary` (`balancesFromSummary`); `computeBalances`
+  is superseded for display. Money is MAJOR units in every source (dollars; expenses REAL to the cent).
+- **Dashboard** (bankroll strip → Dashboard): Balance / Rules / Goals / Import tabs; "Of your roll" on
+  event cards; risk of ruin `exp(−2μB/σ²)`. CSV import: Poker Bankroll Tracker, the Pokerbase sheet, or a
+  generic column mapping. Imported non-USD results are converted at TODAY's rate (an open question).
+- **Cash sessions** (`lib/cash-sessions.js`, Results → Cash): log or run live; one live session per
+  user (409); `LiveCashBar` sits over the bottom nav on every tab except Results › Cash and Hands.
+- **Expenses / income / trips** (`lib/bankroll-transactions.js`, Results → Expenses & income). Trip
+  P&L. Tax report gains the expense lines. No receipts (needs object storage first).
+- Guards: `check:clipping` / `check:controls` now walk the dashboard tabs, Results › Cash and the
+  expenses sheets. Run them against a scratch server (fresh `DB_PATH`, a registered user renamed to an
+  app-admin name, `CHECK_TOKEN` signed with that server's `JWT_SECRET`), never a copy of the live DB.
+- Open owner questions: whether a trip is scoped by tags only or by date range; where the live-cash bar
+  belongs (over the nav, or a chip in the top bar); whether one live session is the right limit; the cash
+  move-up rule needs stake fields; and whether imported non-USD results use the rate on their own date.
+
 ## 2026-10-10 — Results betas (admins only): bankrolls, analytics, tax report
 - **Bankrolls** (`lib/bankrolls.js`, `docs/bankrolls.md`): tables `bankrolls` + `bankroll_adjustments`,
   `tracking_entries.bankroll_id` (NULL = the virtual "Main"). `?bankroll=<all|main|id>` is the shared
