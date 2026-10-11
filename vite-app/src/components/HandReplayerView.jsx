@@ -6285,6 +6285,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const cards = [0, 1, 2].map(i => row.querySelector('[data-slot="' + i + '"]'));
     if (cards.some(c => !c) || typeof cards[0].animate !== 'function') return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* Not during an export. The [data-capturing] freeze pauses CSS animations
+       only; this is a Web Animation, so it ran on, and the exporters' one still
+       per step (~120ms after the step) caught the flop as a half-transparent
+       stack in the first slot — measured: all three cards at the same centre,
+       opacity 0.52, scale 0.95. */
+    if (row.closest('[data-capturing]')) return;
     flopAnimsRef.current.forEach(a => a.cancel());
     const x0 = cards[0].getBoundingClientRect().left;
     flopAnimsRef.current = cards.map(el => {
@@ -6298,6 +6304,74 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       ], { duration: 820, fill: 'backwards' });
     });
   }, [flopAnimKey]);
+
+  /* The board is a centred row, so a turn or river card re-centres everything
+     already on it: the flop moved half a card left in one frame while the new
+     card slid in, and stepping back moved it right the same way. FLIP instead:
+     each card's layout centre (relative to the table, so the board area's own
+     centring cancels out) is remembered after every commit; when the set of
+     cards changes, a card that stayed is put back where it was SEEN and glides
+     to its new slot on the motion tokens. "Where it was seen" is the remembered
+     layout plus any translate still on it, so a slide that is interrupted (fast
+     playback, or a step back mid-glide) continues from where the card is rather
+     than snapping. Centres, because every transform on a board card (the deal's
+     scale, the flop spread's translate) is about the card's centre, so the
+     centre minus the matrix's translate is the layout position exactly.
+     Off for reduced motion, with the board animation switched off, and during
+     an export: beginCapture() marks the table [data-capturing] and captures one
+     still per step ~120ms after it, so a slide there would freeze the flop
+     mid-way across the felt. */
+  const boardLayoutRef = useRef(null);
+  const boardSlidesRef = useRef(new Map());
+  useLayoutEffect(() => {
+    const row = boardRowRef.current;
+    const prev = boardLayoutRef.current;
+    if (!row) { boardLayoutRef.current = null; return; }
+    const table = row.closest('.replayer-table') || row.parentElement;
+    const originX = table.getBoundingClientRect().left;
+    const cards = [...row.children].filter(el => el.dataset && el.dataset.ck);
+    const shiftOf = (el) => {
+      const t = getComputedStyle(el).transform;
+      return t && t !== 'none' ? new DOMMatrixReadOnly(t).m41 : 0;
+    };
+    const now = new Map();
+    const shift = new Map();
+    for (const el of cards) {
+      const r = el.getBoundingClientRect();
+      const s = shiftOf(el);
+      shift.set(el, s);
+      now.set(el.dataset.ck, (r.left + r.right) / 2 - s - originX);
+    }
+    boardLayoutRef.current = now;
+    if (!prev) return;
+    const changed = now.size !== prev.size || [...now.keys()].some(k => !prev.has(k));
+    if (!changed) return;
+    if (!rSettings.animateBoard || typeof row.animate !== 'function') return;
+    if (row.closest('[data-capturing]')) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cs = getComputedStyle(row);
+    // WebKit hands a time token back as "0.32s", Blink as "320ms".
+    const durTok = cs.getPropertyValue('--dur-base').trim();
+    const duration = (parseFloat(durTok) || 0) * (/[^m]s$/.test(durTok) ? 1000 : 1);
+    const easing = cs.getPropertyValue('--ease-out').trim() || 'ease-out';
+    if (!duration) return;
+    for (const el of cards) {
+      const k = el.dataset.ck;
+      if (!prev.has(k)) continue;
+      const dx = prev.get(k) + shift.get(el) - now.get(k);
+      const running = boardSlidesRef.current.get(el);
+      if (running) { running.cancel(); boardSlidesRef.current.delete(el); }
+      if (Math.abs(dx) < 0.5) continue;
+      const anim = el.animate([
+        { transform: 'translateX(' + dx.toFixed(2) + 'px)' },
+        { transform: 'translateX(0)' },
+      ], { duration, easing });
+      boardSlidesRef.current.set(el, anim);
+      anim.onfinish = anim.oncancel = () => {
+        if (boardSlidesRef.current.get(el) === anim) boardSlidesRef.current.delete(el);
+      };
+    }
+  });
 
   // Share as image
   const shareReplayImage = async () => {
@@ -7511,16 +7585,16 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   // gap class existed for it and had never been rendered.
                   let card;
                   if (c.suit === 'x') {
-                    card = <div key={key} data-slot={i} className="card-unknown" />;
+                    card = <div key={key} data-slot={i} data-ck={key} className="card-unknown" />;
                   } else if (cardTheme === 'classic') {
                     card = (
-                      <div key={key} data-slot={i} className={'card-classic card-classic-' + c.suit}>
+                      <div key={key} data-slot={i} data-ck={key} className={'card-classic card-classic-' + c.suit}>
                         <span className="card-classic-rank">{c.rank.toUpperCase()}</span>
                         <span className="card-classic-suit">{{h:'\u2665',d:'\u2666',c:'\u2663',s:'\u2660'}[c.suit] || ''}</span>
                       </div>
                     );
                   } else {
-                    card = <img key={key} data-slot={i} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
+                    card = <img key={key} data-slot={i} data-ck={key} className="card-img" src={'/cards/cards_gui_' + c.rank + c.suit + '.svg'} alt={c.rank+c.suit} loading="eager" />;
                   }
                   return card;
                 })}
