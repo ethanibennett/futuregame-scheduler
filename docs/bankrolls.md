@@ -278,3 +278,76 @@ income: `rakeback bonus staking sponsorship coaching other`. The client list mus
 `lib/ledger-sources/transactions.js` → `{ name: 'transactions', entries(db, userId, { bankroll, from, to }) }`
 returning `[{ date, ts: null, amount (expense negative), currency, bankroll_id, kind, category, label, ref: { table: 'bankroll_transactions', id } }]`,
 ordered by date then id. A bankroll that is not the user's throws (`err.status` 404/400).
+
+## Reports and filters (beta, app admins)
+
+The dashboard's **Reports** tab: one filter model over everything played and spent, and breakdowns
+that show where the money is won and lost. The structure follows the serious bankroll trackers
+(Poker Bankroll Tracker's App Store page lists filters by game type, limit, buy-in, blinds,
+location, day of week, year and the part of the day a session starts, and a chart of profit by
+session length); the look is this app's own (tokens, grid, faces).
+
+Code: `lib/bankroll-reports.js` (the route), `vite-app/src/utils/bankroll-filters.js` (the filter
+model), `vite-app/src/utils/bankroll-reports.js` (the breakdowns), `components/BankrollReports.jsx`
+(the tab), `components/BankrollFilters.jsx` (the filter sheet), `components/bankroll-reports.css`.
+Tests: `npm run test:bankroll-reports` (collectFacts against scratch sql.js; the route on a scratch
+port: gate, isolation, validation; the client model and reports under `node --test`).
+
+### The route
+
+| method | path | |
+|---|---|---|
+| GET | `/api/bankrolls/reports?bankroll=&from=&to=&currency=` | `{ currency, bankroll, from, to, rates_stale, facts }` |
+
+One **fact** per tournament result, ENDED cash session and expense / income row, with the
+dimensions the ledger does not carry (a tournament's room, game and online flag live on
+`tournaments`; a cash session's start and length on `cash_sessions`), money already in `currency`:
+
+`{ id ('t12' | 'c3' | 'x5'), type ('tournament' | 'cash' | 'expense' | 'income'), bankroll ('main' | id), date,
+label, profit, room, game, online, hour (tournament start, 0-23 or null), started_at + hours (cash),
+stakes (cash), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income) }`
+
+- Money is the ledger's: tournament net = (cashed ? cash : 0) − buy-in × max(1, entries) in the
+  venue's currency (`analytics.normaliseRow`), cash = cash_out − buy_in − tips − expenses, an expense
+  negative. Converted through USD at the current rates. A live session is not a fact.
+- Room: `property`, the site for an online event, else the venue (as `/api/analytics`). Cash sessions
+  have no online flag: a session is online when its room names a known online site
+  (`ONLINE_ROOM` in the module), else live.
+- The route filters only by bankroll and date (both optional); every other filter is client-side,
+  because a chip's count needs the unfiltered set anyway. The Reports tab asks for everything, once
+  per currency.
+
+### The filter model (`utils/bankroll-filters.js`)
+
+`prepareFacts` derives weekday (from the date, UTC), start hour (a cash session's LOCAL hour of
+`started_at`, in the viewer's zone; a tournament's own start), daypart, month, year, room / game keys
+(case-folded), live / online, and one stakes key (`cs:2/5` cash stakes, `bi:b2` a tournament buy-in
+band, the bands of `lib/analytics.js`).
+
+Filters: `{ range, types, bankrolls, games, stakes, rooms, formats, weekdays, dayparts }`, each a
+multi-select of keys: **OR within a dimension, AND across**; empty = no filter. `range` is `all`,
+`30d`, `90d`, `12m` (ending today) or `yYYYY`. A fact with no value for a dimension (an expense has
+no room) never matches an active filter on it. Dayparts: morning 6–12, afternoon 12–17, evening
+17–22, late night 22–6. Chip counts are **faceted** (`facetCounts`): the facts passing every OTHER
+filter, so a count is what tapping the chip would leave. A chip at 0 is disabled unless it is on.
+The filters and the chosen report are remembered per viewer (localStorage `bankrollReports`); the
+dashboard's bankroll selector sets the Bankroll filter when it changes.
+
+### The reports (`utils/bankroll-reports.js`)
+
+Room, game, cash stakes, buy-in, day of week, start time (by hour, read from 6 AM), **session
+length** (cash: under 2 h … 10 h+), month (newest first) and expense category. Each row: count,
+profit, and one rate for the whole table — per hour when every row is cash, ROI when every row is a
+tournament, average per event / session when they mix, share for categories. Expenses and income
+enter only Month (its Net; the rate is the games alone) and the category table. Best and worst rows
+by profit are tinted and named in the line above the table. Bars are whole g across 35g from a zero
+line (`barLayout`), every non-zero row at least 1g.
+
+### Layout
+
+Dashboard content is 35g. Bar 5r: Filters 8g | summary 17g (seated, truncating) | Clear 8g. Report
+picker 3 × 11g chips, 4r. Figures: the dashboard's 2 × 17g stats. Table: 13g | 4g | 9g | 9g, head 3r,
+rows 5r (a 4r text line, baseline on its line 3, over a 1r bar), total 4r. The filter sheet sits over
+the dashboard (z above the modal layer), head as the dashboard's (Clear all 8g on 19g, Done 8g on
+28g), sections 2r apart, chips 4r in 4 × 8g, 3 × 11g or 2 × 17g. Both are walked by
+`check:controls` and `check:clipping`.

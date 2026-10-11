@@ -9,6 +9,7 @@ import {
 } from '../utils/bankroll-ledger.js';
 import BankrollChart from './BankrollChart.jsx';
 import BankrollImport from './BankrollImport.jsx';
+import BankrollReports from './BankrollReports.jsx';
 import './analytics.css';
 import './bankroll-dashboard.css';
 
@@ -35,7 +36,7 @@ function fmtDate(iso) {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 const PERIODS = [['month', 'Month'], ['year', 'Year'], ['all', 'All']];
-const TABS = [['balance', 'Balance'], ['rules', 'Rules'], ['goals', 'Goals'], ['data', 'Import']];
+const TABS = [['balance', 'Balance'], ['reports', 'Reports'], ['rules', 'Rules'], ['goals', 'Goals'], ['data', 'Import']];
 const PERIOD_NOUN = { month: 'this month', year: 'this year', all: 'all time' };
 
 function Seg({ cols, options, value, onChange, label }) {
@@ -390,6 +391,7 @@ export default function BankrollDashboard({ bk, onClose }) {
                 </>
               )}
 
+              {tab === 'reports' && <BankrollReports bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'rules' && <Rules guide={guide} prefs={prefs} money={money} onSave={savePrefs} saving={saving} />}
               {tab === 'rules' && <Risk risk={risk} money={money} />}
               {tab === 'goals' && (
