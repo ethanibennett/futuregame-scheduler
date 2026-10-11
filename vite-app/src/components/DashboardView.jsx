@@ -1052,7 +1052,7 @@ export default function DashboardView({
                   the whole schedule, so a full season would be forty dots —
                   past the cap it becomes a position readout instead. */}
               {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
-                <div className="dash-upnext-dots">
+                <div className="dash-upnext-dots" style={{ '--n': whatsNextEvents.length }}>
                   {whatsNextEvents.map((_, i) => (
                     <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
                   ))}

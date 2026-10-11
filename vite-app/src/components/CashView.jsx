@@ -181,7 +181,7 @@ function CashLocationPicker({ token, onSaved, trailing = null }) {
        fourth column of the same row: 1g gutter, then 8g. */
     <div style={{ marginTop: 'calc(var(--subrow) * 2)', marginBottom: 'var(--subrow)', display: 'flex', alignItems: 'center', gap: 'var(--gu)' }}>
       <button ref={btnRef} type="button" className={'filter-chip' + (filters.userLocation ? ' active' : '')} onClick={() => setOpen(o => !o)}
-        style={{ width: 'calc(var(--col) * 3 + var(--gu) * 2)', minWidth: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 'calc(var(--subrow) * 1)', padding: '0 calc(var(--subrow) * 1.25)' }}>
+        style={{ width: 'calc(var(--col) * 3 + var(--gu) * 2)', minWidth: 0, height: 'calc(var(--subrow) * 4)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(var(--subrow) * 1)', padding: '0 var(--gu)' }}>
         <Icon.mapPin />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'calc(var(--gu) * 1.149)', fontFamily: 'var(--font-condensed)', lineHeight: 'calc(var(--subrow) * 2)' }}>{label}</span>
       </button>
@@ -296,7 +296,7 @@ export default function CashView({ token, onModeChange }) {
     .sort((a, b) => (b._totalTables - a._totalTables) || String(a.name).localeCompare(String(b.name)));
 
   return (
-    <div className="cash-view" style={{ maxWidth: 'calc(var(--subrow) * 85)', margin: '0 auto', padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
+    <div className="cash-view" style={{ maxWidth: 'calc(var(--gu) * 60)', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', height: mode === 'heatmap' ? '100%' : undefined }}>
       {/* The cash location, in the Schedule tab's location-field spot, on both views. */}
       {/* Refresh shares the location field's row (owner, 2026-10-10), in its fourth column, on both
           views: Live reloads the board, Heatmaps re-reads its room list. */}
@@ -347,10 +347,10 @@ export default function CashView({ token, onModeChange }) {
       )}
 
       {status === 'error' && (
-        <div style={{ boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.125) var(--border, #333)', borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'var(--space-xl)', lineHeight: 'calc(var(--subrow) * 3)', color: 'var(--text-muted, #aaa)' }}>
+        <div style={{ boxShadow: 'inset 0 0 0 calc(var(--subrow) * 0.125) var(--border, #333)', borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'calc(var(--subrow) * 2) var(--gu)', lineHeight: 'calc(var(--subrow) * 3)', color: 'var(--text-muted, #aaa)' }}>
           {errMsg || 'Something went wrong.'}
-          <div style={{ marginTop: 'var(--space-md)', display: 'flex' }}>
-            <button onClick={load} style={{ height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border,#333)', background: 'transparent', color: 'var(--text,#fff)', borderRadius: 'var(--radius-sm)', padding: '0 var(--space-lg)', cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.149)' }}>Try again</button>
+          <div style={{ marginTop: 'var(--subrow)', display: 'flex' }}>
+            <button className="ctl" onClick={load} style={{ width: 'var(--col)', height: CTRL_H, boxSizing: 'border-box', border: 'var(--bw-hair) solid var(--border,#333)', background: 'transparent', color: 'var(--text,#fff)', borderRadius: 'var(--radius-sm)', padding: 0, cursor: 'pointer', fontSize: 'calc(var(--gu) * 1.149)' }}>Try again</button>
           </div>
         </div>
       )}
