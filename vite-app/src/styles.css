@@ -11038,12 +11038,12 @@
     /* ── Tracking ── */
     .tracking-stats {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-md) var(--gu); /* 1g between columns, as .cal-detail-grid: 16g + 1g + 16g */
+      /* Whole-g columns, 1g apart: two 16g on every phone (the card's 33g), four 14g in the
+         desktop pane's 60g. (A width query gave a 430pt phone four 7.5g columns.) */
+      grid-template-columns: repeat(2, calc(var(--gu) * 16));
+      gap: var(--space-md) var(--gu);
     }
-    @media (min-width: 420px) {
-      .tracking-stats { grid-template-columns: 1fr 1fr 1fr 1fr; }
-    }
+    .app-shell.is-desktop .tracking-stats { grid-template-columns: repeat(4, calc(var(--gu) * 14)); }
     .tracking-profit-pos { color: #4ade80; }
     .tracking-profit-neg { color: #f87171; }
     :is([data-theme="light"],[data-theme="cloudy"]) .tracking-profit-pos { color: #16a34a; }
