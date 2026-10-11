@@ -18,7 +18,7 @@ import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import useRollGuide from '../hooks/useRollGuide.js';
-import { rollShare, fmtShare } from '../utils/bankroll-ledger.js';
+import { rollShare, fmtShare, fmtRule } from '../utils/bankroll-ledger.js';
 import { toBankrollKey } from '../utils/bankrolls.js';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
@@ -833,10 +833,10 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         ended up advertising a $504 guarantee. buyin - rake_dollars is
                         exactly this number and cannot drift from the rake beside it. */}
                     {roll && (
-                      <div className="cal-detail-item cal-roll" title={`Your rule: ${roll.buyins} buy-ins, so at most ${fmtShare(1 / roll.buyins)} of the roll per entry`}>
+                      <div className="cal-detail-item cal-roll" title={`Your rule: ${roll.buyins} buy-ins, so at most ${fmtRule(roll.buyins)} of the roll per entry`}>
                         <span className="cal-detail-label">Of your roll</span>
                         <span className={'cal-detail-value' + (roll.over ? ' is-over' : '')}>
-                          {roll.empty ? 'Roll at zero' : fmtShare(roll.share)}{roll.over && !roll.empty ? ` · over ${fmtShare(1 / roll.buyins)} rule` : ''}
+                          {roll.empty ? 'Roll at zero' : fmtShare(roll.share)}{roll.over && !roll.empty ? ` · over ${fmtRule(roll.buyins)} rule` : ''}
                         </span>
                       </div>
                     )}

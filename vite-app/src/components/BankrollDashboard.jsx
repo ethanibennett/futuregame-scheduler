@@ -5,7 +5,7 @@ import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
 import {
   periodWindow, within, balanceSeries, drawdowns, periodTable, bySource, goalProgress, ledgerToCsv,
-  fmtShare, MOVE_KINDS,
+  fmtRule, MOVE_KINDS,
 } from '../utils/bankroll-ledger.js';
 import BankrollChart from './BankrollChart.jsx';
 import BankrollImport from './BankrollImport.jsx';
@@ -115,7 +115,7 @@ function Rules({ guide, prefs, money, onSave, saving }) {
       {g && (
         <div className="an-stats">
           <Stat label="MTT max buy-in" value={money(g.cap)}
-            note={`${g.buyins} buy-ins · ${fmtShare(1 / g.buyins)} of the roll${custom.mtt ? '' : ' (default)'}`} />
+            note={`${g.buyins} buy-ins · ${fmtRule(g.buyins)} of the roll${custom.mtt ? '' : ' (default)'}`} />
           <Stat label="Cash max buy-in" value={money(guide.cash.cap)}
             note={`${guide.cash.buyins} buy-ins for a stake${custom.cash ? '' : ' (default)'}`} />
         </div>

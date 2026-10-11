@@ -77,7 +77,7 @@ export default function BankrollImport({ bk, toast, defaultKey, onDone }) {
       const s = preview.server.rows[k++] || {};
       const r = i.row;
       const amount = r.type === 'tournament' ? r.cash - r.buyin * r.entries : (r.type === 'deposit' ? r.amount : -r.amount);
-      return { line: i.line, status: s.status, what: s.error || s.note || (r.type === 'tournament' ? r.name : r.type === 'deposit' ? 'Deposit' : 'Withdrawal'), date: r.date, amount, cur: r.currency };
+      return { line: i.line, status: s.status, what: s.error || (r.type === 'tournament' ? r.name + (s.note ? ` (${r.currency} to USD)` : '') : r.type === 'deposit' ? 'Deposit' : 'Withdrawal'), date: r.date, amount, cur: r.currency };
     });
   }, [preview]);
   const clientSkips = preview ? preview.items.filter((i) => !i.row).length : 0;

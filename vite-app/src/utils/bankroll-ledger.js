@@ -157,6 +157,9 @@ export function fmtShare(x) {
   return `${p.toFixed(2)}%`;
 }
 
+/** A rule's per-entry share, as written: 100 buy-ins → "1%", 40 → "2.5%", 300 → "0.33%". */
+export function fmtRule(buyins) { return `${parseFloat((100 / buyins).toFixed(2))}%`; }
+
 // ── CSV export ───────────────────────────────────────────────────────────────────────────
 // A cell that opens with = + - @ is a formula to a spreadsheet; text cells get a leading '.
 function cell(v, { text = false } = {}) {

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   periodWindow, periodElapsed, balanceSeries, drawdowns, periodTable, bySource, within, goalProgress,
-  ledgerToCsv, rollShare, fmtShare, sourceLabel,
+  ledgerToCsv, rollShare, fmtShare, fmtRule, sourceLabel,
 } from '../bankroll-ledger.js';
 import { parseCsv, parseNumber, parseDate, detectPreset, applyPreset, guessMapping, applyMapping } from '../bankroll-csv.js';
 import { balancesFromSummary, BANKROLL_ALL, BANKROLL_MAIN } from '../bankrolls.js';
@@ -90,6 +90,7 @@ test('rollShare / fmtShare', () => {
   assert.equal(rollShare({ ...guide, balance: 0 }, 10).empty, true);
   assert.equal(rollShare(guide, 0), null);
   assert.deepEqual([fmtShare(0.0075), fmtShare(0.024), fmtShare(0.25)], ['0.75%', '2.4%', '25%']);
+  assert.deepEqual([fmtRule(100), fmtRule(40), fmtRule(300)], ['1%', '2.5%', '0.33%']);
 });
 
 test('balancesFromSummary: the switcher\'s Map from the server summary', () => {
