@@ -469,7 +469,7 @@
       --subrow: calc(var(--gu) * 0.71); /* r — the vertical unit, scales with the
                                            screen exactly like g. 4r = 1 Row = 2.84g.
                                            (Was a fixed 8px, which is NOT the grid at
-                                           any real width.) */
+                                           any real width.) Rounded to 1/64 px below. */
 
       /* Sub-subrow optical corrections (fractions of r, never px). */
       --nudge-half: calc(var(--subrow) * 0.0625);
@@ -695,6 +695,14 @@
       --focus-ring:       calc(var(--subrow) * 0.25) solid var(--brand);
       --focus-ring-inset: inset 0 0 0 calc(var(--subrow) * 0.25) var(--brand);
       --focus-offset:     calc(var(--subrow) * 0.25);
+    }
+    /* r, rounded to a whole 1/64 px: WebKit lays boxes out in 1/64 px units, so at a width where
+       0.71g is not one (402: 7.7139px) every whole-r box lost a sliver to truncation — a 13r event
+       row laid out 0.05px short — and the loss summed down a list until, four days into the
+       Schedule, the date pills sat a pixel off their r-lines. Rounded, N whole r (and N + ½) is
+       exact at every width. The change to r is under 0.01px. */
+    @supports (width: round(nearest, 1px, 1px)) {
+      :root { --subrow: round(nearest, calc(var(--gu) * 0.71), calc(1px / 64)); }
     }
 
     /* Light grounds need shallower, cooler shadows and a darker gold —
@@ -1358,8 +1366,10 @@
        head, and the step form is load-bearing: results are discrete, so a
        smooth curve would draw values that never existed.
        ================================================================== */
-    .results-curve { margin: var(--space-lg) 0 var(--space-md); }
-    .results-curve-svg { width: 100%; height: calc(var(--subrow) * 8.75); display: block; overflow: visible; }
+    /* Whole r throughout: 1r above, the 9r chart, a 3r foot (figures seated on its 2r line), the
+       2r strip 1r below it, 1r after. */
+    .results-curve { margin: var(--space-md) 0 var(--space-md); }
+    .results-curve-svg { width: 100%; height: calc(var(--subrow) * 9); display: block; overflow: visible; }
     .rc-line  { fill: none; stroke: var(--text); stroke-width: 1.5; }
     .rc-zero  { stroke: var(--border-strong); stroke-width: 1; }
     .rc-fill-pos { fill: var(--pos-quiet); stroke: none; }
@@ -1371,8 +1381,13 @@
     .results-curve-foot {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
-      margin-top: var(--space-2xs);
+      align-items: flex-start;
+      height: calc(var(--subrow) * 3);
+    }
+    .results-curve-foot > span {
+      display: block;
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .rc-zero-label {
       font-family: var(--font-condensed);
@@ -11024,7 +11039,7 @@
     .tracking-stats {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--space-md) var(--space-lg);
+      gap: var(--space-md) var(--gu); /* 1g between columns, as .cal-detail-grid: 16g + 1g + 16g */
     }
     @media (min-width: 420px) {
       .tracking-stats { grid-template-columns: 1fr 1fr 1fr 1fr; }
@@ -11033,13 +11048,28 @@
     .tracking-profit-neg { color: #f87171; }
     :is([data-theme="light"],[data-theme="cloudy"]) .tracking-profit-pos { color: #16a34a; }
     :is([data-theme="light"],[data-theme="cloudy"]) .tracking-profit-neg { color: #dc2626; }
+    /* Results cards on the grid: 2r × 1g padding, the border an inset shadow (it adds no size), and
+       every block inside a whole number of r, so whatever follows a card starts on an r-line. */
     .tracking-card {
       background: var(--surface);
-      border: var(--bw-1) solid var(--border);
+      border: 0;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       border-radius: var(--radius-sm);
-      padding: var(--space-lg) var(--space-xl);
+      padding: calc(var(--subrow) * 2) var(--gu);
       margin-bottom: var(--space-md);
     }
+    /* Seated lines: trimmed to cap..alphabetic, padded so the first baseline sits on the cell's
+       bottom r-line; further lines step by the 2r line-height, and the block ends on the last
+       baseline, so its height is whole r. */
+    .tr-seat { display: block; text-box-trim: trim-both; text-box-edge: cap alphabetic; line-height: calc(var(--subrow) * 2); }
+    .tr-seat-2 { padding-top: calc(var(--subrow) * 2 - 1cap); }
+    .tr-seat-3 { padding-top: calc(var(--subrow) * 3 - 1cap); }
+    .tracking-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--gu); margin-bottom: var(--space-md); }
+    .tracking-head > :first-child { min-width: 0; }
+    .tracking-summary-head { display: flex; justify-content: space-between; align-items: flex-start; height: calc(var(--subrow) * 4); margin-bottom: var(--space-md); }
+    .tracking-summary-head select { height: calc(var(--subrow) * 4); width: var(--col); box-sizing: border-box; }
+    .tracking-actions { display: flex; gap: var(--gu); }
+    .tracking-actions > .btn { padding: 0; }
     .tracking-form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -12833,6 +12863,10 @@
       /* end: the title is trimmed to cap..alphabetic, so its bottom (the
          baseline) seats on the header's 3r line. The 3r controls fill the row. */
       align-items: end;
+      /* start, not the section header's space-between: on a pane wider than the 35g of columns
+         (desktop) space-between spread the tracks and put Reset half a g off the grid, no longer
+         over the Cashes card it belongs to. */
+      justify-content: start;
     }
     .dash-results-header > * { grid-row: 1; min-width: 0; }
     .dash-results-header > .dashboard-section-title { grid-column: 1; }

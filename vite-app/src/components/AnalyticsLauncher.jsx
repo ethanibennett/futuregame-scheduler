@@ -15,7 +15,8 @@ export default function AnalyticsLauncher({ bankroll = 'all' }) {
   return (
     <>
       <button type="button" className="an-cell an-launch" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <span>Analytics<span className="an-beta">Beta</span></span>
+        <span className="an-launch-name snap-g">Analytics</span>
+        <span className="an-beta">Beta</span>
         <span className="an-launch-go" aria-hidden="true">Breakdowns, variance, edge ›</span>
       </button>
       {open && (

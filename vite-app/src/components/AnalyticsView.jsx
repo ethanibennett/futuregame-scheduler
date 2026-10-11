@@ -223,8 +223,8 @@ export default function AnalyticsView({ onClose, bankroll = 'all' }) {
       <div className="an-scrim" onClick={onClose} />
       <div className="an-sheet" role="dialog" aria-modal="true" aria-labelledby="an-title">
         <header className="an-head">
-          <h2 className="an-cell an-title" id="an-title">
-            Analytics<span className="an-beta">Beta</span>
+          <h2 className="an-title-row" id="an-title">
+            <span className="an-cell an-title snap-g">Analytics</span><span className="an-beta">Beta</span>
           </h2>
           <button ref={closeRef} type="button" className="an-cell an-close" onClick={onClose}>Done</button>
         </header>

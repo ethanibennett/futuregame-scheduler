@@ -72,7 +72,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
   };
 
   return (
-    <form onSubmit={handleSubmit} className="tracking-card" style={{padding:'var(--space-xl)',marginBottom:'var(--space-lg)'}}>
+    <form onSubmit={handleSubmit} className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
       <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',marginBottom:'var(--space-lg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
         {isEdit ? `Edit: ${tournamentLabel}` : 'Log Tournament Result'}
       </div>
@@ -197,18 +197,20 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 
   return (
     <div className="tracking-card">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'var(--space-sm)'}}>
+      {/* Date on its 2r line, the event name's first baseline 3r below it, the profit seated on
+          line 3 at the right: 5r, then 1r. */}
+      <div className="tracking-head">
         <div>
-          <div style={{fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
+          <div className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.060)',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",letterSpacing:'0.03em'}}>
             {entry.date} · #{entry.event_number}
           </div>
-          <div style={{fontSize:'calc(var(--gu) * 1.296)',fontWeight: 'var(--fw-bold)',color:'var(--text)',marginTop:'var(--space-2xs)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+          <div className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.296)',fontWeight: 'var(--fw-bold)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
             {entry.event_name}
           </div>
         </div>
         <div style={{textAlign:'right',flexShrink:0}}>
           <div style={{fontFamily:"var(--serif)",fontSize:'calc(var(--gu) * 1.473)',fontWeight:700}}
-            className={profit >= 0 && entry.cashed ? 'tracking-profit-pos' : 'tracking-profit-neg'}>
+            className={'tr-seat tr-seat-3 ' + (profit >= 0 && entry.cashed ? 'tracking-profit-pos' : 'tracking-profit-neg')}>
             {fmtSigned(profit)}
           </div>
         </div>
@@ -251,18 +253,18 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
       </div>
 
       {poyEligible && !entry.total_entries && (
-        <p style={{fontSize:'calc(var(--gu) * 1.060)',color:'#d97706',marginBottom:'var(--space-xs)'}}>
+        <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.060)',color:'#d97706',margin:'0 0 var(--space-md)'}}>
           \u2691 Edit to add field size for POY points
         </p>
       )}
 
       {entry.notes && (
-        <p style={{fontSize:'calc(var(--gu) * 1.149)',color:'var(--text-muted)',fontStyle:'italic',marginBottom:'var(--space-md)'}}>{entry.notes}</p>
+        <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.149)',color:'var(--text-muted)',fontStyle:'italic',margin:'0 0 var(--space-md)'}}>{entry.notes}</p>
       )}
 
-      <div style={{display:'flex',gap:'var(--space-md)'}}>
-        <button className="btn btn-ghost btn-sm" onClick={onEdit}>Edit</button>
-        <button className="btn btn-ghost btn-sm" style={{color:'var(--accent2)'}} onClick={onDelete}>Delete</button>
+      <div className="tracking-actions">
+        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 5)'}} onClick={onEdit}>Edit</button>
+        <button className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 7)',color:'var(--accent2)'}} onClick={onDelete}>Delete</button>
       </div>
     </div>
   );
@@ -393,12 +395,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       </div>
 
       {trackingData.length > 0 && (
-        <div className="tracking-card" style={{padding:'var(--space-xl)',marginBottom:'var(--space-lg)'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-ml)'}}>
-            <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Summary</span>
+        <div className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+          <div className="tracking-summary-head">
+            <span className="tr-seat tr-seat-3" style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Summary</span>
             {exchangeRates && (
               <select value={displayCurrency} onChange={e => onCurrencyChange(e.target.value)}
-                style={{fontSize:'calc(var(--gu) * 1.031)',padding:'calc(var(--subrow) * 0.375) var(--space-sm)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
+                style={{fontSize:'calc(var(--gu) * 1.031)',padding:'0 var(--space-sm)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 0.75)',
                   background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontWeight: 'var(--fw-bold)'}}>
                 <option value="NATIVE">Native</option>
                 {(exchangeRates ? Object.keys(CURRENCY_CONFIG) : ['USD','EUR']).map(c => (
@@ -444,7 +446,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             convert={(v) => convertAmount(v, 'USD', displayCurrency === 'NATIVE' ? 'USD' : displayCurrency, exchangeRates)}
             format={fmtStat}
           />
-          <p style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',marginTop:'var(--space-md)'}}>
+          <p className="tr-seat tr-seat-2" style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text-muted)',margin:0}}>
             {stats.totalEntries} event{stats.totalEntries !== 1 ? 's' : ''} played · {stats.eventsCashed} cash{stats.eventsCashed !== 1 ? 'es' : ''}
             {stats.poyEventCount > 0 && <> · {stats.poyEventCount} POY event{stats.poyEventCount !== 1 ? 's' : ''}</>}
             {displayCurrency !== 'NATIVE' && exchangeRates && (

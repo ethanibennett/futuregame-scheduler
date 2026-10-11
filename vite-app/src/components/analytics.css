@@ -86,7 +86,18 @@
   height: var(--header-h);                     /* 8r, the app's top bar */
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
 }
-.an-head .an-title { position: absolute; left: var(--gu); top: calc(var(--subrow) * 2); width: calc(var(--gu) * 26); }
+/* The sheet title: a 26g x 3r row holding the name (seated on line 3, sized to whole g) and the
+   BETA pill, 4g x 2r on lines 1-3, so the pill starts on a g line whatever the name. */
+.an-head .an-title-row {
+  position: absolute; left: var(--gu); top: calc(var(--subrow) * 2); width: calc(var(--gu) * 26);
+  height: calc(var(--subrow) * 3); margin: 0; display: flex; align-items: flex-start;
+}
+.an-title-row > .an-title { flex: 0 0 auto; }
+.an-title-row > .an-beta {
+  flex: 0 0 calc(var(--gu) * 4); height: calc(var(--subrow) * 2); margin: var(--subrow) 0 0 var(--gu);
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  background: var(--brand-quiet); border-radius: var(--radius);
+}
 .an-close {
   --h: 4; --p: 0.6978;                         /* as .an-td: baseline on line 3 of 4 */
   position: absolute; left: calc(var(--gu) * 28); top: calc(var(--subrow) * 2);
@@ -149,15 +160,25 @@
 }
 .an-chip[aria-pressed="true"] { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line); color: var(--text); }
 
-/* Entry point on the Results tab: one 35g x 5r row, baseline on its line 4. */
+/* Entry point on the Results tab: one 35g x 5r button. A control, so its label is centred, not
+   seated (owner rule, 2026-10-10): the name is sized to whole g (snap-g) so the BETA pill after it
+   starts on a g line, and the pill is the bankroll strip's 4g x 3r one, 1r from either edge. */
 .an-launch {
-  --h: 5; --p: 1.6978;
-  display: flex; align-items: flex-start; justify-content: space-between;
+  --h: 5; --p: 0;
+  display: flex; align-items: center; justify-content: flex-start;
+  line-height: 1;
   width: calc(var(--gu) * 35); margin: 0 0 var(--space-md); border: 0; border-radius: var(--radius-sm);
   padding-inline: var(--gu);
   background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
   font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
   text-align: left; cursor: pointer;
 }
-.an-launch .an-beta { margin-left: var(--gu); }
-.an-launch-go { color: var(--text-muted); font-weight: var(--fw-regular); }
+.an-launch-name { flex: 0 0 auto; white-space: nowrap; }
+.an-launch .an-beta {
+  flex: 0 0 calc(var(--gu) * 4); height: calc(var(--subrow) * 3); margin-left: var(--gu);
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  background: var(--brand-quiet); border-radius: var(--radius);
+}
+/* Truncates on a narrow pane; the half-r padding, cancelled by the margin, is the descenders' room. */
+.an-launch-go { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5); color: var(--text-muted); font-weight: var(--fw-regular); }

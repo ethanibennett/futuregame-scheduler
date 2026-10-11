@@ -337,7 +337,7 @@ export default function BankrollDashboard({ bk, onClose }) {
       <div className="an-scrim" onClick={onClose} />
       <div className="an-sheet bd-sheet" role="dialog" aria-modal="true" aria-labelledby="bd-title">
         <header className="an-head">
-          <h2 className="an-cell an-title" id="bd-title">Bankroll<span className="an-beta">Beta</span></h2>
+          <h2 className="an-title-row" id="bd-title"><span className="an-cell an-title snap-g">Bankroll</span><span className="an-beta">Beta</span></h2>
           <button ref={closeRef} type="button" className="bk-btn bk-w8 bd-close" onClick={importing ? () => setImporting(false) : onClose}>
             <span>{importing ? 'Back' : 'Done'}</span>
           </button>

@@ -102,7 +102,7 @@ export default function ResultsCurve({ entries, convert, format }) {
             key={i}
             className={b.cashed ? 'is-cash' : ''}
             style={b.cashed
-              ? { height: `${4 + (Math.log10(1 + b.mult) / Math.log10(1 + maxMult)) * 10}px` }
+              ? { height: `calc(var(--subrow) * ${(0.5 + (Math.log10(1 + b.mult) / Math.log10(1 + maxMult)) * 1.5).toFixed(3)})` }
               : undefined}
           />
         ))}
