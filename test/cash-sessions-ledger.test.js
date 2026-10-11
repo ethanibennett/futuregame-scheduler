@@ -105,6 +105,24 @@ function test(name, fn) {
     assert.deepStrictEqual(st.byStakes.map((g) => g.label), ['NLH 2/5']);
     assert.strictEqual(st.mixed, false);
   });
+  test('computeStats: byMonth (newest first) and the cumulative series (oldest first)', () => {
+    const rows = [
+      { id: 1, live: false, ended_at: 'x', session_date: '2026-09-30', started_at: '2026-09-30T18:00:00Z', currency: 'USD', hours: 4, result: 100, buy_in: 100, cash_out: 200, tips: 10, expenses: 0 },
+      { id: 2, live: false, ended_at: 'x', session_date: '2026-10-02', started_at: '2026-10-02T18:00:00Z', currency: 'USD', hours: 2, result: -300, buy_in: 300, cash_out: 0, tips: 0, expenses: 0 },
+      { id: 3, live: false, ended_at: 'x', session_date: '2026-10-01', started_at: '2026-10-01T18:00:00Z', currency: 'USD', hours: 3, result: 50, buy_in: 100, cash_out: 150, tips: 0, expenses: 5 },
+      { id: 4, live: true, ended_at: null, session_date: '2026-10-03', started_at: '2026-10-03T18:00:00Z', currency: 'USD', buy_in: 100 },
+    ];
+    const st = cash.computeStats(rows, { currency: 'USD' });
+    assert.deepStrictEqual(st.byMonth.map((m) => [m.key, m.sessions, m.net, m.hours]), [['2026-10', 2, -255, 5], ['2026-09', 1, 90, 4]]);
+    assert.deepStrictEqual(st.series.map((p) => [p.id, p.net, p.cum]), [[1, 90, 90], [3, 45, 135], [2, -300, -165]]);
+  });
+  test('stack updates: a table of their own, read oldest first, scoped to the owner', () => {
+    cash.migrateStacks(db);
+    cash.migrateStacks(db); // idempotent
+    db.run("INSERT INTO cash_session_stacks (session_id, user_id, at, amount, invested, created_at) VALUES (4, 1, '2026-10-11T19:00:00Z', 700, 500, 'x'), (4, 1, '2026-10-11T18:30:00Z', 400, 500, 'x'), (4, 2, '2026-10-11T18:40:00Z', 1, 500, 'x')");
+    assert.deepStrictEqual(cash.listStacks(db, 1, 4).map((s) => [s.amount, s.result]), [[400, -100], [700, 200]]);
+    assert.deepStrictEqual(cash.listStacks(db, 2, 1), []);
+  });
   test('computeStats converts every amount into the target currency', () => {
     const all = cash.listSessions(db, 1, {}).sessions;
     const rates = { USD: 1, EUR: 0.5 };

@@ -3256,6 +3256,15 @@ async function initDatabase() {
       }
     },
     {
+      // In-session stack updates for cash sessions (beta, app admins): one row per "my stack is now
+      // N", with the buy-in at that moment, for the live screen's swing graph. See lib/cash-sessions.js.
+      name: 'cash-session-stacks-2026-10',
+      fn: () => {
+        cashSessions.migrateStacks(db);
+        console.log('Created cash_session_stacks table');
+      }
+    },
+    {
       // Expenses, non-game income and trips (beta, app admins only): bankroll_transactions +
       // bankroll_trips. See lib/bankroll-transactions.js.
       name: 'bankroll-transactions-2026-10',
@@ -4008,7 +4017,7 @@ function deleteUserAccount(userId) {
     for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
-                     'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
+                     'cash_session_stacks', 'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
                      'bankroll_prefs', 'bankroll_import_keys']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
