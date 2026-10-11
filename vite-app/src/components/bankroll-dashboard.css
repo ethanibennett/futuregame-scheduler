@@ -1,6 +1,6 @@
 /* ==================================================================
    Bankroll dashboard (BETA, app admins) — BankrollDashboard.jsx,
-   BankrollChart.jsx, BankrollImport.jsx. bd- prefixed.
+   BankrollOverview.jsx, BankrollChart.jsx, BankrollImport.jsx. bd- prefixed.
 
    Built from parts already on the grid: the sheet, the type roles and
    the tables of analytics.css (an-cell / an-td / an-note / an-lbl /
@@ -11,9 +11,11 @@
    2026-10-10); every other line of text sits on an r line.
 
    Content is 35g (the 37g sheet less 1g each side):
-     bankrolls   4 x 8g + 3 x 1g        period     3 x 11g + 2 x 1g
+     bankrolls   4 x 8g + 3 x 1g        tabs       one 35g x 5r strip (.bd-seg)
+     hero        2 x 17g + 1g, 9r       range      one 35g x 4r strip, 5 x 7g
+     chart       a 4r head (note 22g | Profit/Balance 12g), the 35g x 24r plot, a 2r foot
+     statistics  label 21g | value 14g, 4r rows      latest     14g | 21g, 6r rows
      stats       2 x 17g + 1g           tables     columns below, sum 35g
-     chart       35g x 16r, a 2r label row above and below
      goal bar    35g x 1r
    ================================================================== */
 
@@ -33,27 +35,124 @@
 .bd-section { margin-top: calc(var(--subrow) * 4); }
 .bd-section > .an-sec { margin-bottom: var(--subrow); }
 
+/* Segmented strips (the tabs, the range, the graph's Profit | Balance): one container, its N
+   segments whole g and flush, together 35g. A segment is a control: whole g x whole r, its label
+   centred both ways (owner rule 2026-10-10). Adding a tab re-divides the strip by data-n. */
+.bd-seg {
+  display: grid;
+  width: calc(var(--gu) * 35);
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.bd-seg[data-n="2"] { grid-template-columns: calc(var(--gu) * 18) calc(var(--gu) * 17); }
+.bd-seg[data-n="3"] { grid-template-columns: repeat(2, calc(var(--gu) * 12)) calc(var(--gu) * 11); }
+.bd-seg[data-n="4"] { grid-template-columns: repeat(3, calc(var(--gu) * 9)) var(--col); }
+.bd-seg[data-n="5"] { grid-template-columns: repeat(5, calc(var(--gu) * 7)); }
+.bd-seg[data-n="6"] { grid-template-columns: repeat(5, calc(var(--gu) * 6)) calc(var(--gu) * 5); }
+.bd-seg > button {
+  display: grid; align-items: center;
+  width: 100%; height: 100%; min-width: 0; min-height: 0;
+  box-sizing: border-box;
+  margin: 0; padding: 0; border: 0;
+  border-radius: var(--radius);
+  background: transparent; box-shadow: none;
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.bd-seg > button > span {
+  display: block; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+  font-variant-numeric: var(--num-tabular);
+}
+.bd-seg > button.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand); }
+.bd-seg > button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.bd-tabs { height: calc(var(--subrow) * 5); margin-top: calc(var(--subrow) * 2); }
+.bd-range { height: calc(var(--subrow) * 4); margin-top: var(--subrow); }
+.bd-seg.bd-mode { width: calc(var(--gu) * 12); height: calc(var(--subrow) * 4); grid-template-columns: repeat(2, calc(var(--gu) * 6)); }
+
+/* Hero: two 17g columns of 9r — a 2r label, the figure (display face, 2xl) seated on line 6, a
+   note seated on line 9. The right column is right-aligned. */
+.bd-hero { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); margin-top: calc(var(--subrow) * 3); }
+.bd-hero-col { min-width: 0; height: calc(var(--subrow) * 9); }
+.bd-hero-val {
+  /* Display face 2xl, baseline on line 4 of 4. Measured in WebKit: c = 1.0983 at 402 wide and
+     1.1238 at 1440 (g frozen at 430/37; the face's ascent rounds to whole px), so p splits the
+     difference: the baseline lands 0.025r either side of the line, under a quarter px. */
+  --h: 4; --p: 1.7534;
+  font-family: var(--font-display); font-size: var(--fs-2xl); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.bd-hero-val.an-pos { color: var(--pos); }
+.bd-hero-val.an-neg { color: var(--neg); }
+.an-cell.bd-note-3 { --h: 3; --p: 1.9574; }   /* an-note, baseline on line 3 of 3 */
+.an-cell.bd-note-4 { --h: 4; --p: 0.9574; }   /* an-note, baseline on line 3 of 4 */
+
+/* Statistics: label | value rows (dl), 21g + 14g, 4r each, under an an-sec heading. */
+.bd-kv { margin: 0; }
+.bd-kv dt, .bd-kv dd { margin-left: 0; }
+.bd-cols-kv { grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 14); }
+.bd-kv dd { font-weight: var(--fw-bold); }
+.bd-qual { font-size: var(--fs-xs); color: var(--text-muted); }
+.bd-kv .is-sub dt { padding-left: calc(var(--gu) * 2); color: var(--text-muted); }
+.bd-kv .is-sub dd { font-weight: var(--fw-regular); }
+.bd-after { margin-top: var(--subrow); }
+
+/* Latest sessions: 6r rows, profit (display face xl) over the date on the left 14g, the event or
+   game over what it was on the right 21g; both pairs seated on lines 3 and 5. */
+.bd-recent { list-style: none; margin: 0; padding: 0; }
+.bd-recent-row {
+  display: grid; grid-template-columns: calc(var(--gu) * 14) calc(var(--gu) * 21); align-items: start;
+  height: calc(var(--subrow) * 6);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.bd-recent-l, .bd-recent-r { min-width: 0; }
+.bd-recent-amt {
+  /* Display face xl, baseline on line 3 of 3. an-title's p (1.1784) measured 0.008r high at 402 and
+     0.055r low at 1440; this splits it, 0.03r either side. */
+  --h: 3; --p: 1.1314;
+  font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.bd-recent-amt.an-pos { color: var(--pos); }
+.bd-recent-amt.an-neg { color: var(--neg); }
+.bd-recent-name {
+  --h: 3; --p: 1.6978;                 /* Univers Condensed sm, baseline on line 3 of 3 */
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+}
+.bd-w17 { width: calc(var(--gu) * 17); }
+
 /* Selectors */
 .bd-seg4 {
   display: grid;
   grid-template-columns: repeat(4, var(--col));
   column-gap: var(--gu); row-gap: var(--subrow);
 }
-.bd-seg3 { display: grid; grid-template-columns: repeat(3, calc(var(--gu) * 11)); column-gap: var(--gu); }
 .bd-seg2 { display: grid; grid-template-columns: repeat(2, calc(var(--gu) * 17)); column-gap: var(--gu); }
-.bd-seg4 .bk-seg-btn, .bd-seg3 .bk-seg-btn, .bd-seg2 .bk-seg-btn { width: 100%; }
+.bd-seg4 .bk-seg-btn, .bd-seg2 .bk-seg-btn { width: 100%; }
 .bk-seg-btn > span { font-variant-numeric: var(--num-tabular); }
 
-/* Chart: 2r label row, 16r plot, 2r label row. */
+/* Chart: a 4r head row (the high, and the Profit | Balance switch), the 24r plot, a 2r foot row. */
+.bd-chart-block { margin-top: calc(var(--subrow) * 2); }
+.bd-chart-head {
+  display: grid; grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 12); column-gap: var(--gu);
+  align-items: start; height: calc(var(--subrow) * 4);
+}
 .bd-axis { display: grid; grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17); column-gap: var(--gu); }
 .bd-axis > :last-child { text-align: right; }
-.bd-chart { display: block; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 16); }
+.bd-chart { display: block; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 24); }
 .bd-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .bd-line { fill: none; stroke: var(--brand); stroke-width: var(--bw-2); stroke-linejoin: round; }
 .bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-1); stroke-dasharray: var(--bw-2) var(--bw-2); }
 .bd-dd { fill: var(--neg-quiet); stroke: none; }
 .bd-edge { stroke: var(--border); stroke-width: var(--bw-hair); }
-.bd-chart-empty { height: calc(var(--subrow) * 16); }
+.bd-line.is-pos { stroke: var(--pos); }
+.bd-line.is-neg { stroke: var(--neg); }
+.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-hair); }
+.bd-chart-empty { height: calc(var(--subrow) * 24); }
 
 /* Tables: 11 + 8 + 8 + 8 = 35g. */
 .bd-cols-4 { grid-template-columns: calc(var(--gu) * 11) var(--col) var(--col) var(--col); }

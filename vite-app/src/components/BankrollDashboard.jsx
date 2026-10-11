@@ -1,13 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
-import {
-  periodWindow, within, balanceSeries, drawdowns, periodTable, bySource, goalProgress, ledgerToCsv,
-  fmtRule, MOVE_KINDS,
-} from '../utils/bankroll-ledger.js';
-import BankrollChart from './BankrollChart.jsx';
+import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
+import BankrollOverview, { Segmented } from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import './analytics.css';
 import './bankroll-dashboard.css';
@@ -16,9 +13,10 @@ import './bankroll-dashboard.css';
  * The bankroll dashboard — BETA, app admins only (TrackingView mounts the launcher only for
  * admins; every route behind it is requireAppAdmin). A full-height sheet like AnalyticsView,
  * built on the server's combined ledger (lib/bankroll-ledger.js):
- *   balance over time with drawdown from the peak, period summaries (by month / year / source),
- *   the bankroll-management rule check and its move up / move down signal, goals, risk of ruin,
- *   and CSV export / import.
+ *   Overview (BankrollOverview.jsx): balance and profit, the cumulative graph over a range, grouped
+ *     statistics for tournaments, cash and the roll, and the latest sessions;
+ *   Rules: the bankroll-management rule, its move up / move down signal, and risk of ruin;
+ *   Goals; Import: CSV export / import.
  * Currency: a bankroll is shown in its own currency; All is shown in USD (as the switcher).
  * Wording is descriptive: what the player's own numbers and own rule say.
  */
@@ -34,9 +32,15 @@ function fmtDate(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
-const PERIODS = [['month', 'Month'], ['year', 'Year'], ['all', 'All']];
-const TABS = [['balance', 'Balance'], ['rules', 'Rules'], ['goals', 'Goals'], ['data', 'Import']];
-const PERIOD_NOUN = { month: 'this month', year: 'this year', all: 'all time' };
+// The sheet's tabs, in order. The strip is one 35g segmented control whose segments share the
+// width in whole g (bankroll-dashboard.css .bd-seg[data-n]): add a tab here and render it below,
+// and the strip re-divides itself (4 tabs 9+9+9+8g, 5 tabs 5 x 7g, 6 tabs 5 x 6g + 5g).
+const TABS = [
+  ['balance', 'Overview'],
+  ['rules', 'Rules'],
+  ['goals', 'Goals'],
+  ['data', 'Import'],
+];
 
 function Seg({ cols, options, value, onChange, label }) {
   return (
@@ -61,29 +65,6 @@ function Stat({ label, value, tone = '', note }) {
   );
 }
 
-function Table({ title, rows, money, signed, first }) {
-  return (
-    <div className="bd-block">
-      <div className="an-table" role="table" aria-label={title}>
-        <div className="an-row is-head bd-cols-4" role="row">
-          <span className="an-cell an-lbl an-lbl-3b" role="columnheader">{first}</span>
-          <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Results</span>
-          <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Moved</span>
-          <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Net</span>
-        </div>
-        {rows.map((r) => (
-          <div key={r.key || r.source} className="an-row is-body bd-cols-4" role="row">
-            <span className="an-cell an-td an-clip" role="cell" title={r.label}>{r.label}</span>
-            <span className={'an-cell an-td an-num an-clip' + tone(r.results)} role="cell">{r.results ? signed(r.results) : '—'}</span>
-            <span className="an-cell an-td an-num an-clip" role="cell">{r.moved ? signed(r.moved) : '—'}</span>
-            <span className={'an-cell an-td an-num an-clip' + tone(r.net)} role="cell">{signed(r.net)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-const tone = (v) => (v > 0 ? ' an-pos' : v < 0 ? ' an-neg' : '');
 
 // ── Rules ────────────────────────────────────────────────────────────────────────────────
 function Rules({ guide, prefs, money, onSave, saving }) {
@@ -250,7 +231,6 @@ export default function BankrollDashboard({ bk, onClose }) {
   const toast = useToast();
   const closeRef = useRef(null);
   const [key, setKey] = useState(bk.selected);
-  const [period, setPeriod] = useState('year');
   const [tab, setTab] = useState('balance');
   const [ledger, setLedger] = useState({ status: 'loading', data: null });
   const [prefsAll, setPrefsAll] = useState(null);
@@ -300,25 +280,6 @@ export default function BankrollDashboard({ bk, onClose }) {
 
   const d = ledger.data;
   const entries = d ? d.entries : [];
-  const view = useMemo(() => {
-    if (!d) return null;
-    const w = periodWindow(period, today);
-    const win = within(entries, w);
-    let opening = d.opening.total_display;
-    if (w.from) for (const e of entries) { if (e.date < w.from) opening = e.total_display; else break; }
-    const points = balanceSeries(win, { opening, from: w.from });
-    const dd = drawdowns(points);
-    let results = 0, moved = 0;
-    for (const e of win) { if (MOVE_KINDS.has(e.kind)) moved += e.amount_display; else results += e.amount_display; }
-    const peak = dd.per.length ? dd.per[dd.per.length - 1].peak : opening;
-    return {
-      w, win, points, dd, results, moved, peak,
-      start: w.from || (points[0] && points[0].date), end: w.to ? (today < w.to ? today : w.to) : today,
-      table: period === 'month' ? null : periodTable(win, period === 'year' ? 'month' : 'year'),
-      sources: bySource(win),
-    };
-  }, [d, period, today]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const exportCsv = async () => {
     try {
       const names = new Map(bk.bankrolls.map((x) => [x.id, x.name]));
@@ -330,7 +291,6 @@ export default function BankrollDashboard({ bk, onClose }) {
   };
 
   const chips = [[BANKROLL_ALL, 'All'], ...bk.visible.map((x) => [x.id, x.name])];
-  const noun = PERIOD_NOUN[period];
 
   return createPortal(
     <>
@@ -349,46 +309,16 @@ export default function BankrollDashboard({ bk, onClose }) {
           ) : (
             <>
               <Seg cols="bd-seg4" label="Bankroll" options={chips} value={key} onChange={setKey} />
-              <div className="bd-block">
-                <Seg cols="bd-seg4" label="Show" options={TABS} value={tab} onChange={setTab} />
-              </div>
-              {tab === 'balance' && (
-                <div className="bd-block">
-                  <Seg cols="bd-seg3" label="Period" options={PERIODS} value={period} onChange={setPeriod} />
-                </div>
-              )}
+              <Segmented className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />
               {ledger.status === 'error' && <p className="an-p">The ledger could not load. Close and try again.</p>}
               {d && d.sources.some((s) => !s.ok) && (
                 <p className="an-p">Not included (a ledger source failed): {d.sources.filter((s) => !s.ok).map((s) => s.name).join(', ')}.</p>
               )}
-              {tab === 'balance' && view && (
-                <>
-                  <section className="bd-section" aria-labelledby="bd-balance">
-                    <h3 className="an-cell an-sec" id="bd-balance">Balance</h3>
-                    <div className="an-stats">
-                      <Stat label="Balance now" value={money(d.closing.total_display)} tone={d.closing.total_display < 0 ? ' an-neg' : ''}
-                        note={`${currency}${key === BANKROLL_ALL ? ', every bankroll' : ''}`} />
-                      <Stat label={`Results ${noun}`} value={signed(view.results)} tone={tone(view.results)}
-                        note={`Moved in or out ${signed(view.moved)}`} />
-                      <Stat label="Below the peak" value={view.dd.current.amount > 0 ? money(-view.dd.current.amount) : 'At the peak'}
-                        tone={view.dd.current.amount > 0 ? ' an-neg' : ''}
-                        note={view.dd.current.amount > 0 ? `Peak ${money(view.peak)}${view.dd.current.from ? ' on ' + fmtDate(view.dd.current.from) : ''}` : `Peak ${money(view.peak)}`} />
-                      <Stat label={`Deepest drawdown ${noun}`} value={view.dd.max.amount > 0 ? money(-view.dd.max.amount) : 'None'}
-                        tone={view.dd.max.amount > 0 ? ' an-neg' : ''}
-                        note={view.dd.max.amount > 0 ? `${fmtDate(view.dd.max.from)} to ${fmtDate(view.dd.max.to)}` : 'Never below a prior high'} />
-                    </div>
-                    <BankrollChart points={view.points} dd={view.dd} start={view.start} end={view.end} money={money} fmtDate={fmtDate} />
-                  </section>
-
-                  <section className="bd-section" aria-labelledby="bd-periods">
-                    <h3 className="an-cell an-sec" id="bd-periods">{period === 'month' ? 'This month' : period === 'year' ? 'This year by month' : 'By year'}</h3>
-                    {view.win.length === 0 && <p className="an-p">Nothing in the ledger for {noun}.</p>}
-                    {view.table && view.table.length > 0 && <Table title="Net by period" first={period === 'year' ? 'Month' : 'Year'} rows={view.table} money={money} signed={signed} />}
-                    {view.sources.length > 0 && <Table title="By source" first="Source" rows={view.sources} money={money} signed={signed} />}
-                    <p className="an-p">Results are what was won or lost; moved is deposits, withdrawals and transfers.</p>
-                  </section>
-                </>
+              {tab === 'balance' && d && (
+                <BankrollOverview d={d} risk={risk} bk={bk} bkKey={key} b={b} currency={currency} money={money}
+                  signed={signed} today={today} fmtDate={fmtDate} onClose={onClose} />
               )}
+              {/* One line per further tab, keyed as in TABS above. */}
 
               {tab === 'rules' && <Rules guide={guide} prefs={prefs} money={money} onSave={savePrefs} saving={saving} />}
               {tab === 'rules' && <Risk risk={risk} money={money} />}

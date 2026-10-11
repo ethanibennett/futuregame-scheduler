@@ -20,7 +20,7 @@ Three parallel branches, merged on `merge/bankroll-suite`. All of it is document
   (tournaments, adjustments, cash-sessions, transactions). `/api/bankrolls/ledger|summary|prefs|risk|import`.
   The switcher's balances now come from the server's `/summary` (`balancesFromSummary`); `computeBalances`
   is superseded for display. Money is MAJOR units in every source (dollars; expenses REAL to the cent).
-- **Dashboard** (bankroll strip → Dashboard): Balance / Rules / Goals / Import tabs; "Of your roll" on
+- **Dashboard** (bankroll strip → Dashboard): Overview / Rules / Goals / Import tabs (the Overview is tracker-style: hero, profit or balance graph over 1M–All, grouped statistics, latest sessions — docs/bankrolls.md "The dashboard"); "Of your roll" on
   event cards; risk of ruin `exp(−2μB/σ²)`. CSV import: Poker Bankroll Tracker, the Pokerbase sheet, or a
   generic column mapping. Imported non-USD results are converted at TODAY's rate (an open question).
 - **Cash sessions** (`lib/cash-sessions.js`, Results → Cash): log or run live; one live session per

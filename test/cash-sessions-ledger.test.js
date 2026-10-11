@@ -55,9 +55,13 @@ function test(name, fn) {
     assert.deepStrictEqual(first, {
       date: '2026-10-01', ts: '2026-10-02T04:00:00Z', amount: 1800 - 1000 - 40 - 25, currency: 'USD', bankroll_id: null,
       kind: 'cash_session', label: 'Cash NLH 2/5 · Borgata', ref: { table: 'cash_sessions', id: 1 },
+      started_at: '2026-10-01T22:00:00Z', hours: 6,
     });
     assert.strictEqual(second.amount, -1200);
     assert.deepStrictEqual([third.amount, third.currency, third.bankroll_id], [60, 'EUR', 10]);
+  });
+  test("hours = ended - started, to the hundredth (the dashboard's hourly rate)", () => {
+    assert.deepStrictEqual(source.entries(db, 1, {}).map((x) => x.hours), [6, 3, 2]);
   });
   test('bankroll filter: main, an id (number or string), all', () => {
     assert.deepStrictEqual(source.entries(db, 1, { bankroll: 'main' }).map((x) => x.ref.id), [1, 2]);
