@@ -42,7 +42,10 @@ sessions opened here own scheduler work.
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting
 nightly at 05:00 (hygiene only now — the MTT feed re-ingests hourly in-process).
-`pm2 logs futuregame-scheduler`. Reboot persistence via Task Scheduler
+`pm2 logs futuregame-scheduler`. Sundays at 18:00 Task Scheduler `futuregame-weekly-graphics` runs `scripts/weekly-graphics.cmd`
+(`npm run graphics:weekly`): the "This week near you" Instagram carousels + Stories for the coming
+week, per region, into the gitignored `weekly-graphics/<monday>/<region>/`, logging to
+`weekly-graphics/run.log`. It reads the schedule from the pm2 server on 3001. Reboot persistence via Task Scheduler
 `futuregame-pm2-resurrect` (and `futuregame-tmux-resurrect` for the tmux
 sessions — see "Working from the Mac" below). Don't start a second server on 3001 — test on a scratch
 port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
