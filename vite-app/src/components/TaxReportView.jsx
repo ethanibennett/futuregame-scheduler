@@ -5,6 +5,7 @@ import { getToday, nativeCurrency, getVenueInfo } from '../utils/utils.js';
 import { buildTaxReport, availableYears, defaultTaxYear } from '../utils/tax-report.js';
 import {
   TAX_DISCLAIMER, TAX_SOURCES, MONTH_SHORT, usd, signedUsd, shortDate, filingRows, w2gRuleText, lossRuleText,
+  expenseRuleText, OTHER_INCOME_TEXT,
 } from '../utils/tax-report-text.js';
 
 // BETA "tax-ready year-end report" — app admins only (TrackingView shows the entry point only when
@@ -90,6 +91,9 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
   const [year, setYear] = useState(() => defaultTaxYear(getToday()));
   const [basis, setBasis] = useState('gross');
   const [busy, setBusy] = useState('');
+  // Logged expenses and income (Results → Expenses & income). Optional: a failure leaves the report
+  // exactly as it was without them.
+  const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {
     let live = true;
@@ -97,6 +101,10 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status === 403 ? 'The tax report is in beta for admins only.' : 'Could not load your results.'))))
       .then((j) => { if (live) setEntries(j.entries || []); })
       .catch((e) => { if (live) setError(e.message); });
+    fetch(`${API_URL}/bankrolls/transactions?limit=5000`, { headers: { Authorization: 'Bearer ' + token } })
+      .then((r) => (r.ok ? r.json() : { transactions: [] }))
+      .then((j) => { if (live) setTransactions(j.transactions || []); })
+      .catch(() => {});
     fetch(`${API_URL}/exchange-rates`).then((r) => r.json()).then((j) => { if (live) setRates(j.rates || null); }).catch(() => {});
     return () => { live = false; };
   }, [token]);
@@ -106,9 +114,10 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
   const report = useMemo(() => buildTaxReport(withCurrency, {
     year,
     bankrollId,
+    transactions,
     // rates are units per USD (the Tracking tab's /exchange-rates).
     toUSD: rates ? (v, cur) => (rates[cur] ? v / rates[cur] : NaN) : null,
-  }), [withCurrency, year, bankrollId, rates]);
+  }), [withCurrency, year, bankrollId, rates, transactions]);
 
   const yi = years.indexOf(year);
   const older = yi >= 0 && yi < years.length - 1 ? years[yi + 1] : null;
@@ -217,6 +226,7 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
                 : 'Per event: each tournament netted on its own — cash minus that event\'s buy-ins.'}
               {' '}{lossRuleText(report, f)}
             </Para>
+            {expenseRuleText(report) && <Para muted>{expenseRuleText(report)}</Para>}
             <div className="taxr-frow is-head">
               <span className="taxr-t" /><span className="taxr-t">Recreational</span><span className="taxr-t">Professional</span>
             </div>
@@ -230,10 +240,18 @@ export default function TaxReportView({ token, onClose, bankrollId = null }) {
             ))}
             <Para muted>
               Recreational: losses count only if you itemize. Professional: business expenses (travel,
-              lodging) count as wagering losses under the same cap; they aren&apos;t tracked here.
-              Which one applies to you is a question for a tax professional.
+              lodging, meals at 50%) count as wagering losses under the same cap — log them under
+              Results → Expenses &amp; income. Which one applies to you is a question for a tax professional.
             </Para>
           </WholeRows>
+
+          {report.ledger.income.length > 0 && (
+            <WholeRows className="taxr-block">
+              <Header title="Other Income" right={<span className="taxr-badge">{usd(report.ledger.incomeTotal)}</span>} />
+              <Para muted>{OTHER_INCOME_TEXT}</Para>
+              {report.ledger.income.map((i) => <Row key={i.key} label={i.label} value={usd(i.amount)} />)}
+            </WholeRows>
+          )}
 
           <WholeRows className="taxr-block">
             <Header title="Session Log" right={<span className="taxr-badge">{report.sessions.length}</span>} />

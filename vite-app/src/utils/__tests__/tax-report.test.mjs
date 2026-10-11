@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   w2gThreshold, isLikelyW2G, lossDeductionRate, parseIsoDate, defaultTaxYear, availableYears,
-  buildTaxReport, filingComparison, sessionsToCsv, CSV_COLUMNS,
+  buildTaxReport, filingComparison, sessionsToCsv, CSV_COLUMNS, summarizeTransactions, PRO_EXPENSE_RULES,
 } from '../tax-report.js';
+import { filingRows, expenseRuleText } from '../tax-report-text.js';
 
 const row = (o) => ({ id: Math.random(), event_name: 'NLH', venue: 'Some Casino', buyin: 100, num_entries: 1, cashed: 0, cash_amount: 0, ...o });
 
@@ -207,4 +208,77 @@ test('CSV: header, escaping, formula guard, BOM and CRLF', () => {
   assert.ok(lines[1].endsWith(',likely'));
   assert.ok(lines[1].includes(',250,1,250,7000,6750,3,'));
   assert.equal(lines[2], '');
+});
+
+// ── Logged expenses and non-game income ────────────────────────────────────
+const tx = (o) => ({ kind: 'expense', category: 'travel', amount: 100, currency: 'USD', bankroll_id: 'main', occurred_on: '2026-03-01', ...o });
+
+test('expenses: per-category pro rules — meals 50%, other not counted', () => {
+  assert.equal(PRO_EXPENSE_RULES.food.rate, 0.5);
+  assert.equal(PRO_EXPENSE_RULES.other.rate, 0);
+  const s = summarizeTransactions([
+    tx({ category: 'lodging', amount: 600 }),
+    tx({ category: 'food', amount: 201.02 }),
+    tx({ category: 'other', amount: 50 }),
+    tx({ kind: 'income', category: 'rakeback', amount: 75 }),
+    tx({ occurred_on: '2025-12-31', amount: 999 }), // another year
+  ], { year: 2026 });
+  assert.equal(s.expenseTotal, 851.02);
+  assert.equal(s.proDeductible, 700.51, 'lodging 600 + half of 201.02');
+  assert.equal(s.notCounted, 150.51);
+  assert.equal(s.incomeTotal, 75);
+  assert.deepEqual(s.income.map((i) => i.label), ['Rakeback']);
+  assert.equal(s.count, 4);
+});
+
+test('expenses: year read as a string (no zone shift), bankroll filter, currency conversion', () => {
+  const rows = [
+    tx({ occurred_on: '2026-01-01', amount: 10 }),
+    tx({ occurred_on: '2026-12-31', amount: 20, bankroll_id: 7 }),
+    tx({ occurred_on: '2026-06-01', amount: 100, currency: 'EUR' }),
+  ];
+  const prevTZ = process.env.TZ;
+  process.env.TZ = 'America/Los_Angeles';
+  try {
+    assert.equal(summarizeTransactions(rows, { year: 2026 }).expenseTotal, 30, 'EUR left out without a rate');
+    assert.equal(summarizeTransactions(rows, { year: 2026 }).unconverted, 1);
+    assert.equal(summarizeTransactions(rows, { year: 2026, toUSD: (v) => v * 1.1 }).expenseTotal, 140);
+    assert.equal(summarizeTransactions(rows, { year: 2026, bankrollId: 7 }).expenseTotal, 20);
+  } finally { if (prevTZ === undefined) delete process.env.TZ; else process.env.TZ = prevTZ; }
+});
+
+test('filing 2026 with expenses: pooled with wagering losses, 90%, then capped — professional only', () => {
+  // 10,000 won, 6,000 of buy-ins, 2,000 of deductible expenses.
+  const f = filingComparison(10000, 6000, 2026, { proExpenses: 2000, expenses: 2500 });
+  assert.equal(f.recreational.itemizedDeduction, 5400, 'recreational: 90% of buy-ins only');
+  assert.equal(f.recreational.taxableIfItemizing, 4600);
+  assert.equal(f.professional.businessExpenses, 2000);
+  assert.equal(f.professional.lossDeduction, 7200, '90% of (6,000 + 2,000)');
+  assert.equal(f.professional.netProfit, 2800);
+  assert.equal(f.expensesLogged, 2500);
+  // The cap still binds: 90% of (9,000 + 3,000) = 10,800 > 10,000 won.
+  const capped = filingComparison(10000, 9000, 2026, { proExpenses: 3000 });
+  assert.equal(capped.professional.lossDeduction, 10000);
+  assert.equal(capped.professional.netProfit, 0, 'expenses cannot create a loss');
+  assert.equal(capped.professional.disallowed, 2000);
+  // 2025: 100%, still capped.
+  assert.equal(filingComparison(10000, 6000, 2025, { proExpenses: 2000 }).professional.lossDeduction, 8000);
+  // Nothing logged: the professional deduction is what it always was.
+  assert.equal(filingComparison(10000, 6000, 2026, {}).professional.lossDeduction, filingComparison(10000, 6000, 2026).allowedLoss);
+});
+
+test('report: transactions reach the professional column; the rows say so; without them nothing changes', () => {
+  const entries = [row({ date: '2026-02-01', buyin: 1000, cashed: 1, cash_amount: 5000 })];
+  const plain = buildTaxReport(entries, { year: 2026 });
+  assert.equal(filingRows(plain.filing.gross).some((r) => r.key === 'exp'), false);
+  assert.equal(expenseRuleText(plain), '');
+  const r = buildTaxReport(entries, { year: 2026, transactions: [tx({ category: 'lodging', amount: 1000 }), tx({ kind: 'income', category: 'bonus', amount: 40 })] });
+  assert.equal(r.ledger.proDeductible, 1000);
+  assert.equal(r.filing.gross.professional.lossDeduction, 1800, '90% of (1,000 buy-in + 1,000 lodging)');
+  assert.equal(r.filing.gross.recreational.itemizedDeduction, 900);
+  const exp = filingRows(r.filing.gross).find((x) => x.key === 'exp');
+  assert.deepEqual([exp.rec, exp.pro], ['not deductible', '$1,000']);
+  assert.match(expenseRuleText(r), /Recreational: none of it is deductible/);
+  assert.equal(r.ledger.incomeTotal, 40);
+  assert.equal(r.totals.grossWinnings, 5000, 'other income is not added to winnings');
 });
