@@ -1,0 +1,105 @@
+/* ==================================================================
+   Bankroll Reports (BETA, app admins) — BankrollReports.jsx (the
+   dashboard's Reports tab) and BankrollFilters.jsx (its filter sheet).
+   br- prefixed.
+
+   Built on analytics.css (the sheet, an-cell type roles with their
+   measured baselines, an-stats) and the bankroll controls in
+   styles.css (bk-btn 5r). Every measurement is g or r. Controls:
+   the box on the grid, the label centred (owner rule 2026-10-10).
+   Every other line of text is an an-cell seated on an r line.
+
+   Content is 35g (the 37g sheet less 1g a side):
+     bar        Filters 8g | 1g | summary 17g | 1g | Clear 8g, 5r
+     picker     3 x 11g chips, 4r, 1r between rows
+     table      13g | 4g | 9g | 9g; head 3r, rows 5r (4r text, 1r bar),
+                total 4r
+     filters    chips 4r in 4 x 8g, 3 x 11g or 2 x 17g, 1g / 1r gaps
+   ================================================================== */
+
+/* ── The Reports tab ─────────────────────────────────────────────── */
+.br-reports > .an-sec { margin-bottom: var(--subrow); }
+
+/* The filter bar: two 8g x 5r buttons and the summary between them, seated on line 3 of the bar
+   (an-td: a 4r cell, baseline on its line 3), which puts its capitals level with the labels. */
+.br-bar {
+  display: grid;
+  grid-template-columns: var(--col) calc(var(--gu) * 17) var(--col);
+  column-gap: var(--gu);
+  align-items: start;
+  height: calc(var(--subrow) * 5);
+}
+.br-summary { color: var(--text); }
+.br-summary.is-none { color: var(--text-muted); }
+
+.br-picker { margin-top: calc(var(--subrow) * 2); }
+.br-stats { margin-top: calc(var(--subrow) * 3); }
+.br-gap { margin-top: var(--subrow); }
+
+/* Table. The head reuses .an-row.is-head (3r, hairline); rows are 5r: the text line in the top 4r,
+   the bar in the 1r under it. */
+.br-cols { grid-template-columns: calc(var(--gu) * 13) calc(var(--gu) * 4) calc(var(--gu) * 9) calc(var(--gu) * 9); }
+.br-table { margin-top: var(--subrow); }
+.br-table + .an-p { margin-top: var(--subrow); }
+.br-row {
+  display: grid;
+  grid-template-rows: calc(var(--subrow) * 4) var(--subrow);
+  align-items: start;
+  height: calc(var(--subrow) * 5);
+  border-radius: var(--radius-xs);
+}
+.br-row.is-best { background: var(--pos-quiet); }
+.br-row.is-worst { background: var(--neg-quiet); }
+.br-row.is-best > .an-cell:first-child, .br-row.is-worst > .an-cell:first-child { font-weight: var(--fw-bold); }
+.br-track {
+  grid-column: 1 / -1; grid-row: 2;
+  position: relative; display: block;
+  width: calc(var(--gu) * 35); height: var(--subrow);
+}
+.br-fill {
+  position: absolute; top: 0; bottom: 0;
+  background: var(--pos);
+  border-radius: var(--radius-xs);
+}
+.br-fill.is-neg { background: var(--neg); }
+.br-zero { position: absolute; top: 0; bottom: 0; width: var(--bw-hair); background: var(--text-muted); }
+.br-total { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.br-total > .an-cell { font-weight: var(--fw-bold); }
+
+/* ── Chips (the report picker and the filter sheet) ─────────────── */
+.br-grid { display: grid; column-gap: var(--gu); row-gap: var(--subrow); }
+.br-grid-2 { grid-template-columns: repeat(2, calc(var(--gu) * 17)); }
+.br-grid-3 { grid-template-columns: repeat(3, calc(var(--gu) * 11)); }
+.br-grid-4 { grid-template-columns: repeat(4, var(--col)); }
+.br-chip {
+  gap: calc(var(--gu) * 0.5);
+  width: 100%; min-width: 0; height: calc(var(--subrow) * 4);
+  margin: 0; padding: 0 calc(var(--gu) * 0.5); border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.br-chip.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-1) var(--brand); color: var(--text); }
+.br-chip:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
+.br-chip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+/* A long name truncates; its descenders' room is half an r of padding cancelled by the margin.
+   The inner spans are br-opt-*, not br-chip-*: check:controls reads any "-chip" class as a control,
+   and a button holding two of them as a group, which would leave the chip itself unmeasured. */
+.br-opt-name {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5);
+}
+.br-opt-n { flex: none; font-weight: var(--fw-regular); color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
+.br-chip.is-on .br-opt-n { color: var(--brand); }
+
+/* ── The filter sheet: over the dashboard sheet ─────────────────── */
+.br-fscrim { z-index: calc(var(--z-modal) + 1); }
+.br-fsheet { z-index: calc(var(--z-modal) + 2); }
+.an-head .br-ftitle { width: calc(var(--gu) * 17); }
+.br-fclear, .br-fdone { position: absolute; top: calc(var(--subrow) * 2); height: calc(var(--subrow) * 4); }
+.br-fclear { left: calc(var(--gu) * 19); }
+.br-fdone { left: calc(var(--gu) * 28); }
+.br-fsec { margin-top: calc(var(--subrow) * 2); }
+.br-fsec > .an-sec { margin-bottom: var(--subrow); }

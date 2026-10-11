@@ -6,6 +6,7 @@ import { BANKROLL_ALL } from '../utils/bankrolls.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
 import BankrollOverview, { Segmented } from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
+import BankrollReports from './BankrollReports.jsx';
 import './analytics.css';
 import './bankroll-dashboard.css';
 
@@ -37,6 +38,7 @@ function fmtDate(iso) {
 // and the strip re-divides itself (4 tabs 9+9+9+8g, 5 tabs 5 x 7g, 6 tabs 5 x 6g + 5g).
 const TABS = [
   ['balance', 'Overview'],
+  ['reports', 'Reports'],
   ['rules', 'Rules'],
   ['goals', 'Goals'],
   ['data', 'Import'],
@@ -320,6 +322,7 @@ export default function BankrollDashboard({ bk, onClose }) {
               )}
               {/* One line per further tab, keyed as in TABS above. */}
 
+              {tab === 'reports' && <BankrollReports bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'rules' && <Rules guide={guide} prefs={prefs} money={money} onSave={savePrefs} saving={saving} />}
               {tab === 'rules' && <Risk risk={risk} money={money} />}
               {tab === 'goals' && (

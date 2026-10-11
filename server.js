@@ -5965,6 +5965,9 @@ bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, r
 cashSessions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates });
 // Expenses, income and trips (same beta gate) — lib/bankroll-transactions.js. After the line above.
 bankrollTransactions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES });
+// Reports: one fact per result / session / expense with its room, game, stakes, start and length,
+// for the dashboard's filters and breakdowns (same gate) — lib/bankroll-reports.js.
+require('./lib/bankroll-reports').mountRoutes(app, { getDb: () => db, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, fetchExchangeRates });
 
 // ── Tracking endpoints ──────────────────────────────────────
 

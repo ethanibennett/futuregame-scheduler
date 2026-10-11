@@ -5,8 +5,9 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule (and, for an admin, each tab of the bankroll dashboard, then Results > Cash: cash
-// sessions, forms, the live bar), and for every text node inside those views measures its glyph
+// Schedule (and, for an admin, each tab of the bankroll dashboard, every Reports table and the
+// Reports filter sheet, then Results > Cash: cash sessions, forms, the live bar), and for every
+// text node inside those views measures its glyph
 // box (a Range over the text, which spans ascent to descent) against every ancestor that clips
 // (overflow other than visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px
 // below a clipping
@@ -179,6 +180,30 @@ function scan(rootSel) {
     await runSheet('bankroll dashboard overview (balance, all time)');
     await p.locator('.an-sheet .bd-mode button:has-text("Profit")').click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-range button:has-text("YTD")').click({ timeout: 4000 });
+    // Reports: every report's table, scrolled through the sheet; then the filter sheet with a
+    // filter on (its chips truncate long room names), scrolled through.
+    const scrollRun = async (label, scroller, root) => {
+      for (let i = 0; i < 4; i++) {
+        await run(label, root);
+        await p.evaluate(({ sel, dy }) => { const s = document.querySelector(sel); if (s) s.scrollTop += dy; }, { sel: scroller, dy: H * 0.7 });
+        await p.waitForTimeout(300);
+      }
+    };
+    await p.locator('.an-sheet .bk-seg-btn:has-text("Reports")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1200);
+    const reportNames = await p.locator('.br-picker .br-chip:not([disabled])').allInnerTexts();
+    for (const name of reportNames) {
+      await p.evaluate(() => { const s = document.querySelector('.bd-sheet .an-body'); if (s) s.scrollTop = 0; });
+      await p.locator(`.br-picker .br-chip:has-text("${name.trim()}")`).first().click({ timeout: 4000 });
+      await p.waitForTimeout(400);
+      await scrollRun(`bankroll reports ${name.trim()}`, '.bd-sheet .an-body', '.br-reports');
+    }
+    await p.evaluate(() => { const s = document.querySelector('.bd-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.locator('.br-bar .bk-btn').first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await p.locator('.br-fsheet .br-chip:has-text("Cash")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await scrollRun('bankroll report filters', '.br-fsheet .an-body', '.br-fsheet');
   } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
   // Results > Cash (cash sessions beta): the strip, head, live card, stats, rows; the log form and
   // the live card's cash-out panel; and the live-session bar over the nav on another tab.

@@ -4,9 +4,9 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
 // Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
-// the bankroll sheet, the bankroll dashboard and its CSV import step, Results > Cash (cash
-// sessions: list, forms, the live bar), Expenses & income (the section, the add sheet, the
-// list sheet, a trip).
+// the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
+// import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
+// section, the add sheet, the list sheet, a trip).
 //
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
 //        [--json out.json] [--only "schedule,cash"] [--dump] [--shots dir [--overlay]]
@@ -441,6 +441,16 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   await step('bankroll-dashboard', () => dash(null), 4);   // the Overview: hero, graph, statistics, latest sessions
   await step('bankroll-rules', () => dash('Rules'), 2);
   await step('bankroll-goals', () => dash('Goals'), 1);
+  // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
+  // dashboard) with a filter on, so selected and disabled chips are both measured.
+  await step('bankroll-reports', () => dash('Reports'), 3);
+  await step('bankroll-report-filters', async () => {
+    await dash('Reports');
+    await p.locator('.br-bar .bk-btn').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(800);
+    await p.locator('.br-fsheet .br-chip:has-text("Cash")').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(400);
+  }, 3);
   await step('bankroll-import', async () => {
     await dash('Import');
     await p.locator('.an-sheet button:has-text("Import CSV")').click({ timeout: 4000 });
