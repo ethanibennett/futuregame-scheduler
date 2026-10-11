@@ -124,6 +124,37 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run('schedule list (scrolled)', '.cal-event-row');
   }
+  // Results → Expenses & income (admin beta) and its sheets: rows, cells and trip lines truncate
+  // with an ellipsis. Skipped quietly where the section is absent (a non-admin token).
+  try {
+    const desktop = await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
+    if (desktop) await p.locator('.dk-rail-item:has-text("Results")').first().click({ timeout: 4000 });
+    else {
+      await p.locator('.username-chip').first().click({ timeout: 4000 });
+      await p.waitForTimeout(400);
+      await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
+    }
+    await p.waitForTimeout(2500);
+    await p.locator('.tx-sec').first().waitFor({ timeout: 4000 });
+    await p.evaluate(() => document.querySelector('.tx-sec').scrollIntoView({ block: 'center' }));
+    await p.waitForTimeout(500);
+    await run('expenses', '.tx-sec');
+    const sheet = async (label, open) => {
+      await open();
+      await p.waitForTimeout(900);
+      await run(label, '.tx-sheet');
+      await p.locator('.tx-sheet .bk-sheet-head .bk-btn').first().click({ timeout: 2000 }).catch(() => {});
+      await p.waitForTimeout(400);
+    };
+    await sheet('expense add', () => p.locator('.tx-sec .bk-head-btn').first().click({ timeout: 4000 }));
+    await sheet('expenses all', () => p.locator('.tx-sec .bk-actions .bk-btn').nth(1).click({ timeout: 4000 }));
+    await sheet('trips', () => p.locator('.tx-sec .bk-actions .bk-btn').nth(0).click({ timeout: 4000 }));
+    await sheet('trip', async () => {
+      await p.locator('.tx-sec .bk-actions .bk-btn').nth(0).click({ timeout: 4000 });
+      await p.waitForTimeout(600);
+      await p.locator('.tx-trip-row').first().click({ timeout: 4000 });
+    });
+  } catch (e) { console.log(`  (expenses views skipped: ${e.message.split('\n')[0]})`); }
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {
     console.log(`CLIPPED TEXT at ${W}x${H}: ${uniq.length}`);

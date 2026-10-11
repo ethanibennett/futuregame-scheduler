@@ -16686,6 +16686,233 @@
 
     /* ══ end Bankrolls ═══════════════════════════════════════════════════════ */
 
+    /* ══ Expenses & income, trips (beta, app admins) ═════════════════════════
+       components/Expenses.jsx; its sheets reuse the bankroll sheet's bk-* classes above. Same
+       recipe: every box whole g wide and whole r tall, every line of text a trimmed block whose
+       padding-top is (baseline - 1cap) inside a fixed whole-r box. Each text box reaches at least
+       1r below its baseline, so descenders paint inside it and overflow:hidden (for the ellipsis)
+       clips nothing — overflow-x:clip would clip both axes in WebKit.
+         section  head 3r (title +2r | Beta 4g | + Add 8g x 3r), 1r,
+                  three 11g x 6r cells (label +2r, value +5r), 1r,
+                  rows 4r (+3r): 7g date | what | 9g amount, actions 5r 2r below; 2r below all
+         sheet    segment 2 x 17g x 5r (or 3 x 11g), 2r above; amount 26g | 8g: label 3r (+2r)
+                  over a 6r field, 2r above; "Category" 4r (+3r); chips 4 x 8g x 4r, 1r between
+                  rows; fields 1r below; P&L rows 4r (+3r): what | 10g amount;
+                  trip rows 7r: name +3r | 9g count +3r, dates +6r (a 3r box: a 2r one cut the
+                  line box's ascent, which check:clipping counts)                            */
+    .tx-sec { display: flex; flex-direction: column; margin-bottom: calc(var(--subrow) * 2); }
+    .tx-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 3); }
+
+    .tx-title, .tx-cell-label, .tx-cell-val, .tx-line, .tx-label,
+    .tx-row > span, .tx-pl-row > span, .tx-trip-row > span {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .tx-title {
+      flex: 1 1 auto;
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-md);
+      color: var(--text);
+    }
+
+    .tx-sum {
+      display: grid;
+      grid-template-columns: repeat(3, calc(var(--gu) * 11));
+      column-gap: var(--gu);
+      margin-top: var(--subrow);
+    }
+    .tx-cell {
+      display: flex;
+      flex-direction: column;
+      height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
+      padding: 0 var(--gu);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .tx-cell-label {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+    .tx-cell-val {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+      font-variant-numeric: var(--num-tabular);
+      color: var(--text);
+    }
+    .tx-sec .is-neg, .tx-sheet .is-neg { color: var(--neg); }
+    .tx-sec .is-pos, .tx-sheet .is-pos { color: var(--pos); }
+
+    .tx-list { display: flex; flex-direction: column; margin-top: var(--subrow); }
+    .tx-line {
+      height: calc(var(--subrow) * 3);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+    .tx-row {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 7) minmax(0, 1fr) calc(var(--gu) * 9);
+      column-gap: var(--gu);
+      align-items: start;
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: none;
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+    }
+    button.tx-row { cursor: pointer; }
+    .tx-row > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); }
+    .tx-row-date { font-size: var(--fs-xs); color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
+    .tx-row-what { font-size: var(--fs-sm); }
+    .tx-row > .tx-row-amt { font-size: var(--fs-sm); font-weight: var(--fw-bold); text-align: right; font-variant-numeric: var(--num-tabular); }
+
+    /* Sheets */
+    .tx-seg2 {
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--gu) * 17));
+      column-gap: var(--gu);
+      margin-top: calc(var(--subrow) * 2);
+    }
+    .tx-sheet .tx-seg3 { margin-top: calc(var(--subrow) * 2); }
+    .tx-amount {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 26) var(--col);
+      column-gap: var(--gu);
+      margin-top: calc(var(--subrow) * 2);
+    }
+    .tx-amount-field { display: grid; grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 6); min-width: 0; }
+    .tx-amount-input, .tx-amount-cur {
+      -webkit-appearance: none; appearance: none;
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 6);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 var(--gu);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text);
+      font-family: inherit;
+      line-height: calc(var(--subrow) * 6);
+    }
+    .tx-amount-input { font-size: var(--fs-2xl); font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); }
+    .tx-amount-cur {
+      font-size: var(--fs-sm);
+      padding-right: calc(var(--gu) * 3);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23808080' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right var(--gu) center;
+      background-size: var(--gu) auto;
+    }
+    .tx-amount-input:focus-visible, .tx-amount-cur:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+    .tx-label {
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+    .tx-chips {
+      display: grid;
+      grid-template-columns: repeat(4, var(--col));
+      column-gap: var(--gu);
+      row-gap: var(--subrow);
+      margin-top: var(--subrow);
+    }
+    .tx-chip {
+      display: grid;
+      align-items: center;
+      width: var(--col);
+      height: calc(var(--subrow) * 4);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-weight: var(--fw-bold);
+      font-size: var(--fs-sm);
+      cursor: pointer;
+    }
+    .tx-chip > span {
+      display: block;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+    .tx-chip.is-on { box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand); }
+    .tx-fields { margin-top: var(--subrow); }
+
+    .tx-pl-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 10);
+      column-gap: var(--gu);
+      align-items: start;
+      height: calc(var(--subrow) * 4);
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+    }
+    .tx-pl-row > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); font-size: var(--fs-sm); color: var(--text); }
+    .tx-pl-row > .tx-pl-val { text-align: right; font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); }
+    .tx-pl-row.is-total > .tx-pl-label { font-weight: var(--fw-bold); }
+    .tx-pl-row.is-total { box-shadow: inset 0 calc(var(--bw-1) * -1) 0 0 var(--text-muted); }
+
+    .tx-trip-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 9);
+      grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 3);
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 7);
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: none;
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .tx-trip-name { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+    .tx-trip-row > .tx-trip-count { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); font-size: var(--fs-xs); color: var(--text-muted); text-align: right; }
+    .tx-trip-meta { grid-column: 1 / -1; height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap); font-size: var(--fs-xs); color: var(--text-muted); }
+
+    /* ══ end Expenses & income ═══════════════════════════════════════════════ */
+
     /* ══ Scrollbars and native controls follow the theme ════════════════════
        Chrome/Firefox take scrollbar-color from the theme's own neutrals (data-theme is on <html>,
        where these resolve, and scrollbar-color inherits). Safari ignores scrollbar-color but draws

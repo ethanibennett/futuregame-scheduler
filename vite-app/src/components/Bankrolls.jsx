@@ -99,8 +99,8 @@ function BankrollEditor({ b, bal, bk, onDone, toast }) {
           <div className="bk-actions">
             <Btn kind="brand" onClick={() => run(() => bk.update(b.id, { name, startingBalance: Number(start) || 0, currency }), 'Saved')}>Save</Btn>
             <Btn onClick={() => run(() => bk.update(b.id, { archived: !b.archived }), b.archived ? 'Restored' : 'Archived')}>{b.archived ? 'Restore' : 'Archive'}</Btn>
-            <Btn kind="danger" disabled={b.entry_count > 0 || b.adjustment_count > 0}
-              title={b.entry_count || b.adjustment_count ? 'Has results or transactions: archive it instead' : undefined}
+            <Btn kind="danger" disabled={b.entry_count > 0 || b.adjustment_count > 0 || b.transaction_count > 0}
+              title={b.entry_count || b.adjustment_count || b.transaction_count ? 'Has results or transactions: archive it instead' : undefined}
               onClick={() => run(() => bk.remove(b.id), 'Deleted')}>Delete</Btn>
           </div>
         </>

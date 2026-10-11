@@ -4,7 +4,7 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
 // Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
-// the bankroll sheet.
+// the bankroll sheet, Expenses & income (the section, the add sheet, the list sheet, a trip).
 //
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
 //        [--json out.json] [--only "schedule,cash"] [--dump] [--shots dir [--overlay]]
@@ -81,7 +81,7 @@ const CONTROLS = [
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row'];
+const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -424,6 +424,38 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await menu('Results & Tracking', 'Results');
     await p.locator('.bk-head-btn').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
+  }, 0);
+  // Expenses & income (admin beta, below the Results summary) and its sheets.
+  const toExpenses = async () => {
+    await menu('Results & Tracking', 'Results');
+    await p.locator('.tx-sec').first().waitFor({ timeout: 4000 });
+    // Scroll the content area only. scrollIntoView would also nudge the window (11px measured),
+    // moving the .top-bar origin off its line and failing every control on the page.
+    await p.evaluate(() => {
+      const ca = document.querySelector('.content-area') || document.scrollingElement;
+      const s = document.querySelector('.tx-sec');
+      ca.scrollTop += s.getBoundingClientRect().top - ca.getBoundingClientRect().top - 40;
+      window.scrollTo(0, 0);
+    });
+    await p.waitForTimeout(500);
+  };
+  await step('expenses', toExpenses, 0);
+  await step('expense-add', async () => {
+    await toExpenses();
+    await p.locator('.tx-sec .bk-head-btn').first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+  }, 0);
+  await step('expenses-all', async () => {
+    await toExpenses();
+    await p.locator('.tx-sec .bk-actions .bk-btn').nth(1).click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+  }, 0);
+  await step('trip', async () => {
+    await toExpenses();
+    await p.locator('.tx-sec .bk-actions .bk-btn').nth(0).click({ timeout: 4000 });
+    await p.waitForTimeout(600);
+    await p.locator('.tx-trip-row').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1000);
   }, 0);
 
   // One row per distinct control (same element description + label), worst case kept.

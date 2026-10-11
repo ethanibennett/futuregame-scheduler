@@ -16,6 +16,8 @@ import { filterByBankroll, computeBalances, defaultBankrollFor } from '../utils/
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
 const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
+// BETA expenses, income and trips, admins only, lazy for the same reason.
+const ExpensesSection = lazy(() => import('./Expenses.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
 function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, bankrolls }) {
@@ -440,6 +442,14 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
+
+      {/* Expenses & income BETA: app admins only; follows the bankroll switcher's selection. */}
+      {isAdmin && bk.enabled && (
+        <Suspense fallback={null}>
+          <ExpensesSection token={token} bankroll={bk.selected} bankrolls={bk.bankrolls} rates={exchangeRates}
+            events={allTrackingData} onChanged={bk.refresh} />
+        </Suspense>
+      )}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
         <div className="tracking-card" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
