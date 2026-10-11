@@ -321,6 +321,9 @@
          its own height AND by .replayer-bottom-fixed for `bottom` so the
          two positions can never drift relative to each other. */
       --nav-h:     max(calc(var(--subrow) * 6), calc(var(--tab-h) + var(--sa-b)));
+      /* The fraction of an r that drops the bottom nav's top onto a grid line (see .bottom-nav).
+         On the root so anything fixed above the nav can stand on that same line. */
+      --nav-snap:  mod(100dvh - var(--sa-t) - var(--tab-h) - var(--sa-b), var(--subrow));
       /* Venue brand colors — muted for dark mode */
       --venue-wsop:          #a63030;
       --venue-wsop-cond:     #999;
@@ -910,14 +913,12 @@
       height: calc(var(--subrow) * 0.625);
       border-radius: var(--radius-circle);
     }
-    /* Density: a 3g x 1r cell (the button's r5-r6 track, centred in the 5g
-       button, so 1g in from each side) holding a 0.25r pill stroke seated on the
-       cell's bottom r-line - r6, one r above the button's bottom. */
+    /* Density: a 3g stroke, 0.25r tall, the foot of the date button's centred stack (centred in
+       the 5g button, so 1g in from each side). */
     .cal-date-density {
       display: flex;
-      align-items: flex-end;
       width: calc(var(--gu) * 3);
-      height: var(--subrow);
+      height: calc(var(--subrow) * 0.25);
     }
     .cal-date-density-track {
       display: block;
@@ -1448,7 +1449,9 @@
        face on its OWN cap/alphabetic metrics, so the per-face specimen lands
        on the same line whichever font it shows. A button's own box is flex, so
        the tile is a grid of block children (trim is inert on a flex box). */
-    .font-pick { display: flex; gap: var(--gu); }
+    /* Two tiles split the row on a whole g (half the row less the gutter, rounded down), so on a
+       row of even width neither tile ends half a g off its line. */
+    .font-pick { display: grid; grid-template-columns: round(down, (100% - var(--gu)) / 2, var(--gu)) minmax(0, 1fr); column-gap: var(--gu); }
     .font-pick-tile {
       flex: 1;
       min-width: 0;
@@ -1668,7 +1671,7 @@
          iOS (the harness doesn't show it). That extra height pushed the whole
          block below 5r and dropped every baseline below its gridline. As a flex
          box the button hugs the pill exactly at 4r. align-items:end keeps the pill
-         seated on the 4r line like the block's other children. */
+         on the block's 4r line like the block's other children. */
       display: flex;
       align-items: flex-end;
       text-align: left;
@@ -1682,21 +1685,18 @@
        so it reads as a form, not a highlight), which keeps the "you are here"
        mark for today while letting the rest of the list share its object. */
     .date-break-pill {
+      /* A pill: the box is a 4r × 8g grid object — one column wide, its right edge on the 9g
+         column line at every width — and "DD Mon" is centred in it on both axes (owner rule,
+         2026-10-10: a pill's label is centred, not seated). Day and month stay on one shared
+         baseline: they are inline runs of one line (.date-break-label), and it is that line's
+         capitals the pill centres (see .date-break-label). */
       display: inline-flex;
-      /* 4r tall, with 1r of its own bottom padding: align-items:end lands the
-         day/month trimmed baselines on the 3r line (inside the pill), so the
-         number sits with a subrow of space below it rather than crammed on the
-         pill's edge. The pill box itself stays a 4r × 4-subcol grid object. */
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
-      align-items: end;
-      /* Exactly one column wide — a grid object, not a content-hugging badge. Its
-         right edge is on the 9g column line at every width (8.000g, not the 7.89g
-         a hug happened to sum to). The date type is sized in g (see
-         .date-break-day/-mon), so "DD Mon" is a constant ~5.85g and fits inside
-         the 6g content area (8g − 2×1g padding) on every screen, left-aligned. */
+      align-items: center;
+      justify-content: center;
       width: var(--col);
-      padding: 0 var(--gu) var(--subrow);
+      padding: 0;
       border-radius: var(--radius-pill);
       background: color-mix(in srgb, var(--n-8) 10%, transparent);
       /* No fixed height: a fixed height with align-items:baseline made the pill's
@@ -1705,9 +1705,22 @@
          baseline IS the day's baseline and the count lines up. The five-subrow
          (40px) height comes from the day's 32px line + the today highlight's 4px
          top/bottom padding. */
-      gap: calc(var(--gu) * 0.3442); /* 4px @ 430pt, in g so it scales with the type */
       color: var(--text);
     }
+    /* The date's one line. Libre Baskerville's line box is NOT centred on its capitals (its
+       ascent less descent exceeds the cap height by 0.1em), so a flex centre would sit the digits
+       ~1px low at this size; trimming the line to cap-top..baseline makes the box the ink, which
+       the pill then centres exactly. This trim centres; it seats nothing on the grid. */
+    .date-break-label {
+      display: block;
+      white-space: nowrap;
+      /* The line's own font is the day's, so the trim's cap edge is the day's cap edge. */
+      font-family: var(--font-display);
+      font-size: calc(var(--gu) * 2.3);
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .date-break-label > .date-break-mon { margin-left: calc(var(--gu) * 0.3442); } /* 4px @ 430pt, in g */
     /* The one mark the whole list is scrolled to on mount. --brand exists so
        exactly one thing per screen can claim priority; this is the candidate. */
     /* Inverted against the ground rather than brand gold: near-white on the
@@ -1728,14 +1741,12 @@
       font-weight: var(--fw-regular);
       line-height: calc(var(--subrow) * 3);
       font-variant-numeric: var(--num-tabular);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .date-break-mon {
       font-family: var(--font-display);
       font-size: calc(var(--gu) * 1.2907); /* 15px (--fs-md) at 430pt, in g */
-      line-height: calc(var(--subrow) * 2);
+      line-height: 1;
       text-transform: capitalize;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .date-break-count {
       font-size: var(--fs-2xs);
@@ -2205,7 +2216,9 @@
        and the user chip right via the bar's space-between. Desktop (≥640px) has
        room to let them sit in normal right-aligned flow. */
     .top-bar-actions {
-      display: flex; align-items: center; gap: var(--space-sm);
+      /* 3g buttons with 1g between: n of them span 4n - 1 g, an odd count, so centred on the
+         screen's 18.5g middle the group starts on a whole g (19 - 2n). */
+      display: flex; align-items: center; gap: var(--gu);
       /* Centred in the 8r bar (its own centre on the 4r line). The bar is now
          align-items:flex-start, so this absolute group sets its own vertical
          centre rather than inheriting the old align-items:center. */
@@ -2217,7 +2230,7 @@
       .top-bar-actions { position: static; top: auto; transform: none; margin-left: auto; align-self: center; }
     }
     .top-bar-actions .btn-icon {
-      width: calc(var(--subrow) * 4); height: calc(var(--subrow) * 4); min-width: calc(var(--subrow) * 4);
+      width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); min-width: calc(var(--gu) * 3);
       padding: 0; display: flex; align-items: center; justify-content: center;
       border-radius: var(--radius-circle);
     }
@@ -2234,10 +2247,14 @@
       display: flex; align-items: center; min-width: 0;
     }
 
+    /* A 4r box centred on the 4r line like the icons (top 2r), its width the avatar and name
+       rounded up to a whole g (class snap-g), the pair centred in it. */
     .username-chip {
+      height: calc(var(--subrow) * 4);
+      justify-content: center;
       font-size: var(--fs-sm);
       color: var(--text-muted);
-      max-width: calc(var(--subrow) * 12.5);
+      max-width: calc(var(--gu) * 9);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -2245,9 +2262,7 @@
       transition: color var(--dur-fast);
       font-family: inherit;
     }
-    /* Trim the name to its cap box (cap top to baseline), so the chip's align-items:center centres
-       the capitals — not the line box with its descender space — on the avatar's centre line. */
-    .username-chip span { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    .username-chip span { display: block; line-height: 1; }
     @media (hover: hover) and (pointer: fine) {
       .username-chip:hover { color: var(--text); }
     }
@@ -2477,13 +2492,14 @@
     .game-subheading { display:grid; align-items:end; height: calc(var(--subrow) * 2); font-size: var(--fs-2xs); font-family: var(--font-condensed); font-weight: var(--fw-bold); text-transform:uppercase; letter-spacing: var(--track-caps); color:var(--text-muted); margin-bottom: var(--subrow); }
     /* Four favourites = the four primary columns (1-9, 10-18, 19-27, 28-36g): 8g each,
        1g gutters, exactly like the Schedule tab's four toggles. */
-    .game-faves-row { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--gu); height: calc(var(--subrow) * 3); margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 var(--border); }
-    .game-fave-btn { display:grid; align-items:end; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs) var(--subrow); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast); }
+    .game-faves-row { display:grid; grid-template-columns: repeat(3, round(down, (100% - var(--gu) * 3) / 4, var(--gu))) minmax(0, 1fr); column-gap: var(--gu); height: calc(var(--subrow) * 3); margin-bottom: calc(var(--subrow) * 2); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 var(--border); }
+    .game-fave-btn { display:grid; align-items:center; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; border-radius:0; background:var(--surface2); color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast); }
     .game-fave-btn.active { background:transparent; color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
     /* Five tabs across 35g on valid x lines: 1|9|16|23|30|36 = 8+7+7+7+6g (HOLD'EM, the
-       longest label, gets the full primary column). fr so it stays proportional >430px. */
-    .game-tab-bar { display:grid; grid-template-columns: 8fr 7fr 7fr 7fr 6fr; height: calc(var(--subrow) * 3); background:var(--surface2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
-    .game-tab-btn { display:grid; align-items:end; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs) var(--subrow); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; background:transparent; color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),box-shadow var(--dur-fast); }
+       longest label, gets the full primary column). Proportional on a wider bar, each rounded
+       to a whole g and the last taking the rest, so every edge stays on a g line. */
+    .game-tab-bar { display:grid; grid-template-columns: round(100% * 8 / 35, var(--gu)) repeat(3, round(100% * 7 / 35, var(--gu))) minmax(0, 1fr); height: calc(var(--subrow) * 3); background:var(--surface2); box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+    .game-tab-btn { display:grid; align-items:center; justify-items:center; min-width:0; box-sizing:border-box; height: calc(var(--subrow) * 3); padding: 0 var(--space-xs); font-size: var(--fs-2xs); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); border:none; background:transparent; color:var(--text-muted); cursor:pointer; box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 transparent; transition:color var(--dur-fast),box-shadow var(--dur-fast); }
     .game-tab-btn.active { color:var(--accent2); font-weight: var(--fw-bold); box-shadow: inset 0 calc(var(--subrow) * -0.25) 0 var(--accent2); }
     /* 4r row, label baseline one r above the bottom (row top + 3r). Left padding = 2g
        minus the 2px indicator border, so the label starts on the 3g line; right padding
@@ -2505,7 +2521,7 @@
     }
     .game-check-box.checked { background: var(--accent2); box-shadow: inset 0 0 0 var(--bw-1) var(--accent2); }
     .game-check-group > .game-check-row:first-child { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
-    .game-check-more-row { display:grid; align-items:end; justify-items:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; padding: 0 calc(var(--gu) * 2) var(--subrow); background:transparent; box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+    .game-check-more-row { display:grid; align-items:center; justify-items:center; height: calc(var(--subrow) * 3); box-sizing:border-box; cursor:pointer; padding: 0 calc(var(--gu) * 2); background:transparent; box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
     @media (hover: hover) and (pointer: fine) {
       .game-check-more-row:hover { background:transparent; }
     }
@@ -2521,7 +2537,11 @@
     .game-check-section-label { display:grid; align-items:end; font-size: var(--fs-2xs); color:var(--text-muted); font-family: var(--font-condensed); text-transform:uppercase; letter-spacing: var(--track-caps); height: calc(var(--subrow) * 3); box-sizing:border-box; padding: 0 calc(var(--gu) * 2) var(--subrow); box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
     /* The seat itself: a trimmed block inside each cell above. padding/margin-block
        0.3em keeps descenders from being clipped by the ellipsis overflow. */
-    .game-subheading > span, .game-fave-btn > span, .game-tab-btn > span,
+    .game-fave-btn > span, .game-tab-btn > span {
+      display:block; min-width:0; max-width:100%;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .game-subheading > span,
     .game-check-row-label, .game-check-more-btn, .game-check-section-label > span {
       display:block; min-width:0; max-width:100%; line-height: calc(var(--subrow) * 2);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -2643,6 +2663,9 @@
 
     /* ── Hand Replayer ── */
     .replayer-view { max-width: calc(var(--subrow) * 75); margin: 0 auto; }
+    /* The hands LIST keeps the pane's grid: a whole-g cap, from the pane's left margin (centred
+       at 75r it began 4.37g in). The replay screen is untouched. */
+    .replayer-view.is-list { max-width: calc(var(--gu) * 53); margin: 0; }
     /* Replay mode is a full-height column: header, then the table taking
        whatever is left, then the bar. Without this the height chain is broken
        here — .replayer-view is a block with auto height, so the `height:100%`
@@ -2824,17 +2847,16 @@
     }
     .replayer-view.is-list .replayer-list-heading { display:grid; align-items:end; height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
     /* Create: full width (35g) — a variant name can run to "Pot Limit Stud Hi/Lo
-       Regular", which no narrower whole-g box holds. 5r, baseline 3r down: the cap
-       (~1.2r) then has 1.8r above it and 2r below, i.e. centred. */
+       Regular", which no narrower whole-g box holds. 5r, the label centred. */
     .replayer-view.is-list .replayer-list-create { height: calc(var(--subrow) * 5); }
     .replayer-view.is-list .replayer-list-create .btn,
     .replayer-view.is-list .replayer-hand-card.is-empty .replayer-hand-card-actions .btn {
-      display:grid; align-items:end; justify-items:center; width:100%; height: calc(var(--subrow) * 5);
-      box-sizing:border-box; padding: 0 var(--gu) calc(var(--subrow) * 2); border:none;
+      display:grid; align-items:center; justify-items:center; width:100%; height: calc(var(--subrow) * 5);
+      box-sizing:border-box; padding: 0 var(--gu); border:none;
     }
     .replayer-view.is-list .replayer-hand-card-actions .btn.btn-ghost {
-      display:grid; align-items:end; justify-items:center; width:100%; height: calc(var(--subrow) * 4);
-      box-sizing:border-box; padding: 0 var(--space-xs) var(--subrow); border:none;
+      display:grid; align-items:center; justify-items:center; width:100%; height: calc(var(--subrow) * 4);
+      box-sizing:border-box; padding: 0 var(--space-xs); border:none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
     }
     @media (hover: hover) and (pointer: fine) {
@@ -2843,13 +2865,17 @@
     .replayer-view.is-list .replayer-list-title > span,
     .replayer-view.is-list .replayer-list-variant > span,
     .replayer-view.is-list .replayer-list-heading > span,
-    .replayer-view.is-list .btn > span,
     .replayer-view.is-list .replayer-hand-card-title,
     .replayer-view.is-list .replayer-hand-card-meta {
       display:block; min-width:0; max-width:100%; line-height: calc(var(--subrow) * 2); margin-top:0;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       padding-block: 0.3em; margin-block: -0.3em;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* A button's label: centred by its button, untrimmed, its line box holding the descenders. */
+    .replayer-view.is-list .btn > span {
+      display:block; min-width:0; max-width:100%;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     /* Skeleton text bar: 1r, sitting on its cell's baseline (every cell bottom-aligns). */
     .replayer-view.is-list .replayer-list-skel { height: var(--subrow); border-radius: var(--radius-xs); margin:0; }
@@ -3704,8 +3730,8 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    /* Segmented tabs: 3r strip, 17g + 18g = 35g (1–18–36). Label baseline 2r:
-       pb − pt = 0.6956em − r (cond xs). Hairlines as inset shadows. */
+    /* Segmented tabs: 3r strip, 17g + 18g = 35g (1–18–36), each label centred in its half.
+       Hairlines as inset shadows. */
     .replayer-entry-view .live-update-tabs {
       display: grid; grid-template-columns: calc(var(--gu) * 17) minmax(0, 1fr);
       height: calc(var(--subrow) * 3); border: 0;
@@ -3713,20 +3739,23 @@
     }
     .replayer-entry-view .live-update-tabs button {
       box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
-      padding: 0 0 calc(0.6956em - var(--subrow)); border: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; border: 0;
     }
     .replayer-entry-view .live-update-tabs button:first-child { box-shadow: inset calc(var(--bw-hair) * -1) 0 0 var(--border); }
     .replayer-entry-view .live-update-tabs button.active { box-shadow: none; }
-    /* Cash tab's Live / Heatmaps: the same strip — 3r, two equal halves, hairlines as inset
-       shadows, label baseline 2r (pb = 0.6956em - r, cond xs). */
+    /* Cash tab's Live / Heatmaps: the same strip — 3r, hairlines as inset shadows, each label
+       centred in its half. The halves split on a whole g: the first is half the strip rounded
+       down to a g (35g on a phone: 17g + 18g, as the hand entry's strip), so both are whole. */
     .cash-mode-tabs {
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      display: grid; grid-template-columns: round(down, 50%, var(--gu)) minmax(0, 1fr);
       height: calc(var(--subrow) * 3); border: 0;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
     }
     .cash-mode-tabs button {
       box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
-      padding: 0 0 calc(0.6956em - var(--subrow)); border: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; border: 0;
     }
     .cash-mode-tabs button:first-child { box-shadow: inset calc(var(--bw-hair) * -1) 0 0 var(--border); }
     .cash-mode-tabs button.active { box-shadow: none; }
@@ -8188,7 +8217,6 @@
          it (108.30r / 105.45r / 115.82r at 874 / 852 / 932 tall). --nav-snap is the fraction of
          an r that drops the top onto a line, added at the BOTTOM so the content keeps its place
          from the top: 1r of space, the icon (2.5r), the label's baseline on the 5r line. */
-      --nav-snap: mod(100dvh - var(--sa-t) - var(--tab-h) - var(--sa-b), var(--subrow));
       height: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap));
       min-height: var(--tab-h);
       /* 1r from the bar's top edge to the icon: the hairline border sits inside that 1r. */
@@ -8201,6 +8229,10 @@
       border-top: var(--bw-hair) solid var(--border);
       display: flex;
       align-items: stretch;
+      /* Whole-g tabs, centred: BottomNav sets --nav-tab-w and --nav-gap (unitless g counts) so
+         n tabs and their gutters span 35g or less with whole-g margins either side. */
+      justify-content: center;
+      column-gap: calc(var(--gu) * var(--nav-gap, 0));
       flex-shrink: 0;
       position: relative;
       z-index: var(--z-sticky);
@@ -8267,15 +8299,17 @@
     }
 
     .nav-tab {
-      flex: 1;
+      flex: 0 0 calc(var(--gu) * var(--nav-tab-w, 7));
+      /* A whole-g by 4r box (under the bar's 1r of space); the icon over its label, the pair
+         centred in it — a button's label is centred, not seated (owner rule, 2026-10-10). */
+      height: calc(var(--subrow) * 4);
       display: flex;
       flex-direction: column;
       align-items: center;
-      /* From the top: the icon right under the bar's 1r of space, the label pushed to the
-         bottom of the 4r content box (margin-top:auto below) so its trimmed baseline is the
-         5r line. Was centred, which floated both off the grid. */
-      justify-content: flex-start;
-      gap: 0;
+      justify-content: center;
+      /* Icon to capitals ~0.53r, as before (the label's line box adds 0.125em of its own): the
+         icon and the label's ink then fill the 4r box. */
+      gap: calc(var(--subrow) * 0.375);
       background: none;
       border: none;
       color: var(--text-muted);
@@ -8290,13 +8324,9 @@
       text-transform: none;
     }
     .nav-tab svg { flex: none; }
-    /* A block child (trim is inert on the flex button itself), trimmed to cap..baseline and at
-       the content box's foot, so the baseline sits exactly on the 5r line. */
     .nav-tab-label {
       display: block;
-      margin-top: auto;
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* Inactive #808080 vs active #a0a0a0 reads 3.9:1 and 5.4:1 against the
@@ -8435,16 +8465,70 @@
       .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
     }
 
-    .btn-sm { padding: var(--space-md) var(--space-xl); font-size: var(--fs-sm); }
+    /* Heights in whole r, padding sideways only: the box is on the grid and .btn's flex centres
+       the label in it (the padding had made these 5.06r and 3.94r). Widths stay content-sized
+       here; each place that uses one gives it a whole-g width (or class snap-g). */
+    .btn { height: calc(var(--subrow) * 5); padding-block: 0; }
+    .btn-sm { height: calc(var(--subrow) * 4); padding: 0 var(--space-xl); font-size: var(--fs-sm); }
 
     .btn-full { width: 100%; }
 
+    /* ── Pills and buttons: the box on the grid, the label centred (owner rule, 2026-10-10) ──
+       Every pill and every button: the CONTAINER is whole g wide and whole r tall with its edges
+       on grid lines; the LABEL inside is centred on both axes, ignoring the grid. So inside a
+       control there is no baseline seating — no text-box-trim, no align-items:end, no padding or
+       offset computed from font metrics. The box centres its content (flex, align-items and
+       justify-content: center) and that centres the ink: Univers Condensed's ascent less its
+       descent is its cap height, so the middle of its line box IS the middle of its capitals.
+       .ctl is that, for a control that has no class of its own to carry it. Variable-width
+       content (a username, a count) takes class snap-g: utils/grid-snap.js rounds its width up
+       to a whole g. Guard: npm run check:controls (WebKit, phone + desktop) measures every
+       control's box against the grid and its label's ink centre against the box's. */
+    /* A control labelled in the DISPLAY face (Libre Baskerville and kin): that face's line box is
+       not centred on its capitals (ascent less descent exceeds the cap height by ~0.1em), so a flex
+       centre would sit the label ~1px low. Its label line is trimmed to cap-top..baseline, which
+       makes the label's box its ink, and the control's flex centre then centres the ink exactly.
+       (The same trim serves a label stacked under an icon — .cal-action-label — where the line
+       box's room below the baseline would otherwise lift the pair.)
+       This trim centres; it seats nothing on the grid (on iOS 15, which lacks it, the label is
+       simply ~1px low). Univers Condensed needs none of this. */
+    .ctl-cap {
+      display: block;
+      white-space: nowrap;
+      line-height: 1;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* The Hands tools row over the nav: 5r, its 3r pills 1r down from its top. The top rule is an
+       inset hairline (a border would push the pills a pixel off their line). On desktop there is
+       no nav below it, so it also takes up the fraction of an r the window height leaves over,
+       which puts its top on a line counted from the bar. */
+    .hands-tool-row {
+      align-items: flex-start;
+      height: calc(var(--subrow) * 5);
+      padding: var(--subrow) var(--gu) 0;
+      box-sizing: border-box;
+      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+    }
+    .app-shell.is-desktop .hands-tool-row { height: calc(var(--subrow) * 5 + mod(100dvh - var(--sa-t), var(--subrow))); }
+    .ctl {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding-block: 0;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
     /* ── Alerts ── */
+    /* Whole r: 2r lines inside 1.5r of padding a side, the hairline border taken out of the
+       padding, so a one-line alert is a 5r block and whatever follows it stays on the grid. */
     .alert {
-      padding: var(--space-lg) var(--space-xl);
+      padding: calc(var(--subrow) * 1.5 - var(--bw-hair)) var(--gu);
       border-radius: var(--radius-sm);
       font-size: var(--fs-md);
-      margin-bottom: var(--space-lg);
+      line-height: calc(var(--subrow) * 2);
+      margin-bottom: calc(var(--subrow) * 2);
       display: flex;
       align-items: flex-start;
       gap: var(--space-md);
@@ -8599,9 +8683,7 @@
     .settings-people-name,
     .settings-about h3,
     .settings-about p,
-    .settings-view .settings-btn > span,
     .settings-row-btn > span,
-    .settings-seg-btn > span,
     .font-pick-word,
     .font-pick-tile i {
       display: block;
@@ -8729,13 +8811,13 @@
     }
     .settings-seg-btn {
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       width: calc(var(--gu) * 4);
       height: calc(var(--subrow) * 3);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);                /* baseline +2r */
+      padding: 0;                                /* the label centred in the 3r box */
       border: none;
       border-radius: var(--radius-xs);
       cursor: pointer;
@@ -8756,14 +8838,13 @@
     .settings-row--stack > :not(.settings-row-label):not(.settings-help) { margin-top: var(--subrow); }
     .settings-inline-row { display: flex; align-items: flex-start; gap: var(--gu); }
 
-    /* Ghost buttons: 5r, label baseline +3r (cap ~1.2r: 1.8r above, 2r below),
-       whole-g widths so the input beside them fills a whole-g remainder. The
-       frame is an inset shadow so it adds no size. Scoped to the page so the
-       shared .btn-sm elsewhere is untouched. */
+    /* Ghost buttons: 5r, the label (and any icon) centred in the box, whole-g widths so the
+       input beside them fills a whole-g remainder. The frame is an inset shadow so it adds no
+       size. Scoped to the page so the shared .btn-sm elsewhere is untouched. */
     .settings-view .settings-btn.btn-sm {
       display: grid;
       grid-auto-flow: column;
-      align-items: end;
+      align-items: center;
       justify-content: center;
       column-gap: calc(var(--gu) * 0.5);
       flex: 0 0 auto;
@@ -8771,7 +8852,7 @@
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 calc(var(--subrow) * 2);
+      padding: 0;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       font-size: var(--fs-sm);
@@ -8780,18 +8861,15 @@
     @media (hover: hover) and (pointer: fine) {
       .settings-view .settings-btn.btn-sm:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
     }
-    /* Icon centred on the label's cap: bottom-aligned, then dropped by half the
-       difference between the icon (1.75r) and the cap height. */
     .settings-view .settings-btn.btn-sm svg {
       width: calc(var(--subrow) * 1.75);
       height: calc(var(--subrow) * 1.75);
-      margin-bottom: calc(1cap / 2 - var(--subrow) * 0.875);
     }
     .settings-btn--danger { color: var(--danger); }
     .settings-btn--start { align-self: flex-start; }
     /* Delete account: the one irreversible action in Settings, so it is the only
-       filled red button on the page. Same 5r seated box as the ghost buttons
-       beside it (label on +3r), 10g wide to hold its label; the frame is an
+       filled red button on the page. Same 5r box as the ghost buttons beside it,
+       label centred, 10g wide to hold its label; the frame is an
        inset hairline in the danger hue, so it adds no size. */
     .settings-view .settings-btn--destroy.btn-sm {
       width: calc(var(--gu) * 10);
@@ -8810,7 +8888,6 @@
     .settings-view .settings-btn--icon.btn-sm {
       width: calc(var(--gu) * 7);
       height: calc(var(--subrow) * 3);
-      padding-bottom: var(--subrow);             /* baseline +2r = row +3r */
     }
 
     /* People lists (pending / connected): a 3r header, then 5r rows — avatar
@@ -9071,38 +9148,38 @@
       -webkit-tap-highlight-color: transparent;
     }
     .kind-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
-    /* Precise centring: trim the label to its cap box (uppercase glyphs otherwise ride high in a
-       line box because of font descent space) so the button's flex-center centres the visible caps,
-       not the line box. text-indent balances the trailing letter-spacing so the caps are centred
-       horizontally too, not shifted left by one gap. */
+    /* The button's flex centre centres the label (Univers Condensed's line box and its capitals
+       share a middle). text-indent balances the trailing letter-spacing WebKit adds after the
+       last letter, so the capitals are centred sideways too, not shifted left by one gap. */
     .kind-toggle-label {
       display: block;
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
       text-indent: var(--track-caps);
     }
-    /* Online: the toggle fills the 8g cell and the caret sits over its right-hand 2g, so the
-       label stays centred on the whole button while the caret is its own tap target. */
-    .kind-toggle-split { position: relative; width: var(--col); height: calc(var(--subrow) * 2); }
-    /* The caret's divider makes 28..34g the toggle's visible segment, so the label centres there
-       (on 31g): centred on the full 8g it ended 0.27g from the divider and read as off-centre. */
-    .kind-toggle-split > .kind-toggle { padding-right: var(--subcol); }
+    /* Online: one 8g cell split into two controls side by side — the toggle on the left 6g, the
+       caret on the right 2g — so each box is on the grid and the label centres on its own 6g. The
+       pair keeps the one-box look: the toggle's right edge is the caret's divider. */
+    .kind-toggle-split { display: flex; width: var(--col); height: calc(var(--subrow) * 2); }
+    .kind-toggle-split > .kind-toggle {
+      width: calc(var(--gu) * 6);
+      border-right: 0;
+      border-top-right-radius: 0; border-bottom-right-radius: 0;
+    }
     .kind-toggle-caret {
-      position: absolute;
-      top: 0; right: 0;
       width: var(--subcol);
       height: 100%;
+      box-sizing: border-box;
       margin: 0; padding: 0;
       display: flex; align-items: center; justify-content: center;
-      background: none;
-      border: none;
-      box-shadow: inset var(--bw-hair) 0 0 var(--border);
+      background: var(--surface);
+      border: var(--bw-hair) solid var(--border);
+      border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
       color: var(--text-muted);
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
     .kind-toggle-caret svg { width: var(--subrow); height: var(--subrow); display: block; }
-    .kind-toggle-caret.active { color: var(--accent); box-shadow: inset var(--bw-hair) 0 0 var(--accent); }
+    .kind-toggle-caret.active { color: var(--accent); border-color: var(--accent); background: rgba(160,160,160,0.1); }
 
     /* The Online menu: opened by a tap on the Online toggle. Full content width (35g, the 1g
        margins either side) and 1r under the button row. */
@@ -9234,19 +9311,32 @@
          are always a pair. */
       position: fixed; z-index: var(--z-panel);
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
+      /* On the grid (2026-10-10): placed in g and r by TournamentsView, its content 2r down and
+         1g in, every row a whole r with 1r between, so its pills and buttons land on grid lines.
+         The frame is an inset hairline, which takes no room the way a border would. */
+      border: 0;
       border-radius: var(--radius);
-      padding: var(--space-xl);
+      padding: calc(var(--subrow) * 2) var(--gu);
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--space-lg);
+      gap: var(--subrow) var(--gu);
       overflow-y: auto;
-      box-shadow: var(--elev-3);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-3);
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
 
     .filter-group { display: flex; flex-direction: column; gap: var(--space-sm); }
+    /* The panel's quick pills: 5g each with 2g between, from the left — five fill the 33g row
+       exactly; fewer keep their places. 1r under them. */
+    .filter-quick-row {
+      grid-column: 1 / -1;
+      display: grid; grid-template-columns: repeat(auto-fill, calc(var(--gu) * 5)); column-gap: calc(var(--gu) * 2);
+      margin-bottom: var(--subrow);
+    }
+    /* Section headings that open a section (Online rooms ▼ …): a 3r row. */
+    .filter-panel .filter-span2 > label { line-height: calc(var(--subrow) * 3); }
+    .filter-panel .filter-group { gap: var(--subrow); } /* 1r between a group's rows */
 
     .filter-group label { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--track-caps); }
 
@@ -9298,7 +9388,9 @@
     }
     .date-slider-labels {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: var(--fs-xs); color: var(--text-muted); margin-top: var(--space-2xs);
+      /* 0.5r under the 4.5r slider and a 2r line: the block is 7r. */
+      line-height: calc(var(--subrow) * 2);
+      font-size: var(--fs-xs); color: var(--text-muted); margin-top: calc(var(--subrow) * 0.5);
       font-family: var(--font-condensed); font-weight: var(--fw-regular);
     }
     .date-slider-labels span { min-width: calc(var(--subrow) * 6.25); }
@@ -9493,34 +9585,42 @@
     }
 
     /* ── Empty states ── */
+    /* Every block a whole number of r (icon 6r + 2r, heading 3r + 1r, copy 2r a line, then the
+       action 2r down), so the action button below them lands on an r line. */
     .empty-state {
       text-align: center;
-      padding: calc(var(--subrow) * 7.5) var(--space-3xl);
+      padding: calc(var(--subrow) * 8) var(--gu);
       color: var(--text-muted);
     }
 
-    .empty-state svg { width: calc(var(--subrow) * 6); height: calc(var(--subrow) * 6); margin-bottom: var(--space-xl); opacity: 0.4; }
-    .empty-state h3 { font-size: var(--fs-lg); color: var(--text); margin-bottom: var(--space-sm); }
+    .empty-state svg { display: block; width: calc(var(--subrow) * 6); height: calc(var(--subrow) * 6); margin: 0 auto calc(var(--subrow) * 2); opacity: 0.4; }
+    .empty-state h3 { font-size: var(--fs-lg); line-height: calc(var(--subrow) * 3); color: var(--text); margin-bottom: var(--subrow); }
     .empty-state p { font-size: var(--fs-sm); }
 
     /* Inline contexts — dropdowns, panel sections, cards — where the 60px
        first-run padding would blow the container out. */
-    .empty-state-compact { padding: var(--space-2xl) var(--space-xl); }
-    .empty-state-compact svg { width: calc(var(--subrow) * 3.5); height: calc(var(--subrow) * 3.5); margin-bottom: var(--space-md); }
+    .empty-state-compact { padding: calc(var(--subrow) * 3) var(--gu); }
+    .empty-state-compact svg { width: calc(var(--subrow) * 4); height: calc(var(--subrow) * 4); margin-bottom: var(--subrow); }
     .empty-state-compact h3 { font-size: var(--fs-md); }
     .empty-state-compact p { font-size: var(--fs-sm); }
 
-    .empty-state p { max-width: 34ch; margin-left: auto; margin-right: auto; line-height: var(--lh-snug); }
+    .empty-state p { max-width: 34ch; margin-left: auto; margin-right: auto; line-height: calc(var(--subrow) * 2); }
 
     .empty-state-actions {
       display: flex; flex-wrap: wrap; justify-content: center;
-      gap: var(--space-md); margin-top: var(--space-lg);
+      gap: var(--subrow) var(--gu); margin-top: calc(var(--subrow) * 2);
     }
+    /* A 4r button 2r under the copy, its width its label rounded up to whole g with the
+       parity of its column (class snap-g-centred, utils/grid-snap.js), so centred in it both
+       edges land on g lines. The label is centred in it. */
     .empty-state-action {
-      margin-top: var(--space-lg);
+      display: flex; align-items: center; justify-content: center;
+      margin: calc(var(--subrow) * 2) auto 0;
+      width: fit-content; /* until snap-g-centred rounds it to whole g */
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
-      padding: 0 var(--space-lg);
+      padding: 0 var(--gu);
+      white-space: nowrap;
       border: var(--bw-hair) solid var(--brand);
       border-radius: var(--radius-sm);
       background: var(--brand);
@@ -9532,7 +9632,7 @@
       transition: background var(--dur-snap) var(--ease-out),
                   border-color var(--dur-snap) var(--ease-out);
     }
-    .empty-state-actions .empty-state-action { margin-top: 0; }
+    .empty-state-actions .empty-state-action { margin: 0; }
     @media (hover: hover) and (pointer: fine) {
       .empty-state-action:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
     }
@@ -9573,21 +9673,18 @@
       padding-top: calc(var(--subrow) * 2 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    /* CTA: 5r x 17g (cols 1-2, 1-18g). Label on +3r: cap ~1.1r -> 1.9r above,
-       2r below — the odd height is what centres a ~1r cap with its baseline on a
-       line. Border as inset shadow so it takes no space inside the fixed height. */
+    /* CTA: 5r x 17g (cols 1-2, 1-18g), the label centred in it. Border as inset shadow so it
+       takes no space inside the fixed height. */
     .dashboard-section .empty-state-action {
-      grid-column: 1 / 3; align-self: start; width: 100%; margin: 0;
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      grid-column: 1 / 3; align-self: start; width: 100% !important; margin: 0;
+      display: flex; align-items: center; justify-content: center;
       height: calc(var(--subrow) * 5); min-height: 0; box-sizing: border-box;
       padding: 0; border: 0;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--brand);
     }
     .dashboard-section .empty-state-action-label {
       display: block;
-      padding-top: calc(var(--subrow) * 3 - 1cap);
       white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* Secondary ways out of a filter sit quiet — only one action should pull. */
     .empty-state-action-quiet {
@@ -9753,7 +9850,10 @@
       display: grid;
       grid-template-columns: calc(var(--gu) * 3) calc(var(--gu) * 13) calc(var(--gu) * 3);
       column-gap: calc(var(--gu) * 2);
-      justify-content: center;
+      /* Centred to the nearest whole g: on a wider (desktop) row the middle cell is an even
+         number of g, and a plain centre put the 23g group half a g off its lines. */
+      justify-content: start;
+      margin-left: round(down, (100% - var(--gu) * 23) / 2, var(--gu));
       height: calc(var(--subrow) * 4);
     }
 
@@ -9802,19 +9902,18 @@
        the months are being scrolled horizontally with the carousel. */
     .cal-month-row[data-direction="next"] { animation-name: cal-month-row-slide-from-right; }
     .cal-month-row[data-direction="prev"] { animation-name: cal-month-row-slide-from-left; }
-    /* Month buttons fill their 3g/13g grid cells, 4r tall. The label is a
-       trimmed block (cap top to baseline) bottom-aligned over a 1r pad, so its
-       baseline is the button's r3 - r13 from the bar. text-indent balances the
-       trailing letter-spacing so the caps centre on the cell. */
+    /* Month buttons fill their 3g/13g grid cells, 4r tall, the label centred in
+       them. text-indent balances the trailing letter-spacing so the caps centre
+       on the cell sideways too. */
     .cal-month-btn {
       --cal-ring: var(--border);
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
       width: 100%;
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       min-width: 0;
       font-family: var(--font-condensed);
       font-size: var(--fs-xs);
@@ -9833,7 +9932,6 @@
       display: block;
       line-height: 1;
       text-indent: var(--track-caps-lg);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-month-btn-side {
       color: var(--text-muted);
@@ -9898,18 +9996,17 @@
 
     .cal-date-strip::-webkit-scrollbar { display: none; }
 
-    /* Each date button: 5g x 7r, three whole-r tracks bottom-aligned -
-       dow in r0-r2 (baseline r2), dom in r2-r5 (baseline r5), the density cell
-       r5-r6 (stroke on r6), then a 1r bottom pad. Dow cap top is r0.96 and the
-       stroke's bottom r6, so the content has ~1r above and exactly 1r below. */
+    /* Each date button: 5g x 7r. Its face — weekday, date, the density stroke — is one
+       stack centred in the box (a button's face is centred, not seated on lines). */
     .cal-date-btn {
       --cal-ring: var(--border);
       flex: 0 0 calc(var(--gu) * 5);
       height: calc(var(--subrow) * 7);
-      display: grid;
-      grid-template-rows: calc(var(--subrow) * 2) calc(var(--subrow) * 3) var(--subrow) var(--subrow);
-      justify-items: center;
-      align-items: end;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: calc(var(--subrow) * 0.5);
       padding: 0;
       border-radius: var(--radius-sm);
       background: var(--surface);
@@ -9925,9 +10022,7 @@
       translate: var(--cal-strip-fix, 0) 0;
       transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     }
-    .cal-date-btn > .dow { grid-row: 1; }
-    .cal-date-btn > .dom { grid-row: 2; }
-    .cal-date-btn > .cal-date-density { grid-row: 3; }
+
 
     .cal-date-btn.active { background: var(--brand); --cal-ring: var(--brand); animation: date-bounce var(--dur-slow) var(--ease-spring) both; }
 
@@ -9946,7 +10041,6 @@
       text-indent: var(--track-caps);
       color: var(--text-muted);
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .cal-date-btn.active .dow { color: var(--on-brand); }
@@ -9958,7 +10052,6 @@
       font-weight: var(--fw-bold);
       color: var(--text);
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .cal-date-btn.active .dom { color: var(--bg-contrast); }
@@ -10002,7 +10095,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: var(--space-ml);
+      margin-bottom: var(--subrow); /* whole r, so what follows stays on the grid */
     }
 
     .section-header h2 { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--text); }
@@ -10029,7 +10122,9 @@
          .sticky-filters and the date break carry. No sticky header on this
          screen may let a card show through it. */
       transform: translateZ(0);
-      padding: var(--space-3xl) var(--space-lg) var(--space-sm);
+      /* On the grid: pulled up 1.5r, 3.5r down to its row (so the row starts 2r below the bar, an
+         r line, stuck or not), 1r under it; 1g sides put its content on the tab's 1g margin. */
+      padding: calc(var(--subrow) * 3.5) var(--gu) var(--subrow);
       margin: calc(var(--subrow) * -1.5) calc(-1 * var(--gu)) 0;
       /* Removed: box-shadow: 0 4px 0 0 var(--bg) — the var sometimes
          resolved one frame late during sticky transitions and fell back
@@ -10306,7 +10401,7 @@
       align-items: flex-end;
     }
     .cp-title > span, .cp-eyebrow > span, .cp-help > span, .cp-remove > span,
-    .cp-check-row > span, .cp-toggle-text, .cp-btn > span,
+    .cp-check-row > span, .cp-toggle-text,
     .condition-sat-item > span, .admin-strip-color span, .admin-edit-note span {
       display: block;
       line-height: 1;
@@ -10351,14 +10446,14 @@
     }
     /* A condition's detail indents 3g, to the label's 7g. */
     .cp-sub { padding-left: calc(var(--gu) * 3); display: flex; flex-direction: column; gap: var(--subrow); }
-    /* Buttons: 5r, text seated 3r from the top (2r of padding under it). */
+    /* Buttons: 5r, the label centred. */
     .cp-btn {
       height: calc(var(--subrow) * 5);
       box-sizing: border-box;
       margin: 0;
-      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      padding: 0 var(--gu);
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
@@ -11002,14 +11097,21 @@
          Mirror the nav's height formula exactly so Safari's max()
          parsing can't drop the safe-area term, then add a 22px gap
          (was 16px) and a final +6px hedge for iOS hairline rounding. */
-      bottom: calc(max(calc(var(--subrow) * 5.5), calc(var(--tab-h) + var(--sa-b))) + calc(var(--subrow) * 3.5));
-      left: 50%;
+      /* A 9g x 4r pill 2r above the bottom nav's top (an r line, see --nav-snap), so its edges are
+         on the grid. Centred by its left edge, rounded to the nearest g line (14g on a phone's
+         37g; on a desktop pane of even width it sits a half-g off true centre, on the grid). */
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 2);
+      width: calc(var(--gu) * 9);
+      height: calc(var(--subrow) * 4);
+      box-sizing: border-box;
+      justify-content: center;
+      left: round(nearest, 50% - var(--gu) * 4.5, var(--gu));
       z-index: var(--z-fab);
       background: var(--accent);
       color: var(--bg);
       border: none;
       border-radius: var(--radius-pill);
-      padding: var(--space-md) var(--space-2xl);
+      padding: 0;
       font-family: var(--serif);
       font-size: var(--fs-sm);
       font-weight: var(--fw-bold);
@@ -11021,17 +11123,18 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transform: translate(-50%, calc(var(--subrow) * 1.25));
+      transform: translate(0, calc(var(--subrow) * 1.25));
       transition: opacity var(--dur-base) ease, transform var(--dur-base) ease, visibility 0s linear var(--dur-base);
     }
     .back-to-today-fab.visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
-      transform: translate(-50%, 0);
+      transform: translate(0, 0);
       transition: opacity var(--dur-base) ease, transform var(--dur-base) ease, visibility 0s linear 0s;
     }
     .back-to-today-fab .fab-arrow-down { display: none; }
+    .back-to-today-fab .fab-arrow-up, .back-to-today-fab .fab-arrow-down { flex: none; }
     .back-to-today-fab[data-dir="down"] .fab-arrow-up { display: none; }
     .back-to-today-fab[data-dir="down"] .fab-arrow-down { display: inline; }
 
@@ -11143,7 +11246,9 @@
 
     .cal-detail-badges {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      /* Two halves split on a whole g (31g: 15 + 1 + 15), so the right half's pills start on a
+         g line on a wider pane too. */
+      grid-template-columns: round(down, (100% - var(--gu)) / 2, var(--gu)) minmax(0, 1fr);
       gap: var(--space-xs) var(--gu);
       align-items: start;
     }
@@ -11365,8 +11470,8 @@
       grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 7) calc(var(--gu) * 5) calc(var(--gu) * 7) 1fr;
     }
 
-    /* 6r: 1r above, a 2r icon cell, a 2r label cell whose trimmed label sits on its bottom r-line
-       (r5), 1r below. Centring the icon+label stack put the label's baseline between r-lines. */
+    /* 6r: the icon over its label, the pair centred in the box (a button's face is centred,
+       not seated on lines — owner rule, 2026-10-10). */
     .cal-action-btn, .cal-entries-counter {
       min-width: 0;
       /* The icons inherit this. Unset, a <button> took the UA's near-black, so the +, the
@@ -11374,15 +11479,15 @@
       color: var(--text-muted);
       height: calc(var(--subrow) * 6);
       box-sizing: border-box;
-      padding: var(--subrow) var(--space-xs) 0;
+      padding: 0 var(--space-xs);
       background: none;
       border: none;
       cursor: pointer;
-      display: grid;
-      grid-template-rows: var(--icon-md) calc(var(--subrow) * 2);
-      align-content: start;
-      justify-items: center;
-      gap: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: calc(var(--subrow) * 0.5);
       font-family: inherit;
     }
     .cal-entries-counter { cursor: default; }
@@ -11410,14 +11515,17 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
+      line-height: 1;
       color: var(--text-muted);
-      align-self: end;
+      /* Under an icon, the label's line box would add its space below the baseline to the
+         stack and sit the pair high; trimmed to cap..baseline (as .ctl-cap), its box is its ink
+         and the stack centres on the ink. A centring trim — it seats nothing on the grid. */
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .cal-action-btn:active { background: rgba(160,160,160,0.1); }
     /* Buddy chip name, trimmed and bottom-aligned 1r above the 3r chip's bottom, so its baseline
        sits on the r-line 2r below the chip top (it was centred, 0.064r off). */
-    .buddy-chip-name { align-self: flex-end; margin-bottom: var(--subrow); line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+    .buddy-chip-name { line-height: 1; } /* centred in the 3r chip by its flex centre */
     .cal-action-btn.remove .cal-action-icon { color: #ef4444; }
     .cal-action-btn.anchor-btn.locked .cal-action-icon { color: #60a5fa; }
     :is([data-theme="light"],[data-theme="cloudy"]) .cal-action-btn.anchor-btn.locked .cal-action-icon { color: #2563eb; }
@@ -11735,7 +11843,7 @@
        shadow, label --fs-sm trimmed with its baseline on +3r (cap 1.13r ->
        1.87r above, 2r below), icon a 3r box on +1r..+4r. */
     .dashboard-section .table-scanner-upload {
-      display: flex; align-items: flex-start; justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       gap: var(--space-sm);
       width: 100%;
       height: calc(var(--subrow) * 5); min-height: 0;
@@ -11755,16 +11863,15 @@
     .dashboard-section .table-scanner-upload > svg {
       flex: 0 0 auto;
       width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
-      margin-top: var(--subrow);
     }
+    /* Centred beside the icon. Untrimmed, its line box holds the descenders, so a plain
+       overflow clip for the ellipsis cuts nothing. */
     .dashboard-section .table-scanner-upload-label {
       display: block;
       min-width: 0;
-      padding: calc(var(--subrow) * 3 - 1cap) 0 0;
       white-space: nowrap;
-      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
+      overflow: hidden;
       text-overflow: ellipsis;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .dashboard-section-header {
@@ -11818,20 +11925,21 @@
       padding-top: calc(var(--subrow) * 2 - 1cap);
       white-space: nowrap;
     }
-    /* Dashboard header pill, 2026-09-30 regrid. A 2r pill centred its text (baseline
-       at +1.45r, off-grid) and hugged the text (x 32.59g). Now a header-high 3r x 4g
-       block (6g --wide) on the 32/30g lines, caps micro-label (--fs-2xs is caps-only),
-       trimmed to cap..alphabetic with padding-top 2r - 1cap, so the baseline sits on
-       +2r: cap 0.94r -> 1.06r above, 1r below = centred. */
+    /* Dashboard header pill: a header-high 3r x 4g block (6g --wide) on the 32/30g lines, caps
+       micro-label (--fs-2xs is caps-only) centred in it (owner rule, 2026-10-10: a pill's label
+       is centred, not seated). */
     .dashboard-view .dashboard-section-badge,
     .social-view .dashboard-section-badge,
     .batch-view .dashboard-section-badge {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       flex: 0 0 auto;
       width: calc(var(--gu) * 4);
       height: calc(var(--subrow) * 3);
       box-sizing: border-box;
-      padding: calc(var(--subrow) * 2 - 1cap) 0 0;
+      padding: 0;
+      line-height: 1;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
@@ -11841,7 +11949,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
       color: var(--text-muted);
       background: var(--surface2);
       border-radius: var(--radius);
@@ -12298,17 +12405,14 @@
       font-weight: var(--fw-bold);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      /* 3r pill, trimmed label seated on its 2r line over 1r of padding. A 2r pill
-         can't seat a centred label: centred sits at (2 + cap 1.037r) / 2 = 1.52r,
-         half an r off either line; in 3r, centred is 2.02r, i.e. ON the 2r line.
-         Width is a whole g per variant (below) with the label centred, so both
-         edges land on subcolumn lines: 3g + width, and with the 2g row gap a
-         second tag starts on the next line (10→12, 12→14, 16→18). */
+      /* 3r pill, the label centred in it. Width is a whole g per variant (below), so both
+         edges land on subcolumn lines: 3g + width, and with the 2g row gap a second tag
+         starts on the next line (10→12, 12→14, 16→18). */
       height: calc(var(--subrow) * 3);
       box-sizing: border-box;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       border-radius: var(--radius-xs);
     }
     /* Label widths (measured, --fs-2xs condensed caps): Locked In 4.75g,
@@ -12618,23 +12722,10 @@
 
     .dash-restart-badge svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
 
-    /* The 5r-box seat — every 5r box in the Up Next card (Start, Currently
-       Playing, Update / Bag / Bust, Cancel / Rebuys / Finish, Finished, All
-       entries used, Restart): the trimmed label and any icon stand on the 3r
-       line, 2r above the bottom. Why 5r: a label reads centred when its baseline
-       is at (height + cap) / 2. Caps here are 1.167r (--fs-xs) and 1.296r
-       (--fs-sm): in 4r that is 2.58 / 2.65r — half an r off both lines; in 5r it
-       is 3.08 / 3.15r, so seating on the 3r line IS centring (within 0.15r).
-       The x (3r) and the playing dot (1r) stay centred: 1r..4r and 2r..3r. */
-    .dash-start-btn > .dash-t, .dash-start-btn > svg,
-    .dash-playing-badge > .dash-t,
-    .dash-bag-btn > .dash-t, .dash-bust-btn > .dash-t, .dash-update-btn > .dash-t,
-    .dash-rebuy-btn > .dash-t, .dash-no-rebuy > .dash-t,
-    .dash-finished-badge > .dash-t,
-    .dash-restart-badge > .dash-t, .dash-restart-badge > svg {
-      align-self: flex-end;
-      margin-bottom: calc(var(--subrow) * 2);
-    }
+    /* The 5r boxes in the Up Next card (Start, Currently Playing, Update / Bag / Bust, Cancel /
+       Rebuys / Finish, Finished, All entries used, Restart) centre their label and icon: each box
+       is a flex row with align-items:center, and nothing inside is seated on a line (owner rule,
+       2026-10-10 — a control's label is centred in its box, ignoring the grid). */
     /* Badges that hold a ✕ (Currently Playing, Finished, Restart/Bagged): 2g side
        padding, so the leading dot / label / icon starts on the 5g line and the
        right-pushed ✕ ends on the badge's right edge − 2g (32g full width, 16g in
@@ -12643,11 +12734,9 @@
       padding-left: var(--subcol);
       padding-right: var(--subcol);
     }
-    /* The ✕ glyph in its 3r circle, seated: baseline on the circle's 2r line
-       (centred it sat at 2.08r). Border as an inset ring so it doesn't offset it. */
+    /* The ✕ centred in its 2g x 3r ring. Border as an inset ring so it doesn't offset it. */
     .dash-event-card .dash-undo-x, .dash-event-card .dash-unbag-x {
-      align-items: flex-end;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       border: 0;
     }
     .dash-event-card .dash-undo-x { box-shadow: inset 0 0 0 var(--bw-hair) rgba(160,160,160,0.40); }
@@ -12662,10 +12751,11 @@
       color: var(--accent);
       /* 3r, not 3.5r: on a name-only header (no meta row) this button was the
          tallest child and forced the header to 3.5r. At 3r it matches the name
-         line; the ::after inset keeps the tap target large. */
-      width: calc(var(--subrow) * 3);
+         line; the ::after inset keeps the tap target large. 2g wide, so the box is
+         whole g too (a ring 6% wider than tall). */
+      width: calc(var(--gu) * 2);
       height: calc(var(--subrow) * 3);
-      min-width: calc(var(--subrow) * 3);
+      min-width: calc(var(--gu) * 2);
       font-size: var(--fs-xs);
       display: flex;
       align-items: center;
@@ -12692,10 +12782,10 @@
       border: var(--bw-hair) solid rgba(34,197,94,0.40);
       border-radius: var(--radius-circle);
       color: #22c55e;
-      /* 3r to match .dash-undo-x — see note there. */
-      width: calc(var(--subrow) * 3);
+      /* 2g x 3r to match .dash-undo-x — see note there. */
+      width: calc(var(--gu) * 2);
       height: calc(var(--subrow) * 3);
-      min-width: calc(var(--subrow) * 3);
+      min-width: calc(var(--gu) * 2);
       font-size: var(--fs-xs);
       display: flex;
       align-items: center;
@@ -12749,11 +12839,10 @@
     .dash-results-header > .dash-results-reset { grid-column: 2; justify-self: end; }
     .dash-results-header > .dash-results-cancel { grid-column: 3; justify-self: start; }
     .dash-results-header > .dash-results-right { grid-column: 3; justify-self: end; }
-    /* Header controls: 3r (header-high) blocks, caps micro-label, baseline on +2r
-       (padding-top 2r - 1cap on a trimmed block child) — the badge recipe. The
-       border is an inset shadow so it adds no size. */
+    /* Header controls: 3r (header-high) blocks, caps micro-label centred — the badge recipe.
+       The border is an inset shadow so it adds no size. */
     .dash-results-btn {
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       width: calc(var(--gu) * 4);
       height: calc(var(--subrow) * 3);
       min-height: 0;
@@ -12779,9 +12868,8 @@
     .dash-results-btn > span,
     .dash-results-currency > span {
       display: block;
-      padding-top: calc(var(--subrow) * 2 - 1cap);
+      line-height: 1;
       white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     /* Currency: a 6g x 3r face showing the choice, the native <select> laid over
        it transparent — a select's own text can't be trimmed or seated. */
@@ -12972,8 +13060,12 @@
        (::after) is the 2g pitch wide and 5r tall, so neighbours abut, not overlap. */
     .dash-upnext-dots {
       display: grid; grid-auto-flow: column; grid-auto-columns: var(--gu);
-      column-gap: var(--gu); justify-content: center;
+      /* n 1g dots with 1g between span 2n - 1 g. Centred, they start on the whole g nearest the
+         middle (an odd group centred in an even-g card started half a g off its lines);
+         DashboardView sets --n. */
+      column-gap: var(--gu); justify-content: start;
       height: calc(var(--subrow) * 2); box-sizing: border-box; padding: var(--subrow) 0 0;
+      padding-left: round(down, (100% - var(--gu) * (2 * var(--n, 1) - 1)) / 2, var(--gu));
     }
     .dash-upnext-dot {
       width: var(--gu); height: var(--subrow);
@@ -13312,14 +13404,13 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    /* "+ New": the header's 3r x 4g badge, filled brand. A button's own box is
-       flex, so the label is a trimmed span bottom-aligned above 1r (+2r). */
+    /* "+ New": the header's 3r x 4g badge, filled brand, the label centred in it. */
     .social-view .social-new-btn {
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       min-height: 0;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       border: none;
       background: var(--brand);
       color: var(--on-brand);
@@ -13522,13 +13613,13 @@
     .social-actions-list > .social-sched-hd { margin-bottom: calc(var(--subrow) * -1); }
     .social-action-btn {
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       width: 100%;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      padding: 0 var(--gu);
       background: none;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
@@ -13547,13 +13638,13 @@
     .social-action-btn.is-split > .social-action-status { justify-self: end; font-size: var(--fs-xs); }
     .social-text-btn {
       display: grid;
-      align-items: end;
-      justify-items: start;
+      align-items: center;
+      justify-items: center;
       width: calc(var(--gu) * 6);
       height: calc(var(--subrow) * 3);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       background: none;
       border: none;
       color: var(--text-muted);
@@ -13576,12 +13667,12 @@
     .social-confirm-btn {
       flex: 0 0 calc(var(--gu) * 6);
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 calc(var(--subrow) * 2);
+      padding: 0;
       background: none;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
@@ -13645,13 +13736,13 @@
     .social-connect-btn {
       flex: 0 0 calc(var(--gu) * 6);
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       height: calc(var(--subrow) * 3);
       min-height: 0;
       margin-top: var(--subrow);                 /* row +2..+5r, label on +4r */
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--accent);
       border-radius: calc(var(--subrow) * 0.75);
@@ -13773,12 +13864,12 @@
     .group-back-btn {
       flex: 0 0 calc(var(--gu) * 3);
       display: grid;
-      align-items: end;
-      justify-items: start;
+      align-items: center;
+      justify-items: center;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       background: none;
       border: none;
       color: var(--accent);
@@ -13796,12 +13887,12 @@
     .group-header-btn {
       flex: 0 0 calc(var(--gu) * 6);
       display: grid;
-      align-items: end;
-      justify-items: end;
+      align-items: center;
+      justify-items: center;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       background: none;
       border: none;
       color: var(--text-secondary);
@@ -13826,13 +13917,13 @@
     .group-segments.segs-4 { grid-template-columns: calc(var(--gu) * 9) calc(var(--gu) * 9) calc(var(--gu) * 9) calc(var(--gu) * 8); }
     .group-segment-btn {
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       min-width: 0;
       box-sizing: border-box;
-      padding: 0 0 calc(var(--subrow) * 2);
+      padding: 0;
       background: none;
       border: none;
       color: var(--text-muted);
@@ -13962,12 +14053,12 @@
     .group-feed-input button {
       flex: 0 0 calc(var(--gu) * 6);
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 calc(var(--subrow) * 2);
+      padding: 0;
       background: var(--accent);
       color: #fff;
       border: none;
@@ -14079,12 +14170,12 @@
     .group-member-btn {
       flex: 0 0 calc(var(--gu) * 6);
       display: grid;
-      align-items: end;
-      justify-items: end;
+      align-items: center;
+      justify-items: center;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 calc(var(--subrow) * 3);
+      padding: 0;
       background: none;
       border: none;
       color: var(--text-muted);
@@ -14103,14 +14194,14 @@
     .group-pending { margin-top: calc(var(--subrow) * 2); }
     .group-exit-btn {
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       width: 100%;
       height: calc(var(--subrow) * 5);
       min-height: 0;
       box-sizing: border-box;
       margin-top: calc(var(--subrow) * 2);
-      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      padding: 0 var(--gu);
       background: none;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
@@ -14166,12 +14257,12 @@
     .create-group-close {
       flex: 0 0 calc(var(--gu) * 3);
       display: grid;
-      align-items: end;
-      justify-items: end;
+      align-items: center;
+      justify-items: center;
       height: calc(var(--subrow) * 4);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       background: none;
       border: none;
       color: var(--text);
@@ -14263,7 +14354,7 @@
     }
     .create-group-submit {
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       width: 100%;
       height: calc(var(--subrow) * 5);
@@ -14274,7 +14365,7 @@
       color: var(--on-brand);
       border: none;
       border-radius: var(--radius);
-      padding: 0 var(--gu) calc(var(--subrow) * 2);
+      padding: 0 var(--gu);
       font-family: var(--font-condensed);
       text-transform: uppercase;
       font-weight: var(--fw-bold);
@@ -14367,11 +14458,14 @@
       padding-top: calc(var(--subrow) * 2 - 1cap);
       font-size: var(--fs-sm);
     }
+    /* A whole-g by whole-r box (4g x 3r); the knob travels 4g - 3r (the 2r knob plus its two
+       0.5r insets). */
     .toggle-switch {
       position: relative;
       display: inline-block;
-      width: calc(var(--subrow) * 5); /* 40px */
+      width: calc(var(--gu) * 4);
       height: calc(var(--subrow) * 3); /* 24px = 3 subrows */
+      flex-shrink: 0;
     }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
@@ -14394,11 +14488,7 @@
       transition: var(--dur-snap);
     }
     .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
-    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(calc(var(--subrow) * 2)); }
-    /* In the group view the switch is 4g wide (a whole-g box); the knob
-       travels 4g - 3r (the 2r knob plus its two 0.5r insets). */
-    .group-detail-view .toggle-switch { width: calc(var(--gu) * 4); flex-shrink: 0; }
-    .group-detail-view .toggle-switch input:checked + .toggle-slider::before { transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3)); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3)); }
 
     /* ── Staking ── */
     .staking-series-card {
@@ -14589,7 +14679,8 @@
       flex-shrink: 0;
     }
     .btn-xs {
-      padding: calc(var(--subrow) * 0.375) var(--space-ml) !important;
+      height: calc(var(--subrow) * 3) !important; /* a whole 3r box; .btn centres the label */
+      padding: 0 var(--space-ml) !important;
       font-size: var(--fs-xs) !important;
       line-height: 1 !important;
       border-radius: var(--radius-sm) !important;
@@ -15405,11 +15496,13 @@
     /* The grid unit is responsive (100vw/37), so the overlay needs no
        per-breakpoint margin overrides — it tracks the screen at every width. */
 
-    /* Floating admin toggle for the grid overlay. */
+    /* Floating admin toggles for the grid overlay: 4g x 5r keys on the 1g right margin, stacked
+       up from the bottom nav's top (an r line), --dev-up r above it (clear of the 5r Hands tools row),
+       so each sits on the grid. */
     .grid-dev-toggle {
-      position: fixed; right: calc(var(--subrow) * 1.5);
-      bottom: calc(calc(var(--subrow) * 9.5) + env(safe-area-inset-bottom, 0));
-      z-index: 9999; width: calc(var(--subrow) * 5); height: calc(var(--subrow) * 5); border-radius: var(--radius-circle);
+      position: fixed; right: var(--gu);
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * var(--dev-up, 7));
+      z-index: 9999; width: calc(var(--gu) * 4); height: calc(var(--subrow) * 5); border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center;
       border: var(--bw-hair) solid var(--border); box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.25) rgba(0,0,0,0.3);
       font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: calc(var(--gu) * 1.4726);
@@ -15454,7 +15547,7 @@
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
-    /* Quick chips: 5 x 5g on 2g gaps = 33g. 4r tall, label seated 1r above the bottom. */
+    /* Quick chips: 5 x 5g on 2g gaps = 33g. 4r tall, the label centred. */
     .cal-fp-chips {
       display: grid;
       grid-template-columns: repeat(5, calc(var(--gu) * 5));
@@ -15465,17 +15558,21 @@
       box-sizing: border-box;
       border: none;
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
     }
-    .cal-fp .cal-fp-chip { width: calc(var(--gu) * 5); min-width: 0; padding: 0 0 var(--subrow); }
+    .cal-fp .cal-fp-chip { width: calc(var(--gu) * 5); min-width: 0; padding: 0; }
+    /* Inside a control the label is not trimmed: the control centres its line box, which for
+       Univers Condensed is centred on the capitals. (.cal-fp-cap stays a seated, trimmed line
+       everywhere else in the panel.) */
+    .cal-fp-chip .cal-fp-cap, .cal-fp-pill .cal-fp-cap, .cal-fp-head .cal-fp-cap, .cal-fp-search-x .cal-fp-cap, .cal-fp-actions .btn .cal-fp-cap { text-box-trim: none; }
     .cal-fp .cal-fp-chip.active, .cal-fp-pill.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
 
-    /* Active-filter pills beside the filter button: 4r, label and clear-x seated 1r up; the
+    /* Active-filter pills beside the filter button: 4r, label and clear-x centred; the
        width is set in g by the Filters layout effect so both edges land on column lines. */
     .cal-fp-pill {
       flex: none;
-      padding: 0 var(--gu) var(--subrow);
+      padding: 0 var(--gu);
       gap: calc(var(--gu) * 0.5);
       cursor: default;
     }
@@ -15491,11 +15588,11 @@
     }
     .cal-fp-pills::-webkit-scrollbar { display: none; }
     .cal-fp-pills > :first-child { margin-left: auto; }
-    /* The x keeps its seat but gets a bigger target: padding and an equal negative margin. */
+    /* The x gets a bigger target: padding and an equal negative margin, so it takes no room. */
     .cal-fp-pill-x {
       cursor: pointer;
-      padding: var(--subrow) calc(var(--gu) * 0.5) 0;
-      margin: calc(var(--subrow) * -1) calc(var(--gu) * -0.5) 0;
+      padding: var(--subrow) calc(var(--gu) * 0.5);
+      margin: calc(var(--subrow) * -1) calc(var(--gu) * -0.5);
     }
 
     /* Search: 33g x 4r. Icon cell 2g x 2r from 3g; the input fills to 34g (or to the 2g clear
@@ -15528,8 +15625,8 @@
       width: var(--subcol);
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
-      display: flex; align-items: flex-end; justify-content: center;
-      padding: 0 0 var(--subrow);
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
       margin: 0;
       background: none; border: none;
       color: var(--text-muted);
@@ -15567,15 +15664,16 @@
       height: calc(100% + var(--subrow) * 3);
     }
 
-    /* Disclosure rows: 4r, full 33g, label + chevron seated 1r above the bottom. */
+    /* Disclosure rows: 4r, full 33g, label + chevron start-aligned and centred on the row's
+       middle (a button's label is centred, not seated). */
     .cal-fp-head {
-      display: flex; align-items: flex-end;
+      display: flex; align-items: center;
       gap: calc(var(--gu) * 0.5);
       width: 100%;
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
       margin: 0;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       background: none; border: none;
       font-family: inherit; font-size: var(--fs-sm); font-weight: var(--fw-bold);
       color: var(--text-muted);
@@ -15645,9 +15743,9 @@
       grid-row: 1;
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       border: none;
-      align-items: flex-end; justify-content: center;
+      align-items: center; justify-content: center;
     }
     .cal-fp-actions .btn-ghost { box-shadow: inset 0 0 0 var(--bw-1) var(--border); }
     .cal-fp-clear { grid-column: 1; }
@@ -15720,7 +15818,7 @@
        the grid track they sit in. */
     .qa-chip {
       box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; min-height: 0; margin: 0;
-      padding: 0 var(--gu) calc(0.7692em - var(--subrow));
+      padding: 0 var(--gu);
       display: flex; align-items: center; justify-content: center;
       border: 0; border-radius: var(--radius-sm); -webkit-appearance: none; appearance: none;
       background: transparent; color: var(--text);
@@ -15925,19 +16023,18 @@
     }
     /* One Row (4r) per item. The item bleeds over the rail's 1g margins so its
        hover fill and active bar span the rail; its content is the 8g column:
-       a 2g x 2r icon cell, 1g, then the label. Both bottom-seat on the 3r line —
-       the label is a trimmed block in a grid cell (trim is inert on flex boxes,
-       live on grid items), so its baseline IS that line. */
+       a 2g x 2r icon cell, 1g, then the label, each centred on the item's middle
+       (a button's label is centred, not seated — owner rule, 2026-10-10). */
     .dk-rail-item {
       display: grid;
       grid-template-columns: calc(var(--gu) * 2) minmax(0, 1fr);
       column-gap: var(--gu);
-      align-items: end;
+      align-items: center;
       width: calc(var(--gu) * 10);
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
       margin: 0 calc(var(--gu) * -1);
-      padding: 0 var(--gu) var(--subrow);
+      padding: 0 var(--gu);
       border: 0; border-radius: 0;
       background: none;
       color: var(--text-muted);
@@ -15955,9 +16052,7 @@
     .dk-rail-label {
       display: block;
       line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-      /* No overflow clip: the trimmed box ends at the baseline, so a clip would
-         cut every descender (the g of Settings). The labels fit by measurement. */
+      /* No overflow clip: the labels fit by measurement. */
       white-space: nowrap;
     }
     .dk-rail-item.is-active {
@@ -16010,7 +16105,9 @@
        Today/Next button), so each one centres in ITS pane instead of the window.
        Only on panes whose views have nothing else fixed and unportalled. */
     .dk-fab-scope { transform: translateZ(0); }
-    .app-shell.is-desktop .back-to-today-fab { bottom: calc(var(--subrow) * 4); }
+    /* No nav under it on desktop: 4r up from the foot of the window, plus the fraction of an r
+       that puts its top on a line counted from the bar. */
+    .app-shell.is-desktop .back-to-today-fab { bottom: calc(var(--subrow) * 4 + mod(100dvh - var(--sa-t), var(--subrow))); }
 
     /* The main pane's scroller is the phone's .content-area, minus the room it
        keeps for a bottom nav the desktop does not have. */
@@ -16040,6 +16137,7 @@
       margin: calc(var(--subrow) * -1.5) calc(-1 * var(--gu)) 0;
       padding: var(--space-3xl) var(--space-lg) var(--space-sm);
     }
+    .app-shell.is-desktop .schedule-sticky-header { padding: calc(var(--subrow) * 3.5) var(--gu) var(--subrow); }
     .app-shell.is-desktop .gto-sticky-footer { padding: var(--space-sm) var(--space-lg); }
     html[data-layout="desktop"] .filter-panel { grid-template-columns: 1fr 1fr; align-items: normal; }
     html[data-layout="desktop"] .filter-span2 { grid-column: span 2; }
@@ -16053,15 +16151,12 @@
       padding: calc(var(--subrow) * 2) var(--gu) var(--subrow);
       box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
     }
-    /* One column (8g) per key; label trimmed and bottom-seated 1r above the key's
-       foot, so its baseline lands on the pane's 4r line. */
+    /* One column (8g) per key, 3r tall, the label centred in it. */
     .dk-seg-btn {
-      display: grid; align-items: end; justify-items: center;
+      display: grid; align-items: center; justify-items: center;
       width: var(--col); height: calc(var(--subrow) * 3);
       box-sizing: border-box;
-      /* 1r to the key's outer foot: the hairline border sits inside that 1r
-         (measured 0.13r high without the subtraction). */
-      padding: 0 0 calc(var(--subrow) - var(--bw-hair));
+      padding: 0;
       border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-pill);
       background: none; color: var(--text-muted);
@@ -16144,7 +16239,9 @@
       .dk-pane-detail > .dk-detail-block { animation: none; }
     }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
-    .dk-detail-block + .dk-mine-block { border-top: var(--bw-hair) solid var(--border); }
+    /* The rule between them is a shadow above My Schedule, not a border: a border pushed its
+       content (the header's buttons, the date pills) a pixel off the grid. */
+    .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--bw-hair) * -1) 0 var(--border); }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════
@@ -16239,12 +16336,12 @@
     .batch-show-btn {
       flex: 0 0 calc(var(--gu) * 9);
       display: grid;
-      align-items: end;
+      align-items: center;
       justify-items: center;
       height: calc(var(--subrow) * 3);
       min-height: 0;
       box-sizing: border-box;
-      padding: 0 0 var(--subrow);
+      padding: 0;
       border: none;
       border-radius: var(--radius);
       background: var(--brand);
@@ -16308,11 +16405,11 @@
     .bk-bar { display: flex; flex-direction: column; margin-bottom: calc(var(--subrow) * 2); }
     .bk-head { display: flex; align-items: flex-start; gap: var(--gu); height: calc(var(--subrow) * 3); }
 
-    .bk-head-title, .bk-beta, .bk-head-btn > span,
+    .bk-head-title,
     .bk-cell-name, .bk-cell-bal,
     .bk-sheet-title, .bk-section-title, .bk-line,
-    .bk-row > span, .bk-field-label, .bk-btn > span, .bk-seg-btn > span,
-    .bk-ledger-row > span, .bk-ledger-x > span {
+    .bk-row > span, .bk-field-label,
+    .bk-ledger-row > span {
       display: block;
       box-sizing: border-box;
       min-width: 0;
@@ -16332,10 +16429,21 @@
       font-size: var(--fs-md);
       color: var(--text);
     }
+    /* The BETA pill and the head/sheet/ledger buttons centre their label in a whole-g by whole-r
+       box (owner rule, 2026-10-10): no trim, no cap-height padding. */
+    .bk-beta, .bk-head-btn > span, .bk-btn > span, .bk-seg-btn > span, .bk-ledger-x > span {
+      display: block;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
     .bk-beta {
       flex: 0 0 calc(var(--gu) * 4);
       height: calc(var(--subrow) * 3);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
+      display: flex; align-items: center; justify-content: center;
+      box-sizing: border-box;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
@@ -16349,7 +16457,7 @@
     .bk-head-btn {
       flex: 0 0 var(--col);
       display: grid;
-      align-items: start;
+      align-items: center;
       height: calc(var(--subrow) * 3);
       min-height: 0;
       box-sizing: border-box;
@@ -16363,7 +16471,7 @@
       font-size: var(--fs-xs);
       cursor: pointer;
     }
-    .bk-head-btn > span { height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 2 - 1cap); text-align: center; }
+
 
     .bk-grid {
       display: grid;
@@ -16524,7 +16632,7 @@
     .bk-actions { display: flex; gap: var(--gu); margin-top: calc(var(--subrow) * 2); }
     .bk-btn, .bk-seg-btn {
       display: grid;
-      align-items: start;
+      align-items: center;
       flex: 0 0 auto;
       height: calc(var(--subrow) * 5);
       min-height: 0;
@@ -16541,7 +16649,7 @@
       font-size: var(--fs-sm);
       cursor: pointer;
     }
-    .bk-btn > span, .bk-seg-btn > span { height: calc(var(--subrow) * 5); padding-top: calc(var(--subrow) * 3 - 1cap); text-align: center; }
+
     .bk-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
     .bk-btn--danger { background: none; color: var(--danger); box-shadow: inset 0 0 0 var(--bw-1) var(--danger); }
     .bk-btn:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
@@ -16563,7 +16671,7 @@
     .bk-ledger-row > .bk-ledger-amt { text-align: right; font-weight: var(--fw-bold); font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); }
     .bk-ledger-x {
       display: grid;
-      align-items: start;
+      align-items: center;
       width: calc(var(--gu) * 3);
       height: calc(var(--subrow) * 4);
       min-height: 0;
@@ -16575,7 +16683,7 @@
       font-size: var(--fs-md);
       cursor: pointer;
     }
-    .bk-ledger-x > span { height: calc(var(--subrow) * 4); padding-top: calc(var(--subrow) * 3 - 1cap); text-align: center; }
+
     /* ══ end Bankrolls ═══════════════════════════════════════════════════════ */
 
     /* ══ Scrollbars and native controls follow the theme ════════════════════
@@ -16586,3 +16694,33 @@
        panes' scrollbar allowance (useDesktopLayout measureScrollbarG) still measures the real one. */
     :root { color-scheme: dark; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
     :root:is([data-theme="light"], [data-theme="cloudy"]) { color-scheme: light; }
+
+    /* ══ Labels inside pills and buttons: untrimmed (owner rule, 2026-10-10) ══════════════════
+       These spans share a seated-text rule with the rows around them (trimmed to cap..baseline,
+       clipped sideways). Inside a control the label is centred by the control's own centre, so
+       here it is a plain line box again — which holds its descenders, so nothing needs clipping.
+       Last in the file so it outranks those shared rules at equal specificity. */
+    .social-new-btn > span,
+    .social-connect-btn > span,
+    .social-action-btn > span,
+    .social-text-btn > span,
+    .social-confirm-btn > span,
+    .group-detail-view .group-back-btn > span,
+    .group-detail-view .group-header-btn > span,
+    .group-segment-btn > span,
+    .group-feed-input button > span,
+    .group-invite-btn > span,
+    .group-member-btn > span,
+    .group-exit-btn > span,
+    .create-group-close > span,
+    .create-group-submit > span,
+    .batch-show-btn > span,
+    .dk-seg-btn > span,
+    .cp-btn > span,
+    .game-check-more-btn {
+      text-box-trim: none;
+      padding-block: 0;
+      margin-block: 0;
+      overflow: visible;
+      line-height: 1;
+    }

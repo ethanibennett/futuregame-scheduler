@@ -31,9 +31,8 @@ export function FirstRun({ icon = 'star', title, body, actionLabel, onAction, co
       <h3>{title}</h3>
       {body ? <p>{body}</p> : null}
       {actionLabel && onAction ? (
-        <button type="button" className="empty-state-action" onClick={onAction}>
-          {/* A block child so a grid-seated context (the dashboard) can trim it —
-              text-box-trim is inert on the button's own flex box. */}
+        <button type="button" className="empty-state-action snap-g-centred" onClick={onAction}>
+          {/* snap-g-centred: the width rounds up to whole g with its parent's parity, so centred it sits on g lines. */}
           <span className="empty-state-action-label">{actionLabel}</span>
         </button>
       ) : null}
@@ -63,7 +62,7 @@ export function Filtered({ icon = 'filter', title, hint, actions = [], compact =
             <button
               key={a.label}
               type="button"
-              className={i === 0 ? 'empty-state-action' : 'empty-state-action empty-state-action-quiet'}
+              className={i === 0 ? 'empty-state-action snap-g-centred' : 'empty-state-action empty-state-action-quiet snap-g-centred'}
               onClick={a.onClick}
             >
               {a.label}

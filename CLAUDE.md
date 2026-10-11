@@ -251,7 +251,14 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
 - **Pills and buttons** (owner rule, 2026-10-10): the CONTAINER sits on the grid (whole g × whole
   r, edges on grid lines); the LABEL inside is centred vertically and horizontally, ignoring the
   grid — no baseline seating, text-box-trim or metric nudges inside a control. Every other piece of
-  text still seats its baseline on an r-line.
+  text still seats its baseline on an r-line. The tools (top of the Pills-and-buttons block in
+  `styles.css`): `.ctl` flex-centres a control; a label in the display face takes `.ctl-cap` (the
+  one trim allowed inside a control — Baskerville's line box is not centred on its capitals, so it
+  CENTRES, never seats); a content-sized pill (a username, a count) takes class `snap-g`
+  (`snap-g-centred` when centred in its parent), which `utils/grid-snap.js` rounds up to whole g.
+  Guard: `npm run check:controls` (WebKit, phone + desktop; `CHECK_BASE_URL` / `CHECK_TOKEN_FILE`
+  to aim it at a scratch server) measures every control's box against the grid and its label's
+  ink centre against the box's (0.75px); run it before deploying any control change.
 - **Clipped text guard**: `npm run check:clipping` (WebKit, phone + desktop) fails on any glyph cut
   off by a clipping ancestor — the descender bug that kept recurring. Text that truncates must
   get its painted room from padding cancelled by an equal negative margin (or a clip-path that

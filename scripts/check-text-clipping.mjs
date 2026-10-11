@@ -2,6 +2,7 @@
 // a grid line, the bug that kept coming back on schedule event names.
 //
 //   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874]
+//   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
 // Schedule, and for every text node inside those views measures its glyph box (a Range over the
@@ -15,12 +16,13 @@ const { webkit } = require('../vite-app/node_modules/playwright');
 const jwt = require('../node_modules/jsonwebtoken');
 
 const args = process.argv.slice(2);
-const base = (args.find(a => /^https?:/.test(a)) || 'http://localhost:3001').replace(/\/$/, '');
+const base = (args.find(a => /^https?:/.test(a)) || process.env.CHECK_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
 const num = (flag, d) => { const i = args.indexOf(flag); return i >= 0 ? Number(args[i + 1]) : d; };
 const W = num('--width', 402), H = num('--height', 874);
 
 function token() {
   if (process.env.CHECK_TOKEN) return process.env.CHECK_TOKEN;
+  if (process.env.CHECK_TOKEN_FILE) return require('node:fs').readFileSync(process.env.CHECK_TOKEN_FILE, 'utf8').trim();
   const cfg = require('../ecosystem.config.cjs');
   const app = (cfg.apps || cfg).find(a => a.name === 'futuregame-scheduler');
   return jwt.sign({ id: 9, username: 'ham5' }, app.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '15m' });

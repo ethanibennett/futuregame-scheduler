@@ -43,8 +43,10 @@ export default function DateBreak({
 
   const pill = (
     <span className="date-break-pill">
-      <b className="date-break-day">{dayNum}</b>
-      <span className="date-break-mon">{monthAbbr}</span>
+      <span className="date-break-label">
+        <b className="date-break-day">{dayNum}</b>
+        <span className="date-break-mon">{monthAbbr}</span>
+      </span>
     </span>
   );
 

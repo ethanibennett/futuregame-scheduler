@@ -140,11 +140,11 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
             background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
       </div>
 
-      <div style={{display:'flex',gap:'var(--space-md)'}}>
-        <button type="submit" className="btn btn-primary btn-sm">
+      <div style={{display:'flex',gap:'var(--gu)'}}>
+        <button type="submit" className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}}>
           {isEdit ? 'Save Changes' : 'Log Result'}
         </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+        <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
       </div>
     </form>
   );
@@ -358,19 +358,19 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
       <div className="section-header">
         <h2>Tracking</h2>
-        <div style={{display:'flex',gap:'var(--space-md)',alignItems:'center'}}>
+        <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
           {isAdmin && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowTaxReport(true)} title="Tax report (beta)">
+            <button className="btn btn-ghost btn-sm" style={{width:'var(--col)',padding:0}} onClick={() => setShowTaxReport(true)} title="Tax report (beta)">
               Tax report
             </button>
           )}
           {trackingData.length > 0 && (
-            <button className="btn-share-overlay" onClick={() => setShowShareMenu(true)} title="Share & Social">
+            <button className="btn-share-overlay ctl" style={{width:'calc(var(--gu) * 7)',height:'calc(var(--subrow) * 4)',padding:0}} onClick={() => setShowShareMenu(true)} title="Share & Social">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               Share
             </button>
           )}
-          <button className="btn btn-primary btn-sm" onClick={() => { setShowAddForm(f => !f); setEditingId(null); }}>
+          <button className="btn btn-primary btn-sm" style={{width:'var(--col)',padding:0}} onClick={() => { setShowAddForm(f => !f); setEditingId(null); }}>
             {showAddForm ? 'Cancel' : '+ Log Result'}
           </button>
         </div>
@@ -442,20 +442,20 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
 
       {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
-        <div className="tracking-card" style={{padding:'calc(var(--subrow) * 1.75)', marginBottom:'var(--space-lg)', border:'var(--bw-1) dashed var(--accent)'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        <div className="tracking-card" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
             <div style={{flex:1, minWidth:0}}>
-              <div style={{fontSize:'calc(var(--gu) * 1.031)', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.031)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
                 {pendingEvent.date} · #{pendingEvent.event_number?.replace(/^[A-Za-z]+-/, '')}
               </div>
-              <div style={{fontSize:'calc(var(--gu) * 1.252)', fontWeight: 'var(--fw-bold)', color:'var(--text)', marginTop:'var(--space-2xs)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.252)', lineHeight:'calc(var(--subrow) * 3)', fontWeight: 'var(--fw-bold)', color:'var(--text)', fontFamily:"'Univers Condensed','Univers',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                 {pendingEvent.event_name}
               </div>
-              <div style={{fontSize:'calc(var(--gu) * 1.060)', color:'var(--text-muted)', marginTop:'var(--space-2xs)'}}>
+              <div style={{fontSize:'calc(var(--gu) * 1.060)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)'}}>
                 Awaiting result
               </div>
             </div>
-            <button className="btn btn-primary btn-sm" style={{flexShrink:0, marginLeft:'var(--space-lg)'}}
+            <button className="btn btn-primary btn-sm" style={{flexShrink:0, marginLeft:'var(--gu)', width:'var(--col)', padding:0}}
               onClick={() => setPendingFormId(pendingEvent.id)}>
               Log Result
             </button>

@@ -1887,10 +1887,11 @@ export default function App() {
               the footer, and it stays put as the tool content scrolls under it. */}
           {/* Grid: rail is 5 subrows tall (3sr pills + 1sr padding each side), 1g side gutter, 1g gaps. */}
           {currentView === 'hands' && isAdmin && (
-            <div style={{display:'flex',alignItems:'center',gap:'var(--gu)',height:'calc(var(--subrow) * 5)',padding:'0 var(--gu)',boxSizing:'border-box',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',borderTop:'var(--bw-hair) solid var(--border)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-              {[['replayer','Replayer'],['solver','Solver'],['trainer','Solver Trainer'],['watch','Watch Solver'],['razz-trainer','Trainer'],['multiway','3-Way']].map(([id,lbl]) => (
-                <button key={id} onClick={() => setHandsTool(id)}
-                  style={{flex:'0 0 auto',height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:'0 var(--space-ml)',borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
+            <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+              {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
+              {[['replayer','Replayer',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
+                <button key={id} className="ctl" onClick={() => setHandsTool(id)}
+                  style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
                     border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
                     background: handsTool === id ? 'var(--accent)' : 'transparent',
                     color: handsTool === id ? '#fff' : 'var(--text-muted)'}}>
@@ -1912,7 +1913,7 @@ export default function App() {
               title={`${gridReadout ? 'Hide' : 'Show'} grid readout (admin)`}
               aria-pressed={gridReadout}
               onClick={() => setGridReadout(v => { const next = !v; localStorage.setItem('gridReadout', next ? 'on' : 'off'); return next; })}
-              style={{ bottom: 'calc(calc(var(--subrow) * 21.5) + env(safe-area-inset-bottom, 0))' }}
+              style={{ '--dev-up': 19 }}
             >i</button>
           )}
           {isAdmin && (
@@ -1931,7 +1932,7 @@ export default function App() {
               title={`${demoStates ? 'Hide' : 'Show'} demo dashboard states (admin)`}
               aria-pressed={demoStates}
               onClick={() => setDemoStates(d => !d)}
-              style={{ bottom: 'calc(calc(var(--subrow) * 15.5) + env(safe-area-inset-bottom, 0))' }}
+              style={{ '--dev-up': 13 }}
             >D</button>
           )}
     </>
@@ -2027,7 +2028,7 @@ export default function App() {
           </button>
         </div>
         <div className="top-bar-user">
-          <button className="username-chip" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',background:'none',border:'none',padding:0,cursor:'pointer',maxWidth:'100%',overflow:'hidden'}}>
+          <button className="username-chip snap-g" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',background:'none',border:'none',padding:0,cursor:'pointer',overflow:'hidden'}}>
             <Avatar src={avatar} username={username} size={22} style={{flexShrink:0}} />
             <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameMode === 'username' ? username : (realName || username)}</span>
           </button>
