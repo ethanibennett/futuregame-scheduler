@@ -543,6 +543,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const bankrolls = require('./lib/bankrolls');
+const cashSessions = require('./lib/cash-sessions');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3231,6 +3232,15 @@ async function initDatabase() {
         console.log('Created bankrolls tables');
       }
     },
+    {
+      // Cash game sessions (beta, app admins only): one row per sitting, live while ended_at is
+      // NULL; bankroll_id NULL = Main. See lib/cash-sessions.js.
+      name: 'cash-sessions-2026-10',
+      fn: () => {
+        cashSessions.migrate(db);
+        console.log('Created cash_sessions table');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -3975,7 +3985,7 @@ function deleteUserAccount(userId) {
     for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
-                     'bankroll_adjustments', 'bankrolls']) {
+                     'cash_sessions', 'bankroll_adjustments', 'bankrolls']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
@@ -5919,6 +5929,8 @@ app.get('/api/exchange-rates', async (req, res) => {
 // ── Bankrolls (beta, app admins) ── lib/bankrolls.js; docs/bankrolls.md for the ?bankroll= filter.
 const isAppAdminReq = (req) => !!req.user && !req.user.isGuest && APP_ADMIN_USERNAMES.has(String(req.user.username || '').toLowerCase());
 bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES });
+// ── Cash game sessions (beta, app admins) ── lib/cash-sessions.js. /api/cash-sessions, not /api/cash (the watcher proxy).
+cashSessions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates });
 
 // ── Tracking endpoints ──────────────────────────────────────
 
