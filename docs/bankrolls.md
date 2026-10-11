@@ -218,3 +218,58 @@ shows its clock and what is in play on every tab, and Open goes to Results › C
 view (which shows the full live card) and on Hands. The session is server-side, so the clock survives
 reloads and other devices; `hooks/useLiveCashSession.js` mirrors it (on mount, on return to the
 foreground, every 5 min) and corrects for clock skew with the server's `now`.
+## Expenses, non-game income and trips (beta)
+
+What a player spends and earns outside a tournament result: flights, rooms, food, tips, coaching,
+software; rakeback, promotions, staking settlements, sponsorship, coaching fees. Plus **trips**, so a
+trip's whole P&L reads at once. Same gate as everything above (app admins, the `/api/bankrolls`
+gate), same Main convention (`bankroll_id` NULL).
+
+Code: `lib/bankroll-transactions.js` (schema, routes), `lib/ledger-sources/transactions.js` (the
+ledger source), `vite-app/src/utils/transactions.js` (totals, trip P&L, CSV, quick-add parsing),
+`vite-app/src/components/Expenses.jsx` (Results → "Expenses & Income", lazy, admins only).
+Tests: `npm run test:transactions` (ledger source against a scratch sql.js DB, the routes on a
+scratch port with cross-user isolation, the client helpers).
+
+### Schema (migration `bankroll-transactions-2026-10`)
+
+| table | columns |
+|---|---|
+| `bankroll_transactions` | id, user_id, bankroll_id (NULL = Main), occurred_on YYYY-MM-DD, kind (`expense` \| `income`), category, amount REAL **positive** (to the cent; the sign is the kind), currency, note, tournament_id (no FK), series (free text, ≤ 80), trip_id, created_at, updated_at |
+| `bankroll_trips` | id, user_id, name, start_date, end_date (inclusive, ≤ 366 days), bankroll_all (1 = results from every bankroll), bankroll_id (when not all; NULL = Main), note, created_at, updated_at |
+
+Categories — expense: `travel lodging food entry_fees coaching software tips other`;
+income: `rakeback bonus staking sponsorship coaching other`. The client list must match
+(`transactions.test.mjs` checks).
+
+- **Currency is per row**, defaulting to the bankroll's. A dinner in Dublin is EUR even in a USD
+  bankroll; totals are never summed across currencies server-side.
+- `tournament_id` carries no FOREIGN KEY: it is in `FEED_REF_TABLES` instead, so a tagged feed event
+  is never pruned and follows a re-key, and a Personal event's account deletion clears it.
+- A bankroll with transactions or trips cannot be deleted (409, counts in the body);
+  `GET /api/bankrolls` lists `transaction_count`. Account deletion removes both tables.
+- Deleting a trip **untags** its rows; it does not delete them.
+- Not wired into `computeBalances()` (the switcher's balances) — that is the ledger's job
+  (`lib/bankroll-ledger.js`, which loads the source below).
+- No receipts. Uploads in this app are stored as base64 in the DB (avatars, staking proofs), which
+  is wrong for receipts, and Render's disk is not persistent; photo receipts need object storage first.
+
+### Routes (all scoped to `req.user.id`; another user's id is a 404)
+
+| method | path | body / query |
+|---|---|---|
+| GET | `/api/bankrolls/transactions` | `?bankroll= &from= &to= &kind= &category=a,b &trip=<id>\|none &limit=` (500 default, 5000 max) → `{ transactions, total, truncated }`, newest first. Rows carry `signed_amount`, `tournament_name`, `trip_name` |
+| GET | `/api/bankrolls/transactions/totals` | same filters → `{ totals: [{ kind, category, currency, amount, count }] }` |
+| POST | `/api/bankrolls/transactions` | `{ kind, category, amount > 0, currency?, date?, bankroll?: 'main'\|id, tripId?, tournamentId?, series?, note? }` → 201. A new row on a single-bankroll trip defaults to that bankroll |
+| PUT | `/api/bankrolls/transactions/:id` | any subset of the above; `null` clears a tag |
+| DELETE | `/api/bankrolls/transactions/:id` | |
+| GET | `/api/bankrolls/trips` | → `{ trips: [{ id, name, start_date, end_date, bankroll: 'all'\|'main'\|id, note, transaction_count }] }` |
+| POST/PUT | `/api/bankrolls/trips[/:id]` | `{ name, startDate, endDate, bankroll?: 'all'\|'main'\|id, note? }` |
+| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope. Totals are the client's (`tripPnl()`), because results are in each venue's currency |
+| DELETE | `/api/bankrolls/trips/:id` | → `{ deleted, untagged }` |
+
+### Ledger source
+
+`lib/ledger-sources/transactions.js` → `{ name: 'transactions', entries(db, userId, { bankroll, from, to }) }`
+returning `[{ date, ts: null, amount (expense negative), currency, bankroll_id, kind, category, label, ref: { table: 'bankroll_transactions', id } }]`,
+ordered by date then id. A bankroll that is not the user's throws (`err.status` 404/400).

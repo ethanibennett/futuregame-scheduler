@@ -14,6 +14,9 @@ export const TAX_SOURCES = [
   { label: 'CRS R48611, Tax Provisions in P.L. 119-21 (OBBBA §70114)', url: 'https://www.congress.gov/crs_external_products/R/PDF/R48611/R48611.3.pdf' },
   { label: 'IRS Topic 419, Gambling income and losses', url: 'https://www.irs.gov/taxtopics/tc419' },
   { label: 'Instructions for Schedule A, line 16', url: 'https://www.irs.gov/instructions/i1040sca' },
+  { label: 'Instructions for Schedule C (2025), lines 24a-24b', url: 'https://www.irs.gov/instructions/i1040sc' },
+  { label: 'IRS Chief Counsel AM 2008-013, gamblers\' expenses', url: 'https://www.irs.gov/pub/irs-counsel/am2008013.pdf' },
+  { label: 'Publication 525, Taxable and Nontaxable Income', url: 'https://www.irs.gov/publications/p525' },
 ];
 
 export const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -48,6 +51,28 @@ export function w2gRuleText(report) {
     + ' form was issued is the venue\'s call — a list of what to look for, not of what you received.';
 }
 
+// The logged expenses and income, in words (screen and PDF). Empty when nothing is logged.
+export function expenseRuleText(report) {
+  const l = report.ledger;
+  if (!l || (!l.expenseTotal && !l.incomeTotal && !l.unconverted)) return '';
+  const parts = [];
+  if (l.expenseTotal) {
+    parts.push(`You logged ${usd(l.expenseTotal)} of expenses in ${report.year}.`
+      + ` Professional: ${usd(l.proDeductible)} of it counts as business expenses (meals at 50%`
+      + `${l.notCounted > 0 && l.expenses.some((e) => e.key === 'other') ? ', "Other" not counted' : ''}),`
+      + ` pooled with wagering losses${report.lossRate < 1 ? `, deductible at ${Math.round(report.lossRate * 100)}%` : ''} and never beyond winnings.`
+      + ' Travel and lodging count only when away from your tax home overnight.'
+      + ' Recreational: none of it is deductible — a casual player\'s costs of gambling are personal expenses.');
+  }
+  if (l.unconverted) parts.push(`${l.unconverted} logged amount${l.unconverted === 1 ? ' is' : 's are'} in another currency and left out (no exchange rate).`);
+  return parts.join(' ');
+}
+
+export const OTHER_INCOME_TEXT =
+  'Income you logged outside tournament cashes. It is added to neither column above. Income is generally '
+  + 'taxable, but we found no IRS guidance on how rakeback, bonuses or promotions are classified, or on a '
+  + 'staking settlement\'s character — ask a tax professional where each belongs.';
+
 export function lossRuleText(report, f) {
   const base = report.lossRate < 1
     ? `From tax year 2026, only ${Math.round(report.lossRate * 100)}% of gambling losses are deductible, and never more than winnings`
@@ -59,11 +84,17 @@ export function lossRuleText(report, f) {
 }
 
 // The side-by-side rows. Both columns use the same loss cap; they differ in where the figures go on
-// the return and what reaches AGI. Professional expenses are not tracked, so not deducted.
+// the return and what reaches AGI. Logged business expenses (Results → Expenses & income) join the
+// professional column's wagering losses under that cap; the recreational column deducts none of
+// them. With nothing logged the rows are exactly what they were before expenses existed.
 export function filingRows(f) {
+  const exp = f.expensesLogged > 0 || f.professional.businessExpenses > 0
+    ? [{ key: 'exp', label: 'Business expenses', rec: 'not deductible', pro: usd(f.professional.businessExpenses) }]
+    : [];
   return [
     { key: 'income', label: 'Winnings reported', rec: usd(f.recreational.income), pro: usd(f.professional.grossReceipts),
       recNote: 'Schedule 1', proNote: 'Schedule C' },
+    ...exp,
     { key: 'loss', label: 'Loss deduction', rec: usd(f.recreational.itemizedDeduction), pro: usd(f.professional.lossDeduction),
       recNote: 'Sch. A, itemizers only', proNote: 'Schedule C' },
     { key: 'agi', label: 'Added to AGI', rec: usd(f.recreational.agiAdded), pro: usd(f.professional.agiAdded) },

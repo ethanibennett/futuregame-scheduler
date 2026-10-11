@@ -34,7 +34,9 @@ Tax year defaults to the previous calendar year; ‹ › step through years that
 3. **Possible W-2Gs** — "likely", never certain (rule below).
 4. **Recreational vs professional** — the same numbers both ways, side by side, on a gross or a
    per-event basis. It never says which one the user is.
-5. **Export** — CSV session log and a PDF summary, both through `shareOrDownloadBlob()` (the
+5. **Other income** — logged rakeback, bonuses, settlements… (only when there are any), and the
+   logged expenses in the professional column (below).
+6. **Export** — CSV session log and a PDF summary (with the logged expenses and other income), both through `shareOrDownloadBlob()` (the
    share sheet in the iOS WKWebView, where `<a download>` does nothing; a download elsewhere).
    The PDF is the "printable page": `window.print()` is a no-op in the WKWebView, and the share
    sheet can print a PDF.
@@ -81,7 +83,62 @@ proposed regs REG-113229-25, IRB 2026-19, <https://www.irs.gov/irb/2026-19_IRB>.
 <https://www.irs.gov/taxtopics/tc419>; Schedule A instructions,
 <https://www.irs.gov/instructions/i1040sca>.
 **Professional**: Schedule C; net profit (never below zero from wagering) is self-employment
-income. The report does not track expenses, so it does not deduct any.
+income.
+
+## Logged expenses and other income (verified 2026-10-11)
+
+The report also reads `GET /api/bankrolls/transactions` (Results → Expenses & income;
+`summarizeTransactions()` in `tax-report.js`). With nothing logged, every figure and row is what it was.
+
+**Professional column only.** Business expenses are pooled with the wagering losses, then 90% (from
+2026), then capped at winnings:
+
+    deduction = min(90% × (buy-ins + deductible expenses), winnings)
+
+- §165(d)(2): "the term 'losses from wagering transactions' includes any deduction otherwise
+  allowable under this chapter incurred in carrying on any wagering transaction." TCJA added it for
+  2018–2025; P.L. 119-21 §70114 struck the sunset (Cornell §165 amendment notes,
+  <https://www.law.cornell.edu/uscode/text/26/165>). CRS R48611 on §70114: "Professional gamblers
+  could additionally claim other allowable business deductions (such as the cost of travel), but all
+  deductions together (gambling losses and business deductions) were limited by the amount of
+  gambling income … it limits the deduction for all wagering losses (for casual and professional
+  gamblers) to 90% of the loss amount … Second, it permanently extends the limitation on gambling
+  losses for professional gamblers." So **yes: from 2026 the 90% applies to wagering losses and a
+  professional's expenses together**, then the cap at gains.
+- "Otherwise allowable" comes first: **meals at 50%** — "In most cases, you can deduct only 50% of
+  your business meal expenses, including meals incurred while away from home on business."
+  (Instructions for Schedule C (2025), line 24b, <https://www.irs.gov/instructions/i1040sc>).
+- Travel and lodging: "lodging and transportation connected with overnight travel for business while
+  away from your tax home" (same, line 24a). The report counts what the player filed under travel and
+  lodging; it cannot know the tax home.
+- Entry fees, coaching, software, dealer tips: 100%, as ordinary business expenses (§162(a)).
+  **Other: not counted** (listed, never deducted) — the report cannot tell what it is.
+
+**Recreational column: nothing.** "a casual gambler not engaged in the trade or business of gambling
+would not have deductible business expenses. The casual gambler's expenses to engage in gambling are
+nondeductible personal expenses under § 262." — IRS Chief Counsel AM 2008-013, footnote 1,
+<https://www.irs.gov/pub/irs-counsel/am2008013.pdf> (the memo's main conclusion was overtaken by
+§165(d)(2); the footnote's point stands). CRS R48611: casual gamblers "could only deduct losses from
+the gambling activity itself (such as losing bets)".
+
+**Other income** (rakeback, bonus/promotion, staking settlement received, prop/sponsorship, coaching
+income, other) is its own block, added to neither column. Pub. 525
+(<https://www.irs.gov/publications/p525>) says gambling winnings are taxable and prizes/awards are
+generally gross income; it says nothing specific about rakeback.
+
+### Not verified (expenses)
+
+- How rakeback, site bonuses and promotions are classified (gambling winnings, a reduction of rake
+  paid, business or other income): no IRS guidance found; secondary sources say the same. The
+  report shows the amounts and says so.
+- The character of a staking settlement received (and whether a backer's share belongs on the
+  player's return at all).
+- The 2026 Schedule C instructions were not yet published; the 50% meal rule is from the 2025 ones.
+- Whether a separately logged entry/registration fee is a wager (it may already be in a buy-in): the
+  report treats a logged fee as a business expense and tells the player to put buy-in fees in the
+  buy-in.
+- The proposed regs (REG-113229-25) restate the 90% and the cap but say nothing about professional
+  expenses or comps.
 
 ### Not verified
 

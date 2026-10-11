@@ -547,6 +547,7 @@ const bankrollLedger = require('./lib/bankroll-ledger');
 const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
+const bankrollTransactions = require('./lib/bankroll-transactions');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3254,6 +3255,15 @@ async function initDatabase() {
         console.log('Created cash_sessions table');
       }
     },
+    {
+      // Expenses, non-game income and trips (beta, app admins only): bankroll_transactions +
+      // bankroll_trips. See lib/bankroll-transactions.js.
+      name: 'bankroll-transactions-2026-10',
+      fn: () => {
+        bankrollTransactions.migrate(db);
+        console.log('Created bankroll_transactions + bankroll_trips tables');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -3998,7 +4008,8 @@ function deleteUserAccount(userId) {
     for (const t of ['user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
-                     'cash_sessions', 'bankroll_adjustments', 'bankrolls', 'bankroll_prefs', 'bankroll_import_keys']) {
+                     'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
+                     'bankroll_prefs', 'bankroll_import_keys']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);
@@ -5952,6 +5963,8 @@ bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, r
 }
 // ── Cash game sessions (beta, app admins) ── lib/cash-sessions.js. /api/cash-sessions, not /api/cash (the watcher proxy).
 cashSessions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates });
+// Expenses, income and trips (same beta gate) — lib/bankroll-transactions.js. After the line above.
+bankrollTransactions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES });
 
 // ── Tracking endpoints ──────────────────────────────────────
 
@@ -10638,6 +10651,7 @@ function applyAdminOverrides(label = 'overrides') {
 const FEED_REF_TABLES = [
   'user_schedules', 'schedule_conditions', 'tracking_entries', 'live_updates',
   'backer_event_overrides', 'backer_event_status', 'swap_suggestions',
+  'bankroll_transactions', // an expense or income tagged to the event (lib/bankroll-transactions.js)
 ];
 function feedRefGuardSql() {
   const present = FEED_REF_TABLES.filter(name => {

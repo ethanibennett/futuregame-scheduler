@@ -159,6 +159,11 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     run(`INSERT INTO cash_sessions (user_id, bankroll_id, started_at, ended_at, session_date, buy_in, cash_out, created_at)
          VALUES (?, (SELECT id FROM bankrolls WHERE user_id = ?), '2026-10-10T18:00:00Z', '2026-10-10T22:00:00Z', '2026-10-10', 500, 800, 'x')`, [u, u]);
     run("INSERT INTO cash_sessions (user_id, started_at, session_date, buy_in, created_at) VALUES (?, '2026-10-11T18:00:00Z', '2026-10-11', 300, 'x')", [u]);
+    // expenses / income and trips (beta): a trip, an expense tagged to it and to an event, an income in Main
+    run("INSERT INTO bankroll_trips (user_id, name, start_date, end_date, created_at) VALUES (?, 'Vegas', '2026-06-01', '2026-06-10', '2026-10-10T00:00:00Z')", [u]);
+    const trip = lastId();
+    run("INSERT INTO bankroll_transactions (user_id, bankroll_id, occurred_on, kind, category, amount, currency, tournament_id, trip_id, created_at) VALUES (?, NULL, '2026-06-02', 'expense', 'lodging', 412.5, 'USD', ?, ?, '2026-10-10T00:00:00Z')", [u, t1, trip]);
+    run("INSERT INTO bankroll_transactions (user_id, bankroll_id, occurred_on, kind, category, amount, currency, created_at) VALUES (?, NULL, '2026-06-03', 'income', 'rakeback', 20, 'USD', '2026-10-10T00:00:00Z')", [u]);
   }
   // buddies, both directions, and a stranger pair that must survive
   run("INSERT INTO share_requests (from_user_id, to_user_id, status) VALUES (?, ?, 'accepted')", [A, B]);
@@ -241,6 +246,7 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     group_invites: ['invited_by', 'invited_user_id'], shared_hands: ['uploaded_by'], tournaments: ['uploaded_by'],
     bankrolls: ['user_id'], bankroll_adjustments: ['user_id'], cash_sessions: ['user_id'],
     bankroll_prefs: ['user_id'], bankroll_import_keys: ['user_id'],
+    bankroll_transactions: ['user_id'], bankroll_trips: ['user_id'],
   };
   check('no row anywhere still points at the deleted user', () => {
     const left = [];
@@ -304,6 +310,8 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_prefs WHERE user_id = ?', [B]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_import_keys WHERE user_id = ?', [B]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM cash_sessions WHERE user_id = ?', [B]), 2);
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_transactions WHERE user_id = ?', [B]), 2);
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_trips WHERE user_id = ?', [B]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM share_requests WHERE from_user_id = ? AND to_user_id = ?', [B, C]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM swap_suggestions WHERE from_user_id = ? AND to_user_id = ?', [B, C]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM users WHERE id IN (?, ?)', [B, C]), 2);

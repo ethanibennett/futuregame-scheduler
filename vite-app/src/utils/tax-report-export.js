@@ -6,7 +6,9 @@
 // same lazy chunks the schedule PDF uses.
 import { shareOrDownloadBlob } from './export.js';
 import { sessionsToCsv } from './tax-report.js';
-import { TAX_DISCLAIMER, TAX_SOURCES, MONTH_SHORT, usd, signedUsd, filingRows, w2gRuleText, lossRuleText } from './tax-report-text.js';
+import {
+  TAX_DISCLAIMER, TAX_SOURCES, MONTH_SHORT, usd, signedUsd, filingRows, w2gRuleText, lossRuleText, expenseRuleText, OTHER_INCOME_TEXT,
+} from './tax-report-text.js';
 
 export async function exportTaxCsv(report) {
   const blob = new Blob([sessionsToCsv(report)], { type: 'text/csv;charset=utf-8' });
@@ -77,6 +79,23 @@ export async function exportTaxPdf(report, { basis = 'gross', playerName = '' } 
   text(lossRuleText(report, f), { size: 8, color: [60, 60, 60] });
   table(['', 'Recreational', 'Professional'], filingRows(f).map((r) => [r.label, r.rec, r.pro]),
     { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } } });
+
+  // Logged expenses and non-game income (only when there are any).
+  const l = report.ledger;
+  if (l && l.expenses.length) {
+    text('Logged expenses', { size: 12, bold: true });
+    text(expenseRuleText(report), { size: 8, color: [60, 60, 60] });
+    table(['Category', 'Logged', 'Professional counts', 'Rule'],
+      [...l.expenses.map((e) => [e.label, usd(e.amount), usd(e.proDeductible), e.line]),
+        ['Total', usd(l.expenseTotal), usd(l.proDeductible), '']],
+      { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } } });
+  }
+  if (l && l.income.length) {
+    text('Other income logged (not in either column)', { size: 12, bold: true });
+    text(OTHER_INCOME_TEXT, { size: 8, color: [60, 60, 60] });
+    table(['Category', 'Amount'], [...l.income.map((i) => [i.label, usd(i.amount)]), ['Total', usd(l.incomeTotal)]],
+      { columnStyles: { 1: { halign: 'right' } } });
+  }
 
   text('Session log', { size: 12, bold: true });
   table(['Date', 'Room / site', 'City/State', 'Event', 'Buy-in × n', 'Cash', 'Net', ''],
