@@ -1,13 +1,18 @@
 // Frame-accurate capture of the replayer's motion: the flop deal and spread, the turn and river
-// landing (and the board shifting to make room), a wager going in, and the pot pushed to the
-// winner. Built to compare today's curves against spring-driven ones by NUMBERS as well as by eye,
-// so every clip writes a measurement file next to its video.
+// landing (and the board shifting to make room), a wager going in (the hero's bet from the bottom
+// seat, and the first answer from another seat), and the pot pushed to the winner. The street's
+// wagers being swept into the pot happens on the flop, turn and river presses. Built to compare
+// today's curves against spring-driven ones by NUMBERS as well as by eye, so every clip writes a
+// measurement file next to its video.
 //
-//   node scripts/capture-replayer-motion.mjs [baseUrl] [--seats 6,8,9] [--moments flop,turn,river,bet,push]
+//   node scripts/capture-replayer-motion.mjs [baseUrl] [--seats 6,8,9] [--moments flop,turn,river,bet,call,push]
 //        [--width 402] [--height 874] [--dpr 3] [--out dir] [--springs 0|1] [--format png|jpeg]
 //        [--keep-frames] [--no-video] [--parallel 4] [--encode-only]
 //   node scripts/capture-replayer-motion.mjs [baseUrl] --realtime [--engine msedge|webkit]
 //        [--throttle 4] [--repeat 3] [--sample] [--seats ...] [--moments ...] [--out dir]
+//   node scripts/capture-replayer-motion.mjs [baseUrl] --export-probe [--seats ...] [--moments ...]
+//   node scripts/capture-replayer-motion.mjs --resummarise [--width 402] [--height 874] [--out dir]
+//   node scripts/capture-replayer-motion.mjs --report [--out dir] [--against baselineDir]
 //
 //   baseUrl   a SCRATCH server running this checkout (never the pm2 app on :3001 for an unmerged
 //             build). Default http://127.0.0.1:3241. A guest session is used: POST /api/guest-login.
@@ -40,16 +45,29 @@
 //              it animates, the frame it was born and died on, and whether it FINISHED or was
 //              CANCELLED before its end (a class dropped on a re-render).
 //   summary    per element: when it started moving, when it settled, travel, overshoot past its rest
-//              (px and % of travel), time to 95% of travel, peak speed; and every animated property
-//              that is not transform or opacity (layout or paint work on every frame).
+//              (px and % of travel), time to 95% of travel, peak speed, and its curves (progress along
+//              the travel, opacity, scale, per frame); and every animated property that is not
+//              transform or opacity (layout or paint work on every frame). summary-<w>x<h>.json indexes
+//              every clip at that viewport (without the curves); --resummarise recomputes the numbers
+//              from the frames already measured.
 //
 // Realtime mode (--realtime) does not pause anything: it presses Forward with a real (trusted) click
 // and records every requestAnimationFrame for 1.8s, plus long-animation-frame / longtask entries
 // where the engine has them. On msedge (Chromium) --throttle N applies a CDP CPU throttle, the usual
 // stand-in for an old phone. --sample also reads the board cards on every frame (off by default: it
 // costs frame time), which is how a CSS animation cancelled after a single painted frame shows up.
+//
+// Export probe (--export-probe): what the GIF and video exporters put in their ONE still per step —
+// the table marked [data-capturing] as beginCapture() marks it, Forward pressed, the step committed
+// and 120ms of (virtual) timers run, then the computed state (which is what modern-screenshot
+// serialises) and a screenshot of the table alone. Writes export-probe-<w>x<h>.json and the stills.
+//
+// Report (--report): prints the numbers of every clip in --out and every realtime run there; with
+// --against <dir>, each number is followed by the same clip's number from that directory in
+// brackets, so a spring capture reads straight against the baseline.
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -79,6 +97,7 @@ const FFMPEG = (() => {
   if (e) return e;
   return fs.existsSync('C:/ffmpeg/bin/ffmpeg.exe') ? 'C:/ffmpeg/bin/ffmpeg.exe' : 'ffmpeg';
 })();
+const FFPROBE = /[\\/]/.test(FFMPEG) ? path.join(path.dirname(FFMPEG), path.basename(FFMPEG).replace(/ffmpeg/, 'ffprobe')) : 'ffprobe';
 const FPS = 60, LEAD = 12, MIN_AFTER = 900, MAX_AFTER = 3000, STILL_MS = 300;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -109,6 +128,12 @@ function pressesBefore(hand, moment) {
     const k = acts[1].findIndex(a => /^\d+[br]\d/.test(a));
     return toStreet(1) + k;
   }
+  if (moment === 'call') {  // the first flop wager from ANOTHER seat (the bet is the hero's, at the bottom)
+    const k = acts[1].findIndex(a => /^\d+[br]\d/.test(a));
+    const who = parseInt(acts[1][k], 10);
+    const k2 = acts[1].findIndex((a, i) => i > k && /^\d+[brc]\d/.test(a) && parseInt(a, 10) !== who);
+    return toStreet(1) + k2;
+  }
   throw new Error('unknown moment ' + moment);
 }
 const boardCardsOf = (hand) => (hand.split('.')[2].match(/b([2-9TJQKA][hdcs])+/g) || [])
@@ -134,7 +159,9 @@ function pageInstrument() {
     } catch (e) { /* no keyframes */ }
     const kind = (typeof CSSAnimation !== 'undefined' && a instanceof CSSAnimation) ? 'CSSAnimation'
       : (typeof CSSTransition !== 'undefined' && a instanceof CSSTransition) ? 'CSSTransition' : 'WebAnimation';
-    if (kind === 'CSSTransition' && a.transitionProperty && !props.includes(a.transitionProperty)) props.push(a.transitionProperty);
+    // getKeyframes() names properties in camelCase; a transition's own name is the CSS one.
+    const tp = a.transitionProperty && a.transitionProperty.replace(/-([a-z])/g, (m, c) => c.toUpperCase());
+    if (kind === 'CSSTransition' && tp && !props.includes(tp)) props.push(tp);
     return {
       kind, name: a.animationName || a.transitionProperty || a.id || '',
       target: describeEl(eff && eff.target), duration: timing.duration, delay: timing.delay,
@@ -238,6 +265,9 @@ async function openHand(browser, seats, { clock }) {
     localStorage.setItem('token', tok);
     localStorage.setItem('onboardComplete', '1');
     localStorage.setItem('hasOnboarded', 'true');
+    // The first-run "Where do you play?" wizard (App.jsx, hasOnboarded() in location-prefs.js)
+    // opens over the replay on a fresh profile; at 1440 wide it arrived after the Skip below.
+    localStorage.setItem('onboarded', '1');
     if (springs != null) localStorage.setItem('replayerSprings', springs);
   }, { tok: guest.token, springs: SPRINGS });
   if (clock) {
@@ -263,6 +293,14 @@ async function openHand(browser, seats, { clock }) {
   await page.waitForSelector('button[title="Forward"]', { timeout: 30000 });
   await sleep(3000);
   await page.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+  // Nothing may sit over the felt: a clip of a dialog is worse than no clip.
+  const cover = await page.evaluate(() => {
+    const t = document.querySelector('.replayer-table');
+    const r = t.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return hit && !t.contains(hit) ? (hit.tagName.toLowerCase() + '.' + [...hit.classList].join('.')) : null;
+  });
+  if (cover) throw new Error(`something covers the table at ${W}x${H}: ${cover}`);
   await page.evaluate(() => document.fonts.ready);
   // Decode every card face in the hand now, so the moment never waits on the network.
   await page.evaluate(async (cards) => {
@@ -370,12 +408,23 @@ function encode(frameDir, name) {
   // H.264 tops out around 4096 wide on most decoders; a 1440-wide view at 3x is 4320.
   const scale = "scale='min(3840,trunc(iw/2)*2)':-2:flags=lanczos,format=yuv420p";
   const common = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '14', '-threads', '4', '-rc-lookahead', '10', '-movflags', '+faststart', '-an'];
+  /* Checked, not trusted: two clips captured while the box was short of memory came out of ffmpeg
+     with exit 0 and a third of their frames missing (45 of 67, 41 of 67). Every video must hold
+     exactly one frame per captured frame (four for the quarter-speed one), or the frames are kept
+     and the clip is reported as failed. */
+  const want = fs.readdirSync(frameDir).filter(n => /^f\d{4}\.(png|jpg)$/.test(n)).length;
+  const count = (file) => Number(String(execFileSync(FFPROBE, ['-v', 'error', '-select_streams', 'v:0', '-count_packets',
+    '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', file])).trim().replace(/,$/, ''));
   try {
-    execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', input, '-vf', scale, ...common, path.join(OUT, name + '.mp4')]);
-    execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(FPS / 4), '-i', input, '-vf', scale + ',fps=' + FPS, ...common, path.join(OUT, name + '-slow4x.mp4')]);
-    return true;
+    for (let attempt = 1; ; attempt++) {
+      execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', input, '-vf', scale, ...common, path.join(OUT, name + '.mp4')]);
+      execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-framerate', String(FPS / 4), '-i', input, '-vf', scale + ',fps=' + FPS, ...common, path.join(OUT, name + '-slow4x.mp4')]);
+      const got = [count(path.join(OUT, name + '.mp4')), count(path.join(OUT, name + '-slow4x.mp4'))];
+      if (got[0] === want && got[1] === want * 4) return true;
+      if (attempt >= 2) throw new Error(`videos hold ${got.join(' and ')} frames, not ${want} and ${want * 4}`);
+    }
   } catch (e) {
-    console.log(`  encode failed for ${name} (frames kept in ${frameDir}): ${String(e.stderr || e).trim().split(/\r?\n/)[0]}`);
+    console.log(`  encode failed for ${name} (frames kept in ${frameDir}): ${String(e.stderr || e.message || e).trim().split(/\r?\n/)[0]}`);
     return false;
   }
 }
@@ -403,13 +452,15 @@ function summarise(frames, inventory) {
     // Travel from where it was first SEEN (or where it was before the press) to where it rests.
     const from = before || (firstVisible ? firstVisible.e : series[0].e);
     const dx = end.cx - from.cx, dy = end.cy - from.cy, travel = Math.hypot(dx, dy);
-    let overshoot = 0, t95 = null, peak = 0;
+    let overshoot = 0, t95 = null, peak = 0, curve = null;
     if (travel > 0.5) {
       const ux = dx / travel, uy = dy / travel;
+      curve = [];
       for (const x of series) {
         const along = (x.e.cx - from.cx) * ux + (x.e.cy - from.cy) * uy;
         overshoot = Math.max(overshoot, along - travel);
         if (t95 == null && along >= travel * 0.95) t95 = x.t;
+        curve.push([x.t, +(along / travel).toFixed(4)]);
       }
       for (let i = 1; i < series.length; i++) {
         const v = Math.hypot(series[i].e.cx - series[i - 1].e.cx, series[i].e.cy - series[i - 1].e.cy) / ((series[i].t - series[i - 1].t) / 1000);
@@ -437,10 +488,17 @@ function summarise(frames, inventory) {
       widthRange: [Math.min(...scaleSeries), Math.max(...scaleSeries)].map(v => +v.toFixed(2)),
       opacityRange: [Math.min(...series.map(x => x.e.op)), Math.max(...series.map(x => x.e.op))],
       goneBeforeEnd: !final.els[id],
+      /* The curves, trimmed to the frames where something happens, for laying a spring over the
+         baseline: progress along the travel (0 = where it was, 1 = where it rests; above 1 is
+         overshoot), effective opacity, and the transform's scale. */
+      ...(curve && start != null ? { progressCurve: trimCurve(curve, start, settle) } : {}),
+      ...(new Set(series.map(x => x.e.op)).size > 1 ? { opacityCurve: trimCurve(series.map(x => [x.t, x.e.op]), start, settle) } : {}),
+      ...(new Set(series.map(x => x.e.s == null ? 1 : x.e.s)).size > 1 ? { scaleCurve: trimCurve(series.map(x => [x.t, x.e.s == null ? 1 : x.e.s]), start, settle) } : {}),
     };
   }
   const anims = inventory.filter(a => !a.predates);
-  const nonCompositor = [...new Set(anims.flatMap(a => a.props.filter(p => !COMPOSITOR.has(p)).map(p => p + ' (' + (a.name || a.kind) + ')')))];
+  const camel = (p) => p.replace(/-([a-z])/g, (m, c) => c.toUpperCase());
+  const nonCompositor = [...new Set(anims.flatMap(a => [...new Set(a.props.map(camel))].filter(p => !COMPOSITOR.has(p)).map(p => p + ' (' + (a.name || a.kind) + ')')))];
   const moving = Object.values(elements).filter(e => e.settledMs != null);
   const lead = LEAD * 1000 / FPS;
   return {
@@ -454,6 +512,8 @@ function summarise(frames, inventory) {
   };
 }
 const pick = (e) => e && ({ cx: e.cx, cy: e.cy, w: e.w, op: e.op, ...(e.s != null ? { s: e.s, rot: e.rot } : {}) });
+// [t, value] pairs from one frame before the motion starts to one frame after it settles.
+const trimCurve = (c, start, settle) => (start == null ? c : c.filter(([t]) => t >= start - 17 && t <= (settle == null ? Infinity : settle + 17)));
 
 // ── Realtime mode ───────────────────────────────────────────────────────────────────────────────
 // Headless WebKit on Windows is not a timing reference: after a step it stops servicing
@@ -504,9 +564,14 @@ async function realtimeMoment(browser, seats, moment, rep) {
       };
       requestAnimationFrame(loop);
     }, SAMPLE);
+    // How busy the whole machine was while measuring: frame times on a box whose CPUs are taken by
+    // something else (a solver grind, other browsers) are that box's numbers, not the app's.
+    const cpuTimes = () => os.cpus().reduce((a, c) => { const t = c.times; a.busy += t.user + t.nice + t.sys + t.irq; a.all += t.user + t.nice + t.sys + t.irq + t.idle; return a; }, { busy: 0, all: 0 });
+    const c0 = cpuTimes();
     await sleep(600);
     await page.click('button[title="Forward"]', { noWaitAfter: true });
     await sleep(2300);
+    const c1 = cpuTimes();
     const rt = await page.evaluate(() => window.__rt);
     if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     const stats = (frames) => {
@@ -525,6 +590,7 @@ async function realtimeMoment(browser, seats, moment, rep) {
     const r1 = (x) => (x == null ? undefined : +x.toFixed(1));
     return {
       clip: clipName(moment, seats), engine: ENGINE, throttle: THROTTLE, rep,
+      machineCpuBusyPct: +((c1.busy - c0.busy) / Math.max(1, c1.all - c0.all) * 100).toFixed(1),
       inputToNextFrameMs: after.length ? +(after[0].ts - rt.click).toFixed(1) : null,
       idle500: stats(idle), after1500: stats(win),
       loafSupported: !rt['long-animation-frameUnsupported'],
@@ -542,12 +608,145 @@ async function realtimeMoment(browser, seats, moment, rep) {
   }
 }
 
+// ── Export probe ────────────────────────────────────────────────────────────────────────────────
+// What the GIF/video exporters put in their one still per step. Both call beginCapture() (padding,
+// [data-capturing], which pauses every CSS animation at its start and kills transitions), press
+// Forward, wait 120ms of real time and serialise the table with modern-screenshot — which inlines
+// each element's COMPUTED style. So the computed state 120ms after the press is the exported frame.
+// The table is marked before the press, as it is for the whole of a real export, because the flop
+// deal and the board FLIP check [data-capturing] when they start. Writes the still and the numbers.
+async function exportProbe(browser, seats, moment) {
+  const name = clipName(moment, seats);
+  const { ctx, page } = await openHand(browser, seats, { clock: true });
+  try {
+    await stepTo(page, pressesBefore(HANDS[seats], moment));
+    /* The exporters' 120ms is wall-clock, so on a loaded machine (or a slow phone) React may not
+       have committed the step by then — measured here: a push still with no chips one run and five
+       the next. The probe takes the INTENDED case: the clock stops, the step commits in full (its
+       render, effects and the renders they cause), then 120ms of timers run. */
+    const now = await page.evaluate(() => Date.now());
+    await page.clock.pauseAt(now + 50);
+    await page.evaluate(() => window.__hops());
+    await page.evaluate(() => {
+      const t = document.querySelector('.replayer-table');
+      t.style.paddingTop = '50px'; t.style.marginTop = '0px';     // beginCapture()
+      t.setAttribute('data-capturing', '1');
+    });
+    await page.clock.runFor(60);
+    await page.evaluate(() => window.__hops());
+    const before = await page.evaluate(() => window.__measure());
+    await page.evaluate(() => document.querySelector('button[title="Forward"]').click());
+    for (let i = 0; i < 6; i++) { await page.evaluate(() => window.__hops()); await page.clock.runFor(20); }
+    await page.evaluate(() => window.__hops());
+    const at = await page.evaluate(() => ({
+      ...window.__measure(),
+      anims: document.getAnimations().map(a => ({
+        name: a.animationName || a.transitionProperty || 'WebAnimation',
+        target: a.effect && a.effect.target ? a.effect.target.className.toString().slice(0, 60) : null,
+        playState: a.playState, currentTime: a.currentTime == null ? null : Math.round(a.currentTime),
+      })),
+    }));
+    const T = at.table;
+    // The exporters draw the table element alone (domToCanvas(tableEl)): hide the page around it.
+    await page.evaluate(() => {
+      const t = document.querySelector('.replayer-table');
+      for (const el of document.body.querySelectorAll('*')) if (!el.contains(t) && !t.contains(el)) el.style.visibility = 'hidden';
+    });
+    await page.screenshot({ path: path.join(OUT, `export-${name}.png`), clip: { x: Math.max(0, T[0]), y: Math.max(0, T[1]), width: Math.min(W, T[2]), height: Math.min(H - Math.max(0, T[1]), T[3]) } });
+    return { clip: name, before: before.els, at120ms: at.els, anims: at.anims };
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────────────────────────
 // Frame mode is bound by WebKit's screenshot (about 1.5s a frame at 3x on the Windows box, whatever
 // the format), so clips run in parallel, one browser per worker; the result does not depend on it,
 // because time is virtual. Realtime mode always runs one at a time — its numbers ARE the timing.
 fs.mkdirSync(OUT, { recursive: true });
 for (const seats of SEATS) if (!HANDS[seats]) throw new Error('no hand for ' + seats + '-max (6, 8 or 9)');
+// Every clip's own .json at this viewport. The index (summary-<w>x<h>.json) is rebuilt from them,
+// so runs of single clips, or several runs at once, always leave a complete one; the curves stay in
+// the clip files.
+const clipFiles = () => {
+  const re = new RegExp('^(flop|turn|river|bet|call|push)-[0-9]+max-' + W + 'x' + H + '[.]json$');
+  return fs.readdirSync(OUT).filter(n => re.test(n)).sort().map(n => path.join(OUT, n));
+};
+function writeIndex() {
+  const strip = ({ progressCurve, opacityCurve, scaleCurve, ...rest }) => rest;
+  const index = clipFiles().map(file => {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const elements = Object.fromEntries(Object.entries(j.summary.elements).map(([k, v]) => [k, strip(v)]));
+    return { clip: j.clip, springs: j.springs, capturedFrames: j.capturedFrames, summary: { ...j.summary, elements } };
+  });
+  fs.writeFileSync(path.join(OUT, `summary-${W}x${H}.json`), JSON.stringify(index, null, 1));
+  console.log('wrote', path.join(OUT, `summary-${W}x${H}.json`), '(' + index.length + ' clips)');
+}
+if (args.includes('--resummarise')) {
+  // Recompute every clip's numbers from the frames it already measured (after a change to summarise).
+  for (const file of clipFiles()) {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    j.summary = summarise(j.frames, j.animations);
+    const { frames, ...head } = j;
+    fs.writeFileSync(file, JSON.stringify({ ...head, frames }, null, 1));
+    console.log('resummarised', j.clip);
+  }
+  writeIndex();
+  process.exit(0);
+}
+if (args.includes('--report')) {
+  /* The numbers of every clip in --out, one line per moving element, and with --against <dir> the
+     same clip's numbers from that directory in brackets — the before/after table for a spring. */
+  const AGAINST = opt('--against', null);
+  const load = (dir) => {
+    const m = new Map();
+    if (!dir || !fs.existsSync(dir)) return m;
+    for (const n of fs.readdirSync(dir).filter(n => /^(flop|turn|river|bet|call|push)-\d+max-\d+x\d+\.json$/.test(n)).sort()) {
+      const j = JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8'));
+      m.set(j.clip, j);
+    }
+    return m;
+  };
+  const cur = load(OUT), base = load(AGAINST && path.resolve(AGAINST));
+  const metrics = (e) => (!e || e.gone ? null : {
+    appears: e.appeared ? e.firstVisibleMs : null, travel: e.travelPx > 0.5 ? e.travelPx : null,
+    t95: e.t95Ms, rest: e.restMs, lastMove: e.settledMs, overshoot: e.overshootPct || null,
+    peak: e.peakSpeedPxPerS || null,
+    op: e.opacityRange && e.opacityRange[0] !== e.opacityRange[1] ? e.opacityRange.map(v => +v.toFixed(2)).join('..') : null,
+    w: e.widthRange && e.widthRange[0] !== e.widthRange[1] ? e.widthRange.join('..') : null,
+    text: e.textChangedMs != null ? `'${e.textAfter}'@${e.textChangedMs}` : null,
+  });
+  const UNIT = { appears: 'ms', travel: 'px', t95: 'ms', rest: 'ms', lastMove: 'ms', overshoot: '%', peak: 'px/s' };
+  for (const [clip, j] of cur) {
+    const b = base.get(clip);
+    const s = j.summary, bs = b && b.summary;
+    const vs = (x, y) => (b ? `${x} [${y}]` : `${x}`);
+    console.log(`\n${clip}${j.springs != null ? ' springs=' + j.springs : ''}: last motion ${vs(s.visualSettleMs, bs && bs.visualSettleMs)}ms, at rest ${vs(s.visualRestMs, bs && bs.visualRestMs)}ms`
+      + (s.nonCompositorProps.length ? ` | non-compositor: ${s.nonCompositorProps.join(', ')}` : ''));
+    for (const [id, e] of Object.entries(s.elements)) {
+      const m = metrics(e), bm = bs ? metrics(bs.elements[id]) : null;
+      if (!m) { console.log(`  ${id}: removed at the press`); continue; }
+      if (m.lastMove == null && m.appears == null && m.text == null) continue;
+      const bits = Object.entries(m).filter(([k, v]) => v != null || (bm && bm[k] != null))
+        .map(([k, v]) => `${k} ${v == null ? '-' : v}${UNIT[k] && v != null ? UNIT[k] : ''}${bm ? ` [${bm[k] == null ? '-' : bm[k]}]` : ''}`);
+      console.log(`  ${id}: ${bits.join(', ')}`);
+    }
+  }
+  // Realtime runs in the same directory: per clip, every rep.
+  for (const f of fs.readdirSync(OUT).filter(f => /^realtime-.*\.json$/.test(f)).sort()) {
+    const rows = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8'));
+    console.log(`\n${f}: per clip, one value per rep`);
+    const by = {};
+    for (const r of rows) (by[r.clip] = by[r.clip] || []).push(r);
+    for (const [clip, rs] of Object.entries(by)) {
+      const col = (fn) => rs.map(fn).join('/');
+      console.log(`  ${clip}: dropped ${col(r => r.after1500.dropped)} | max frame ${col(r => r.after1500.maxMs)}ms | >25ms ${col(r => r.after1500.over25)}`
+        + ` | input->frame ${col(r => r.inputToNextFrameMs)}ms | LoAF ${rs.map(r => r.loaf.map(e => `${e.dur}@${e.at}(script ${e.scriptMs}, style+layout ${e.styleLayoutMs})`).join(' + ') || '-').join(' / ')}`
+        + ` | machine CPU ${col(r => r.machineCpuBusyPct)}%`);
+    }
+  }
+  process.exit(0);
+}
 if (args.includes('--encode-only')) {
   // Re-encode clips whose frames were kept (--keep-frames, or a failed encode).
   for (const seats of SEATS) for (const moment of MOMENTS) {
@@ -558,32 +757,54 @@ if (args.includes('--encode-only')) {
   }
   process.exit(0);
 }
+const EXPORT = args.includes('--export-probe');
 const tasks = SEATS.flatMap(seats => MOMENTS.flatMap(moment =>
   Array.from({ length: REALTIME ? REPEAT : 1 }, (_, rep) => ({ seats, moment, rep }))));
 const PARALLEL = REALTIME ? 1 : Math.max(1, Number(opt('--parallel', 1)));
 const results = [];
+const failed = [];
 const launch = () => (ENGINE === 'webkit' ? webkit.launch() : chromium.launch({ channel: ENGINE }));
 await Promise.all(Array.from({ length: Math.min(PARALLEL, tasks.length) }, async () => {
   const browser = await launch();
   try {
     for (let task; (task = tasks.shift());) {
       const { seats, moment, rep } = task;
-      if (REALTIME) {
-        const r = await realtimeMoment(browser, seats, moment, rep);
-        results.push(r);
-        const a = r.after1500, i = r.idle500;
-        console.log(`${r.clip} [${ENGINE} x${THROTTLE}] after press: ${a.frames} frames, median ${a.medianMs}ms, p95 ${a.p95Ms}ms, max ${a.maxMs}ms, >25ms ${a.over25}, dropped ${a.dropped}; idle: max ${i.maxMs}ms, dropped ${i.dropped}; input->frame ${r.inputToNextFrameMs}ms; LoAF ${r.loaf.map(e => e.dur).join('/') || '-'}`);
-      } else {
-        const r = await captureMoment(browser, seats, moment);
-        console.log(`${r.clip}: ${r.capturedFrames} frames, settles ${r.summary.visualSettleMs}ms, rests ${r.summary.visualRestMs}ms, ${r.animations.length} animations (${r.wallSeconds}s)`);
-        results.push({ clip: r.clip, summary: r.summary });
+      // One clip failing (a dialog over the felt, an encode out of memory) costs that clip only.
+      try {
+        if (REALTIME) {
+          const r = await realtimeMoment(browser, seats, moment, rep);
+          results.push(r);
+          const a = r.after1500, i = r.idle500;
+          console.log(`${r.clip} [${ENGINE} x${THROTTLE}] after press: ${a.frames} frames, median ${a.medianMs}ms, p95 ${a.p95Ms}ms, max ${a.maxMs}ms, >25ms ${a.over25}, dropped ${a.dropped}; idle: max ${i.maxMs}ms, dropped ${i.dropped}; input->frame ${r.inputToNextFrameMs}ms; LoAF ${r.loaf.map(e => e.dur).join('/') || '-'}; machine CPU ${r.machineCpuBusyPct}%`);
+        } else if (EXPORT) {
+          const r = await exportProbe(browser, seats, moment);
+          results.push(r);
+          console.log(`${r.clip} [export still at +120ms]: ${r.anims.length} animations, ${Object.keys(r.at120ms).length} measured elements`);
+        } else {
+          const r = await captureMoment(browser, seats, moment);
+          console.log(`${r.clip}: ${r.capturedFrames} frames, settles ${r.summary.visualSettleMs}ms, rests ${r.summary.visualRestMs}ms, ${r.animations.length} animations (${r.wallSeconds}s)`);
+        }
+      } catch (e) {
+        failed.push(clipName(moment, seats) + (REALTIME ? '#' + rep : ''));
+        console.log(`FAILED ${clipName(moment, seats)}: ${String((e && e.message) || e).split(/\r?\n/)[0]}`);
       }
     }
   } finally {
     await browser.close();
   }
 }));
-results.sort((a, b) => (a.clip < b.clip ? -1 : a.clip > b.clip ? 1 : (a.rep || 0) - (b.rep || 0)));
-const tag = REALTIME ? `realtime-${ENGINE}-x${THROTTLE}-${W}x${H}` : `summary-${W}x${H}`;
-fs.writeFileSync(path.join(OUT, tag + '.json'), JSON.stringify(results, null, 1));
-console.log('wrote', path.join(OUT, tag + '.json'));
+if (REALTIME || EXPORT) {
+  // Merged into what earlier runs into the same directory wrote, so a re-run of one clip keeps the rest.
+  const tag = REALTIME ? `realtime-${ENGINE}-x${THROTTLE}-${W}x${H}` : `export-probe-${W}x${H}`;
+  const key = (r) => r.clip + '#' + (r.rep || 0);
+  let merged = [];
+  try { merged = JSON.parse(fs.readFileSync(path.join(OUT, tag + '.json'), 'utf8')); } catch (e) { /* first run */ }
+  const fresh = new Set(results.map(key));
+  merged = merged.filter(r => !fresh.has(key(r))).concat(results);
+  merged.sort((a, b) => (a.clip < b.clip ? -1 : a.clip > b.clip ? 1 : (a.rep || 0) - (b.rep || 0)));
+  fs.writeFileSync(path.join(OUT, tag + '.json'), JSON.stringify(merged, null, 1));
+  console.log('wrote', path.join(OUT, tag + '.json'));
+} else {
+  writeIndex();
+}
+if (failed.length) { console.log('failed:', failed.join(', ')); process.exitCode = 1; }
