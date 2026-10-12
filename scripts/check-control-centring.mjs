@@ -1,17 +1,16 @@
 // Pills and buttons (owner rule, 2026-10-10): the CONTAINER sits on the grid — whole g wide, whole
 // r tall, left edge on a g line, top edge on an r line — and the LABEL inside is centred in it on
-// both axes, disregarding the grid. This measures both, for every visible control, in WebKit.
-//
-// Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
-// Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
-// the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
-// import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
-// section, the add sheet, the list sheet, a trip).
+// both axes, disregarding the grid. Venue strips (owner, 2026-10-11): the coloured venue band on an
+// event card — the Schedule row's vertical strip with its rotated name, the Up Next card's banner —
+// has its text centred both ways too. This measures all of it, for every visible control and strip,
+// in WebKit.
 //
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
-//        [--json out.json] [--only "schedule,cash"] [--dump] [--shots dir [--overlay]]
-//   (--dump lists passing controls too; --shots saves a screenshot of each view as scanned,
-//   --overlay with the grid overlay on)
+//        [--json out.json] [--only "schedule,cash"] [--skip "replayer"] [--dump] [--list]
+//        [--shots dir [--overlay]] [--verify-ink] [--quiet]
+//   (--dump lists passing controls too; --list prints the views and exits; --shots saves a
+//   screenshot of each view as scanned, --overlay with the grid overlay on; --verify-ink measures
+//   every text label a second time from pixels and reports where the two disagree)
 //   npm run check:controls          (both sizes; base URL from CHECK_BASE_URL, else :3001)
 //
 //   CHECK_BASE_URL  the server to check, when no baseUrl argument is given
@@ -19,37 +18,114 @@
 //                   app's JWT_SECRET from ecosystem.config.cjs, for http://localhost:3001)
 //   CHECK_TOKEN_FILE  or a file holding one
 //   CHECK_USERNAME  that account's username (default ham5)
+//   CHECK_FRESH_USER / CHECK_FRESH_PASSWORD  optional: the EMAIL and password of an account with
+//                   no real name, signed in through the login screen to reach the real-name prompt
+//                   (it only shows after a password login) and the first-run wizard after it.
+//                   Without them that view is reported as not reachable.
 //
-// For each control (selector list CONTROLS below; an element holding two or more other controls is
-// a group, not a control):
-//   (a) the border box against the grid: width / g and height / r within 0.05 of a whole number,
-//       left edge within 0.05 g of a g line (lines run from the .app-shell's left edge: x = 0 on a
-//       phone, the shell's centred left on desktop, where every rail and pane is a whole g from it)
-//       and top edge within 0.05 r of an r line counted from the .top-bar's top — the origin
-//       GridOverlay draws its baseline ruler from. Scrolled content is measured as laid out: each
-//       scroller's offset is added back (not across a stuck sticky or a fixed element).
-//   (b) the label's INK centre against the box centre, in CSS px, both axes; fails past 0.75px.
-//       Ink is not the text box. Per line, the baseline is the Range rect's top plus the font's
-//       ascent (canvas fontBoundingBoxAscent — WebKit lays the text box out on exactly that); the
-//       ink runs from the baseline up by the string's measured ink ascent (cap height for an
-//       all-caps label) and stops AT the baseline — descenders are left out, the usual optical
-//       centring, so "Live" and "Heatmaps" in one strip share a baseline. A label with no letter
-//       or digit (×, +, −, ›) is a symbol, and uses its real ink on both sides. Sideways, the ink
-//       is the text start plus canvas actualBoundingBoxLeft/Right (side bearings), plus letter
-//       spacing. Figures count by their box: icons (svg, img) and any smaller descendant with its
-//       own fill (an avatar disc — its initial is not the label). The union of all of it is
-//       centred; and where an icon sits BESIDE the text, the text alone must also be centred
-//       vertically (and sideways where the icon sits above it, as in a tab bar). Absolutely
-//       positioned descendants (a notification dot) are decoration, not label, and are measured on
-//       their own if they match.
+// VIEWS. Every view and state that has controls, phone and desktop, each from a fresh load (a menu
+// left open by one cannot cover the next): the Schedule list, filter sheet, location dropdown, an
+// open card (saved, conditional), Calendar and a day in it, My Schedule (an expanded card, the
+// "if I bag / bust" panel, export, travel), the Dashboard (every Up Next card in the real carousel —
+// playing, bagged, finished, not started — and the D toggle's demo cards; the playing card's Bust
+// menu, its Update and Bag panels; the results header's Reset -> Confirm / Cancel and the P&L
+// dropdowns), Social (search, a buddy, a group, a new group), Hands (each game family, hand entry
+// step by step, PLO entry, the replayer on a saved hand with its settings, table settings and
+// share menu), Cash (Live, Heatmaps, the location picker), Results (the log form, a row in edit,
+// the tax report, the share menu, the analytics sheet and its tabs), the bankroll sheet and
+// dashboard (every tab, report filters, CSV import), cash sessions, expenses and trips, Settings
+// (and its delete confirmation), the user menu, notifications, the live-update panel's tabs,
+// Admin, New Events, Staking (no route in the UI: reached through a component's onNavigate prop)
+// and its Summary / Backers / Series / settings, the first-run wizard step by step, the signed-out
+// login / register / forgot screens, and the real-name prompt. A view that does not open is
+// listed as not reached, with why. A dialog's backdrop hides what is under it: a control 90%
+// covered by something that paints is not measured.
+//
+// WHAT IS A CONTROL. Three ways in, then the exclusions and one de-duplication:
+//   1. a selector in CONTROLS (buttons, roles, and the -pill/-chip/-badge/-btn class families);
+//   2. an interactive element (INTERACTIVE: a[href], the button-like ARIA roles, summary,
+//      [tabindex="0"], a <label> that wraps or names a hidden <select>/<input> and draws the face
+//      for it, a visible <select>) that has a VISIBLE BOX — background, border, a box-shadow ring or
+//      an outline. Without one there is no container to be centred in (an inline text link);
+//   3. any element whose own rule sets cursor:pointer (its parent's cursor is not pointer), that
+//      holds a label (text or an icon) and has a visible box — a clickable <div>. Where the
+//      pointer element draws no box but one descendant holding the whole label does, that
+//      descendant is the face and is measured instead.
+//   Then: an element holding two or more controls is a group, not a control; a control whose box
+//   is one inner element's box is measured once, as the outer; a boxless control around a single
+//   control is measured as that inner face; a class-matched PART of a control (.buddy-chip-name)
+//   is its label, not a second control; a TEXT LINK (no box, no icon, named a link or set inside
+//   a run of text: "No account? Register") is text seated with its sentence. NOT_CONTROLS (rows,
+//   cards and table cells that are clickable but seat their text), TILES, EXCLUDE and the venue
+//   strips are taken out of the control set. A control with no visible box of its own or on a
+//   face inside it is still measured (the rule holds its tap target to the grid) and is marked
+//   "(boxless)" in the report.
+//
+// KINDS and what each is held to:
+//   control  box on the grid (a), label centred both ways (b)
+//   start    START_ALIGNED: box on the grid, label centred vertically only (a nav row)
+//   field    a visible native <select>: box on the grid, value centred vertically only (it is a
+//            form field — start-aligned beside its arrow)
+//   switch   role=switch / a knob toggle: box on the grid, knob centred vertically
+//   start    also, found from the layout: a ROW — a menu or pick-list item whose label is set at
+//            the start by design (nothing from the label up to the control centres it, and the
+//            gap after the label is over 1g wider than the gap before it), or a label and a
+//            trailing item spread apart (space-between, an auto margin: over 2g of empty run
+//            between the parts of the face)
+//   tile     TILES: box on the grid only; also, found from the face: two text blocks stacked (a
+//            title over a description) or a large figure stacked with text (an avatar over a
+//            name, a theme preview over its name) — a small layout, not a label
+//   strip    STRIPS (venue bands): text centred both ways, along and across the band; the band
+//            is the card's edge, so its box is reported, not held to the grid
+//
+// (a) the border box against the grid: width / g and height / r within 0.05 of a whole number,
+//     left edge within 0.05 g of a g line (lines run from the .app-shell's left edge: x = 0 on a
+//     phone, the shell's centred left on desktop) and top edge within 0.05 r of an r line counted
+//     from the .top-bar's top — the origin GridOverlay draws its baseline ruler from. Scrolled
+//     content is measured as laid out: each scroller's offset is added back (not across a stuck
+//     sticky or a fixed element).
+// (b) the label's INK centre against the box centre, in CSS px, both axes; fails past 0.75px.
+//     Ink is not the text box. Per line, the baseline sits the font's ascent (canvas
+//     fontBoundingBoxAscent) in from the text box's OVER edge; the ink runs from the baseline out
+//     by the string's measured ink ascent (cap height for an all-caps label) and stops AT the
+//     baseline — descenders are left out, the usual optical centring. A label with no letter or
+//     digit (×, +, ←, ›) is a symbol: its painted ink on both axes (canvas may draw it in another
+//     fallback font than the page). An emoji is a picture, not a letter: a figure with its whole
+//     glyph. Along the line the ink is the PAINTED ink (canvas side bearings miss tabular figures, a
+//     fallback font's ▾, kerning); where pixels cannot see it, the text start plus canvas
+//     actualBoundingBoxLeft/Right plus letter spacing.
+//     WRITING MODE AND TRANSFORMS: the over edge and the line direction are taken through the
+//     element's writing mode (vertical-rl / -lr turn Latin glyphs so their tops face the line's
+//     right) and every ancestor's transform (a strip's rotate(180deg) turns them to face left), so
+//     the rotated name on a Schedule strip gets cap height ACROSS the strip and its advance ALONG
+//     it. Figures count by their box: icons (svg, img) and any smaller descendant with its own fill
+//     (an avatar disc). The union is centred; where an icon sits BESIDE the text the text alone
+//     must also be centred vertically (and sideways where the icon sits above it, as in a tab bar).
+//     Absolutely positioned descendants (a notification dot) are decoration, not label.
+//     Labels the DOM does not hold as text — a native <select>'s value, an <input type=button>'s,
+//     a ::before/::after `content` — are measured from PIXELS: the control is captured, its text
+//     colour made transparent (borders, rings and fills frozen first), captured again, and the
+//     difference is the ink; descenders are dropped by the same convention (ink ascent from the
+//     top of the ink).
+//
+// Each failure names the CSS rule that sizes and aligns the control — the most specific matching
+// rule (the later on a tie) that sets its display / height / line-height / padding / alignment; the
+// universal reset never counts — and the one that sets its label's, as file:line from
+// vite-app/src. A control styled inline (a React style={{}}) has its inline style quoted and the
+// JSX line that renders it (found by class, else by label text) named instead.
+// Also reported: an overflow:hidden ancestor of the whole app found scrolled (a scrollIntoView
+// lifting the top bar out of view) — it is put back before measuring and named as a note.
 //
 // Exits 1 when any control fails, 2 when nothing could be measured (a view that did not open is
 // reported and skipped). WebKit, because the app ships in WKWebView.
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 const jwt = require('../node_modules/jsonwebtoken');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const args = process.argv.slice(2);
 const base = (args.find(a => /^https?:/.test(a)) || process.env.CHECK_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -57,10 +133,15 @@ const opt = (flag, d) => { const i = args.indexOf(flag); return i >= 0 ? args[i 
 const W = Number(opt('--width', 402)), H = Number(opt('--height', 874));
 const jsonOut = opt('--json', null);
 const only = opt('--only', null);
+const skipViews = opt('--skip', null);
 const dump = args.includes('--dump');
+const listOnly = args.includes('--list');
+const quiet = args.includes('--quiet');
+const verifyInk = args.includes('--verify-ink');
 const shots = opt('--shots', null);          // a directory: a screenshot of each view as scanned
 const overlay = args.includes('--overlay');  // with the grid overlay on (for --shots)
 const USER = process.env.CHECK_USERNAME || 'ham5';
+const DPR = 3;
 
 function token() {
   if (process.env.CHECK_TOKEN) return process.env.CHECK_TOKEN;
@@ -70,7 +151,7 @@ function token() {
   return jwt.sign({ id: 9, username: USER }, app.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '15m' });
 }
 
-// What counts as a pill or a button. Leaves, mostly: the group filter below drops anything that
+// What counts as a pill or a button by name. Leaves, mostly: the group filter drops anything that
 // holds two or more of these.
 const CONTROLS = [
   'button', '[role="button"]', '[role="tab"]', 'a.btn', 'input[type="button"]', 'input[type="submit"]',
@@ -78,28 +159,141 @@ const CONTROLS = [
   '.badge', '[class*="badge"]', '[class*="-pill"]', '[class*="-chip"]', '.pill', '.tag',
   '.beta-tag', '[class*="beta"]',
 ];
+// Interactive elements that are controls when they draw a visible box (see the header).
+const INTERACTIVE = [
+  'a[href]', '[role="switch"]', '[role="checkbox"]', '[role="radio"]', '[role="menuitem"]',
+  '[role="menuitemradio"]', '[role="menuitemcheckbox"]', '[role="option"]', 'summary',
+  '[tabindex="0"]', 'label', 'select', 'input[type="reset"]',
+];
 // Areas left alone entirely: the grid overlay itself, and the replayer's table (another change
 // owns it — its dealer button, seats, chips).
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
-// Not pills or buttons, though a selector above catches them: event cards and list rows, which
-// are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row'];
+// Not pills or buttons, though a rule above catches them: event cards and list rows, which are
+// clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
+const NOT_CONTROLS = [
+  '.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.dash-event-card', '.settings-row-btn',
+  '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row',
+  // Table cells and rows (a sortable header is clickable; it is still a cell of the table).
+  'th', 'td', 'tr',
+];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
-// (The Dashboard's P&L cards were tiles until 2026-10-11; now one-line segments of a 4r bar,
-// they are controls again and their line is held to the centring test.)
 const TILES = ['.bk-cell', '.font-pick-tile'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
 // Centred vertically only.
 const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head'];
+// Toggles drawn as a track and a knob: the knob is at one end by design, so it is centred
+// vertically only.
+const SWITCHES = ['[role="switch"]', '.settings-toggle', '[class*="toggle-switch"]', '[class*="-switch"]'];
+// Venue strips (owner, 2026-10-11): the band of venue colour on an event card. Text centred both
+// ways — along the band and across it. .cal-venue-strip is the Schedule / My Schedule row's
+// vertical strip (writing-mode vertical-rl, rotate(180deg)); .dash-venue-strip the Up Next card's
+// banner. .replayer-hand-strip (a saved hand's game strip) and .gto-seat-strip (the hand-entry
+// seat strip) are drawn "property for property" from the venue strip and held to it too.
+const STRIPS = ['.cal-venue-strip', '.dash-venue-strip', '.replayer-hand-strip', '.gto-seat-strip'];
 // Not a control even though the class matches: wrappers, rows, lists.
 const GROUP_CLASS = /(^|[-_])(row|rows|list|group|wrap|wrapper|strip|bar|container|tabs|area|grid|stack|line|section|panel|menu|header|body|col|cell)$/;
 
+// ── The CSS rule index: every style rule in the app's own stylesheets, with its file:line, so a
+// failure can name the rule that sizes and aligns the control. Parsed from source (the built CSS
+// is one minified file), matched in the page with el.matches() and the rule's @media chain.
+const CSS_FILES = ['vite-app/src/styles.css', ...fs.readdirSync(path.join(ROOT, 'vite-app/src/components')).filter(f => f.endsWith('.css')).map(f => 'vite-app/src/components/' + f)];
+const LAYOUT_PROPS = new Set(['display', 'height', 'min-height', 'max-height', 'width', 'min-width', 'line-height', 'padding',
+  'padding-top', 'padding-bottom', 'padding-left', 'padding-right', 'padding-block', 'padding-inline', 'align-items', 'justify-content',
+  'place-items', 'place-content', 'align-content', 'align-self', 'justify-self', 'text-align', 'vertical-align', 'flex-direction',
+  'grid-template-rows', 'grid-template-columns', 'writing-mode', 'text-box', 'text-box-trim', 'text-box-edge', 'transform', 'inset',
+  'top', 'bottom', 'position', 'margin', 'margin-top', 'margin-bottom', 'font-size', 'box-sizing', 'flex', 'aspect-ratio']);
+const ALIGN_PROPS = ['display', 'height', 'min-height', 'line-height', 'padding', 'padding-top', 'padding-bottom', 'padding-block',
+  'align-items', 'justify-content', 'place-items', 'place-content', 'align-content', 'text-align', 'text-box', 'text-box-trim', 'writing-mode'];
+function parseCss(rel) {
+  const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const out = [];
+  let i = 0;
+  const n = text.length;
+  const lineAt = (() => { const starts = [0]; for (let k = 0; k < n; k++) if (text[k] === '\n') starts.push(k + 1);
+    return (pos) => { let lo = 0, hi = starts.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= pos) lo = mid; else hi = mid - 1; } return lo + 1; }; })();
+  const skipWsComments = () => { for (;;) { while (i < n && /\s/.test(text[i])) i++; if (text.startsWith('/*', i)) { const e = text.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; } else return; } };
+  // Read up to a top-level '{', ';' or '}' (strings, comments and parens skipped).
+  const readPrelude = () => {
+    let s = '', depth = 0;
+    while (i < n) {
+      const c = text[i];
+      if (text.startsWith('/*', i)) { const e = text.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; s += ' '; continue; }
+      if (c === '"' || c === "'") { const q = c; let j = i + 1; while (j < n && text[j] !== q) { if (text[j] === '\\') j++; j++; } s += text.slice(i, j + 1); i = j + 1; continue; }
+      if (c === '(') depth++;
+      if (c === ')') depth--;
+      if (depth <= 0 && (c === '{' || c === ';' || c === '}')) return { s: s.trim(), end: c };
+      s += c; i++;
+    }
+    return { s: s.trim(), end: '' };
+  };
+  const skipBlock = () => { // i at '{'
+    let depth = 0;
+    while (i < n) {
+      const c = text[i];
+      if (text.startsWith('/*', i)) { const e = text.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue; }
+      if (c === '"' || c === "'") { const q = c; let j = i + 1; while (j < n && text[j] !== q) { if (text[j] === '\\') j++; j++; } i = j + 1; continue; }
+      if (c === '{') depth++;
+      if (c === '}') { depth--; if (depth === 0) { i++; return; } }
+      i++;
+    }
+  };
+  const splitTop = (s) => { const parts = []; let depth = 0, cur = ''; for (const c of s) { if (c === '(' || c === '[') depth++; if (c === ')' || c === ']') depth--; if (c === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; } else cur += c; } if (cur.trim()) parts.push(cur.trim()); return parts; };
+  const block = (ctx) => {
+    for (;;) {
+      skipWsComments();
+      if (i >= n) return;
+      if (text[i] === '}') { i++; return; }
+      const startPos = i;
+      const { s, end } = readPrelude();
+      if (end === ';') { i++; continue; }
+      if (end === '}') { i++; return; }
+      if (end !== '{') return;
+      if (s.startsWith('@')) {
+        const m = s.match(/^@([\w-]+)\s*(.*)$/s);
+        const kw = m ? m[1].toLowerCase() : '';
+        const cond = m ? m[2].trim() : '';
+        i++; // past '{'
+        if (kw === 'media') block([...ctx, { media: cond }]);
+        else if (kw === 'supports') block([...ctx, { supports: cond }]);
+        else if (kw === 'container' || kw === 'layer' || kw === 'scope') block(ctx);
+        else { i--; skipBlock(); }
+        continue;
+      }
+      // A style rule: its declarations (nested rules skipped).
+      const line = lineAt(startPos);
+      const bodyStart = i + 1;
+      skipBlock();
+      const body = text.slice(bodyStart, i - 1).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{[^{}]*\}/g, '');
+      const props = [];
+      for (const d of body.split(';')) {
+        const k = d.indexOf(':');
+        if (k < 0) continue;
+        const prop = d.slice(0, k).trim().toLowerCase();
+        if (LAYOUT_PROPS.has(prop)) props.push(prop + ':' + d.slice(k + 1).trim().replace(/\s+/g, ' ').slice(0, 60));
+      }
+      if (!props.length) continue;
+      // Selectors for the element itself (a part aimed at a pseudo-element styles that, not it).
+      const sels = splitTop(s).filter(p => !/::?(before|after|placeholder|marker|selection|first-line|first-letter|backdrop|-webkit-[\w-]+)\b/i.test(p));
+      if (!sels.length) continue;
+      out.push({ f: rel, l: line, s: sels.join(', '), sel: sels, ctx, p: props });
+    }
+  };
+  block([]);
+  return out;
+}
+let RULES = [];
+try { RULES = CSS_FILES.flatMap(parseCss); } catch (e) { console.log('  (CSS rule index unavailable: ' + e.message + ')'); }
+
 // Runs in the page.
-function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLASS_SRC, view }) {
+function scan(cfg) {
+  const { CONTROLS, INTERACTIVE, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, SWITCHES, STRIPS, GROUP_CLASS_SRC, ALIGN_PROPS, view } = cfg;
+  const RULES = window.__guardRules || [];
   const GROUP_CLASS = new RegExp(GROUP_CLASS_SRC);
   const PLURAL = /(badges|chips|pills|tags|btns|buttons|toggles|segs)([-_]|$)/;
+  const EMOJI = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?/gu;
+  const PART = /[-_](name|label|text|txt|icon|count|dot|value|title|abbr|caption|num|amount|avatar|img|glyph|arrow|caret|t)$/;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;width:calc(var(--gu) * 100);height:calc(var(--subrow) * 100)';
   document.body.appendChild(probe);
@@ -131,6 +325,16 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   };
   const transform = (t, tt) => tt === 'uppercase' ? t.toUpperCase() : tt === 'lowercase' ? t.toLowerCase()
     : tt === 'capitalize' ? t.replace(/\b\p{L}/gu, c => c.toUpperCase()) : t;
+  const alpha = (c) => {
+    if (!c || c === 'transparent') return 0;
+    const m = c.match(/\/\s*([\d.]+%?)\s*\)$/) || c.match(/^rgba\([^)]*,\s*([\d.]+)\s*\)$/);
+    if (!m) return 1;
+    return m[1].endsWith('%') ? parseFloat(m[1]) / 100 : parseFloat(m[1]);
+  };
+  const hasBox = (cs) => alpha(cs.backgroundColor) > 0.02 || cs.backgroundImage !== 'none'
+    || ['Top', 'Right', 'Bottom', 'Left'].some(s => parseFloat(cs['border' + s + 'Width']) > 0 && cs['border' + s + 'Style'] !== 'none' && alpha(cs['border' + s + 'Color']) > 0.02)
+    || (cs.boxShadow && cs.boxShadow !== 'none' && !/^(rgba\(0, 0, 0, 0\)|transparent)/.test(cs.boxShadow))
+    || (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && alpha(cs.outlineColor) > 0.02);
   const visible = (el) => {
     for (let a = el; a && a !== document.documentElement; a = a.parentElement) {
       const cs = getComputedStyle(a);
@@ -138,16 +342,33 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     }
     return true;
   };
+  // Hidden by an ancestor's clip (a collapsed panel at max-height 0, a scroller's off-screen
+  // part). An absolutely positioned box escapes clips between it and its containing block.
+  const clippedAway = (el, b) => {
+    let needPositioned = getComputedStyle(el).position === 'absolute';
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      const positioned = s.position !== 'static' || s.transform !== 'none';
+      const clips = s.overflowX !== 'visible' || s.overflowY !== 'visible' || /paint|strict|content/.test(s.contain || '');
+      if (clips && (!needPositioned || positioned)) {
+        const q = a.getBoundingClientRect();
+        const ix = Math.min(b.right, q.right) - Math.max(b.left, q.left);
+        const iy = Math.min(b.bottom, q.bottom) - Math.max(b.top, q.top);
+        if (ix < 1 || iy < 1) return true;
+      }
+      if (s.position === 'fixed') break;
+      if (positioned) needPositioned = s.position === 'absolute';
+    }
+    return false;
+  };
+  const clsList = (el) => typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(Boolean) : (el.className && el.className.baseVal ? el.className.baseVal.trim().split(/\s+/) : []);
   const desc = (el) => {
-    const cls = typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(Boolean).slice(0, 3).join('.') : '';
+    const cls = clsList(el).slice(0, 3).join('.');
     return el.tagName.toLowerCase() + (cls ? '.' + cls : '');
   };
+  const matchesAny = (el, list) => { try { return list.length > 0 && el.matches(list.join(',')); } catch { return false; } };
 
-  // Scrolled content is measured where it is LAID OUT, not where the scroll left it: every
-  // scroller between a control and the page adds back its scroll offset. Offsets are first set
-  // to whole px, so the value read back is the one painted. A stuck sticky element sits at its
-  // sticky offset whatever the scroll, so its own scroller is not added back for it; a fixed
-  // element ignores every scroller.
+  // Scrolled content is measured where it is LAID OUT, not where the scroll left it.
   const scrollers = [];
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el);
@@ -181,174 +402,723 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     return { dx, dy };
   };
 
-  const sel = CONTROLS.join(',');
   const excl = EXCLUDE.join(',');
-  let cands = [...document.querySelectorAll(sel)].filter(el => {
-    if (el.closest(excl) || el.matches(NOT_CONTROLS.join(','))) return false;
+  const onScreen = (b) => !(b.bottom <= 0 || b.top >= innerHeight || b.right <= 0 || b.left >= innerWidth);
+  // What covers a control: at a grid of points reaching close to its edges (a bar over the last
+  // few px of a tall strip counts), everything stacked there, top down (elementsFromPoint — a
+  // transparent click-catcher over the whole page hides nothing and must not hide what is under
+  // it), until the control itself: anything above it that paints a box covers it (a transparent
+  // <select> laid over a face does not).
+  const FS = [0.04, 0.27, 0.5, 0.73, 0.96];
+  const paints = (h) => {
+    const s = getComputedStyle(h);
+    if (Number(s.opacity) === 0 || s.visibility === 'hidden') return false;
+    return hasBox(s) || /^(img|svg|canvas|video)$/i.test(h.tagName);
+  };
+  const coverage = (el, b) => {
+    let n = 0, covered = 0, out = 0;
+    for (const fy of FS) for (const fx of FS) {
+      n++;
+      const x = b.left + b.width * fx, y = b.top + b.height * fy;
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) { out++; continue; }
+      for (const h of document.elementsFromPoint(x, y)) {
+        if (h === el || el.contains(h) || h.contains(el)) break;
+        if (h.closest('svg') && h.tagName.toLowerCase() !== 'svg') continue;
+        if (paints(h)) { covered++; break; }
+      }
+    }
+    return { covered: covered / n, out: out / n };
+  };
+  // Pixels cannot see a control that anything covers, even a corner of it.
+  const occluded = (el, b) => { const c = coverage(el, b); return c.covered > 0 || c.out > 0; };
+
+  const usable = (el) => {
+    if (el.closest(excl) || matchesAny(el, NOT_CONTROLS) || matchesAny(el, STRIPS)) return false;
+    if (el.closest('select') && el.tagName !== 'SELECT') return false;
     const b = el.getBoundingClientRect();
-    if (b.width < 1 || b.height < 1) return false;
-    if (b.bottom <= 0 || b.top >= innerHeight || b.right <= 0 || b.left >= innerWidth) return false;
-    if (!visible(el)) return false;
+    if (b.width < 1 || b.height < 1 || !onScreen(b)) return false;
+    if (!visible(el) || clippedAway(el, b)) return false;
+    // Hidden under something else (a list behind a full-screen replayer, a sheet's backdrop).
+    if (coverage(el, b).covered >= 0.9) return false;
+    return true;
+  };
+  const hasLabel = (el) => {
+    if (el.querySelector('svg, img, canvas')) return true;
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let t = w.nextNode(); t; t = w.nextNode()) if (t.textContent.trim() && !t.parentElement.closest('select, option, script, style')) return true;
+    return false;
+  };
+  const pseudoText = (el) => {
+    for (const ps of ['::before', '::after']) {
+      const c = getComputedStyle(el, ps).content;
+      if (c && c !== 'none' && c !== 'normal' && /^["'].*\S.*["']$/.test(c)) return c.slice(1, -1);
+    }
+    return '';
+  };
+  // A <label>/<select>/<input> face: the label is a control when it draws the face for a hidden
+  // input or select (the currency picker's "$ USD ▾" over an invisible <select>).
+  const hiddenInput = (inp) => {
+    if (!inp) return false;
+    const s = getComputedStyle(inp), q = inp.getBoundingClientRect();
+    return Number(s.opacity) === 0 || s.visibility === 'hidden' || q.width <= 1 || q.height <= 1 || s.clipPath !== 'none' || s.clip !== 'auto' && s.clip !== '';
+  };
+  const labelControl = (el) => {
+    const inp = el.querySelector('select, input:not([type="text"]):not([type="search"]):not([type="email"]):not([type="password"]):not([type="number"]):not([type="date"]):not([type="time"]):not([type="tel"]):not([type="url"])')
+      || (el.htmlFor ? document.getElementById(el.htmlFor) : null);
+    return inp && (inp.tagName === 'SELECT' || /checkbox|radio|file|color|button|submit/.test(inp.type || '')) && hiddenInput(inp);
+  };
+
+  // 1. by selector; 2. interactive with a box; 3. cursor:pointer with a box.
+  const src = new Map();
+  for (const el of document.querySelectorAll(CONTROLS.join(','))) if (!src.has(el)) src.set(el, 'selector');
+  for (const el of document.querySelectorAll(INTERACTIVE.join(','))) {
+    if (src.has(el)) continue;
+    const cs = getComputedStyle(el);
+    if (el.tagName === 'LABEL') { if (labelControl(el) && hasBox(cs)) src.set(el, 'label'); continue; }
+    if (el.tagName === 'SELECT') { if (!hiddenInput(el)) src.set(el, 'select'); continue; }
+    if (hasBox(cs) && (hasLabel(el) || pseudoText(el) || el.matches('[role="switch"]'))) src.set(el, 'interactive');
+  }
+  for (const el of document.querySelectorAll('body *')) {
+    if (src.has(el) || el.closest('svg')) continue;
+    const cs = getComputedStyle(el);
+    if (cs.cursor !== 'pointer') continue;
+    const pc = el.parentElement ? getComputedStyle(el.parentElement).cursor : '';
+    if (pc === 'pointer') continue;
+    if (!(hasLabel(el) || pseudoText(el))) continue;
+    if (hasBox(cs)) { src.set(el, 'pointer'); continue; }
+    // No box of its own: the one descendant with a box that holds the whole label is the face.
+    const b = el.getBoundingClientRect();
+    const faces = [...el.querySelectorAll('*')].filter(d => !d.closest('svg') && hasBox(getComputedStyle(d)) && hasLabel(d));
+    const outer = faces.filter(d => !faces.some(o => o !== d && o.contains(d)));
+    if (outer.length === 1) {
+      const d = outer[0], q = d.getBoundingClientRect();
+      // the face must hold all of the label: no text outside it
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let outside = false;
+      for (let t = w.nextNode(); t; t = w.nextNode()) if (t.textContent.trim() && !d.contains(t)) { outside = true; break; }
+      if (!outside && q.width * q.height > 0.25 * b.width * b.height && !src.has(d)) src.set(d, 'pointer-face');
+    }
+  }
+  // A text link: no box anywhere on it, no icon, and either named a link or set inside a run of
+  // text ("No account? Register"). It is text, seated with its sentence — not a pill.
+  const isTextLink = (el) => {
+    if (hasBox(getComputedStyle(el)) || el.querySelector('svg, img, canvas')) return false;
+    if ([...el.querySelectorAll('*')].some(d => hasBox(getComputedStyle(d)))) return false;
+    if (el.tagName === 'A' || /(^|[-_ ])link([-_ ]|$)/.test(clsList(el).join(' '))) return true;
+    const pa = el.parentElement;
+    return !!pa && [...pa.childNodes].some(c => c.nodeType === 3 && c.textContent.trim());
+  };
+  let cands = [...src.keys()].filter(el => {
+    if (!usable(el)) return false;
+    if (isTextLink(el)) return false;
+    const how = src.get(el);
     // Class-matched (not a <button>) wrappers named like rows and groups are not controls.
-    const isNative = el.matches('button, [role="button"], [role="tab"], a.btn, input');
-    if (!isNative && typeof el.className === 'string') {
-      const toks = el.className.split(/\s+/).filter(Boolean);
+    const isNative = el.matches('button, [role="button"], [role="tab"], a.btn, input, select, label');
+    if (how === 'selector' && !isNative) {
+      const toks = clsList(el);
       const hit = toks.filter(t => /badge|pill|chip|tag|beta|btn|toggle|seg/.test(t));
       if (hit.length && hit.every(t => GROUP_CLASS.test(t) || PLURAL.test(t))) return false;
+      // A PART of a control (.buddy-chip-name, .x-pill-label): the label, not a second control.
+      if (hit.length && hit.every(t => GROUP_CLASS.test(t) || PLURAL.test(t) || PART.test(t))
+        && el.parentElement && el.parentElement.closest(CONTROLS.join(','))) return false;
+    }
+    if ((how === 'pointer' || how === 'pointer-face' || how === 'interactive') && !el.matches('button, [role], a, label, summary')) {
+      const toks = clsList(el);
+      if (toks.length && toks.every(t => GROUP_CLASS.test(t) || PLURAL.test(t))) return false;
     }
     return true;
   });
   const set = new Set(cands);
-  // A group holds two or more controls; a control nested in a control of the same kind
-  // (a chip's own inner span sharing a class prefix) is measured as the outer one.
+  // A group holds two or more controls.
   cands = cands.filter(el => {
     let n = 0;
     for (const o of set) if (o !== el && el.contains(o)) n++;
     return n < 2;
   });
-  // A control whose face is one inner pill of the same box (a button wrapping its span) is
-  // measured once, as the outer element.
   const same = (a, c) => { const p = a.getBoundingClientRect(), q = c.getBoundingClientRect();
     return Math.abs(p.left - q.left) < 0.5 && Math.abs(p.top - q.top) < 0.5 && Math.abs(p.width - q.width) < 0.5 && Math.abs(p.height - q.height) < 0.5; };
+  // The face is measured once: an inner element with the outer's box is the outer; a boxless
+  // outer (picked up only by its cursor or role) around one control is that control.
   cands = cands.filter(el => !cands.some(o => o !== el && o.contains(el) && same(o, el)));
-  const out = [];
-  for (const el of cands) {
-    const cs = getComputedStyle(el);
-    const b = el.getBoundingClientRect();
-    const wg = b.width / g, hr = b.height / r;
-    const lo = layoutOffset(el);
-    // The `translate` property is a paint-time correction some scrollers apply to their items
-    // (the Calendar date strip shifts each button by its scroll's whole-px remainder); the layout
-    // position is the box without it.
-    const tr = (cs.translate && cs.translate !== 'none') ? cs.translate.split(/\s+/).map(parseFloat) : [0, 0];
-    const lx = (b.left + lo.dx - (tr[0] || 0) - ox) / g, ty = (b.top + lo.dy - (tr[1] || 0) - oy) / r;
-    const geo = {
-      w: +wg.toFixed(2), h: +hr.toFixed(2), x: +lx.toFixed(2), y: +ty.toFixed(2),
-    };
-    const geoFail = [];
-    if (Math.abs(frac(wg)) > 0.05) geoFail.push('w');
-    if (Math.abs(frac(hr)) > 0.05) geoFail.push('h');
-    if (Math.abs(frac(lx)) > 0.05) geoFail.push('x');
-    if (Math.abs(frac(ty)) > 0.05) geoFail.push('y');
-    // Label ink: text boxes (per line, cap/ascender to baseline) and figures (icons, and any
-    // smaller descendant with its own fill — an avatar disc, a colour dot — by its box).
-    const textBoxes = [], figBoxes = [];
-    const decorative = (n) => {
-      for (let a = n.nodeType === 1 ? n : n.parentElement; a && a !== el; a = a.parentElement) {
-        const s = getComputedStyle(a);
-        if (s.position === 'absolute' || s.position === 'fixed') return true;
-        if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return true;
+  cands = cands.filter(el => {
+    const how = src.get(el);
+    if (how === 'selector' && el.matches('button, [role="button"], [role="tab"]')) return true;
+    if (hasBox(getComputedStyle(el))) return true;
+    const inner = cands.filter(o => o !== el && el.contains(o));
+    return inner.length !== 1;
+  });
+
+  // ── Ink.
+  const linearOf = (el) => {
+    let m = new DOMMatrix();
+    for (let a = el; a && a.nodeType === 1 && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      let t = new DOMMatrix();
+      if (s.rotate && s.rotate !== 'none') {
+        const mm = s.rotate.match(/(-?[\d.]+)(deg|rad|turn)\s*$/);
+        if (mm && !/\b[xy]\b/.test(s.rotate)) { const v = parseFloat(mm[1]); t = t.rotate(mm[2] === 'rad' ? v * 180 / Math.PI : mm[2] === 'turn' ? v * 360 : v); }
       }
-      return false;
-    };
+      if (s.scale && s.scale !== 'none') { const [sx, sy] = s.scale.split(/\s+/).map(parseFloat); t = t.scale(sx, Number.isFinite(sy) ? sy : sx); }
+      if (s.transform && s.transform !== 'none') { try { t = t.multiply(new DOMMatrix(s.transform)); } catch {} }
+      m = t.multiply(m);
+    }
+    return m;
+  };
+  const axisOf = (m, vx, vy) => { const x = m.a * vx + m.c * vy, y = m.b * vx + m.d * vy; return Math.abs(x) >= Math.abs(y) ? { ax: 'x', sg: Math.sign(x) || 1 } : { ax: 'y', sg: Math.sign(y) || 1 }; };
+  const orient = (hs, host) => {
+    const wm = (hs.writingMode || 'horizontal-tb').replace(/^lr(-tb)?$|^rl(-tb)?$|^tb$/, 'horizontal-tb').replace(/^tb-rl$/, 'vertical-rl').replace(/^tb-lr$/, 'vertical-lr');
+    const rtl = hs.direction === 'rtl';
+    let inl, over;
+    if (/^horizontal/.test(wm)) { inl = [rtl ? -1 : 1, 0]; over = [0, -1]; }
+    else if (wm === 'sideways-lr') { inl = [0, rtl ? 1 : -1]; over = [-1, 0]; }
+    else { inl = [0, rtl ? -1 : 1]; over = [1, 0]; }
+    const m = linearOf(host);
+    return { wm, upright: !/^horizontal/.test(wm) && hs.textOrientation === 'upright', inl: axisOf(m, ...inl), over: axisOf(m, ...over) };
+  };
+  const decorativeIn = (el) => (n) => {
+    for (let a = n.nodeType === 1 ? n : n.parentElement; a && a !== el; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      if (s.position === 'absolute' || s.position === 'fixed') return true;
+      if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return true;
+      if (a.tagName === 'SELECT' || a.tagName === 'OPTION') return true;
+    }
+    return false;
+  };
+  const union = (bs) => bs.reduce((u, q) => [Math.min(u[0], q[0]), Math.min(u[1], q[1]), Math.max(u[2], q[2]), Math.max(u[3], q[3])], [Infinity, Infinity, -Infinity, -Infinity]);
+  const measureInk = (el, b) => {
+    const decorative = decorativeIn(el);
+    const textBoxes = [], figBoxes = [], texts = [], hosts = new Set(), textHost = [];
+    let allSym = true;
+    // The block a text run belongs to: its nearest non-inline ancestor inside the control.
+    const blockOf = (h) => { for (let a = h; a && a !== el; a = a.parentElement) if (!/^inline$|^contents$/.test(getComputedStyle(a).display)) return a; return el; };
+    let inlineAxis = 'x';
     const area = b.width * b.height;
+    const labelNodes = [];
+    { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) if (n.textContent.trim() && !decorative(n)) labelNodes.push(n); }
+    // A filled descendant is a FIGURE (an avatar disc, a swatch) when it is small beside the face,
+    // or when label text sits outside it (a disc over a name). One that holds all the text and
+    // most of the face is the face.
     const filled = [...el.querySelectorAll('*')].filter(d => {
       if (d.closest('svg') || decorative(d)) return false;
       const s = getComputedStyle(d);
-      const fill = (s.backgroundColor && !/rgba\(.*,\s*0\)$|transparent/.test(s.backgroundColor)) || s.backgroundImage !== 'none';
+      const fill = alpha(s.backgroundColor) > 0.02 || s.backgroundImage !== 'none';
       if (!fill) return false;
       const q = d.getBoundingClientRect();
-      return q.width >= 1 && q.height >= 1 && q.width * q.height < area * 0.6;
+      if (q.width < 1 || q.height < 1) return false;
+      return q.width * q.height < area * 0.6 || (labelNodes.some(n => !d.contains(n)) && q.width * q.height < area * 0.95);
     });
-    for (const d of filled) { const q = d.getBoundingClientRect(); figBoxes.push([q.left, q.top, q.right, q.bottom]); }
+    // Pictures (a filled disc, a swatch, a preview, an <img>) as against line icons (an <svg>).
+    const pictures = [];
+    for (const d of filled) { const q = d.getBoundingClientRect(); figBoxes.push([q.left, q.top, q.right, q.bottom]); pictures.push([q.left, q.top, q.right, q.bottom]); }
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    const texts = [];
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       if (!n.textContent.trim() || decorative(n)) continue;
       if (filled.some(d => d.contains(n))) continue; // the disc is the figure, not its initial
       const host = n.parentElement;
       const hs = getComputedStyle(host);
-      if (!/^horizontal/.test(hs.writingMode)) continue;
-      const text = transform(n.textContent.replace(/\s+/g, ' ').trim(), hs.textTransform);
-      texts.push(text);
+      const raw = n.textContent;
+      const o = orient(hs, host);
+      // Emoji are pictures, not letters: each counts as a FIGURE with its whole glyph (it has no
+      // cap height and sits through the baseline), and the letters around it are the text.
+      const emo = [...raw.matchAll(EMOJI)];
+      for (const e of emo) {
+        const r0 = document.createRange();
+        r0.setStart(n, e.index); r0.setEnd(n, e.index + e[0].length);
+        const em = metrics(hs, e[0]);
+        for (const q of [...r0.getClientRects()].filter(q => q.width > 0 && q.height > 0)) {
+          if (o.upright) { figBoxes.push([q.left, q.top, q.right, q.bottom]); continue; }
+          const A = o.over.ax, lo = { x: q.left, y: q.top }, hi = { x: q.right, y: q.bottom };
+          const box = { x: [q.left, q.right], y: [q.top, q.bottom] };
+          if (o.over.sg < 0) { const bl = lo[A] + em.fontAsc; box[A] = [bl - em.asc, bl + em.desc]; }
+          else { const bl = hi[A] - em.fontAsc; box[A] = [bl - em.desc, bl + em.asc]; }
+          figBoxes.push([box.x[0], box.y[0], box.x[1], box.y[1]]);
+        }
+      }
+      let s0 = raw.search(/\S/), s1 = raw.length - (raw.match(/\s*$/)[0].length);
+      if (emo.length) {
+        // The letters: from the first non-space, non-emoji character to the last.
+        const mask = [...raw].map(() => true);
+        let k = 0; const units = [];
+        for (const ch of raw) { units.push([k, k + ch.length]); k += ch.length; }
+        for (const e of emo) units.forEach(([a, z], i) => { if (a >= e.index && z <= e.index + e[0].length) mask[i] = false; });
+        const ok = units.map(([a, z], i) => mask[i] && /\S/.test(raw.slice(a, z)) && !/[\uFE0F\u200D]/.test(raw.slice(a, z)));
+        const first = ok.indexOf(true), last = ok.lastIndexOf(true);
+        if (first < 0) { hosts.add(host); texts.push(raw.trim()); continue; }
+        s0 = units[first][0]; s1 = units[last][1];
+      }
+      const text = transform(raw.slice(s0, s1).replace(/\s+/g, ' ').trim(), hs.textTransform);
       const m = metrics(hs, text);
-      // The Range spans the text without its leading and trailing white space (a label split
-      // into "Create ", a name and " Hand" would otherwise start a space early).
-      const raw = n.textContent, s0 = raw.search(/\S/), s1 = raw.length - (raw.match(/\s*$/)[0].length);
       const range = document.createRange();
       range.setStart(n, s0); range.setEnd(n, s1);
       const rects = [...range.getClientRects()].filter(q => q.width > 0 && q.height > 0);
       if (!rects.length) continue;
+      texts.push(emo.length ? raw.trim() : text);
+      hosts.add(host);
+      inlineAxis = o.inl.ax;
       const symbol = !/[\p{L}\p{N}]/u.test(text);
+      if (!symbol) allSym = false;
       const allCaps = !/\p{Ll}/u.test(text) && /\p{Lu}/u.test(text);
       const ls = parseFloat(hs.letterSpacing) || 0;
+      const inkAsc = allCaps ? m.cap : m.asc;
       for (const q of rects) {
-        const baseline = q.top + m.fontAsc;
-        const top = baseline - (allCaps ? m.cap : m.asc);
-        const bot = symbol ? baseline + m.desc : baseline;
-        let left = q.left, right = q.right;
-        if (rects.length === 1) {
-          left = q.left - m.left;
-          right = q.left + m.right + Math.max(0, [...text].length - 1) * ls;
+        const lo = { x: q.left, y: q.top }, hi = { x: q.right, y: q.bottom };
+        const box = { x: [q.left, q.right], y: [q.top, q.bottom] };
+        if (!o.upright) {
+          // Across the line: baseline the font ascent in from the over edge; ink out to the ink ascent.
+          const A = o.over.ax;
+          if (o.over.sg < 0) { const bl = lo[A] + m.fontAsc; box[A] = [bl - inkAsc, symbol ? bl + m.desc : bl]; }
+          else { const bl = hi[A] - m.fontAsc; box[A] = [symbol ? bl - m.desc : bl, bl + inkAsc]; }
+          // Along the line: side bearings and letter spacing (one line only).
+          const L = o.inl.ax;
+          if (rects.length === 1) {
+            const extra = Math.max(0, [...text].length - 1) * ls;
+            if (o.inl.sg > 0) { const st = lo[L]; box[L] = [st - m.left, st + m.right + extra]; }
+            else { const st = hi[L]; box[L] = [st - m.right - extra, st + m.left]; }
+          }
         }
         // Truncated text paints no further than the control's own box.
-        left = Math.max(left, b.left); right = Math.min(right, b.right);
-        textBoxes.push([left, top, right, bot]);
+        const bx = [Math.max(box.x[0], b.left), Math.min(box.x[1], b.right)];
+        const by = [Math.max(box.y[0], b.top), Math.min(box.y[1], b.bottom)];
+        textBoxes.push([bx[0], by[0], bx[1], by[1]]);
+        textHost.push([[bx[0], by[0], bx[1], by[1]], host]);
       }
     }
     for (const ic of el.querySelectorAll('svg, img, canvas')) {
-      if (decorative(ic) || (ic.parentElement && ic.parentElement.closest('svg'))) continue; // nested svg
+      if (decorative(ic) || (ic.parentElement && ic.parentElement.closest('svg'))) continue;
       if (filled.some(d => d.contains(ic))) continue;
       const q = ic.getBoundingClientRect();
       if (q.width < 1 || q.height < 1) continue;
       figBoxes.push([q.left, q.top, q.right, q.bottom]);
+      if (ic.tagName !== 'svg' && ic.tagName !== 'SVG') pictures.push([q.left, q.top, q.right, q.bottom]);
     }
-    const union = (bs) => bs.reduce((u, q) => [Math.min(u[0], q[0]), Math.min(u[1], q[1]), Math.max(u[2], q[2]), Math.max(u[3], q[3])], [Infinity, Infinity, -Infinity, -Infinity]);
-    const cx = (u) => +(((u[0] + u[2]) / 2) - (b.left + b.right) / 2).toFixed(2);
-    const cy = (u) => +(((u[1] + u[3]) / 2) - (b.top + b.bottom) / 2).toFixed(2);
-    let dx = null, dy = null;
-    const all = [...textBoxes, ...figBoxes];
-    if (all.length) {
-      const u = union(all);
-      dx = cx(u); dy = cy(u);
-      // Icon BESIDE a label: the label is centred on its own axis too (an icon is not a licence to
-      // seat the label low). Icon ABOVE a label (a tab bar): likewise sideways.
-      if (textBoxes.length && figBoxes.length) {
-        const t = union(textBoxes), f = union(figBoxes);
-        const sideBySide = t[0] >= f[2] - 0.5 || t[2] <= f[0] + 0.5;
-        const stacked = t[1] >= f[3] - 0.5 || t[3] <= f[1] + 0.5;
-        if (sideBySide) { const d = cy(t); if (Math.abs(d) > Math.abs(dy)) dy = d; }
-        if (stacked) { const d = cx(t); if (Math.abs(d) > Math.abs(dx)) dx = d; }
+    // A face that is a small LAYOUT rather than a label (see TILES): two text blocks stacked (a
+    // title over a description, a name over an amount), or a large figure stacked with text (an
+    // avatar over a name, a theme preview over its name). A tab bar's line icon (an <svg>) over
+    // its label is a label: the two are centred together.
+    let layout = null;
+    {
+      const across = inlineAxis === 'y' ? [0, 2] : [1, 3];
+      const blocks = textHost.map(([q, h]) => ({ q, h: blockOf(h) }));
+      for (let i = 0; i < blocks.length && !layout; i++) for (let j = i + 1; j < blocks.length; j++) {
+        const a = blocks[i], c = blocks[j];
+        if (a.h === c.h) continue;
+        if (a.q[across[1]] <= c.q[across[0]] + 0.5 || c.q[across[1]] <= a.q[across[0]] + 0.5) { layout = 'stacked text'; break; }
+      }
+      if (!layout && textBoxes.length && pictures.length) {
+        const t = union(textBoxes);
+        for (const f of pictures) {
+          const stacked = t[1] >= f[3] - 0.5 || t[3] <= f[1] + 0.5;
+          if (stacked && ((f[3] - f[1]) >= 0.4 * b.height || (f[2] - f[0]) * (f[3] - f[1]) >= 0.2 * area)) { layout = 'figure over text'; break; }
+        }
       }
     }
-    const inkFail = [];
-    const tile = el.matches(TILES.join(',')), start = el.matches(START_ALIGNED.join(','));
-    if (!tile && !start && dx != null && Math.abs(dx) > 0.75) inkFail.push('dx');
-    if (!tile && dy != null && Math.abs(dy) > 0.75) inkFail.push('dy');
-    out.push({
-      view, el: desc(el), text: texts.join(' ').slice(0, 40), ...geo, dx, dy,
-      fail: [...geoFail, ...inkFail],
+    return { textU: textBoxes.length ? union(textBoxes) : null, figU: figBoxes.length ? union(figBoxes) : null,
+      texts, hosts: [...hosts], inlineAxis, nText: textBoxes.length, nFig: figBoxes.length, layout,
+      symbolOnly: textBoxes.length > 0 && allSym, parts: [...textBoxes, ...figBoxes] };
+  };
+  // Covered by something else (a fixed bar, a sheet): pixels cannot see it.
+  // ── The CSS rules behind a failure.
+  const mq = new Map();
+  const ctxOk = (ctx) => ctx.every(c => {
+    const k = JSON.stringify(c);
+    if (!mq.has(k)) { let v = true; try { if (c.media) v = matchMedia(c.media).matches; else if (c.supports) v = CSS.supports(c.supports); } catch { v = true; } mq.set(k, v); }
+    return mq.get(k);
+  });
+  // Specificity of one selector, as a sortable number (ids, classes/attributes/pseudo-classes,
+  // types). :is/:where/:not/:has count roughly — this ranks rules, it does not cascade them.
+  const specOf = (s) => {
+    const t = s.replace(/:where\([^)]*\)/g, '').replace(/::?[\w-]+/g, (m) => /^::/.test(m) ? ' ' : ' .x ');
+    const ids = (t.match(/#[\w-]+/g) || []).length;
+    const cls = (t.match(/\.[\w-]+|\[[^\]]*\]/g) || []).length;
+    const types = (t.replace(/\[[^\]]*\]|\([^)]*\)/g, ' ').match(/(^|[\s>+~(,])[a-zA-Z][\w-]*/g) || []).length;
+    return ids * 1e4 + cls * 100 + types;
+  };
+  const rulesFor = (el, props) => {
+    const out = [];
+    for (const rr of RULES) {
+      if (!rr.p.some(p => props.includes(p.split(':')[0]))) continue;
+      let spec = -1;
+      for (const s of rr.sel) { try { if (el.matches(s)) spec = Math.max(spec, specOf(s)); } catch {} }
+      // The universal reset (`* { margin: 0; padding: 0 }`) matches everything and explains nothing.
+      if (spec > 0 && ctxOk(rr.ctx)) out.push({ ...rr, spec });
+    }
+    // The rule that sizes and aligns it: the most specific, the later on a tie — last in the list.
+    return out.sort((a, b) => a.spec - b.spec || (a.f === b.f ? a.l - b.l : 0));
+  };
+  const ruleRefs = (el) => {
+    const rs = rulesFor(el, ALIGN_PROPS);
+    return rs.map(rr => ({ at: `${rr.f}:${rr.l}`, spec: rr.spec, sel: rr.s.slice(0, 90), set: rr.p.filter(p => ALIGN_PROPS.includes(p.split(':')[0])).join('; ').slice(0, 160) }));
+  };
+
+  const out = [];
+  let gid = (window.__guardGid || 0);
+  const record = (el, kind0, how0) => {
+    let kind = kind0, how = how0;
+    const cs = getComputedStyle(el);
+    const b = el.getBoundingClientRect();
+    const wg = b.width / g, hr = b.height / r;
+    const lo = layoutOffset(el);
+    const tr = (cs.translate && cs.translate !== 'none') ? cs.translate.split(/\s+/).map(parseFloat) : [0, 0];
+    const lx = (b.left + lo.dx - (tr[0] || 0) - ox) / g, ty = (b.top + lo.dy - (tr[1] || 0) - oy) / r;
+    const geo = { w: +wg.toFixed(2), h: +hr.toFixed(2), x: +lx.toFixed(2), y: +ty.toFixed(2) };
+    const geoFail = [];
+    if (kind !== 'strip') {
+      if (Math.abs(frac(wg)) > 0.05) geoFail.push('w');
+      if (Math.abs(frac(hr)) > 0.05) geoFail.push('h');
+      if (Math.abs(frac(lx)) > 0.05) geoFail.push('x');
+      if (Math.abs(frac(ty)) > 0.05) geoFail.push('y');
+    }
+    const ink = measureInk(el, b);
+    // A small layout, not a label (two text blocks, a big figure over text): a tile.
+    if ((kind === 'control' || kind === 'start') && ink.layout) { kind = 'tile'; how += ' / tile: ' + ink.layout; }
+    // A ROW: a list or menu row (a dropdown's items, a pick list), its label set at the start by
+    // design — nothing on the way from the label up to the control centres it, and the gap after
+    // the label is over 1g wider than the gap before it — or a label and a trailing item spread
+    // apart. Held like START_ALIGNED: box on the grid, label centred vertically.
+    if (kind === 'control' && ink.nText && (ink.textU || ink.figU)) {
+      const u = union([ink.textU, ink.figU].filter(Boolean));
+      const startGap = u[0] - b.left, endGap = b.right - u[2];
+      // Does anything between the label and the control centre it along the line? text-align
+      // counts where the label is inline content of the box that sets it; a flex or grid box by
+      // its justification (or the item's align-self / justify-self).
+      let centred = false, spread = false;
+      for (const h of ink.hosts) {
+        let inlineRun = true, child = null;
+        for (let a = h; a; child = a, a = a.parentElement) {
+          const s = getComputedStyle(a);
+          const flex = /flex/.test(s.display), grid = /grid/.test(s.display);
+          if (flex) {
+            const col = /column/.test(s.flexDirection);
+            if (!col && /center|space-around|space-evenly/.test(s.justifyContent)) centred = true;
+            if (col && /center/.test(s.alignItems)) centred = true;
+            if (!col && /space-between/.test(s.justifyContent) && a.children.length > 1) spread = true;
+            if (child && col && /center/.test(getComputedStyle(child).alignSelf)) centred = true;
+          } else if (grid) {
+            if (/center/.test(s.justifyItems) || /center/.test(s.justifyContent) || /center/.test(s.placeItems || '')) centred = true;
+            if (child && /center/.test(getComputedStyle(child).justifySelf)) centred = true;
+          } else if (inlineRun && /center/.test(s.textAlign)) centred = true;
+          inlineRun = /^inline/.test(s.display);
+          if (a === el) break;
+        }
+      }
+      // Spread apart however it is done (space-between, an auto margin, a trailing control): an
+      // empty run of over 2g between the parts of the face.
+      if (!spread && ink.parts.length > 1) {
+        const iv = ink.parts.map(q => ink.inlineAxis === 'y' ? [q[1], q[3]] : [q[0], q[2]]).sort((p, q) => p[0] - q[0]);
+        let end = iv[0][1];
+        for (const [a0, a1] of iv.slice(1)) { if (a0 - end > 2 * g) { spread = true; break; } end = Math.max(end, a1); }
+      }
+      // Set at the start by design: nothing centres it and the free space lies after it.
+      if (spread || (!centred && endGap - startGap > g)) { kind = 'start'; how += spread ? ' / row: spread' : ' / row: start-aligned'; }
+    }
+    // Labels the DOM does not hold as text: measured from pixels by the caller.
+    let needPx = null;
+    if (el.tagName === 'SELECT') needPx = { text: (el.selectedOptions[0] || {}).text || '' };
+    else if (el.tagName === 'INPUT' && /button|submit|reset/.test(el.type)) needPx = { text: el.value || '' };
+    else if (!ink.nText && !ink.nFig) { const pt = pseudoText(el); if (pt) needPx = { text: pt }; }
+    const id = ++gid;
+    el.setAttribute('data-guard-id', String(id));
+    const r2 = (u) => u ? u.map(v => +v.toFixed(4)) : null;
+    const item = {
+      view, kind, how, el: desc(el), cls: clsList(el), tag: el.tagName.toLowerCase(),
+      text: ink.texts.join(' ').slice(0, 40) || (needPx ? needPx.text.slice(0, 40) : '') || (el.getAttribute('aria-label') || el.title || '').slice(0, 40),
+      ...geo, geoFail,
+      box: { left: +b.left.toFixed(4), top: +b.top.toFixed(4), width: +b.width.toFixed(4), height: +b.height.toFixed(4) },
+      textU: r2(ink.textU), figU: r2(ink.figU), inlineAxis: ink.inlineAxis,
       ctx: (() => { const p = el.parentElement; return p ? desc(p) : ''; })(),
-    });
+      gid: id, needPx, nText: ink.nText, nFig: ink.nFig, symbolOnly: ink.symbolOnly, boxless: !hasBox(cs) && ![...el.querySelectorAll('*')].some(d => !d.closest('svg') && hasBox(getComputedStyle(d)) && hasLabel(d)),
+      full: b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight,
+      occluded: occluded(el, b),
+    };
+    if (needPx || ink.nText) {
+      item.font = { family: cs.fontFamily, weight: cs.fontWeight, style: cs.fontStyle, size: cs.fontSize, tt: cs.textTransform };
+    }
+    item._el = el;
+    item._hosts = ink.hosts;
+    out.push(item);
+  };
+  for (const el of cands) {
+    const kind = matchesAny(el, TILES) ? 'tile' : matchesAny(el, START_ALIGNED) ? 'start' : matchesAny(el, SWITCHES) ? 'switch'
+      : el.tagName === 'SELECT' ? 'field' : 'control';
+    record(el, kind, src.get(el));
   }
-  return { g: +g.toFixed(3), r: +r.toFixed(3), ox: +ox.toFixed(2), oy: +oy.toFixed(2), controls: out };
+  for (const el of document.querySelectorAll(STRIPS.join(','))) {
+    if (el.closest(excl)) continue;
+    const b = el.getBoundingClientRect();
+    if (b.width < 1 || b.height < 1 || !onScreen(b) || !visible(el) || clippedAway(el, b)) continue;
+    if (coverage(el, b).covered >= 0.9) continue;
+    record(el, 'strip', 'strip');
+  }
+  window.__guardGid = gid;
+  // The rules behind an item, asked for by the caller once it knows the item fails.
+  const byGid = new Map(out.map(it => [it.gid, it]));
+  window.__guardRuleRefs = (id) => {
+    const it = byGid.get(id);
+    if (!it) return null;
+    const lh = it._hosts.filter(h => h !== it._el);
+    // Styled inline (a React style={{}}): no stylesheet rule says it, so name that.
+    const inline = (e) => { const s = e.getAttribute('style') || ''; return /(height|padding|line-height|align|justify|display|place-)/.test(s) ? s.replace(/\s+/g, ' ').slice(0, 160) : null; };
+    return { rules: ruleRefs(it._el), labelRules: lh.length ? ruleRefs(lh[0]) : [], labelEl: lh.length ? desc(lh[0]) : null,
+      inlineStyle: inline(it._el), labelInlineStyle: lh.length ? inline(lh[0]) : null };
+  };
+  const plain = out.map(it => { const { _el, _hosts, ...rest } = it; return rest; });
+  return { g: +g.toFixed(3), r: +r.toFixed(3), ox: +ox.toFixed(2), oy: +oy.toFixed(2), controls: plain };
 }
 
+// ── Pixel ink. Labels are captured with their text painted, then with it transparent; the
+// difference is the label's painted ink. Batched per scan: one baseline capture of the viewport,
+// then one capture per PASS — a set of controls whose boxes do not overlap, all turned
+// transparent at once (a control and a badge inside it go in different passes).
+let PNG = null;
+try { PNG = require('../vite-app/node_modules/playwright-core/lib/utilsBundle.js').PNG; } catch {}
+const decode = (buf) => PNG.sync.read(buf);
+// In the page: freeze what follows currentColor (borders, rings, outlines, fills) so only the label
+// changes, and keep the colour of what is not the label — icons (svg), decoration (an absolutely
+// positioned badge), a filled figure (an avatar disc's initial); then turn the rest transparent.
+function pxApply(ids) {
+  if (!document.getElementById('guard-px-style')) {
+    const st = document.createElement('style');
+    st.id = 'guard-px-style';
+    st.textContent = '[data-guard-px], [data-guard-px] *, [data-guard-px]::before, [data-guard-px]::after, [data-guard-px] *::before, [data-guard-px] *::after { transition: none !important; caret-color: transparent !important; }'
+      + '[data-guard-px].guard-px-on, [data-guard-px].guard-px-on *, [data-guard-px].guard-px-on::before, [data-guard-px].guard-px-on::after, [data-guard-px].guard-px-on *::before, [data-guard-px].guard-px-on *::after { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; text-decoration-color: transparent !important; }';
+    document.head.appendChild(st);
+  }
+  for (const id of ids) {
+    const el = document.querySelector(`[data-guard-id="${id}"]`);
+    if (!el) continue;
+    const bb = el.getBoundingClientRect();
+    const area = bb.width * bb.height;
+    const notLabel = (n) => {
+      if (n.closest('svg')) return true;
+      for (let a = n; a && a !== el; a = a.parentElement) {
+        const s = getComputedStyle(a);
+        if (s.position === 'absolute' || s.position === 'fixed') return true;
+        const fill = (s.backgroundColor && !/rgba\(.*,\s*0\)$|transparent/.test(s.backgroundColor)) || s.backgroundImage !== 'none';
+        if (fill) { const q = a.getBoundingClientRect(); if (q.width * q.height < area * 0.6) return true; }
+      }
+      return false;
+    };
+    for (const n of [el, ...el.querySelectorAll('*')]) {
+      if ('__guardKeep' in n) continue;
+      const cs = getComputedStyle(n);
+      const keep = {};
+      for (const k of ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline-color', 'box-shadow', 'background-color', 'column-rule-color']) keep[k] = cs.getPropertyValue(k);
+      if (notLabel(n)) { keep.color = cs.color; keep['-webkit-text-fill-color'] = cs.webkitTextFillColor || cs.color; keep.fill = cs.fill; keep.stroke = cs.stroke; }
+      n.__guardKeep = n.getAttribute('style');
+      for (const [k, v] of Object.entries(keep)) if (v) n.style.setProperty(k, v, 'important');
+    }
+    el.setAttribute('data-guard-px', '');
+    el.classList.add('guard-px-on');
+  }
+}
+function pxRestore(ids) {
+  for (const id of ids) {
+    const el = document.querySelector(`[data-guard-id="${id}"]`);
+    if (!el) continue;
+    // The colour comes back while [data-guard-px] still holds transitions off — removed together,
+    // a `transition: color` on the control animates the label back from transparent, and WebKit
+    // leaves it there once a screenshot's animations:'disabled' cancels the transition. The
+    // attribute goes at the end of the pass (pxCleanup), after a style flush.
+    el.classList.remove('guard-px-on');
+    for (const n of [el, ...el.querySelectorAll('*')]) {
+      if (!('__guardKeep' in n)) continue;
+      if (n.__guardKeep == null) n.removeAttribute('style'); else n.setAttribute('style', n.__guardKeep);
+      delete n.__guardKeep;
+    }
+    for (const n of [el, ...el.querySelectorAll('*')]) void getComputedStyle(n).color;
+  }
+}
+const overlaps = (a, b) => a.left < b.left + b.width + 1 && b.left < a.left + a.width + 1 && a.top < b.top + b.height + 1 && b.top < a.top + a.height + 1;
+async function pixelPass(p, items) {
+  const out = new Map();
+  if (!items.length || !PNG) return out;
+  const passes = [];
+  for (const it of items) {
+    const ps = passes.find(ps => !ps.some(o => overlaps(o.box, it.box)));
+    if (ps) ps.push(it); else passes.push([it]);
+  }
+  const shot = async () => decode(await p.screenshot({ animations: 'disabled', caret: 'hide' }));
+  await p.evaluate(pxApply, []); // the style sheet, before the baseline (it turns transitions off)
+  await p.waitForTimeout(50);
+  const base = await shot();
+  const s = base.width / W; // device px per CSS px
+  for (const ps of passes) {
+    const ids = ps.map(i => i.gid);
+    await p.evaluate(pxApply, ids);
+    await p.waitForTimeout(30);
+    const img = await shot();
+    await p.evaluate(pxRestore, ids);
+    for (const it of ps) {
+      const b = it.box;
+      const X0 = Math.max(0, Math.floor(b.left * s)), Y0 = Math.max(0, Math.floor(b.top * s));
+      const X1 = Math.min(base.width, Math.ceil((b.left + b.width) * s)), Y1 = Math.min(base.height, Math.ceil((b.top + b.height) * s));
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let j = Y0; j < Y1; j++) for (let i = X0; i < X1; i++) {
+        const k = (j * base.width + i) * 4;
+        const d = Math.abs(base.data[k] - img.data[k]) + Math.abs(base.data[k + 1] - img.data[k + 1]) + Math.abs(base.data[k + 2] - img.data[k + 2]);
+        if (d > 60) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
+      }
+      if (Number.isFinite(x0)) out.set(it.gid, [x0 / s, y0 / s, (x1 + 1) / s, (y1 + 1) / s]);
+    }
+  }
+  // Nothing may stay transparent: a re-render between apply and restore can strand a marker.
+  const left = await p.evaluate(pxCleanup);
+  if (left) pxLeftovers.push(left);
+  return out;
+}
+const pxLeftovers = [];
+function pxCleanup() {
+  let n = 0;
+  for (const el of document.querySelectorAll('.guard-px-on')) { el.classList.remove('guard-px-on'); n++; }
+  for (const el of document.querySelectorAll('*')) {
+    if (!('__guardKeep' in el)) continue;
+    if (el.__guardKeep == null) el.removeAttribute('style'); else el.setAttribute('style', el.__guardKeep);
+    delete el.__guardKeep; n++;
+  }
+  // Every label is back at its colour with transitions still off; now let them on again.
+  for (const el of document.querySelectorAll('[data-guard-px]')) { for (const d of [el, ...el.querySelectorAll('*')]) void getComputedStyle(d).color; }
+  for (const el of document.querySelectorAll('[data-guard-px]')) el.removeAttribute('data-guard-px');
+  return n;
+}
+// The ink ascent of a string in a font (cap height for all caps), from canvas in the page.
+async function inkAscent(p, font, text) {
+  return p.evaluate(({ font, text }) => {
+    const t = font.tt === 'uppercase' ? text.toUpperCase() : font.tt === 'lowercase' ? text.toLowerCase() : text;
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = `${font.style} ${font.weight} 200px ${font.family}`;
+    const k = parseFloat(font.size) / 200;
+    const allCaps = !/\p{Ll}/u.test(t) && /\p{Lu}/u.test(t);
+    const symbol = !/[\p{L}\p{N}]/u.test(t);
+    return { asc: (allCaps ? c.measureText('H').actualBoundingBoxAscent : c.measureText(t).actualBoundingBoxAscent) * k, symbol };
+  }, { font, text });
+}
+
+// The centring verdict from the label's ink (text union + figure union) against the box.
+const unionOf = (bs) => bs.reduce((u, q) => [Math.min(u[0], q[0]), Math.min(u[1], q[1]), Math.max(u[2], q[2]), Math.max(u[3], q[3])], [Infinity, Infinity, -Infinity, -Infinity]);
+function finalize(c) {
+  const b = c.box, bx = b.left + b.width / 2, by = b.top + b.height / 2;
+  const cx = (u) => +(((u[0] + u[2]) / 2) - bx).toFixed(2), cy = (u) => +(((u[1] + u[3]) / 2) - by).toFixed(2);
+  const parts = [c.textU, c.figU].filter(Boolean);
+  let dx = null, dy = null;
+  if (parts.length) {
+    const u = unionOf(parts);
+    c.ink = u.map(v => +v.toFixed(2));
+    dx = cx(u); dy = cy(u);
+    // Icon BESIDE a label: the label is centred on its own axis too (an icon is not a licence to
+    // seat the label low). Icon ABOVE a label (a tab bar): likewise sideways.
+    if (c.textU && c.figU) {
+      const t = c.textU, f = c.figU;
+      const sideBySide = t[0] >= f[2] - 0.5 || t[2] <= f[0] + 0.5;
+      const stacked = t[1] >= f[3] - 0.5 || t[3] <= f[1] + 0.5;
+      if (sideBySide) { const d = cy(t); if (Math.abs(d) > Math.abs(dy)) dy = d; }
+      if (stacked) { const d = cx(t); if (Math.abs(d) > Math.abs(dx)) dx = d; }
+    }
+  } else c.ink = null;
+  c.dx = dx; c.dy = dy;
+  const inkFail = [];
+  const testX = c.kind === 'control' || c.kind === 'strip';
+  const testY = c.kind !== 'tile';
+  if (testX && dx != null && Math.abs(dx) > 0.75) inkFail.push('dx');
+  if (testY && dy != null && Math.abs(dy) > 0.75) inkFail.push('dy');
+  c.fail = [...c.geoFail, ...inkFail];
+  if (c.kind === 'strip') {
+    c.vertical = c.inlineAxis === 'y';
+    c.along = c.vertical ? dy : dx;
+    c.across = c.vertical ? dx : dy;
+  }
+}
 
 (async () => {
   const b = await webkit.launch();
-  const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 3 });
-  const t = token();
+  const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR });
+  const t = listOnly ? '' : token();
+  // Signed in as the admin, past the first-run wizard (the onboarding view clears the flag).
   await ctx.addInitScript(({ t, u }) => {
+    if (sessionStorage.getItem('guard-signed-out')) return;
     localStorage.setItem('token', t); localStorage.setItem('username', u);
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
+    if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
   }, { t, u: USER });
   const p = await ctx.newPage();
-  await p.goto(base + '/' + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
-  await p.waitForTimeout(4000);
-  const desktop = await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
+  const home = base + '/' + (overlay ? '?gridOverlay=1' : '');
+  if (!listOnly) { await p.goto(home, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(4000); }
+  const desktop = !listOnly && await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
   const all = [];
+  const visited = [], unreachable = [];
   let grid = null;
+  const pxVerify = [];
+  const notes = [];
   const run = async (view) => {
     await p.waitForTimeout(300);
-    const res = await p.evaluate(scan, { CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLASS_SRC: GROUP_CLASS.source, view });
+    // A scrollIntoView can scroll an overflow:hidden ancestor of the whole app (the .app-shell),
+    // lifting the top bar out of the viewport. Put it back, and say so: it is a bug of its own.
+    const lifted = await p.evaluate(() => {
+      const out = [];
+      const bar = document.querySelector('.top-bar');
+      for (let a = bar && bar.parentElement; a; a = a.parentElement) {
+        if ((a.scrollTop || a.scrollLeft) && !/(auto|scroll)/.test(getComputedStyle(a).overflowY)) {
+          out.push(`${a.tagName.toLowerCase()}.${String(a.className).trim().split(/\s+/).join('.')} scrolled ${a.scrollTop}px (overflow ${getComputedStyle(a).overflowY})`);
+          a.scrollTop = 0; a.scrollLeft = 0;
+        }
+      }
+      return out;
+    });
+    for (const l of lifted) notes.push({ view, note: l });
+    if (await p.evaluate(() => !window.__guardRules)) await p.evaluate((rules) => { window.__guardRules = rules; }, RULES.map(r => ({ f: r.f, l: r.l, s: r.s, sel: r.sel, ctx: r.ctx, p: r.p })));
+    const res = await p.evaluate(scan, { CONTROLS, INTERACTIVE, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, SWITCHES, STRIPS, ALIGN_PROPS, GROUP_CLASS_SRC: GROUP_CLASS.source, view });
     grid = grid || res;
+    const pxItems = res.controls.filter(c => c.full && !c.occluded && (c.needPx || c.nText));
+    const pxInk = await pixelPass(p, pxItems);
+    for (const c of res.controls) {
+      const canPx = c.full && !c.occluded;
+      if (c.needPx && canPx) {
+        // The whole label from pixels; across the line, ink ascent down from the ink's top edge.
+        const ink = pxInk.get(c.gid);
+        if (ink) {
+          const m = c.needPx.text ? await inkAscent(p, c.font, c.needPx.text) : { asc: 0, symbol: true };
+          const bot = m.symbol || !m.asc ? ink[3] : Math.min(ink[3], ink[1] + m.asc);
+          c.textU = [ink[0], ink[1], ink[2], bot].map(v => +v.toFixed(4));
+          c.inkFrom = 'pixels';
+        } else c.inkFrom = 'none';
+      } else if (c.nText && canPx) {
+        // Along the line, the painted ink (canvas side bearings miss tabular figures, a fallback
+        // font's ▾, kerning); across it, the cap-to-baseline convention from the font metrics.
+        const ink = pxInk.get(c.gid);
+        if (ink && c.textU && c.symbolOnly) {
+          // A symbol (×, ←, ›, +) has no cap height or baseline to go by, and canvas may draw it in
+          // another fallback font than the page: its painted ink, both axes.
+          c.textU = ink.map(v => +v.toFixed(4));
+          c.inkFrom = 'pixels (symbol)';
+        } else if (ink && c.textU) {
+          const m = c.textU.slice();
+          if (c.inlineAxis === 'y') { c.textU[1] = +ink[1].toFixed(4); c.textU[3] = +ink[3].toFixed(4); }
+          else { c.textU[0] = +ink[0].toFixed(4); c.textU[2] = +ink[2].toFixed(4); }
+          c.inkFrom = 'metrics+pixels';
+          if (verifyInk) {
+            const A = c.inlineAxis === 'y' ? [1, 3] : [0, 2], B = c.inlineAxis === 'y' ? [0, 2] : [1, 3];
+            // Across the line: pixels include descenders, so compare the edge away from them.
+            const over = c.inlineAxis === 'y' ? Math.abs(ink[0] - m[0]) : Math.abs(ink[1] - m[1]);
+            const along = Math.max(Math.abs(ink[A[0]] - m[A[0]]), Math.abs(ink[A[1]] - m[A[1]]));
+            pxVerify.push({ view, el: c.el, text: c.text, kind: c.kind, metric: m, pixels: ink.map(x => +x.toFixed(2)), over: +over.toFixed(2), along: +along.toFixed(2) });
+            void B;
+          }
+        } else c.inkFrom = 'metrics';
+      } else c.inkFrom = c.needPx ? 'none (covered)' : 'metrics';
+      finalize(c);
+      if (c.fail.length) {
+        const refs = await p.evaluate((id) => window.__guardRuleRefs && window.__guardRuleRefs(id), c.gid);
+        if (refs) Object.assign(c, refs);
+      }
+      delete c.font;
+    }
     all.push(...res.controls);
     if (shots) {
       fs.mkdirSync(shots, { recursive: true });
       await p.screenshot({ path: `${shots}/${W}x${H}-${view.replace(/[^\w-]+/g, '_')}.png` });
     }
   };
+  let lastView = '';
   const scrollMain = async (n) => {
     for (let i = 0; i < n; i++) {
       await p.mouse.move(W / 2, H / 2);
@@ -357,141 +1127,95 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       await run(lastView + ' (scrolled)');
     }
   };
-  let lastView = '';
-  const want = (v) => !only || only.split(',').some(o => v.startsWith(o.trim()));
+  const want = (v) => (!only || only.split(',').some(o => v.startsWith(o.trim()))) && !(skipViews && skipViews.split(',').some(o => v.startsWith(o.trim())));
   const nav = async (name) => {
     // Phone: the bottom nav. Desktop: the rail.
     const sel = desktop ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
-    // force with the overlay on: its admin readout panel sits over the rail's foot.
-    await p.locator(sel).first().click({ timeout: 4000, force: overlay });
+    await p.locator(sel).first().click({ timeout: 8000, force: overlay });
     await p.waitForTimeout(1800);
   };
   const menu = async (name, railName) => {
     if (desktop) return nav(railName);
-    await p.locator('.username-chip').first().click({ timeout: 4000 });
+    await p.locator('.username-chip').first().click({ timeout: 8000 });
     await p.waitForTimeout(400);
-    await p.getByRole('button', { name, exact: true }).first().click({ timeout: 4000 });
+    await p.getByRole('button', { name, exact: true }).first().click({ timeout: 8000 });
     await p.waitForTimeout(1800);
+  };
+  // The first VISIBLE match: the desktop keeps the phone's panels mounted and hidden.
+  const click = async (sel, wait = 700, opts = {}) => {
+    await p.locator(sel).filter({ visible: true }).first().click({ timeout: 8000, force: overlay || opts.force });
+    await p.waitForTimeout(wait);
   };
   // Every view starts from a fresh load, so a panel or menu left open by the last one cannot
   // cover this one.
   const fresh = async () => {
-    await p.goto(base + '/' + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
+    await p.goto(home, { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000, force: overlay }).catch(() => {});
   };
-  const step = async (view, fn, scrolls = 0) => {
-    if (!want(view)) return;
-    lastView = view;
-    try { await fresh(); await fn(); await run(view); await scrollMain(scrolls); }
-    catch (e) { console.log(`  (view ${view} skipped: ${e.message.split('\n')[0]})`); }
-  };
+  const views = [];
+  const step = (view, fn, scrolls = 0, opts = {}) => views.push({ view, fn, scrolls, opts });
 
-  await step('schedule', () => nav('Schedule'), 2);
-  await step('filters', async () => {
+  // ── Views. Each opens from a fresh load; one that does not open is reported, not fatal.
+  step('schedule', () => nav('Schedule'), 2);
+  step('filters', async () => { await nav('Schedule'); await click('.filter-chip-square', 800); });
+  step('card', async () => { await nav('Schedule'); await click('.cal-event-row:not(.open):not(.past) .cal-event-bar', 900); }, 1);
+  step('myschedule', () => desktop ? nav('Schedule') : menu('My Schedule', 'Schedule'), 1);
+  step('dashboard', () => nav('Dashboard'), 1);
+  step('social', () => nav('Social'), 1);
+  step('results', () => menu('Results & Tracking', 'Results'), 1);
+  step('settings', () => menu('Settings', 'Settings'), 2);
+  step('cash-live', () => nav('Cash'), 1);
+  step('cash-heatmaps', async () => { await nav('Cash'); await click('.cash-mode-tabs button:has-text("Heatmaps")', 1500); }, 1);
+  step('hands', () => nav('Hands'), 1);
+  step('calendar', async () => { await nav('Schedule'); await click('.filter-chip-square[title="Calendar view"]', 1500); }, 1);
+  step('calendar-filters', async () => {
     await nav('Schedule');
-    await p.locator('.filter-chip-square').first().click({ timeout: 4000 });
-    await p.waitForTimeout(800);
-  }, 0);
-  await step('card', async () => {
-    await nav('Schedule');
-    await p.locator('.cal-event-row:not(.open) .cal-event-bar').first().click({ timeout: 4000 });
-    await p.waitForTimeout(900);
-  }, 1);
-  await step('myschedule', () => desktop ? nav('Schedule') : menu('My Schedule', 'Schedule'), 1);
-  await step('dashboard', () => nav('Dashboard'), 1);
-  await step('social', () => nav('Social'), 1);
-  await step('results', () => menu('Results & Tracking', 'Results'), 1);
-  await step('settings', () => menu('Settings', 'Settings'), 2);
-  await step('cash-live', () => nav('Cash'), 1);
-  await step('cash-heatmaps', async () => {
-    await nav('Cash');
-    await p.locator('.cash-mode-tabs button:has-text("Heatmaps")').first().click({ timeout: 4000 });
-    await p.waitForTimeout(1500);
-  }, 1);
-  await step('hands', () => nav('Hands'), 1);
-  // Beyond the core list: the Calendar view (month and date buttons) with its filter sheet, and
-  // the bankroll sheet behind Results' Manage.
-  await step('calendar', async () => {
-    await nav('Schedule');
-    await p.locator('.filter-chip-square[title="Calendar view"]').first().click({ timeout: 4000 });
-    await p.waitForTimeout(1500);
-  }, 1);
-  await step('calendar-filters', async () => {
-    await nav('Schedule');
-    await p.locator('.filter-chip-square[title="Calendar view"]').first().click({ timeout: 4000 });
-    await p.waitForTimeout(1500);
-    await p.locator('.filter-chip-square:not([title])').last().click({ timeout: 4000 });
-    await p.waitForTimeout(800);
-  }, 0);
-  await step('bankrolls', async () => {
-    await menu('Results & Tracking', 'Results');
-    await p.locator('.bk-head-btn').first().click({ timeout: 4000 });
-    await p.waitForTimeout(800);
-  }, 0);
-  // The bankroll dashboard (the bankroll strip's Dashboard button): each of its four tabs, and
-  // the CSV import step with a file mapped.
+    await click('.filter-chip-square[title="Calendar view"]', 1500);
+    await click('.filter-chip-square:not([title]):visible', 800);
+  });
+  step('bankrolls', async () => { await menu('Results & Tracking', 'Results'); await click('.bk-head-btn', 800); });
   const dash = async (tab) => {
     await menu('Results & Tracking', 'Results');
-    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
-    await p.waitForTimeout(1500);
-    if (tab) await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
-    await p.waitForTimeout(600);
+    await click('.bk-head-btn:has-text("Dashboard")', 1500);
+    if (tab) await click(`.an-sheet .bk-seg-btn:has-text("${tab}")`, 600);
   };
-  await step('bankroll-dashboard', () => dash(null), 4);   // the Overview: hero, graph, statistics, latest sessions
-  await step('bankroll-rules', () => dash('Rules'), 2);
-  await step('bankroll-goals', () => dash('Goals'), 1);
-  // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
-  // dashboard) with a filter on, so selected and disabled chips are both measured.
-  await step('bankroll-reports', () => dash('Reports'), 3);
-  await step('bankroll-report-filters', async () => {
+  step('bankroll-dashboard', () => dash(null), 4);
+  step('bankroll-rules', () => dash('Rules'), 2);
+  step('bankroll-goals', () => dash('Goals'), 1);
+  step('bankroll-reports', () => dash('Reports'), 3);
+  step('bankroll-report-filters', async () => {
     await dash('Reports');
-    await p.locator('.br-bar .bk-btn').first().click({ timeout: 4000, force: overlay });
-    await p.waitForTimeout(800);
-    await p.locator('.br-fsheet .br-chip:has-text("Cash")').first().click({ timeout: 4000, force: overlay });
-    await p.waitForTimeout(400);
+    await click('.br-bar .bk-btn', 800);
+    await click('.br-fsheet .br-chip:has-text("Cash")', 400);
   }, 3);
-  await step('bankroll-import', async () => {
+  step('bankroll-import', async () => {
     await dash('Import');
-    await p.locator('.an-sheet button:has-text("Import CSV")').click({ timeout: 4000 });
+    await click('.an-sheet button:has-text("Import CSV")', 300);
     await p.locator('.an-sheet input[type=file]').setInputFiles({
       name: 'check.csv', mimeType: 'text/csv',
       buffer: Buffer.from(['Date,Event,Buy-in,Winnings', '2024-03-02,Check Event,215,0', '2024-03-09,Check Event,215,900', ''].join('\n')),
     });
     await p.waitForTimeout(500);
   }, 2);
-  // Results > Cash (cash sessions beta), screen by screen: the running session (it opens by itself
-  // while one runs) with its rebuy and cash-out panels; the list (Sessions | Stats, the live row,
-  // month headers, rows); Stats; a session's page; the add form with More open (the start form has
-  // the same fields and is only reachable with no session running); then the live-session bar over the nav (only drawn while the account has a session running).
   const cashHalf = async (...steps) => {
     await menu('Results & Tracking', 'Results');
-    await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000, force: overlay });
-    await p.waitForTimeout(1500);
-    for (const sel of steps) {
-      await p.locator(sel).first().click({ timeout: 4000, force: overlay });
-      await p.waitForTimeout(700);
-    }
+    await click('.results-kind-tabs button:has-text("Cash")', 1500);
+    for (const sel of steps) await click(sel, 700);
   };
   const csBack = '.cs-head button:has-text("Sessions")';
-  await step('cash-sessions-live', () => cashHalf(), 2);
-  await step('cash-sessions-live-rebuy', () => cashHalf('.cs-livescreen button:has-text("Rebuy")'), 1);
-  await step('cash-sessions-live-end', () => cashHalf('.cs-livescreen button:has-text("Cash out")'), 2);
-  await step('cash-sessions', () => cashHalf(csBack), 2);
-  await step('cash-sessions-stats', () => cashHalf(csBack, '.cs-tabs button:has-text("Stats")'), 1);
-  await step('cash-sessions-detail', () => cashHalf(csBack, '.cs-row'), 2);
-  await step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
-  await step('cash-bar', async () => {
-    await cashHalf();
-    await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 4000, force: overlay });
-    await p.waitForTimeout(600);
-  }, 0);
-  // Expenses & income (admin beta, below the Results summary) and its sheets.
+  step('cash-sessions-live', () => cashHalf(), 2);
+  step('cash-sessions-live-rebuy', () => cashHalf('.cs-livescreen button:has-text("Rebuy")'), 1);
+  step('cash-sessions-live-end', () => cashHalf('.cs-livescreen button:has-text("Cash out")'), 2);
+  step('cash-sessions', () => cashHalf(csBack), 2);
+  step('cash-sessions-stats', () => cashHalf(csBack, '.cs-tabs button:has-text("Stats")'), 1);
+  step('cash-sessions-detail', () => cashHalf(csBack, '.cs-row'), 2);
+  step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
+  step('cash-bar', async () => { await cashHalf(); await click('.results-kind-tabs button:has-text("Tournaments")', 600); });
   const toExpenses = async () => {
     await menu('Results & Tracking', 'Results');
-    await p.locator('.tx-sec').first().waitFor({ timeout: 4000 });
-    // Scroll the content area only. scrollIntoView would also nudge the window (11px measured),
-    // moving the .top-bar origin off its line and failing every control on the page.
+    await p.locator('.tx-sec').first().waitFor({ timeout: 8000 });
+    // Scroll the content area only (scrollIntoView would nudge the window off the .top-bar origin).
     await p.evaluate(() => {
       const ca = document.querySelector('.content-area') || document.scrollingElement;
       const s = document.querySelector('.tx-sec');
@@ -500,45 +1224,348 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     });
     await p.waitForTimeout(500);
   };
-  await step('expenses', toExpenses, 0);
-  await step('expense-add', async () => {
+  step('expenses', toExpenses);
+  step('expense-add', async () => { await toExpenses(); await click('.tx-sec .bk-head-btn', 800); });
+  step('expenses-all', async () => { await toExpenses(); await p.locator('.tx-sec .bk-actions .bk-btn').nth(1).click({ timeout: 8000 }); await p.waitForTimeout(800); });
+  step('trip', async () => {
     await toExpenses();
-    await p.locator('.tx-sec .bk-head-btn').first().click({ timeout: 4000 });
-    await p.waitForTimeout(800);
-  }, 0);
-  await step('expenses-all', async () => {
-    await toExpenses();
-    await p.locator('.tx-sec .bk-actions .bk-btn').nth(1).click({ timeout: 4000 });
-    await p.waitForTimeout(800);
-  }, 0);
-  await step('trip', async () => {
-    await toExpenses();
-    await p.locator('.tx-sec .bk-actions .bk-btn').nth(0).click({ timeout: 4000 });
+    await p.locator('.tx-sec .bk-actions .bk-btn').nth(0).click({ timeout: 8000 });
     await p.waitForTimeout(600);
-    await p.locator('.tx-trip-row').first().click({ timeout: 4000 });
+    await click('.tx-trip-row', 1000);
+  });
+
+  // ── 2026-10-11: every other view and state that has controls.
+  // A second scan inside one view, under the same name (merged in the report).
+  const also = (label) => run(`${lastView} (${label})`);
+  const vis = (sel) => p.locator(sel).filter({ visible: true });
+  const exists = async (sel) => (await vis(sel).count()) > 0;
+  const tap = async (sel, wait = 700) => { await vis(sel).first().click({ timeout: 8000, force: overlay }); await p.waitForTimeout(wait); };
+  // Scroll the main content (not the window) so `sel` sits near the top of the viewport.
+  const reveal = async (sel, margin = 60) => {
+    const loc = vis(sel).first();
+    await loc.waitFor({ timeout: 8000 });
+    await loc.evaluate((el, margin) => {
+      let sc = el.parentElement;
+      while (sc && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight + 1)) sc = sc.parentElement;
+      sc = sc || document.scrollingElement;
+      const top = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top;
+      sc.scrollTop += Math.round(el.getBoundingClientRect().top - top - margin);
+      window.scrollTo(0, 0);
+    }, margin);
+    await p.waitForTimeout(500);
+  };
+  // A view the UI has no way into (Staking): set it the way the app's own components do, through
+  // the onNavigate prop React hands them.
+  const goView = async (v) => {
+    const ok = await p.evaluate((v) => {
+      for (const el of document.querySelectorAll('.tab-panel *, .dk-rail *')) {
+        const k = Object.keys(el).find(k => k.startsWith('__reactFiber'));
+        if (!k) continue;
+        for (let f = el[k]; f; f = f.return) if (f.memoizedProps && typeof f.memoizedProps.onNavigate === 'function') { f.memoizedProps.onNavigate(v); return true; }
+      }
+      return false;
+    }, v);
+    if (!ok) throw new Error('no onNavigate to reach ' + v);
+    await p.waitForTimeout(1800);
+  };
+  // Top bar: the user menu, notifications, the live-update panel and its tabs.
+  step('user-menu', () => click('.username-chip', 600));
+  step('notifications', () => click('.notif-btn', 900), 1);
+  step('live-update', async () => {
+    await click('.live-update-btn', 900);
+    const tabs = await p.locator('.live-update-tab').count();
+    for (let i = 1; i < tabs; i++) {
+      await p.locator('.live-update-tab').nth(i).click({ timeout: 3000 }).catch(() => {});
+      await p.waitForTimeout(500);
+      await also('tab ' + (i + 1));
+    }
+  }, 1);
+  // Schedule: the location dropdown, the filter sheet scrolled, an open card's conditional UI.
+  step('location-dropdown', async () => { await nav('Schedule'); await tap('.filter-chip:not(.filter-chip-square)', 900); }, 1);
+  step('filters-scrolled', async () => { await nav('Schedule'); await tap('.filter-chip-square', 800); }, 2);
+  step('card-saved', async () => {
+    await nav('Schedule');
+    await tap('.cal-event-row.saved:not(.open) .cal-event-bar', 900);
+  }, 1);
+  // My Schedule: an expanded card, its "if I bag / bust" panel, export, travel.
+  const mySched = async () => {
+    if (desktop) { await nav('Schedule'); return '.dk-pane:not(.dk-pane-list) '; }
+    await menu('My Schedule', 'Schedule');
+    return '.tab-panel[data-tab="schedule"] ';
+  };
+  step('myschedule-card', async () => { const s = await mySched(); await tap(s + '.cal-event-row:not(.open):not(.past) .cal-event-bar', 900); }, 1);
+  step('myschedule-conditional', async () => {
+    const s = await mySched();
+    await tap(s + '.cal-event-row:not(.open):not(.past) .cal-event-bar', 900);
+    await tap(s + '.cal-event-row.open .condition-btn', 900);
+  }, 1);
+  step('myschedule-conditional-set', async () => {
+    const s = await mySched();
+    await tap(s + '.cal-event-row.conditional:not(.open) .cal-event-bar', 900);
+  }, 1);
+  step('myschedule-export', async () => { await mySched(); await tap('button[title="Export schedule"]', 900); }, 1);
+  step('myschedule-travel', async () => { await mySched(); await tap('button:has-text("Travel")', 900); });
+  // Calendar: another day, and a card open in it.
+  step('calendar-day', async () => {
+    await nav('Schedule');
+    await tap('.filter-chip-square[title="Calendar view"]', 1500);
+    await vis('.cal-date-btn').nth(3).click({ timeout: 8000 });
+    await p.waitForTimeout(900);
+    await also('day');
+    await tap('.cal-event-row:not(.open) .cal-event-bar', 900);
+  }, 1);
+  // Dashboard: every Up Next card (the real carousel — playing, bagged, finished, not started —
+  // then the D toggle's demo cards), the playing card's Bust menu and its Update / Bag panels, the
+  // results header's Reset → Confirm / Cancel, and the P&L dropdowns open.
+  const upNextAll = async (tag) => {
+    const n = Math.min(12, await p.locator('.dash-event-card').count());
+    for (let i = 1; i < n; i++) {
+      const next = vis('.dash-upnext-step[aria-label="Next event"]').first();
+      const dot = vis('.dash-upnext-dot').nth(i);
+      if (await next.count() && !(await next.isDisabled().catch(() => true))) await next.click({ timeout: 3000 }).catch(() => {});
+      else if (await dot.count()) await dot.click({ timeout: 3000, force: true }).catch(() => {});
+      else break;
+      await p.waitForTimeout(700);
+      await also(`${tag} card ${i + 1}`);
+    }
+  };
+  step('dashboard-upnext', async () => { await nav('Dashboard'); await also('card 1'); await upNextAll('real'); });
+  step('dashboard-demo', async () => {
+    await nav('Dashboard');
+    await tap('.grid-dev-toggle:has-text("D")', 1200);
+    await also('demo card 1');
+    await upNextAll('demo');
+  });
+  step('dashboard-bust-menu', async () => { await nav('Dashboard'); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
+  step('dashboard-update', async () => { await nav('Dashboard'); await tap('.dash-event-card.playing .dash-update-btn', 1000); }, 1);
+  step('dashboard-bag', async () => { await nav('Dashboard'); await tap('.dash-event-card.playing .dash-bag-btn', 1000); }, 1);
+  step('dashboard-reset', async () => { await nav('Dashboard'); await reveal('.dash-results-header'); await tap('.dash-results-reset', 600); });
+  step('dashboard-pl-buyins', async () => { await nav('Dashboard'); await reveal('.dash-results-header'); await vis('.dash-pl-btn').nth(0).click({ timeout: 8000 }); await p.waitForTimeout(700); });
+  step('dashboard-pl-cashes', async () => { await nav('Dashboard'); await reveal('.dash-results-header'); await vis('.dash-pl-btn').nth(1).click({ timeout: 8000 }); await p.waitForTimeout(700); });
+  // Social: search, a buddy, a group (its chat), creating one.
+  step('social-search', async () => { await nav('Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
+  step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);
+  step('social-group', async () => { await nav('Social'); await tap('.social-group-card', 1500); }, 1);
+  step('social-create-group', async () => { await nav('Social'); await tap('.social-new-btn', 900); });
+  // Hands: every game family's picker, hand entry step by step, the replayer on a saved hand
+  // (transport, settings, share).
+  step('hands-games', async () => {
+    await nav('Hands');
+    const tabs = vis('.game-tab-btn');
+    const n = await tabs.count();
+    for (let i = 1; i < n; i++) { await tabs.nth(i).click({ timeout: 3000 }); await p.waitForTimeout(600); await also('family ' + (i + 1)); }
+  });
+  step('hands-entry', async () => {
+    await nav('Hands');
+    await tap('button:has-text("Create No Limit")', 1500);
+    await also('step 1');
+    for (let i = 2; i <= 6; i++) {
+      const next = vis('.replayer-entry-view button:has-text("Next"), .replayer-entry-view button:has-text("Continue")').first();
+      if (!(await next.count())) break;
+      await next.click({ timeout: 3000 }).catch(() => {});
+      await p.waitForTimeout(900);
+      await also('step ' + i);
+    }
+  }, 1);
+  step('hands-entry-plo', async () => {
+    await nav('Hands');
+    await tap('.game-fave-btn:has-text("PLO")', 600);
+    await tap('button:has-text("Create ")', 1500);
+  }, 1);
+  const openHand = async () => { await nav('Hands'); await tap('.replayer-hand-card.is-row', 2000); };
+  step('replayer', async () => {
+    await openHand();
+    for (const t of ['Forward', 'Forward', 'End']) { if (await exists(`button[title="${t}"]`)) await tap(`button[title="${t}"]`, 500); }
+    await also('advanced');
+  }, 1);
+  step('replayer-settings', async () => { await openHand(); await tap('button[title="Replayer Settings"]', 900); }, 2);
+  step('replayer-table-settings', async () => { await openHand(); await tap('[aria-label="Table settings"]', 900); }, 1);
+  step('replayer-share', async () => {
+    await openHand();
+    for (const s of ['button[title*="Share"]', 'button[aria-label*="Share"]', 'button:has-text("Share")']) if (await exists(s)) { await tap(s, 900); return; }
+    throw new Error('no share button on the replayer');
+  }, 1);
+  // Cash: the location picker.
+  step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);
+  // Results: the log form, a row in edit, the tax report, the share menu, the analytics sheet.
+  step('results-log', async () => { await menu('Results & Tracking', 'Results'); await tap('button:has-text("+ Log Result")', 900); }, 2);
+  step('results-edit', async () => {
+    await menu('Results & Tracking', 'Results');
+    const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
+    await reveal(sel, 200);
+    await tap(sel, 900);
+  }, 1);
+  step('results-tax', async () => { await menu('Results & Tracking', 'Results'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
+  step('results-share', async () => { await menu('Results & Tracking', 'Results'); await tap('button[title="Share & Social"]', 900); }, 1);
+  step('results-analytics', async () => {
+    await menu('Results & Tracking', 'Results');
+    await reveal('.an-launch', 200);
+    await tap('.an-launch', 1500);
+    await also('open');
+    const tabs = vis('.an-sheet [role="tab"], .an-sheet .bk-seg-btn, .an-sheet .an-tab');
+    const n = await tabs.count();
+    for (let i = 1; i < Math.min(n, 8); i++) { await tabs.nth(i).click({ timeout: 3000 }).catch(() => {}); await p.waitForTimeout(700); await also('tab ' + (i + 1)); }
+  }, 2);
+  // Settings: scrolled to the foot, and the delete-account confirmation open.
+  step('settings-delete', async () => {
+    await menu('Settings', 'Settings');
+    const sel = '.settings-row-btn:has-text("Delete account")';
+    await reveal(sel, 300);
+    await tap(sel, 700);
+  }, 1);
+  // Admin.
+  step('admin', () => menu('Admin', 'Admin'), 3);
+  step('batches', () => menu('New Events', 'New Events'), 2);
+  // Staking: no way in from the UI (nothing in it navigates to 'staking'), so through onNavigate.
+  step('staking', () => goView('staking'), 1);
+  for (const [name, sel] of [['summary', 'button:has-text("Summary")'], ['backers', 'button:has-text("Backers")'], ['series', 'button:has-text("+ Series")'], ['settings', 'button:has-text("⚙")']]) {
+    step('staking-' + name, async () => { await goView('staking'); await tap('.tab-panel[data-tab="staking"] ' + sel, 1200); }, 1);
+  }
+  // The first-run wizard, step by step (re-opened the way the location menu does).
+  step('onboarding', async () => {
+    await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
     await p.waitForTimeout(1000);
-  }, 0);
+    if (!(await exists('button:has-text("Skip")'))) throw new Error('the wizard did not open');
+    await also('step 1');
+    for (let i = 2; i <= 6; i++) {
+      // pick something on the step so Next is live
+      const opt = vis('.onboarding-option, [role="radio"], [role="checkbox"], button:has-text("Las Vegas")').first();
+      if (await opt.count()) await opt.click({ timeout: 2000 }).catch(() => {});
+      const next = vis('button:has-text("Next"), button:has-text("Done"), button:has-text("Finish"), button:has-text("Get started")').first();
+      if (!(await next.count())) break;
+      await next.click({ timeout: 3000 }).catch(() => {});
+      await p.waitForTimeout(800);
+      if (!(await exists('button:has-text("Skip")'))) break;
+      await also('step ' + i);
+    }
+  }, 0, { noSkip: true });
+  // Signed out: the login, register and forgot-password screens; with CHECK_FRESH_USER, a
+  // password login to an account with no real name (the real-name prompt), then its wizard.
+  const signedOut = async () => {
+    await p.evaluate(() => { sessionStorage.setItem('guard-signed-out', '1'); localStorage.removeItem('token'); localStorage.removeItem('username'); sessionStorage.removeItem('token'); });
+    await p.goto(home, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(2500);
+  };
+  step('auth-login', signedOut, 0, { signedOut: true });
+  step('auth-register', async () => {
+    await signedOut();
+    await tap('button:has-text("Create account"), button:has-text("Sign up"), button:has-text("Register"), a:has-text("Sign up")', 900);
+  }, 1, { signedOut: true });
+  step('auth-forgot', async () => {
+    await signedOut();
+    await tap('button:has-text("Forgot"), a:has-text("Forgot")', 900);
+  }, 0, { signedOut: true });
+  step('real-name-prompt', async () => {
+    const u = process.env.CHECK_FRESH_USER, pw = process.env.CHECK_FRESH_PASSWORD;
+    if (!u || !pw) throw new Error('needs CHECK_FRESH_USER / CHECK_FRESH_PASSWORD (an account with no real name)');
+    await signedOut();
+    await p.evaluate(() => { localStorage.removeItem('onboarded'); localStorage.removeItem('onboardComplete'); localStorage.removeItem('hasOnboarded'); sessionStorage.setItem('guard-onboarding', '1'); });
+    await vis('input[name="email"], input[type="email"], input[name="username"]').first().fill(u);
+    await vis('input[type="password"]').first().fill(pw);
+    await vis('button[type="submit"]').first().click({ timeout: 8000 });
+    await p.waitForTimeout(2500);
+    if (!(await p.getByText(/what's your name|your real name/i).filter({ visible: true }).count())
+      && !(await p.locator('input[placeholder="Your real name"]').filter({ visible: true }).count())) throw new Error('the real-name prompt did not show');
+    await also('prompt');
+    // The first-run wizard follows it for a new account.
+    await p.getByRole('button', { name: /later|skip|not now/i }).first().click({ timeout: 2000 }).catch(() => {});
+    await p.waitForTimeout(1200);
+    await also('after');
+  }, 0, { signedOut: true, noSkip: true });
+
+  if (listOnly) { console.log(views.map(v => v.view).join('\n')); await b.close(); return; }
+  for (const v of views) {
+    if (!want(v.view)) continue;
+    lastView = v.view;
+    try {
+      await p.evaluate(() => sessionStorage.removeItem('guard-signed-out')).catch(() => {});
+      if (v.opts.noSkip) { await p.goto(home, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(3500); }
+      else await fresh();
+      await v.fn();
+      await run(v.view);
+      await scrollMain(v.scrolls);
+      visited.push(v.view);
+    } catch (e) {
+      unreachable.push({ view: v.view, why: e.message.split('\n')[0].slice(0, 160) });
+      if (!quiet) console.log(`  (view ${v.view} skipped: ${e.message.split('\n')[0]})`);
+    }
+  }
 
   // One row per distinct control (same element description + label), worst case kept.
-  const key = (c) => c.view.split(' (')[0] + '|' + c.el + '|' + c.text;
+  const key = (c) => c.view.split(' (')[0] + '|' + c.el + '|' + c.text + '|' + c.kind;
   const byKey = new Map();
+  const score = (c) => c.fail.length * 1000 + Math.max(Math.abs(c.dx || 0), Math.abs(c.dy || 0));
   for (const c of all) {
     const k = key(c);
     const prev = byKey.get(k);
-    if (!prev || c.fail.length > prev.fail.length) byKey.set(k, c);
+    if (!prev || score(c) > score(prev)) byKey.set(k, c);
   }
   const rows = [...byKey.values()];
   const failing = rows.filter(c => c.fail.length);
-  const views = [...new Set(rows.map(c => c.view.split(' (')[0]))];
+  const viewsSeen = [...new Set(rows.map(c => c.view.split(' (')[0]))];
   console.log(`controls at ${W}x${H}${desktop ? ' (desktop)' : ''}: g=${grid && grid.g}px r=${grid && grid.r}px origin x=${grid && grid.ox} y=${grid && grid.oy}`);
-  for (const v of views) {
+  for (const v of viewsSeen) {
     const vr = rows.filter(c => c.view.split(' (')[0] === v), vf = vr.filter(c => c.fail.length);
-    console.log(`  ${v}: ${vr.length} controls, ${vf.length} failing`);
+    const ns = vr.filter(c => c.kind === 'strip').length;
+    console.log(`  ${v}: ${vr.length - ns} controls${ns ? ` + ${ns} strips` : ''}, ${vf.length} failing`);
+  }
+  // Where a failure's styling lives when no stylesheet rule names it (a React style={{}}): the
+  // JSX line that renders it, found by its class or, failing that, its label text.
+  const JSX = (() => {
+    const out = [];
+    const walk = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const q = path.join(d, f.name);
+        if (f.isDirectory()) walk(q);
+        else if (/\.jsx$/.test(f.name)) out.push([path.relative(ROOT, q).split(path.sep).join('/'), fs.readFileSync(q, 'utf8').split(/\r?\n/)]);
+      }
+    };
+    try { walk(path.join(ROOT, 'vite-app/src')); } catch {}
+    return out;
+  })();
+  const jsxRef = (c) => {
+    const findAll = (re) => { const out = []; for (const [f, lines] of JSX) for (let i = 0; i < lines.length; i++) if (re.test(lines[i])) out.push([f, i + 1]); return out; };
+    const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Several hits: the file named like the view ("staking" -> StakingView.jsx), else ambiguous.
+    const pick = (hits) => {
+      if (!hits.length) return null;
+      if (hits.length === 1) return `${hits[0][0]}:${hits[0][1]}`;
+      const v = c.view.split(/[\s(-]/)[0].toLowerCase();
+      const own = hits.filter(([f]) => path.basename(f).toLowerCase().includes(v));
+      if (own.length >= 1 && own.length <= 2) return own.map(([f, l]) => `${f}:${l}`).join(' | ');
+      return hits.length <= 3 ? hits.map(([f, l]) => `${f}:${l}`).join(' | ') : null;
+    };
+    for (const k of (c.cls || []).filter(k => !/^(btn|ctl|active|open|selected|disabled|snap-g|snap-g-centred|is-\w+|btn-\w+)$/.test(k))) {
+      const r = pick(findAll(new RegExp('className=[^>]*[\'"` ]' + esc(k) + '[\'"` ]')));
+      if (r) return r;
+    }
+    const t = (c.text || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (t.length >= 3 && /\p{L}/u.test(t)) { const r = pick(findAll(new RegExp('>\\s*' + esc(t) + '\\s*(<|$)|[\'"`]' + esc(t) + '[\'"`]'))); if (r) return r; }
+    return null;
+  };
+  for (const c of failing) {
+    const own = (c.rules || []).length ? c.rules[c.rules.length - 1] : null;
+    if (!own || c.inlineStyle || own.spec < 100) c.jsx = jsxRef(c);
   }
   const show = dump ? rows : failing;
-  for (const c of show) {
-    console.log(`  [${c.view.split(' (')[0]}] ${c.fail.length ? 'FAIL ' + c.fail.join(',') : 'ok'}  ${c.el} "${c.text}"  ${c.w}g x ${c.h}r @ x${c.x}g y${c.y}r  ink dx ${c.dx} dy ${c.dy}  in ${c.ctx}`);
+  const fmt = (c) => {
+    const src = c.inkFrom && c.inkFrom !== 'metrics' && c.inkFrom !== 'metrics+pixels' ? ` (${c.inkFrom})` : '';
+    const rule = c.rules && c.rules.length ? c.rules[c.rules.length - 1].at : '';
+    const extra = c.kind === 'strip' ? ` along ${c.along} across ${c.across}` : '';
+    return `  [${c.view.split(' (')[0]}] ${c.fail.length ? 'FAIL ' + c.fail.join(',') : 'ok'}  ${c.kind !== 'control' ? c.kind + ' ' : ''}${c.boxless ? '(boxless) ' : ''}${c.el} "${c.text}"  ${c.w}g x ${c.h}r @ x${c.x}g y${c.y}r  ink dx ${c.dx} dy ${c.dy}${extra}${src}  in ${c.ctx}${rule ? '  rule ' + rule : ''}${c.jsx ? '  jsx ' + c.jsx : ''}`;
+  };
+  if (!quiet || dump) for (const c of show) console.log(fmt(c));
+  if (verifyInk) {
+    // The over edge (cap top) from metrics against the painted top; the line's ends from canvas
+    // side bearings against the painted ends (the run uses the painted ends).
+    const badOver = pxVerify.filter(v => v.over > 0.75), badAlong = pxVerify.filter(v => v.along > 0.75);
+    console.log(`ink verify: ${pxVerify.length} labels; over edge off by >0.75px on ${badOver.length}, line ends (canvas vs painted) on ${badAlong.length}`);
+    for (const v of badOver.slice(0, 30)) console.log(`  over  [${v.view}] ${v.kind} ${v.el} "${v.text}" metric ${v.metric.join(',')} pixels ${v.pixels.join(',')} (${v.over})`);
+    for (const v of badAlong.slice(0, 30)) console.log(`  along [${v.view}] ${v.kind} ${v.el} "${v.text}" metric ${v.metric.join(',')} pixels ${v.pixels.join(',')} (${v.along})`);
   }
+  if (pxLeftovers.length) console.log(`  (pixel pass: ${pxLeftovers.reduce((a, b) => a + b, 0)} label markers outlived their pass and were cleared)`);
+  for (const n of notes) console.log(`  note [${n.view}] ${n.note}`);
+  if (unreachable.length) console.log(`views not reached: ${unreachable.map(u => u.view).join(', ')}`);
   const distinct = new Set(failing.map(c => c.el + '|' + c.text)).size;
   if (!rows.length) {
     console.log(`NO CONTROLS MEASURED at ${W}x${H} — the views did not open (is the server up, the token an admin's?)`);
@@ -546,7 +1573,17 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     process.exit(2);
   }
   console.log(failing.length ? `CONTROLS OFF GRID OR OFF CENTRE at ${W}x${H}: ${failing.length} of ${rows.length} (by view; ${distinct} distinct)` : `all ${rows.length} controls on the grid and centred at ${W}x${H}`);
-  if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify({ width: W, height: H, desktop, grid, rows }, null, 1));
+  if (jsonOut) {
+    const failures = failing.map(c => ({
+      view: c.view.split(' (')[0], kind: c.kind, desc: c.el, text: c.text, classes: c.cls, fail: c.fail,
+      rule: c.rules && c.rules.length ? c.rules[c.rules.length - 1].at : null,
+      rules: (c.rules || []).slice(-4), labelEl: c.labelEl || null, labelRule: c.labelRules && c.labelRules.length ? c.labelRules[c.labelRules.length - 1].at : null,
+      inlineStyle: c.inlineStyle || null, labelInlineStyle: c.labelInlineStyle || null, jsx: c.jsx || null, how: c.how, boxless: !!c.boxless,
+      dx: c.dx, dy: c.dy, along: c.along, across: c.across, inkFrom: c.inkFrom || 'metrics',
+      geometry: { wG: c.w, hR: c.h, xG: c.x, yR: c.y, box: c.box, ink: c.ink }, ctx: c.ctx,
+    }));
+    fs.writeFileSync(jsonOut, JSON.stringify({ width: W, height: H, desktop, grid: grid && { g: grid.g, r: grid.r, ox: grid.ox, oy: grid.oy }, visited, unreachable, notes, failures, rows, inkVerify: verifyInk ? pxVerify : undefined }, null, 1));
+  }
   await b.close();
   process.exit(failing.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(2); });
