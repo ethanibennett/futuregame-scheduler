@@ -161,7 +161,10 @@ text on line 3, zebra by background (full bleed, the text on the 35g column), no
 Columns: label 11g + 3 × 8g (Summary, Sessions, By month); label 11g + 5g + 5g + 7g + 7g (Games,
 Rooms); label 11g + note 16g + value 8g (Bankroll). The label column is `minmax(11g, 1fr)`, so a wider
 sheet widens it and the figure columns stay whole g. A cell with nothing under it is a dash, never
-$0. Green / red only for signed money (not ROI or percentages). The disclosure rows are controls
+$0. Money is compact from 10k in the display currency (its own symbol and side, `CURRENCY_CONFIG`),
+and the hourly rate is labelled in it too ($/h, €/h, kr/h). The bankroll sheet is 37g wide at every
+width, so on desktop the tables keep the phone's 35g column. Green / red only for signed money (not
+ROI, risk of ruin or other percentages). The disclosure rows are controls
 (`.ovt-head` is START_ALIGNED in `check-control-centring.mjs`); the guards open every section by
 its header, scroll through, then close them all. Collapse animates the body's grid row 0fr ↔ 1fr
 (no measured heights), off under prefers-reduced-motion.

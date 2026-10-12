@@ -79,6 +79,8 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
   const cfg = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
   const m = (v) => fmtMoney(v, cfg);
   const sm = (v) => fmtMoney(v, cfg, { sign: true });
+  // The hourly rate in the display currency's own symbol: $/h, €/h, kr/h.
+  const perHour = `${cfg.symbol}/h`;
 
   const t = useMemo(() => overviewTables(d, range, today), [d, range, today]);
 
@@ -105,7 +107,7 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
     if (!risk) return { text: '…', note: 'tournaments' };
     if (risk.status === 'ok') {
       const x = risk.ror;
-      return { text: x >= 0.995 ? '100%' : x < 0.001 ? '<0.1%' : fmtPct(x), note: 'tournaments', high: x > 0.05 };
+      return { text: x >= 0.995 ? '100%' : x < 0.001 ? '<0.1%' : fmtPct(x), note: 'tournaments' };
     }
     if (risk.status === 'insufficient') return { text: DASH, note: `needs ${risk.minEntries} tournaments` };
     return { text: DASH, note: 'roll at or below zero' };
@@ -157,7 +159,7 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
           <Row3 label="Sessions / events" cells={[{ text: fmtCount(X.cash.count) }, { text: fmtCount(X.tournaments.count) }, { text: fmtCount(X.total.count) }]} />
           <Row3 label="Bullets" title="Tournament entries, re-entries included" cells={[{ text: DASH }, { text: fmtCount(X.tournaments.bullets) }, { text: DASH }]} />
           <Row3 label="Hours" cells={[{ text: fmtHours(X.cash.hours) }, { text: fmtHours(X.tournaments.hours) }, { text: fmtHours(X.total.hours) }]} />
-          <Row3 label="$/h" cells={[
+          <Row3 label={perHour} cells={[
             { v: X.cash.hourly, text: sm(X.cash.hourly), toned: true }, { text: DASH }, { v: X.total.hourly, text: sm(X.total.hourly), toned: true }]} />
           <Row3 label="ROI" cells={[{ text: DASH }, { text: fmtPct(X.tournaments.roi, { sign: true }) }, { text: fmtPct(X.total.roi, { sign: true }) }]} />
           <Row3 label="Won % / ITM" title="Cash: winning sessions. Tournaments: in the money."
@@ -172,12 +174,12 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
           <Row3 label="Biggest win" cells={[extreme(X.cash.best), extreme(X.tournaments.best), extreme(X.total.best)]} />
           <Row3 label="Biggest loss" cells={[extreme(X.cash.worst), extreme(X.tournaments.worst), extreme(X.total.worst)]} />
         </div>
-        <p className="an-p ovt-note">Hours and $/h are cash only: a tournament result carries no playing time. ROI is
-          tournaments only. Hands are not recorded, so there is no $/100.</p>
+        <p className="an-p ovt-note">Hours and {perHour} are cash only: a tournament result carries no playing time. ROI is
+          tournaments only. Hands are not recorded, so there is no {cfg.symbol}/100.</p>
       </>
     ),
-    games: <Groups data={games} status={facts.status} dim="game" scope={scope} sm={sm} />,
-    rooms: <Groups data={rooms} status={facts.status} dim="room" scope={scope} sm={sm} />,
+    games: <Groups data={games} status={facts.status} dim="game" scope={scope} sm={sm} perHour={perHour} />,
+    rooms: <Groups data={rooms} status={facts.status} dim="room" scope={scope} sm={sm} perHour={perHour} />,
     bankroll: (
       <>
         <div className="ovt-table" role="table" aria-label={`Bankroll, ${scope}`}>
@@ -187,7 +189,8 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
           <BRow label="Deepest drawdown" note={B.drawdown ? `${fmtDate(B.drawdown.from)} – ${fmtDate(B.drawdown.to)}` : RANGE_TEXT[range]}
             text={B.drawdown ? sm(-B.drawdown.amount) : 'None'} v={B.drawdown ? -1 : 0} />
           <BRow label="Deposits & withdrawals" text={sm(B.moved)} />
-          <BRow label="Risk of ruin" note={ror.note} text={ror.text} v={ror.high ? -1 : 0} />
+          {/* A probability, not money: never green / red. */}
+          <BRow label="Risk of ruin" note={ror.note} text={ror.text} />
         </div>
         <p className="an-p ovt-note">The peak is the highest the balance has ever been; the drawdown is the deepest fall
           from a peak inside the range. Risk of ruin is explained under Rules.</p>
@@ -256,7 +259,7 @@ function BRow({ label, note, text, v }) {
 
 // Games / Rooms: cash sessions and tournaments in their own blocks (a cash rate is per hour, a
 // tournament's is ROI), each led by a head row keyed to its column colour.
-function Groups({ data, status, dim, scope, sm }) {
+function Groups({ data, status, dim, scope, sm, perHour }) {
   if (!data) {
     return <p className="an-p ovt-note">{status === 'error' ? `The ${dim === 'game' ? 'games' : 'rooms'} could not load.` : 'Loading…'}</p>;
   }
@@ -270,7 +273,7 @@ function Groups({ data, status, dim, scope, sm }) {
         </span>
         <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{type === 'cash' ? 'Sessions' : 'Events'}</span></span>
         <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Hours</span></span>
-        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{type === 'cash' ? '$/h' : 'ROI'}</span></span>
+        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{type === 'cash' ? perHour : 'ROI'}</span></span>
         <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Total</span></span>
       </div>
       {rows.map((r) => (
