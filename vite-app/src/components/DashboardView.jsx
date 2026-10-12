@@ -941,7 +941,8 @@ export default function DashboardView({
   }
 
   // The home's two halves (verdict "placement"): NOW — Up Next, then To log and the last result —
-  // and the NUMBERS — the bankroll line, the period block and (step 6) Trend. On the phone they are one scrolling
+  // and the NUMBERS — the bankroll line, the period block with its noise line, and (section 7, not yet built)
+  // Trend. On the phone they are one scrolling
   // column, NOW first. On desktop (>= 1024) NOW is the main pane and the NUMBERS are portalled
   // into a second 37g pane App renders beside it (homeRight), each pane its own scroller.
   const nowCol = (

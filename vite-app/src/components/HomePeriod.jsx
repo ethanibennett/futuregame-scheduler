@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CURRENCY_CONFIG, nativeCurrency } from '../utils/utils.js';
 import { fmtMoney, convertMoney } from '../utils/home.js';
 import { buildPeriod, currentTrip, ledgerFrom, goalLines } from '../utils/home-period.js';
+import HomeNoiseLine from './HomeNoiseLine.jsx';
 
 // ── The home's period block (verdict section 5) and the goals under it ─────────────────────────
 // One block whose window follows what is running (utils/home-period.js buildPeriod): a trip covering
@@ -11,14 +12,15 @@ import { buildPeriod, currentTrip, ledgerFrom, goalLines } from '../utils/home-p
 // series' dates) on the right; then label/value rows for what happened, each rate with its sample.
 // Admins' figures are the combined ledger through the Overview's own arithmetic; everyone else's
 // are their tournament results. A goal (admins: the All roll's) adds a pace bar.
+// Under the card (admins), the signal-or-noise line about the same window (HomeNoiseLine.jsx).
 // Taps: the block opens the Bankroll Overview (admins), the trip's page (trip mode) or Results; the
-// goals open the dashboard's Goals.
+// goals open the dashboard's Goals; the noise line Analytics (onOpenNoise).
 // Data (admins only, every request gated on `admin`): the ledger from last month's first (or a
 // yearly goal's Jan 1, or the trip's start), the trip list and the current trip's tagged
 // transactions. All are refetched whenever the shared summary is (App's useBankrolls refetches it
 // when the results change, and after any bankroll change).
 
-export default function HomePeriod({ admin, bk, results, schedule, updates, rates, currency = 'USD', today, onOpen, onOpenGoals }) {
+export default function HomePeriod({ admin, bk, results, schedule, updates, rates, currency = 'USD', today, onOpen, onOpenGoals, onOpenNoise }) {
   const summary = admin && bk ? bk.summary : null;
   const allGuide = summary && summary.guide && summary.guide.byKey ? summary.guide.byKey.all : null;
   const goals = useMemo(() => (allGuide && Array.isArray(allGuide.goals) ? allGuide.goals : []), [allGuide]);
@@ -122,6 +124,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
           </span>
         ))}
       </button>
+      {admin && <HomeNoiseLine model={model} results={results} currency={currency} bk={bk} onOpen={onOpenNoise} />}
       {goalRows.length > 0 && (
         <button type="button" className="hm-goals" onClick={onOpenGoals}
           aria-label={`Goals: ${goalRows.map((g) => `${g.label}, ${g.value}, ${g.note}`).join('; ')}. Open them in the bankroll dashboard`}>

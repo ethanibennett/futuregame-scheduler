@@ -13,6 +13,11 @@
 //           Last result card is its empty state; the schedule's series tags removed (month mode)
 //   empty   nothing on the schedule, nothing in play and no cash session running: Up Next is its one 5r prompt
 //           ("Nothing scheduled" over the week's events near the user)
+//   noise-progress  the signal-or-noise line under 30 entries: GET /api/analytics answered with a
+//           history of 18 entries, so the line is progress ('18 of 30 entries before ...') (admins)
+//   noise-cash      the line about cash: two losing timed sessions this month, big enough to move the
+//           month's net more than its tournaments, and 40 more timed sessions behind them in the
+//           whole ledger, so the hourly rate is judged against its spread (admins)
 
 const day = (off) => {
   const d = new Date();
@@ -59,6 +64,28 @@ export async function stageHome(p, kind) {
     await on('**/api/my-schedule', (r) => r.fulfill({ json: [] }));
     await on('**/api/live-updates/active', (r) => r.fulfill({ json: [] }));
     await on('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
+  } else if (kind === 'noise-progress') {
+    await on('**/api/analytics*', edit((j) => ({ ...j, totals: { ...(j.totals || {}), entries: 18, events: 14 } })));
+  } else if (kind === 'noise-cash') {
+    const cashEntry = (date, amount, hours, n) => ({
+      date, ts: `${date}T23:00:00.000Z`, amount, currency: 'USD', bankroll_id: null, kind: 'cash_session',
+      label: 'Cash NLH 2/5 · Guard Room', ref: { table: 'cash_sessions', id: 980000 + n }, started_at: `${date}T19:00:00.000Z`, hours,
+      source: 'cash-sessions', bankroll: 'main', bankroll_currency: 'USD', amount_bankroll: amount, amount_display: amount, fx_display: 1,
+    });
+    // This month: two sessions, -$5,200 over 8 h (inside the month whatever today is: its 1st, at worst).
+    const first = `${day(0).slice(0, 8)}01`;
+    const recent = [cashEntry(first, -2600, 4, 1), cashEntry(first, -2600, 4, 2)];
+    // The history: 40 sessions of 3-6 h through last year, winning about $40 an hour with a spread.
+    const older = Array.from({ length: 40 }, (_, i) => cashEntry(`2025-${String(1 + (i % 12)).padStart(2, '0')}-${String(3 + (i % 20)).padStart(2, '0')}`,
+      [620, -380, 410, -150, 900, -700, 260, 50][i % 8], 3 + (i % 4), 10 + i));
+    await on('**/api/bankrolls/ledger*', async (r) => {
+      const res = await r.fetch();
+      let json = null;
+      try { json = await res.json(); } catch { return r.fulfill({ response: res }); }
+      const whole = !/[?&]from=/.test(r.request().url());
+      const add = whole ? [...older, ...recent] : recent;
+      await r.fulfill({ response: res, json: { ...json, entries: [...add, ...(json.entries || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)) } });
+    });
   } else {
     throw new Error(`unknown home state ${kind}`);
   }

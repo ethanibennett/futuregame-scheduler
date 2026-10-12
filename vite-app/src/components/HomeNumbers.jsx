@@ -1,8 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import HomeBankrollLine from './HomeBankrollLine.jsx';
 import HomePeriod from './HomePeriod.jsx';
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
+
+// The Analytics sheet is its own chunk (as in Results): only an admin who taps the noise line loads it.
+const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 
 // ── The home's NUMBERS column, its top half (verdict sections 4 and 5) ─────────────────────────
 // The bankroll line (admins) over the period block and its goals. Tiers: everyone gets the period
@@ -11,9 +14,14 @@ import useLiveCashSession from '../hooks/useLiveCashSession.js';
 // The taps go to the deep views: the bankroll line to the Bankroll dashboard's Rules, the goals to
 // its Goals and the block to its Overview, all on All bankrolls, in a sheet over the home (closing
 // it comes back here); a trip's block to that trip's page in Results; anyone else's block to Results.
+// The signal-or-noise line under the block (admins) opens the Analytics sheet over the home, on the
+// block's scope; a sentence about cash opens the dashboard's Overview instead.
 export default function HomeNumbers({ isAdmin, token, bk, results, schedule, updates, rates, currency, today, onLog }) {
   const admin = !!(isAdmin && bk && bk.enabled);
   const [sheet, setSheet] = useState(null); // the dashboard tab to open: 'rules' | 'goals' | 'balance'
+  const [analytics, setAnalytics] = useState(null); // the bankroll scope to open Analytics on
+  // Stable: the sheet focuses its Done button whenever its onClose changes.
+  const closeAnalytics = useCallback(() => setAnalytics(null), []);
 
   // A cash session started or ended changes the ledger without changing a result: refresh the
   // shared summary (and with it the block) when the live session comes or goes.
@@ -35,9 +43,15 @@ export default function HomeNumbers({ isAdmin, token, bk, results, schedule, upd
     <>
       {admin && <HomeBankrollLine summary={bk.summary} onOpen={() => setSheet('rules')} />}
       <HomePeriod admin={admin} bk={bk} results={results} schedule={schedule} updates={updates} rates={rates}
-        currency={currency} today={today} onOpen={onOpen} onOpenGoals={() => setSheet('goals')} />
+        currency={currency} today={today} onOpen={onOpen} onOpenGoals={() => setSheet('goals')}
+        onOpenNoise={(game, scope) => (game === 'cash' ? setSheet('balance') : setAnalytics(scope || 'all'))} />
       {admin && sheet && (
         <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={() => setSheet(null)} />
+      )}
+      {admin && analytics && (
+        <Suspense fallback={null}>
+          <AnalyticsView bankroll={analytics} onClose={closeAnalytics} />
+        </Suspense>
       )}
     </>
   );

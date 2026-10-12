@@ -237,17 +237,18 @@ The month grid gets the wide pane, because a calendar is the one Schedule
 surface that wants width. Clicking a day fills the day list, and clicking an
 event there opens the same Event pane in place of the day list, with a back key.
 
-### Dashboard — two panes (built 2026-10-12, home redesign steps 2 to 5)
+### Dashboard — two panes (built 2026-10-12, home redesign steps 2 to 6)
 
 ```
 │ rail │ NOW 37g                          │ NUMBERS 37g                          │
 │ 10g  │ Up Next (the carousel; a running │ Bankroll line (admins)               │
 │      │   cash session is its first card)│                                      │
-│      │ To log (only when non-empty)     │ This month / trip / series, with its │
-│      │ Last result (the receipt)        │   goals (admins) under it            │
-│      │                                  │ Signal-or-noise line (admins; 6)     │
-│      │                                  │ Trend, last 3 months (6; a marked    │
-│      │                                  │   slot until BankrollChart lands)    │
+│      │ To log (only when non-empty)     │ This month / trip / series: its card,│
+│      │ Last result (the receipt)        │   the signal-or-noise line (admins), │
+│      │                                  │   then its goals (admins)            │
+│      │                                  │ Trend, last 3 months (section 7; a   │
+│      │                                  │   marked slot until BankrollChart    │
+│      │                                  │   lands)                             │
 ```
 
 The home's design is the panel verdict of 2026-10-11 (two halves: NOW, then the
@@ -292,6 +293,21 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   bankroll line the Bankroll dashboard's Rules, the goals its Goals and the block
   its Overview (all on All bankrolls, in the dashboard's sheet over the home); a
   trip's block that trip's page in Results; a non-admin's block Results.
+- Under the period block's card (step 6, `HomeNoiseLine.jsx`; admins) is one
+  plain sentence about the same window: the window in buy-ins over its bullets
+  (or per hour over its hours, when cash moved its net more), how often the
+  player's long-run rate does no better (or as well) over a stretch that long,
+  and that rate's 95% interval against break-even, each figure with its sample
+  ('−4 buy-ins over 11 bullets: about 2 in 5 stretches this long do as well at
+  your long-run rate. Its interval over 195 entries, −54% to +87%, includes
+  break-even.'). Under 30 entries (30 sessions for cash) it is progress instead:
+  '18 of 30 entries before this can separate skill from luck'. It is xs on 3r
+  lines across the column's 35g, two lines typically, its first baseline 3r
+  under the card's foot, so the block is 3n + 1 r. It loads after the first
+  paint (GET /api/analytics?from=&to=, cached per results version; for cash, the
+  whole ledger's per-hour spread) and appears when it has something to say.
+  Tapping it opens the Analytics sheet over the home (a cash sentence opens the
+  bankroll dashboard's Overview instead).
 - The NUMBERS pane is the same on the phone, under the Last result: there it is
   below the fold, as the verdict expected.
 - Friends Playing and Connections, which the old plan gave a pane, left the home

@@ -292,8 +292,10 @@ export function scheduleAhead(schedule, results, updates, venue, today, opts = {
  *                                          { signed, currency } in their own currency, its scope's name)
  *   txRates                               (rates for those transactions: the summary's)
  * -> null while an admin's ledger loads, else
- *   { mode, title, scope, net, sample, side: [{ text, title? }, { text, title? }], rows, ahead }
- *   net is null for an empty window, and `sample` then gives the reason.
+ *   { mode, title, scope, net, sample, side: [{ text, title? }, { text, title? }], rows, ahead, window, stats }
+ *   net is null for an empty window, and `sample` then gives the reason. window is the span the
+ *   figures cover ({ from, to, venue: a series' title or null, scope: 'all' or a trip's bankroll })
+ *   and stats its figures ({ mtt, cash, ... }), for the signal-or-noise line (home-noise.js).
  */
 export function buildPeriod(input) {
   const { today, isAdmin, currency = 'USD', money } = input;
@@ -324,6 +326,7 @@ export function buildPeriod(input) {
       net, sample: count ? (leadSample(s) || plural(txCount, 'entry', 'entries')) : 'Nothing logged on this trip yet',
       side: [{ text: 'Net after expenses' }, { text: `${dayRange(trip.start_date, trip.end_date)} · day ${k} of ${n}` }],
       rows: periodRows(s, money), ahead: null,
+      window: { from: w.from, to: w.to, venue: null, scope: scope || 'all' }, stats: s,
     };
   }
 
@@ -348,6 +351,7 @@ export function buildPeriod(input) {
       sample: s.count ? leadSample(s) : 'Nothing logged in this series yet',
       side: [{ text: dayRange(series.from, series.to) }, { text: `day ${k} of ${n}` }],
       rows, ahead,
+      window: { from: series.from, to: today, venue: series.venue, scope: 'all' }, stats: s,
     };
   }
 
@@ -373,6 +377,7 @@ export function buildPeriod(input) {
     sample: cur.count ? leadSample(cur) : `Nothing logged in ${pw.name} yet`,
     side: [{ text: `${pw.prevLabel} ${a.v}`, title: a.title }, { text: `all ${pw.prevName} ${b.v}`, title: b.title }],
     rows: periodRows(cur, money), ahead: null,
+    window: { from: pw.cur.from, to: today, venue: null, scope: 'all' }, stats: cur,
   };
 }
 

@@ -96,9 +96,10 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 // (.hm-receipt: the home's Last result card, a button that opens the entry, its figures seated; so
 // are its bankroll line, period block and goals cards, .hm-bank-bar / .hm-period-card / .hm-goals,
-// and Up Next's empty-schedule prompt, .hm-next-empty.)
+// Up Next's empty-schedule prompt, .hm-next-empty, and the signal-or-noise line, .hm-noise: a
+// sentence that opens Analytics, its lines seated on 3r.)
 const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.hm-receipt',
-  '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty'];
+  '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty', '.hm-noise'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -502,12 +503,18 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   // trip mode, series mode, and the edge state (the longest signal pill over an empty month and an
   // empty Last result), each staged by answering the home's requests in the page, then paged to the
   // foot like the plain home.
-  const homeState = async (view, kind) => {
+  // ready: a selector the state must show before it is measured (the noise line loads after the
+  // first paint; an account without it, not an admin, skips the state).
+  const homeState = async (view, kind, ready = null) => {
     if (!want(view)) return;
     lastView = view;
     try {
       const undo = await stageHome(p, kind);
-      try { await fresh(); await nav('Dashboard'); await run(view); await pageHome(4); } finally { await undo(); }
+      try {
+        await fresh(); await nav('Dashboard');
+        if (ready) await p.locator(ready).first().waitFor({ state: 'attached', timeout: 6000 }).catch(() => { throw new Error(`no ${ready} (the noise line is an admin's)`); });
+        await run(view); await pageHome(4);
+      } finally { await undo(); }
     } catch (e) { console.log(`  (view ${view} skipped: ${e.message.split('\n')[0]})`); }
   };
   await homeState('dashboard-trip', 'trip');
@@ -515,6 +522,13 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   await homeState('dashboard-edge', 'edge');
   // Nothing scheduled, nothing in play, no cash session: Up Next's one 5r prompt.
   await homeState('dashboard-empty', 'empty');
+  // The signal-or-noise line (home step 6; admins) in the states the account does not show by
+  // itself: progress under 30 entries, and a sentence about cash. (Its tournament sentence is on the
+  // plain home, its long-run one in the edge state.) The Analytics sheet the line opens is not
+  // walked here: its Done label is seated on +3r of its 4r box, not centred (AnalyticsView predates
+  // the rule), which is the control sweep's to fix; check-text-clipping walks the sheet.
+  await homeState('dashboard-noise-progress', 'noise-progress', '.hm-noise[data-kind="progress"]');
+  await homeState('dashboard-noise-cash', 'noise-cash', '.hm-noise[data-kind="window"]');
   await step('hands-scanner', async () => {
     await nav('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });

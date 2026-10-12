@@ -6179,8 +6179,25 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
 //   ?currency=EUR  display currency (default USD; anything unsupported → USD)
 //   ?bankroll=<id> reserved for multiple bankrolls: a no-op until tracking_entries
 //                  carries bankroll_id (te.* below picks it up when it does).
+//   ?from=&to=     YYYY-MM-DD, both or neither: adds `window`, the events dated in that
+//                  span (inclusive) set against the whole history — the home's
+//                  signal-or-noise line (lib/analytics.js windowStats). &venue= narrows
+//                  the window (not the history) to one series title.
 app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) => {
   try {
+    const DAY = /^\d{4}-\d{2}-\d{2}$/;
+    const from = req.query.from, to = req.query.to;
+    let win = null;
+    if (from !== undefined || to !== undefined) {
+      if (typeof from !== 'string' || typeof to !== 'string' || !DAY.test(from) || !DAY.test(to)) {
+        return res.status(400).json({ error: 'from and to must both be YYYY-MM-DD' });
+      }
+      if (from > to) return res.status(400).json({ error: 'from is after to' });
+      const venue = typeof req.query.venue === 'string' ? req.query.venue.trim().slice(0, 200) : '';
+      win = { from, to, venue: venue || null };
+    } else if (req.query.venue !== undefined) {
+      return res.status(400).json({ error: 'venue needs from and to' });
+    }
     const stmt = db.prepare(`
       SELECT te.*, t.event_name, t.date, t.time, t.buyin, t.game_variant, t.venue,
              t.property, t.total_entries, t.is_online, t.site
@@ -6195,7 +6212,7 @@ app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) =
     const cur = String(req.query.currency || 'USD').toUpperCase();
     const currency = SUPPORTED_CURRENCIES.includes(cur) ? cur : 'USD';
     const { rates } = await fetchExchangeRates(); // cached 6 h; falls back to fixed rates offline
-    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll }));
+    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll, window: win }));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });

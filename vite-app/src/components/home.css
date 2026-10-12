@@ -9,8 +9,8 @@
 
    GRID. Every measurement is g or r.
      columns  NOW (Up Next, To log, the last result) and NUMBERS (the
-              bankroll line, the period block and its goals; Trend in
-              step 6). One scrolling column on the phone,
+              bankroll line, the period block, its noise line and its
+              goals; Trend, section 7, later). One scrolling column on the phone,
               2r between sections, NOW first. Desktop (>= 1024): NOW is
               the main pane (37g), NUMBERS a second 37g pane beside it
               (App.jsx portals it into .dk-home-right); each pane is its
@@ -886,3 +886,51 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
   transition: transform var(--dur-base) var(--ease-standard);
 }
 .dashboard-view.home .dash-carousel-track.swiping .dash-carousel-slide { transition: none; }
+
+/* ==================================================================
+   Step 6: the signal-or-noise line (HomeNoiseLine.jsx; admins), one
+   plain sentence about the period block's window, under its card.
+
+   GRID. 35g wide (a button: Analytics), its text the column's full
+   35g, as a section title's is (a caption under the card, not a
+   line of it), xs on 3r lines: two, typically (the copy is held to
+   them at the phone's width), three for the longest odds and
+   figures. It starts on the card's foot: its top
+   margin cancels the section's 1r gap, so the first baseline is the
+   card's foot + 3r, as a 4r row's sits on its +3r.
+     first baseline = top pad + 1.5r + c  =>  top pad = 3 - 1.5 - c
+   and the bottom pad is the rest of 1r, so the block is 3n + 1 r
+   and the goals card follows it, 1r on, on a line.
+   The figures (the buy-ins, the bullets, the odds, the interval)
+   are in the full ink colour, the words muted; no sign colour, no
+   arrow (profit gets neither). The › says where a tap goes.
+   ================================================================== */
+.hm-noise {
+  --c: 0.5319; /* the xs face (.hm-f-xs) */
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: calc(var(--subrow) * -1) 0 0;
+  padding: calc(var(--subrow) * (1.5 - var(--c))) 0 calc(var(--subrow) * (var(--c) - 0.5));
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: calc(var(--subrow) * 3);
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+.hm-noise-t { display: block; }
+.hm-noise-em { color: var(--text); white-space: nowrap; }
+.hm-noise-nw { white-space: nowrap; }
+.hm-noise-go { color: var(--brand-ink, var(--brand)); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-noise:hover .hm-noise-t { text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: calc(var(--subrow) * 0.4); }
+}
+.hm-noise:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }

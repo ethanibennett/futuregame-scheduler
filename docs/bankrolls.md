@@ -141,7 +141,11 @@ date, then entries without a ts first, then source, then ref id.
 ### The dashboard (`BankrollDashboard.jsx`, behind the bankroll strip's Dashboard button)
 
 The home opens it too, on All bankrolls: its bankroll line on **Rules**, its goals on **Goals** and its
-period block on the **Overview** (`initialTab` / `initialKey`, through `BankrollDashboardSheet`).
+period block on the **Overview** (`initialTab` / `initialKey`, through `BankrollDashboardSheet`), as
+does its signal-or-noise line when the sentence is about cash (home step 6; a tournament sentence
+opens the Analytics sheet). For cash that line reads the whole ledger once (no `from`), reduced on the
+client to a per-hour spread (`utils/home-noise.js` `cashSpread`: sum of profit over sum of hours, and
+an SD per hour with each session's variance growing with its hours).
 
 A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
 **Overview / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the

@@ -6,7 +6,8 @@
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
 // Schedule, the home (Dashboard) paged to its foot (plain, then its NUMBERS in trip mode, series
-// mode and the edge state, and the empty-schedule prompt), its Scan sheet, each Up Next card with a
+// mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
+// about cash), its Scan sheet, each Up Next card with a
 // plan's tags, the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
 // Scanner (and, for
 // an admin, each tab of the bankroll dashboard, every Reports table and the
@@ -179,10 +180,16 @@ function scan(rootSel) {
   // Its NUMBERS in the states the account does not show by itself (scripts/home-states.mjs): trip
   // mode, series mode (long titles that truncate), and the edge state (the longest signal pill, an
   // empty month, an empty Last result), each staged in the page, nothing written.
-  for (const kind of ['trip', 'series', 'edge', 'empty']) {
+  // The signal-or-noise line (step 6; admins) loads after the first paint: its states wait for it.
+  const READY = { 'noise-progress': '.hm-noise[data-kind="progress"]', 'noise-cash': '.hm-noise[data-kind="window"]' };
+  for (const kind of ['trip', 'series', 'edge', 'empty', 'noise-progress', 'noise-cash']) {
     try {
       const undo = await stageHome(p, kind);
-      try { await openTab('Dashboard'); await pageHome(`home ${kind}`); } finally { await undo(); }
+      try {
+        await openTab('Dashboard');
+        if (READY[kind]) await p.locator(READY[kind]).first().waitFor({ state: 'attached', timeout: 6000 }).catch(() => { throw new Error("no noise line (it is an admin's)"); });
+        await pageHome(`home ${kind}`);
+      } finally { await undo(); }
     } catch (e) { console.log(`  (home ${kind} skipped: ${e.message.split('\n')[0]})`); }
   }
   try {
