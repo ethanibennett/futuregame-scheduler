@@ -22,6 +22,7 @@ import GridOverlay from './components/GridOverlay.jsx';
 import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
+import useBankrolls from './hooks/useBankrolls.js';
 import DashboardView from './components/DashboardView.jsx';
 import HandsScanner from './components/HandsScanner.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
@@ -1540,6 +1541,12 @@ export default function App() {
   // keeps the rollout features and simply never sees an editor it cannot save from.
   const canEditEvents = !isGuest && EVENT_EDITOR_USERNAMES.includes(authUsername);
 
+  // Bankrolls (beta, app admins): ONE summary for the home (its bankroll line and period block)
+  // and the Results tab (its switcher, the dashboard, Cash and Expenses), lifted here from
+  // TrackingView so the two never disagree. The balances are the server's combined ledger, so they
+  // are refetched whenever the results change (version). For everyone else it fetches nothing.
+  const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
+
   // A non-admin session never runs on the simulated clock (see the boot-time clear above): this
   // catches an admin signing out and someone else signing in without a reload.
   useEffect(() => {
@@ -1683,6 +1690,7 @@ export default function App() {
                 token={token}
                 canLog={!isGuest}
                 onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
+                bk={bk}
                 onSetPlayed={setNotPlayed}
                 onDeleteTracking={deleteTracking}
                 tournaments={tournaments}
@@ -1799,6 +1807,7 @@ export default function App() {
                 myActiveUpdates={myActiveUpdates}
                 isAdmin={isAdmin}
                 token={token}
+                bk={bk}
                 intent={resultsIntent}
                 onIntentDone={clearResultsIntent}
               />

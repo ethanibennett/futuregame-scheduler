@@ -4,7 +4,7 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard (scrolled to its foot; on
 // desktop both its panes; the Playing card's Scan sheet; the Log menu; a To log row's Undo
-// state), Social, Results (and its
+// state; its NUMBERS in trip mode, series mode and the edge state), Social, Results (and its
 // Delete results block at the foot, closed and open), Settings, Cash (Live, Heatmaps), Hands (the
 // list, not the table; the Scanner tool), Calendar (and its filters),
 // the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
@@ -50,6 +50,7 @@
 // reported and skipped). WebKit, because the app ships in WKWebView.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
+import { stageHome } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -90,8 +91,10 @@ const CONTROLS = [
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-// (.hm-receipt: the home's Last result card, a button that opens the entry, its figures seated.)
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.hm-receipt'];
+// (.hm-receipt: the home's Last result card, a button that opens the entry, its figures seated; so
+// are its bankroll line, period block and goals cards, .hm-bank-bar / .hm-period-card / .hm-goals.)
+const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.hm-receipt',
+  '.hm-bank-bar', '.hm-period-card', '.hm-goals'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -458,6 +461,21 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
     } finally { await p.unroute('**/api/schedule/*/played'); }
   }, 0);
+  // The home's NUMBERS in the states the account does not show by itself (scripts/home-states.mjs):
+  // trip mode, series mode, and the edge state (the longest signal pill over an empty month and an
+  // empty Last result), each staged by answering the home's requests in the page, then paged to the
+  // foot like the plain home.
+  const homeState = async (view, kind) => {
+    if (!want(view)) return;
+    lastView = view;
+    try {
+      const undo = await stageHome(p, kind);
+      try { await fresh(); await nav('Dashboard'); await run(view); await pageHome(4); } finally { await undo(); }
+    } catch (e) { console.log(`  (view ${view} skipped: ${e.message.split('\n')[0]})`); }
+  };
+  await homeState('dashboard-trip', 'trip');
+  await homeState('dashboard-series', 'series');
+  await homeState('dashboard-edge', 'edge');
   await step('hands-scanner', async () => {
     await nav('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });

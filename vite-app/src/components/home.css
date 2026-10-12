@@ -8,9 +8,9 @@
    out-specify it rather than rely on coming later.
 
    GRID. Every measurement is g or r.
-     columns  NOW (Up Next; To log and the last result from step 3) and
-              NUMBERS (the Results bar until the period block lands in
-              step 4; Trend later). One scrolling column on the phone,
+     columns  NOW (Up Next, To log, the last result) and NUMBERS (the
+              bankroll line, the period block and its goals; Trend in
+              step 6). One scrolling column on the phone,
               2r between sections, NOW first. Desktop (>= 1024): NOW is
               the main pane (37g), NUMBERS a second 37g pane beside it
               (App.jsx portals it into .dk-home-right); each pane is its
@@ -53,16 +53,6 @@
    2r bottom padding already does it. */
 .app-shell.is-desktop .dashboard-view.home::after { height: 0; }
 .dashboard-view.home.home--numbers::after { display: none; }
-
-/* The Results bar's labels truncate (overflow: hidden, for the ellipsis) on a 1em line box, which
-   is shorter than Univers' glyph box: the clipping guard, walking the home for the first time,
-   measured 0.19r (1.5px at 402; 1.66px, 0.20r, at 1440) of every label's glyph box cut at the top. The
-   room comes from padding cancelled by an equal negative margin, so the line and its baseline do
-   not move. (The bar itself gives way to the period block in step 4.) */
-.dashboard-view.home .dash-pl-label {
-  padding-block: calc(var(--subrow) * 0.5);
-  margin-block: calc(var(--subrow) * -0.5);
-}
 
 /* ── Scan table, on the Playing card ── */
 .dash-status-stack .dash-action-row.dash-action-row--4 { gap: var(--gu); }
@@ -167,6 +157,9 @@
    analytics recipe (analytics.css .an-cell), a whole-r cell of height
    --h whose one line is pushed down so its baseline lands on line --k:
        baseline = h/2 + p/2 + c   =>   p = 2(k - h/2 - c)
+   (p cannot be negative: a cell needs k - h/2 >= c, so a face whose c
+   is above 0.5 seats on its cell's last line only in a 2r cell, or on
+   +3r of a 4r one.)
    with c (baseline less half the line box, in r) MEASURED per face
    and size in WebKit at 402 and 1440 (a zero-size inline-block on the
    baseline, the app's fonts loaded; values at the roles below). Controls (the
@@ -524,3 +517,186 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
    The home's old Table Scanner section, unchanged: a .dashboard-view, so its 3r header seats the
    title on +2r as every Dashboard section header does, 1r, then the scanner. */
 .dashboard-view.hands-scan { padding-bottom: calc(var(--subrow) * 2); }
+
+/* ==================================================================
+   Step 4: the bankroll line (HomeBankrollLine.jsx) and the period
+   block with its goals (HomePeriod.jsx), the NUMBERS column's top.
+
+   GRID. 35g wide, like every home section.
+     Bankroll  35g x 5r card, a button (the Bankroll dashboard, Rules).
+               Two stacks 1g in from the card's edges, each a 2xs caps
+               label seated on +2r over its figure (md bold) on +4r
+               (two 2r cells, then 1r):
+               All rolls / Balance on the left, the cap a bullet under
+               its rule on the right. The signal pill (whole g, snap-g,
+               x 3r at +1r..+4r) sits 1g in from the right edge, 1g
+               after the cap; its label centred both ways.
+     Period    the section's 3r header: the window's name seated on +2r
+               like every Dashboard title (it truncates), the scope on
+               the same line at the right. 1r. Then a 35g card (a
+               button):
+                 lead 7r   1g | 17g: the net in the display face on +4r,
+                           its sample (xs) on +6r | 16g: the comparison
+                           (sm on +4r, xs on +6r), right-aligned | 1g;
+                           a 4r cell then a 2r one, each side, then 1r;
+                 rows 4r   under a hairline, 21g | 14g: the label (sm;
+                           its sample after it in muted xs) and the
+                           figure (sm bold, right), both on +3r, 1g in
+                           from the card's edges.
+     Goals     1r under it, a 35g card (a button: Goals), 6r a goal:
+               its line as a row (4r), then a 33g x 1r pace bar (1g in
+               from each edge) with the elapsed tick, then 1r.
+   ================================================================== */
+
+/* Cards that are buttons: the receipt's surface, hairline and lift. Hover lays the overlay over the
+   surface rather than replacing it. */
+.hm-bank-bar, .hm-period-card, .hm-goals {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hm-bank-bar:hover, .hm-period-card:hover, .hm-goals:hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay));
+  }
+}
+.hm-bank-bar:focus-visible, .hm-period-card:focus-visible, .hm-goals:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ── The bankroll line ── */
+.hm-bank-bar {
+  display: flex;
+  align-items: flex-start;
+  height: calc(var(--subrow) * 5);
+  padding: 0 var(--gu);
+}
+.hm-bank-col { display: block; flex: 0 1 auto; min-width: 0; }
+.hm-bank-col--cap { margin-left: auto; text-align: right; }
+.hm-bank-k { --h: 2; --k: 2; color: var(--text-muted); }
+.hm-bank-v { --h: 2; --k: 2; color: var(--text); }
+/* The words around a figure ('Balance', 'a bullet'): the figure's size (one line box, one
+   baseline), regular weight, muted. */
+.hm-bank-w { font-weight: var(--fw-regular); color: var(--text-muted); }
+.hm-bank-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0 var(--gu);
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  /* The trailing letter-space, cancelled, so the label's ink is what centres. */
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+}
+/* Up is room the rule gives (the brand); down is the rule's warning (warn). Neither is profit. */
+.hm-bank-pill.is-up { background: var(--brand-quiet); color: var(--brand-ink, var(--brand)); }
+.hm-bank-pill.is-down { background: var(--warn-bg); color: var(--warn); }
+
+/* ── The period block ── */
+.hm-period-head { gap: var(--gu); }
+/* The window's name: .dashboard-section-title's face, seated on +2r by the cell recipe instead of
+   by text-box-trim, so it can truncate (a series' or trip's name) without cutting a glyph. A 2r cell
+   at the header's top (a 3r one would need a negative padding to reach +2r with this face). */
+.hm-sec-title {
+  --h: 2; --k: 2; --c: 0.6270;
+  align-self: flex-start;
+  flex: 1 1 auto;
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.hm-period-scope { --h: 3; --k: 2; flex: 0 0 auto; color: var(--text-muted); }
+
+.hm-period-lead {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 16);
+  height: calc(var(--subrow) * 7);
+  padding: 0 var(--gu);
+}
+.hm-period-l, .hm-period-side { display: block; min-width: 0; }
+.hm-period-side { text-align: right; }
+/* The net: sign colour only (a gain in the win colour, a loss in the loss colour) — no arrow, no
+   trend colour against last month. An empty window is a muted dash. */
+.hm-period-net { --h: 4; --k: 4; color: var(--text); }
+.hm-period-net.is-pos { color: var(--pos); }
+.hm-period-net.is-neg { color: var(--neg); }
+.hm-period-net.is-empty { color: var(--text-muted); }
+.hm-period-sample { --h: 2; --k: 2; color: var(--text-muted); }
+/* The comparison is muted: it is context, not a result. */
+.hm-period-s1 { --h: 4; --k: 4; color: var(--text-muted); }
+.hm-period-s2 { --h: 2; --k: 2; color: var(--text-muted); }
+
+.hm-prow {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 14);
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.hm-prow-l { --h: 4; --k: 3; padding-left: var(--gu); color: var(--text); }
+.hm-prow-v { --h: 4; --k: 3; padding-right: var(--gu); text-align: right; color: var(--text); }
+.hm-prow-v.is-muted { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* A rate's sample beside its label, smaller and muted, on the label's baseline. Its line-height is
+   its own 1em, inside the cell's line box, so it cannot move the baseline. */
+.hm-prow-s {
+  margin-left: calc(var(--gu) * 0.5);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: 1;
+}
+
+/* ── Goals ── */
+.hm-goal { display: block; height: calc(var(--subrow) * 6); }
+.hm-goal + .hm-goal { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.hm-goal .hm-goal-line { box-shadow: none; }
+/* A volume goal says where it stands against its pace, in the bar's colour; a profit goal stays
+   muted ("pace is mostly variance"). */
+.hm-goal.is-ahead .hm-goal-note { color: var(--pos); }
+.hm-goal.is-behind .hm-goal-note { color: var(--warn); }
+.hm-goal-bar {
+  display: block;
+  position: relative;
+  height: var(--subrow);
+  margin: 0 var(--gu);
+  border-radius: var(--radius-xs);
+  background: var(--surface2);
+  overflow: hidden;
+}
+.hm-goal-fill { display: block; position: absolute; top: 0; bottom: 0; left: 0; background: var(--text-muted); }
+.hm-goal.is-ahead .hm-goal-fill { background: var(--pos); }
+.hm-goal.is-behind .hm-goal-fill { background: var(--warn); }
+/* The tick: how much of the goal's period has gone. */
+.hm-goal-tick {
+  display: block;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--bw-2);
+  margin-left: calc(var(--bw-2) * -0.5);
+  background: var(--text);
+}

@@ -413,8 +413,9 @@ function TripsSheet({ api, toast, trips, bankrolls, rates, openId, onOpenTrip, o
 }
 
 // ── The Results-tab section ─────────────────────────────────────────────────
-// intent: the home's Log menu "Expense or income" (App's resultsIntent, handed on by TrackingView):
-// opens the add sheet once, then reports done.
+// intent (App's resultsIntent, handed on by TrackingView): the home's Log menu "Expense or income"
+// opens the add sheet; the home's period block in trip mode ({ kind: 'trip', tripId }) opens that
+// trip's page. Either once, then it reports done.
 export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankrolls = [], rates, events, onChanged, intent = null, onIntentDone }) {
   const toast = useToast();
   const api = useApi(token);
@@ -424,8 +425,10 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
   const [sheet, setSheet] = useState(null);
   const [version, setVersion] = useState(0);
   useEffect(() => {
-    if (!intent || intent.kind !== 'expense') return;
-    setSheet({ type: 'add', preset: { kind: 'expense', bankroll: bankroll === BANKROLL_ALL ? BANKROLL_MAIN : bankroll } });
+    if (!intent) return;
+    if (intent.kind === 'expense') setSheet({ type: 'add', preset: { kind: 'expense', bankroll: bankroll === BANKROLL_ALL ? BANKROLL_MAIN : bankroll } });
+    else if (intent.kind === 'trip') setSheet({ type: 'trips', tripId: intent.tripId || null });
+    else return;
     if (onIntentDone) onIntentDone();
   }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
 

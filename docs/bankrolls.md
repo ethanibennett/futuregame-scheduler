@@ -85,8 +85,11 @@ Client — `vite-app/src/utils/bankrolls.js`, dependency-free:
 - `computeBalances(bankrolls, entries, { nativeCurrency, convert })` — superseded for display (it
   only sees tournaments + adjustments); kept as the reference arithmetic. Per-bankroll
   `{ start, adjustments, results, balance, entries, currency }`, plus an `'all'` row in USD
-- `useBankrolls({ enabled: isAdmin, token })` — the list and the Results tab's selected key
-  (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's choice.
+- `useBankrolls({ enabled: isAdmin, token, version })` — the list, the summary and the Results tab's
+  selected key (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's
+  choice. Since 2026-10-12 App creates it once (`version` = the tracking entries, so the summary is
+  refetched after a result changes) and hands the same `bk` to the home (its bankroll line, period
+  block and goals) and to the Results tab: one summary, never two that disagree.
 
 A tax report probably wants the ledger too (deposits/withdrawals are not income):
 `GET /api/bankrolls/adjustments?bankroll=…`.
@@ -136,6 +139,9 @@ date, then entries without a ts first, then source, then ref id.
 | POST | `/api/bankrolls/import` | `{ bankroll, commit, rows }` — preview (commit false) or write; dedupe by fingerprint |
 
 ### The dashboard (`BankrollDashboard.jsx`, behind the bankroll strip's Dashboard button)
+
+The home opens it too, on All bankrolls: its bankroll line on **Rules**, its goals on **Goals** and its
+period block on the **Overview** (`initialTab` / `initialKey`, through `BankrollDashboardSheet`).
 
 A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
 **Overview / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the

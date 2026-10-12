@@ -5,17 +5,18 @@ import ScanTableSheet from './ScanTableSheet.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
-  formatBuyin, nativeCurrency, haptic, fmtShortDate,
+  formatBuyin, haptic, fmtShortDate,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
   getMaxEntries, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
-  formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
+  CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
-import { tournamentTotals, homeCurrency } from '../utils/home.js';
-import { gridGeom, gridPanelStyle } from '../utils/grid-panel.js';
+import { homeCurrency } from '../utils/home.js';
+import { gridGeom } from '../utils/grid-panel.js';
 import HomeToLog from './HomeToLog.jsx';
 import HomeLastResult from './HomeLastResult.jsx';
+import HomeNumbers from './HomeNumbers.jsx';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
 import './home.css';
 
@@ -214,26 +215,24 @@ export default function DashboardView({
   // admin-only cash-sessions read, whether this account can log at all (guests cannot), the
   // route into Results' forms (App's resultsIntent) and the "Didn't play" flag.
   isAdmin = false, token = null, canLog = true, onLog = null, onSetPlayed = null, onDeleteTracking = null,
+  // Step 4: App's useBankrolls (the summary the Results tab shares) for the bankroll line and the
+  // period block. Admins only; for everyone else it is disabled and fetches nothing.
+  bk = null,
 }) {
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
   // Scan table: the screenshot picked from a Playing card, while its sheet is open.
   const [scanFile, setScanFile] = useState(null);
   const scanInputRef = useRef(null);
   const [now, setNow] = useState(getNow());
-  // Shared with the Results tab's setting, but never Native here: a total of euros and dollars
-  // is in no currency (utils/home.js).
-  const [dashCurrency, setDashCurrency] = useState(() => homeCurrency(localStorage.getItem('trackingCurrency'), Object.keys(CURRENCY_CONFIG)));
+  // The shared display currency (the Results tab's setting), never Native here: a total of euros
+  // and dollars is in no currency (utils/home.js). The home has no currency menu of its own.
+  const [dashCurrency] = useState(() => homeCurrency(localStorage.getItem('trackingCurrency'), Object.keys(CURRENCY_CONFIG)));
   const [dashRates, setDashRates] = useState(null);
-  const [dashRatesStale, setDashRatesStale] = useState(false);
   useEffect(() => {
     fetch(API_URL + '/exchange-rates')
       .then(r => r.json())
-      .then(data => { setDashRates(data.rates); setDashRatesStale(data.stale); })
-      .catch(() => { setDashRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); setDashRatesStale(true); });
-  }, []);
-  const onDashCurrencyChange = useCallback((c) => {
-    setDashCurrency(c);
-    localStorage.setItem('trackingCurrency', c);
+      .then(data => { setDashRates(data.rates); })
+      .catch(() => { setDashRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); });
   }, []);
   const rebuyingRef = useRef(false);
   const [bustMenuEventId, setBustMenuEventId] = useState(null);
@@ -909,42 +908,8 @@ export default function DashboardView({
     );
   }
 
-  // P&L data: the ledger's rule on each row's OWN buy-in, venue and currency (GET /api/tracking
-  // joins them), converted into the display currency — utils/home.js tournamentTotals. It used to
-  // look each result up in the 3-day /api/tournaments feed, so older results and every import
-  // counted a $0 buy-in, and it added cash_amount whether or not the entry cashed.
-  const plData = useMemo(() => tournamentTotals(trackingData, {
-    currency: dashCurrency,
-    rates: dashRates,
-    currencyOf: (r) => nativeCurrency(r.venue),
-    groupOf: (r) => (r.venue ? getVenueInfo(r.venue, r.property).abbr : null),
-  }), [trackingData, dashCurrency, dashRates]);
-
-  const [plDropdown, setPlDropdown] = useState(null);
-  // The trigger's rect, captured on click, so the panel can be rendered at
-  // the document root instead of inside .dashboard-view's overflow:hidden.
-  const [plRect, setPlRect] = useState(null);
-  const togglePl = (key) => (e) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    setPlRect({ left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width });
-    setPlDropdown(d => (d === key ? null : key));
-  };
-  // Anchored panel, flipped above the trigger when it would run off the bottom.
-  // Left-aligned to its card (1g or 10g, a column line); 17g wide so it ends on
-  // 18g or 27g. Height = rows x 3r, so the above-case top is exact too.
-  const plPanelStyle = (rows) => {
-    if (!plRect) return { position: 'fixed' };
-    const { G } = gridGeom();
-    return gridPanelStyle(plRect, rows * 3, plRect.left / G);
-  };
-  const plRows = (field) => Object.entries(plData.byGroup)
-    .filter(([, v]) => v[field] > 0)
-    .sort((a, b) => b[1][field] - a[1][field]);
-
-
-  // The home's two halves (verdict "placement"): NOW — Up Next, then To log and the last result
-  // (steps 3+) — and the NUMBERS — the bankroll line, the period block and Trend (steps 4-6; the
-  // Results bar stands in for the period block until then). On the phone they are one scrolling
+  // The home's two halves (verdict "placement"): NOW — Up Next, then To log and the last result —
+  // and the NUMBERS — the bankroll line, the period block and (step 6) Trend. On the phone they are one scrolling
   // column, NOW first. On desktop (>= 1024) NOW is the main pane and the NUMBERS are portalled
   // into a second 37g pane App renders beside it (homeRight), each pane its own scroller.
   const nowCol = (
@@ -1049,98 +1014,10 @@ export default function DashboardView({
   );
   const numbersCol = (
     <div className="home-col home-col--numbers">
-        {/* Results. With nothing logged yet it is not shown: the Last result card in the NOW
-            column already says "Log your first result", and two invitations read as a glitch.
-            (The bar gives way to the period block in step 4.) */}
-        {plData.count > 0 && (
-        <div className="dashboard-section">
-          {/* Header on the P&L columns (8g | 8g | 17g): title in col 1 and the currency flush
-              right with the Net card (30-36g). Reset lives in Results now, scoped to one bankroll
-              behind a typed confirmation (components/ResetResults.jsx). */}
-          <div className="dashboard-section-header dash-results-header">
-            <div className="dashboard-section-title">Results</div>
-            {plData.count > 0 && dashRates && (
-              <label className="dash-results-right dash-results-currency">
-                <span aria-hidden="true">
-                  {`${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
-                </span>
-                <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
-                  {Object.keys(CURRENCY_CONFIG).map(c => (
-                    <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {plData.count > 0 && !dashRates && (
-              <span className="dash-results-right dashboard-section-badge dashboard-section-badge--wide">{plData.count} result{plData.count !== 1 ? 's' : ''}</span>
-            )}
-          </div>
-          {plData.count > 0 ? (
-            <>
-            <div className="dash-pl-grid">
-              {/* A figure that cannot be converted yet (mixed currencies, rates still loading) is a
-                  dash, never a part-total. */}
-              {(() => { const fmtPl = (v) => (v == null ? '\u2014' : formatCurrencyAmount(v, dashCurrency)); return (<>
-              <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}
-                title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
-                {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
-                <span className="dash-pl-line">
-                  <span className="dash-pl-value">{fmtPl(plData.cost)}</span>
-                  <span className="dash-pl-label">Buy-ins &#9662;</span>
-                </span>
-                {plDropdown === 'buyins' && createPortal(
-                  <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cost').length)} onClick={e => e.stopPropagation()}>
-                    {plRows('cost')
-                      .map(([venue, v]) => (
-                        <div key={venue} className="dash-pl-dropdown-row">
-                          <span className="dash-pl-dropdown-venue">{venue}</span>
-                          <span className="dash-pl-dropdown-amount">{fmtPl(v.cost)}</span>
-                        </div>
-                      ))
-                    }
-                  </div>,
-                  document.body
-                )}
-              </button>
-              <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}
-                title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
-                <span className="dash-pl-line">
-                  <span className="dash-pl-value">{fmtPl(plData.cash)}</span>
-                  <span className="dash-pl-label">Cashes &#9662;</span>
-                </span>
-                {plDropdown === 'cashes' && createPortal(
-                  <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cash').length)} onClick={e => e.stopPropagation()}>
-                    {plRows('cash')
-                      .map(([venue, v]) => (
-                        <div key={venue} className="dash-pl-dropdown-row">
-                          <span className="dash-pl-dropdown-venue">{venue}</span>
-                          <span className="dash-pl-dropdown-amount">{fmtPl(v.cash)}</span>
-                        </div>
-                      ))
-                    }
-                  </div>,
-                  document.body
-                )}
-              </button>
-              <div className="dash-pl-card dash-pl-card--net">
-                <span className="dash-pl-line">
-                  <span className={`dash-pl-value ${plData.net == null ? '' : plData.net >= 0 ? 'positive' : 'negative'}`}>
-                    {plData.net != null && plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
-                  </span>
-                  <span className="dash-pl-label">Net</span>
-                  {/* No ROI without a spend to divide by: a dash, never 0%. */}
-                  <span className={`dash-pl-roi ${plData.roi == null ? '' : plData.roi >= 0 ? 'pos' : 'neg'}`}
-                    title={plData.roi == null ? (plData.unconverted ? 'Waiting for exchange rates' : 'No buy-ins to measure against') : undefined}>
-                    {plData.roi == null ? '\u2014' : `${plData.roi >= 0 ? '+' : ''}${plData.roi.toFixed(1)}%`} ROI
-                  </span>
-                </span>
-              </div>
-              </>); })()}
-            </div>
-            </>
-          ) : null}
-        </div>
-        )}
+      {/* The bankroll line (admins) and the period block with its goals (verdict sections 4 and
+          5; components/HomeNumbers.jsx). The period block replaced the one-line Results bar. */}
+      <HomeNumbers isAdmin={isAdmin} token={token} bk={bk} results={trackingData} schedule={mySchedule}
+        updates={myActiveUpdates} rates={dashRates} currency={dashCurrency} today={todayISO} onLog={onLog} />
 
       {/* ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
           TODO(home trend): build here once the BankrollChart.jsx rebuild has merged.

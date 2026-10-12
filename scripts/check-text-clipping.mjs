@@ -5,8 +5,9 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule, the home (Dashboard) paged to its foot, its Scan sheet, its Log menu and a To log
-// row's Undo state, and Hands' Scanner (and, for
+// Schedule, the home (Dashboard) paged to its foot (plain, then its NUMBERS in trip mode, series
+// mode and the edge state), its Scan sheet, its Log menu and a To log row's Undo state, and Hands'
+// Scanner (and, for
 // an admin, each tab of the bankroll dashboard, every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
@@ -17,6 +18,7 @@
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';
+import { stageHome } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -151,9 +153,8 @@ function scan(rootSel) {
     await p.waitForTimeout(1800);
   };
   const HOME = '.dashboard-view.home';
-  try {
-    await openTab('Dashboard');
-    await run('home', HOME);
+  const pageHome = async (label) => {
+    await run(label, HOME);
     for (let i = 1; i < 8; i++) {
       const moved = await p.evaluate((h) => {
         let any = false;
@@ -167,9 +168,22 @@ function scan(rootSel) {
       }, H);
       if (!moved) break;
       await p.waitForTimeout(300);
-      await run(`home (scrolled ${i})`, HOME);
+      await run(`${label} (scrolled ${i})`, HOME);
     }
+  };
+  try {
+    await openTab('Dashboard');
+    await pageHome('home');
   } catch (e) { console.log(`  (home skipped: ${e.message.split('\n')[0]})`); }
+  // Its NUMBERS in the states the account does not show by itself (scripts/home-states.mjs): trip
+  // mode, series mode (long titles that truncate), and the edge state (the longest signal pill, an
+  // empty month, an empty Last result), each staged in the page, nothing written.
+  for (const kind of ['trip', 'series', 'edge']) {
+    try {
+      const undo = await stageHome(p, kind);
+      try { await openTab('Dashboard'); await pageHome(`home ${kind}`); } finally { await undo(); }
+    } catch (e) { console.log(`  (home ${kind} skipped: ${e.message.split('\n')[0]})`); }
+  }
   try {
     await openTab('Dashboard');
     await p.locator('.dash-scan-input').setInputFiles({

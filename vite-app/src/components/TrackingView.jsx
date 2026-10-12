@@ -11,7 +11,6 @@ import {
 } from '../utils/utils.js';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
-import useBankrolls from '../hooks/useBankrolls.js';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import ResetResults from './ResetResults.jsx';
@@ -276,7 +275,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, intent = null, onIntentDone }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
@@ -296,9 +295,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       .catch(() => { setExchangeRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); setRatesStale(true); });
   }, []);
 
-  // Bankrolls (beta, admins only). For everyone else `bk.selected` is 'all', the filter is the
-  // identity, and `formBankrolls` is null so the form neither shows nor sends a bankroll.
-  const bk = useBankrolls({ enabled: !!isAdmin, token, version: allTrackingData });
+  // Bankrolls (beta, admins only): App's useBankrolls, shared with the home (one summary). For
+  // everyone else `bk.selected` is 'all', the filter is the identity, and `formBankrolls` is null
+  // so the form neither shows nor sends a bankroll.
   const [showBankrolls, setShowBankrolls] = useState(false);
   const [showBankrollDashboard, setShowBankrollDashboard] = useState(false);
   const closeBankrollDashboard = useCallback(() => setShowBankrollDashboard(false), []);
@@ -361,7 +360,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const intentFormRef = React.useRef(null);
   const kind = intent ? intent.kind : null;
   const cashIntent = isAdmin && kind && kind.startsWith('cash') ? intent : null;
-  const expenseIntent = isAdmin && kind === 'expense' ? intent : null;
+  const expenseIntent = isAdmin && (kind === 'expense' || kind === 'trip') ? intent : null;
   useEffect(() => {
     if (!intent) return;
     if (intent.kind.startsWith('cash')) {
@@ -369,7 +368,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       return;
     }
     setResultsKind('tournaments');
-    if (intent.kind === 'expense') { if (!isAdmin) onIntentDone && onIntentDone(); return; }
+    // Expenses & income (the Log menu's choice) and a trip's page (the home's period block in trip
+    // mode) belong to ExpensesSection, which reports back itself.
+    if (intent.kind === 'expense' || intent.kind === 'trip') { if (!isAdmin) onIntentDone && onIntentDone(); return; }
     if (intent.kind === 'tournament') {
       setEditingId(null);
       setPendingFormId(null);

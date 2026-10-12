@@ -237,13 +237,13 @@ The month grid gets the wide pane, because a calendar is the one Schedule
 surface that wants width. Clicking a day fills the day list, and clicking an
 event there opens the same Event pane in place of the day list, with a back key.
 
-### Dashboard — two panes (built 2026-10-12, home redesign steps 2 and 3)
+### Dashboard — two panes (built 2026-10-12, home redesign steps 2 to 4)
 
 ```
 │ rail │ NOW 37g                          │ NUMBERS 37g                          │
-│ 10g  │ Up Next (the carousel)           │ Bankroll line (admins; step 4)       │
-│      │ To log (only when non-empty)     │ This month / trip / series (step 4;  │
-│      │ Last result (the receipt)        │   the Results bar stands in today)   │
+│ 10g  │ Up Next (the carousel)           │ Bankroll line (admins)               │
+│      │ To log (only when non-empty)     │ This month / trip / series, with its │
+│      │ Last result (the receipt)        │   goals (admins) under it            │
 │      │                                  │ Signal-or-noise line (admins; 6)     │
 │      │                                  │ Trend, last 3 months (6; a marked    │
 │      │                                  │   slot until BankrollChart lands)    │
@@ -268,6 +268,19 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   portalled to the body and anchored to the Log pill (right edges together, 1r
   above or below it), so it is not clipped by the pane's scroller. A choice in it,
   To log's Cashed and a tap on the receipt open Results in this same main pane.
+- The NUMBERS pane (step 4, `HomeNumbers.jsx`) opens with the bankroll line
+  (admins: the balance of every roll, the tournament cap a bullet and the rule's
+  move signal as a pill, a 35g x 5r card), then the period block: the window's
+  name and scope in a 3r header, a 7r lead (the net and its sample; the
+  like-for-like comparison, or the trip's or series' dates, on the right), a 4r
+  row for each figure that exists, then the goals card (admins; 6r a goal with
+  its pace bar). The window is a trip covering today (admins), else a series
+  detected with confidence, else the month. Taps open the deep views: the
+  bankroll line the Bankroll dashboard's Rules, the goals its Goals and the block
+  its Overview (all on All bankrolls, in the dashboard's sheet over the home); a
+  trip's block that trip's page in Results; a non-admin's block Results.
+- The NUMBERS pane is the same on the phone, under the Last result: there it is
+  below the fold, as the verdict expected.
 - Friends Playing and Connections, which the old plan gave a pane, left the home
   (they live in Social). The Table Scanner left it as well: it is the Playing
   card's Scan action and a tool in Hands.

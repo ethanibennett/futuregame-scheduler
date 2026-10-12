@@ -9,8 +9,9 @@ import { BANKROLL_ALL, toBankrollKey } from '../utils/bankrolls.js';
 const STORE_KEY = 'resultsBankroll';
 const readSelected = () => { try { return toBankrollKey(localStorage.getItem(STORE_KEY)); } catch { return BANKROLL_ALL; } };
 
-// `version` is anything that changes when results change (TrackingView passes its entries), so the
+// `version` is anything that changes when results change (App passes its tracking entries), so the
 // balances, which the server now computes, are refetched after a result is logged or edited.
+// App creates it once and hands it to the home and to the Results tab: one summary for both.
 export default function useBankrolls({ enabled, token, version }) {
   const [bankrolls, setBankrolls] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -48,7 +49,9 @@ export default function useBankrolls({ enabled, token, version }) {
     if (first.current) { first.current = false; return; }
     refreshSummary();
   }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!enabled) setSelectedState(BANKROLL_ALL); }, [enabled]);
+  // App holds this hook for the whole session (the home and Results share it), so an admin who signs
+  // in after the app opened picks up their remembered selection here rather than at mount.
+  useEffect(() => { setSelectedState(enabled ? readSelected() : BANKROLL_ALL); }, [enabled]);
 
   // A selection that no longer exists (deleted, archived, another account's) falls back to All.
   const visible = bankrolls.filter((b) => !b.archived);
