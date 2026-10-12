@@ -91,8 +91,8 @@ const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', 
 // they are controls again and their line is held to the centring test.)
 const TILES = ['.bk-cell', '.font-pick-tile'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
-// Centred vertically only.
-const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head'];
+// Centred vertically only. (.ovt-head: the bankroll Overview's collapsible table sections.)
+const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head', '.ovt-head'];
 // Not a control even though the class matches: wrappers, rows, lists.
 const GROUP_CLASS = /(^|[-_])(row|rows|list|group|wrap|wrapper|strip|bar|container|tabs|area|grid|stack|line|section|panel|menu|header|body|col|cell)$/;
 
@@ -438,7 +438,23 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     if (tab) await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
     await p.waitForTimeout(600);
   };
-  await step('bankroll-dashboard', () => dash(null), 4);   // the Overview: hero, graph, statistics, latest sessions
+  // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,
+  // Bankroll, By month) and the latest sessions. First with every section opened by its header
+  // (every table measured, scrolled to the end), then every section closed (each header then
+  // carries its headline figure). The open state is remembered per device, so it is set by clicks.
+  const sections = async (expanded) => {
+    const want = expanded ? 'false' : 'true';
+    for (let i = 0; i < 12; i++) {
+      const head = p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).first();
+      if (!(await head.count())) break;
+      await head.click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(450);   // the body's 0fr <-> 1fr transition (--dur-base)
+    }
+    if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+  };
+  await step('bankroll-dashboard', async () => { await dash(null); await sections(true); }, 12);
+  await step('bankroll-dashboard-closed', async () => { await dash(null); await sections(false); }, 3);
   await step('bankroll-rules', () => dash('Rules'), 2);
   await step('bankroll-goals', () => dash('Goals'), 1);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the

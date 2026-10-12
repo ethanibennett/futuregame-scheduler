@@ -1,0 +1,162 @@
+/* ==================================================================
+   Bankroll Overview tables (BETA, app admins) — BankrollOverviewTables.jsx.
+   ovt- prefixed; the type roles are analytics.css's (an-cell / an-td /
+   an-lbl-3b / an-note / an-p, their baselines measured in WebKit) and
+   .bd-sheet .an-clip (bankroll-dashboard.css) gives truncating cells
+   their descenders' room.
+
+   GRID. Content is 35g (the 37g sheet less 1g each side).
+     section header  a 35g x 5r disclosure button: chevron 2g | name and
+                     range 21g | the headline 12g (shown while closed)
+     table head      3r, labels on line 2; a key bar in the column's series
+                     colour along line 3
+     rows            4r, text on line 3; zebra by background, full bleed
+                     (37g, 1g padding each side, so the text stays on the
+                     35g column), no rules between them
+     columns         Summary, Sessions, By month: label 11g | 3 x 8g
+                     Games, Rooms: label 11g | played 5g | hours 5g |
+                     rate 7g | total 7g
+                     Bankroll: label 11g | note 16g | value 8g
+                     The label column is minmax(11g, 1fr): on a wider sheet
+                     it takes the room and the figure columns stay whole g.
+     open body       the table, then a note 1r below it, then 2r of space.
+   The header is a control: its labels are centred vertically (owner rule
+   2026-10-10), start-aligned like every disclosure row (the guard lists
+   .ovt-head under START_ALIGNED). Every other line sits on an r line.
+   Collapse animates the body's grid row from 0fr to 1fr (no measured
+   heights); prefers-reduced-motion turns it off.
+   ================================================================== */
+
+/* Column identity, shared with the graph (BankrollChart): the graph work defines the same three
+   tokens in styles.css — whichever lands second, the lead reconciles to one definition. */
+:root {
+  --series-total: var(--text);
+  --series-tourn: var(--brand);
+  --series-cash: #a78bfa;
+}
+:is([data-theme="light"], [data-theme="cloudy"]) { --series-cash: #6d28d9; }
+
+.ovt {
+  margin-top: calc(var(--subrow) * 3);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.ovt-h { margin: 0; }
+
+/* ── The disclosure row ────────────────────────────────────────── */
+.ovt-head {
+  display: grid;
+  grid-template-columns: var(--subcol) minmax(0, 1fr) calc(var(--gu) * 12);
+  align-items: center;
+  width: 100%;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  /* Every line in the row is one 5r line box: the face's line box is centred on its capitals. */
+  line-height: calc(var(--subrow) * 5);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ovt-head:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--focus-offset) * -1); }
+.ovt-chev { display: flex; align-items: center; height: 100%; color: var(--text-muted); }
+.ovt-chev svg {
+  --icon-size: var(--icon-md);
+  transform: rotate(-90deg);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.ovt-sec.is-open .ovt-chev svg { transform: none; }
+.ovt-title { display: flex; gap: var(--gu); min-width: 0; }
+/* Tracked caps: the indent matches the tracking (owner rule). */
+.ovt-name, .ovt-scope {
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+}
+.ovt-name { flex: none; font-weight: var(--fw-bold); color: var(--text); }
+.ovt-scope { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: var(--fw-regular); color: var(--text-muted); }
+.ovt-headline {
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-align: right;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.ovt-headline.an-pos { color: var(--pos); }
+.ovt-headline.an-neg { color: var(--neg); }
+.ovt-sec.is-open .ovt-headline { opacity: 0; }
+
+/* ── The collapsing body ───────────────────────────────────────── */
+.ovt-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-inline: calc(var(--gu) * -1);
+  visibility: hidden;
+  transition: grid-template-rows var(--dur-base) var(--ease-standard), visibility 0s linear var(--dur-base);
+}
+.ovt-sec.is-open > .ovt-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows var(--dur-base) var(--ease-standard), visibility 0s linear 0s;
+}
+.ovt-inner { min-height: 0; overflow: hidden; }
+.ovt-content { padding: 0 var(--gu) calc(var(--subrow) * 2); }
+@media (prefers-reduced-motion: reduce) {
+  .ovt-body, .ovt-sec.is-open > .ovt-body, .ovt-chev svg, .ovt-headline { transition: none; }
+}
+
+/* ── Tables ────────────────────────────────────────────────────── */
+.ovt-thead, .ovt-row {
+  display: grid;
+  align-items: start;
+  margin-inline: calc(var(--gu) * -1);
+  padding-inline: var(--gu);
+}
+.ovt-thead { height: calc(var(--subrow) * 3); }
+.ovt-row { height: calc(var(--subrow) * 4); }
+.ovt-row:nth-child(odd of .ovt-row) { background: var(--surface); }
+.ovt-c4 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) repeat(3, var(--col)); }
+.ovt-c5 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) repeat(2, calc(var(--gu) * 5)) repeat(2, calc(var(--gu) * 7)); }
+.ovt-cb { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 16) var(--col); }
+.ovt-span2 { grid-column: span 2; }
+.ovt-span3 { grid-column: span 3; }
+
+/* Head labels. A right-aligned tracked label hangs its last letter's tracking past the edge, so
+   its ink ends on the column's edge like the figures under it. */
+.ovt-th.an-num > span { margin-right: calc(var(--track-caps) * -1); }
+/* Column keys: the label in the series colour over a bar along the head's last line — the same
+   colours as the graph's lines. A figure column's bar starts 1g in, so neighbours do not join. */
+.ovt-th.is-key { position: relative; }
+.ovt-th.is-key::after {
+  content: '';
+  position: absolute; bottom: 0; left: var(--gu); right: 0;
+  height: var(--bw-2);
+  background: currentColor;
+}
+.ovt-th.is-key:not(.an-num)::after { left: 0; right: var(--gu); }
+.ovt-th.is-cash { color: var(--series-cash); }
+.ovt-th.is-tourn { color: var(--series-tourn); }
+.ovt-th.is-total { color: var(--series-total); }
+
+.ovt-lab { color: var(--text); }
+.ovt-lab.is-muted { color: var(--text-muted); }
+.ovt-row.is-strong .ovt-lab, .ovt-fig.is-strong { font-weight: var(--fw-bold); }
+/* The bold face's ascent and descent round to whole px differently from the regular's, so an-td's
+   p (measured on the regular) seats bold text high: measured in WebKit, -0.016..-0.004r at 402 wide
+   and -0.057..-0.034r at 1440 (g frozen at 430/37). p is raised by 2 x 0.0304r, the middle of that
+   spread, which leaves every bold baseline within 0.027r (0.2px) of its line at both widths. */
+.ovt .an-td.is-strong, .ovt-row.is-strong .ovt-lab { --p: 0.7586; }
+/* The head labels (an-lbl-3b, bold 2xs caps) likewise: -0.014..-0.004r at 402, -0.044..-0.034r at
+   1440; p raised by 2 x 0.0238r leaves them within 0.020r at both. */
+.ovt .an-lbl-3b { --p: 0.1348; }
+.an-cell.ovt-note-4 { --h: 4; --p: 0.9574; }   /* an-note (Univers Condensed xs), baseline on line 3 of 4 */
+
+.ovt-group + .ovt-group { margin-top: calc(var(--subrow) * 2); }
+.ovt-table + .ovt-note, .ovt-group + .ovt-note { margin-top: var(--subrow); }
