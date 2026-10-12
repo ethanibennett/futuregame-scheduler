@@ -30,30 +30,35 @@
 // playing, bagged, finished, not started — and the D toggle's demo cards; the playing card's Bust
 // menu, its Update and Bag panels; the results header's Reset -> Confirm / Cancel and the P&L
 // dropdowns), Social (search, a buddy, a group, a new group), Hands (each game family, hand entry
-// step by step, PLO entry, the replayer on a saved hand with its settings, table settings and
-// share menu), Cash (Live, Heatmaps, the location picker), Results (the log form, a row in edit,
-// the tax report, the share menu, the analytics sheet and its tabs), the bankroll sheet and
-// dashboard (every tab, report filters, CSV import), cash sessions, expenses and trips, Settings
-// (and its delete confirmation), the user menu, notifications, the live-update panel's tabs,
-// Admin, New Events, Staking (no route in the UI: reached through a component's onNavigate prop)
-// and its Summary / Backers / Series / settings, the first-run wizard step by step, the signed-out
-// login / register / forgot screens, and the real-name prompt. A view that does not open is
-// listed as not reached, with why. A dialog's backdrop hides what is under it: a control 90%
-// covered by something that paints is not measured.
+// step by step, PLO entry, Quick add, the replayer on a saved hand with its settings, table
+// settings and share menu, the admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way
+// tools), Cash (Live, Heatmaps, the location picker), Results (the log form, a row in edit, the
+// tax report, the share menu and the series wrap-up, the analytics sheet and its tabs), the
+// bankroll sheet and dashboard (every tab, report filters, CSV import), cash sessions, expenses and
+// trips, Settings (without and with a share link, and its delete confirmation), the user menu,
+// notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
+// reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
+// buddy chip's swap sheet, the public shared-schedule page (and a card open on it), the first-run
+// wizard step by step, the signed-out login / register / forgot / password-reset screens, and the
+// real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
+// backdrop hides what is under it: a control 90% covered by something that paints is not measured.
 //
 // WHAT IS A CONTROL. Three ways in, then the exclusions and one de-duplication:
 //   1. a selector in CONTROLS (buttons, roles, and the -pill/-chip/-badge/-btn class families);
 //   2. an interactive element (INTERACTIVE: a[href], the button-like ARIA roles, summary,
 //      [tabindex="0"], a <label> that wraps or names a hidden <select>/<input> and draws the face
 //      for it, a visible <select>) that has a VISIBLE BOX — background, border, a box-shadow ring or
-//      an outline. Without one there is no container to be centred in (an inline text link);
+//      an outline. Without one there is no container to be centred in (an inline text link). A
+//      boxless <label> over a hidden input whose one boxed descendant draws the face (a toggle
+//      switch's track) has that descendant measured, as a switch inside a switch class;
 //   3. any element whose own rule sets cursor:pointer (its parent's cursor is not pointer), that
 //      holds a label (text or an icon) and has a visible box — a clickable <div>. Where the
 //      pointer element draws no box but one descendant holding the whole label does, that
 //      descendant is the face and is measured instead.
 //   Then: an element holding two or more controls is a group, not a control; a control whose box
 //   is one inner element's box is measured once, as the outer; a boxless control around a single
-//   control is measured as that inner face; a class-matched PART of a control (.buddy-chip-name)
+//   control is measured as that inner face, and a boxless one inside a boxed control (a filter
+//   pill's clear "✕") is part of that face; a class-matched PART of a control (.buddy-chip-name)
 //   is its label, not a second control; a TEXT LINK (no box, no icon, named a link or set inside
 //   a run of text: "No account? Register") is text seated with its sentence. NOT_CONTROLS (rows,
 //   cards and table cells that are clickable but seat their text), TILES, EXCLUDE and the venue
@@ -74,16 +79,21 @@
 //            between the parts of the face)
 //   tile     TILES: box on the grid only; also, found from the face: two text blocks stacked (a
 //            title over a description) or a large figure stacked with text (an avatar over a
-//            name, a theme preview over its name) — a small layout, not a label
+//            name, a theme preview over its name) — a small layout, not a label. A symbol set as
+//            text over a label ("✕" over "FOLD") is an icon, not a block: that face is a label
 //   strip    STRIPS (venue bands): text centred both ways, along and across the band; the band
 //            is the card's edge, so its box is reported, not held to the grid
+//   layer    an opaque fixed sheet / panel / dropdown whose controls were measured on its own
+//            lines (see (a)): its left edge on a g line and its width whole g, nothing else
 //
 // (a) the border box against the grid: width / g and height / r within 0.05 of a whole number,
 //     left edge within 0.05 g of a g line (lines run from the .app-shell's left edge: x = 0 on a
-//     phone, the shell's centred left on desktop) and top edge within 0.05 r of an r line counted
-//     from the .top-bar's top — the origin GridOverlay draws its baseline ruler from. Scrolled
-//     content is measured as laid out: each scroller's offset is added back (not across a stuck
-//     sticky or a fixed element).
+//     phone, the shell's centred left on desktop; inside a LAYER — an opaque fixed sheet, panel,
+//     dropdown or the replayer — from that layer's left, the layer itself held to the shell's
+//     lines once; a layer at the window's left edge is the window's canvas) and top edge within
+//     0.05 r of an r line counted from the .top-bar's top — the origin GridOverlay draws its
+//     baseline ruler from. Scrolled content is measured as laid out: each scroller's offset is
+//     added back (not across a stuck sticky or a fixed element).
 // (b) the label's INK centre against the box centre, in CSS px, both axes; fails past 0.75px.
 //     Ink is not the text box. Per line, the baseline sits the font's ascent (canvas
 //     fontBoundingBoxAscent) in from the text box's OVER edge; the ink runs from the baseline out
@@ -106,7 +116,9 @@
 //     a ::before/::after `content` — are measured from PIXELS: the control is captured, its text
 //     colour made transparent (borders, rings and fills frozen first), captured again, and the
 //     difference is the ink; descenders are dropped by the same convention (ink ascent from the
-//     top of the ink).
+//     top of the ink). A field showing only a dash ("—", no value yet) is held like text: the
+//     dash's own ascent finds the baseline and the capitals' box on it is centred, since a dash
+//     sits on the math axis, below the middle of the capitals, by design.
 //
 // Each failure names the CSS rule that sizes and aligns the control — the most specific matching
 // rule (the later on a tie) that sets its display / height / line-height / padding / alignment; the
@@ -173,6 +185,13 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 const NOT_CONTROLS = [
   '.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.dash-event-card', '.settings-row-btn',
   '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row',
+  // Pick-list rows that seat their label on an r line by design: the Hands game picker's radio
+  // rows ("4r row, label baseline one r above the bottom") and New Group's buddy rows ("the
+  // name on +3r").
+  '.game-check-row', '.create-group-buddy-btn',
+  // A label made a toggle, styled to read as the plain label it replaces and seated with the
+  // line it sits in: an event card's game-mix label ("HORSE ▸").
+  '.cal-game-mix',
   // Table cells and rows (a sortable header is clickable; it is still a cell of the table).
   'th', 'td', 'tr',
 ];
@@ -203,9 +222,13 @@ const LAYOUT_PROPS = new Set(['display', 'height', 'min-height', 'max-height', '
   'padding-top', 'padding-bottom', 'padding-left', 'padding-right', 'padding-block', 'padding-inline', 'align-items', 'justify-content',
   'place-items', 'place-content', 'align-content', 'align-self', 'justify-self', 'text-align', 'vertical-align', 'flex-direction',
   'grid-template-rows', 'grid-template-columns', 'writing-mode', 'text-box', 'text-box-trim', 'text-box-edge', 'transform', 'inset',
-  'top', 'bottom', 'position', 'margin', 'margin-top', 'margin-bottom', 'font-size', 'box-sizing', 'flex', 'aspect-ratio']);
+  'top', 'bottom', 'position', 'margin', 'margin-top', 'margin-bottom', 'font-size', 'box-sizing', 'flex', 'aspect-ratio',
+  'left', 'right', 'max-width', 'translate', 'margin-left', 'margin-right', 'margin-inline']);
 const ALIGN_PROPS = ['display', 'height', 'min-height', 'line-height', 'padding', 'padding-top', 'padding-bottom', 'padding-block',
   'align-items', 'justify-content', 'place-items', 'place-content', 'align-content', 'text-align', 'text-box', 'text-box-trim', 'writing-mode'];
+// What places a layer (a sheet, a panel): its width and where its left edge lands.
+const LAYER_PROPS = ['position', 'width', 'min-width', 'max-width', 'left', 'right', 'inset', 'transform', 'translate', 'margin',
+  'margin-left', 'margin-right', 'margin-inline'];
 function parseCss(rel) {
   const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const out = [];
@@ -288,12 +311,13 @@ try { RULES = CSS_FILES.flatMap(parseCss); } catch (e) { console.log('  (CSS rul
 
 // Runs in the page.
 function scan(cfg) {
-  const { CONTROLS, INTERACTIVE, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, SWITCHES, STRIPS, GROUP_CLASS_SRC, ALIGN_PROPS, view } = cfg;
+  const { CONTROLS, INTERACTIVE, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, SWITCHES, STRIPS, GROUP_CLASS_SRC, ALIGN_PROPS, LAYER_PROPS, view } = cfg;
   const RULES = window.__guardRules || [];
   const GROUP_CLASS = new RegExp(GROUP_CLASS_SRC);
   const PLURAL = /(badges|chips|pills|tags|btns|buttons|toggles|segs)([-_]|$)/;
   const EMOJI = /\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?/gu;
   const PART = /[-_](name|label|text|txt|icon|count|dot|value|title|abbr|caption|num|amount|avatar|img|glyph|arrow|caret|t)$/;
+  const STATE = /^(open|active|selected|disabled|checked|current|muted|on|off|danger|is-[\w-]+|has-[\w-]+|snap-g[\w-]*)$/;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;width:calc(var(--gu) * 100);height:calc(var(--subrow) * 100)';
   document.body.appendChild(probe);
@@ -474,7 +498,16 @@ function scan(cfg) {
   for (const el of document.querySelectorAll(INTERACTIVE.join(','))) {
     if (src.has(el)) continue;
     const cs = getComputedStyle(el);
-    if (el.tagName === 'LABEL') { if (labelControl(el) && hasBox(cs)) src.set(el, 'label'); continue; }
+    if (el.tagName === 'LABEL') {
+      if (!labelControl(el)) continue;
+      if (hasBox(cs)) { src.set(el, 'label'); continue; }
+      // No box of its own: the one descendant that draws one is the face (a toggle switch's
+      // track over its hidden checkbox).
+      const faces = [...el.querySelectorAll('*')].filter(d => !d.closest('svg') && !/^(INPUT|SELECT|OPTION)$/.test(d.tagName) && hasBox(getComputedStyle(d)));
+      const outer = faces.filter(d => !faces.some(o => o !== d && o.contains(d)));
+      if (outer.length === 1 && !src.has(outer[0])) src.set(outer[0], 'label-face');
+      continue;
+    }
     if (el.tagName === 'SELECT') { if (!hiddenInput(el)) src.set(el, 'select'); continue; }
     if (hasBox(cs) && (hasLabel(el) || pseudoText(el) || el.matches('[role="switch"]'))) src.set(el, 'interactive');
   }
@@ -523,7 +556,8 @@ function scan(cfg) {
         && el.parentElement && el.parentElement.closest(CONTROLS.join(','))) return false;
     }
     if ((how === 'pointer' || how === 'pointer-face' || how === 'interactive') && !el.matches('button, [role], a, label, summary')) {
-      const toks = clsList(el);
+      // State classes (.selected, .active, .is-on) say nothing about what the element is.
+      const toks = clsList(el).filter(t => !STATE.test(t));
       if (toks.length && toks.every(t => GROUP_CLASS.test(t) || PLURAL.test(t))) return false;
     }
     return true;
@@ -547,6 +581,10 @@ function scan(cfg) {
     const inner = cands.filter(o => o !== el && el.contains(o));
     return inner.length !== 1;
   });
+  // A boxless tap target inside a control that draws a box is part of that face (a filter pill's
+  // clear "✕", role=button, inside "NLH ✕"): the pill is measured with it, once.
+  const boxedFace = (el) => hasBox(getComputedStyle(el)) || [...el.querySelectorAll('*')].some(d => !d.closest('svg') && hasBox(getComputedStyle(d)));
+  cands = cands.filter(el => boxedFace(el) || !cands.some(o => o !== el && o.contains(el) && hasBox(getComputedStyle(o))));
 
   // ── Ink.
   const linearOf = (el) => {
@@ -681,7 +719,7 @@ function scan(cfg) {
         const bx = [Math.max(box.x[0], b.left), Math.min(box.x[1], b.right)];
         const by = [Math.max(box.y[0], b.top), Math.min(box.y[1], b.bottom)];
         textBoxes.push([bx[0], by[0], bx[1], by[1]]);
-        textHost.push([[bx[0], by[0], bx[1], by[1]], host]);
+        textHost.push([[bx[0], by[0], bx[1], by[1]], host, symbol]);
       }
     }
     for (const ic of el.querySelectorAll('svg, img, canvas')) {
@@ -695,14 +733,15 @@ function scan(cfg) {
     // A face that is a small LAYOUT rather than a label (see TILES): two text blocks stacked (a
     // title over a description, a name over an amount), or a large figure stacked with text (an
     // avatar over a name, a theme preview over its name). A tab bar's line icon (an <svg>) over
-    // its label is a label: the two are centred together.
+    // its label is a label: the two are centred together — and so is a SYMBOL set as text over a
+    // label (the hand-entry action buttons' "✕" over "FOLD"), which is an icon, not a second line.
     let layout = null;
     {
       const across = inlineAxis === 'y' ? [0, 2] : [1, 3];
-      const blocks = textHost.map(([q, h]) => ({ q, h: blockOf(h) }));
+      const blocks = textHost.map(([q, h, sym]) => ({ q, h: blockOf(h), sym }));
       for (let i = 0; i < blocks.length && !layout; i++) for (let j = i + 1; j < blocks.length; j++) {
         const a = blocks[i], c = blocks[j];
-        if (a.h === c.h) continue;
+        if (a.h === c.h || a.sym || c.sym) continue;
         if (a.q[across[1]] <= c.q[across[0]] + 0.5 || c.q[across[1]] <= a.q[across[0]] + 0.5) { layout = 'stacked text'; break; }
       }
       if (!layout && textBoxes.length && pictures.length) {
@@ -751,6 +790,32 @@ function scan(cfg) {
     return rs.map(rr => ({ at: `${rr.f}:${rr.l}`, spec: rr.spec, sel: rr.s.slice(0, 90), set: rr.p.filter(p => ALIGN_PROPS.includes(p.split(':')[0])).join('; ').slice(0, 160) }));
   };
 
+  // The vertical lines' origin: the .app-shell's left, except inside a LAYER — an opaque fixed
+  // element drawn over the app (the replayer, full-bleed or landscape; a sheet, a panel, a
+  // dropdown) — which is a canvas of its own: its controls' lines run from its own left edge. A
+  // layer anchored at the window's left edge (the replayer, a full-width sheet) is the window's
+  // canvas, and on a phone that is the shell's too. Any other layer is itself held to the shell's
+  // lines, once, as kind "layer" (left edge on a g line, width whole g): a sheet centred on a
+  // desktop window at a fractional width is ONE failure, its own, rather than one per control
+  // inside it. A translucent backdrop is not a layer: a modal centred on it is centred in the
+  // shell, on the shell's lines.
+  const layersUsed = new Set();
+  const layerOf = (el) => {
+    for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      if (s.position !== 'fixed') continue;
+      if (shell && (a === shell || a.contains(shell))) return null;
+      if (alpha(s.backgroundColor) >= 0.95 || s.backgroundImage !== 'none') return a;
+    }
+    return null;
+  };
+  const layerLeft = (el) => {
+    const L = layerOf(el);
+    if (!L) return ox;
+    const left = L.getBoundingClientRect().left;
+    if (Math.abs(left - ox) >= 0.5 && Math.abs(left) >= 0.5) layersUsed.add(L);
+    return Math.abs(left - ox) < 0.5 ? ox : left;
+  };
   const out = [];
   let gid = (window.__guardGid || 0);
   const record = (el, kind0, how0) => {
@@ -760,7 +825,8 @@ function scan(cfg) {
     const wg = b.width / g, hr = b.height / r;
     const lo = layoutOffset(el);
     const tr = (cs.translate && cs.translate !== 'none') ? cs.translate.split(/\s+/).map(parseFloat) : [0, 0];
-    const lx = (b.left + lo.dx - (tr[0] || 0) - ox) / g, ty = (b.top + lo.dy - (tr[1] || 0) - oy) / r;
+    const ox0 = layerLeft(el);
+    const lx = (b.left + lo.dx - (tr[0] || 0) - ox0) / g, ty = (b.top + lo.dy - (tr[1] || 0) - oy) / r;
     const geo = { w: +wg.toFixed(2), h: +hr.toFixed(2), x: +lx.toFixed(2), y: +ty.toFixed(2) };
     const geoFail = [];
     if (kind !== 'strip') {
@@ -827,6 +893,7 @@ function scan(cfg) {
       box: { left: +b.left.toFixed(4), top: +b.top.toFixed(4), width: +b.width.toFixed(4), height: +b.height.toFixed(4) },
       textU: r2(ink.textU), figU: r2(ink.figU), inlineAxis: ink.inlineAxis,
       ctx: (() => { const p = el.parentElement; return p ? desc(p) : ''; })(),
+      anc: (() => { const out = []; for (let a = el.parentElement; a && out.length < 6 && a !== document.body; a = a.parentElement) { const c = clsList(a).filter(k => !/^(open|active|selected|is-\w+|tab-active|snap-g\S*)$/.test(k)); if (c.length) out.push(c[0]); } return out; })(),
       gid: id, needPx, nText: ink.nText, nFig: ink.nFig, symbolOnly: ink.symbolOnly, boxless: !hasBox(cs) && ![...el.querySelectorAll('*')].some(d => !d.closest('svg') && hasBox(getComputedStyle(d)) && hasLabel(d)),
       full: b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight,
       occluded: occluded(el, b),
@@ -839,7 +906,8 @@ function scan(cfg) {
     out.push(item);
   };
   for (const el of cands) {
-    const kind = matchesAny(el, TILES) ? 'tile' : matchesAny(el, START_ALIGNED) ? 'start' : matchesAny(el, SWITCHES) ? 'switch'
+    const inSwitch = src.get(el) === 'label-face' && !!el.parentElement && !!el.parentElement.closest(SWITCHES.join(','));
+    const kind = matchesAny(el, TILES) ? 'tile' : matchesAny(el, START_ALIGNED) ? 'start' : (matchesAny(el, SWITCHES) || inSwitch) ? 'switch'
       : el.tagName === 'SELECT' ? 'field' : 'control';
     record(el, kind, src.get(el));
   }
@@ -850,6 +918,22 @@ function scan(cfg) {
     if (coverage(el, b).covered >= 0.9) continue;
     record(el, 'strip', 'strip');
   }
+  // Each layer that measured controls on its own lines: its left edge and width on the shell's.
+  for (const L of layersUsed) {
+    const b = L.getBoundingClientRect();
+    const wg = b.width / g, lx = (b.left - ox) / g;
+    const geoFail = [];
+    if (Math.abs(frac(wg)) > 0.05) geoFail.push('w');
+    if (Math.abs(frac(lx)) > 0.05) geoFail.push('x');
+    const id = ++gid;
+    L.setAttribute('data-guard-id', String(id));
+    out.push({ view, kind: 'layer', how: 'layer', el: desc(L), cls: clsList(L), tag: L.tagName.toLowerCase(), text: '',
+      w: +wg.toFixed(2), h: +(b.height / r).toFixed(2), x: +lx.toFixed(2), y: +((b.top - oy) / r).toFixed(2), geoFail,
+      box: { left: +b.left.toFixed(4), top: +b.top.toFixed(4), width: +b.width.toFixed(4), height: +b.height.toFixed(4) },
+      textU: null, figU: null, inlineAxis: 'x', ctx: L.parentElement ? desc(L.parentElement) : '', anc: [],
+      gid: id, needPx: null, nText: 0, nFig: 0, symbolOnly: false, boxless: false, full: false, occluded: true,
+      _el: L, _hosts: [] });
+  }
   window.__guardGid = gid;
   // The rules behind an item, asked for by the caller once it knows the item fails.
   const byGid = new Map(out.map(it => [it.gid, it]));
@@ -859,6 +943,10 @@ function scan(cfg) {
     const lh = it._hosts.filter(h => h !== it._el);
     // Styled inline (a React style={{}}): no stylesheet rule says it, so name that.
     const inline = (e) => { const s = e.getAttribute('style') || ''; return /(height|padding|line-height|align|justify|display|place-)/.test(s) ? s.replace(/\s+/g, ' ').slice(0, 160) : null; };
+    if (it.kind === 'layer') {
+      const rs = rulesFor(it._el, LAYER_PROPS).map(rr => ({ at: `${rr.f}:${rr.l}`, spec: rr.spec, sel: rr.s.slice(0, 90), set: rr.p.filter(p => LAYER_PROPS.includes(p.split(':')[0])).join('; ').slice(0, 160) }));
+      return { rules: rs, labelRules: [], labelEl: null, inlineStyle: (it._el.getAttribute('style') || '').replace(/\s+/g, ' ').slice(0, 160) || null, labelInlineStyle: null };
+    }
     return { rules: ruleRefs(it._el), labelRules: lh.length ? ruleRefs(lh[0]) : [], labelEl: lh.length ? desc(lh[0]) : null,
       inlineStyle: inline(it._el), labelInlineStyle: lh.length ? inline(lh[0]) : null };
   };
@@ -938,30 +1026,46 @@ async function pixelPass(p, items) {
     const ps = passes.find(ps => !ps.some(o => overlaps(o.box, it.box)));
     if (ps) ps.push(it); else passes.push([it]);
   }
-  const shot = async () => decode(await p.screenshot({ animations: 'disabled', caret: 'hide' }));
+  // Each capture is clipped to the boxes it is for (whole CSS px, so device pixels line up with
+  // the baseline's): a 3x desktop viewport decodes to ~47MB, and a full capture per pass ran a
+  // long desktop run out of memory ("Array buffer allocation failed").
+  const clipOf = (its) => {
+    const x0 = Math.max(0, Math.floor(Math.min(...its.map(i => i.box.left))) - 1);
+    const y0 = Math.max(0, Math.floor(Math.min(...its.map(i => i.box.top))) - 1);
+    const x1 = Math.min(W, Math.ceil(Math.max(...its.map(i => i.box.left + i.box.width))) + 1);
+    const y1 = Math.min(H, Math.ceil(Math.max(...its.map(i => i.box.top + i.box.height))) + 1);
+    return { x: x0, y: y0, width: Math.max(1, x1 - x0), height: Math.max(1, y1 - y0) };
+  };
+  const shot = async (clip) => decode(await p.screenshot({ animations: 'disabled', caret: 'hide', clip }));
   await p.evaluate(pxApply, []); // the style sheet, before the baseline (it turns transitions off)
   await p.waitForTimeout(50);
-  const base = await shot();
-  const s = base.width / W; // device px per CSS px
+  const baseClip = clipOf(items);
+  let base = await shot(baseClip);
+  const s = base.width / baseClip.width; // device px per CSS px
   for (const ps of passes) {
     const ids = ps.map(i => i.gid);
+    const clip = clipOf(ps);
     await p.evaluate(pxApply, ids);
     await p.waitForTimeout(30);
-    const img = await shot();
+    let img = await shot(clip);
     await p.evaluate(pxRestore, ids);
+    // Device px of this capture's origin within the baseline's.
+    const ox = Math.round((clip.x - baseClip.x) * s), oy = Math.round((clip.y - baseClip.y) * s);
     for (const it of ps) {
       const b = it.box;
-      const X0 = Math.max(0, Math.floor(b.left * s)), Y0 = Math.max(0, Math.floor(b.top * s));
-      const X1 = Math.min(base.width, Math.ceil((b.left + b.width) * s)), Y1 = Math.min(base.height, Math.ceil((b.top + b.height) * s));
+      const X0 = Math.max(0, Math.floor((b.left - clip.x) * s)), Y0 = Math.max(0, Math.floor((b.top - clip.y) * s));
+      const X1 = Math.min(img.width, Math.ceil((b.left + b.width - clip.x) * s)), Y1 = Math.min(img.height, Math.ceil((b.top + b.height - clip.y) * s));
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let j = Y0; j < Y1; j++) for (let i = X0; i < X1; i++) {
-        const k = (j * base.width + i) * 4;
-        const d = Math.abs(base.data[k] - img.data[k]) + Math.abs(base.data[k + 1] - img.data[k + 1]) + Math.abs(base.data[k + 2] - img.data[k + 2]);
+        const k = (j * img.width + i) * 4, kb = ((j + oy) * base.width + i + ox) * 4;
+        const d = Math.abs(base.data[kb] - img.data[k]) + Math.abs(base.data[kb + 1] - img.data[k + 1]) + Math.abs(base.data[kb + 2] - img.data[k + 2]);
         if (d > 60) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
       }
-      if (Number.isFinite(x0)) out.set(it.gid, [x0 / s, y0 / s, (x1 + 1) / s, (y1 + 1) / s]);
+      if (Number.isFinite(x0)) out.set(it.gid, [clip.x + x0 / s, clip.y + y0 / s, clip.x + (x1 + 1) / s, clip.y + (y1 + 1) / s]);
     }
+    img = null;
   }
+  base = null;
   // Nothing may stay transparent: a re-render between apply and restore can strand a marker.
   const left = await p.evaluate(pxCleanup);
   if (left) pxLeftovers.push(left);
@@ -990,7 +1094,12 @@ async function inkAscent(p, font, text) {
     const k = parseFloat(font.size) / 200;
     const allCaps = !/\p{Ll}/u.test(t) && /\p{Lu}/u.test(t);
     const symbol = !/[\p{L}\p{N}]/u.test(t);
-    return { asc: (allCaps ? c.measureText('H').actualBoundingBoxAscent : c.measureText(t).actualBoundingBoxAscent) * k, symbol };
+    // A dash standing in for a value ("—" in an empty field) sits on the font's math axis, below
+    // the middle of the capitals by design: its own ascent above the baseline locates the line.
+    const DASHES = '-' + String.fromCharCode(0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2212);
+    const dash = /\S/.test(t) && [...t].every(ch => /\s/.test(ch) || DASHES.includes(ch));
+    return { asc: (allCaps ? c.measureText('H').actualBoundingBoxAscent : c.measureText(t).actualBoundingBoxAscent) * k, symbol,
+      dash, dashAsc: c.measureText(t.trim()).actualBoundingBoxAscent * k, cap: c.measureText('H').actualBoundingBoxAscent * k };
   }, { font, text });
 }
 
@@ -1040,7 +1149,12 @@ function finalize(c) {
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
   }, { t, u: USER });
-  const p = await ctx.newPage();
+  // A WebKit page can crash under a long run (a 3x capture of a desktop viewport, view after view);
+  // the view loop opens a new one and tries that view again.
+  let p = await ctx.newPage();
+  let crashed = false;
+  p.on('crash', () => { crashed = true; });
+  const reopen = async () => { await p.close().catch(() => {}); p = await ctx.newPage(); crashed = false; p.on('crash', () => { crashed = true; }); };
   const home = base + '/' + (overlay ? '?gridOverlay=1' : '');
   if (!listOnly) { await p.goto(home, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(4000); }
   const desktop = !listOnly && await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
@@ -1066,7 +1180,7 @@ function finalize(c) {
     });
     for (const l of lifted) notes.push({ view, note: l });
     if (await p.evaluate(() => !window.__guardRules)) await p.evaluate((rules) => { window.__guardRules = rules; }, RULES.map(r => ({ f: r.f, l: r.l, s: r.s, sel: r.sel, ctx: r.ctx, p: r.p })));
-    const res = await p.evaluate(scan, { CONTROLS, INTERACTIVE, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, SWITCHES, STRIPS, ALIGN_PROPS, GROUP_CLASS_SRC: GROUP_CLASS.source, view });
+    const res = await p.evaluate(scan, { CONTROLS, INTERACTIVE, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, SWITCHES, STRIPS, ALIGN_PROPS, LAYER_PROPS, GROUP_CLASS_SRC: GROUP_CLASS.source, view });
     grid = grid || res;
     const pxItems = res.controls.filter(c => c.full && !c.occluded && (c.needPx || c.nText));
     const pxInk = await pixelPass(p, pxItems);
@@ -1077,9 +1191,17 @@ function finalize(c) {
         const ink = pxInk.get(c.gid);
         if (ink) {
           const m = c.needPx.text ? await inkAscent(p, c.font, c.needPx.text) : { asc: 0, symbol: true };
-          const bot = m.symbol || !m.asc ? ink[3] : Math.min(ink[3], ink[1] + m.asc);
-          c.textU = [ink[0], ink[1], ink[2], bot].map(v => +v.toFixed(4));
-          c.inkFrom = 'pixels';
+          if (c.kind === 'field' && m.dash) {
+            // A form field's placeholder dash is text, held to the text convention: the capitals'
+            // box on the baseline the dash's own ascent finds (its ink alone sits below centre).
+            const bl = ink[1] + m.dashAsc;
+            c.textU = [ink[0], bl - m.cap, ink[2], bl].map(v => +v.toFixed(4));
+            c.inkFrom = 'pixels (dash as text)';
+          } else {
+            const bot = m.symbol || !m.asc ? ink[3] : Math.min(ink[3], ink[1] + m.asc);
+            c.textU = [ink[0], ink[1], ink[2], bot].map(v => +v.toFixed(4));
+            c.inkFrom = 'pixels';
+          }
         } else c.inkFrom = 'none';
       } else if (c.nText && canPx) {
         // Along the line, the painted ink (canvas side bearings miss tabular figures, a fallback
@@ -1164,7 +1286,12 @@ function finalize(c) {
   step('dashboard', () => nav('Dashboard'), 1);
   step('social', () => nav('Social'), 1);
   step('results', () => menu('Results & Tracking', 'Results'), 1);
-  step('settings', () => menu('Settings', 'Settings'), 2);
+  step('settings', async () => {
+    await menu('Settings', 'Settings');
+    // Without a share link (settings-share has one): its Generate button.
+    const revoke = p.locator('.settings-inline-row button:has-text("Revoke")').filter({ visible: true });
+    if (await revoke.count()) { await revoke.first().click({ timeout: 3000 }).catch(() => {}); await p.waitForTimeout(800); }
+  }, 2);
   step('cash-live', () => nav('Cash'), 1);
   step('cash-heatmaps', async () => { await nav('Cash'); await click('.cash-mode-tabs button:has-text("Heatmaps")', 1500); }, 1);
   step('hands', () => nav('Hands'), 1);
@@ -1239,7 +1366,9 @@ function finalize(c) {
   const also = (label) => run(`${lastView} (${label})`);
   const vis = (sel) => p.locator(sel).filter({ visible: true });
   const exists = async (sel) => (await vis(sel).count()) > 0;
-  const tap = async (sel, wait = 700) => { await vis(sel).first().click({ timeout: 8000, force: overlay }); await p.waitForTimeout(wait); };
+  // force: a click without waiting for the element to hold still — the desktop replayer at 3x
+  // paints so slowly that WebKit's frames never confirm a button stable within the timeout.
+  const tap = async (sel, wait = 700, force = false) => { await vis(sel).first().click({ timeout: 8000, force: overlay || force }); await p.waitForTimeout(wait); };
   // Scroll the main content (not the window) so `sel` sits near the top of the viewport.
   const reveal = async (sel, margin = 60) => {
     const loc = vis(sel).first();
@@ -1285,7 +1414,7 @@ function finalize(c) {
   step('filters-scrolled', async () => { await nav('Schedule'); await tap('.filter-chip-square', 800); }, 2);
   step('card-saved', async () => {
     await nav('Schedule');
-    await tap('.cal-event-row.saved:not(.open) .cal-event-bar', 900);
+    await tap('.cal-event-row.saved:not(.open):not(.past) .cal-event-bar', 900);
   }, 1);
   // My Schedule: an expanded card, its "if I bag / bust" panel, export, travel.
   const mySched = async () => {
@@ -1305,6 +1434,22 @@ function finalize(c) {
   }, 1);
   step('myschedule-export', async () => { await mySched(); await tap('button[title="Export schedule"]', 900); }, 1);
   step('myschedule-travel', async () => { await mySched(); await tap('button:has-text("Travel")', 900); });
+  // Calendar with a filter set: its pill (and clear ✕) in the bar, panel open and closed.
+  step('calendar-filter-pill', async () => {
+    await nav('Schedule');
+    await tap('.filter-chip-square[title="Calendar view"]', 1500);
+    await tap('.filter-chip-square:not([title])', 800);
+    await tap('.cal-fp-chips button', 900);
+    await also('panel');
+    await tap('.cal-fp-save', 800);
+    if (!(await exists('.cal-fp-pill'))) throw new Error('no filter pill');
+  });
+  // An open card in the admin's edit mode (overrides, strip colour, revert).
+  step('card-admin-edit', async () => {
+    await nav('Schedule');
+    await tap('.cal-event-row:not(.open):not(.past) .cal-event-bar', 900);
+    await tap('.cal-event-row.open .cal-action-btn:has-text("Edit")', 900);
+  }, 2);
   // Calendar: another day, and a card open in it.
   step('calendar-day', async () => {
     await nav('Schedule');
@@ -1347,6 +1492,33 @@ function finalize(c) {
   step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);
   step('social-group', async () => { await nav('Social'); await tap('.social-group-card', 1500); }, 1);
   step('social-create-group', async () => { await nav('Social'); await tap('.social-new-btn', 900); });
+  // A group's Members tab (invite, remove, the owner's leaderboard switch, delete); a buddy's
+  // Add to Group and Remove Connection confirmations; a search that finds someone to connect to.
+  step('social-group-members', async () => {
+    await nav('Social');
+    await tap('.social-group-card', 1500);
+    await tap('.group-segment-btn:has-text("Members")', 1000);
+  }, 2);
+  step('social-group-tabs', async () => {
+    await nav('Social');
+    await tap('.social-group-card', 1500);
+    for (const s of ['Schedule', 'Leaderboard']) {
+      if (!(await exists(`.group-segment-btn:has-text("${s}")`))) continue;
+      await tap(`.group-segment-btn:has-text("${s}")`, 1000);
+      await also(s.toLowerCase());
+    }
+  }, 1);
+  step('social-buddy-add', async () => {
+    await nav('Social');
+    await tap('.social-buddy-card', 1200);
+    await tap('.social-action-btn:has-text("Add to Group")', 800);
+  }, 1);
+  step('social-buddy-remove', async () => {
+    await nav('Social');
+    await tap('.social-buddy-card', 1200);
+    await tap('.social-action-btn:has-text("Remove Connection")', 800);
+  }, 1);
+  step('social-search-connect', async () => { await nav('Social'); await vis('.social-search-input').first().fill('fresh'); await p.waitForTimeout(1500); }, 1);
   // Hands: every game family's picker, hand entry step by step, the replayer on a saved hand
   // (transport, settings, share).
   step('hands-games', async () => {
@@ -1367,22 +1539,40 @@ function finalize(c) {
       await also('step ' + i);
     }
   }, 1);
+  // A bet being sized: Raise opens the sizing pills and the amount field.
+  step('hands-entry-sizing', async () => {
+    await nav('Hands');
+    await tap('button:has-text("Create No Limit")', 1500);
+    for (let i = 0; i < 4 && !(await exists('.gto-action-btn')); i++) {
+      const next = vis('.replayer-entry-view button:has-text("Next"), .replayer-entry-view button:has-text("Continue")').first();
+      if (!(await next.count())) break;
+      await next.click({ timeout: 3000 }).catch(() => {});
+      await p.waitForTimeout(900);
+    }
+    await tap('.gto-action-btn:has-text("Raise")', 900);
+    if (!(await exists('.gto-sizing-pill'))) throw new Error('no sizing pills after Raise');
+  }, 1);
   step('hands-entry-plo', async () => {
     await nav('Hands');
     await tap('.game-fave-btn:has-text("PLO")', 600);
     await tap('button:has-text("Create ")', 1500);
   }, 1);
+  // The admin's Hands tools (the second footer row): each view as it renders against this server
+  // (without a solver, its error and empty states).
+  for (const [id, label] of [['solver', 'Solver'], ['solver-trainer', 'Solver Trainer'], ['watch-solver', 'Watch Solver'], ['trainer', 'Trainer'], ['3-way', '3-Way']]) {
+    step('hands-tool-' + id, async () => { await nav('Hands'); await tap(`.hands-tool-row button:text-is("${label}")`, 2000); }, 1);
+  }
   const openHand = async () => { await nav('Hands'); await tap('.replayer-hand-card.is-row', 2000); };
   step('replayer', async () => {
     await openHand();
-    for (const t of ['Forward', 'Forward', 'End']) { if (await exists(`button[title="${t}"]`)) await tap(`button[title="${t}"]`, 500); }
+    for (const t of ['Forward', 'Forward', 'End']) { if (await exists(`button[title="${t}"]`)) await tap(`button[title="${t}"]`, 500, true); }
     await also('advanced');
   }, 1);
-  step('replayer-settings', async () => { await openHand(); await tap('button[title="Replayer Settings"]', 900); }, 2);
-  step('replayer-table-settings', async () => { await openHand(); await tap('[aria-label="Table settings"]', 900); }, 1);
+  step('replayer-settings', async () => { await openHand(); await tap('button[title="Replayer Settings"]', 900, true); }, 2);
+  step('replayer-table-settings', async () => { await openHand(); await tap('[aria-label="Table settings"]', 900, true); }, 1);
   step('replayer-share', async () => {
     await openHand();
-    for (const s of ['button[title*="Share"]', 'button[aria-label*="Share"]', 'button:has-text("Share")']) if (await exists(s)) { await tap(s, 900); return; }
+    for (const s of ['button[title*="Share"]', 'button[aria-label*="Share"]', 'button:has-text("Share")']) if (await exists(s)) { await tap(s, 900, true); return; }
     throw new Error('no share button on the replayer');
   }, 1);
   // Cash: the location picker.
@@ -1413,6 +1603,47 @@ function finalize(c) {
     await reveal(sel, 300);
     await tap(sel, 700);
   }, 1);
+  // Settings with a share link made: its field, Copy and Revoke in place of the Generate button.
+  step('settings-share', async () => {
+    await menu('Settings', 'Settings');
+    if (await exists('.settings-share-input')) return;
+    await tap('button:has-text("Generate Share Link")', 1200);
+    if (!(await exists('.settings-share-input'))) throw new Error('no share link was made');
+  }, 1);
+  // The public page a share link opens (/shared/<token>): its own top bar, date breaks and cards.
+  step('shared-schedule', async () => {
+    const tk = await p.evaluate(async () => {
+      const r = await fetch('/api/share-token', { method: 'POST', headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } });
+      return r.ok ? (await r.json()).token : null;
+    });
+    if (!tk) throw new Error('no share token');
+    await p.goto(base + '/shared/' + tk, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(3000);
+    await vis('.cal-event-row').first().waitFor({ timeout: 8000 });
+  }, 2, { noSkip: true });
+  step('shared-schedule-card', async () => {
+    const tk = await p.evaluate(async () => {
+      const r = await fetch('/api/share-token', { method: 'POST', headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } });
+      return r.ok ? (await r.json()).token : null;
+    });
+    if (!tk) throw new Error('no share token');
+    await p.goto(base + '/shared/' + tk, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(3000);
+    await tap('.cal-event-row:not(.open):not(.past) .cal-event-bar', 900);
+  }, 1, { noSkip: true });
+  // A saved card's buddy chip opens the swap sheet; Results' share menu opens the series wrap-up.
+  step('swap-modal', async () => {
+    await nav('Schedule');
+    await tap('.cal-event-row.saved:not(.open):not(.past) .cal-event-bar', 900);
+    await tap('.cal-event-row.open .buddy-chip', 1200);
+  }, 1);
+  step('wrap-up', async () => {
+    await menu('Results & Tracking', 'Results');
+    await tap('button[title="Share & Social"]', 900);
+    await tap('.share-menu-item:has-text("Series Wrap")', 1500);
+  }, 1);
+  // The admin's Quick add (Hands): describe a hand.
+  step('hands-quick-add', async () => { await nav('Hands'); await tap('.qa-chip:has-text("Quick add")', 1200); }, 1);
   // Admin.
   step('admin', () => menu('Admin', 'Admin'), 3);
   step('batches', () => menu('New Events', 'New Events'), 2);
@@ -1455,6 +1686,14 @@ function finalize(c) {
     await signedOut();
     await tap('button:has-text("Forgot"), a:has-text("Forgot")', 900);
   }, 0, { signedOut: true });
+  // The password-reset page a reset email links to (/#reset?token=<64 hex>; a query string makes
+  // it a new document, which is when the app reads the hash).
+  step('auth-reset', async () => {
+    await signedOut();
+    await p.goto(base + '/?reset=1#reset?token=' + 'ab'.repeat(32), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(2500);
+    if (!(await exists('input[type="password"]'))) throw new Error('the reset form did not show');
+  }, 0, { signedOut: true, noSkip: true });
   step('real-name-prompt', async () => {
     const u = process.env.CHECK_FRESH_USER, pw = process.env.CHECK_FRESH_PASSWORD;
     if (!u || !pw) throw new Error('needs CHECK_FRESH_USER / CHECK_FRESH_PASSWORD (an account with no real name)');
@@ -1477,17 +1716,33 @@ function finalize(c) {
   for (const v of views) {
     if (!want(v.view)) continue;
     lastView = v.view;
-    try {
-      await p.evaluate(() => sessionStorage.removeItem('guard-signed-out')).catch(() => {});
-      if (v.opts.noSkip) { await p.goto(home, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(3500); }
-      else await fresh();
-      await v.fn();
-      await run(v.view);
-      await scrollMain(v.scrolls);
-      visited.push(v.view);
-    } catch (e) {
-      unreachable.push({ view: v.view, why: e.message.split('\n')[0].slice(0, 160) });
-      if (!quiet) console.log(`  (view ${v.view} skipped: ${e.message.split('\n')[0]})`);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await p.evaluate(() => sessionStorage.removeItem('guard-signed-out')).catch(() => {});
+        if (v.opts.noSkip) { await p.goto(home, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(3500); }
+        else await fresh();
+        await v.fn();
+        await run(v.view);
+        await scrollMain(v.scrolls);
+        visited.push(v.view);
+        break;
+      } catch (e) {
+        if (crashed || p.isClosed() || /crash|closed/i.test(e.message)) {
+          notes.push({ view: v.view, note: 'the page crashed (' + e.message.split('\n')[0].slice(0, 80) + '); reopened' + (attempt ? '' : ' and retried') });
+          await reopen();
+          if (attempt === 0) continue;
+        } else if (attempt === 0 && /stream|PNG|Protocol error|Target|allocation/i.test(e.message)) {
+          // A capture that came back cut short (the PNG decoder's "read requests waiting on
+          // finished stream") or could not be decoded for memory: transient, so the view is taken
+          // again.
+          notes.push({ view: v.view, note: 'a capture failed (' + e.message.split('\n')[0].slice(0, 80) + '); retried' });
+          continue;
+        }
+        unreachable.push({ view: v.view, why: e.message.split('\n')[0].slice(0, 160) });
+        if (process.env.CHECK_DEBUG) console.log(e.stack || e.message);
+        if (!quiet) console.log(`  (view ${v.view} skipped: ${e.message.split('\n')[0]})`);
+        break;
+      }
     }
   }
 
@@ -1506,8 +1761,8 @@ function finalize(c) {
   console.log(`controls at ${W}x${H}${desktop ? ' (desktop)' : ''}: g=${grid && grid.g}px r=${grid && grid.r}px origin x=${grid && grid.ox} y=${grid && grid.oy}`);
   for (const v of viewsSeen) {
     const vr = rows.filter(c => c.view.split(' (')[0] === v), vf = vr.filter(c => c.fail.length);
-    const ns = vr.filter(c => c.kind === 'strip').length;
-    console.log(`  ${v}: ${vr.length - ns} controls${ns ? ` + ${ns} strips` : ''}, ${vf.length} failing`);
+    const ns = vr.filter(c => c.kind === 'strip').length, nl = vr.filter(c => c.kind === 'layer').length;
+    console.log(`  ${v}: ${vr.length - ns - nl} controls${ns ? ` + ${ns} strips` : ''}${nl ? ` + ${nl} layers` : ''}, ${vf.length} failing`);
   }
   // Where a failure's styling lives when no stylesheet rule names it (a React style={{}}): the
   // JSX line that renders it, found by its class or, failing that, its label text.
@@ -1533,14 +1788,41 @@ function finalize(c) {
       const v = c.view.split(/[\s(-]/)[0].toLowerCase();
       const own = hits.filter(([f]) => path.basename(f).toLowerCase().includes(v));
       if (own.length >= 1 && own.length <= 2) return own.map(([f, l]) => `${f}:${l}`).join(' | ');
-      return hits.length <= 3 ? hits.map(([f, l]) => `${f}:${l}`).join(' | ') : null;
+      if (hits.length <= 3) return hits.map(([f, l]) => `${f}:${l}`).join(' | ');
+      // One block of one file (a menu's items written alike): its line range.
+      const ls = hits.map(([, l]) => l);
+      if (hits.every(([f]) => f === hits[0][0]) && Math.max(...ls) - Math.min(...ls) <= 60) return `${hits[0][0]}:${Math.min(...ls)}-${Math.max(...ls)}`;
+      return null;
     };
     for (const k of (c.cls || []).filter(k => !/^(btn|ctl|active|open|selected|disabled|snap-g|snap-g-centred|is-\w+|btn-\w+)$/.test(k))) {
       const r = pick(findAll(new RegExp('className=[^>]*[\'"` ]' + esc(k) + '[\'"` ]')));
       if (r) return r;
     }
+    // Styled inline: the JSX line that writes the most of the style's values (a style object is
+    // usually one line), if few lines tie for it; else the line that writes its label.
+    if (c.inlineStyle) {
+      const vals = [...new Set(c.inlineStyle.split(';').map(d => d.slice(d.indexOf(':') + 1).trim())
+        .filter(v => v.length >= 6 && /calc|var\(/.test(v)))];
+      let best = 0, hits = [];
+      for (const [f, lines] of JSX) for (let i = 0; i < lines.length; i++) {
+        let n = 0;
+        for (const v of vals) if (lines[i].includes("'" + v + "'") || lines[i].includes('"' + v + '"') || lines[i].includes('`' + v + '`')) n++;
+        if (!n || n < best) continue;
+        if (n > best) { best = n; hits = []; }
+        hits.push([f, i + 1]);
+      }
+      const r = pick(hits);
+      if (r) return r;
+    }
     const t = (c.text || '').replace(/\s+/g, ' ').trim().slice(0, 30);
-    if (t.length >= 3 && /\p{L}/u.test(t)) { const r = pick(findAll(new RegExp('>\\s*' + esc(t) + '\\s*(<|$)|[\'"`]' + esc(t) + '[\'"`]'))); if (r) return r; }
+    if (t.length >= 3 && /\p{L}/u.test(t)) { const r = pick(findAll(new RegExp('(>|^)\\s*' + esc(t) + '\\s*(<|$)|[\'"`]' + esc(t) + '[\'"`]'))); if (r) return r; }
+    // Inside a component whose root class names it (.location-dropdown -> LocationDropdown.jsx);
+    // not the app's own layout boxes, which name no component.
+    const GENERIC = /^(content-area|tab-panel|app-shell|app|main|dk-pane|dk-pane-[\w-]+|dk-shell|page|screen|view|layout|container|wrapper|root|overlay|backdrop|modal-overlay|modal-backdrop)$/;
+    for (const k of (c.anc || []).filter(k => !GENERIC.test(k))) {
+      const r = pick(findAll(new RegExp('className=[^>]*[\'"` ]' + esc(k) + '[\'"` ]')));
+      if (r) return `${r} (in .${k})`;
+    }
     return null;
   };
   for (const c of failing) {
