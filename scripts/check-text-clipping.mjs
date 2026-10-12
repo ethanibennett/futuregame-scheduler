@@ -5,7 +5,8 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule (and, for an admin, each tab of the bankroll dashboard, every Reports table and the
+// Schedule, the home (Dashboard) paged to its foot, its Scan sheet and Hands' Scanner (and, for
+// an admin, each tab of the bankroll dashboard, every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
@@ -105,6 +106,10 @@ function scan(rootSel) {
   await ctx.addInitScript(({ t }) => {
     localStorage.setItem('token', t); localStorage.setItem('username', 'ham5');
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
+    // The first-run location wizard (utils/location-prefs.js hasOnboarded reads 'onboarded'): its
+    // entrance animation can outlast the Skip click's wait on a slow desktop render, and then it
+    // covers every view of the run.
+    localStorage.setItem('onboarded', '1');
   }, { t });
   const p = await ctx.newPage();
   await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
@@ -130,6 +135,57 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run('schedule list (scrolled)', '.cal-event-row');
   }
+  // The home (Dashboard), which scrolls since 2026-10-12: from a fresh load, paged to its foot (on
+  // desktop both of its panes, the main one and .dk-home-right), then the Playing card's Scan sheet
+  // (a screenshot handed to the card's hidden picker, as its Scan button does; a scratch server
+  // has no scan key, so it lands on the scanner's idle state and its error line), then Hands'
+  // Scanner tool.
+  const isDesktop = () => p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
+  const openTab = async (name) => {
+    await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(3500);
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    const sel = (await isDesktop()) ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
+    await p.locator(sel).first().click({ timeout: 4000 });
+    await p.waitForTimeout(1800);
+  };
+  const HOME = '.dashboard-view.home';
+  try {
+    await openTab('Dashboard');
+    await run('home', HOME);
+    for (let i = 1; i < 8; i++) {
+      const moved = await p.evaluate((h) => {
+        let any = false;
+        for (const v of document.querySelectorAll('.tab-panel.tab-active .dashboard-view.home, .dk-home-right .dashboard-view.home')) {
+          const sc = v.closest('.content-area, .dk-scroll');
+          if (!sc) continue;
+          const before = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7);
+          if (sc.scrollTop !== before) any = true;
+        }
+        return any;
+      }, H);
+      if (!moved) break;
+      await p.waitForTimeout(300);
+      await run(`home (scrolled ${i})`, HOME);
+    }
+  } catch (e) { console.log(`  (home skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    await p.locator('.dash-scan-input').setInputFiles({
+      name: 'table.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'),
+    });
+    await p.locator('.scan-sheet').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(2500);
+    await run('scan sheet', '.scan-sheet');
+  } catch (e) { console.log(`  (scan sheet skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Hands');
+    await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await run('hands scanner', '.hands-scan');
+  } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
+
   // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });

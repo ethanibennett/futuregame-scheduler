@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
-import Avatar from './Avatar.jsx';
-import TableScanner from './TableScanner.jsx';
+import ScanTableSheet from './ScanTableSheet.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
-  formatBuyin, currencySymbol, nativeCurrency, haptic, fmtShortDate,
+  formatBuyin, nativeCurrency, haptic, fmtShortDate,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
   getMaxEntries, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
@@ -15,7 +14,7 @@ import {
 import { API_URL } from '../utils/api.js';
 import { tournamentTotals, homeCurrency } from '../utils/home.js';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
-import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
+import './home.css';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
 // splitEventStage is shared with CalendarEventRow and mirrors the server's
@@ -61,14 +60,6 @@ function gridPanelStyle(anchorRect, heightR, leftG) {
     transform: 'none',
   };
 }
-// A letter avatar's initial, seated: trimmed to cap..alphabetic with its baseline
-// on +3r of the 5r circle (cap 0.94r -> 2.06r above, 2r below = centred).
-const SEATED_INITIAL = {
-  display: 'block', textAlign: 'center', boxSizing: 'border-box',
-  paddingTop: 'calc(var(--subrow) * 3 - 1cap)',
-  textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
-};
-const AVATAR_5R = 'calc(var(--subrow) * 5)';
 
 // ── Countdown Clock (collapsed card) ──
 function CountdownClock({ startMs }) {
@@ -236,14 +227,19 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, st
 }
 
 
+// Friends Playing and Connections left the home (verdict "placement"): they live in Social, one
+// tap from the tab bar. The Table Scanner left it too: it is the Playing card's Scan action now,
+// and a tool in Hands.
 export default function DashboardView({
-  mySchedule, myActiveUpdates, trackingData, shareBuddies,
-  buddyLiveUpdates, buddyEvents, displayName, onPost, onDeleteUpdate,
+  mySchedule, myActiveUpdates, trackingData, onPost, onDeleteUpdate,
   onAddTracking, onNavigate, tournaments, onToggle, onRefresh,
-  onOpenInSchedule, demoStates = false, demoCard = false
+  onOpenInSchedule, demoStates = false, demoCard = false,
+  homeRight = null, // desktop: the second pane's element, which the NUMBERS column portals into
 }) {
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
-  const [connDropdownId, setConnDropdownId] = useState(null);
+  // Scan table: the screenshot picked from a Playing card, while its sheet is open.
+  const [scanFile, setScanFile] = useState(null);
+  const scanInputRef = useRef(null);
   const [now, setNow] = useState(getNow());
   // Shared with the Results tab's setting, but never Native here: a total of euros and dollars
   // is in no currency (utils/home.js).
@@ -268,14 +264,33 @@ export default function DashboardView({
   const swipeStart = useRef(null);
   const swipeDx = useRef(0);
   const trackRef = useRef(null);
+  // The home scrolls now, so a vertical drag that starts on a card is the page's: the first 1r of
+  // movement decides the gesture, and a vertical one leaves the carousel where it is (pan-y).
+  // (1r is read off the grid once, in px, because touch coordinates are px.)
+  const swipeStartY = useRef(0);
+  const swipeAxis = useRef(null);
+  const swipeSlop = useRef(0);
   const onTouchStart = useCallback((e) => {
     swipeStart.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+    swipeAxis.current = null;
+    if (!swipeSlop.current) swipeSlop.current = gridGeom().R;
     swipeDx.current = 0;
     if (trackRef.current) trackRef.current.classList.add('swiping');
   }, []);
   const onTouchMove = useCallback((e) => {
     if (swipeStart.current === null) return;
     const dx = e.touches[0].clientX - swipeStart.current;
+    if (!swipeAxis.current) {
+      const dy = e.touches[0].clientY - swipeStartY.current;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < swipeSlop.current) return;
+      swipeAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (swipeAxis.current === 'y') {
+        swipeStart.current = null;
+        if (trackRef.current) trackRef.current.classList.remove('swiping');
+        return;
+      }
+    }
     swipeDx.current = dx;
     if (trackRef.current) {
       const len = swipeRef.current || 1;
@@ -827,7 +842,13 @@ export default function DashboardView({
                     if (activeUpd?.id && onDeleteUpdate && confirm('Undo playing status for this event?')) onDeleteUpdate(activeUpd.id);
                   }} title="Undo start"><span className="dash-t">&#10005;</span></button>
                 </div>
-                <div className="dash-action-row">
+                <div className="dash-action-row dash-action-row--4">
+                  {/* Scan table (was the home's Table Scanner section): opens the photo picker
+                      at once; the sheet runs the scan on the screenshot chosen. */}
+                  <button type="button" className="dash-scan-btn" aria-label="Scan table" title="Scan the table (WSOP Live / PokerStars Live screenshot)"
+                    onClick={() => { haptic(); scanInputRef.current?.click(); }}>
+                    <Icon.camera /><span className="dash-t">Scan</span>
+                  </button>
                   <button className="dash-update-btn" onClick={() => {
                     window.dispatchEvent(new CustomEvent('openLiveUpdate', {
                       detail: { tab: 'update', tournamentId: event.id }
@@ -941,398 +962,217 @@ export default function DashboardView({
     .filter(([, v]) => v[field] > 0)
     .sort((a, b) => b[1][field] - a[1][field]);
 
-  // Friends currently playing
-  const activeFriends = useMemo(() => {
-    if (demoStates) {
-      return [
-        { id: 'demo-f1', username: 'demo_alice', display_name: 'Alice D.', avatar: null,
-          liveUpdate: { stack: '85000', sb: '500', bb: '1000', bbAnte: '1000', eventName: 'PLO 6-Max Day 1', isBusted: false } },
-        { id: 'demo-f2', username: 'demo_bob', display_name: 'Bob R.', avatar: null,
-          liveUpdate: { stack: '32000', bb: '800', eventName: 'NLH Championship', isBusted: false } },
-      ];
-    }
-    if (!shareBuddies || !buddyLiveUpdates) return [];
-    return shareBuddies
-      .filter(b => {
-        const lu = buddyLiveUpdates[b.id];
-        return lu && !lu.isBusted;
-      })
-      .map(b => ({
-        ...b,
-        liveUpdate: buddyLiveUpdates[b.id],
-      }));
-  }, [shareBuddies, buddyLiveUpdates, demoStates]);
 
-  // Friends with events scheduled today
-  const scheduledFriends = useMemo(() => {
-    if (!shareBuddies || !buddyEvents || !tournaments) return [];
-    const buddyToday = {};
-    Object.entries(buddyEvents).forEach(([tid, buddies]) => {
-      const t = tournaments.find(x => x.id === Number(tid));
-      // Stored dates are "September 30, 2026"; todayISO is ISO — compare normalised.
-      if (!t || normaliseDate(t.date) !== todayISO) return;
-      buddies.forEach(b => {
-        if (!buddyToday[b.id]) buddyToday[b.id] = [];
-        buddyToday[b.id].push(t);
-      });
-    });
-    return shareBuddies
-      .filter(b => buddyToday[b.id] && buddyToday[b.id].length > 0)
-      .map(b => ({
-        ...b,
-        // parseTournamentTime is venue-TZ aware AND memoized — sorts
-        // by absolute start instant instead of string-comparing "10:00 AM"
-        // against "9:00 AM" (which used to put 10 AM before 9 AM).
-        todayEvents: (() => {
-          const decorated = buddyToday[b.id].map(t => ({ t, ts: parseTournamentTime(t) }));
-          decorated.sort((a, c) => a.ts - c.ts);
-          return decorated.map(x => x.t);
-        })(),
-      }));
-  }, [shareBuddies, buddyEvents, tournaments]);
-
-  // Merged connections
-  const allConnections = useMemo(() => {
-    const map = {};
-    activeFriends.forEach(f => {
-      map[f.id] = { ...f, isPlaying: true, liveUpdate: f.liveUpdate, todayEvents: [] };
-    });
-    scheduledFriends.forEach(f => {
-      if (map[f.id]) {
-        map[f.id].todayEvents = f.todayEvents || [];
-      } else {
-        map[f.id] = { ...f, isPlaying: false, liveUpdate: null, todayEvents: f.todayEvents || [] };
-      }
-    });
-    return Object.values(map).sort((a, b) => (b.isPlaying ? 1 : 0) - (a.isPlaying ? 1 : 0));
-  }, [activeFriends, scheduledFriends]);
-
-  const connDropdownRef = useRef(null);
-  // The tapped avatar's rect (and its row's left), captured on click like plRect.
-  const [connRect, setConnRect] = useState(null);
-
-  useEffect(() => {
-    if (!connDropdownId) return;
-    const handler = (e) => {
-      if (connDropdownRef.current && !connDropdownRef.current.contains(e.target)) {
-        setConnDropdownId(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [connDropdownId]);
-
-  return (
-    <div className="dashboard-view">
-
-      {/* Up Next */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-title dash-title-swap" aria-live="polite">
-            <span key={upNextTitle} className={upNextTitleOut ? 'dash-title-in' : undefined}>{upNextTitle}</span>
-            {upNextTitleOut && (
-              <span key={'out' + upNextTitleOut.key} className="dash-title-out" aria-hidden="true"
-                onAnimationEnd={() => setUpNextTitleOut(null)}>{upNextTitleOut.text}</span>
+  // The home's two halves (verdict "placement"): NOW — Up Next, then To log and the last result
+  // (steps 3+) — and the NUMBERS — the bankroll line, the period block and Trend (steps 4-6; the
+  // Results bar stands in for the period block until then). On the phone they are one scrolling
+  // column, NOW first. On desktop (>= 1024) NOW is the main pane and the NUMBERS are portalled
+  // into a second 37g pane App renders beside it (homeRight), each pane its own scroller.
+  const nowCol = (
+    <div className="home-col home-col--now">
+        {/* Up Next */}
+        <div className="dashboard-section">
+          <div className="dashboard-section-header">
+            <div className="dashboard-section-title dash-title-swap" aria-live="polite">
+              <span key={upNextTitle} className={upNextTitleOut ? 'dash-title-in' : undefined}>{upNextTitle}</span>
+              {upNextTitleOut && (
+                <span key={'out' + upNextTitleOut.key} className="dash-title-out" aria-hidden="true"
+                  onAnimationEnd={() => setUpNextTitleOut(null)}>{upNextTitleOut.text}</span>
+              )}
+            </div>
+            {whatsNextEvents.length > 0 && (
+              <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-          {whatsNextEvents.length > 0 && (
-            <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
-          )}
-        </div>
-        {whatsNextEvents.length > 0 ? (() => {
-          const safeIdx = Math.min(selectedUpNextIdx, whatsNextEvents.length - 1);
-          swipeRef.current = whatsNextEvents.length;
-          return (
-            <div
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--space-lg) var(--space-lg)', margin:'0 calc(var(--subrow) * -1.5) calc(var(--subrow) * -1.5)'}}
-            >
+          {whatsNextEvents.length > 0 ? (() => {
+            const safeIdx = Math.min(selectedUpNextIdx, whatsNextEvents.length - 1);
+            swipeRef.current = whatsNextEvents.length;
+            return (
               <div
-                className="dash-carousel-track"
-                ref={trackRef}
-                data-idx={safeIdx}
-                style={{transform: `translateX(${-(safeIdx * 100)}%)`}}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--space-lg) var(--space-lg)', margin:'0 calc(var(--subrow) * -1.5) calc(var(--subrow) * -1.5)'}}
               >
-                {whatsNextEvents.map((evt, i) => (
-                  <div className="dash-carousel-slide" key={evt.id}>
-                    {renderEventCard(evt)}
-                  </div>
-                ))}
-              </div>
-              {/* Dots only while they stay countable. The carousel now runs
-                  the whole schedule, so a full season would be forty dots —
-                  past the cap it becomes a position readout instead. */}
-              {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
-                <div className="dash-upnext-dots" style={{ '--n': whatsNextEvents.length }}>
-                  {whatsNextEvents.map((_, i) => (
-                    <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
+                <div
+                  className="dash-carousel-track"
+                  ref={trackRef}
+                  data-idx={safeIdx}
+                  style={{transform: `translateX(${-(safeIdx * 100)}%)`}}
+                >
+                  {whatsNextEvents.map((evt, i) => (
+                    <div className="dash-carousel-slide" key={evt.id}>
+                      {renderEventCard(evt)}
+                    </div>
                   ))}
                 </div>
-              )}
-              {whatsNextEvents.length > 8 && (
-                <div className="dash-upnext-counter snap-g-centred">
-                  <button
-                    type="button"
-                    className="dash-upnext-step"
-                    onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
-                    disabled={safeIdx === 0}
-                    aria-label="Previous event"
-                  ><Icon.chevLeft /></button>
-                  <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
-                  <button
-                    type="button"
-                    className="dash-upnext-step"
-                    onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
-                    disabled={safeIdx === whatsNextEvents.length - 1}
-                    aria-label="Next event"
-                  ><Icon.chevRight /></button>
-                </div>
-              )}
-            </div>
-          );
-        })() : (
-          <FirstRun
-            icon="calendar"
-            title="Add your first event"
-            body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
-            actionLabel="Browse tournaments"
-            onAction={() => onNavigate('tournaments')}
-            compact
-          />
-        )}
-      </div>
-
-      {/* Friends Playing */}
-      {activeFriends.length > 0 && (
-        <div className="dashboard-section" style={{flexShrink: 0}}>
-          <div className="dashboard-section-header">
-            <div className="dashboard-section-title">Friends Playing</div>
-            <span className="dashboard-section-badge">{activeFriends.length} live</span>
-          </div>
-          <div className="dash-friends-scroll">
-            {activeFriends.map(f => {
-              const lu = f.liveUpdate;
-              const stack = lu?.stack ? Number(lu.stack).toLocaleString() : null;
-              const blinds = lu?.bb ? `${lu.sb ? Number(lu.sb).toLocaleString() : '?'}/${Number(lu.bb).toLocaleString()}${(lu.bbAnte || lu.bb_ante) ? '/' + Number(lu.bbAnte || lu.bb_ante).toLocaleString() : ''}` : null;
-              return (
-                <button type="button" key={f.id} className="dash-friend-chip" onClick={() => onNavigate('social')}>
-                  <Avatar src={f.avatar} username={f.username} size={AVATAR_5R} style={f.avatar ? undefined : SEATED_INITIAL} />
-                  <div className="friend-info">
-                    <div className="friend-name">{displayName(f)}</div>
-                    <div className="friend-event">{lu?.eventName || 'Playing'}</div>
-                    {stack && (
-                      <div className="friend-stack">
-                        {stack}{blinds ? ` @ ${blinds}` : ''}
-                      </div>
-                    )}
+                {/* Dots only while they stay countable. The carousel now runs
+                    the whole schedule, so a full season would be forty dots —
+                    past the cap it becomes a position readout instead. */}
+                {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
+                  <div className="dash-upnext-dots" style={{ '--n': whatsNextEvents.length }}>
+                    {whatsNextEvents.map((_, i) => (
+                      <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
+                    ))}
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Table Scanner */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Table Scanner <span style={{fontWeight:400,fontSize:'var(--fs-xs)',color:'var(--text-muted)'}}>(WSOP Live / PokerStars Live)</span></div>
-        </div>
-        <TableScanner />
-      </div>
-
-      <div className="dash-bottom-stack">
-      {/* Results */}
-      <div className="dashboard-section">
-        {/* Header on the P&L columns (8g | 8g | 17g): title in col 1 and the currency flush
-            right with the Net card (30-36g). Reset lives in Results now, scoped to one bankroll
-            behind a typed confirmation (components/ResetResults.jsx). */}
-        <div className="dashboard-section-header dash-results-header">
-          <div className="dashboard-section-title">Results</div>
-          {plData.count > 0 && dashRates && (
-            <label className="dash-results-right dash-results-currency">
-              <span aria-hidden="true">
-                {`${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
-              </span>
-              <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
-                {Object.keys(CURRENCY_CONFIG).map(c => (
-                  <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          {plData.count > 0 && !dashRates && (
-            <span className="dash-results-right dashboard-section-badge dashboard-section-badge--wide">{plData.count} result{plData.count !== 1 ? 's' : ''}</span>
+                )}
+                {whatsNextEvents.length > 8 && (
+                  <div className="dash-upnext-counter snap-g-centred">
+                    <button
+                      type="button"
+                      className="dash-upnext-step"
+                      onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
+                      disabled={safeIdx === 0}
+                      aria-label="Previous event"
+                    ><Icon.chevLeft /></button>
+                    <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
+                    <button
+                      type="button"
+                      className="dash-upnext-step"
+                      onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
+                      disabled={safeIdx === whatsNextEvents.length - 1}
+                      aria-label="Next event"
+                    ><Icon.chevRight /></button>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
+            <FirstRun
+              icon="calendar"
+              title="Add your first event"
+              body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
+              actionLabel="Browse tournaments"
+              onAction={() => onNavigate('tournaments')}
+              compact
+            />
           )}
         </div>
-        {plData.count > 0 ? (
-          <>
-          <div className="dash-pl-grid">
-            {/* A figure that cannot be converted yet (mixed currencies, rates still loading) is a
-                dash, never a part-total. */}
-            {(() => { const fmtPl = (v) => (v == null ? '\u2014' : formatCurrencyAmount(v, dashCurrency)); return (<>
-            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}
-              title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
-              {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
-              <span className="dash-pl-line">
-                <span className="dash-pl-value">{fmtPl(plData.cost)}</span>
-                <span className="dash-pl-label">Buy-ins &#9662;</span>
-              </span>
-              {plDropdown === 'buyins' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cost').length)} onClick={e => e.stopPropagation()}>
-                  {plRows('cost')
-                    .map(([venue, v]) => (
-                      <div key={venue} className="dash-pl-dropdown-row">
-                        <span className="dash-pl-dropdown-venue">{venue}</span>
-                        <span className="dash-pl-dropdown-amount">{fmtPl(v.cost)}</span>
-                      </div>
-                    ))
-                  }
-                </div>,
-                document.body
-              )}
-            </button>
-            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}
-              title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
-              <span className="dash-pl-line">
-                <span className="dash-pl-value">{fmtPl(plData.cash)}</span>
-                <span className="dash-pl-label">Cashes &#9662;</span>
-              </span>
-              {plDropdown === 'cashes' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cash').length)} onClick={e => e.stopPropagation()}>
-                  {plRows('cash')
-                    .map(([venue, v]) => (
-                      <div key={venue} className="dash-pl-dropdown-row">
-                        <span className="dash-pl-dropdown-venue">{venue}</span>
-                        <span className="dash-pl-dropdown-amount">{fmtPl(v.cash)}</span>
-                      </div>
-                    ))
-                  }
-                </div>,
-                document.body
-              )}
-            </button>
-            <div className="dash-pl-card dash-pl-card--net">
-              <span className="dash-pl-line">
-                <span className={`dash-pl-value ${plData.net == null ? '' : plData.net >= 0 ? 'positive' : 'negative'}`}>
-                  {plData.net != null && plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
+      {/* Steps 3+: To log (only when non-empty) and the last result go here, under Up Next. */}
+    </div>
+  );
+  const numbersCol = (
+    <div className="home-col home-col--numbers">
+        {/* Results */}
+        <div className="dashboard-section">
+          {/* Header on the P&L columns (8g | 8g | 17g): title in col 1 and the currency flush
+              right with the Net card (30-36g). Reset lives in Results now, scoped to one bankroll
+              behind a typed confirmation (components/ResetResults.jsx). */}
+          <div className="dashboard-section-header dash-results-header">
+            <div className="dashboard-section-title">Results</div>
+            {plData.count > 0 && dashRates && (
+              <label className="dash-results-right dash-results-currency">
+                <span aria-hidden="true">
+                  {`${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
                 </span>
-                <span className="dash-pl-label">Net</span>
-                {/* No ROI without a spend to divide by: a dash, never 0%. */}
-                <span className={`dash-pl-roi ${plData.roi == null ? '' : plData.roi >= 0 ? 'pos' : 'neg'}`}
-                  title={plData.roi == null ? (plData.unconverted ? 'Waiting for exchange rates' : 'No buy-ins to measure against') : undefined}>
-                  {plData.roi == null ? '\u2014' : `${plData.roi >= 0 ? '+' : ''}${plData.roi.toFixed(1)}%`} ROI
-                </span>
-              </span>
-            </div>
-            </>); })()}
-          </div>
-          </>
-        ) : (
-          <FirstRun
-            icon="tracking"
-            title="Log your first result"
-            body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
-            actionLabel="Log a result"
-            onAction={() => onNavigate('tracking')}
-            compact
-          />
-        )}
-      </div>
-
-      {/* Connections */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Connections</div>
-          {allConnections.length > 0 && (
-            <span className="dashboard-section-badge">
-              {activeFriends.length > 0 ? `${activeFriends.length} live` : `${allConnections.length}`}
-            </span>
-          )}
-        </div>
-        {allConnections.length > 0 ? (
-          <div className="dash-connections-row">
-            {/* Eight 4g cells fit 1-36g; past eight, seven avatars and "+N". */}
-            {allConnections.slice(0, allConnections.length > 8 ? 7 : 8).map(f => (
-              <button
-                key={f.id}
-                className="dash-conn-avatar"
-                onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  const row = e.currentTarget.parentElement.getBoundingClientRect();
-                  setConnRect({ left: r.left, top: r.top, bottom: r.bottom, rowLeft: row.left });
-                  setConnDropdownId(connDropdownId === f.id ? null : f.id);
-                }}
-                ref={connDropdownId === f.id ? connDropdownRef : undefined}
-              >
-                <Avatar src={f.avatar} username={f.username} size={AVATAR_5R} style={f.avatar ? undefined : SEATED_INITIAL} />
-                {f.isPlaying && <span className="playing-dot" />}
-                <span className="conn-name">{displayName(f)}</span>
-                {connDropdownId === f.id && connRect && (() => {
-                  // Rendered at the document root, so no ancestor's overflow can
-                  // clip it. 26g wide, left on the start line of the avatar's own
-                  // column (1g or 10g from the row; a col-3/4 avatar uses 10g so
-                  // the panel ends on 36g). Height in r is counted from its rows.
-                  const { G } = gridGeom();
-                  const col = Math.floor(((connRect.left - connRect.rowLeft) / G + 0.5) / 9);
-                  const leftG = connRect.rowLeft / G + Math.min(col, 1) * 9;
-                  const nToday = (f.todayEvents || []).length;
-                  const heightR = 2
-                    + (f.isPlaying && f.liveUpdate ? 3 + 2 : 0)
-                    + (nToday > 0 ? 3 + 2 * nToday : 0)
-                    + (!f.isPlaying && nToday === 0 ? 2 : 0)
-                    + 1;
-                  const pos = gridPanelStyle(connRect, heightR, leftG);
-                  return createPortal(
-                    <div className="dash-conn-dropdown portalled" style={pos} onClick={e => e.stopPropagation()}>
-                      <div className="dash-conn-dropdown-name">{displayName(f)}</div>
-                      {f.isPlaying && f.liveUpdate && (
-                        <>
-                          <div className="dash-conn-dropdown-label">Now Playing</div>
-                          <div className="dash-conn-dropdown-event">
-                            {f.liveUpdate.eventName}
-                            {f.liveUpdate.stack && <span className="muted"> — {Number(f.liveUpdate.stack).toLocaleString()}</span>}
-                          </div>
-                        </>
-                      )}
-                      {f.todayEvents && f.todayEvents.length > 0 && (
-                        <>
-                          <div className="dash-conn-dropdown-label">{f.isPlaying ? 'Also Scheduled' : 'Scheduled Today'}</div>
-                          {f.todayEvents.map((t, i) => {
-                            const v = getVenueInfo(t.venue, t.property);
-                            return <div key={i} className="dash-conn-dropdown-event">{v.abbr} | {currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()} {t.event_name}</div>;
-                          })}
-                        </>
-                      )}
-                      {!f.isPlaying && (!f.todayEvents || f.todayEvents.length === 0) && (
-                        <div className="dash-conn-dropdown-event" style={{color:'var(--text-muted)'}}>No events today</div>
-                      )}
-                    </div>,
-                    document.body
-                  );
-                })()}
-              </button>
-            ))}
-            {allConnections.length > 8 && (
-              <button className="dash-conn-overflow" onClick={() => onNavigate('social')} aria-label={`${allConnections.length - 7} more connections`}>
-                <span>+{allConnections.length - 7}</span>
-              </button>
+                <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
+                  {Object.keys(CURRENCY_CONFIG).map(c => (
+                    <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {plData.count > 0 && !dashRates && (
+              <span className="dash-results-right dashboard-section-badge dashboard-section-badge--wide">{plData.count} result{plData.count !== 1 ? 's' : ''}</span>
             )}
           </div>
-        ) : (
-          <FirstRun
-            icon="people"
-            title="Connect with other players"
-            body="Follow people you play with to see where they are seated and how they are running."
-            actionLabel="Find players"
-            onAction={() => onNavigate('social')}
-            compact
-          />
-        )}
-      </div>
-      </div>
+          {plData.count > 0 ? (
+            <>
+            <div className="dash-pl-grid">
+              {/* A figure that cannot be converted yet (mixed currencies, rates still loading) is a
+                  dash, never a part-total. */}
+              {(() => { const fmtPl = (v) => (v == null ? '\u2014' : formatCurrencyAmount(v, dashCurrency)); return (<>
+              <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}
+                title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
+                {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
+                <span className="dash-pl-line">
+                  <span className="dash-pl-value">{fmtPl(plData.cost)}</span>
+                  <span className="dash-pl-label">Buy-ins &#9662;</span>
+                </span>
+                {plDropdown === 'buyins' && createPortal(
+                  <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cost').length)} onClick={e => e.stopPropagation()}>
+                    {plRows('cost')
+                      .map(([venue, v]) => (
+                        <div key={venue} className="dash-pl-dropdown-row">
+                          <span className="dash-pl-dropdown-venue">{venue}</span>
+                          <span className="dash-pl-dropdown-amount">{fmtPl(v.cost)}</span>
+                        </div>
+                      ))
+                    }
+                  </div>,
+                  document.body
+                )}
+              </button>
+              <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}
+                title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
+                <span className="dash-pl-line">
+                  <span className="dash-pl-value">{fmtPl(plData.cash)}</span>
+                  <span className="dash-pl-label">Cashes &#9662;</span>
+                </span>
+                {plDropdown === 'cashes' && createPortal(
+                  <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cash').length)} onClick={e => e.stopPropagation()}>
+                    {plRows('cash')
+                      .map(([venue, v]) => (
+                        <div key={venue} className="dash-pl-dropdown-row">
+                          <span className="dash-pl-dropdown-venue">{venue}</span>
+                          <span className="dash-pl-dropdown-amount">{fmtPl(v.cash)}</span>
+                        </div>
+                      ))
+                    }
+                  </div>,
+                  document.body
+                )}
+              </button>
+              <div className="dash-pl-card dash-pl-card--net">
+                <span className="dash-pl-line">
+                  <span className={`dash-pl-value ${plData.net == null ? '' : plData.net >= 0 ? 'positive' : 'negative'}`}>
+                    {plData.net != null && plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
+                  </span>
+                  <span className="dash-pl-label">Net</span>
+                  {/* No ROI without a spend to divide by: a dash, never 0%. */}
+                  <span className={`dash-pl-roi ${plData.roi == null ? '' : plData.roi >= 0 ? 'pos' : 'neg'}`}
+                    title={plData.roi == null ? (plData.unconverted ? 'Waiting for exchange rates' : 'No buy-ins to measure against') : undefined}>
+                    {plData.roi == null ? '\u2014' : `${plData.roi >= 0 ? '+' : ''}${plData.roi.toFixed(1)}%`} ROI
+                  </span>
+                </span>
+              </div>
+              </>); })()}
+            </div>
+            </>
+          ) : (
+            <FirstRun
+              icon="tracking"
+              title="Log your first result"
+              body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
+              actionLabel="Log a result"
+              onAction={() => onNavigate('tracking')}
+              compact
+            />
+          )}
+        </div>
+
+      {/* ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
+          TODO(home trend): build here once the BankrollChart.jsx rebuild has merged.
+          Placement: after the period block (section 5) and its noise line; the right pane on
+          desktop, the first thing below the fold on the phone. It reuses BankrollChart.jsx,
+          which another workflow is rebuilding, so it waits for that to land. Verdict "home" §7:
+          a 3r title ("Last 3 months · N entries · H h") over a 35g x 14r cumulative profit
+          chart, a 4r figures row, a 3r downswing line in buy-ins; taps open the Overview at 3M.
+          Admins: ledger + rangeWindow('3m'); non-admins: a compact ResultsCurve. */}
+    </div>
+  );
+
+  return (
+    <div className="dashboard-view home">
+      {nowCol}
+      {homeRight
+        ? createPortal(<div className="dashboard-view home home--numbers">{numbersCol}</div>, homeRight)
+        : numbersCol}
+      {/* The Playing card's Scan table action: one hidden picker for every card, and the sheet
+          that runs the scan once a screenshot is chosen (the Table Scanner, moved off the home). */}
+      <input ref={scanInputRef} className="dash-scan-input" type="file" accept="image/*" hidden
+        onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) setScanFile(f); }} />
+      {scanFile && <ScanTableSheet file={scanFile} onClose={() => setScanFile(null)} />}
     </div>
   );
 }

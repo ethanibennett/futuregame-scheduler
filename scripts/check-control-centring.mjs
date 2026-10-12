@@ -2,9 +2,10 @@
 // r tall, left edge on a g line, top edge on an r line — and the LABEL inside is centred in it on
 // both axes, disregarding the grid. This measures both, for every visible control, in WebKit.
 //
-// Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results (and its
+// Views: Schedule (list, filters, an open card), My Schedule, Dashboard (scrolled to its foot; on
+// desktop both its panes; the Playing card's Scan sheet), Social, Results (and its
 // Delete results block at the foot, closed and open), Settings, Cash (Live, Heatmaps), Hands (the
-// list, not the table), Calendar (and its filters),
+// list, not the table; the Scanner tool), Calendar (and its filters),
 // the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
 // import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
 // section, the add sheet, the list sheet, a trip).
@@ -64,6 +65,8 @@ const dump = args.includes('--dump');
 const shots = opt('--shots', null);          // a directory: a screenshot of each view as scanned
 const overlay = args.includes('--overlay');  // with the grid overlay on (for --shots)
 const USER = process.env.CHECK_USERNAME || 'ham5';
+// A 1x1 PNG: what the Dashboard's Scan step hands the table scanner's picker.
+const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 function token() {
   if (process.env.CHECK_TOKEN) return process.env.CHECK_TOKEN;
@@ -335,6 +338,10 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   await ctx.addInitScript(({ t, u }) => {
     localStorage.setItem('token', t); localStorage.setItem('username', u);
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
+    // The first-run location wizard (utils/location-prefs.js hasOnboarded reads 'onboarded'): its
+    // entrance animation can outlast the Skip click's wait on a slow desktop render, and then it
+    // covers every view of the run.
+    localStorage.setItem('onboarded', '1');
   }, { t, u: USER });
   const p = await ctx.newPage();
   await p.goto(base + '/' + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
@@ -402,7 +409,41 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await p.waitForTimeout(900);
   }, 1);
   await step('myschedule', () => desktop ? nav('Schedule') : menu('My Schedule', 'Schedule'), 1);
-  await step('dashboard', () => nav('Dashboard'), 1);
+  // The home scrolls (2026-10-12): its main column, and on desktop its second pane (the NUMBERS,
+  // .dk-home-right), each paged to its foot. Then the Playing card's Scan sheet, opened as the
+  // card's Scan button does it — a screenshot handed to the hidden picker — so the sheet's head and
+  // the scanner's own button are measured (a scratch server has no scan key: it lands on the
+  // scanner's idle state with its error line).
+  const pageHome = async (n) => {
+    for (let i = 1; i <= n; i++) {
+      const moved = await p.evaluate((h) => {
+        let any = false;
+        for (const v of document.querySelectorAll('.tab-panel.tab-active .dashboard-view.home, .dk-home-right .dashboard-view.home')) {
+          const sc = v.closest('.content-area, .dk-scroll');
+          if (!sc) continue;
+          const before = sc.scrollTop; sc.scrollTop = Math.min(sc.scrollHeight, sc.scrollTop + Math.round(h * 0.7));
+          if (sc.scrollTop !== before) any = true;
+        }
+        window.scrollTo(0, 0);
+        return any;
+      }, H);
+      if (!moved) break;
+      await run(`${lastView} (home scrolled ${i})`);
+    }
+  };
+  await step('dashboard', () => nav('Dashboard'), 0);
+  if (want('dashboard')) { try { await pageHome(4); } catch (e) { console.log(`  (dashboard scroll skipped: ${e.message.split('\n')[0]})`); } }
+  await step('dashboard-scan', async () => {
+    await nav('Dashboard');
+    await p.locator('.dash-scan-input').setInputFiles({ name: 'table.png', mimeType: 'image/png', buffer: TINY_PNG });
+    await p.locator('.scan-sheet').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(2500); // the scan's request answers (503 without a key) and the idle state returns
+  }, 0);
+  await step('hands-scanner', async () => {
+    await nav('Hands');
+    await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(800);
+  }, 0);
   await step('social', () => nav('Social'), 1);
   await step('results', () => menu('Results & Tracking', 'Results'), 1);
   // Results > Delete results (components/ResetResults.jsx), at the foot of the results list:

@@ -1,0 +1,138 @@
+/* ==================================================================
+   The home (Dashboard tab) — components/DashboardView.jsx. The design is
+   the panel verdict of 2026-10-11 (docs/session-handoff.md); this file
+   holds what the redesign adds, and grows a section per build step.
+
+   Bundle order: main.jsx imports App (and with it this file) BEFORE
+   styles.css, so every rule here that meets a styles.css rule must
+   out-specify it rather than rely on coming later.
+
+   GRID. Every measurement is g or r.
+     columns  NOW (Up Next; To log and the last result from step 3) and
+              NUMBERS (the Results bar until the period block lands in
+              step 4; Trend later). One scrolling column on the phone,
+              2r between sections, NOW first. Desktop (>= 1024): NOW is
+              the main pane (37g), NUMBERS a second 37g pane beside it
+              (App.jsx portals it into .dk-home-right); each pane is its
+              own scroller, both starting 1r under the bar.
+     foot     the Cash view's nav-height spacer: 2r (the column gap)
+              + the nav's height, so the last section scrolls clear of
+              the nav and the live-cash bar. App's tab panels are
+              height:100%, so .content-area's own bottom padding lands
+              after the panel, not after the home.
+     Scan     the Playing card's actions become four 7g x 4r cells with
+              1g gutters, 3..10 | 11..18 | 19..26 | 27..34g of the
+              card: Cancel and Finish of the Bust menu (7g, at 3g and
+              27g) sit exactly where Scan and Bust sit.
+   ================================================================== */
+
+/* The home grows with its content now (no height, no scroll of its own: .content-area or the
+   pane's .dk-scroll scrolls it), but it still clips sideways at its 35g column. The Up Next
+   carousel's wrapper reaches 1.5r past the column on each side (room for the card's shadow) and
+   its slides sit edge to edge, so without this clip the neighbouring cards' edges show in that
+   margin (1.5r = 1.07g of the next card's strip, seen at 36..37g on a 402 phone). */
+.dashboard-view.home { overflow: hidden; }
+
+.dashboard-view.home .home-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* The foot. A flex item of .dashboard-view, so the column's 2r gap comes before it. */
+.dashboard-view.home::after {
+  content: '';
+  flex: 0 0 auto;
+  height: var(--nav-h);
+}
+/* No nav on desktop: the 2r gap alone ends the pane. The NUMBERS pane is a .dk-scroll, whose own
+   2r bottom padding already does it. */
+.app-shell.is-desktop .dashboard-view.home::after { height: 0; }
+.dashboard-view.home.home--numbers::after { display: none; }
+
+/* The Results bar's labels truncate (overflow: hidden, for the ellipsis) on a 1em line box, which
+   is shorter than Univers' glyph box: the clipping guard, walking the home for the first time,
+   measured 0.19r (1.5px at 402; 1.66px, 0.20r, at 1440) of every label's glyph box cut at the top. The
+   room comes from padding cancelled by an equal negative margin, so the line and its baseline do
+   not move. (The bar itself gives way to the period block in step 4.) */
+.dashboard-view.home .dash-pl-label {
+  padding-block: calc(var(--subrow) * 0.5);
+  margin-block: calc(var(--subrow) * -0.5);
+}
+
+/* ── Scan table, on the Playing card ── */
+.dash-status-stack .dash-action-row.dash-action-row--4 { gap: var(--gu); }
+.dash-status-stack .dash-action-row.dash-action-row--4 > button {
+  flex: 0 0 calc(var(--gu) * 7);
+  min-width: 0;
+  padding: 0;
+}
+.dash-scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  cursor: pointer;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+/* A tracked label's last letter carries a letter-space too; the same indent on the left centres
+   its ink. */
+.dash-event-card .dash-scan-btn .dash-t { text-indent: var(--track-caps); }
+.dash-scan-btn svg {
+  flex: 0 0 auto;
+  width: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dash-scan-btn:hover {
+    background: var(--hover-overlay);
+    box-shadow: inset 0 0 0 var(--bw-hair) var(--text-muted);
+  }
+}
+.dash-scan-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The CURRENTLY PLAYING badge above that row (31g x 4r): its label (dot + caps) centred in the
+   badge, and its undo key out of the flow, a 2g x 4r box on the badge's own lines (30..32g of the
+   card, where it sat), the ✕ centred in it. The key used to sit in the flow at margin-left:auto,
+   which pulled the label 0.28g left of centre, and was a 3r ring in a 4r badge, so its top fell
+   on half an r. A 3r ring cannot be centred in 4r on the grid, so the key is a bare ✕ here, as a
+   chip's dismiss is; its tap target is still the ::after inset around it. */
+.dash-event-card .dash-status-stack .dash-playing-badge { position: relative; }
+.dash-event-card .dash-status-stack .dash-playing-badge > .dash-t { text-indent: var(--track-caps); }
+.dash-event-card .dash-status-stack .dash-playing-badge > .dash-undo-x {
+  position: absolute;
+  top: 0;
+  right: var(--subcol);
+  width: calc(var(--gu) * 2);
+  min-width: 0;
+  height: calc(var(--subrow) * 4);
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+/* ── The Scan table sheet (components/ScanTableSheet.jsx) ──
+   The bankroll sheet's frame (styles.css .bk-scrim / .bk-sheet: 37g, 1g sides, a 5r head with the
+   title on +3r and a 6g x 5r Done). The scanner starts 2r under the head: its idle button is
+   35g x 5r, its progress and results the same blocks the home used to show. */
+.bk-sheet.scan-sheet .table-scanner { margin-top: calc(var(--subrow) * 2); }
+
+/* ── Hands > Scanner (components/HandsScanner.jsx) ──
+   The home's old Table Scanner section, unchanged: a .dashboard-view, so its 3r header seats the
+   title on +2r as every Dashboard section header does, 1r, then the scanner. */
+.dashboard-view.hands-scan { padding-bottom: calc(var(--subrow) * 2); }

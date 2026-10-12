@@ -1030,14 +1030,6 @@
     /* ...so the expanded targets cannot overlap each other. */
     .dash-upnext-dots { gap: var(--space-md); }
 
-    .dash-friend-chip {
-      font: inherit;
-      color: inherit;
-      text-align: left;
-      border: 0; /* the edge is an inset shadow (main rule) so it adds no size */
-      cursor: pointer;
-    }
-
     .dash-undo-x::after,
     .dash-unbag-x::after,
     .top-bar-actions .btn-icon::after {
@@ -1084,7 +1076,6 @@
       margin: var(--subrow) 0 0;
       border-radius: var(--radius-xs);
     }
-    .skeleton-slab { height: calc(var(--subrow) * 5); border-radius: var(--radius-sm); }
     /* Stand-in for the 4r results bar: one slab, as the bar is one object now. */
     .skeleton-pl-grid { display: block; }
     .skeleton-pl-grid > * { display: none; }
@@ -1105,7 +1096,6 @@
 
     /* Portalled to document.body, so the anchor comes from the trigger's rect
        and the absolute-positioning rules above must not fight it. */
-    .dash-conn-dropdown.portalled,
     .dash-pl-dropdown.portalled {
       position: fixed;
       left: auto;
@@ -8295,10 +8285,8 @@
       to { transform: rotate(360deg); }
     }
 
-    .content-area:has(.tab-panel.tab-active .dashboard-view) {
-      overflow: hidden;
-      padding-bottom: var(--space-lg);
-    }
+    /* The home scrolls (2026-10-12): the rule that locked .content-area on the Dashboard tab is gone;
+       its foot is .dashboard-view::after (components/home.css). */
 
     /* ── Bottom tab bar ── */
     /* The safe-area inset was folded into the HEIGHT but never reserved as
@@ -11920,28 +11908,15 @@
     }
 
     /* ── Dashboard View ── */
+    /* The home scrolls (2026-10-12; was height:100% + overflow:hidden, one screen that could not
+       grow). Its columns, its foot and the desktop panes: components/home.css. */
     .dashboard-view {
       display: flex;
       flex-direction: column;
       gap: var(--space-xl);
-      height: 100%;
-      overflow: hidden;
       /* 1r between the header and the first section's title row (owner, 2026-10-11). */
       box-sizing: border-box;
       padding-top: var(--subrow);
-    }
-
-    .dash-bottom-stack {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xl); /* 2 subrows — was 20px (2.5 subrows, off-grid) */
-      flex: 1;
-    }
-    .dash-bottom-stack > :last-child {
-      /* Flow the last section on-grid instead of pinning it to the viewport
-         bottom (an off-grid edge set by the safe area / tab bar). The stack
-         still fills via flex:1, so nothing clips; the slack sits below. */
-      margin-bottom: var(--space-xl);
     }
 
     .dashboard-section {
@@ -11953,16 +11928,18 @@
     /* The Table Scanner's idle button reuses .cal-structure-link, which carries
        a 12px bottom margin — that made the scanner block 52px (6.5 subrows) and
        knocked the whole bottom stack half a subrow off the grid. Drop it here
-       (direct-child button = idle state only) so the block is a clean 5 subrows
-       and the sections below realign; the section gap already spaces it. */
-    .dashboard-section .table-scanner > button {
+       (direct-child button = idle state only) so the block is a clean 5 subrows.
+       2026-10-12: the scanner left the home's body for the Playing card's Scan
+       sheet and Hands' Scanner tool, so these rules follow .table-scanner itself,
+       wherever it is mounted, instead of .dashboard-section. */
+    .table-scanner > button {
       margin-bottom: 0;
     }
     /* Idle upload button, 2026-09-30: was inline px/bare-multiplier styles with a
        centred label (baseline +3.08r). Now 5r x 35g (1-36g), border an inset
        shadow, label --fs-sm trimmed with its baseline on +3r (cap 1.13r ->
        1.87r above, 2r below), icon a 3r box on +1r..+4r. */
-    .dashboard-section .table-scanner-upload {
+    .table-scanner .table-scanner-upload {
       display: flex; align-items: center; justify-content: center;
       gap: var(--space-sm);
       width: 100%;
@@ -11980,13 +11957,13 @@
       line-height: normal;
       text-box-trim: none;
     }
-    .dashboard-section .table-scanner-upload > svg {
+    .table-scanner .table-scanner-upload > svg {
       flex: 0 0 auto;
       width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
     }
     /* Centred beside the icon. Untrimmed, its line box holds the descenders, so a plain
        overflow clip for the ellipsis cuts nothing. */
-    .dashboard-section .table-scanner-upload-label {
+    .table-scanner .table-scanner-upload-label {
       display: block;
       min-width: 0;
       white-space: nowrap;
@@ -13296,228 +13273,7 @@
       outline: var(--focus-ring); outline-offset: var(--focus-offset);
     }
 
-    /* Connections avatar row — 2026-09-30 regrid. Avatars were 5.5r cells at a
-       6.5r (4.61g) pitch, so no edge after the first sat on a g-line, and ten of
-       them plus "+N" ran to 51g: the overflow button was never on screen. Now
-       eight 4g cells, two per column, a 1g gutter before cells 3/5/7:
-       1-5-9 | 10-14-18 | 19-23-27 | 28-32-36. Column = 5r avatar + 2r name = 7r.
-       The avatar is 5r (not 4r) so its initial, trimmed with the baseline on +3r,
-       sits centred: cap 0.94r -> 2.06r above, 2r below. */
-    .dash-connections-row {
-      display: flex;
-      gap: 0;
-      /* visible: the row ends on the names' baseline (+7r), so clipping here cut
-         every descender. At most eight 4g cells render, which fill 1-36g exactly. */
-      overflow: visible;
-      padding: 0;
-    }
-    .dash-connections-row > :nth-child(2n+3) { margin-left: var(--gu); }
-
-    .dash-conn-avatar {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 0;
-      flex: 0 0 calc(var(--gu) * 4);
-      width: calc(var(--gu) * 4);
-      height: calc(var(--subrow) * 7);
-      min-height: 0;
-      box-sizing: border-box;
-      cursor: pointer;
-      padding: 0;
-      border-radius: var(--radius-sm);
-      transition: background var(--dur-fast);
-      border: none;
-      background: none;
-      color: var(--text);
-      position: relative;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .dash-conn-avatar:hover { background: var(--hover-overlay); }
-    }
-    /* 2r cell under the avatar: trimmed, padding-top 2r - 1cap puts the baseline
-       on the cell's bottom line (+7r). The 0.3em bottom pad/neg-margin keeps
-       descenders inside the ellipsis clip without changing the 2r. */
-    .dash-conn-avatar .conn-name {
-      display: block;
-      align-self: stretch;
-      font-size: var(--fs-xs);
-      font-family: var(--font-condensed);
-      color: var(--text-muted);
-      text-align: center;
-      padding: calc(var(--subrow) * 2 - 1cap) 0 0;
-      min-width: 0;
-      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    /* On the avatar's top-right: right edge = avatar right = (4g - 5r) / 2. */
-    .dash-conn-avatar .playing-dot {
-      position: absolute;
-      top: 0; right: calc((var(--gu) * 4 - var(--subrow) * 5) / 2);
-      width: calc(var(--subrow) * 1); height: calc(var(--subrow) * 1);
-      box-sizing: border-box;
-      border-radius: var(--radius-circle);
-      background: #22c55e;
-      border: calc(var(--subrow) * 0.25) solid var(--bg);
-    }
-    /* "+N" takes the eighth cell; the count sits on the avatar's +3r baseline. */
-    .dash-conn-overflow {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      flex: 0 0 calc(var(--gu) * 4);
-      width: calc(var(--gu) * 4);
-      height: calc(var(--subrow) * 7);
-      min-height: 0;
-      box-sizing: border-box;
-      cursor: pointer;
-      padding: 0;
-      border: none;
-      background: none;
-      color: var(--text-muted);
-      font-family: var(--font-condensed);
-      font-size: var(--fs-sm);
-      font-weight: var(--fw-bold);
-    }
-    .dash-conn-overflow > span {
-      display: block;
-      padding-top: calc(var(--subrow) * 3 - 1cap);
-      white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .dash-conn-overflow:hover { color: var(--text); }
-    }
-
-    /* Friends playing carousel — 2026-09-30 regrid. Chips hugged their text
-       (14.40g / 12.60g wide, 1.25r = 0.89g gap), so the second chip started on
-       16.28g. Now every chip is two columns wide, 17g, at an 18g pitch (1g gap):
-       1-18, 19-36, and the scroll snaps each chip's start back onto a column
-       line. The max scroll, (18n - 1)g - 35g = 18(n-2)g, is itself a whole
-       number of pitches, so the last snap rests on the grid too. */
-    .dash-friends-scroll {
-      display: flex;
-      gap: var(--gu);
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      scroll-snap-type: x mandatory;
-      padding: 0;
-    }
-    .dash-friends-scroll::-webkit-scrollbar { display: none; }
-    /* 17g = 1g pad | 4g avatar cell | 1g | 10g text (7-17g) | 1g pad.
-       8r = 1r | 6r (three 2r text cells; the 5r avatar bottom-aligned in it, so
-       it spans +2r..+7r, centred on the text block's cap-top..last-baseline) | 1r. */
-    .dash-friend-chip {
-      display: grid;
-      grid-template-columns: var(--gu) calc(var(--gu) * 4) var(--gu) calc(var(--gu) * 10) var(--gu);
-      grid-template-rows: var(--subrow) calc(var(--subrow) * 6) var(--subrow);
-      flex: 0 0 calc(var(--gu) * 17);
-      width: calc(var(--gu) * 17);
-      height: calc(var(--subrow) * 8);
-      min-height: 0;
-      box-sizing: border-box;
-      padding: 0;
-      background: var(--surface2);
-      border: 0;
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      border-radius: var(--radius);
-      scroll-snap-align: start;
-      cursor: pointer;
-      transition: box-shadow var(--dur-fast);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .dash-friend-chip:hover { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
-    }
-    .dash-friend-chip > :first-child { grid-area: 2 / 2; align-self: end; justify-self: center; }
-    .dash-friend-chip .friend-info {
-      grid-area: 2 / 4;
-      display: flex;
-      flex-direction: column;
-      gap: 0; /* three 2r cells stack to exactly 6r */
-      min-width: 0;
-    }
-    /* Each line: a trimmed block, padding-top 2r - 1cap => baseline on its 2r
-       cell's bottom line (+3r, +5r, +7r from the chip top). */
-    .dash-friend-chip .friend-name,
-    .dash-friend-chip .friend-event,
-    .dash-friend-chip .friend-stack {
-      display: block;
-      font-family: var(--font-condensed);
-      padding: calc(var(--subrow) * 2 - 1cap) 0 0;
-      white-space: nowrap;
-      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
-      text-overflow: ellipsis;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .dash-friend-chip .friend-name {
-      font-size: var(--fs-xs);
-      font-weight: var(--fw-bold);
-      color: var(--text);
-    }
-    /* Mixed-case event names: --fs-xs (--fs-2xs is caps micro-labels only). */
-    .dash-friend-chip .friend-event {
-      font-size: var(--fs-xs);
-      color: var(--text-muted);
-    }
-    .dash-friend-chip .friend-stack {
-      font-size: var(--fs-2xs);
-      color: #22c55e;
-    }
-
-    /* Connection dropdown popup — 26g (three columns + two gutters), placed by
-       the JS on a column line (1g or 10g) and on a whole r from the bar. Height
-       is whole r by construction: name 2r + each label 3r + each event 2r + 1r
-       foot, every line a trimmed block seated on its cell's bottom line. */
-    .dash-conn-dropdown {
-      position: absolute;
-      z-index: var(--z-panel);
-      background: var(--surface);
-      border: 0;
-      border-radius: var(--radius);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
-      width: calc(var(--col) * 3 + var(--gu) * 2);
-      box-sizing: border-box;
-      padding: 0 var(--gu) var(--subrow);
-      left: 50%;
-      transform: translateX(-50%);
-    }
-    .dash-conn-dropdown.above { bottom: calc(100% + calc(var(--subrow) * 0.5)); }
-    .dash-conn-dropdown.below { top: calc(100% + calc(var(--subrow) * 0.5)); }
-    .dash-conn-dropdown-name,
-    .dash-conn-dropdown-label,
-    .dash-conn-dropdown-event {
-      display: block;
-      white-space: nowrap;
-      overflow-x: clip; overflow-y: visible; /* ellipsis without clipping descenders */
-      text-overflow: ellipsis;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-    .dash-conn-dropdown-name {
-      font-family: var(--font-condensed);
-      font-weight: var(--fw-bold);
-      font-size: var(--fs-sm);
-      color: var(--text);
-      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
-    }
-    .dash-conn-dropdown-label {
-      font-size: var(--fs-2xs);
-      font-weight: var(--fw-bold);
-      text-transform: uppercase;
-      letter-spacing: var(--track-caps);
-      color: var(--text-muted);
-      padding-top: calc(var(--subrow) * 3 - 1cap);   /* 3r cell: 1r more air before a group */
-    }
-    .dash-conn-dropdown-event {
-      font-size: var(--fs-xs);
-      color: var(--text);
-      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
-    }
-    .dash-conn-dropdown-event .muted { color: var(--text-muted); }
+    /* (Connections and Friends Playing left the home 2026-10-12; they live in Social.) */
 
     /* ── Social View ──
        On the g/r grid (2026-10-08; measured at 402x874 from the .top-bar top,

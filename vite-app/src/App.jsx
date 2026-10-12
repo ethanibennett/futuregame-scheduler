@@ -23,6 +23,7 @@ import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
 import DashboardView from './components/DashboardView.jsx';
+import HandsScanner from './components/HandsScanner.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
 import ScheduleView from './components/ScheduleView.jsx';
 import CalendarView from './components/CalendarView.jsx';
@@ -1524,6 +1525,8 @@ export default function App() {
   const dk = useDesktopLayout();
   const isDesktop = dk.desktop;
   const [dkSelectedId, setDkSelectedId] = useState(null);
+  // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
+  const [dkHomeRight, setDkHomeRight] = useState(null);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
   // rendering, marked closing, until their collapse ends, so My Schedule rises into their place
   // instead of jumping. The collapse starts from the block's own height (in r), not the 55% cap,
@@ -1643,10 +1646,7 @@ export default function App() {
                 mySchedule={mySchedule}
                 myActiveUpdates={myActiveUpdates}
                 trackingData={trackingData}
-                shareBuddies={shareBuddies}
-                buddyLiveUpdates={buddyLiveUpdates}
-                displayName={displayName}
-                buddyEvents={buddyEvents}
+                homeRight={isDesktop ? dkHomeRight : null}
                 onPost={postLiveUpdate}
                 onDeleteUpdate={deleteLiveUpdate}
                 onAddTracking={addTracking}
@@ -1776,7 +1776,9 @@ export default function App() {
                         footer row above the bottom nav — see HANDS_TOOLS below — so it
                         stays put while the tool content scrolls. */}
                     <div style={{flex:1,minHeight:0}}>
-                      {handsTool === 'solver' && isAdmin
+                      {handsTool === 'scanner' && isAdmin
+                        ? <HandsScanner />
+                        : handsTool === 'solver' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><SolverView pendingSpot={pendingSolverSpot} onConsumeSpot={() => setPendingSolverSpot(null)} /></Suspense>
                         : handsTool === 'trainer' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><SolverTrainerView /></Suspense>
@@ -1930,7 +1932,7 @@ export default function App() {
           {currentView === 'hands' && isAdmin && (
             <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
               {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
-              {[['replayer','Replayer',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
+              {[['replayer','Replayer',6],['scanner','Scanner',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
                 <button key={id} className="ctl" onClick={() => setHandsTool(id)}
                   style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
                     border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
@@ -2178,8 +2180,15 @@ export default function App() {
             current={currentView === 'schedule' ? 'tournaments' : currentView}
             onChange={v => (v === 'batches' ? openBatch(null) : setCurrentView(v))}
           >{devToggles}</DesktopRail>
-          <div className={'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : 'dk-pane-wide')}>
+          <div className={'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-list' : 'dk-pane-wide')}>
             {primaryColumn}
+          </div>
+          {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
+              NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
+              portalled in here by DashboardView. Mounted for the whole desktop session and only
+              hidden off the Dashboard, so the portal's content keeps its state across tabs. */}
+          <div className="dk-pane dk-pane-mine" style={currentView === 'dashboard' ? undefined : { display: 'none' }}>
+            <div className="dk-scroll dk-home-right" ref={setDkHomeRight} />
           </div>
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,
               not in a third column): the selected event on top, My Schedule below it in the same

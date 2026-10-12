@@ -3,8 +3,9 @@
 The website answers the browser's proportions: a wide, landscape window gets a
 real desktop layout (side rail plus two or three panes); every other window, and
 the iOS app on a phone, gets the phone layout exactly as it was. Phase 1 (this
-change) ships the shell and the Schedule tab. The other tabs render in one
-capped pane until their own phase.
+change) ships the shell and the Schedule tab. The Dashboard has had its two
+panes since 2026-10-12. The other tabs render in one capped pane until their own
+phase.
 
 Code: `vite-app/src/hooks/useDesktopLayout.js` (the decision and the counts),
 `components/DesktopRail.jsx`, `components/DesktopEventDetail.jsx`, the
@@ -236,16 +237,35 @@ The month grid gets the wide pane, because a calendar is the one Schedule
 surface that wants width. Clicking a day fills the day list, and clicking an
 event there opens the same Event pane in place of the day list, with a back key.
 
-### Dashboard (phase 2; today: one capped pane)
+### Dashboard — two panes (built 2026-10-12, home redesign step 2)
 
 ```
-│ rail │ Up Next (playing/next card) 37g │ Friends live · Connections 37g │ Results curve 37g │
+│ rail │ NOW 37g                          │ NUMBERS 37g                          │
+│ 10g  │ Up Next (the carousel)           │ Bankroll line (admins; step 4)       │
+│      │ To log (only when non-empty; 3)  │ This month / trip / series (step 4;  │
+│      │ Last result (step 3)             │   the Results bar stands in today)   │
+│      │                                  │ Signal-or-noise line (admins; 6)     │
+│      │                                  │ Trend, last 3 months (6; a marked    │
+│      │                                  │   slot until BankrollChart lands)    │
 ```
 
-The Up Next hero, live-update composer and late-reg card stay in a phone
-canvas, since they were gridded there. Friends and Connections get a second
-canvas. The results curve and ROI stats get a third in the three-pane tier, or
-stack under Friends in the two-pane tier.
+The home's design is the panel verdict of 2026-10-11 (two halves: NOW, then the
+NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
+
+- **NOW** is the main pane (`dk-pane-main dk-pane-list`, 37g), since the Up Next
+  card and its live controls were gridded on the phone canvas.
+- **NUMBERS** is a second 37g pane (`dk-pane-mine` > `.dk-scroll.dk-home-right`).
+  `DashboardView` portals its numbers column into it (the `homeRight` prop). App
+  keeps the pane mounted for the whole desktop session and only hides it off the
+  Dashboard, so the portal's content keeps its state across tabs.
+- Each pane is its own scroller and both start 1r under the bar. The NOW pane
+  ends on its 2r column gap (no nav on desktop); the NUMBERS pane on the
+  `.dk-scroll`'s own 2r foot.
+- The two-pane tier and the three-pane tier both show the same two panes: there
+  is no third Dashboard pane.
+- Friends Playing and Connections, which the old plan gave a pane, left the home
+  (they live in Social). The Table Scanner left it as well: it is the Playing
+  card's Scan action and a tool in Hands.
 
 ### Social (phase 2; today: one capped pane)
 
