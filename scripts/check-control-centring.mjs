@@ -87,9 +87,9 @@ const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', 
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
-// The Dashboard's P&L cards are tiles too: a figure over its caption (over the ROI on the Net
-// card), each line seated on its r-line so the three cards share baselines across the row.
-const TILES = ['.bk-cell', '.font-pick-tile', '.dash-pl-card'];
+// (The Dashboard's P&L cards were tiles until 2026-10-11; now one-line segments of a 4r bar,
+// they are controls again and their line is held to the centring test.)
+const TILES = ['.bk-cell', '.font-pick-tile'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
 // Centred vertically only.
 const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head'];

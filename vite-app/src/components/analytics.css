@@ -56,7 +56,7 @@
 .an-pos  { color: var(--pos); }
 .an-neg  { color: var(--neg); }
 .an-beta { font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
-           letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand);
+           letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand-ink, var(--brand));
            margin-left: var(--gu); }
 
 /* Prose: Univers xs on a 2r line. First baseline on 2r (p = 2 - 1 - c), the

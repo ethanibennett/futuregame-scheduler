@@ -68,7 +68,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
   font-variant-numeric: var(--num-tabular);
 }
-.bd-seg > button.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand); }
+.bd-seg > button.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand-ink, var(--brand)); }
 .bd-seg > button:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .bd-tabs { height: calc(var(--subrow) * 5); margin-top: calc(var(--subrow) * 2); }
 .bd-range { height: calc(var(--subrow) * 4); margin-top: var(--subrow); }

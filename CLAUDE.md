@@ -262,6 +262,13 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   Guard: `npm run check:controls` (WebKit, phone + desktop; `CHECK_BASE_URL` / `CHECK_TOKEN_FILE`
   to aim it at a scratch server) measures every control's box against the grid and its label's
   ink centre against the box's (0.75px); run it before deploying any control change.
+  **Font metrics must match across platforms** (2026-10-11): Univers shipped with hhea
+  ascent/descent 724/276 but OS/2 win ~969/250. Apple (Safari, iOS, the Mac app) builds line
+  boxes from hhea, WebKit on Windows (where the guards run) from win — so every centred label
+  passed the guard and sat ~14% of its font size high on the owner's devices. The font files
+  now carry hhea == typo == win with no line gap; `npm run check:fonts`
+  (scripts/check-font-metrics.py, fontTools) fails if any shipped font diverges. Any new or
+  replaced font must pass it, and bump the `?v=` on its `@font-face` URL.
 - **Clipped text guard**: `npm run check:clipping` (WebKit, phone + desktop) fails on any glyph cut
   off by a clipping ancestor — the descender bug that kept recurring. Text that truncates must
   get its painted room from padding cancelled by an equal negative margin (or a clip-path that

@@ -92,7 +92,7 @@
   padding-block: calc(var(--subrow) * 0.5); margin-block: calc(var(--subrow) * -0.5);
 }
 .br-opt-n { flex: none; font-weight: var(--fw-regular); color: var(--text-muted); font-variant-numeric: var(--num-tabular); }
-.br-chip.is-on .br-opt-n { color: var(--brand); }
+.br-chip.is-on .br-opt-n { color: var(--brand-ink, var(--brand)); }
 
 /* ── The filter sheet: over the dashboard sheet ─────────────────── */
 .br-fscrim { z-index: calc(var(--z-modal) + 1); }

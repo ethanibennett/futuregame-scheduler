@@ -169,9 +169,8 @@ sessions' profits the display face at `--fs-xl`, likewise. Every other cell uses
   shown as defaults, not advice. The guide (in `summary.guide.byKey[key]`): `mtt.cap` = roll / N;
   `signal` `down` when the last 20 tournament entries average above the cap (or the roll is ≤ 0),
   `up` when the cap reaches the next `BUYIN_BANDS` tier, `hold` otherwise, null under 5 entries.
-- **Event cards**: an open card's detail grid shows "Of your roll" (admins only) for the bankroll
-  the Results tab has selected, in the loss colour with "over N% rule" past the MTT cap
-  (`hooks/useRollGuide.js`, one shared summary fetch).
+- (Event cards showed an "Of your roll" line until 2026-10-11; the owner removed it. The rules
+  still drive the Rules tab and its move-up / move-down signal.)
 - **Goals**: monthly / yearly, profit (every result, not money moved) or volume (tournament
   bullets + cash sessions), progress computed client-side from the ledger.
 - **Risk of ruin**: diffusion approximation exp(−2μB/σ²) on per-entry returns in buy-ins (the

@@ -254,29 +254,7 @@ export function recentResults(entries, n = 6) {
   return out;
 }
 
-// ── "Of your roll" (event cards) ─────────────────────────────────────────────────────────
-/**
- * One entry's buy-in against the roll and its MTT rule. `guide` = summary.guide.byKey[key]
- * (lib/bankroll-management.js guideFor); `buyin` already in the roll's currency.
- * → null when there is nothing to say, else { share (0..), over, cap, buyins, empty }.
- */
-export function rollShare(guide, buyin) {
-  if (!guide || !(buyin > 0)) return null;
-  const buyins = guide.rules && guide.rules.mtt ? guide.rules.mtt.buyins : 100;
-  if (!(guide.balance > 0)) return { share: null, over: true, cap: 0, buyins, empty: true };
-  const cap = guide.balance / buyins;
-  return { share: buyin / guide.balance, over: buyin > cap, cap, buyins, empty: false };
-}
-
-/** "1.2%", "0.35%", "12%": two significant figures, never "0%". */
-export function fmtShare(x) {
-  if (x == null) return '—';
-  const p = x * 100;
-  if (p >= 10) return `${Math.round(p)}%`;
-  if (p >= 1) return `${p.toFixed(1)}%`;
-  return `${p.toFixed(2)}%`;
-}
-
+// ── Rules ──────────────────────────────────────────────────────────────────────────────────
 /** A rule's per-entry share, as written: 100 buy-ins → "1%", 40 → "2.5%", 300 → "0.33%". */
 export function fmtRule(buyins) { return `${parseFloat((100 / buyins).toFixed(2))}%`; }
 

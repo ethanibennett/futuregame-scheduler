@@ -14,6 +14,23 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-11 (evening) — Aqua accent, cross-platform font metrics, Dashboard pass
+- **Brand accent is aqua**, not orange (black + orange read like an adult site's branding):
+  dark `#3cc8e0`, light `#0e7490`, cloudy `#0a4f62` (its grey surface needs the darker one), high
+  contrast `#7ae6f5` / `#0b4a5c`. Tokens in styles.css; palette and contrast in docs/design-tokens.md.
+  Warnings, trophy/POY gold, chips, bet amber and venue strips stay warm on purpose. Share images
+  (utils/export.js), the weekly graphics, both ad recorders and the 12 storyboards were recoloured.
+- **Why labels sat high on Apple devices but passed every guard:** Univers had hhea 724/276 vs win
+  ~969/250. Apple lays out with hhea, Windows WebKit (the guards) with win. All font files now carry
+  hhea == typo == win; `npm run check:fonts` enforces it; URLs carry `?v=2`. See CLAUDE.md.
+- Dashboard: 1r more above the first title; the title reads TODAY / TOMORROW for the next event
+  (crossfades back to UP NEXT on later cards); count pill ink centred (trailing letter-space
+  cancelled with text-indent); Up Next card smaller (name --fs-md, buy-in --fs-sm, 4r action boxes);
+  P&L is one 4r bar, 11g|11g|13g, figure and label on one line ("Total Buyins" → "Buy-ins"); the
+  carousel's ‹ › are SVG chevrons (a typed ‹ can't be centred without a nudge).
+- Removed the bankroll "Of your roll" line from event cards (and its hook/helpers).
+- Desktop: closing an event animates like opening (App.jsx keeps the block mounted, `is-closing`).
+
 ## 2026-10-11 (later) — Bankroll tracker, Poker Bankroll Tracker-style pass
 Three parallel branches, merged on `merge/bankroll-pbt`; details in `docs/bankrolls.md`.
 - **Overview** (`BankrollOverview.jsx`, was the Balance tab): hero balance + range profit, the

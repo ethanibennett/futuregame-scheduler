@@ -49,189 +49,189 @@
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-light.woff2') format('woff2');
+      src: url('/fonts/univers-light.woff2?v=2') format('woff2');
       font-weight: 300;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-light-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-light-oblique.woff2?v=2') format('woff2');
       font-weight: 300;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-regular.woff2') format('woff2');
+      src: url('/fonts/univers-regular.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-regular-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-regular-oblique.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-bold.woff2') format('woff2');
+      src: url('/fonts/univers-bold.woff2?v=2') format('woff2');
       font-weight: 700;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-bold-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-bold-oblique.woff2?v=2') format('woff2');
       font-weight: 700;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-black.woff2') format('woff2');
+      src: url('/fonts/univers-black.woff2?v=2') format('woff2');
       font-weight: 800;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-black-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-black-oblique.woff2?v=2') format('woff2');
       font-weight: 800;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-xblack.woff2') format('woff2');
+      src: url('/fonts/univers-xblack.woff2?v=2') format('woff2');
       font-weight: 900;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers';
-      src: url('/fonts/univers-xblack-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-xblack-oblique.woff2?v=2') format('woff2');
       font-weight: 900;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-light-condensed.woff2') format('woff2');
+      src: url('/fonts/univers-light-condensed.woff2?v=2') format('woff2');
       font-weight: 300;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-light-condensed-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-light-condensed-oblique.woff2?v=2') format('woff2');
       font-weight: 300;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-regular-condensed.woff2') format('woff2');
+      src: url('/fonts/univers-regular-condensed.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-regular-condensed-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-regular-condensed-oblique.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-bold-condensed.woff2') format('woff2');
+      src: url('/fonts/univers-bold-condensed.woff2?v=2') format('woff2');
       font-weight: 700;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Condensed';
-      src: url('/fonts/univers-bold-condensed-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-bold-condensed-oblique.woff2?v=2') format('woff2');
       font-weight: 700;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-regular-expanded.woff2') format('woff2');
+      src: url('/fonts/univers-regular-expanded.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-regular-expanded-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-regular-expanded-oblique.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-bold-expanded.woff2') format('woff2');
+      src: url('/fonts/univers-bold-expanded.woff2?v=2') format('woff2');
       font-weight: 700;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-bold-expanded-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-bold-expanded-oblique.woff2?v=2') format('woff2');
       font-weight: 700;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-black-expanded.woff2') format('woff2');
+      src: url('/fonts/univers-black-expanded.woff2?v=2') format('woff2');
       font-weight: 800;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-black-expanded-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-black-expanded-oblique.woff2?v=2') format('woff2');
       font-weight: 800;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-xblack-expanded.woff2') format('woff2');
+      src: url('/fonts/univers-xblack-expanded.woff2?v=2') format('woff2');
       font-weight: 900;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers Expanded';
-      src: url('/fonts/univers-xblack-expanded-oblique.woff2') format('woff2');
+      src: url('/fonts/univers-xblack-expanded-oblique.woff2?v=2') format('woff2');
       font-weight: 900;
       font-style: oblique;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers UltraCondensed';
-      src: url('/fonts/univers-thin-ultracondensed.woff2') format('woff2');
+      src: url('/fonts/univers-thin-ultracondensed.woff2?v=2') format('woff2');
       font-weight: 200;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers UltraCondensed';
-      src: url('/fonts/univers-light-ultracondensed.woff2') format('woff2');
+      src: url('/fonts/univers-light-ultracondensed.woff2?v=2') format('woff2');
       font-weight: 300;
       font-style: normal;
       font-display: swap;
     }
     @font-face {
       font-family: 'Univers UltraCondensed';
-      src: url('/fonts/univers-regular-ultracondensed.woff2') format('woff2');
+      src: url('/fonts/univers-regular-ultracondensed.woff2?v=2') format('woff2');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
@@ -256,7 +256,7 @@
        is no converter on this box. Worth doing on the Mac. */
     @font-face {
       font-family: 'Baskerville MT Std';
-      src: url('/fonts/baskerville-regular.otf') format('opentype');
+      src: url('/fonts/baskerville-regular.otf?v=2') format('opentype');
       font-weight: 400;
       font-style: normal;
       /* swap, not block: as a FALLBACK this must never hide text while it loads. */
@@ -264,7 +264,7 @@
     }
     @font-face {
       font-family: 'Baskerville MT Std';
-      src: url('/fonts/baskerville-italic.otf') format('opentype');
+      src: url('/fonts/baskerville-italic.otf?v=2') format('opentype');
       font-weight: 400;
       font-style: italic;
       font-display: swap;
@@ -539,12 +539,29 @@
          --line-strong is the grey's honest name: the "this control is
          engaged" hairline. --action is what a primary affordance uses.
          Rule: at most one --action-filled element per screen region;
-         everything else is --action-quiet or bordered. */
-      --brand:       #f2a63b;
-      --brand-hover: #ffb851;
-      --brand-quiet: rgba(242,166,59,0.14);
-      --brand-line:  rgba(242,166,59,0.45);
-      --on-brand:    #1a1300;
+         everything else is --action-quiet or bordered.
+         The brand is a cool aqua (2026-10-11; it was an orange #f2a63b, and
+         black + orange read as a certain adult site). #3cc8e0 is 9.47:1 on
+         #111111; --on-brand is a near-black teal at 9.06:1 on it. */
+      --brand:       #3cc8e0;
+      --brand-hover: #6fd8ea;
+      --brand-quiet: rgba(60,200,224,0.14);
+      --brand-line:  rgba(60,200,224,0.45);
+      --on-brand:    #04191d;
+      /* The brand on a surface that is dark in EVERY theme (the replayer's
+         seat plaques, commentary bar, bookends, seat lines). Light and cloudy
+         leave this at the dark aqua: their deep --brand is 3.63:1 on a
+         #0e0c13 plaque, this is 9.74:1. Only high contrast changes it.
+         Its ink and hairline travel with it: --on-brand is white in light and
+         cloudy (1.99:1 on #3cc8e0), so a fill of --brand-on-dark takes
+         --on-brand-on-dark (9.06:1), and --brand-line is a deep teal there
+         (1.49:1 light, 1.22:1 cloudy on the capsule), so a hairline on a dark
+         surface takes --brand-line-on-dark (2.72:1). The replayer transport
+         (a dark capsule in every theme) is the consumer: light's deep play
+         fill was 3.07:1 against the capsule, cloudy's 1.81:1; this is 8.25:1. */
+      --brand-on-dark: #3cc8e0;
+      --on-brand-on-dark: #04191d;
+      --brand-line-on-dark: rgba(60,200,224,0.45);
       --line-strong:  var(--accent);
       --action:       var(--brand);
       --action-hover: var(--brand-hover);
@@ -695,6 +712,10 @@
       --focus-ring:       calc(var(--subrow) * 0.25) solid var(--brand);
       --focus-ring-inset: inset 0 0 0 calc(var(--subrow) * 0.25) var(--brand);
       --focus-offset:     calc(var(--subrow) * 0.25);
+      /* The ring on a surface that is dark in every theme (the replayer's
+         transport capsule and seat plaques): cloudy's #0a4f62 ring is about
+         2.1:1 there, under the 3:1 a non-text mark needs. */
+      --focus-ring-on-dark: calc(var(--subrow) * 0.25) solid var(--brand-on-dark);
     }
     /* r, rounded to a whole 1/64 px: WebKit lays boxes out in 1/64 px units, so at a width where
        0.71g is not one (402: 7.7139px) every whole-r box lost a sliver to truncation — a 13r event
@@ -705,17 +726,20 @@
       :root { --subrow: round(nearest, calc(var(--gu) * 0.71), calc(1px / 64)); }
     }
 
-    /* Light grounds need shallower, cooler shadows and a darker gold —
-       #f2a63b on white fails contrast for text and small marks. */
+    /* Light grounds need shallower, cooler shadows and a deeper aqua —
+       #3cc8e0 on white is 1.99:1 and fails contrast for text and small marks;
+       #0e7490 is 5.36:1 on #ffffff. Cloudy shares this block but takes a
+       deeper brand still (its own block below): #0e7490 is only 3.2 to 3.7:1
+       on its mid-grey grounds. */
     [data-theme="light"],
     [data-theme="cloudy"] {
       --elev-1: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.06), 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.5) rgba(0,0,0,0.06);
       --elev-2: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.08), 0 calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.75) rgba(0,0,0,0.08);
       --elev-3: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.5) rgba(0,0,0,0.10), 0 calc(var(--subrow) * 1.75) calc(var(--subrow) * 4) rgba(0,0,0,0.10);
-      --brand:       #a8700c;
-      --brand-hover: #8c5c08;
-      --brand-quiet: rgba(168,112,12,0.12);
-      --brand-line:  rgba(168,112,12,0.40);
+      --brand:       #0e7490;
+      --brand-hover: #155e75;
+      --brand-quiet: rgba(14,116,144,0.12);
+      --brand-line:  rgba(14,116,144,0.40);
       --on-brand:    #ffffff;
 
       /* Status on a light ground. #22c55e sits at 2.3:1 on #ffffff, so the
@@ -763,17 +787,42 @@
       --elev-0:      inset 0 0 0 calc(var(--subrow) * 0.125) var(--ov-black-1);
     }
 
+    /* Light brand text on its own --brand-quiet tint (the Beta pills, the
+       chosen Reports filter chip's count, the bankroll dashboard's active
+       tab) is 4.20:1 over #f5f5f5; this deeper ink is 5.69:1 there. Read
+       through var(--brand-ink, var(--brand)), so every other theme keeps the
+       plain brand. */
+    [data-theme="light"] {
+      --brand-ink:   #155e75;
+    }
+
+    /* Cloudy's grounds are mid-grey (#c8c8c8 to #d6d6d6, nav and rail down to
+       #bfbfbf), where the light theme's #0e7490 is 3.2 to 3.7:1. #0a4f62 is
+       5.44:1 on #c8c8c8, 6.26:1 on #d6d6d6, 4.95:1 on #bfbfbf and 4.57:1 on
+       its own 12% tint; white --on-brand is 9.10:1 on it, and the calendar's
+       #c8c8c8 day-number knockout 5.44:1. */
+    [data-theme="cloudy"] {
+      --brand:       #0a4f62;
+      --brand-hover: #083f4e;
+      --brand-quiet: rgba(10,79,98,0.12);
+      --brand-line:  rgba(10,79,98,0.40);
+    }
+
+    /* High-contrast brand: #7ae6f5 is 13.01:1 on #111111, #0b4a5c 9.78:1 on white. */
     [data-contrast="high"] {
-      --brand:       #ffc046;
-      --brand-hover: #ffd27a;
+      --brand:       #7ae6f5;
+      --brand-hover: #b0f1fa;
       --on-brand:    #000000;
+      --brand-on-dark: #7ae6f5;
+      --on-brand-on-dark: #000000;
     }
 
     [data-theme="light"][data-contrast="high"],
     [data-theme="cloudy"][data-contrast="high"] {
-      --brand:       #6b4405;
-      --brand-hover: #533402;
+      --brand:       #0b4a5c;
+      --brand-hover: #08394a;
       --on-brand:    #ffffff;
+      --brand-ink:   #0b4a5c;
     }
 
     /* Belt and braces. Zeroing the duration tokens only ever reached the
@@ -1036,12 +1085,10 @@
       border-radius: var(--radius-xs);
     }
     .skeleton-slab { height: calc(var(--subrow) * 5); border-radius: var(--radius-sm); }
-    .skeleton-pl-grid {
-      display: grid;
-      grid-template-columns: var(--pl-cols);
-      column-gap: var(--gu);
-    }
-    .skeleton-pl-grid > * { height: calc(var(--subrow) * 9); border-radius: var(--radius); }
+    /* Stand-in for the 4r results bar: one slab, as the bar is one object now. */
+    .skeleton-pl-grid { display: block; }
+    .skeleton-pl-grid > * { display: none; }
+    .skeleton-pl-grid > :first-child { display: block; height: calc(var(--subrow) * 4); border-radius: var(--radius); }
 
 
     /* Opt-in brand fill. .btn-primary itself is --accent grey until item 89
@@ -1506,6 +1553,12 @@
       box-shadow: inset 0 0 0 var(--bw-1) var(--brand);
       background: var(--brand-quiet);
     }
+    /* Light's muted #888888 is 3.00:1 on the chosen tile's tint (#e2eef2) and
+       the caption is 10.7px text; --n-7 (#555555 here) is 6.30:1. High
+       contrast light already has a #444444 muted, so it is left alone. */
+    [data-theme="light"]:not([data-contrast="high"]) .font-pick-tile.is-on i {
+      color: var(--n-7);
+    }
 
     /* ==================================================================
        Auth text controls. AuthScreen, ForgotPasswordForm and
@@ -1738,7 +1791,7 @@
     .date-break-label > .date-break-mon { margin-left: calc(var(--gu) * 0.3442); } /* 4px @ 430pt, in g */
     /* The one mark the whole list is scrolled to on mount. --brand exists so
        exactly one thing per screen can claim priority; this is the candidate. */
-    /* Inverted against the ground rather than brand gold: near-white on the
+    /* Inverted against the ground rather than the brand aqua: near-white on the
        dark themes, near-black on the light ones. Taken from the ends of the
        neutral ramp, so dusk and cloudy get it right without their own rule. */
     .schedule-date-break.is-today .date-break-pill {
@@ -1871,7 +1924,7 @@
       outline-offset: var(--focus-offset);
       border-radius: inherit;
     }
-    /* Gold-on-gold is unreadable against a brand-filled control. */
+    /* A brand ring is unreadable against a brand-filled control (aqua on aqua). */
     [data-contrast="high"] :where(button, a):focus-visible {
       outline-color: var(--n-8);
     }
@@ -5580,11 +5633,17 @@
        colour formats, arriving within a second of each other at showdown,
        which made that sequence read as flicker. One geometry, and colour is
        the only variable. */
+    /* The border is --brand-on-dark and the rings are that same dark-theme aqua
+       as alpha literals, in every app theme: they glow on the felt round a
+       plaque that is dark in all of them, where the light theme's deep #0e7490
+       would read as a shadow. Literals for the rings because they need an
+       alpha and there is no color-mix() here, which html2canvas (the video
+       exporter) cannot parse. */
     .replayer-seat.active-turn .replayer-seat-info {
-      border-color: var(--brand);
+      border-color: var(--brand-on-dark);
       box-shadow: var(--plate-bevel),
-        var(--ring-1) rgba(242,166,59,0.55),
-        var(--ring-2) rgba(242,166,59,0.40);
+        var(--ring-1) rgba(60,200,224,0.55),
+        var(--ring-2) rgba(60,200,224,0.40);
     }
     .replayer-seat.winner .replayer-seat-info {
       border-color: #eab308;
@@ -5707,8 +5766,9 @@
       transition: opacity var(--dur-fast) var(--ease-label);
     }
     .replayer-seat-stack[data-tappable]:active { opacity: 0.55; }
+    /* The on-dark ring: the stack sits on a seat plaque, dark in every theme. */
     .replayer-seat-stack[data-tappable]:focus-visible {
-      outline: var(--focus-ring);
+      outline: var(--focus-ring-on-dark);
       outline-offset: calc(var(--subrow) * 0.25);
       border-radius: var(--radius-xs);
     }
@@ -6153,20 +6213,35 @@
     .replayer-controls { gap: var(--space-ml); }
 
     /* 76: the play button was distinguished only by being 6px larger. */
+    /* The capsule is dark in every theme, so the transport takes the
+       --brand-on-dark set, not the theme brand: light's deep #0e7490 fill was
+       3.07:1 against the capsule and cloudy's #0a4f62 1.81:1 (a dim disc in
+       exactly the themes that chose a deep brand); #3cc8e0 is 8.25:1, with a
+       dark ink at 9.06:1 on it. The pause glyph was 2.2:1 (light), 1.3:1
+       (cloudy) and 1.2:1 (hc light) on the wash; now 6.24:1 (8.57:1 hc). */
     .replayer-controls .replayer-play-btn {
       width:calc(var(--subrow) * 4.75); height:calc(var(--subrow) * 4.75);
-      background: var(--brand);
-      border-color: var(--brand);
-      color: var(--on-brand);
+      background: var(--brand-on-dark);
+      border-color: var(--brand-on-dark);
+      color: var(--on-brand-on-dark);
       box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.28);
     }
     .replayer-controls .replayer-play-btn.is-playing {
       background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
-      color: var(--brand);
-      border-color: var(--brand-line);
+      color: var(--brand-on-dark);
+      border-color: var(--brand-line-on-dark);
     }
+    /* :not(.is-playing): this hover used to fill the PAUSE button with the
+       brand too, under its brand-coloured glyph, so the glyph vanished. */
     @media (hover: hover) and (pointer: fine) {
-      .replayer-controls .replayer-play-btn:hover { background: var(--brand); }
+      .replayer-controls .replayer-play-btn:not(.is-playing):hover { background: var(--brand-on-dark); border-color: var(--brand-on-dark); }
+    }
+    /* The app ring is the theme brand (cloudy's is about 2.1:1 on the
+       capsule), and high contrast swaps it for --n-8, near-black in hc light.
+       Out-ranks both (0,2,1 over 0,2,0). */
+    .replayer-controls button:focus-visible {
+      outline: var(--focus-ring-on-dark);
+      outline-offset: var(--focus-offset);
     }
     /* 54: the speed control is a sibling of the transport circles, not a form
        field parked at the end of the row. */
@@ -6189,7 +6264,7 @@
     @media (hover: hover) and (pointer: fine) {
       .replayer-controls button:hover {
         background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
-        border-color: var(--brand-line);
+        border-color: var(--brand-line-on-dark);
       }
     }
     .replayer-controls button:disabled { opacity: var(--state-disabled); cursor:default; }
@@ -6345,9 +6420,9 @@
     /* 62: --accent is the neutral hairline grey the app uses for DISABLED,
        so the chosen Theme, Shape and Card Back read as the switched-off one.
        Brand tint with a brand hairline rather than a solid fill, because up to
-       six of these sit in a row and six solid brand blocks is a lot of gold. */
+       six of these sit in a row and six solid brand blocks is a lot of aqua. */
     .replayer-settings-pill.active {
-      background: var(--brand-tint);
+      background: var(--brand-quiet);
       color: var(--text);
       border-color: var(--brand-line);
     }
@@ -6704,7 +6779,7 @@
        the text column starts on x = 3g. */
     .replayer-fullbleed .replayer-commentary {
       height: calc(var(--subrow) * 5);
-      box-shadow: inset calc(var(--subrow) * 0.5) 0 0 var(--brand), var(--plate-bevel, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55));
+      box-shadow: inset calc(var(--subrow) * 0.5) 0 0 var(--brand-on-dark), var(--plate-bevel, 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55));
     }
     .replayer-fullbleed .replayer-commentary::before { display: none; }
     .replayer-fullbleed .replayer-commentary > .replayer-commentary-body {
@@ -6742,7 +6817,7 @@
       box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       --icon-size: calc(var(--subrow) * 3);
     }
-    .replayer-quick-btn.is-open { color: var(--text); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); background: var(--brand-tint); }
+    .replayer-quick-btn.is-open { color: var(--text); box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); background: var(--brand-quiet); }
     @media (hover: hover) and (pointer: fine) {
       .replayer-quick-btn:hover { color: var(--text); }
     }
@@ -7064,7 +7139,7 @@
     .replayer-commentary::before {
       content: '';
       width: calc(var(--subrow) * 0.5); flex: none;
-      background: var(--brand);
+      background: var(--brand-on-dark);
     }
     .replayer-commentary > .replayer-commentary-body {
       padding: var(--space-sm) var(--space-ml);
@@ -7081,7 +7156,7 @@
       display: block;
       font-size: var(--fs-2xs); font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--brand); margin-bottom: calc(var(--subrow) * 0.125);
+      color: var(--brand-on-dark); margin-bottom: calc(var(--subrow) * 0.125);
     }
 
     /* ── Pot Odds Display ── */
@@ -7982,7 +8057,11 @@
     .replayer-seat.is-hero .replayer-seat-info {
       min-width: min(calc(var(--subrow) * 27.5), 27cqmin);
       padding: var(--nudge-1) min(var(--space-ml), 4cqmin);
-      border-color: rgba(242,166,59,0.5);
+      /* --brand-on-dark (#3cc8e0) at 50% as a literal, not --brand-line: the
+         plaque is dark in every app theme, and the light theme's line is a
+         deep teal. A literal because it needs an alpha (no color-mix(), which
+         html2canvas cannot parse). */
+      border-color: rgba(60,200,224,0.5);
     }
     .replayer-seat.is-hero .replayer-seat-stack { font-size: clamp(10px, 4.3cqmin, 54px); }
     /* The hero's slant is gone. It marked whose hand this is, but the hero is
@@ -8086,7 +8165,7 @@
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--brand);
+      color: var(--brand-on-dark);
     }
     .replayer-bookend-title {
       font-family: var(--font-display);
@@ -8138,7 +8217,7 @@
     .replayer-seat-line-street {
       flex: 0 0 calc(var(--subrow) * 4.25);
       letter-spacing: var(--track-caps); text-transform: uppercase;
-      color: var(--brand);
+      color: var(--brand-on-dark);
     }
 
     /* ── Table shapes ── */
@@ -8346,8 +8425,11 @@
 
     /* Inactive #808080 vs active #a0a0a0 reads 3.9:1 and 5.4:1 against the
        background but only about 1.4:1 against EACH OTHER - which is the number
-       that matters for "which tab am I on". Gold is the one hue the token doc
-       guarantees cannot be misread as a venue stripe. */
+       that matters for "which tab am I on". The brand aqua is the one colour
+       the token doc sets apart from the venue stripes: on the dark grounds it
+       is far lighter than any venue teal or blue. (The light theme's deep
+       #0e7490 sits near the WSOP Online and Hard Rock teals, as the old light
+       gold sat near the venue golds.) */
     .nav-tab.active { color: var(--brand); }
     .nav-tab { position: relative; }
     .nav-tab.active::before {
@@ -8966,7 +9048,7 @@
       height: calc(var(--subrow) * 2.5);
       /* --surface, not a hardcoded white: on the light theme white-on-#d0d0d0
          made the OFF state nearly invisible. --on-brand when active keeps the
-         knob legible against gold in every theme. */
+         knob legible against the brand fill in every theme. */
       background: var(--surface);
       box-shadow: var(--elev-1);
       border-radius: var(--radius-circle);
@@ -11273,8 +11355,6 @@
     .admin-revert-btn:disabled { opacity: var(--state-disabled); cursor: default; }
 
     .cal-detail-value { align-self: end; text-box-trim: trim-both; text-box-edge: cap alphabetic; font-family: var(--serif); font-size: var(--fs-sm); color: var(--text); font-weight: var(--fw-regular); }
-    /* Bankrolls beta: "Of your roll" turns the loss colour when the entry is over the roll's MTT rule. */
-    .cal-detail-value.is-over { color: var(--neg); }
 
     .cal-detail-badges {
       display: grid;
@@ -11841,6 +11921,9 @@
       gap: var(--space-xl);
       height: 100%;
       overflow: hidden;
+      /* 1r between the header and the first section's title row (owner, 2026-10-11). */
+      box-sizing: border-box;
+      padding-top: var(--subrow);
     }
 
     .dash-bottom-stack {
@@ -11957,6 +12040,23 @@
       padding-top: calc(var(--subrow) * 2 - 1cap);
       white-space: nowrap;
     }
+    /* Up Next's title crossfade (TODAY / TOMORROW / UP NEXT, DashboardView). The incoming label
+       is the title's own text, so it keeps the seat above; the outgoing one is laid over it with
+       the same padding, line-height and trim, so both baselines are the same 2r line. */
+    .dash-title-swap { position: relative; }
+    .dash-title-swap > .dash-title-out {
+      position: absolute; left: 0; top: 0;
+      display: block;
+      padding-top: inherit;
+      line-height: inherit;
+      white-space: nowrap;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      pointer-events: none;
+      animation: dashTitleOut var(--dur-base) var(--ease-standard) both;
+    }
+    .dash-title-swap > .dash-title-in { animation: dashTitleIn var(--dur-base) var(--ease-standard) both; }
+    @keyframes dashTitleIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes dashTitleOut { from { opacity: 1; } to { opacity: 0; } }
     /* Dashboard header pill: a header-high 3r x 4g block (6g --wide) on the 32/30g lines, caps
        micro-label (--fs-2xs is caps-only) centred in it (owner rule, 2026-10-10: a pill's label
        is centred, not seated). */
@@ -11976,6 +12076,9 @@
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
       letter-spacing: var(--track-caps);
+      /* Letter-spacing also follows the LAST letter, so a centred tracked label sits half a
+         letter-space left of centre; an equal indent puts its ink on the centre line. */
+      text-indent: var(--track-caps);
       text-transform: uppercase;
       text-align: center;
       white-space: nowrap;
@@ -12302,7 +12405,9 @@
     .dash-event-card.playing .dash-event-name,
     .dash-event-card.next-up .dash-event-name,
     .dash-event-card.manually-expanded .dash-event-name {
-      font-size: var(--fs-lg);
+      /* --fs-md, was --fs-lg (owner, 2026-10-11: the Up Next card closer in size to the
+         Schedule tab's cards, whose names are --fs-sm). Still a 3r line. */
+      font-size: var(--fs-md);
       line-height: calc(var(--subrow) * 3); /* 3 subrows per line */
       /* A cell of whole 3r lines (min-height; DashboardView pins it to the
          rendered line count) with the trimmed text block bottom-aligned in it:
@@ -12337,7 +12442,7 @@
        carousel slides instead of shifting as the number changes width. */
     .dash-event-buyin {
       font-family: var(--font-display);
-      font-size: var(--fs-md);
+      font-size: var(--fs-sm); /* the Schedule card's buy-in size (was --fs-md) */
       font-weight: var(--fw-bold);
       color: var(--text);
       font-variant-numeric: tabular-nums;
@@ -12499,7 +12604,7 @@
       width: 100%;
       /* 5r box (see the 5r-box seat rule below for why 5, not 4). The outline is
          an inset ring so it takes no room from the padding the label is seated by. */
-      height: calc(var(--subrow) * 5);
+      height: calc(var(--subrow) * 4);
       min-height: 0;
       box-sizing: border-box;
       padding: 0 var(--space-xl);
@@ -12524,7 +12629,7 @@
       }
     }
 
-    /* Icons in the 5r boxes: 2r, standing on the label's baseline (1r..3r). */
+    /* Icons in the 4r boxes: 2r, centred with the label. */
     .dash-start-btn svg {
       width: calc(var(--subrow) * 2);
       height: calc(var(--subrow) * 2);
@@ -12536,7 +12641,7 @@
       justify-content: center;
       gap: var(--space-md);
       width: 100%;
-      height: calc(var(--subrow) * 5); /* 5 subrows — was ~46px */
+      height: calc(var(--subrow) * 4); /* 5 subrows — was ~46px */
       box-sizing: border-box;
       padding: 0 var(--space-xl);
       border: 0;
@@ -12623,7 +12728,7 @@
 
     .dash-bag-btn, .dash-bust-btn, .dash-update-btn {
       /* 5r box (see the 5r-box seat rule), min-height 0 so flexbox can't grow it. */
-      height: calc(var(--subrow) * 5);
+      height: calc(var(--subrow) * 4);
       min-height: 0;
       box-sizing: border-box;
       display: flex;
@@ -12668,7 +12773,7 @@
          it (was 4r in that 5r row, top-aligned, 1r short). nowrap + min-height:0
          so the long "Rebuys: Unlimited" label can't wrap and, via flexbox's
          min-height:auto, override the height. */
-      height: calc(var(--subrow) * 5);
+      height: calc(var(--subrow) * 4);
       min-height: 0;
       white-space: nowrap;
       box-sizing: border-box;
@@ -12691,7 +12796,7 @@
     }
 
     .dash-no-rebuy {
-      height: calc(var(--subrow) * 5);
+      height: calc(var(--subrow) * 4);
       box-sizing: border-box;
       display: flex;
       align-items: center;
@@ -12714,7 +12819,7 @@
       width: 100%;
       /* Fixed 5r box (was 1r padding + a floored line ≈ 5.3r, the last non-whole
          row on the busted card). */
-      height: calc(var(--subrow) * 5);
+      height: calc(var(--subrow) * 4);
       min-height: 0;
       box-sizing: border-box;
       padding: 0 var(--space-xl);
@@ -12737,7 +12842,7 @@
       gap: var(--space-md);
       width: 100%;
       /* Fixed 5r box (was 1r padding + a line box, a fraction of r). */
-      height: calc(var(--subrow) * 5);
+      height: calc(var(--subrow) * 4);
       box-sizing: border-box;
       padding: 0 var(--space-xl);
       border: 0;
@@ -12754,7 +12859,7 @@
 
     .dash-restart-badge svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
 
-    /* The 5r boxes in the Up Next card (Start, Currently Playing, Update / Bag / Bust, Cancel /
+    /* The 4r boxes in the Up Next card (5r until 2026-10-11) (Start, Currently Playing, Update / Bag / Bust, Cancel /
        Rebuys / Finish, Finished, All entries used, Restart) centre their label and icon: each box
        is a flex row with align-items:center, and nothing inside is seated on a line (owner rule,
        2026-10-10 — a control's label is centred in its box, ignoring the grid). */
@@ -12854,12 +12959,17 @@
        8 + 1 + 8 + 1 + 17 = 35g, edges 1-9, 10-18, 19-36. Net keeps the wider
        cell. The widest label, "TOTAL BUYINS ▾", measures 7.58g, so the 8g
        cards carry no horizontal padding (centred, 0.21g each side). */
-    :root { --pl-cols: var(--col) var(--col) calc(var(--col) * 2 + var(--gu)); }
+    /* 2026-10-11 (owner): the three figures became ONE 4r bar with every figure and label on one
+       line. The bar is the cards' old 35g span (edges on the 1g/36g column lines) cut into
+       11g | 11g | 13g segments by hairlines — one-line content needs more than the 8g column
+       ("$123,456 BUY-INS ▾" is ~10g); the segment edges are internal, on whole g. The header above
+       shares the segments with no gap, so Reset still ends over the Cashes segment (23g). */
+    :root { --pl-cols: calc(var(--gu) * 11) calc(var(--gu) * 11) calc(var(--gu) * 13); }
     .dash-results-header {
       display: grid;
       grid-template-columns: var(--pl-cols);
       grid-template-rows: calc(var(--subrow) * 3);
-      column-gap: var(--gu);
+      column-gap: 0; /* the bar's segments below touch; the header shares them */
       /* end: the title is trimmed to cap..alphabetic, so its bottom (the
          baseline) seats on the header's 3r line. The 3r controls fill the row. */
       align-items: end;
@@ -12933,83 +13043,91 @@
     }
     .dash-results-currency:focus-within { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 
+    /* One 4r bar, three segments (owner, 2026-10-11): figure and label on one line in each,
+       centred in its segment both ways (the pill rule: a control's label is centred, not seated).
+       The ring and radius are the bar's; segments split by a hairline; Net keeps its raised fill. */
     .dash-pl-grid {
       display: grid;
       grid-template-columns: var(--pl-cols);
-      column-gap: var(--gu);
-      align-items: stretch;
+      column-gap: 0;
+      height: calc(var(--subrow) * 4);
+      border-radius: var(--radius);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      background: var(--surface);
+      overflow: hidden;
     }
 
     .dash-pl-card {
-      background: var(--surface);
-      /* inset shadow, not a border: a border shifted the content by a hairline
-         and made the top padding a 1r - 0.125r fudge. */
+      background: none;
       border: 0;
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
-      border-radius: var(--radius);
-      /* Exact 9r: 1r pad + value 3r + label 2r + ROI 2r + 1r. Each line is a
-         trimmed block whose padding-top is (cell - 1cap), so every baseline sits
-         on its cell's bottom r-line: value +4r, label +6r, ROI +8r. */
-      height: calc(var(--subrow) * 9);
+      border-radius: 0;
+      box-shadow: none;
+      height: calc(var(--subrow) * 4);
       min-height: 0;
       box-sizing: border-box;
-      padding: var(--space-md) 0 0;
-      text-align: center;
+      padding: 0 calc(var(--gu) * 0.5);
       /* these are <button> now, so undo the UA defaults */
       font: inherit;
       color: inherit;
       display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: stretch;
-      gap: 0;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
       min-width: 0;
     }
+    /* The hairline between segments, drawn inside the right-hand one (adds no width). */
+    .dash-pl-card + .dash-pl-card { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
     .dash-pl-btn { cursor: pointer; position: relative; }
 
-    .dash-pl-card--net {
-      background: var(--surface-raised);
-      box-shadow: inset 0 0 0 var(--bw-hair) var(--border-strong);
+    .dash-pl-card--net { background: var(--surface-raised); }
+
+    /* The line: every part on one baseline. Line boxes are 1em so the figure's box is its cap
+       height centred (the fonts' metrics are the same on every platform — check:fonts). The
+       last part's trailing letter-space is cancelled so the line's ink, not its box, is centred. */
+    .dash-pl-line {
+      display: flex;
+      align-items: baseline;
+      gap: calc(var(--gu) * 0.5);
+      min-width: 0;
+      white-space: nowrap;
     }
-    .dash-pl-card--net .dash-pl-value { font-size: var(--fs-xl); }
-    .dash-pl-card:not(.dash-pl-card--net) .dash-pl-value { font-size: var(--fs-md); }
-    /* "Net — +12.4% ROI" was one 9.3px string doing two jobs. */
+    .dash-pl-line > :last-child { margin-right: calc(var(--track-caps) * -1); }
+    .dash-pl-value {
+      display: block;
+      flex: 0 0 auto;
+      font-family: var(--font-condensed);
+      font-size: var(--fs-md);
+      font-weight: var(--fw-bold);
+      line-height: 1;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .dash-pl-value.positive { color: #22c55e; }
+    .dash-pl-value.negative { color: #ef4444; }
     .dash-pl-roi {
       display: block;
+      flex: 0 0 auto;
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
-      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
+      line-height: 1;
       white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     .dash-pl-roi.pos { color: var(--ok); }
     .dash-pl-roi.neg { color: var(--danger); }
-
-    .dash-pl-value {
-      display: block;
-      font-family: var(--font-condensed);
-      font-size: var(--fs-md);
-      font-weight: var(--fw-bold);
-      color: var(--text);
-      padding-top: calc(var(--subrow) * 3 - 1cap);   /* 3r cell */
-      white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    }
-
-    .dash-pl-value.positive { color: #22c55e; }
-    .dash-pl-value.negative { color: #ef4444; }
-
+    /* The label gives way first if a figure is ever too long for its segment. */
     .dash-pl-label {
       display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-size: var(--fs-2xs);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
-      padding-top: calc(var(--subrow) * 2 - 1cap);   /* 2r cell */
+      line-height: 1;
       white-space: nowrap;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     .dash-pl-btn {
@@ -13127,10 +13245,15 @@
        bottom-aligned over 1r of padding, so every baseline is on the 2r line —
        centred for the 1.037r-cap readout: (3 + 1.037) / 2 = 2.02r. Was flex with
        2r line boxes: baselines at 2.45r / 2.84r, cells 15.74g..21.26g. */
+    /* The group's width comes from snap-g-centred (utils/grid-snap.js): whole g, with the
+       parity of the section it centres in, so on a desktop pane of even width its edges still
+       land on g lines (a fixed 9g group centred in 62g sat on half g). The middle cell takes
+       the extra g. */
     .dash-upnext-counter {
       display: grid;
-      grid-template-columns: calc(var(--gu) * 2) calc(var(--gu) * 5) calc(var(--gu) * 2);
-      justify-content: center; align-items: end;
+      grid-template-columns: calc(var(--gu) * 2) minmax(calc(var(--gu) * 5), 1fr) calc(var(--gu) * 2);
+      align-items: end;
+      margin-inline: auto;
       height: calc(var(--subrow) * 3); box-sizing: border-box; padding: 0 0 var(--subrow);
     }
     .dash-upnext-pos {
@@ -13145,16 +13268,16 @@
       white-space: nowrap;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    /* A 2g x 2r button, its chevron an icon centred both ways (owner rule: a control's label is
+       centred). Was a ‹ › character trimmed to cap..baseline: those glyphs' ink sits low in the
+       em box, so a typed arrow can never be centred without a nudge; an SVG's box is its ink. */
     .dash-upnext-step {
       background: none; border: none; cursor: pointer; padding: 0;
       height: calc(var(--subrow) * 2);
-      display: flex; align-items: flex-end; justify-content: center;
-      color: var(--text-muted); font-size: var(--fs-lg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      --icon-size: calc(var(--subrow) * 1.5);
       transition: color var(--dur-fast) var(--ease-out);
-    }
-    .dash-upnext-step > .dash-t {
-      display: block; line-height: 1;
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
     @media (hover: hover) and (pointer: fine) {
       .dash-upnext-step:hover:not(:disabled) { color: var(--text); }
@@ -14923,9 +15046,11 @@
       display: flex; align-items: center; justify-content: center;
     }
     /* #fbbf24 is not --brand and had no light-theme override, so on a light
-       ground the title sat at about 1.9:1. Two golds in one app is a system
-       with no owner. And the app's most celebratory moment simply appeared,
-       while the notifications panel next door gets a slide-down. */
+       ground the title sat at about 1.7:1. A second accent in one modal is a
+       system with no owner: the border moved to --brand first, and the title
+       followed when the brand went aqua (it would otherwise have been a lone
+       yellow title in an aqua frame). And the app's most celebratory moment
+       simply appeared, while the notifications panel next door gets a slide-down. */
     .milestone-modal {
       background: var(--surface);
       box-shadow: var(--elev-3);
@@ -14942,7 +15067,7 @@
     .milestone-modal .milestone-title {
       font-family: var(--font-condensed);
       font-size: var(--fs-xl); font-weight: var(--fw-bold);
-      color: #fbbf24; margin-bottom: var(--space-md);
+      color: var(--brand); margin-bottom: var(--space-md);
     }
     .milestone-modal .milestone-desc {
       font-size: var(--fs-sm); color: var(--text);
@@ -16248,12 +16373,12 @@
        box (and the list's r rhythm) does not move by a hair. */
     .cal-event-row.is-selected { outline: var(--bw-2) solid var(--brand); outline-offset: 0; }
     /* Clicking a row focuses its bar, and Safari matches :focus-visible on that click, so the
-       selected card drew the inset focus ring INSIDE the selection outline: two gold rings. The
+       selected card drew the inset focus ring INSIDE the selection outline: two brand rings. The
        selection outline already says where you are; keyboard focus on any other row still rings. */
     .cal-event-row.is-selected .cal-event-bar:focus-visible,
     .cal-event-row.is-selected .cal-venue-strip:focus-visible { box-shadow: none; }
     /* One ring on the selected row. A saved event's venue-coloured outline (and a priority or
-       conditional one) drew a second ring just inside the gold selection outline; while a row is
+       conditional one) drew a second ring just inside the brand selection outline; while a row is
        the one in the detail pane, the selection outline is its only ring — the pane says whether
        it is saved. Unselected rows keep every marker. */
     .cal-event-row.is-selected .cal-event-row-content { box-shadow: none; outline: none; }
@@ -16271,8 +16396,20 @@
       from { max-height: 0; opacity: 0; }
       to   { max-height: 55%; opacity: 1; }
     }
+    /* Closing an event (owner, 2026-10-11): the same move in reverse — the details collapse back
+       up from their own height (--dk-h, measured in r by App.jsx when the close starts) and My
+       Schedule rises with them. App.jsx keeps the block mounted until this animation ends. */
+    .dk-pane-detail > .dk-detail-block.is-closing {
+      animation: dkDetailClose var(--dur-base) var(--ease-standard) both;
+      pointer-events: none;
+    }
+    @keyframes dkDetailClose {
+      from { max-height: var(--dk-h, 55%); opacity: 1; }
+      to   { max-height: 0; opacity: 0; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .dk-pane-detail > .dk-detail-block { animation: none; }
+      .dk-pane-detail > .dk-detail-block,
+      .dk-pane-detail > .dk-detail-block.is-closing { animation: none; }
     }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
     /* The rule between them is a shadow above My Schedule, not a border: a border pushed its
@@ -16486,7 +16623,7 @@
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       text-align: center;
-      color: var(--brand);
+      color: var(--brand-ink, var(--brand));
       background: var(--brand-quiet);
       border-radius: var(--radius);
     }

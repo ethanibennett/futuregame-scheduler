@@ -63,7 +63,7 @@ function drawWatermark(ctx, w, h, pos) {
   } else {
     x = Math.round(w * 0.04);
   }
-  ctx.fillStyle = 'rgba(242,166,59,0.6)';
+  ctx.fillStyle = 'rgba(60,200,224,0.6)';
   ctx.fillRect(x, y - Math.round(wms * 0.3), ruleW, 1);
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.textAlign = 'left';
@@ -770,7 +770,7 @@ export function generateScheduleImages(events, title, opts = {}) {
 // needs an ornament rather than a glyph borrowed from the system font.
 function drawChipMark(ctx, cx, cy, r) {
   ctx.save();
-  ctx.fillStyle = '#f2a63b';
+  ctx.fillStyle = '#3cc8e0';
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   for (let i = 0; i < 6; i++) {
@@ -1235,7 +1235,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
   const padR = w - padX;
 
   ctx.font = '400 ' + Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = '#f2a63b';  // chrome accent, NOT the money colour
+  ctx.fillStyle = '#3cc8e0';  // chrome accent, NOT the money colour
   ctx.letterSpacing = '3px';
   ctx.fillText('SERIES SCORECARD', padX, Math.round(h * 0.07));
   ctx.letterSpacing = '0px';
@@ -1250,7 +1250,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
     ctx.fillText(data.dateRange, padX, Math.round(h * 0.155));
   }
 
-  ctx.fillStyle = '#f2a63b';  // chrome accent, NOT the money colour
+  ctx.fillStyle = '#3cc8e0';  // chrome accent, NOT the money colour
   ctx.fillRect(padX, Math.round(h * 0.175), padR - padX, 2);
 
   const statStartY = Math.round(h * 0.22);
@@ -1309,7 +1309,7 @@ export function drawSeriesScorecard(ctx, w, h, data) {
     ctx.fillText('CURRENT STREAK', padX, streakY);
     ctx.letterSpacing = '0px';
     ctx.font = '400 ' + Math.round(h * 0.022) + 'px Univers Condensed, Univers, sans-serif';
-    ctx.fillStyle = '#fbbf24';
+    ctx.fillStyle = '#3cc8e0'; // the brand accent (a streak is not an accolade)
     ctx.fillText(data.currentStreak, padX, streakY + Math.round(h * 0.035));
   }
 
@@ -1678,7 +1678,7 @@ export function drawWrapSlide3(ctx, w, h, data) {
   drawShareBackground(ctx, w, h);
   ctx.textAlign = 'center';
   ctx.font = '400 ' + Math.round(h * 0.014) + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = '#fbbf24';
+  ctx.fillStyle = '#3cc8e0';  // chrome accent (a section label); the amount below stays money gold
   ctx.letterSpacing = '4px';
   ctx.fillText('BEST MOMENT', w / 2, Math.round(h * 0.10));
   ctx.letterSpacing = '0px';
@@ -1727,10 +1727,12 @@ export function drawWrapSlide4(ctx, w, h, data) {
     return;
   }
   // A ranked composition, not eight unrelated categories - so a sequential
-  // ramp off the brand gold is the correct form anyway, and it frees green and
+  // ramp off the brand aqua is the correct form anyway, and it frees green and
   // red to mean money. The old ramp opened with the exact positive and negative
   // money colours while the legend printed signed profit two inches away.
-  const colors = ['#f2a63b', '#c98428', '#a1651b', '#7a4a10', '#5c380c', '#8a8a8a', '#6b6b6b', '#4f4f4f'];
+  // Aqua to dark teal in the same lightness steps the old gold ramp used
+  // (HSL L 0.56 > 0.44 > 0.35 > 0.26 > 0.19), then the greys.
+  const colors = ['#3cc8e0', '#26a8bc', '#1b8897', '#116871', '#0c5056', '#8a8a8a', '#6b6b6b', '#4f4f4f'];
   const total = variants.reduce((s, v) => s + v.count, 0);
   const cx = w / 2, cy = Math.round(h * 0.30);
   const radius = Math.round(w * 0.18);
@@ -1835,7 +1837,7 @@ export function drawWrapSlide5(ctx, w, h, data) {
   if (data.multiEntryCount) {
     const meY = Math.round(h * 0.72);
     ctx.font = '700 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
-    ctx.fillStyle = '#f59e0b';
+    ctx.fillStyle = '#3cc8e0'; // the brand accent (a count, not a warning or an accolade)
     ctx.fillText(String(data.multiEntryCount), w / 2, meY);
     ctx.font = Math.round(h * 0.016) + 'px Univers Condensed, Univers, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
@@ -1853,7 +1855,10 @@ export function drawMilestoneImage(ctx, w, h, data) {
   grad.addColorStop(1, '#0f0f1a');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(251,191,36,0.04)';
+  // Brand aqua throughout (sparkles, title, wordmark), matching the chip mark
+  // and the in-app milestone modal, whose title is var(--brand). The value
+  // below keeps the win green.
+  ctx.strokeStyle = 'rgba(60,200,224,0.04)';
   ctx.lineWidth = 1;
   for (let i = 0; i < 20; i++) {
     const x = Math.random() * w;
@@ -1866,7 +1871,7 @@ export function drawMilestoneImage(ctx, w, h, data) {
   // standing in for an ornament, at the focal point of a milestone card.
   drawChipMark(ctx, w / 2, Math.round(h * 0.20), Math.round(h * 0.038));
   ctx.font = '700 ' + Math.round(h * 0.040) + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = '#fbbf24';
+  ctx.fillStyle = '#3cc8e0';
   const titleLines = wrapText(ctx, data.title || 'MILESTONE', w * 0.7);
   titleLines.forEach((line, i) => {
     ctx.fillText(line, w / 2, Math.round(h * 0.38) + i * Math.round(h * 0.05));
@@ -1887,7 +1892,7 @@ export function drawMilestoneImage(ctx, w, h, data) {
   ctx.textAlign = 'left';
   const wms2 = Math.round(h * 0.016);
   ctx.font = wms2 + 'px Univers Condensed, Univers, sans-serif';
-  ctx.fillStyle = 'rgba(251,191,36,0.3)';
+  ctx.fillStyle = 'rgba(60,200,224,0.3)';
   ctx.textAlign = 'center';
   ctx.fillText('futurega.me', w / 2, Math.round(h * 0.95));
   ctx.textAlign = 'left';

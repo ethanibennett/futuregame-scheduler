@@ -428,6 +428,28 @@ export default function DashboardView({
     return [...events, ...later];
   }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard]);
 
+  // The section title names the next event's day (owner, 2026-10-11): TODAY or TOMORROW while the
+  // carousel shows the first card and that event is today or tomorrow; any later card, or a next
+  // event further out, is UP NEXT. A change crossfades: the outgoing title fades out over the
+  // incoming one, both seated on the same baseline.
+  const tomorrowISO = useMemo(() => {
+    const [y, m, d] = todayISO.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  }, [todayISO]);
+  const upNextTitle = (() => {
+    if (!whatsNextEvents.length || Math.min(selectedUpNextIdx, whatsNextEvents.length - 1) !== 0) return 'Up Next';
+    const day = normaliseDate(whatsNextEvents[0].date);
+    return day === todayISO ? 'Today' : day === tomorrowISO ? 'Tomorrow' : 'Up Next';
+  })();
+  const prevUpNextTitle = useRef(upNextTitle);
+  const [upNextTitleOut, setUpNextTitleOut] = useState(null); // { text, key } while fading out
+  useLayoutEffect(() => {
+    const prev = prevUpNextTitle.current; // read now: the updater below runs after the ref moves on
+    if (prev === upNextTitle) return;
+    setUpNextTitleOut(o => ({ text: prev, key: (o ? o.key : 0) + 1 }));
+    prevUpNextTitle.current = upNextTitle;
+  }, [upNextTitle]);
+
   /* Live tournament clocks (server: lib/live-clocks.js). For every selected event that has
      passed its scheduled start, ask for the real clock — PokerAtlas by the event's own clock id,
      Bravo by the room at the venue's coordinates — every 15 s, which is the rate Bravo's own app
@@ -1021,7 +1043,13 @@ export default function DashboardView({
       {/* Up Next */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Up Next</div>
+          <div className="dashboard-section-title dash-title-swap" aria-live="polite">
+            <span key={upNextTitle} className={upNextTitleOut ? 'dash-title-in' : undefined}>{upNextTitle}</span>
+            {upNextTitleOut && (
+              <span key={'out' + upNextTitleOut.key} className="dash-title-out" aria-hidden="true"
+                onAnimationEnd={() => setUpNextTitleOut(null)}>{upNextTitleOut.text}</span>
+            )}
+          </div>
           {whatsNextEvents.length > 0 && (
             <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
           )}
@@ -1059,14 +1087,14 @@ export default function DashboardView({
                 </div>
               )}
               {whatsNextEvents.length > 8 && (
-                <div className="dash-upnext-counter">
+                <div className="dash-upnext-counter snap-g-centred">
                   <button
                     type="button"
                     className="dash-upnext-step"
                     onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
                     disabled={safeIdx === 0}
                     aria-label="Previous event"
-                  ><span className="dash-t">&#8249;</span></button>
+                  ><Icon.chevLeft /></button>
                   <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
                   <button
                     type="button"
@@ -1074,7 +1102,7 @@ export default function DashboardView({
                     onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
                     disabled={safeIdx === whatsNextEvents.length - 1}
                     aria-label="Next event"
-                  ><span className="dash-t">&#8250;</span></button>
+                  ><Icon.chevRight /></button>
                 </div>
               )}
             </div>
@@ -1184,8 +1212,11 @@ export default function DashboardView({
           <div className="dash-pl-grid">
             {(() => { const fmtPl = (v) => formatCurrencyAmount(v, dashCurrency === 'NATIVE' ? 'USD' : dashCurrency); return (<>
             <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}>
-              <div className="dash-pl-value">{fmtPl(plData.invested)}</div>
-              <div className="dash-pl-label">Total Buyins &#9662;</div>
+              {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
+              <span className="dash-pl-line">
+                <span className="dash-pl-value">{fmtPl(plData.invested)}</span>
+                <span className="dash-pl-label">Buy-ins &#9662;</span>
+              </span>
               {plDropdown === 'buyins' && createPortal(
                 <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('invested').length)} onClick={e => e.stopPropagation()}>
                   {plRows('invested')
@@ -1201,8 +1232,10 @@ export default function DashboardView({
               )}
             </button>
             <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}>
-              <div className="dash-pl-value">{fmtPl(plData.cashed)}</div>
-              <div className="dash-pl-label">Cashes &#9662;</div>
+              <span className="dash-pl-line">
+                <span className="dash-pl-value">{fmtPl(plData.cashed)}</span>
+                <span className="dash-pl-label">Cashes &#9662;</span>
+              </span>
               {plDropdown === 'cashes' && createPortal(
                 <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cashed').length)} onClick={e => e.stopPropagation()}>
                   {plRows('cashed')
@@ -1218,13 +1251,15 @@ export default function DashboardView({
               )}
             </button>
             <div className="dash-pl-card dash-pl-card--net">
-              <div className={`dash-pl-value ${plData.net >= 0 ? 'positive' : 'negative'}`}>
-                {plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
-              </div>
-              <div className="dash-pl-label">Net</div>
-              <div className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
-                {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
-              </div>
+              <span className="dash-pl-line">
+                <span className={`dash-pl-value ${plData.net >= 0 ? 'positive' : 'negative'}`}>
+                  {plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
+                </span>
+                <span className="dash-pl-label">Net</span>
+                <span className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
+                  {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
+                </span>
+              </span>
             </div>
             </>); })()}
           </div>

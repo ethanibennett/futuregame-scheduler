@@ -377,7 +377,7 @@ export default function QuickAddView({ token, heroName, onBack, onOpen }) {
     const all = options.map(o => ({ ...o }));
     if (!gap.blocking && !options.some(isDismiss)) all.push({ label: 'Skip', value: undefined, skip: true });
     // One filled action per region: once the Open button exists, it is the one.
-    /* A fallback ("I don't remember", "mucked", "I don't know") is never the gold best guess:
+    /* A fallback ("I don't remember", "mucked", "I don't know") is never the brand-filled best guess:
        it was, and one tap on a card question filled the board with face-down cards (seen
        2026-10-01). When every tap answer is a fallback, typing the cards is the primary
        action instead. */

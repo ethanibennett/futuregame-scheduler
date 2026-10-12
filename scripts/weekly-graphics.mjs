@@ -150,7 +150,7 @@ const css = `
 *{box-sizing:border-box}
 html,body{margin:0;background:#111;color:#e8e8e8;font-family:'U',sans-serif}
 .slide{position:relative;overflow:hidden;background:#111;display:flex;flex-direction:column}
-.eyebrow{font-family:'UC';font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#f2a63b}
+.eyebrow{font-family:'UC';font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3cc8e0}
 .serif{font-family:'LB',Georgia,serif;font-weight:400}
 .cond{font-family:'UC'}
 .foot{display:flex;justify-content:space-between;align-items:center;font-family:'UC';color:#8a8a8a;letter-spacing:.06em}
@@ -187,7 +187,7 @@ function eventCard(e, scale = 1) {
       </div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:${16 * scale}px">
         <span class="serif" style="font-size:${34 * scale}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</span>
-        <span class="cond" style="font-size:${24 * scale}px;color:#f2a63b;white-space:nowrap">${e.gtd ? money(e.gtd) + ' GTD' : ''}</span>
+        <span class="cond" style="font-size:${24 * scale}px;color:#3cc8e0;white-space:nowrap">${e.gtd ? money(e.gtd) + ' GTD' : ''}</span>
       </div>
       <div class="cond muted" style="font-size:${22 * scale}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(flights)}${esc(e.roomNames.join(' + '))}</div>
     </div>
@@ -207,7 +207,7 @@ function cover(R, W, H) {
     <div style="display:flex;gap:56px;padding:64px 84px 0">
       <div><div class="serif" style="font-size:96px;line-height:1">${R.rooms.length}</div><div class="cond muted" style="font-size:28px;letter-spacing:.08em;margin-top:10px">${R.rooms.length === 1 ? 'ROOM' : 'ROOMS'}</div></div>
       <div><div class="serif" style="font-size:96px;line-height:1">${R.events.length}</div><div class="cond muted" style="font-size:28px;letter-spacing:.08em;margin-top:10px">${R.events.length === 1 ? 'TOURNAMENT' : 'TOURNAMENTS'}</div></div>
-      ${R.totalGtd ? `<div><div class="serif" style="font-size:96px;line-height:1;color:#f2a63b">${money(R.totalGtd)}</div><div class="cond muted" style="font-size:28px;letter-spacing:.08em;margin-top:10px">GUARANTEED</div></div>` : ''}
+      ${R.totalGtd ? `<div><div class="serif" style="font-size:96px;line-height:1;color:#3cc8e0">${money(R.totalGtd)}</div><div class="cond muted" style="font-size:28px;letter-spacing:.08em;margin-top:10px">GUARANTEED</div></div>` : ''}
     </div>
     <div style="flex:1;display:flex;align-items:flex-end;gap:14px;padding:0 84px 56px;overflow:hidden">
       ${strips.map((info, i) => strip(info, 62, 240 + (i % 3) * 60, 24)).join('')}
@@ -245,7 +245,7 @@ function days(R, W, H, from, to) {
     return `<div style="display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #2a2a2a;padding-bottom:10px;margin-bottom:6px">
         <span class="serif" style="font-size:44px">${esc(weekday(d.iso))} <span class="muted" style="font-size:34px">${m} ${dd}</span></span>
-        ${d.more ? `<span class="cond" style="font-size:24px;color:#f2a63b">+${d.more} more in the app</span>` : ''}
+        ${d.more ? `<span class="cond" style="font-size:24px;color:#3cc8e0">+${d.more} more in the app</span>` : ''}
       </div>
       ${rows}
     </div>`;
@@ -264,8 +264,8 @@ function days(R, W, H, from, to) {
 function cta(R, W, H) {
   return `<div class="slide" style="width:${W}px;height:${H}px;align-items:center;justify-content:center;text-align:center;gap:40px;padding:0 90px">
     <div class="serif" style="font-size:110px">futurega.me</div>
-    <div style="width:110px;height:5px;background:#f2a63b"></div>
-    <div class="cond" style="font-weight:700;font-size:64px;line-height:1.05;text-transform:uppercase">Every event this week.<br><span style="color:#f2a63b">Live clocks. Late reg. Your schedule.</span></div>
+    <div style="width:110px;height:5px;background:#3cc8e0"></div>
+    <div class="cond" style="font-weight:700;font-size:64px;line-height:1.05;text-transform:uppercase">Every event this week.<br><span style="color:#3cc8e0">Live clocks. Late reg. Your schedule.</span></div>
     <div class="cond muted" style="font-size:34px">Link in bio · [APP STORE LINK]</div>
   </div>`;
 }
@@ -281,7 +281,7 @@ function story(R, W, H) {
     <div style="flex:1"></div>
     <div style="padding:0 80px 210px;display:flex;justify-content:space-between;align-items:center">
       <span class="mark" style="font-size:44px">futurega.me</span>
-      <span class="cond" style="font-size:32px;color:#f2a63b">Full schedule in the app</span>
+      <span class="cond" style="font-size:32px;color:#3cc8e0">Full schedule in the app</span>
     </div>
   </div>`;
 }

@@ -93,6 +93,16 @@ const BATCH_PARAM = batchIdFrom(window.location.search);
 // session that kept working. A hand-made token can claim any name too, but the server refuses it
 // on the first authenticated call and guardedFetch signs the session out. Display still uses the
 // stored username; only authorisation-shaped decisions use this.
+// One r in CSS px, measured (r is a calc of the viewport width, rounded to 1/64 px).
+function subrowPx() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;visibility:hidden;height:calc(var(--subrow) * 100)';
+  document.body.appendChild(probe);
+  const r = probe.getBoundingClientRect().height / 100;
+  probe.remove();
+  return r || 1;
+}
+
 const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES
 const EVENT_EDITOR_USERNAMES = ['ham', 'ham5'];          // mirrors the server's write allowlist
 function tokenUsername(tok) {
@@ -1506,6 +1516,25 @@ export default function App() {
   const dk = useDesktopLayout();
   const isDesktop = dk.desktop;
   const [dkSelectedId, setDkSelectedId] = useState(null);
+  // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
+  // rendering, marked closing, until their collapse ends, so My Schedule rises into their place
+  // instead of jumping. The collapse starts from the block's own height (in r), not the 55% cap,
+  // or a short block would sit still for the first part of it. Worked out during render (React's
+  // "previous value in state" pattern) so the block is never unmounted between the two.
+  const dkDetailRef = useRef(null);
+  const [dkClosing, setDkClosing] = useState(null); // { id, hR } while the details collapse
+  const [dkPrevSelected, setDkPrevSelected] = useState(null);
+  if (dkSelectedId !== dkPrevSelected) {
+    setDkPrevSelected(dkSelectedId);
+    const el = dkDetailRef.current;
+    const reduce = typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (dkSelectedId == null && dkPrevSelected != null && el && !reduce) {
+      setDkClosing({ id: dkPrevSelected, hR: el.getBoundingClientRect().height / subrowPx() });
+    } else if (dkClosing) {
+      setDkClosing(null);
+    }
+  }
   const selectEvent = useCallback((id) => {
     setDkSelectedId(id);
     // The details are the top block of the right pane: bring them into view.
@@ -1944,7 +1973,7 @@ export default function App() {
   // Desktop Schedule tab's secondary panes.
   const dkDetail = isDesktop ? (
     <DesktopEventDetail
-      selectedId={dkSelectedId}
+      selectedId={dkSelectedId ?? (dkClosing && dkClosing.id)}
       onSelect={selectEvent}
       tournaments={tournaments}
       mySchedule={mySchedule}
@@ -2152,7 +2181,16 @@ export default function App() {
               {/* Two scrollers, not one: My Schedule lands on the next event by scrolling ITS
                   scroller (ScheduleView resolves the nearest .dk-scroll), which must not drag the
                   event details out of view, nor be reset when an event is selected. */}
-              {dkSelectedId != null && <div className="dk-scroll dk-detail-block">{dkDetail}</div>}
+              {(dkSelectedId != null || dkClosing) && (
+                <div
+                  ref={dkDetailRef}
+                  className={'dk-scroll dk-detail-block' + (dkSelectedId == null ? ' is-closing' : '')}
+                  style={dkSelectedId == null && dkClosing ? { '--dk-h': `calc(var(--subrow) * ${dkClosing.hR.toFixed(3)})` } : undefined}
+                  onAnimationEnd={e => {
+                    if (e.target === e.currentTarget && e.animationName === 'dkDetailClose') setDkClosing(null);
+                  }}
+                >{dkDetail}</div>
+              )}
               <div className="dk-scroll dk-mine-block">{dkMine}</div>
             </div>
           )}

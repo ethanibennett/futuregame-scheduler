@@ -74,12 +74,63 @@ The app had no focal colour: `--accent` and `--accent2` are `#a0a0a0` and
 `#888888`. Nothing claimed priority, while 30 saturated venue colours competed
 freely.
 
-`--brand` `--brand-hover` `--brand-quiet` `--on-brand`
+`--brand` `--brand-hover` `--brand-quiet` `--brand-line` `--on-brand`
+`--brand-on-dark` `--on-brand-on-dark` `--brand-line-on-dark` `--brand-ink`
 
-Gold is safe against the venue palette specifically because every venue gold
-(`#a87c0a`, `#bf7d08`, `#a8863f`, `#9c7d20`) is dark and desaturated — a bright
-gold can never be misread as a venue stripe. Light grounds get `#a8700c`
-instead; `#f2a63b` fails contrast on white.
+The brand is a cool aqua. It was an orange-gold (`#f2a63b`) until 2026-10-11,
+when black + orange was pointed out to read as a certain adult site's palette.
+
+| Theme | `--brand` | `--brand-hover` | `--on-brand` | Contrast |
+|---|---|---|---|---|
+| dark, dusk | `#3cc8e0` | `#6fd8ea` | `#04191d` | 9.47:1 on `#111111` |
+| light | `#0e7490` | `#155e75` | `#ffffff` | 5.36:1 on `#ffffff` |
+| cloudy | `#0a4f62` | `#083f4e` | `#ffffff` | 5.44:1 on `#c8c8c8`, 6.26:1 on `#d6d6d6` |
+| high contrast, dark | `#7ae6f5` | `#b0f1fa` | `#000000` | 13.0:1 on `#111111` |
+| high contrast, light/cloudy | `#0b4a5c` | `#08394a` | `#ffffff` | 9.78:1 on `#ffffff` |
+
+`--brand-quiet` and `--brand-line` are the brand at 14% / 45% (dark) and
+12% / 40% (light, cloudy); high contrast inherits them from its ground.
+
+Cloudy has its own deeper brand because its grounds are mid-grey (`#c8c8c8` to
+`#d6d6d6`, the nav and rail down to `#bfbfbf`), where the light theme's
+`#0e7490` is only 3.2 to 3.7:1. `#0a4f62` is 4.95:1 on `#bfbfbf` and 4.57:1 on
+its own 12% tint, and the calendar's `#c8c8c8` day-number knockout is 5.44:1 on
+it.
+
+`--brand-ink` is the brand as small text on its own `--brand-quiet` tint (the
+Beta pills, the active Reports chip's count, the bankroll dashboard's active
+tab). Only the light theme sets it (`#155e75`, 5.69:1 on the tint over
+`#f5f5f5`, where `#0e7490` is 4.20:1) and high contrast light/cloudy
+(`#0b4a5c`); consumers read `var(--brand-ink, var(--brand))`, so every other
+theme keeps the plain brand.
+
+`--brand-on-dark` is the brand on a surface that is dark in every theme: the
+replayer's seat plaques, commentary bar, capture bookends and seat lines. It is
+`#3cc8e0` in light and cloudy too (the deep light aqua is 3.63:1 on a `#0e0c13`
+plaque; this is 9.74:1), and `#7ae6f5` under high contrast.
+
+Two companions travel with it. `--on-brand-on-dark` is the ink on a
+`--brand-on-dark` fill (`#04191d`, 9.06:1; `#000000` under high contrast),
+because `--on-brand` is white in light and cloudy and white on `#3cc8e0` is
+1.99:1. `--brand-line-on-dark` is the hairline on a dark surface
+(`rgba(60,200,224,0.45)`), because the light and cloudy `--brand-line` is a deep
+teal that all but vanishes there. The replayer transport capsule (dark in every
+theme) uses all three: its play fill was 3.07:1 against the capsule in light and
+1.81:1 in cloudy, and is 8.25:1 now.
+
+On the dark grounds the aqua is safe against the venue palette because every
+venue teal and blue (Hard Rock `#178383`, WSOP Online `#186e86`, the `#2064b6`
+blues) is dark — lightness 42% at most against the brand's 56% — so a bright
+aqua can't be misread as a venue stripe. Light grounds get `#0e7490` instead,
+because `#3cc8e0` is 1.99:1 on white. That deeper aqua does sit close to the
+Hard Rock and WSOP Online teals (the old light gold `#a8700c` sat as close to
+the venue golds), so on light grounds the brand is set apart by where it is
+used, never by hue alone. On the light `--surface2` (`#ebebeb`) it is 4.49:1, a
+hair under 4.5:1, so keep brand-coloured small text off `--surface2`.
+
+The replayer's active-turn rings and hero hairline need an alpha, so they are
+`--brand-on-dark`'s aqua as rgba literals (no `color-mix()`, which html2canvas
+cannot parse); the active-turn border itself is `var(--brand-on-dark)`.
 
 `--accent` stays grey. Primary actions move to `--brand` deliberately, one
 surface at a time — not with a find-and-replace.
@@ -109,6 +160,9 @@ transition written with these tokens is automatically compliant.
 ## Focus
 
 `--focus-ring` and `--focus-offset`, applied via `:focus-visible`.
+`--focus-ring-on-dark` is the same ring in `--brand-on-dark`, for controls on a
+surface that is dark in every theme (the replayer transport and the tappable
+seat stack), where cloudy's `#0a4f62` ring is about 2.1:1.
 
 Never `outline: none` without putting the ring in its place — keyboard
 operability is a legal requirement in most of the jurisdictions this app

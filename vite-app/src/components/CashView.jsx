@@ -442,7 +442,7 @@ export default function CashView({ token, onModeChange }) {
                               <span style={{ fontSize: 'calc(var(--gu) * 1.001)', color: 'var(--text-muted, #888)', whiteSpace: 'nowrap', minWidth: 'calc(var(--subrow) * 12)', textAlign: 'right' }}>{open || ''}</span>
                               <span style={{ minWidth: 'calc(var(--subrow) * 6.75)', textAlign: 'right' }}>
                                 {isTop && (g.waitlistLen || 0) > 0 && (
-                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--warning, #e0a458)', border: 'var(--bw-hair) solid var(--warning, #e0a458)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'calc(var(--gu) * 1.060)', color: 'var(--warn)', border: 'var(--bw-hair) solid var(--warn)', borderRadius: 'calc(var(--subrow) * 0.625)', padding: 'calc(var(--subrow) * 0.125) var(--space-sm)', whiteSpace: 'nowrap' }}>
                                     WL {g.waitlistLen}
                                   </span>
                                 )}

@@ -5,7 +5,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_URL } from '../utils/api.js';
 import { BANKROLL_ALL, toBankrollKey } from '../utils/bankrolls.js';
-import { publishSummary } from './useRollGuide.js';
 
 const STORE_KEY = 'resultsBankroll';
 const readSelected = () => { try { return toBankrollKey(localStorage.getItem(STORE_KEY)); } catch { return BANKROLL_ALL; } };
@@ -33,7 +32,6 @@ export default function useBankrolls({ enabled, token, version }) {
     try {
       const s = await call('GET', '/summary?currency=USD');
       setSummary(s);
-      publishSummary(s); // the event cards' "of your roll" reads the same summary
     } catch (e) { console.error('Fetch bankroll summary:', e); }
   }, [enabled, token, call]);
 

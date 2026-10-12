@@ -41,7 +41,8 @@
     "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900",
     "check:controls": "node scripts/check-control-centring.mjs && node scripts/check-control-centring.mjs --width 1440 --height 900",
     "graphics:weekly": "node scripts/weekly-graphics.mjs",
-    "test:bankroll-ledger": "node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-ledger.test.mjs"
+    "test:bankroll-ledger": "node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-ledger.test.mjs",
+    "check:fonts": "python scripts/check-font-metrics.py"
   },
   "keywords": [],
   "author": "",

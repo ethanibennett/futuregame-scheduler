@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   periodWindow, periodElapsed, balanceSeries, drawdowns, periodTable, bySource, within, goalProgress,
-  ledgerToCsv, rollShare, fmtShare, fmtRule, sourceLabel,
+  ledgerToCsv, fmtRule, sourceLabel,
   RANGES, rangeWindow, profitSeries, peakOf, overviewStats, recentResults,
 } from '../bankroll-ledger.js';
 import { parseCsv, parseNumber, parseDate, detectPreset, applyPreset, guessMapping, applyMapping } from '../bankroll-csv.js';
@@ -84,13 +84,7 @@ test('ledgerToCsv: header, running balance, quoting and formula-safe text', () =
   assert.ok(lines[2].includes(`"'=HYPERLINK(""x""), a ""quote"""`), lines[2]);
 });
 
-test('rollShare / fmtShare', () => {
-  const guide = { balance: 20000, rules: { mtt: { buyins: 100 } } };
-  assert.deepEqual(rollShare(guide, 150), { share: 0.0075, over: false, cap: 200, buyins: 100, empty: false });
-  assert.equal(rollShare(guide, 400).over, true);
-  assert.equal(rollShare({ ...guide, balance: 0 }, 10).empty, true);
-  assert.equal(rollShare(guide, 0), null);
-  assert.deepEqual([fmtShare(0.0075), fmtShare(0.024), fmtShare(0.25)], ['0.75%', '2.4%', '25%']);
+test('fmtRule', () => {
   assert.deepEqual([fmtRule(100), fmtRule(40), fmtRule(300)], ['1%', '2.5%', '0.33%']);
 });
 
