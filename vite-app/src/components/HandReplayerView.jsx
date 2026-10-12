@@ -10,6 +10,12 @@ import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, ass
 import { encodeHand, decodeHand, GAME_CODES, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
 import { loadCardImages, ensureExportFonts } from '../utils/export.js';
 import { playTableSound } from '../utils/replay-sound.js';
+import {
+  MotionRegistry, SPRINGS_FLAG_KEY, readSpringsFlag, springSetFor, rateFor,
+  prefersReducedMotion as springsReducedMotion,
+  dealBoard, yieldBoard, pushOut, sweepWagers, shipPot, clearPush,
+} from '../utils/replayer-motion.js';
+import { SPRING_SETS } from '../utils/spring.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
 import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -5371,6 +5377,33 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const rSettingsRef = useRef(rSettings);
   rSettingsRef.current = rSettings;
 
+  /* Spring moments (utils/replayer-motion.js, utils/spring.js): the flop deal and spread, the
+     turn and river landing, wagers pushed out and swept in, the pot shipped to the winner — one
+     house spring family, computed once per moment and played by the compositor as Web Animations.
+     localStorage.replayerSprings: '1' (Set A, the default here), '2' or 'snappy' (Set B), '0'
+     today's code paths unchanged, so a before/after comes from one build. Read at mount and on the
+     storage event. One registry owns every spring on the table, so a motion interrupted by the
+     next step continues from where it is, and a step back, a jump or an export still finishes it. */
+  const [springsFlag, setSpringsFlag] = useState(() => readSpringsFlag());
+  useEffect(() => {
+    const onStorage = (e) => { if (!e || e.key == null || e.key === SPRINGS_FLAG_KEY) setSpringsFlag(readSpringsFlag()); };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+  const springSet = springSetFor(springsFlag);
+  // Reduced motion: none of the spring moments run; the replayer keeps its 140ms rmFade.
+  const springOn = !!springSet && !springsReducedMotion();
+  const motionRef = useRef(null);
+  if (!motionRef.current) motionRef.current = new MotionRegistry();
+  const motion = motionRef.current;
+  const [, setMotionRender] = useState(0);
+  const committedStepRef = useRef(null);   // the step the last commit showed
+  const prevWagerElsRef = useRef(new Map()); // seat -> that commit's wager element
+  const boardDeltaRef = useRef(null);       // this commit's board FLIP measurement, for the springs
+  const potTotalRef = useRef(null);
+  const motionLayerRef = useRef(null);
+  useEffect(() => () => motion.dispose(), [motion]);
+
   /* 44: the display surfaces where depth is the point — stacks, pot, wagers —
      go through this; commentary and exports keep chip counts, because prose
      that says 'he shoved 14 BB' reads oddly next to a hand history. */
@@ -5429,7 +5462,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const replayHeroIdx = hand.heroIdx != null ? hand.heroIdx : 0;
 
   // Street change animation
+  /* Nothing reads animStreetTransition or animStreetLabel. Their only effect was three
+     re-renders of this component (+0, +450, +500ms) in the middle of every flop, turn and river —
+     and the first of them dropped the turn card's animation class one frame after it was born.
+     The spring path does without them; flag '0' keeps today's behaviour exactly. */
   useEffect(() => {
+    if (springOn) return;
     if (prevStreetRef.current !== streetIdx && streetIdx > 0) {
       setAnimStreetTransition(true);
       setAnimStreetLabel(true);
@@ -5536,6 +5574,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     // >= not !==: the deal animation means "a new card arrives", so playing it
     // for a card already on the felt breaks the metaphor. Backing turn -> flop
     // used to replay the full three-card stagger.
+    // The spring path lands board cards from the layout effect, never from a class a re-render drops.
+    if (springOn) return '';
     if (!rSettings.animateBoard || prevStreetRef.current >= streetIdx) return '';
     let boardLen = 0;
     for (let si = 0; si <= streetIdx && si < hand.streets.length; si++) {
@@ -5979,6 +6019,86 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     (showResult && potAwards) ? stacks.map((v, i) => v + (potAwards[i] || 0) + (settled.uncalled[i] || 0)) : stacks
   ), [showResult, potAwards, stacks, settled]);
 
+  /* ── Spring moments: what this render is ──
+     A moment plays only on a single step FORWARD from the step the last commit showed (Forward,
+     autoplay, an export's step); a jump, a step back or a hand change finishes whatever is running
+     and shows the end state. Computed in render so the press frame itself is right: the pot shows
+     its total BEFORE the swept wagers land (the model's pot minus every wager still in flight), and
+     a winner's stack shows what it had before the pot arrives. Each arrival then writes the digits
+     straight into the DOM (no re-render mid-moment), and one render after the last puts React's
+     value back in step. */
+  const stepNow = { s: streetIdx, a: actionIdx, r: showResult };
+  const stepPrev = committedStepRef.current;
+  const stepChanged = !stepPrev || stepPrev.s !== stepNow.s || stepPrev.a !== stepNow.a || stepPrev.r !== stepNow.r;
+  const stepAfter = (p) => {
+    if (!p || p.r) return null;
+    const n = (hand.streets[p.s]?.actions || []).length;
+    if (p.a < n - 1) return { s: p.s, a: p.a + 1, r: false };
+    if (p.s < totalStreets - 1) return { s: p.s + 1, a: -1, r: false };
+    return { s: p.s, a: p.a, r: true };
+  };
+  const stepNext = stepChanged ? stepAfter(stepPrev) : null;
+  const motionKind = (springOn && stepNext && stepNext.s === stepNow.s && stepNext.a === stepNow.a && stepNext.r === stepNow.r)
+    ? (stepNow.r ? 'result' : stepNow.a < 0 ? 'street' : 'action') : null;
+  const motionJumped = stepChanged && !motionKind;
+  /* The wagers that were on the felt at the step before a street press — the same rule the bet
+     chips render by (a seat whose latest action carried an amount shows its street total) — in the
+     order the dealer collects them, the street's action order. Only those whose element the last
+     commit actually drew. */
+  const sweepPlan = (motionKind === 'street' && rSettings.animateChips) ? (() => {
+    const acts = hand.streets[stepPrev.s]?.actions || [];
+    const out = [];
+    hand.players.forEach((_, pi) => {
+      let last = null, first = -1;
+      for (let ai = 0; ai <= stepPrev.a && ai < acts.length; ai++) {
+        if (acts[ai].player === pi) { last = acts[ai]; if (first < 0) first = ai; }
+      }
+      if (!last || !last.amount || !prevWagerElsRef.current.has(pi)) return;
+      out.push({ seat: pi, order: first, amount: computePlayerContrib(hand, stepPrev.s, acts, stepPrev.a, pi) });
+    });
+    return out.sort((a, b) => a.order - b.order);
+  })() : null;
+  // The pot shipped to each seat it pays, at the result.
+  const shipPlan = (motionKind === 'result' && rSettings.animateChips && potAwards)
+    ? hand.players.map((_, pi) => ({ seat: pi, award: potAwards[pi] || 0 })).filter(d => d.award > 0)
+    : null;
+  const pendingPotNow = !springOn ? 0
+    : (motionJumped ? 0 : motion.pendingPot) + (sweepPlan ? sweepPlan.reduce((n, w) => n + w.amount, 0) : 0);
+  const shownPot = Math.max(0, displayPot - pendingPotNow);
+  const pendingStackNow = (pi) => (!springOn ? 0
+    : (motionJumped ? 0 : (motion.pendingStacks.get(pi) || 0)) + ((shipPlan && shipPlan.find(d => d.seat === pi)?.award) || 0));
+  // What an arrival writes: always the latest render's numbers, less whatever is still in flight.
+  const potTextNode = () => { const el = potTotalRef.current; const tn = el && el.lastChild; return tn && tn.nodeType === 3 ? tn : null; };
+  const stackTextNode = (pi) => {
+    const el = tableRef.current && tableRef.current.querySelector('.replayer-seat[data-seat="' + pi + '"] .replayer-seat-stack');
+    const tn = el && el.firstChild;
+    return tn && tn.nodeType === 3 ? tn : null;
+  };
+  motion.writePot = () => {
+    const tn = potTextNode();
+    if (tn) { tn.data = fmtChips(Math.max(0, displayPot - motion.pendingPot)); motion.wroteDigits = true; }
+  };
+  motion.writeStack = (pi) => {
+    const tn = stackTextNode(pi);
+    if (tn) { tn.data = fmtChips(shownStacks[pi] - (motion.pendingStacks.get(pi) || 0)); motion.wroteDigits = true; }
+  };
+  /* Direct writes and React can disagree: React skips a text node whose value it thinks has not
+     changed, so after a step back (the flush lands the pot at the old step's total) the DOM kept
+     the flushed figure while React's own value was already right. Every commit after a direct
+     write puts the rendered figures back first. */
+  const rendered = { pot: fmtChips(shownPot), stack: (pi) => fmtChips(shownStacks[pi] - pendingStackNow(pi)) };
+  const resyncDigits = () => {
+    if (!motion.wroteDigits) return;
+    motion.wroteDigits = false;
+    const tn = potTextNode();
+    if (tn && tn.data !== rendered.pot) tn.data = rendered.pot;
+    hand.players.forEach((_, pi) => {
+      const sn = stackTextNode(pi);
+      if (sn && sn.data !== rendered.stack(pi)) sn.data = rendered.stack(pi);
+    });
+  };
+  motion.onSettled = () => setMotionRender(n => n + 1);
+
   /* 38: at a hi-lo showdown every unfolded seat took .replayer-hilo-high and
      nudged 8px up together, which communicates nothing — and the down-shifting
      .replayer-hilo-low existed in the stylesheet with no code path that could
@@ -6012,19 +6132,24 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   stepForwardRef.current = stepForward;
 
 
+  /* Rewinding reconstructs state; only forward motion performs it. Every running spring finishes
+     before the new state commits — ghosts and shipped chips leave, the pot and stacks land — and
+     nothing ever plays backwards. */
   const stepBack = useCallback(() => {
+    motion.finishAll();
     markRewind();
     if (showResult) { setShowResult(false); setHiloAnimate(false); }
     else if (actionIdx >= 0) setActionIdx(a => a - 1);
     else if (streetIdx > 0) { const prevStreet = hand.streets[streetIdx - 1]; setStreetIdx(s => s - 1); setActionIdx((prevStreet?.actions?.length || 0) - 1); }
-  }, [actionIdx, streetIdx, showResult, hand, markRewind]);
+  }, [actionIdx, streetIdx, showResult, hand, markRewind, motion]);
 
-  const goToStart = () => { setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
+  const goToStart = () => { motion.finishAll(); setStreetIdx(0); setActionIdx(-1); setShowResult(false); setHiloAnimate(false); };
   /* 51: this set the last street and the last action and stopped one step
      short of the showdown, so "End" landed on the river's final bet with the
      opponents' cards still face down. stepForward's final branch is what
      actually ends a hand; End does the same thing now. */
   const goToEnd = () => {
+    motion.finishAll();
     const lastStreet = hand.streets.length - 1;
     setStreetIdx(lastStreet);
     setActionIdx((hand.streets[lastStreet]?.actions?.length || 0) - 1);
@@ -6357,6 +6482,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   useLayoutEffect(() => {
     const row = boardRowRef.current;
     const prev = boardLayoutRef.current;
+    boardDeltaRef.current = null;
     if (!row) { boardLayoutRef.current = null; return; }
     const table = row.closest('.replayer-table') || row.parentElement;
     const originX = table.getBoundingClientRect().left;
@@ -6374,6 +6500,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       now.set(el.dataset.ck, (r.left + r.right) / 2 - s - originX);
     }
     boardLayoutRef.current = now;
+    /* The spring path takes the same measurement — where each card was seen, where it now lies —
+       and lands the turn and river from the moments effect below, on a forward step only. */
+    if (springOn) { boardDeltaRef.current = { prev, now, shift, cards }; return; }
     if (!prev) return;
     const changed = now.size !== prev.size || [...now.keys()].some(k => !prev.has(k));
     if (!changed) return;
@@ -7237,6 +7366,19 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     const [pS, pA] = prev.split(':').map(Number);
     if (streetIdx < pS || (streetIdx === pS && actionIdx < pA)) return;
 
+    /* The spring path moves the chips itself (the moments layout effect below): the push-out, the
+       sweep and the ship. It keeps only the sound, still at t = 0 — and drops markPotLanding, whose
+       two re-renders served a rule that is animation: none. */
+    if (springOn) {
+      if (showResult || actionIdx < 0) return;
+      const act = currentActions[actionIdx];
+      if (act && act.amount && seats[act.player]
+        && (act.action === 'bet' || act.action === 'raise' || act.action === 'call' || act.action === 'all-in')) {
+        playTableSound('chips', rSettingsRef.current);
+      }
+      return;
+    }
+
     if (showResult) {
       /* 48: the pot travelling to the winner is the payoff shot of a poker
          broadcast, and animPotCollect was declared, never set and never read
@@ -7277,7 +7419,140 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       markPotLanding();
       playTableSound('chips', rSettingsRef.current);
     }
-  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, potAwards, spawnFlyingChips, folded, markPotLanding]);
+  }, [streetIdx, actionIdx, showResult, rSettings.animateChips, currentActions, seats, hand, pot, potAwards, spawnFlyingChips, folded, markPotLanding, springOn]);
+
+  /* ── The spring moments ──
+     After every commit, before the browser paints it: a moment starts in the very commit that
+     changes the table, so its first frame is the press frame and nothing shows the new state
+     un-animated for a frame. Only a single step forward performs anything (motionKind); a jump
+     finishes what is running. Under an export ([data-capturing]) the springs are created paused
+     and the exporter seeks them frame by frame (replay-capture.js). See utils/replayer-motion.js. */
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (table && table.__replayerMotion !== motion) table.__replayerMotion = motion;
+    resyncDigits();
+    const prevEls = prevWagerElsRef.current;
+    const liveWagers = () => {
+      const m = new Map();
+      if (table) table.querySelectorAll('.replayer-bet-chip[data-seat]').forEach(el => m.set(Number(el.dataset.seat), el));
+      return m;
+    };
+    const done = () => {
+      prevWagerElsRef.current = liveWagers();
+      committedStepRef.current = { s: streetIdx, a: actionIdx, r: showResult };
+    };
+    if (!springOn) { motion.finishAll(); done(); return; }
+    if (motionJumped) motion.finishAll();
+    if (!motionKind || !table) { done(); return; }
+
+    const set = springSet;
+    const S = SPRING_SETS[set].stage;
+    const rate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+    const layer = motionLayerRef.current;
+    const centreOf = (r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    const potAnchor = () => table.querySelector('.replayer-pot-chips') || potTotalRef.current || table;
+    let planned = false;
+
+    if (motionKind === 'street') {
+      // (3b) The sweep: the chips go in first...
+      let swept = false;
+      if (sweepPlan && sweepPlan.length && layer) {
+        const wagers = sweepPlan.map(w => ({ ...w, el: prevEls.get(w.seat) })).filter(w => w.el);
+        if (wagers.length) {
+          planned = true;
+          motion.pendingPot += wagers.reduce((n, w) => n + w.amount, 0);
+          sweepWagers(motion, {
+            set, rate, layer, wagers, target: centreOf(potAnchor().getBoundingClientRect()),
+            onArrive: (amount) => {
+              motion.pendingPot = Math.max(0, motion.pendingPot - amount);
+              if (motion.writePot) motion.writePot();
+            },
+          });
+          swept = true;
+        }
+      }
+      // ...then the board makes room (or the flop is placed), then the new card lands.
+      const delta = boardDeltaRef.current;
+      if (rSettings.animateBoard && delta && delta.cards.length) {
+        const { prev, now, shift, cards } = delta;
+        const stayed = prev ? cards.filter(el => prev.has(el.dataset.ck)) : [];
+        const added = cards.filter(el => !prev || !prev.has(el.dataset.ck));
+        if (!stayed.length && added.length) {
+          dealBoard(motion, { set, rate, cards: added, tPlace: swept ? S.place / rate : 0 });
+        } else if (added.length) {
+          yieldBoard(motion, {
+            set, rate, added, street: cards.length >= 5 ? 'river' : 'turn',
+            tYield: swept ? S.yieldAfterSweep / rate : 0,
+            stayed: stayed.map(el => ({ el, from: prev.get(el.dataset.ck) + shift.get(el) - now.get(el.dataset.ck) })),
+          });
+        }
+      }
+    }
+
+    if (motionKind === 'action' && rSettings.animateChips) {
+      // (3a) The push-out: where the chips came from.
+      const act = currentActions[actionIdx];
+      const el = act && act.amount && (act.action === 'bet' || act.action === 'raise' || act.action === 'call' || act.action === 'all-in')
+        ? liveWagers().get(act.player) : null;
+      if (el) {
+        const addOn = prevEls.get(act.player) === el;
+        const pos = seats[act.player] || [50, 50];
+        const T = table.getBoundingClientRect();
+        const dx = (pos[0] - parseFloat(el.style.left)) / 100 * T.width;
+        const dy = (pos[1] - parseFloat(el.style.top)) / 100 * T.height;
+        const len = Math.hypot(dx, dy);
+        if (len > 0.5) {
+          const dir = { x: dx / len, y: dy / len };
+          // A board card's width (its layout box, not a scaled frame of it); before the flop, the
+          // board's own --card-h rule on this table's size, at the deck's aspect.
+          const card = table.querySelector('.replayer-board-area:not(.replayer-dead-area) .card-row > [data-slot]');
+          if (card && card.offsetWidth) motion.boardCardW = card.offsetWidth;
+          const cq = Math.min(table.clientWidth, table.clientHeight) / 100;
+          const cw = motion.boardCardW || Math.min(140, Math.max(18, 10.9375 * cq)) * 0.8366;
+          const want = (addOn ? S.addOn : S.push) * cw;
+          // That seat's own cards (each card, not the row's box, which runs past the fan) and its
+          // action badge: the push's start must clear them.
+          const seatEl = table.querySelector('.replayer-seat[data-seat="' + act.player + '"]');
+          const obstacles = seatEl
+            ? [...seatEl.querySelectorAll('.replayer-seat-cards .card-row > *, .replayer-action-badge-outer')]
+              .map(o => o.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0)
+            : [];
+          const s = motion.state(el);
+          const r = el.getBoundingClientRect();
+          const box = s ? { left: r.left - s.val.x, right: r.right - s.val.x, top: r.top - s.val.y, bottom: r.bottom - s.val.y } : r;
+          pushOut(motion, { set, rate, el, dir, pushPx: clearPush(box, dir, want, obstacles), addOn });
+        }
+      }
+    }
+
+    if (motionKind === 'result' && shipPlan && shipPlan.length && layer) {
+      // (4) The pot shipped to the winner, to the stack figure on the plaque (never the button).
+      const dests = shipPlan.map(d => {
+        const fig = table.querySelector('.replayer-seat[data-seat="' + d.seat + '"] .replayer-seat-stack');
+        return fig ? { seat: d.seat, award: d.award, ...centreOf(fig.getBoundingClientRect()) } : null;
+      }).filter(Boolean);
+      if (dests.length) {
+        planned = true;
+        dests.forEach(d => motion.pendingStacks.set(d.seat, (motion.pendingStacks.get(d.seat) || 0) + d.award));
+        shipPot(motion, {
+          set, rate, layer, origin: centreOf(potAnchor().getBoundingClientRect()), dests,
+          onArrive: (seat, k, n) => {
+            const d = dests.find(x => x.seat === seat);
+            const left = motion.pendingStacks.get(seat) || 0;
+            // A fifth of the award per chip; the last lands on the exact figure.
+            const share = k === n - 1 ? left : Math.min(left, Math.round(d.award / n));
+            motion.pendingStacks.set(seat, left - share);
+            if (motion.writeStack) motion.writeStack(seat);
+          },
+        });
+      }
+    }
+
+    /* Render subtracted what it expected to fly; if nothing could (no layer, no element to copy),
+       one render puts the full figures back. */
+    if (((sweepPlan && sweepPlan.length) || (shipPlan && shipPlan.length)) && !planned) setMotionRender(n => n + 1);
+    done();
+  });
 
 
   /* The light sits at the felt's specular pool. A shadow points away from it,
@@ -7386,6 +7661,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         data-cardback={rSettings.cardBack || 'default'}
       data-anim-winner={rSettings.animateWinner ? '1' : '0'}
       data-felt={rSettings.feltBright ? 'bright' : 'dark'}
+      data-springs={springOn ? springSet : undefined}
         style={(() => {
           const s = { ...(potContrast || {}) };
           s['--card-overlap'] = String((Number(rSettings.cardOverlap ?? 52) || 0) / 100);
@@ -7504,15 +7780,19 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   return (
                     <div className="replayer-pot-above">
                       {spr && <div className="replayer-spr">SPR {spr}</div>}
-                      {chips && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : displayPot} />}
+                      {/* shownPot: the model's pot less the swept wagers still in flight (the
+                          spring path); displayPot itself everywhere else. */}
+                      {chips && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : (shownPot || displayPot)} />}
                     </div>
                   );
                 })()}
-                <div className="replayer-pot-total">
+                {/* The figure is the last child, a bare text node: each wager's arrival writes
+                    its digits there directly (motion.writePot) rather than re-rendering. */}
+                <div className="replayer-pot-total" ref={potTotalRef}>
                   <span className="replayer-pot-cell-label">
                     {isSplitResult ? (_isHiLo ? 'Hi/Lo Split' : 'Split Pot') : (potLayers.length > 1 ? 'Total' : 'Pot')}
                   </span>
-                  {fmtChips(displayPot)}
+                  {fmtChips(shownPot)}
                 </div>
               </div>
             </div>
@@ -7866,7 +8146,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                column: a plaque is 8g and grows with a long name, so centring put the left
                run at 2.16..2.46g and let a long name push off the right. Anchored, a longer
                name grows inward. pos still drives the shadow and the fold origin. */
-            <div key={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
+            <div key={pi} data-seat={pi} className={`replayer-seat ${seatClass}${isMucked ? ' mucked' : ''}${foldAnimClass}`
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
               + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')
               + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')}
@@ -7982,7 +8262,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   } : {})}>
                   {allIn.has(pi) && shownStacks[pi] <= 0
                     ? <span className="replayer-allin-mark">ALL-IN</span>
-                    : fmtChips(shownStacks[pi])}
+                    : fmtChips(shownStacks[pi] - pendingStackNow(pi))}
                 </div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
@@ -8144,13 +8424,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           const t = 0.42;
           const chipX = pos[0] + (POT_AT[0] - pos[0]) * t;
           const chipY = pos[1] + (POT_AT[1] - pos[1]) * t;
+          /* --chip-start-dx/dy used to be written here (a percentage times 3, as 'px') for a
+             keyframe that is animation: none; nothing read them. The spring push-out measures
+             the seat direction itself. */
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
-          if (rSettings.animateChips) {
-            chipStyle['--chip-start-dx'] = ((pos[0] - chipX) * 3) + 'px';
-            chipStyle['--chip-start-dy'] = ((pos[1] - chipY) * 3) + 'px';
-          }
           return (
-            <div key={'bet-' + pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
+            <div key={'bet-' + pi} data-seat={pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
               <ChipStack amount={chipAmount} />
               {fmtChips(chipAmount)}
               {/* 42: a ten-step classifier from min through overbet was written
@@ -8178,6 +8457,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               animationDelay: fc.delay + 'ms',
             }} />
         ))}
+
+        {/* The spring path's flights: swept wagers' ghosts and the chips shipped to a winner.
+            React renders the layer and never its children — they are created in the moment's
+            commit and remove themselves when they land (utils/replayer-motion.js). It spans the
+            table's padding box, so a ghost keeps its wager's own left/top percentages. */}
+        {springOn && <div className="replayer-motion-layer" ref={motionLayerRef} aria-hidden="true" />}
 
         {/* Draw discard animations */}
         {drawDiscardAnims.length > 0 && drawDiscardAnims.map(anim => {

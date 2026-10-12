@@ -6,7 +6,7 @@
 // measurement file next to its video.
 //
 //   node scripts/capture-replayer-motion.mjs [baseUrl] [--seats 6,8,9] [--moments flop,turn,river,bet,call,push]
-//        [--width 402] [--height 874] [--dpr 3] [--out dir] [--springs 0|1] [--format png|jpeg]
+//        [--width 402] [--height 874] [--dpr 3] [--out dir] [--springs 0|1|2] [--format png|jpeg]
 //        [--keep-frames] [--no-video] [--parallel 4] [--encode-only]
 //   node scripts/capture-replayer-motion.mjs [baseUrl] --realtime [--engine msedge|webkit]
 //        [--throttle 4] [--repeat 3] [--sample] [--seats ...] [--moments ...] [--out dir]
@@ -16,8 +16,9 @@
 //
 //   baseUrl   a SCRATCH server running this checkout (never the pm2 app on :3001 for an unmerged
 //             build). Default http://127.0.0.1:3241. A guest session is used: POST /api/guest-login.
-//   --springs sets localStorage.replayerSprings before the app boots, so a before/after pair comes
-//             from the same build. Omitted, the key is left unset (the build's own default).
+//   --springs sets localStorage.replayerSprings ('0' today's paths, '1' Set A, '2' Set B) before the
+//             app boots, so a before/after pair comes from the same build. Omitted, the key is left
+//             unset (the build's own default).
 //
 // How time is controlled (frame mode, the default). Nothing here records the screen in real time.
 //   - Playwright's clock is installed, so the app's setTimeouts (the chip burst cleared at 700ms, the
@@ -240,8 +241,10 @@ function pageInstrument() {
     table.querySelectorAll('.replayer-bet-chip').forEach(el => {
       els['bet@' + el.style.left + ',' + el.style.top] = { ...box(el), text: el.textContent.trim() };
     });
+    // The spring path's chips leave one by one, so they carry their own index (data-fly);
+    // today's leave all at once and are named by position.
     table.querySelectorAll('.replayer-flying-chip').forEach((el, i) => {
-      els['fly' + i + (el.classList.contains('to-winner') ? '-winner' : '')] = box(el);
+      els['fly' + (el.dataset.fly != null ? el.dataset.fly : i) + (el.classList.contains('to-winner') ? '-winner' : '')] = box(el);
     });
     const pot = table.querySelector('.replayer-pot-display');
     if (pot) els.pot = { ...box(pot), text: pot.textContent.replace(/\s+/g, ' ').trim().slice(0, 40) };
@@ -317,6 +320,17 @@ async function stepTo(page, n) {
     await sleep(260);
   }
   await sleep(1500);   // every step's choreography and timers run out in real time
+  /* ...but the document timeline is the page's rendering clock, not the wall clock: a 1440-wide
+     page at 3x beside a few other WebKits can still be mid-flop after 1.5s, and the clip then shows
+     the last step's tail as if the moment had made it. Wait until nothing finite is still running. */
+  for (let i = 0; i < 60; i++) {
+    const busy = await page.evaluate(() => document.getAnimations().some(a => {
+      if (a.playState !== 'running') return false;
+      try { return Number.isFinite(a.effect.getComputedTiming().endTime); } catch (e) { return false; }
+    }));
+    if (!busy) return;
+    await sleep(250);
+  }
 }
 
 const clipName = (moment, seats) => `${moment}-${seats}max-${W}x${H}`;
@@ -633,12 +647,18 @@ async function exportProbe(browser, seats, moment) {
       const t = document.querySelector('.replayer-table');
       t.style.paddingTop = '50px'; t.style.marginTop = '0px';     // beginCapture()
       t.setAttribute('data-capturing', '1');
+      // beginCapture() also puts the spring registry (when the build has one) into capture mode:
+      // springs are created paused and their arrivals wait.
+      if (t.__replayerMotion) t.__replayerMotion.setCapture(true, { rate: 1 });
     });
     await page.clock.runFor(60);
     await page.evaluate(() => window.__hops());
     const before = await page.evaluate(() => window.__measure());
     await page.evaluate(() => document.querySelector('button[title="Forward"]').click());
     for (let i = 0; i < 6; i++) { await page.evaluate(() => window.__hops()); await page.clock.runFor(20); }
+    await page.evaluate(() => window.__hops());
+    // The settled still captureStepFrames() takes: every spring finished, ghosts gone, ticks landed.
+    await page.evaluate(() => { const m = document.querySelector('.replayer-table').__replayerMotion; if (m) m.finishAll(); });
     await page.evaluate(() => window.__hops());
     const at = await page.evaluate(() => ({
       ...window.__measure(),

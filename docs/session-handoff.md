@@ -14,6 +14,21 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-12 — Replayer springs (branch `worktree-wf_47e1730e-7b7-1`, not merged)
+- The flop deal and spread, the turn/river landing, wagers pushed out and swept into the pot, and
+  the pot shipped to the winner run on one spring family, the launch ads' Remotion numbers
+  (`utils/spring.js`, `utils/replayer-motion.js`, `docs/replayer-springs.md`). Web Animations on
+  transform/opacity, computed once per moment; no per-frame JS.
+- **Flag** `localStorage.replayerSprings`: unset/'1' Set A "house" (default on the branch), '2' or
+  'snappy' Set B, '0' today's code paths unchanged. Reduced motion turns it all off.
+- **Exports now carry the motion**: the video seeks each moment at 24 fps, the GIF at 12.5 fps (moments
+  of 3+ frames, 32 frames max), and every still is settled (the five gold chips frozen on the pot are
+  gone). Verified frame-for-frame against the live replayer mid-turn in WebKit.
+- **Waiting on Ethan**: A or B (side-by-side MP4s in `weekly-graphics/replayer-springs/compare/`,
+  Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight.
+- Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate` — the page clock does
+  not drive the document timeline, so a second round trip lets the springs run in real time.
+
 ## 2026-10-11 (evening) — Aqua accent, cross-platform font metrics, Dashboard pass
 - **Brand accent is aqua**, not orange (black + orange read like an adult site's branding):
   dark `#3cc8e0`, light `#0e7490`, cloudy `#0a4f62` (its grey surface needs the darker one), high

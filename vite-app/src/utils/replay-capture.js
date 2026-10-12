@@ -10,13 +10,25 @@
 //
 // One preparation, used by both, so a fix lands in one place.
 
+import { motionFor } from './replayer-motion.js';
+import { rateFor } from './spring.js';
+
 /**
  * Put the table into capture condition and return a function that undoes it.
  *
+ * The spring moments (utils/replayer-motion.js) are Web Animations, which the [data-capturing]
+ * freeze does not touch: under capture they are created paused at their start, their arrivals
+ * (the pot and stack ticks) wait for a seek, and captureStepFrames() below either seeks them frame
+ * by frame or finishes them before the still — never a frame frozen at a 0% keyframe.
+ *
  * @param {HTMLElement} tableEl - the .replayer-table element
+ * @param {object} [opts]
+ * @param {number} [opts.speed] - the export's ms per step: the springs run at the autoplay rate for it
  * @returns {() => void} restore
  */
-export function beginCapture(tableEl) {
+export function beginCapture(tableEl, { speed } = {}) {
+  const motion = motionFor(tableEl);
+  if (motion) motion.setCapture(true, { rate: rateFor(speed) });
   const prev = {
     padTop: tableEl.style.paddingTop,
     marginTop: tableEl.style.marginTop,
@@ -33,7 +45,41 @@ export function beginCapture(tableEl) {
     tableEl.style.paddingTop = prev.padTop;
     tableEl.style.marginTop = prev.marginTop;
     tableEl.removeAttribute('data-capturing');
+    if (motion) motion.setCapture(false);
   };
+}
+
+/**
+ * Capture one step: the spring moment it starts, seeked frame by frame at `fps`, then the settled
+ * state held for the rest of the step. When the moment does not fit the step's frames (a fast
+ * export speed, or a GIF whose budget is spent) the springs are finished instead and the step is
+ * one settled still, as before. Without springs (flag '0') it is exactly one still.
+ *
+ * @param {HTMLElement} tableEl
+ * @param {object} opts
+ * @param {number} opts.fps
+ * @param {number} opts.maxFrames         the step's length in output frames
+ * @param {number} [opts.minMotionFrames] below this a moment is not worth its frames (a GIF)
+ * @param {(hold:number, settled:boolean) => Promise<void>} opts.grab  capture one frame, held `hold` frames
+ * @returns {Promise<number>} how many motion frames were captured
+ */
+export async function captureStepFrames(tableEl, { fps, maxFrames, minMotionFrames = 2, grab }) {
+  const motion = motionFor(tableEl);
+  let used = 0;
+  if (motion && fps > 0 && maxFrames > 1) {
+    const ext = motion.extentMs();
+    const need = Math.ceil((ext * fps) / 1000);
+    if (ext > 0 && need >= minMotionFrames && need < maxFrames) {
+      for (let f = 0; f < need; f++) {
+        motion.seek((f * 1000) / fps);
+        await grab(1, false);
+        used++;
+      }
+    }
+  }
+  if (motion) motion.finishAll();
+  await grab(Math.max(1, maxFrames - used), true);
+  return used;
 }
 
 /**

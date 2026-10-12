@@ -7268,12 +7268,11 @@
     }
 
     /* ── Board Card Animations ── */
-    @keyframes flopCardSlide {
-      0% { opacity:0; transform:translateX(calc(var(--subrow) * -7.5)) scale(0.7) rotate(-8deg); }
-      50% { opacity:0.8; transform:translateX(calc(var(--subrow) * 0.75)) scale(1.03) rotate(1deg); }
-      70% { transform:translateX(calc(var(--subrow) * -0.25)) scale(0.99) rotate(0deg); }
-      100% { opacity:1; transform:translateX(0) scale(1) rotate(0deg); }
-    }
+    /* The spring path (localStorage.replayerSprings '1'/'2', the default on this branch) lands
+       every board card from a layout effect as a Web Animation — the flop, the turn and the river
+       alike — and never emits the animate-board-* classes. turnRiverSlide below is flag '0' only:
+       today's behaviour, kept exactly so a before/after comes from one build. (flopCardSlide and
+       .animate-board, the legacy fallback, were never emitted by anything and are gone.) */
     @keyframes turnRiverSlide {
       0% { opacity:0; transform:translateX(calc(var(--subrow) * -5)) scale(0.6); filter:blur(calc(var(--subrow) * 0.25)); }
       60% { opacity:0.9; transform:translateX(calc(var(--subrow) * 0.5)) scale(1.02); filter:blur(0); }
@@ -7287,9 +7286,6 @@
        HandReplayerView (flopAnimKey), measured against the board's real slots. */
     .replayer-board-area.animate-board-turn .card-row > [data-slot="3"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
     .replayer-board-area.animate-board-river .card-row > [data-slot="4"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
-    /* Legacy fallback */
-    .replayer-board-area.animate-board .card-img,
-    .replayer-board-area.animate-board .card-classic { animation:flopCardSlide var(--dur-base) var(--ease-object) both; }
 
     /* ── Fold Animation (cards slide to muck) ── */
     @keyframes foldToMuck {
@@ -7470,6 +7466,35 @@
       0%   { opacity:1; transform:translate(0,0) scale(1); }
       55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - calc(var(--subrow) * 2))) scale(0.8); }
       100% { opacity:0; transform:translate(var(--fly-dx), var(--fly-dy)) scale(0.4); }
+    }
+
+    /* ── Spring flights (localStorage.replayerSprings, utils/replayer-motion.js) ──
+       The layer the swept wagers' ghosts and the shipped chips fly in. It spans the table's
+       padding box, so a ghost keeps its wager's own left/top percentages, and it sits at
+       --z-flight: the chips pass OVER the board, never through it. Its children move by Web
+       Animations on transform and opacity only, so the [data-capturing] freeze (which pauses CSS
+       animations) does not touch them — the exporters seek them instead. */
+    .replayer-motion-layer {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-flight);
+      pointer-events: none;
+    }
+    .replayer-motion-layer .replayer-chip-ghost { animation: none; transition: none; }
+    /* A ghost's pill, behind its chips and amount, fading with the amount as the chips leave. */
+    .replayer-chip-ghost-pill { position: absolute; z-index: -1; pointer-events: none; }
+    /* The shipped chip IS the pot, gold, as the CSS flight's chip was; the spring moves it. */
+    .replayer-flying-chip.to-winner.is-spring { animation: none; }
+    /* The winner's plaque takes its gold as the first shipped chip lands rather than at the press:
+       the "0.30s, the winner's plaque takes it" beat above, on the spring's arrival (arm, progress
+       0.98). Only into the state; stepping back clears it at once. */
+    .replayer-table[data-springs="A"] { --spring-ship-arrive: 245ms; }
+    .replayer-table[data-springs="B"] { --spring-ship-arrive: 214ms; }
+    .replayer-table[data-springs] .replayer-seat:is(.winner, .split) .replayer-seat-info {
+      transition-delay: var(--spring-ship-arrive);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .replayer-replay .replayer-motion-layer { display: none !important; }
     }
 
     /* ── Draw discard card animation ── */

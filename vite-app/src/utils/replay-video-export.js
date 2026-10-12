@@ -4,7 +4,7 @@
 // streaming overlay, a chroma-key MP4 for editing, or a 9:16 story clip.
 
 import {
-  beginCapture, EXPORT_WIDTH, exportScale, feltBackdrop, CHROMA_GREEN, stepDelay,
+  beginCapture, captureStepFrames, EXPORT_WIDTH, exportScale, feltBackdrop, CHROMA_GREEN, stepDelay,
 } from './replay-capture.js';
 
 const STORY_W = 1080, STORY_H = 1920;
@@ -62,7 +62,7 @@ export async function exportReplayVideo({
       fileExt = 'webm';
     }
 
-    restore = beginCapture(tableEl);
+    restore = beginCapture(tableEl, { speed });
     // Let the padding and the paused-animation rules settle before measuring.
     await new Promise(r => setTimeout(r, 60));
 
@@ -142,29 +142,44 @@ export async function exportReplayVideo({
        part — capturing every frame of the hand — happens first with nothing
        recording, and playback holds each pre-drawn frame for exactly the chosen
        duration. Capture cost stops touching the output pace. */
+    /* Each entry is one captured image and how many output frames it is held for. A step is its
+       settled still held for the step's length — and, with the spring moments on, the moment
+       itself first: the springs are seeked one output frame at a time (captureStepFrames), so the
+       flop deals, the turn lands and the chips fly in the clip exactly as on screen, and the
+       settled still takes the rest of the step. A motion frame is kept as an ImageBitmap with its
+       canvas released, so a hand's worth of them does not count against iOS's canvas memory cap. */
     const framesArr = [];
     let lastGood = null;
-    const grab = async () => {
+    let stepsDone = 0;
+    const grab = async (hold, settled) => {
+      let img = null;
       try {
         const c = await domToCanvas(tableEl, { backgroundColor: null, width: elW, height: elH, scale });
-        lastGood = c;
-        framesArr.push(c);
+        img = c;
+        if (!settled && typeof createImageBitmap === 'function') {
+          try { img = await createImageBitmap(c); c.width = 0; c.height = 0; } catch { img = c; }
+        }
+        lastGood = img;
       } catch {
         // 84: on a capture failure hold the LAST GOOD frame rather than a blank.
-        if (lastGood) framesArr.push(lastGood);
+        img = lastGood;
       }
-      const last = framesArr[framesArr.length - 1];
-      if (onFrame && last) { try { onFrame(last.toDataURL('image/png')); } catch { /* tainted */ } }
+      if (img) framesArr.push({ img, hold });
+      if (!settled) return;
+      stepsDone++;
+      if (onFrame && img && img.toDataURL) { try { onFrame(img.toDataURL('image/png')); } catch { /* tainted */ } }
       // Capture is the first 70% of the bar; the encode is the rest.
-      onProgress(Math.round((framesArr.length / totalSteps) * 70), framesArr.length, totalSteps);
+      onProgress(Math.round((stepsDone / totalSteps) * 70), stepsDone, totalSteps);
     };
 
-    await grab();
+    await captureStepFrames(tableEl, { fps: FPS, maxFrames: framesPerStep, grab });
     while (canGoForwardRef.current) {
       stepForward();
-      // Let React commit before capturing. Animations are paused for the export.
+      // Let React commit before capturing. CSS animations are paused for the export; the springs
+      // are created paused and seeked.
       await new Promise(r => setTimeout(r, 120));
-      await grab();
+      const isLast = !canGoForwardRef.current;
+      await captureStepFrames(tableEl, { fps: FPS, maxFrames: isLast ? finalHoldFrames : framesPerStep, grab });
     }
 
     // Frames are captured — undo the padding/pinned-theme now, before the encode.
@@ -212,16 +227,16 @@ export async function exportReplayVideo({
 
     recorder.start();
     // Latch the first frame before the timed playback begins.
-    if (framesArr.length) { paint(framesArr[0]); await new Promise(r => setTimeout(r, 80)); }
+    if (framesArr.length) { paint(framesArr[0].img); await new Promise(r => setTimeout(r, 80)); }
     for (let i = 0; i < framesArr.length; i++) {
-      paint(framesArr[i]);
-      const isLast = i === framesArr.length - 1;
-      await emit(isLast ? finalHoldFrames : framesPerStep);
-      onProgress(70 + Math.round(((i + 1) / framesArr.length) * 30), framesArr.length, totalSteps);
+      paint(framesArr[i].img);
+      await emit(framesArr[i].hold);
+      onProgress(70 + Math.round(((i + 1) / framesArr.length) * 30), totalSteps, totalSteps);
     }
 
     recorder.stop();
     await stopped;
+    for (const f of framesArr) { try { if (f.img && f.img.close) f.img.close(); } catch { /* already gone */ } }
     framesArr.length = 0;
 
     const blob = new Blob(chunks, { type: mimeType });
