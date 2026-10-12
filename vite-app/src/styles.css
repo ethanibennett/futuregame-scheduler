@@ -2183,6 +2183,10 @@
         linear-gradient(to bottom, var(--surface2), var(--surface))
         top / 100% calc(var(--sa-t) + var(--header-h)) no-repeat;
     }
+    /* The phone's stand-ins for the desktop's .dk-body / .dk-pane wrappers (App.jsx): App renders
+       one element tree for both layouts so crossing 1024 wide never remounts the list's scroller.
+       No box of their own, so their children are .app-shell's flex items as they always were. */
+    .layout-contents { display: contents; }
 
     .top-bar {
       height: var(--header-h);
@@ -2281,8 +2285,11 @@
        override below. */
     /* On phone the three action icons are centered in the bar (matching iOS,
        where they sit under the Dynamic Island). The wordmark stays pinned left
-       and the user chip right via the bar's space-between. Desktop (≥640px) has
-       room to let them sit in normal right-aligned flow. */
+       and the user chip right via the bar's space-between. That holds at every
+       phone-layout width: the shell is 37g however wide the window (.app-shell),
+       so the old >=640px rule that put the group in right-aligned flow only ran it
+       into the user chip (measured at 800 and 1023 wide). The desktop shell's
+       header has its own rule (Desktop layout block). */
     .top-bar-actions {
       /* 3g buttons with 1g between: n of them span 4n - 1 g, an odd count, so centred on the
          screen's 18.5g middle the group starts on a whole g (19 - 2n). */
@@ -2293,9 +2300,6 @@
       /* top 4r, not 50%: 50% of the bar's padding box (8r less its inner hairline border) put the
          centre at 3.93r, half a pixel above the grid line. */
       position: absolute; left: 50%; top: calc(var(--subrow) * 4); transform: translate(-50%, -50%); margin-left: 0;
-    }
-    @media (min-width: 640px) {
-      .top-bar-actions { position: static; top: auto; transform: none; margin-left: auto; align-self: center; }
     }
     .top-bar-actions .btn-icon {
       width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); min-width: calc(var(--gu) * 3);
@@ -3364,13 +3368,15 @@
       max-width: calc(var(--subrow) * 75);
       margin: 0 auto;
     }
+    /* Window-width rules from the full-width web column. Never in the desktop shell: its panes
+       are phone canvases and take the phone's values (the :where keeps the specificity). */
     @media (min-width: 640px) {
-      .gto-sticky-header { margin: calc(var(--subrow) * -2) calc(var(--subrow) * -2.5) 0; padding: var(--space-3xl) var(--space-2xl) var(--space-sm); top: calc(var(--subrow) * -2); }
-      .gto-sticky-footer { padding: var(--space-sm) var(--space-2xl); }
+      :where(.app-shell:not(.is-desktop)) .gto-sticky-header { margin: calc(var(--subrow) * -2) calc(var(--subrow) * -2.5) 0; padding: var(--space-3xl) var(--space-2xl) var(--space-sm); top: calc(var(--subrow) * -2); }
+      :where(.app-shell:not(.is-desktop)) .gto-sticky-footer { padding: var(--space-sm) var(--space-2xl); }
     }
     @media (min-width: 1024px) {
-      .gto-sticky-header { margin: calc(var(--subrow) * -2.5) calc(var(--subrow) * -4) 0; padding: var(--space-4xl) var(--space-4xl) var(--space-sm); top: calc(var(--subrow) * -2.5); }
-      .gto-sticky-footer { padding: var(--space-sm) var(--space-4xl); }
+      :where(.app-shell:not(.is-desktop)) .gto-sticky-header { margin: calc(var(--subrow) * -2.5) calc(var(--subrow) * -4) 0; padding: var(--space-4xl) var(--space-4xl) var(--space-sm); top: calc(var(--subrow) * -2.5); }
+      :where(.app-shell:not(.is-desktop)) .gto-sticky-footer { padding: var(--space-sm) var(--space-4xl); }
     }
     .gto-street-bar {
       display: flex;
@@ -9529,6 +9535,12 @@
       padding-left: var(--space-2xs);
     }
 
+    /* The Schedule list's wrapper (TournamentsView): room below the last day so any day can be
+       scrolled up under the filters. Sized from the window. The desktop list pane keeps the
+       phone's nav band under its scroller (.dk-pane-list::after), so the same values stop the
+       list where the phone's stops and no desktop copy of this rule exists. */
+    .schedule-list-tail { min-height: 100vh; padding-bottom: 60vh; }
+
     /* ── Tournament cards ── */
     .tournament-list { display: flex; flex-direction: column; gap: var(--space-ml); }
 
@@ -11211,14 +11223,17 @@
          parsing can't drop the safe-area term, then add a 22px gap
          (was 16px) and a final +6px hedge for iOS hairline rounding. */
       /* A 9g x 4r pill 2r above the bottom nav's top (an r line, see --nav-snap), so its edges are
-         on the grid. Centred by its left edge, rounded to the nearest g line (14g on a phone's
-         37g; on a desktop pane of even width it sits a half-g off true centre, on the grid). */
+         on the grid. Centred by its left edge: 14g on the phone's 37g. Its containing block is the
+         window, and the shell (37g) is centred in it at every phone-layout width, so the window's
+         middle is the canvas's and no rounding is wanted: rounding to g counted from the WINDOW's
+         edge put it at 14.49g of the canvas in a 1023-wide window. A desktop pane, which is its
+         own containing block, rounds instead (.dk-fab-scope, Desktop layout block). */
       bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 2);
       width: calc(var(--gu) * 9);
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
       justify-content: center;
-      left: round(nearest, 50% - var(--gu) * 4.5, var(--gu));
+      left: calc(50% - var(--gu) * 4.5);
       z-index: var(--z-fab);
       background: var(--accent);
       color: var(--bg);
@@ -11877,42 +11892,31 @@
       margin-top: var(--space-sm);
     }
 
-    /* ── Responsive tweaks for desktop ── */
+    /* ── Window-width rules ── */
+    /* The phone layout's shell is 37g at every window width (.app-shell max-width), so the list,
+       its scroller and its sticky rows take the phone's values everywhere: the >=640 / >=1024
+       rules written for the old full-width web column (wider sticky padding, a grid of cards) are
+       gone, and with them the desktop rules that only undid them. Between 640 and 1023 they had
+       wrapped the 35g filter row onto a second line (filters 17r instead of 12r).
+       What stays is the filter panel: it is portalled to <body> and spans the WINDOW in the phone
+       layout (left and right 1g, TournamentsView), so a window-width rule is its own measure. The
+       desktop shell sizes it to the pane instead, hence html:not([data-layout="desktop"]);
+       :where() keeps each selector's specificity what it was. */
     @media (min-width: 640px) {
-      .content-area { padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2); }
-      .sticky-filters { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-2xl) calc(var(--subrow) * 2); top: 0; }
-      .schedule-sticky-header { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-2xl) calc(var(--subrow) * 2); top: 0; }
-
-      .tournament-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(calc(var(--subrow) * 42.5), 1fr));
-        gap: var(--space-xl);
-      }
-
-      /* Desktop filter panel: 4-column grid with rows that DON'T stretch the
+      /* Wide filter panel: 4-column grid with rows that DON'T stretch the
          short cells. align-items: start sizes each cell to its content so
          small items (Search, Date Range) don't inherit a sibling's height.
          Specific full-width rows (.filter-row) span every column to enforce
          the prescribed layout: pills → search → date range → 4-col section
          row → actions. */
-      .filter-panel {
+      :where(html:not([data-layout="desktop"])) .filter-panel {
         grid-template-columns: repeat(4, 1fr);
         align-items: start;
       }
-      .filter-span2 { grid-column: span 1; }
+      :where(html:not([data-layout="desktop"])) .filter-span2 { grid-column: span 1; }
       /* .filter-row span-all rule lives outside this block and is
          scoped to .filter-panel > .filter-row so it doesn't leak into
          other grids. */
-    }
-
-    @media (min-width: 1024px) {
-      .content-area { padding: 0 var(--gu) calc(var(--nav-h) + var(--subrow) * 2); }
-      .sticky-filters { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-4xl) calc(var(--subrow) * 2); top: 0; }
-      .schedule-sticky-header { margin: 0 calc(-1 * var(--gu)) 0; padding: calc(var(--subrow) * 2) var(--space-4xl) calc(var(--subrow) * 2); top: 0; }
-
-      .tournament-list {
-        grid-template-columns: repeat(auto-fill, minmax(calc(var(--subrow) * 45), 1fr));
-      }
     }
 
     /* ── Dashboard View ── */
@@ -15615,9 +15619,8 @@
 
     /* ── Admin layout-grid overlay (GridOverlay.jsx) ──
        Draws the real content grid faintly over the screen so alignment can be
-       checked. Matches .content-area rails: 12px side margins (20 at >=640, 32
-       at >=1024), 4 columns / 12px gutters, and an 8px baseline (every 4th line
-       stronger). Never blocks interaction. */
+       checked. Matches .content-area rails: 1g side margins, 4 columns of 8g with
+       1g gutters, and a line every r (every 4th stronger). Never blocks interaction. */
     .grid-dev-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9997; }
     .grid-dev-baseline {
       position: absolute; inset: 0;
@@ -15660,7 +15663,8 @@
 
     /* Floating admin toggles for the grid overlay: 4g x 5r keys on the 1g right margin, stacked
        up from the bottom nav's top (an r line), --dev-up r above it (clear of the 5r Hands tools row),
-       so each sits on the grid. */
+       so each sits on the grid. The desktop Schedule list pane is their containing block and keeps
+       the nav band at its foot (.dk-pane-list::after), so there they land where the phone's do. */
     .grid-dev-toggle {
       position: fixed; right: var(--gu);
       bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * var(--dev-up, 7));
@@ -16227,21 +16231,8 @@
       .dk-rail-item.is-active:hover { color: var(--brand); }
     }
     .dk-rail-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--bw-2) * -1); }
-    /* The admin toggles (#, D, i): fixed to the window corner on the phone,
-       three 2g x 3r keys across the rail's 8g column here (2+1+2+1+2). */
-    .dk-rail-dev {
-      display: flex; gap: var(--gu);
-      margin-top: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2);
-      box-shadow: inset 0 var(--bw-hair) 0 var(--border);
-    }
-    .dk-rail-dev .grid-dev-toggle {
-      position: static;
-      width: calc(var(--gu) * 2); height: calc(var(--subrow) * 3);
-      border-radius: var(--radius-sm);
-      box-shadow: none;
-      font-size: var(--fs-sm);
-    }
+    /* The admin dev keys (#, D, i) are not in the rail: App renders them in the main column on
+       both layouts, so over the Schedule list they float where the phone's do (.grid-dev-toggle). */
 
     /* ── Panes ── */
     .dk-pane {
@@ -16249,6 +16240,13 @@
       flex: 0 0 auto;
       display: flex; flex-direction: column;
       min-height: 0;
+      /* The phone's arrangement for its scroller, copied: on the phone .content-area sits in
+         .app-shell, which clips (overflow: hidden); here it sits in this pane, so the pane clips
+         too. Without it WebKit (measured 2026-10-11, 1440x900 against the phone at 430x900)
+         anchored the list while rows grew from their 13r placeholders: scrollTop 2343 settled at
+         2269, wheel steps came back 7-9r short, and every venue strip laid out 0 tall. With it all
+         three match the phone exactly. */
+      overflow: hidden;
       background: var(--bg);
     }
     /* The divider is drawn OVER the pane's left edge, not added to its width, so
@@ -16264,16 +16262,64 @@
     .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + var(--dk-sb-g, 0))); }
     .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + var(--dk-sb-g, 0))); }
     /* A pane is the containing block for the views' fixed-position children (the
-       Today/Next button), so each one centres in ITS pane instead of the window.
-       Only on panes whose views have nothing else fixed and unportalled. */
+       Today/Next button, the admin dev keys), so each one centres in ITS pane instead of the window.
+       Only on panes whose views have nothing else fixed and unportalled. Desktop-only because the
+       phone's containing block, the window, IS its column; a pane is not the window, so this is
+       what puts the button at the same place in the list (x 14g, the same distance off the
+       scroller's foot) though its computed top and right are counted from the pane, not the window. */
     .dk-fab-scope { transform: translateZ(0); }
-    /* No nav under it on desktop: 4r up from the foot of the window, plus the fraction of an r
-       that puts its top on a line counted from the bar. */
-    .app-shell.is-desktop .back-to-today-fab { bottom: calc(var(--subrow) * 4 + mod(100dvh - var(--sa-t), var(--subrow))); }
+    /* The dev keys' 1g off the right edge, counted from the content as on the phone: a classic
+       scrollbar (--dk-sb-g, desktop-only) sits between the content and the pane's edge, and 1g from
+       the edge alone put the keys over it. 0 where scrollbars overlay, so this is the phone's 1g.
+       A wide pane cannot be their containing block (the full-bleed replayer must stay fixed to the
+       window), and fixed to the window's corner they sat at 112.46g, off the shell's g lines
+       (check:controls), so there they hang absolute from the pane itself (.dk-pane is relative and
+       does not scroll; its foot is the window's): the same corner, on the grid, still above the
+       grid overlay as on the phone. */
+    .dk-fab-scope .grid-dev-toggle,
+    .dk-pane-wide > .grid-dev-toggle { right: calc(var(--gu) * (1 + var(--dk-sb-g, 0))); }
+    .dk-pane-wide > .grid-dev-toggle { position: absolute; }
+    /* Centred in its pane, on a g line. Desktop-only, for two things a phone never has: a classic
+       scrollbar (--dk-sb-g) widens the pane but not the content beside it, so the middle is taken
+       without it (with a 15px scrollbar the list's button sat at 15g of the 37g, 1g right of
+       centre); and the right pane can be an even number of g (46g, 64g), whose exact middle would
+       leave the 9g button a half-g off the grid, so it rounds to a g line counted from the pane's
+       own edge. On the 37g list pane both come to the phone's 14g. */
+    .dk-fab-scope .back-to-today-fab { left: round(nearest, 50% - var(--gu) * (4.5 + var(--dk-sb-g, 0) / 2), var(--gu)); }
 
-    /* The main pane's scroller is the phone's .content-area, minus the room it
-       keeps for a bottom nav the desktop does not have. */
-    .app-shell.is-desktop .content-area { padding-bottom: calc(var(--subrow) * 2); scrollbar-gutter: stable; }
+    /* The Schedule list pane is the phone's column below the header, nav band included. The rail
+       does the nav's job, so the band stays empty, but it is kept at the pane's foot: the list's
+       scroller is then the phone's height and every phone value applies unchanged, with no desktop
+       rule to stand in for the missing nav: the scroller's nav-h + 2r bottom padding, the list's
+       tail (.schedule-list-tail), the live cash bar's 5r, and the Today/Next button 2r above the
+       band or the bar (the pane, its containing block, ends at the window's foot as the phone's
+       window does). The height is the bottom nav's own (.bottom-nav), --nav-snap included, so the
+       scroller and the bar end on the same r lines as on the phone. Measured 2026-10-12 (1440x900
+       against 430x900): with the scroller 5r taller instead, rows came into view sooner and left
+       their 13r content-visibility placeholders (TournamentsView) at other times, so the rows
+       below the window and the last stop drifted by 2r; with the band nothing differs. */
+    .dk-pane-list::after {
+      content: '';
+      flex: 0 0 auto;
+      height: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap));
+      min-height: var(--tab-h);
+    }
+    /* My Schedule's Today/Next button in the right pane, which has no nav or band under it: 4r up
+       from the foot of the window, plus the fraction of an r that puts its top on a line counted
+       from the bar. Outranks the phone's raise for the live cash bar (CashSessions.css): the bar
+       sits under the list pane, not this one. */
+    .app-shell.is-desktop .dk-pane-detail .back-to-today-fab { bottom: calc(var(--subrow) * 4 + mod(100dvh - var(--sa-t), var(--subrow))); }
+
+    /* scrollbar-gutter: a classic scrollbar (a Mac with a mouse, Windows) takes width only on
+       desktop, where --dk-sb-g widens the pane to hold it. Reserving it even when a view does not
+       overflow (the list's empty state, Clear filters) keeps the content 37g. Overlay scrollbars,
+       a phone's among them, reserve nothing, so the list pane computes the same as the phone. */
+    .app-shell.is-desktop .content-area { scrollbar-gutter: stable; }
+    /* The wide panes (Dashboard, Cash, Social, ...) have no nav band under them, so their scroller
+       keeps 2r at its foot instead of the phone's nav-h + 2r. Not the list pane, which keeps the
+       band and so the phone's padding. Below the dashboard's and the replayer's :has() rules. */
+    .dk-pane-wide .content-area { padding-bottom: calc(var(--subrow) * 2); }
+
     /* Secondary panes scroll on their own; same 1g rails as .content-area. */
     .dk-scroll {
       flex: 1; min-height: 0;
@@ -16285,24 +16331,10 @@
       background: var(--bg);
     }
 
-    /* The phone's sticky rows, restored. The >=640 / >=1024 viewport media
-       rules above were written for a full-width web column that no longer
-       exists; inside a 37g pane they pushed the filter row to wrap. A pane is a
-       phone canvas, so it gets the phone's values. */
-    .app-shell.is-desktop .sticky-filters {
-      margin: 0 calc(-1 * var(--gu)) 0;
-      padding: calc(var(--subrow) * 2) var(--gu) calc(var(--subrow) * 2);
-    }
-    .app-shell.is-desktop .schedule-sticky-header,
-    .app-shell.is-desktop .gto-sticky-header {
-      top: calc(var(--subrow) * -1.5);
-      margin: calc(var(--subrow) * -1.5) calc(-1 * var(--gu)) 0;
-      padding: var(--space-3xl) var(--space-lg) var(--space-sm);
-    }
-    .app-shell.is-desktop .schedule-sticky-header { padding: calc(var(--subrow) * 3.5) var(--gu) var(--subrow); }
-    .app-shell.is-desktop .gto-sticky-footer { padding: var(--space-sm) var(--space-lg); }
-    html[data-layout="desktop"] .filter-panel { grid-template-columns: 1fr 1fr; align-items: normal; }
-    html[data-layout="desktop"] .filter-span2 { grid-column: span 2; }
+    /* The sticky rows (.sticky-filters, .schedule-sticky-header, .gto-sticky-header/-footer) and
+       the filter panel need nothing here: the window-width rules a pane used to have to undo are
+       gone ("Window-width rules") or scoped out of the desktop shell where they are written (the
+       filter panel there, the .gto-sticky-header block), so a pane runs the phone's rules. */
 
     /* ── Two-pane tier: Event / My schedule switch, 6r: 2r, 3r keys, 1r ── */
     .dk-seg {
@@ -16386,32 +16418,29 @@
     .cal-event-row.is-selected::after { display: none; }
     /* The right pane's two blocks, each its own scroller: the selected event on top at its
        natural height (at most about half the pane), My Schedule filling the rest below a hairline. */
+    /* Opening and closing an event (owner, 2026-10-10 and -11): the details grow DOWNWARD from the
+       top of the pane and My Schedule, the flex:1 block below, is pushed down with them (its own
+       scroll position untouched, so the event it was showing slides down rather than jumping);
+       closing is the same move in reverse, My Schedule rising with them. App.jsx runs the move
+       (utils/detail-motion.js): it sets the block's height, in r, between 0 and the block's own
+       natural height, and its opacity between 0 and 1, from wherever a move left them, and these
+       transitions carry it. One curve and one duration both ways, so open and close mirror each
+       other: at every moment of a close the block is as far from open as it was from shut at that
+       moment of an open. Not the open played backwards (--ease-out reversed is
+       cubic-bezier(0.64, 0, 0.78, 0)): that close would hold the block at 96% or more of its
+       height for the first 160ms of 320, a pause after the click before anything moves.
+       --dk-frac shortens a move that starts part of the way (a close mid-open).
+       The 2r at the foot is the details' own (below), not the block's padding: a padding would
+       hold the block 2r tall at the end of a close and the start of an open. */
     .dk-pane-detail > .dk-detail-block {
       flex: 0 1 auto; max-height: 55%;
-      /* Opening an event (owner, 2026-10-10): the details grow DOWNWARD from the top of the pane
-         and My Schedule, the flex:1 block below, is pushed down with them — its own scroll
-         position is untouched, so the event it was showing slides down rather than jumping. */
-      animation: dkDetailOpen var(--dur-base) var(--ease-out) both;
+      padding-bottom: 0;
+      transition:
+        height calc(var(--dur-base) * var(--dk-frac, 1)) var(--ease-out),
+        opacity calc(var(--dur-base) * var(--dk-frac, 1)) var(--ease-out);
     }
-    @keyframes dkDetailOpen {
-      from { max-height: 0; opacity: 0; }
-      to   { max-height: 55%; opacity: 1; }
-    }
-    /* Closing an event (owner, 2026-10-11): the same move in reverse — the details collapse back
-       up from their own height (--dk-h, measured in r by App.jsx when the close starts) and My
-       Schedule rises with them. App.jsx keeps the block mounted until this animation ends. */
-    .dk-pane-detail > .dk-detail-block.is-closing {
-      animation: dkDetailClose var(--dur-base) var(--ease-standard) both;
-      pointer-events: none;
-    }
-    @keyframes dkDetailClose {
-      from { max-height: var(--dk-h, 55%); opacity: 1; }
-      to   { max-height: 0; opacity: 0; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .dk-pane-detail > .dk-detail-block,
-      .dk-pane-detail > .dk-detail-block.is-closing { animation: none; }
-    }
+    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 2); }
+    .dk-pane-detail > .dk-detail-block.is-closing { pointer-events: none; }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
     /* The rule between them is a shadow above My Schedule, not a border: a border pushed its
        content (the header's buttons, the date pills) a pixel off the grid. */

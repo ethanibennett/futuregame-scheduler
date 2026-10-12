@@ -490,7 +490,8 @@ export default function ScheduleView({
                         isPast={past}
                         isAnchor={!!t.is_anchor}
                         conditionsJson={t.conditions_json}
-                        onExpand={() => (onSelectEvent ? onSelectEvent(t.id) : activateRow(t.id))}
+                        onExpand={() => activateRow(t.id)}
+                        onSelect={onSelectEvent}
                         selected={onSelectEvent ? selectedEventId === t.id : undefined}
                       />
                     )}

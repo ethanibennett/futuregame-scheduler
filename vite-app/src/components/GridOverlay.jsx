@@ -5,10 +5,10 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
  * over the screen so alignment can be checked against it and detailed layout
  * fixes made by eye.
  *
- * Matches the .content-area rails exactly: 12px side margins on phone
- * (16/20 vertical, 20 horizontal at >=640; 32 horizontal at >=1024), four
- * columns with 12px gutters, and an 8px vertical baseline with every fourth
- * line (32px) drawn stronger. pointer-events:none so it never blocks the UI.
+ * Matches the .content-area rails exactly: 1g side margins, four 8g columns
+ * with 1g gutters (37g), and a line every r with every fourth (a Row) drawn
+ * stronger, at every width (the old >=640 / >=1024 rails are gone). On desktop
+ * the columns are drawn per pane. pointer-events:none so it never blocks the UI.
  *
  * The baseline is anchored to the APP's real top — the rendered top of the
  * `.top-bar`, which is the origin every seated element is measured from (the
@@ -44,25 +44,32 @@ export default function GridOverlay({ showReadout = true }) {
         document.body.appendChild(probe);
         const cssR = probe.getBoundingClientRect().height;
         document.body.removeChild(probe);
-        const jsR = (window.innerWidth / 37) * 0.71;
+        // g freezes at 430px (styles.css --gu), as every other JS r does: uncapped, a desktop
+        // window printed r for a 1440-wide g that nothing is laid out on.
+        const jsR = (Math.min(window.innerWidth, 430) / 37) * 0.71;
         const bar = document.querySelector('.top-bar');
         const barTop = bar ? bar.getBoundingClientRect().top : 0;
         const ca = document.querySelector('.content-area');
         const caTop = ca ? ca.getBoundingClientRect().top : 0;
-        const sf = document.querySelector('.tab-panel.tab-active .sticky-filters, .sticky-filters');
+        // The sticky rows and date breaks of the view in the main scroller (the phone's column, the
+        // desktop's list pane), looked up in that scroller's active panel: from the whole document,
+        // the desktop's right pane (My Schedule) has date breaks of its own, higher up the window,
+        // and the readout measured those instead of the list's.
+        const view = (ca && ca.querySelector('.tab-panel.tab-active')) || ca || document;
+        const sf = view.querySelector('.sticky-filters');
         const sfr = sf ? sf.getBoundingClientRect() : null;
-        const db = [...document.querySelectorAll('.schedule-date-break')]
+        const db = [...view.querySelectorAll('.schedule-date-break')]
           .map(x => x.getBoundingClientRect())
           .filter(r => r.top > barTop - 5 && r.top < barTop + 400)
           .sort((a, b) => a.top - b.top)[0];
         const R = v => (v == null ? '—' : (v / cssR).toFixed(2));
         // Every .sticky-filters height (or 'none' if display:none) and the
         // date-break's actual pinned `top`, to prove where the pill is told to sit.
-        const sfList = [...document.querySelectorAll('.sticky-filters')].map(x => {
+        const sfList = [...view.querySelectorAll('.sticky-filters')].map(x => {
           try { return getComputedStyle(x).display === 'none' ? 'none' : (x.getBoundingClientRect().height / cssR).toFixed(1); }
           catch (e) { return '?'; }
         }).join(',');
-        const dbEl0 = document.querySelector('.schedule-date-break');
+        const dbEl0 = view.querySelector('.schedule-date-break');
         const dbTopR = dbEl0 ? (parseFloat(getComputedStyle(dbEl0).top) / cssR).toFixed(2) : '—';
         // Dashboard card seating: each element's bottom-edge distance off the
         // nearest whole r (its baseline, since these are text-box-trimmed). ~0
@@ -204,9 +211,16 @@ export default function GridOverlay({ showReadout = true }) {
       document.body.appendChild(probe);
       const g = probe.getBoundingClientRect().width / 100;
       probe.remove();
+      // Each pane's grid is drawn as the phone's is: 9N+1 g, N 8g columns inside the 1g padding
+      // of .grid-dev-cols. It was the pane's measured width, which a classic scrollbar widens
+      // (not the pane's grid), stretching every column. Drawn from the pane's origin snapped to
+      // the device pixel its own content is painted from, so the hairlines rasterise as the
+      // phone's do from x = 0.
+      const dpr = window.devicePixelRatio || 1;
       setPanes(els.map(el => {
         const r = el.getBoundingClientRect();
-        return { left: r.left, width: r.width, n: Math.max(1, Math.round((r.width / g - 1) / 9)) };
+        const n = Math.max(1, Math.round((r.width / g - 1) / 9));
+        return { left: Math.round(r.left * dpr) / dpr, n };
       }));
     };
     const measure = () => {
@@ -252,7 +266,7 @@ export default function GridOverlay({ showReadout = true }) {
       {showReadout && <div style={{ position: 'fixed', left: 0, right: 'calc(var(--subrow) * 7.5)', bottom: 'calc(var(--nav-h) + var(--subrow))', maxHeight: '42vh', overflow: 'hidden', zIndex: 99999, font: '10px/1.3 ui-monospace,Menlo,monospace', color: '#0ff', background: 'rgba(0,0,0,0.88)', padding: '4px 6px', pointerEvents: 'none', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{dbg}</div>}
       <div className="grid-dev-baseline" style={{ top }} />
       {panes ? panes.map((p, i) => (
-        <div key={i} className="grid-dev-cols" style={{ left: p.left, width: p.width, right: 'auto', gridTemplateColumns: `repeat(${p.n}, 1fr)` }}>
+        <div key={i} className="grid-dev-cols" style={{ left: p.left, width: `calc(var(--gu) * ${p.n * 9 + 1})`, right: 'auto', gridTemplateColumns: `repeat(${p.n}, 1fr)` }}>
           {Array.from({ length: p.n }, (_, j) => <span key={j} className="grid-dev-col" />)}
         </div>
       )) : (

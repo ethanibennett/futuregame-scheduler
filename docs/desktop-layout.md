@@ -119,8 +119,6 @@ does on the phone; it is the one dimension the window, not the grid, sets.
 │ ∿ Results │  secondary: what the phone hides in the avatar menu
 │ ⚙ Settings│
 │ ⊡ Admin   │
-│───────────│
-│ [#][D][i] │  admin dev keys, 2g×3r each (2+1+2+1+2 = 8g)
 └──────────┘
 ```
 
@@ -129,6 +127,8 @@ does on the phone; it is the one dimension the window, not the grid, sets.
   pane, because it belongs to the Hands content and not to the nav.
 - Labels are `--fs-xs`. That was measured, not chosen: "Dashboard" is 4.64g at
   `--fs-xs` and 5.25g at `--fs-sm`, and the label column is 5g.
+- The admin dev keys (#, D, i) are not in the rail either: they float over the
+  main column as on the phone (§5).
 - "My Schedule" is not a rail item. On desktop it is a pane of the Schedule tab,
   so the avatar menu's "My Schedule" routes to Schedule. In the two-pane tier it
   also flips the right pane to My schedule.
@@ -147,31 +147,70 @@ subcolumn.
 
 - **Portalled panels** (filter panel, location dropdown, online-room menu, share
   menu, travel picker, export modal) stay portalled to `<body>` and keep working.
-  The Schedule filter panel spans the viewport's 8px rails on the phone. On
-  desktop it spans the **list pane's** 1g rails instead: measured at x = 1g,
-  w = 35g of the pane. `<html data-layout="desktop">` exists so CSS can reach
+  The Schedule filter panel spans the viewport's 1g rails on the phone. On
+  desktop it spans the **list pane's** 1g rails instead: x = 1g, w = 35g of the
+  pane, set in g, so a classic scrollbar (which widens the pane, not the canvas)
+  does not widen the panel (measured 2026-10-12, with and without one). `<html data-layout="desktop">` exists so CSS can reach
   these portalled nodes.
 - **Centred modals** (notifications, onboarding, real-name prompt, milestone) stay
   centred on the window with a full-window scrim. Phase 2 caps their width at the
   phone canvas (37g), since several of them stretch on a wide window today.
 - **The Today/Next button** is `position: fixed` in its view. Each Schedule pane
   is its containing block (`.dk-fab-scope`), so each list centres its own button
-  at its own foot (4r up, with no nav to clear). This is applied only to panes
+  at its own foot. In the list pane that is the phone's own rule: the pane keeps
+  the nav band and ends at the window's foot, so the button stands 2r above the
+  band, or 2r above the live cash bar when that shows. My Schedule's, in the
+  right pane, has no band under it and stands 4r up. Each is centred on its
+  pane's content, not counting a classic scrollbar (`--dk-sb-g`), on a g line
+  from the pane's edge. This is applied only to panes
   whose views have nothing else fixed and unportalled. The full-bleed replayer is
   fixed too, and must not be confined by accident.
-- **Admin dev keys** (#, D, i) move from the window corner into the foot of the
-  rail.
+- **Admin dev keys** (#, D, i) are rendered in the main column on both layouts
+  (App.jsx `devToggles`). Over the Schedule list the list pane is their
+  containing block and keeps the nav band, so they stand where the phone's do:
+  4g×5r at 32g, 7r, 13r and 19r above the band (measured 2026-10-12, identical to
+  430×900). 1g off the content's right edge, so a classic scrollbar does not sit
+  under them (`--dk-sb-g`). A wide pane cannot be their containing block (the
+  full-bleed replayer must stay fixed to the window), and at the window's corner
+  they fell off the shell's g lines (112.46g, `check:controls`), so there they
+  hang `position: absolute` from the pane: the same corner, on the grid. One
+  difference is left over the list: in the list pane's stacking context they sit
+  under the grid overlay's faint lines when it is on, where the phone's sit over
+  it.
 - **Grid overlay**: horizontals are unchanged (r lines from the bar top). The
   column layer is drawn per pane: N columns for a 9N+1 pane, and one for the
-  rail.
+  rail, each 9N+1 g wide (not the pane's measured width, which a classic
+  scrollbar widens) from the pane's origin snapped to a device pixel, so the
+  list pane's columns are the phone's 8g at the phone's 1g, 10g, 19g and 28g. The
+  readout measures the main scroller's own view (its r capped at 430 wide like
+  `--gu`), so on the list pane it prints the phone's numbers.
 
 ## 6. Mouse and keyboard
 
 - **One click selects.** In the list (and in My schedule), clicking a card puts
   it in the Event pane. It does not expand inline. The selected card carries a
-  brand outline (an outline, so the list's r rhythm does not move). The detail
-  card is the same `CalendarEventRow`, held open (`detail`): no chevron, no
-  collapse-on-click.
+  brand outline (an outline, so the list's r rhythm does not move). The list
+  then moves as the phone's does when a row opens (`landRow`, CalendarEventRow):
+  the card's top lands under the filters and its date break. The phone's landing
+  depends only on the row's top, which opening does not move, so the scroll is
+  the same: row 1195 at 43.09r goes from scrollTop 2136 to 2351 and sits at
+  17.03r on both (measured 2026-10-12). A click on the card already selected
+  closes its details, as tapping an open card shuts it on the phone, and like
+  that moves the list nothing. The detail card is the same `CalendarEventRow`,
+  held open (`detail`): no chevron, no collapse-on-click.
+- **Opening and closing the details** is one move, both ways (App.jsx, utils/
+  detail-motion.js): the details block's height runs between 0 and its own
+  natural height (measured as the move starts, so never toward the 55% cap) and
+  its opacity between 0 and 1, on `--ease-out` over `--dur-base`, pushing My
+  Schedule down and drawing it back up with its scroll position untouched. Open
+  and close mirror each other: 16 ms into an open of a 33r block it is 7.10r tall,
+  16 ms into the close 25.90r, and the two sum to 33r at every sample. A move that
+  interrupts another (Esc while opening, another event while closing) starts from
+  the block's current height and opacity and takes the share of the duration it
+  has left to travel. The block's 2r foot is the details' own padding, so it
+  closes to 0, not 2r. Leaving the tab ends a close in progress; coming back with
+  an event still selected shows it as it was, without growing open again. Under
+  `prefers-reduced-motion` it opens and closes at once.
 - **Hover** states already exist for cards (`(hover: hover) and (pointer: fine)`).
   The rail, the pane switch and the close key add the same `--hover-overlay`
   vocabulary.
@@ -184,6 +223,57 @@ subcolumn.
   Views find their scroller from their own root
   (`closest('.content-area, .dk-scroll')`) rather than the first `.content-area`
   in the document.
+- **The list pane scrolls exactly like the phone** (owner, 2026-10-11: "just copy
+  it"). It runs the phone's CSS and JS rather than desktop scroll logic of its own:
+  - **the nav band is kept**, empty, at the foot of the list pane
+    (`.dk-pane-list::after`, the bottom nav's own height with `--nav-snap`). The
+    rail does the nav's job, but without the band the list's scroller was 5r taller
+    than the phone's, and everything else followed from that: rows came into view
+    sooner and left their 13r `content-visibility` placeholders at other times, so
+    rows below the window and the last stop drifted by 2r, and the tail, the
+    scroller's padding, the cash bar and the Today button each needed a desktop
+    value to make up for it. With the band the phone's values apply as they are
+    and those desktop rules are gone;
+  - the window-width rules for the list, its scroller and its sticky rows are
+    gone everywhere, not just on desktop: the phone layout's shell is 37g at any
+    window width, so between 640 and 1023 they only wrapped the filter row (17r
+    instead of 12r). The filter panel's >=640 rule stays for the phone layout,
+    where the portalled panel spans the window;
+  - the pane clips (`.dk-pane { overflow: hidden }`) as `.app-shell` does round the
+    phone's scroller. Without it WebKit anchored the list while rows grew from their
+    13r placeholders: scrollTop 2343 settled at 2269, wheel steps came back 7–9r
+    short, the Today button landed short, and every venue strip laid out 0 tall;
+  - the rail and the bottom nav run one `onChange`, so Schedule pressed again
+    scrolls back to today on both, landing where the list's first landing does
+    (today's group top on the filters' bottom, re-landed once the smooth scroll
+    rests, as rows leaving their placeholders can move today under it). It used
+    to nudge the first card 2px below the sticky stack, about 0.3r short;
+  - My Schedule (the user menu, the Dashboard's Up Next card) is the right pane on
+    desktop, so `setCurrentView('schedule')` goes to the Schedule tab by the
+    phone's own tab-change path: the list keeps its place, or gets back the place
+    it was left at, as the phone's does on its way back from My Schedule. My
+    Schedule lands on today in its own scroller (`landMySchedule`), never the
+    list's;
+  - the phone and desktop render one element tree (`.layout-contents`, display:
+    contents, stands in for `.dk-body` / `.dk-pane` on the phone), so resizing
+    across 1024 never remounts the list and its scroll position is kept;
+  - a click on a card moves the list as a tap does on the phone (§6, One click
+    selects); only where the details open differs, the right pane, which the
+    phone has no counterpart for.
+  What stays desktop-only is what the phone has no counterpart for: pane widths
+  and `--dk-sb-g`; `scrollbar-gutter: stable` (a classic scrollbar takes width
+  only here; overlay scrollbars reserve nothing); the Today button's centring
+  without the scrollbar and on a g line in an even-width right pane; My
+  Schedule's button 4r up in the right pane, which has no band; and, in the wide
+  panes (Dashboard, Cash, …), which keep no band, the scroller's 2r bottom
+  padding and the cash bar taking the fraction of an r. Also left, by design or
+  by the input device: the selected card's outline and its details in the right
+  pane rather than inline; the pane as the Today button's containing block (its
+  box is the phone's, but its computed top is counted from the pane, 8r below
+  the window's top); the divider hairline over the pane's left edge; card hover
+  elevation, which follows a fine pointer on either layout, not the pane; and
+  sub-pixel text antialiasing, since the pane starts at a fractional x in the
+  window. Compare at the same window height (430×900 against 1440×900).
 - Phase 2 keyboard: `j`/`k` to move the selection through the list, `Enter` to
   add or remove the selected event, `g s` / `g d` style tab jumps. These are not
   built yet.
