@@ -379,7 +379,9 @@ async function captureMoment(browser, seats, moment) {
       if (prevSig !== null && s !== prevSig && f > LEAD) lastChange = tRel;
       prevSig = s;
       tl = lap('page', tl);
-      const buf = await page.screenshot({ clip, type: FORMAT, ...(FORMAT === 'jpeg' ? { quality: 95 } : {}) });
+      /* Time is virtual, so a slow screenshot changes nothing in the clip — only Playwright's 30s
+         default can kill it: a 1440-wide frame at 3x took over 30s on a box running nine WebKits. */
+      const buf = await page.screenshot({ clip, type: FORMAT, timeout: 180000, ...(FORMAT === 'jpeg' ? { quality: 95 } : {}) });
       fs.writeFileSync(path.join(frameDir, `f${String(f).padStart(4, '0')}.${FORMAT === 'jpeg' ? 'jpg' : 'png'}`), buf);
       tl = lap('shot', tl);
       if (f > LEAD && ((tRel >= MIN_AFTER && tRel - lastChange >= STILL_MS) || tRel >= MAX_AFTER)) break;
