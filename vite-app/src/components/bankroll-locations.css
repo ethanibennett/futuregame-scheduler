@@ -1,0 +1,179 @@
+/* ==================================================================
+   Bankroll Locations (BETA, app admins) — BankrollLocations.jsx, the
+   dashboard's Locations tab. bl- prefixed.
+
+   Built on analytics.css (the sheet; an-cell type roles: a whole-r
+   box whose one line is pushed down by --p so its baseline lands on
+   an r line, p = 2(k - h/2 - c), c measured per face and size in
+   WebKit) and the dashboard's strips. Every measurement is g or r.
+   Truncating cells take the dashboard's descender room (.bd-sheet
+   .an-clip: 1r of padding below, cancelled by the margin).
+
+   Content is 35g:
+     range       35g x 4r strip, 5 x 7g (the Overview's ranges)
+     summary     an-p, 1r below
+     sort        a 2r caps label, then a 35g x 4r strip, 9 + 9 + 9 + 8g
+     cards       35g, 1r apart, 2r below the sort. A card is 11r:
+                   1r      top padding
+                   3r      name (Univers Condensed md, bold), baseline on its line 3   | total: display
+                   2r      "Live • USD", baseline on its line 2                       |   face xl, 11g,
+                   1r                                                                 |   baseline on
+                   4r      hairline, then the stats line, baseline on its line 3       |   the meta's line
+                 columns inside 1g a side: 21g | 1g | 11g; the stats line 33g
+     results     an open card's rows, 4r each: date 7g | what 17g | result 9g (33g),
+                 baselines on line 3; then "Show all" 11g x 4r, 1r above; 1r below
+     note        an-p, 2r below the cards
+   The cards are list rows, not pills: their text is seated, not
+   centred (scripts/check-control-centring.mjs NOT_CONTROLS lists
+   .bl-card). "Show all" is a control: its box on the grid, its label
+   centred both ways.
+   ================================================================== */
+
+/* Series colours: tournaments aqua (the brand), cash violet. The Overview's graph work defines
+   these in styles.css; until that lands they live here, once. Remove this block at the merge if
+   styles.css carries them. */
+:root {
+  --series-tourn: var(--brand);
+  --series-cash: #a78bfa;
+}
+:is([data-theme="light"], [data-theme="cloudy"]) {
+  --series-cash: #6d28d9;
+}
+
+.bl-range, .bl-sort { height: calc(var(--subrow) * 4); }
+.bl-gap { margin-top: var(--subrow); }
+.bl-sum { font-weight: var(--fw-bold); color: var(--text); }
+.an-p .bl-sum.an-pos { color: var(--pos); }
+.an-p .bl-sum.an-neg { color: var(--neg); }
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+.bl-list { list-style: none; margin: calc(var(--subrow) * 2) 0 0; padding: 0; }
+.bl-item {
+  position: relative;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.bl-item + .bl-item { margin-top: var(--subrow); }
+/* The card's edge, drawn over its contents so a hovered head cannot cover it. */
+.bl-item::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  pointer-events: none;
+}
+.bl-item.is-open::after { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+
+.bl-card {
+  -webkit-appearance: none; appearance: none;
+  display: block;
+  width: 100%; height: calc(var(--subrow) * 11); min-height: 0;
+  box-sizing: border-box;
+  margin: 0; padding: var(--subrow) var(--gu) 0; border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit; text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.bl-item.is-open .bl-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bl-card:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) {
+  .bl-card:hover { background: var(--surface2); }
+}
+
+.bl-head {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 11);
+  grid-template-rows: calc(var(--subrow) * 3) calc(var(--subrow) * 2);
+  column-gap: var(--gu);
+  align-items: start;
+  height: calc(var(--subrow) * 6);
+}
+.bl-name {
+  grid-column: 1; grid-row: 1;
+  /* Univers Condensed md, baseline on line 3 of 3. Measured in WebKit (a probe on the baseline):
+     p 1.5 sat 0.040r high at 402 wide and 0.025r high at 1440, so p = 1.565 — 0.008r either side. */
+  --h: 3; --p: 1.565;
+  font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text);
+}
+.bl-name.is-none { color: var(--text-muted); font-weight: var(--fw-regular); }
+.bl-meta {
+  grid-column: 1; grid-row: 2;
+  --h: 2; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 2 of 2 (as an-note) */
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+}
+.bl-total {
+  grid-column: 2; grid-row: 1 / 3;
+  /* Display face xl, baseline on line 5 of 5 — level with the meta line. The Overview's latest
+     sessions measured this face and size (bd-recent-amt, p 1.1314 on line 3 of 3); the same c on
+     line 5 of 5 is p = 2(5 - 2.5 - c) = 3.1314. */
+  --h: 5; --p: 3.1314;
+  font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text);
+  text-align: right; font-variant-numeric: var(--num-tabular);
+}
+.bl-total.an-pos { color: var(--pos); }
+.bl-total.an-neg { color: var(--neg); }
+
+.bl-stats {
+  --h: 4; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 3 of 4 */
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.bl-sep { color: var(--text-muted); }
+.bl-stat.an-pos { color: var(--pos); }
+.bl-stat.an-neg { color: var(--neg); }
+
+/* Marks. Inline SVG sized in r, its bottom on the baseline (vertical-align: baseline). */
+.bl-mark { display: inline-block; margin-right: calc(var(--gu) * 0.5); }
+.bl-dot {
+  display: inline-block; vertical-align: baseline;
+  width: var(--subrow); height: var(--subrow);
+  margin-right: calc(var(--gu) * 0.25);
+}
+.bl-mark .bl-dot:last-child { margin-right: 0; }
+.bl-dot circle { fill: currentColor; }
+.bl-dot.is-tourn { color: var(--series-tourn); }
+.bl-dot.is-cash { color: var(--series-cash); }
+.bl-clock {
+  display: inline-block; vertical-align: baseline;
+  width: var(--subrow); height: var(--subrow);
+  margin-right: calc(var(--gu) * 0.25);
+  color: var(--text-muted);
+  fill: none; stroke: currentColor; stroke-width: var(--bw-1); stroke-linecap: round; stroke-linejoin: round;
+}
+.bl-clock * { vector-effect: non-scaling-stroke; }
+
+/* ── An open card's results ────────────────────────────────────── */
+.bl-detail {
+  padding: 0 var(--gu) var(--subrow);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.bl-results { list-style: none; margin: 0; padding: 0; }
+.bl-res {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 17) calc(var(--gu) * 9);
+  align-items: start;
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.bl-res:last-child { box-shadow: none; }
+.bl-res-date {
+  --h: 4; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 3 of 4 */
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+  font-variant-numeric: var(--num-tabular);
+}
+.bl-res-what .bl-dot { margin-right: calc(var(--gu) * 0.5); }
+.bl-res-amt { font-weight: var(--fw-bold); }
+.bl-res-amt.an-pos { color: var(--pos); }
+.bl-res-amt.an-neg { color: var(--neg); }
+.bl-more { width: calc(var(--gu) * 11); height: calc(var(--subrow) * 4); margin-top: var(--subrow); }
+
+.bl-note { margin-top: calc(var(--subrow) * 2); }
+.bl-note .bl-dot { margin-right: calc(var(--gu) * 0.25); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-card { transition: none; }
+}
