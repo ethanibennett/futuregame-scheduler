@@ -3,6 +3,7 @@ import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
+import { resetPath } from './utils/reset-results.js';
 import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones, measureStickyStack } from './utils/milestones.js';
@@ -567,22 +568,29 @@ export default function App() {
     } catch (e) { console.error('Fetch tracking:', e); toast.error('Failed to load tracking data'); }
   };
 
-  // Bulk-clear all of the user's tracking entries (Dashboard "Reset"
-  // button). Optimistic — clears local state immediately, then re-fetches.
-  const resetResults = useCallback(async () => {
+  // Results > Delete results (components/ResetResults.jsx): one bankroll's results (or, asked for
+  // in so many words, every bankroll's), held to the count the typed confirmation showed — the
+  // server answers 409 and deletes nothing when that count is stale. Resolves true when deleted.
+  const resetResults = useCallback(async (scope, expect) => {
     try {
-      const res = await fetch(`${API_URL}/tracking`, {
+      const res = await fetch(`${API_URL}${resetPath(scope, expect)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed');
       const data = await res.json().catch(() => ({}));
-      setTrackingData([]);
-      toast.success(`Cleared ${data.count || 0} result${data.count === 1 ? '' : 's'}`);
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to delete results');
+        fetchTracking();
+        return false;
+      }
+      const n = data.count || 0;
+      toast.success(`Deleted ${n.toLocaleString('en-US')} result${n === 1 ? '' : 's'}${scope.name && scope.key !== 'all' ? ` from ${scope.name}` : ''}`);
       fetchTracking();
+      return true;
     } catch (e) {
-      console.error('Reset tracking:', e);
-      toast.error('Failed to reset results');
+      console.error('Delete results:', e);
+      toast.error('Failed to delete results');
+      return false;
     }
   }, [token]);
 
@@ -1642,7 +1650,6 @@ export default function App() {
                 onPost={postLiveUpdate}
                 onDeleteUpdate={deleteLiveUpdate}
                 onAddTracking={addTracking}
-                onResetResults={resetResults}
                 tournaments={tournaments}
                 onToggle={toggleTournament}
                 onNavigate={(v) => {
@@ -1753,6 +1760,7 @@ export default function App() {
                 onAdd={addTracking}
                 onUpdate={updateTracking}
                 onDelete={deleteTracking}
+                onResetResults={resetResults}
                 myActiveUpdates={myActiveUpdates}
                 isAdmin={isAdmin}
                 token={token}

@@ -51,6 +51,7 @@ Tests: `npm run test:bankrolls`.
 | POST | `/api/bankrolls/transfers` | `{ from, to, amount > 0, toAmount?, date?, note? }` |
 | DELETE | `/api/bankrolls/adjustments/:id` | removes both legs of a transfer |
 | POST/PUT | `/api/tracking[/:id]` | now also takes `bankrollId: 'main' \| id`; omitted = leave as is (new = Main). Must be the caller's, not archived (unless unchanged) |
+| DELETE | `/api/tracking` | bulk delete, always scoped: `?bankroll=main\|id` (that bankroll's results; another user's is a 404) or `?all=true` (every bankroll); neither, or `?bankroll=all` alone, is a 400. `?expect=n`: the count the typed confirmation showed — a different count is a 409 and nothing is deleted. → `{ count, scope }`. For everyone, not just the beta (a non-admin's results are all in Main). Results > Delete results (`ResetResults.jsx`, `utils/reset-results.js`) is the only caller; it left the home on 2026-10-11 |
 
 ## The shared filter: `?bankroll=<all|main|id>`
 

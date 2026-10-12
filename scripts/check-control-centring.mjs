@@ -2,8 +2,9 @@
 // r tall, left edge on a g line, top edge on an r line — and the LABEL inside is centred in it on
 // both axes, disregarding the grid. This measures both, for every visible control, in WebKit.
 //
-// Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
-// Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
+// Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results (and its
+// Delete results block at the foot, closed and open), Settings, Cash (Live, Heatmaps), Hands (the
+// list, not the table), Calendar (and its filters),
 // the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
 // import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
 // section, the add sheet, the list sheet, a trip).
@@ -49,7 +50,9 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
-const jwt = require('../node_modules/jsonwebtoken');
+// Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
+// node_modules of its own and finds the checkout's.
+const jwt = require('jsonwebtoken');
 
 const args = process.argv.slice(2);
 const base = (args.find(a => /^https?:/.test(a)) || process.env.CHECK_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -402,6 +405,28 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   await step('dashboard', () => nav('Dashboard'), 1);
   await step('social', () => nav('Social'), 1);
   await step('results', () => menu('Results & Tracking', 'Results'), 1);
+  // Results > Delete results (components/ResetResults.jsx), at the foot of the results list:
+  // closed, then open with the phrase typed so its Delete button is enabled. The content area is
+  // scrolled, not the window (see toExpenses below).
+  const toReset = async () => {
+    await menu('Results & Tracking', 'Results');
+    await p.locator('.rr').first().waitFor({ timeout: 4000 });
+    await p.evaluate(() => {
+      const ca = document.querySelector('.content-area') || document.scrollingElement;
+      const s = document.querySelector('.rr');
+      ca.scrollTop += s.getBoundingClientRect().top - ca.getBoundingClientRect().top - 40;
+      window.scrollTo(0, 0);
+    });
+    await p.waitForTimeout(500);
+  };
+  await step('results-reset', toReset, 0);
+  await step('results-reset-open', async () => {
+    await toReset();
+    await p.locator('.rr .bk-btn--danger').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(300);
+    await p.locator('.rr-input').fill(await p.locator('.rr-label b').innerText());
+    await p.waitForTimeout(300);
+  }, 0);
   await step('settings', () => menu('Settings', 'Settings'), 2);
   await step('cash-live', () => nav('Cash'), 1);
   await step('cash-heatmaps', async () => {

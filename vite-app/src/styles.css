@@ -11145,8 +11145,12 @@
        bottom r-line; further lines step by the 2r line-height, and the block ends on the last
        baseline, so its height is whole r. */
     .tr-seat { display: block; text-box-trim: trim-both; text-box-edge: cap alphabetic; line-height: calc(var(--subrow) * 2); }
-    .tr-seat-2 { padding-top: calc(var(--subrow) * 2 - 1cap); }
-    .tr-seat-3 { padding-top: calc(var(--subrow) * 3 - 1cap); }
+    /* min-height: the padding (N r - 1cap) and the trimmed line (1cap) round to WebKit's 1/64 px
+       separately and came out 1/64 px short (1.998r / 2.998r measured at 402 wide), so every
+       result card was 1/32 px short of whole r and the list drifted 0.42r off the grid by its
+       foot (~150 cards). A single line is now exactly N r; the baseline does not move. */
+    .tr-seat-2 { padding-top: calc(var(--subrow) * 2 - 1cap); min-height: calc(var(--subrow) * 2); }
+    .tr-seat-3 { padding-top: calc(var(--subrow) * 3 - 1cap); min-height: calc(var(--subrow) * 3); }
     .tracking-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--gu); margin-bottom: var(--space-md); }
     .tracking-head > :first-child { min-width: 0; }
     .tracking-summary-head { display: flex; justify-content: space-between; align-items: flex-start; height: calc(var(--subrow) * 4); margin-bottom: var(--space-md); }

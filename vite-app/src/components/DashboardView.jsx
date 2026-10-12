@@ -10,9 +10,10 @@ import {
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
   getMaxEntries, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
-  convertAmount, formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
+  formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
+import { tournamentTotals, homeCurrency } from '../utils/home.js';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
@@ -238,14 +239,15 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, st
 export default function DashboardView({
   mySchedule, myActiveUpdates, trackingData, shareBuddies,
   buddyLiveUpdates, buddyEvents, displayName, onPost, onDeleteUpdate,
-  onAddTracking, onResetResults, onNavigate, tournaments, onToggle, onRefresh,
+  onAddTracking, onNavigate, tournaments, onToggle, onRefresh,
   onOpenInSchedule, demoStates = false, demoCard = false
 }) {
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
   const [connDropdownId, setConnDropdownId] = useState(null);
   const [now, setNow] = useState(getNow());
-  const [dashCurrency, setDashCurrency] = useState(() => localStorage.getItem('trackingCurrency') || 'USD');
+  // Shared with the Results tab's setting, but never Native here: a total of euros and dollars
+  // is in no currency (utils/home.js).
+  const [dashCurrency, setDashCurrency] = useState(() => homeCurrency(localStorage.getItem('trackingCurrency'), Object.keys(CURRENCY_CONFIG)));
   const [dashRates, setDashRates] = useState(null);
   const [dashRatesStale, setDashRatesStale] = useState(false);
   useEffect(() => {
@@ -907,33 +909,16 @@ export default function DashboardView({
     );
   }
 
-  // P&L data
-  const plData = useMemo(() => {
-    if (!trackingData || trackingData.length === 0) {
-      return { invested: 0, cashed: 0, net: 0, roi: 0, count: 0, byVenue: {} };
-    }
-    let invested = 0;
-    let cashed = 0;
-    const byVenue = {};
-    trackingData.forEach(entry => {
-      const t = (tournaments || []).find(x => x.id === entry.tournament_id);
-      const buyin = t ? t.buyin : 0;
-      const venueRaw = t ? t.venue : '';
-      const venue = t ? getVenueInfo(t.venue, t.property).abbr : 'Other';
-      const from = nativeCurrency(venueRaw);
-      const to = dashCurrency === 'NATIVE' ? from : dashCurrency;
-      const entryBuyin = convertAmount(buyin * (entry.num_entries || 1), from, to, dashRates);
-      const entryCash = convertAmount(entry.cash_amount || 0, from, to, dashRates);
-      invested += entryBuyin;
-      cashed += entryCash;
-      if (!byVenue[venue]) byVenue[venue] = { invested: 0, cashed: 0 };
-      byVenue[venue].invested += entryBuyin;
-      byVenue[venue].cashed += entryCash;
-    });
-    const net = cashed - invested;
-    const roi = invested > 0 ? ((net / invested) * 100) : 0;
-    return { invested, cashed, net, roi, count: trackingData.length, byVenue };
-  }, [trackingData, tournaments, dashCurrency, dashRates]);
+  // P&L data: the ledger's rule on each row's OWN buy-in, venue and currency (GET /api/tracking
+  // joins them), converted into the display currency — utils/home.js tournamentTotals. It used to
+  // look each result up in the 3-day /api/tournaments feed, so older results and every import
+  // counted a $0 buy-in, and it added cash_amount whether or not the entry cashed.
+  const plData = useMemo(() => tournamentTotals(trackingData, {
+    currency: dashCurrency,
+    rates: dashRates,
+    currencyOf: (r) => nativeCurrency(r.venue),
+    groupOf: (r) => (r.venue ? getVenueInfo(r.venue, r.property).abbr : null),
+  }), [trackingData, dashCurrency, dashRates]);
 
   const [plDropdown, setPlDropdown] = useState(null);
   // The trigger's rect, captured on click, so the panel can be rendered at
@@ -952,7 +937,7 @@ export default function DashboardView({
     const { G } = gridGeom();
     return gridPanelStyle(plRect, rows * 3, plRect.left / G);
   };
-  const plRows = (field) => Object.entries(plData.byVenue)
+  const plRows = (field) => Object.entries(plData.byGroup)
     .filter(([, v]) => v[field] > 0)
     .sort((a, b) => b[1][field] - a[1][field]);
 
@@ -1161,42 +1146,17 @@ export default function DashboardView({
       <div className="dash-bottom-stack">
       {/* Results */}
       <div className="dashboard-section">
-        {/* Header on the P&L columns (8g | 8g | 17g): title in col 1, Reset
-            right-aligned in col 2 (14-18g) — or Confirm 12-18g + Cancel
-            19-25g — and the currency flush right with the Net card (30-36g).
-            Every control is a 3r block with its label seated on +2r. */}
+        {/* Header on the P&L columns (8g | 8g | 17g): title in col 1 and the currency flush
+            right with the Net card (30-36g). Reset lives in Results now, scoped to one bankroll
+            behind a typed confirmation (components/ResetResults.jsx). */}
         <div className="dashboard-section-header dash-results-header">
           <div className="dashboard-section-title">Results</div>
-          {plData.count > 0 && onResetResults && (
-            resetConfirmOpen ? (
-              <>
-                <button
-                  type="button"
-                  className="dash-results-btn dash-results-reset dash-results-confirm"
-                  onClick={() => { onResetResults(); setResetConfirmOpen(false); }}
-                ><span>Confirm</span></button>
-                <button
-                  type="button"
-                  className="dash-results-btn dash-results-cancel"
-                  onClick={() => setResetConfirmOpen(false)}
-                ><span>Cancel</span></button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="dash-results-btn dash-results-reset"
-                onClick={() => setResetConfirmOpen(true)}
-                title="Clear all logged results"
-              ><span>Reset</span></button>
-            )
-          )}
           {plData.count > 0 && dashRates && (
             <label className="dash-results-right dash-results-currency">
               <span aria-hidden="true">
-                {dashCurrency === 'NATIVE' ? 'Native' : `${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
+                {`${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
               </span>
               <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
-                <option value="NATIVE">Native</option>
                 {Object.keys(CURRENCY_CONFIG).map(c => (
                   <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
                 ))}
@@ -1210,20 +1170,23 @@ export default function DashboardView({
         {plData.count > 0 ? (
           <>
           <div className="dash-pl-grid">
-            {(() => { const fmtPl = (v) => formatCurrencyAmount(v, dashCurrency === 'NATIVE' ? 'USD' : dashCurrency); return (<>
-            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}>
+            {/* A figure that cannot be converted yet (mixed currencies, rates still loading) is a
+                dash, never a part-total. */}
+            {(() => { const fmtPl = (v) => (v == null ? '\u2014' : formatCurrencyAmount(v, dashCurrency)); return (<>
+            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}
+              title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
               {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
               <span className="dash-pl-line">
-                <span className="dash-pl-value">{fmtPl(plData.invested)}</span>
+                <span className="dash-pl-value">{fmtPl(plData.cost)}</span>
                 <span className="dash-pl-label">Buy-ins &#9662;</span>
               </span>
               {plDropdown === 'buyins' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('invested').length)} onClick={e => e.stopPropagation()}>
-                  {plRows('invested')
+                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cost').length)} onClick={e => e.stopPropagation()}>
+                  {plRows('cost')
                     .map(([venue, v]) => (
                       <div key={venue} className="dash-pl-dropdown-row">
                         <span className="dash-pl-dropdown-venue">{venue}</span>
-                        <span className="dash-pl-dropdown-amount">{fmtPl(v.invested)}</span>
+                        <span className="dash-pl-dropdown-amount">{fmtPl(v.cost)}</span>
                       </div>
                     ))
                   }
@@ -1231,18 +1194,19 @@ export default function DashboardView({
                 document.body
               )}
             </button>
-            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}>
+            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}
+              title={plData.unconverted ? 'Waiting for exchange rates' : undefined}>
               <span className="dash-pl-line">
-                <span className="dash-pl-value">{fmtPl(plData.cashed)}</span>
+                <span className="dash-pl-value">{fmtPl(plData.cash)}</span>
                 <span className="dash-pl-label">Cashes &#9662;</span>
               </span>
               {plDropdown === 'cashes' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cashed').length)} onClick={e => e.stopPropagation()}>
-                  {plRows('cashed')
+                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cash').length)} onClick={e => e.stopPropagation()}>
+                  {plRows('cash')
                     .map(([venue, v]) => (
                       <div key={venue} className="dash-pl-dropdown-row">
                         <span className="dash-pl-dropdown-venue">{venue}</span>
-                        <span className="dash-pl-dropdown-amount">{fmtPl(v.cashed)}</span>
+                        <span className="dash-pl-dropdown-amount">{fmtPl(v.cash)}</span>
                       </div>
                     ))
                   }
@@ -1252,12 +1216,14 @@ export default function DashboardView({
             </button>
             <div className="dash-pl-card dash-pl-card--net">
               <span className="dash-pl-line">
-                <span className={`dash-pl-value ${plData.net >= 0 ? 'positive' : 'negative'}`}>
-                  {plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
+                <span className={`dash-pl-value ${plData.net == null ? '' : plData.net >= 0 ? 'positive' : 'negative'}`}>
+                  {plData.net != null && plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
                 </span>
                 <span className="dash-pl-label">Net</span>
-                <span className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
-                  {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
+                {/* No ROI without a spend to divide by: a dash, never 0%. */}
+                <span className={`dash-pl-roi ${plData.roi == null ? '' : plData.roi >= 0 ? 'pos' : 'neg'}`}
+                  title={plData.roi == null ? (plData.unconverted ? 'Waiting for exchange rates' : 'No buy-ins to measure against') : undefined}>
+                  {plData.roi == null ? '\u2014' : `${plData.roi >= 0 ? '+' : ''}${plData.roi.toFixed(1)}%`} ROI
                 </span>
               </span>
             </div>

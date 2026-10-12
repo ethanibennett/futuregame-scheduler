@@ -17,7 +17,9 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
-const jwt = require('../node_modules/jsonwebtoken');
+// Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
+// node_modules of its own and finds the checkout's.
+const jwt = require('jsonwebtoken');
 
 const args = process.argv.slice(2);
 const base = (args.find(a => /^https?:/.test(a)) || process.env.CHECK_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -272,6 +274,21 @@ function scan(rootSel) {
       await p.locator('.tx-trip-row').first().click({ timeout: 4000 });
     });
   } catch (e) { console.log(`  (expenses views skipped: ${e.message.split('\n')[0]})`); }
+
+  // Results > Delete results (components/ResetResults.jsx) at the foot of the list: its sentence
+  // wraps over 2r lines; closed, then open with the phrase typed.
+  try {
+    await openResults();
+    await p.locator('.rr').first().waitFor({ timeout: 4000 });
+    await p.evaluate(() => document.querySelector('.rr').scrollIntoView({ block: 'center' }));
+    await p.waitForTimeout(500);
+    await run('results reset', '.rr');
+    await p.locator('.rr .bk-btn--danger').first().click({ timeout: 4000 });
+    await p.waitForTimeout(300);
+    await p.locator('.rr-input').fill(await p.locator('.rr-label b').innerText());
+    await p.waitForTimeout(300);
+    await run('results reset (open)', '.rr');
+  } catch (e) { console.log(`  (results reset skipped: ${e.message.split('\n')[0]})`); }
 
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {

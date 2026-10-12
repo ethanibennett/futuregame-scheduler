@@ -14,6 +14,9 @@ import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.j
 import useBankrolls from '../hooks/useBankrolls.js';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
+import ResetResults from './ResetResults.jsx';
+import { resetScope } from '../utils/reset-results.js';
+import { resultMoney } from '../utils/home.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind } from '../hooks/useLiveCashSession.js';
@@ -165,8 +168,8 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
   const fmt = (val) => formatCurrencyAmount(val, to);
   const fmtSigned = (val) => { const c = cv(val); return (c >= 0 ? '+' : '') + formatCurrencyAmount(c, to); };
 
-  const totalCost = (entry.buyin || 0) * (entry.num_entries || 1);
-  const profit = (entry.cash_amount || 0) - totalCost;
+  // The ledger's rule (utils/home.js): a cash counts only when the entry cashed.
+  const { cost: totalCost, net: profit } = resultMoney(entry);
   const poyEligible = isPOYEligible(entry);
   const poyPoints = poyEligible
     ? calculatePOYPoints(entry.buyin, entry.finish_place, entry.total_entries, !!entry.cashed, entry.event_name)
@@ -271,7 +274,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, myActiveUpdates, isAdmin, token }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
@@ -315,7 +318,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     const poyScores = [];
     for (const e of trackingData) {
       const from = nativeCurrency(e.venue);
-      const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
+      // Native is per row; a total of euros and dollars is in no currency, so it sums in USD
+      // (which fmtStat labels it).
+      const to = displayCurrency === 'NATIVE' ? 'USD' : displayCurrency;
       const cost = (e.buyin || 0) * (e.num_entries || 1);
       totalBuyins += convertAmount(cost, from, to, exchangeRates);
       if (e.cashed) { totalCashes += convertAmount(e.cash_amount || 0, from, to, exchangeRates); eventsCashed++; }
@@ -541,6 +546,20 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           />
         ))
       )}
+
+      {/* Delete results: the bankroll on show only, typed confirmation (moved off the home). */}
+      {onResetResults && trackingData.length > 0 && (() => {
+        const scope = resetScope(bk.selected, { bankrolls: bk.bankrolls, enabled: bk.enabled });
+        return (
+          <ResetResults
+            key={String(scope.key)}
+            count={trackingData.length}
+            imported={trackingData.reduce((n, e) => n + (Number(e.imported) ? 1 : 0), 0)}
+            scope={scope}
+            onReset={onResetResults}
+          />
+        );
+      })()}
 
       {showShareMenu && (
         <ShareMenu

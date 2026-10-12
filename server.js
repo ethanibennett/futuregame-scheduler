@@ -5984,10 +5984,14 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
   try {
     const bk = bankrolls.filterFromQuery(db, req.user.id, req.query.bankroll, 'te.bankroll_id');
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
+    // property: the room, for a venue strip on a series VENUE_MAP does not curate (getVenueInfo).
+    // imported: the row came from a CSV import (lib/bankroll-import.js), so Results' reset can say
+    // how much imported history it would delete.
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin,
-             t.game_variant, t.venue, t.is_satellite, t.total_entries
+             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries,
+             CASE WHEN t.source_pdf = 'bankroll-import' THEN 1 ELSE 0 END AS imported
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id
       WHERE te.user_id = ?${bk.sql}
@@ -6083,25 +6087,53 @@ app.delete('/api/tracking/:entryId', authenticateToken, requireRegistered, async
   }
 });
 
-// Bulk-clear every tracking entry for the caller — the Dashboard "Reset"
-// button. The client has called this since a929d70 but the route was never
-// added, so it 404'd and surfaced as "Failed to reset results".
-// Returns { count } because the client reports how many were cleared.
+// Bulk-delete the caller's results — Results' "Delete results" (components/ResetResults.jsx),
+// behind a typed confirmation. It used to sit on the home and wipe every result in every
+// bankroll, imported history included, after one inline confirm; now it is always SCOPED:
+//   ?bankroll=main|<id>   that bankroll's results (the shared filter, lib/bankrolls.js: 404 for a
+//                         bankroll that is not the caller's)
+//   ?all=true             every bankroll's — only when asked for in so many words
+// Neither (or ?bankroll=all without all=true) is a 400 and deletes nothing.
+//   ?expect=<n>           the count the confirmation showed ("type DELETE 214 RESULTS"). When the
+//                         scope now holds a different number (a result logged on another device
+//                         meanwhile) it is a 409 with the current count, and nothing is deleted.
+// Cash sessions, expenses, deposits and transfers are other tables and are never touched.
+// Returns { count, scope } because the client reports how many were deleted.
 app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, res) => {
   try {
-    const countStmt = db.prepare('SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?');
-    countStmt.bind([req.user.id]);
+    const q = req.query || {};
+    const all = q.all === 'true' || q.all === '1';
+    const raw = q.bankroll;
+    const scoped = raw !== undefined && raw !== '' && raw !== bankrolls.ALL;
+    if (all && scoped) return res.status(400).json({ error: 'Pass a bankroll or all=true, not both' });
+    if (!all && !scoped) {
+      return res.status(400).json({ error: 'Say which results to delete: ?bankroll=main or a bankroll id, or ?all=true for every bankroll' });
+    }
+    const bk = all ? { sql: '', params: [] } : bankrolls.filterFromQuery(db, req.user.id, raw, 'bankroll_id');
+    if (bk.error) return res.status(bk.status).json({ error: bk.error });
+    const scope = all ? 'all' : (bk.ref.kind === bankrolls.MAIN ? bankrolls.MAIN : String(bk.ref.id));
+
+    const countStmt = db.prepare(`SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?${bk.sql}`);
+    countStmt.bind([req.user.id, ...bk.params]);
     countStmt.step();
     const count = countStmt.getAsObject().n || 0;
     countStmt.free();
 
+    if (q.expect !== undefined) {
+      const want = Number(q.expect);
+      if (!/^\d{1,9}$/.test(String(q.expect)) || !Number.isInteger(want)) return res.status(400).json({ error: 'expect must be a whole number' });
+      if (want !== count) {
+        return res.status(409).json({ error: `There are now ${count} result${count === 1 ? '' : 's'} to delete, not ${want}. Nothing was deleted.`, count, scope });
+      }
+    }
+
     // Only touch the DB when there is something to remove, so a no-op reset
     // does not rewrite the database file.
     if (count > 0) {
-      db.run('DELETE FROM tracking_entries WHERE user_id = ?', [req.user.id]);
+      db.run(`DELETE FROM tracking_entries WHERE user_id = ?${bk.sql}`, [req.user.id, ...bk.params]);
       await saveDatabase();
     }
-    res.json({ message: 'Results cleared', count });
+    res.json({ message: 'Results deleted', count, scope });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
