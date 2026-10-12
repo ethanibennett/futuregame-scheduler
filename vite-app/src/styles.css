@@ -2634,7 +2634,7 @@
        so a percentage tracks it at every size (2px at 28px, 3.1px at 44px).
        A fixed 2px clipped a squarer corner than the card, and the rim light
        below then traced that wrong corner over the transparent pixels. */
-    .card-row img { height:calc(var(--subrow) * 3.5); border-radius:7.1%; box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.30); }
+    .card-row img { height:calc(var(--subrow) * 3.5); border-radius:7.1%; } /* no white outline (owner, 2026-10-11: "get rid of the white boxes around each card") */
     /* One back, and it finally reads the setting.
        REPLAYER_CARD_BACKS offered six options and consumed none of them: the
        value round-tripped through state and never reached a class or a
@@ -3054,7 +3054,7 @@
     .replayer-settings-thumb .thumb-felt i {
       width: calc(var(--subrow) * 0.875); height: calc(var(--subrow) * 1.25); border-radius: calc(var(--subrow) * 0.25); display: block;
       background: linear-gradient(180deg,#7a1030,#5c0018);
-      box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,236,200,0.4), 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.5);
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.5); /* no lit-edge ring: the board cards lost theirs */
     }
     .replayer-settings-thumb .thumb-back {
       width: calc(var(--subrow) * 7.5); height: calc(var(--subrow) * 4.75); border-radius: var(--r-object, calc(var(--subrow) * 0.75));
@@ -5336,7 +5336,8 @@
       height: var(--card-h);
       filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.72))
               drop-shadow(var(--cast-x) var(--cast-y) var(--cast-blur) rgba(0,0,0,0.38));
-      box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,236,200,0.34);
+      /* No lit-edge ring (owner, 2026-10-11): a box-shadow follows the <img>'s BOX, not the
+         card's rounded artwork inside it, so it drew a pale square frame around every card. */
     }
     .replayer-board-area .card-row .card-unknown,
     .replayer-board-area .card-row .card-placeholder {
@@ -5479,7 +5480,7 @@
          — still clearly stock rather than a join, with most of the excess
          gone. The outline stays at 0.30 because it is shared with the splayed
          fan and the board, and neither was the complaint. */
-      box-shadow: calc(var(--subrow) * -0.125) 0 0 rgba(255,255,255,0.26), 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.30);
+      box-shadow: calc(var(--subrow) * -0.125) 0 0 rgba(255,255,255,0.26); /* the seam only: the white outline went (owner, 2026-10-11) */
     }
     /* Seven, because seven is what a stud hand holds. The ladder stopped at
        five, so a stud row's sixth and seventh cards fell to `z-index:auto` and
@@ -5513,7 +5514,7 @@
          every frame — while the board two rules up, the felt's own inset and
          the rail's highlight all said the light is above and in front. */
       filter: drop-shadow(var(--cast-x) calc(var(--cast-y) * 0.6) calc(var(--cast-blur) * 0.6) rgba(0,0,0,0.5));
-      box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.30);
+      /* no white outline around the card (owner, 2026-10-11) */
     }
     /* 31.4px = 44 x (180/252), matching the faces they sit beside. */
     .replayer-seat-cards .card-row .card-unknown,
@@ -6112,7 +6113,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 0;
       font-family: var(--serif); font-weight: var(--fw-bold);
-      box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.30);
+      /* no white outline around the card (owner, 2026-10-11) */
       filter: drop-shadow(0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.125) rgba(0,0,0,0.6)) drop-shadow(0 calc(var(--subrow) * 0.5) calc(var(--subrow) * 0.75) rgba(0,0,0,0.32));
       border: none;
       line-height: 1;
@@ -6624,7 +6625,7 @@
     .replayer-dead-strip-cards > * {
       flex: none; height: calc(var(--subrow) * 4); width: calc(var(--subrow) * 2.857);
       border-radius: 7.1%; opacity: 0.85;
-      box-shadow: 0 0 0 calc(var(--subrow) * 0.125) rgba(255,255,255,0.30);
+      /* no white outline around the card (owner, 2026-10-11) */
     }
     .replayer-dead-strip-cards > *:not(:first-child) { margin-left: calc(var(--gu) * var(--dead-ml, 0.2214)); }
     .replayer-fullbleed .replayer-seat-info { min-width: calc(var(--gu) * 8); box-sizing: border-box; }

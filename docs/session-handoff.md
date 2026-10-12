@@ -564,6 +564,15 @@ again. If builds break and no push arrives, check `pm2 list` first.
 
 ## Waiting on Ethan
 
+0. **Bankroll tracker decisions (asked 2026-10-11; re-ask at the start of a session until answered).**
+   Current behaviour → recommendation: (1) Overview opens on YTD → keep; (2) graph defaults to
+   Profit → keep; (3) "below the peak" counts withdrawals → change to results only; (4) dashboard
+   bankroll ↔ Reports bankroll filter linked one way → link both ways; (5) Results › Cash opens on
+   the live screen during a session → keep; (6) month headers / per-hour muted → keep; (7) live bar
+   above the nav → keep; (8) one live session at a time → keep; (9) move-up/down cash rule not built
+   → derive the big blind from the stakes text ("2/5" → $5); (10) trips count tagged expenses only →
+   use the trip's date range plus tags; (11) imported non-USD results at today's rate → the rate on
+   each result's date (needs a historical-rates source, e.g. ECB data).
 1. **Univers 500/600 woff2** into `vite-app/public/fonts/`. Only he can obtain
    them (Linotype licence). Unblocks audit item 6 — emphasis currently has to
    jump 400→700 with no middle tier.
