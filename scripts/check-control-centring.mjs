@@ -82,7 +82,10 @@
 //            name, a theme preview over its name) — a small layout, not a label. A symbol set as
 //            text over a label ("✕" over "FOLD") is an icon, not a block: that face is a label
 //   strip    STRIPS (venue bands): text centred both ways, along and across the band; the band
-//            is the card's edge, so its box is reported, not held to the grid
+//            is the card's edge, so its box is reported, not held to the grid. The band is the
+//            colour the eye sees: where a neighbour paints on in the strip's colour (a saved
+//            card's venue-colour inset ring on .cal-event-row-content), it is the strip plus that
+//            run, found by walking outward across the strip with elementsFromPoint
 //   layer    an opaque fixed sheet / panel / dropdown whose controls were measured on its own
 //            lines (see (a)): its left edge on a g line and its width whole g, nothing else
 //
@@ -818,7 +821,7 @@ function scan(cfg) {
   };
   const out = [];
   let gid = (window.__guardGid || 0);
-  const record = (el, kind0, how0) => {
+  const record = (el, kind0, how0, band) => {
     let kind = kind0, how = how0;
     const cs = getComputedStyle(el);
     const b = el.getBoundingClientRect();
@@ -890,7 +893,9 @@ function scan(cfg) {
       view, kind, how, el: desc(el), cls: clsList(el), tag: el.tagName.toLowerCase(),
       text: ink.texts.join(' ').slice(0, 40) || (needPx ? needPx.text.slice(0, 40) : '') || (el.getAttribute('aria-label') || el.title || '').slice(0, 40),
       ...geo, geoFail,
-      box: { left: +b.left.toFixed(4), top: +b.top.toFixed(4), width: +b.width.toFixed(4), height: +b.height.toFixed(4) },
+      box: !band || band === b ? { left: +b.left.toFixed(4), top: +b.top.toFixed(4), width: +b.width.toFixed(4), height: +b.height.toFixed(4) }
+        : { left: +band.left.toFixed(4), top: +band.top.toFixed(4), width: +band.width.toFixed(4), height: +band.height.toFixed(4) },
+      ...(band && band !== b ? { elBox: { left: +b.left.toFixed(4), top: +b.top.toFixed(4), width: +b.width.toFixed(4), height: +b.height.toFixed(4) }, bandFrom: band.from } : {}),
       textU: r2(ink.textU), figU: r2(ink.figU), inlineAxis: ink.inlineAxis,
       ctx: (() => { const p = el.parentElement; return p ? desc(p) : ''; })(),
       anc: (() => { const out = []; for (let a = el.parentElement; a && out.length < 6 && a !== document.body; a = a.parentElement) { const c = clsList(a).filter(k => !/^(open|active|selected|is-\w+|tab-active|snap-g\S*)$/.test(k)); if (c.length) out.push(c[0]); } return out; })(),
@@ -911,12 +916,69 @@ function scan(cfg) {
       : el.tagName === 'SELECT' ? 'field' : 'control';
     record(el, kind, src.get(el));
   }
+  // A strip's BAND is the colour the eye sees, which can run past the element: a saved card's
+  // content carries a venue-colour border against the strip (.cal-event-row-content), so the band
+  // is the strip plus that border, and the strip's padding on that side is there to centre the
+  // name in the whole band. Walk outward from each edge across the strip, at a quarter, half and
+  // three quarters along it; while the first thing that paints at the point (a border on the side
+  // facing the strip, else a background) is the strip's colour, the band goes on. The smallest
+  // reach of the three is taken. The name is centred in the band; the element's box is reported.
+  const clear = (c) => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+  const paintAt = (x, y, self) => {
+    for (const e of document.elementsFromPoint(x, y)) {
+      if (e === self || e.closest(excl)) continue;
+      const cs = getComputedStyle(e), r0 = e.getBoundingClientRect();
+      for (const [side, inside] of [['Left', x - r0.left], ['Right', r0.right - x], ['Top', y - r0.top], ['Bottom', r0.bottom - y]]) {
+        const bw = parseFloat(cs['border' + side + 'Width']) || 0;
+        if (bw > 0 && cs['border' + side + 'Style'] !== 'none' && inside >= 0 && inside < bw && !clear(cs['border' + side + 'Color'])) return { color: cs['border' + side + 'Color'], by: desc(e) + ' border-' + side.toLowerCase() };
+      }
+      // An inset ring (box-shadow 0 0 0 N inset): a border that takes no room — the saved card's
+      // venue-colour outline on .cal-event-row-content is one.
+      const edge = Math.min(x - r0.left, r0.right - x, y - r0.top, r0.bottom - y);
+      for (const sh of (cs.boxShadow || 'none').split(/,(?![^(]*\))/)) {
+        if (!/inset/.test(sh)) continue;
+        const col = (sh.match(/rgba?\([^)]*\)/) || [''])[0], n = sh.replace(col, '').match(/-?[\d.]+px/g) || [];
+        const [ox, oy, blur, spread] = n.map(parseFloat);
+        if (!ox && !oy && !blur && spread > 0 && edge >= 0 && edge < spread && !clear(col)) return { color: col, by: desc(e) + ' inset ring' };
+      }
+      if (!clear(cs.backgroundColor)) return { color: cs.backgroundColor, by: desc(e) + ' background' };
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') return { color: 'image', by: desc(e) };
+    }
+    return null;
+  };
+  const rgbKey = (c) => (String(c).match(/[\d.]+/g) || []).slice(0, 3).join(',');
+  const paintedBand = (el, b) => {
+    const bg = getComputedStyle(el).backgroundColor;
+    if (clear(bg)) return b;
+    const key = rgbKey(bg), vertical = b.height > b.width, step = 0.25, max = g;
+    const reach = (dir) => {
+      let best = Infinity, by = '';
+      for (const f of [0.25, 0.5, 0.75]) {
+        let d = 0;
+        for (; d < max; d += step) {
+          const pt = vertical ? [dir < 0 ? b.left - d - step / 2 : b.right + d + step / 2, b.top + b.height * f]
+            : [b.left + b.width * f, dir < 0 ? b.top - d - step / 2 : b.bottom + d + step / 2];
+          const hit = paintAt(pt[0], pt[1], el);
+          if (!hit || rgbKey(hit.color) !== key) break;
+          by = hit.by;
+        }
+        best = Math.min(best, d);
+      }
+      return { d: best >= step ? best : 0, by };
+    };
+    const lo = reach(-1), hi = reach(1);
+    if (!lo.d && !hi.d) return b;
+    const out = vertical ? { left: b.left - lo.d, top: b.top, width: b.width + lo.d + hi.d, height: b.height }
+      : { left: b.left, top: b.top - lo.d, width: b.width, height: b.height + lo.d + hi.d };
+    out.from = [lo.d ? `${lo.by} ${lo.d.toFixed(2)}px` : '', hi.d ? `${hi.by} ${hi.d.toFixed(2)}px` : ''].filter(Boolean).join('; ');
+    return out;
+  };
   for (const el of document.querySelectorAll(STRIPS.join(','))) {
     if (el.closest(excl)) continue;
     const b = el.getBoundingClientRect();
     if (b.width < 1 || b.height < 1 || !onScreen(b) || !visible(el) || clippedAway(el, b)) continue;
     if (coverage(el, b).covered >= 0.9) continue;
-    record(el, 'strip', 'strip');
+    record(el, 'strip', 'strip', paintedBand(el, b));
   }
   // Each layer that measured controls on its own lines: its left edge and width on the shell's.
   for (const L of layersUsed) {
@@ -1833,7 +1895,7 @@ function finalize(c) {
   const fmt = (c) => {
     const src = c.inkFrom && c.inkFrom !== 'metrics' && c.inkFrom !== 'metrics+pixels' ? ` (${c.inkFrom})` : '';
     const rule = c.rules && c.rules.length ? c.rules[c.rules.length - 1].at : '';
-    const extra = c.kind === 'strip' ? ` along ${c.along} across ${c.across}` : '';
+    const extra = c.kind === 'strip' ? ` along ${c.along} across ${c.across}${c.bandFrom ? ` (band runs on into ${c.bandFrom})` : ''}` : '';
     return `  [${c.view.split(' (')[0]}] ${c.fail.length ? 'FAIL ' + c.fail.join(',') : 'ok'}  ${c.kind !== 'control' ? c.kind + ' ' : ''}${c.boxless ? '(boxless) ' : ''}${c.el} "${c.text}"  ${c.w}g x ${c.h}r @ x${c.x}g y${c.y}r  ink dx ${c.dx} dy ${c.dy}${extra}${src}  in ${c.ctx}${rule ? '  rule ' + rule : ''}${c.jsx ? '  jsx ' + c.jsx : ''}`;
   };
   if (!quiet || dump) for (const c of show) console.log(fmt(c));
@@ -1862,7 +1924,7 @@ function finalize(c) {
       rules: (c.rules || []).slice(-4), labelEl: c.labelEl || null, labelRule: c.labelRules && c.labelRules.length ? c.labelRules[c.labelRules.length - 1].at : null,
       inlineStyle: c.inlineStyle || null, labelInlineStyle: c.labelInlineStyle || null, jsx: c.jsx || null, how: c.how, boxless: !!c.boxless,
       dx: c.dx, dy: c.dy, along: c.along, across: c.across, inkFrom: c.inkFrom || 'metrics',
-      geometry: { wG: c.w, hR: c.h, xG: c.x, yR: c.y, box: c.box, ink: c.ink }, ctx: c.ctx,
+      geometry: { wG: c.w, hR: c.h, xG: c.x, yR: c.y, box: c.box, ink: c.ink, ...(c.elBox ? { elementBox: c.elBox, bandFrom: c.bandFrom } : {}) }, ctx: c.ctx,
     }));
     fs.writeFileSync(jsonOut, JSON.stringify({ width: W, height: H, desktop, grid: grid && { g: grid.g, r: grid.r, ox: grid.ox, oy: grid.oy }, visited, unreachable, notes, failures, rows, inkVerify: verifyInk ? pxVerify : undefined }, null, 1));
   }
