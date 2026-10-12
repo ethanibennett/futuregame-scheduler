@@ -700,3 +700,189 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
   margin-left: calc(var(--bw-2) * -0.5);
   background: var(--text);
 }
+
+/* ==================================================================
+   Step 5: Up Next resolves its plans (utils/home-upnext.js), the
+   running cash session's card (HomeCashCard.jsx; admins) and the
+   prompt for an empty schedule (HomeNothingNext.jsx).
+
+   GRID.
+     Plan tags  the card's tag row (3r pills, a 2g gap, 1r between
+                wrapped rows): each condition a pill of whole g
+                (snap-g: its label + 1g a side, rounded up), the label
+                centred both ways. Waiting ('If bust #12') is the old
+                Conditional's grey; on ('On: busted #12') the brand's
+                quiet fill; off ('Off: busted #12') a hairline ring.
+                An off card dims all but its tags, which say why (as a
+                completed one keeps its 'Event Completed' line).
+     Cash card  the Up Next card's own anatomy, every box from its
+                rules: the 3r strip (the room), the name on its 3r
+                line and the meta on its 2r one, the three 9g x 6r
+                stat boxes (Session | In play | Stack), then a 4r
+                action row on the status row's 15g | 1g | 15g (Update
+                stack | Cash out). Update stack turns that row into
+                the stack entry: a 15g x 4r field | Save 7g | Cancel
+                7g, 1g between (3..18 | 19..26 | 27..34g of the card).
+     Nothing    35g x 5r card, the bankroll line's anatomy: a 2xs caps
+     next       label seated on +2r over its line (md bold) on +4r,
+                1g in from the left; a Schedule pill (whole g, snap-g,
+                x 3r at +1..+4r) 1g in from the right.
+   ================================================================== */
+
+/* ── Plan tags ── */
+.dashboard-view.home .dash-event-tag.plan {
+  flex: 0 0 auto;
+  padding: 0 var(--gu);
+}
+/* The trailing letter-space of the caps, cancelled by the same indent, so the ink centres. */
+.dashboard-view.home .dash-event-tag.plan .dash-t { text-indent: var(--track-caps); }
+.dashboard-view.home .dash-event-tag.plan.is-pending {
+  background: var(--surface2);
+  color: var(--text-muted);
+}
+.dashboard-view.home .dash-event-tag.plan.is-on {
+  background: var(--brand-quiet);
+  color: var(--brand-ink, var(--brand));
+}
+.dashboard-view.home .dash-event-tag.plan.is-off {
+  background: none;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+}
+/* An off plan: the card dims part by part, its tags at full strength. */
+.dashboard-view.home .dash-event-card.plan-off > .dash-venue-strip,
+.dashboard-view.home .dash-event-card.plan-off .dash-card-content > :not(.dash-event-tags) {
+  opacity: var(--state-past);
+  filter: grayscale(0.6);
+}
+
+/* ── The cash card ── */
+.dashboard-view.home .hm-cash-card .dash-stat-value.is-empty { color: var(--text-muted); }
+.hm-cash-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--subrow) * 4);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.dash-event-card .hm-cash-btn .dash-t { text-indent: var(--track-caps); }
+.hm-cash-btn--brand { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+.hm-cash-btn:disabled { opacity: var(--state-disabled); cursor: default; }
+.hm-cash-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-cash-btn:not(:disabled):hover { background: var(--hover-overlay); box-shadow: inset 0 0 0 var(--bw-hair) var(--text-muted); }
+  .hm-cash-btn--brand:not(:disabled):hover { background: var(--brand); box-shadow: inset 0 0 0 var(--bw-2) var(--brand-line); }
+}
+.hm-cash-entry {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 7) calc(var(--gu) * 7);
+  column-gap: var(--gu);
+  margin: 0;
+}
+.hm-cash-input {
+  display: block;
+  width: 100%;
+  height: calc(var(--subrow) * 4);
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  font-variant-numeric: var(--num-tabular);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.hm-cash-input::placeholder { color: var(--text-muted); font-weight: var(--fw-regular); }
+.hm-cash-input:focus-visible { outline: none; box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+
+/* ── Nothing scheduled ── */
+.hm-next-empty {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hm-next-empty:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); }
+}
+.hm-next-empty:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.hm-next-col { display: block; flex: 1 1 auto; min-width: 0; }
+.hm-next-k { --h: 2; --k: 2; color: var(--text-muted); }
+.hm-next-v { --h: 2; --k: 2; color: var(--text); }
+.hm-next-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0 var(--gu);
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--brand-quiet);
+  color: var(--brand-ink, var(--brand));
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+}
+/* A number field with no spinner: the stack is typed. */
+.hm-cash-input::-webkit-inner-spin-button,
+.hm-cash-input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+.hm-cash-input { -moz-appearance: textfield; }
+
+/* ── The Up Next carousel: slides stacked, not in a row ──
+   The track is one grid cell (as tall as the tallest card, as the flex row was); every slide sits
+   in it, moved sideways by (its index − the shown index) × its own width. The card shown is at 0,
+   exactly where the first one is, at any index: the old flex row of 35g slides, translated by
+   −index × 100%, gathered WebKit's sub-pixel layout rounding a slide at a time (0.057px a card at
+   402, 0.115px at 1440) and put the 24th card 0.11g off its line. A drag moves the track (the
+   slides keep their offsets); the release animates the track back to 0 and the slides to their new
+   offsets on the same curve, so the two add up to one move. */
+.dashboard-view.home .dash-carousel-track {
+  display: grid;
+  grid-template-columns: 100%;
+}
+.dashboard-view.home .dash-carousel-slide {
+  grid-area: 1 / 1;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.dashboard-view.home .dash-carousel-track.swiping .dash-carousel-slide { transition: none; }

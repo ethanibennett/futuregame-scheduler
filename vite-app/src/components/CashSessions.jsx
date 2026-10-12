@@ -218,9 +218,11 @@ function StartForm({ bk, rooms, sessions, onStart, onCancel, busy }) {
 }
 
 // ── The running session, focused ────────────────────────────────────────────
-function LiveScreen({ session, stacks, skew, busy, onStack, onUnstack, onRebuy, onEnd }) {
+function LiveScreen({ session, stacks, skew, busy, onStack, onUnstack, onRebuy, onEnd, endAt = null }) {
   useTick(true);
-  const [panel, setPanel] = useState(null); // null | 'rebuy' | 'end'
+  const [panel, setPanel] = useState(endAt ? 'end' : null); // null | 'rebuy' | 'end'
+  // The home's Cash out (its cash card) opens this screen with the cash-out panel open.
+  useEffect(() => { if (endAt) setPanel('end'); }, [endAt]);
   const [stack, setStack] = useState('');
   const [amount, setAmount] = useState('');
   const [cashOut, setCashOut] = useState('');
@@ -483,8 +485,9 @@ function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete }) {
 
 // ── The view ────────────────────────────────────────────────────────────────
 // intent: what the home's Log menu or Last result card asked for (App's resultsIntent, handed on by
-// TrackingView): { kind: 'cash-add' | 'cash-start' | 'cash-live' | 'cash-session', id? }. Opened
-// once, then reported done.
+// TrackingView): { kind: 'cash-add' | 'cash-start' | 'cash-live' | 'cash-end' | 'cash-session', id? }.
+// Opened once, then reported done. 'cash-end' is the home cash card's Cash out: the live screen with
+// its cash-out panel open.
 export default function CashSessionsView({ token, bk, intent = null, onIntentDone }) {
   const toast = useToast();
   const { session: live, stacks: liveStacks, skew } = useLiveCashSession({ enabled: true, token });
@@ -499,6 +502,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [venues, setVenues] = useState([]);
+  const [endAt, setEndAt] = useState(null); // the home's Cash out: when it asked
 
   const call = useCallback(async (method, path, body) => {
     const res = await fetch(`${API_URL}/cash-sessions${path}`, {
@@ -552,13 +556,14 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   }, [detailId, call]);
   const stacksOf = (id) => (detailStacks.id === id ? detailStacks.stacks : []);
 
-  const go = (next) => { setScreen(next); setConfirmDelete(false); };
+  const go = (next) => { setScreen(next); setConfirmDelete(false); setEndAt(null); };
   useEffect(() => {
     if (!intent) return;
     const k = intent.kind;
     if (k === 'cash-add') go('add');
     else if (k === 'cash-start') go(live ? 'live' : 'start');
     else if (k === 'cash-live') go('live');
+    else if (k === 'cash-end') { go('live'); setEndAt(intent.at || Date.now()); }
     else if (k === 'cash-session' && intent.id) go({ detail: intent.id });
     if (onIntentDone) onIntentDone();
   }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -611,7 +616,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
   if (shown === 'live' && live) {
     head = <>{back}<h2 className="cs-t cs-title cs-title--live"><span className="cs-dot" aria-hidden="true">●</span> Live</h2></>;
     body = <LiveScreen key={live.id} session={live} stacks={liveStacks || []} skew={skew} busy={busy}
-      onStack={stackUpdate} onUnstack={unstack} onRebuy={rebuy} onEnd={end} />;
+      onStack={stackUpdate} onUnstack={unstack} onRebuy={rebuy} onEnd={end} endAt={endAt} />;
   } else if (shown === 'add' || shown === 'start' || editId) {
     head = <>{back}<h2 className="cs-t cs-title">{shown === 'start' ? 'Start a session' : editId ? 'Edit session' : 'Add a session'}</h2></>;
     body = shown === 'start'

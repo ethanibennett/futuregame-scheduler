@@ -11,6 +11,8 @@
 //   edge    the bankroll rule's longest pill ('Move up to $2,000+'), and an empty month: no ledger
 //           rows and no results, so the net and the comparison are dashes with their reasons and the
 //           Last result card is its empty state; the schedule's series tags removed (month mode)
+//   empty   nothing on the schedule, nothing in play and no cash session running: Up Next is its one 5r prompt
+//           ("Nothing scheduled" over the week's events near the user)
 
 const day = (off) => {
   const d = new Date();
@@ -53,6 +55,10 @@ export async function stageHome(p, kind) {
     await on('**/api/bankrolls/ledger*', edit((j) => ({ ...j, entries: [] })));
     await on('**/api/tracking', edit(() => []));
     await on('**/api/my-schedule', edit((rows) => (Array.isArray(rows) ? rows.map((e) => ({ ...e, source_pdf: null })) : rows)));
+  } else if (kind === 'empty') {
+    await on('**/api/my-schedule', (r) => r.fulfill({ json: [] }));
+    await on('**/api/live-updates/active', (r) => r.fulfill({ json: [] }));
+    await on('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
   } else {
     throw new Error(`unknown home state ${kind}`);
   }

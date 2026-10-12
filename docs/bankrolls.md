@@ -294,7 +294,10 @@ scroll for 10r of overflow).
 
 **The live bar.** While a session runs, `LiveCashBar` (App.jsx, a 5r bar directly above the bottom nav)
 shows its clock and what is in play on every tab, and Open goes to Results › Cash. It hides on that
-view (which shows the full live card) and on Hands. The session is server-side, so the clock survives
+view (which shows the full live card), on Hands, and on the Dashboard, where the session is the first
+Up Next card instead (`HomeCashCard.jsx`, home step 5: the clock, what is in play and the last stack
+against what was in; Update stack posts a stack update in place, Cash out opens the live screen with
+its cash-out panel open, intent `cash-end`; a tap elsewhere opens the live screen). The session is server-side, so the clock survives
 reloads and other devices; `hooks/useLiveCashSession.js` mirrors it (on mount, on return to the
 foreground, every 5 min) and corrects for clock skew with the server's `now`.
 

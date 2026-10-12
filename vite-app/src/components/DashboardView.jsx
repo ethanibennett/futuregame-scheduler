@@ -2,7 +2,6 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useR
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import ScanTableSheet from './ScanTableSheet.jsx';
-import { FirstRun } from './EmptyState.jsx';
 import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
   formatBuyin, haptic, fmtShortDate,
@@ -14,6 +13,10 @@ import {
 import { API_URL } from '../utils/api.js';
 import { homeCurrency } from '../utils/home.js';
 import { gridGeom } from '../utils/grid-panel.js';
+import { resolveConditions, offLast, planKind } from '../utils/home-upnext.js';
+import useLiveCashSession from '../hooks/useLiveCashSession.js';
+import HomeCashCard from './HomeCashCard.jsx';
+import HomeNothingNext from './HomeNothingNext.jsx';
 import HomeToLog from './HomeToLog.jsx';
 import HomeLastResult from './HomeLastResult.jsx';
 import HomeNumbers from './HomeNumbers.jsx';
@@ -270,10 +273,9 @@ export default function DashboardView({
       }
     }
     swipeDx.current = dx;
+    // The drag moves the whole track; each slide keeps its own offset from the one shown.
     if (trackRef.current) {
-      const len = swipeRef.current || 1;
-      const idx = parseInt(trackRef.current.dataset.idx || '0', 10);
-      const pct = -(idx * 100) + (dx / trackRef.current.parentElement.offsetWidth) * 100;
+      const pct = (dx / trackRef.current.parentElement.offsetWidth) * 100;
       trackRef.current.style.transform = `translateX(${pct}%)`;
     }
   }, []);
@@ -281,15 +283,14 @@ export default function DashboardView({
     if (swipeStart.current === null) return;
     const dx = swipeDx.current;
     swipeStart.current = null;
-    if (trackRef.current) trackRef.current.classList.remove('swiping');
-    const threshold = 40;
-    if (Math.abs(dx) < threshold) {
-      if (trackRef.current) {
-        const idx = parseInt(trackRef.current.dataset.idx || '0', 10);
-        trackRef.current.style.transform = `translateX(${-(idx * 100)}%)`;
-      }
-      return;
+    if (trackRef.current) {
+      trackRef.current.classList.remove('swiping');
+      // Back to rest, animated: on a page turn the slides' own offsets animate at the same time with
+      // the same curve, so the two add up to one smooth move to the next card.
+      trackRef.current.style.transform = 'translateX(0%)';
     }
+    const threshold = 40;
+    if (Math.abs(dx) < threshold) return;
     setSelectedUpNextIdx(i => {
       const len = swipeRef.current || 1;
       return dx < 0 ? Math.min(i + 1, len - 1) : Math.max(i - 1, 0);
@@ -302,6 +303,20 @@ export default function DashboardView({
   }, []);
 
   const todayISO = getToday();
+
+  // The plans on the schedule, resolved (verdict §1(a); utils/home-upnext.js): "If bust #12" turns
+  // on once #12 is over, a branch whose parent went the other way is off ("Off: busted #12"),
+  // dims and sorts last. Read from what the app already has: the results (a satellite's cash is
+  // its seat), the latest live update per event, and the feed to name a parent off the schedule.
+  // PROFIT_THRESHOLD ("If up $X") keeps its label and is never evaluated (owner, 2026-10-12).
+  const resolvedPlans = useMemo(
+    () => resolveConditions(mySchedule, myActiveUpdates, trackingData, { events: tournaments, startOf: parseTournamentTime }),
+    [mySchedule, myActiveUpdates, trackingData, tournaments]);
+
+  // The running cash session (admins, the cash beta): it takes the first card (§1(b)), and the bar
+  // over the nav (LiveCashBar) stays off the home. The store is shared with that bar and the Cash
+  // view, so a stack update here moves them too.
+  const { session: cashSession, stacks: cashStacks, skew: cashSkew } = useLiveCashSession({ enabled: !!(isAdmin && token), token });
 
   // Build bagged events from previous days
   const baggedEvents = useMemo(() => {
@@ -328,12 +343,11 @@ export default function DashboardView({
       .map(t => {
         const isBagged = baggedEvents.some(b => b.id === t.id);
         if (isBagged) return null;
-        const isAnchor = !!t.is_anchor;
-        const hasCondition = !!(t.conditions_json);
-        return { ...t, _type: isAnchor ? 'anchor' : (hasCondition ? 'conditional' : 'normal') };
+        // A plan that came on makes the event a plain one; one still waiting, or off, conditional.
+        return { ...t, _type: planKind(t, resolvedPlans) };
       })
       .filter(Boolean);
-  }, [mySchedule, todayISO, baggedEvents]);
+  }, [mySchedule, todayISO, baggedEvents, resolvedPlans]);
 
   // Active previous-day events
   const activePrevDayEvents = useMemo(() => {
@@ -383,7 +397,9 @@ export default function DashboardView({
     }
     const events = [...baggedEvents, ...activePrevDayEvents];
     if (baggedEvents.length > 0) {
-      events.push(...todayEvents.map(t => ({
+      // With a bag to come back to, today's other events are conditional on it — unless an event
+      // carries its own plan, which says (or will say) for itself whether it is on.
+      events.push(...todayEvents.map(t => (resolvedPlans.has(Number(t.id)) ? t : {
         ...t,
         _type: t._type === 'anchor' ? 'anchor' : 'conditional',
         _conditionalOnBag: true,
@@ -411,7 +427,7 @@ export default function DashboardView({
         && !t.is_restart)
       .map(t => ({
         ...t,
-        _type: t.is_anchor ? 'anchor' : (t.conditions_json ? 'conditional' : 'normal'),
+        _type: planKind(t, resolvedPlans),
         _future: true,
       }))
       .sort((a, b) => {
@@ -420,8 +436,15 @@ export default function DashboardView({
         return ta - tb;
       });
 
-    return [...events, ...later];
-  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard]);
+    // A plan that is off (its parent went the other way) goes to the very end, dimmed.
+    return offLast([...events, ...later], resolvedPlans);
+  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard, resolvedPlans]);
+
+  // The carousel's slides: the running cash session's card first (admins), then the events.
+  const showCash = !!cashSession && !demoStates && !demoCard;
+  const slides = useMemo(
+    () => (showCash ? [{ id: `cash-${cashSession.id}`, _cash: true }, ...whatsNextEvents] : whatsNextEvents),
+    [showCash, cashSession, whatsNextEvents]);
 
   // The section title names the next event's day (owner, 2026-10-11): TODAY or TOMORROW while the
   // carousel shows the first card and that event is today or tomorrow; any later card, or a next
@@ -432,8 +455,9 @@ export default function DashboardView({
     return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
   }, [todayISO]);
   const upNextTitle = (() => {
-    if (!whatsNextEvents.length || Math.min(selectedUpNextIdx, whatsNextEvents.length - 1) !== 0) return 'Up Next';
-    const day = normaliseDate(whatsNextEvents[0].date);
+    if (!slides.length || Math.min(selectedUpNextIdx, slides.length - 1) !== 0) return 'Up Next';
+    if (slides[0]._cash) return 'Today'; // the session running now
+    const day = normaliseDate(slides[0].date);
     return day === todayISO ? 'Today' : day === tomorrowISO ? 'Tomorrow' : 'Up Next';
   })();
   const prevUpNextTitle = useRef(upNextTitle);
@@ -491,7 +515,7 @@ export default function DashboardView({
       const lines = Math.max(1, Math.ceil(text.getBoundingClientRect().height / (subrow * 3) - 0.01));
       el.style.minHeight = `calc(var(--subrow) * ${lines * 3})`;
     });
-  }, [whatsNextEvents, selectedUpNextIdx]);
+  }, [slides, selectedUpNextIdx]);
 
   // Next upcoming event (when nothing today)
   function parseLevelDuration(t) {
@@ -554,16 +578,16 @@ export default function DashboardView({
     if (rebuyingRef.current) return;
     const curBusted = new Set(Object.keys(bustedEventMap).map(Number));
     const prev = prevBustedRef.current;
-    if (whatsNextEvents.length > 1) {
-      const safeIdx = Math.min(selectedUpNextIdx, whatsNextEvents.length - 1);
-      const current = whatsNextEvents[safeIdx];
-      if (current && curBusted.has(current.id) && !prev.has(current.id)) {
-        const nextIdx = whatsNextEvents.findIndex((e, i) => i !== safeIdx && !curBusted.has(e.id));
+    if (slides.length > 1) {
+      const safeIdx = Math.min(selectedUpNextIdx, slides.length - 1);
+      const current = slides[safeIdx];
+      if (current && !current._cash && curBusted.has(current.id) && !prev.has(current.id)) {
+        const nextIdx = slides.findIndex((e, i) => i !== safeIdx && !e._cash && !curBusted.has(e.id));
         if (nextIdx >= 0) setSelectedUpNextIdx(nextIdx);
       }
     }
     prevBustedRef.current = curBusted;
-  }, [bustedEventMap, whatsNextEvents, selectedUpNextIdx]);
+  }, [bustedEventMap, slides, selectedUpNextIdx]);
 
   // Render a single event card
   function renderEventCard(event) {
@@ -593,9 +617,14 @@ export default function DashboardView({
     const venueInfo = getVenueInfo(event.venue, event.property);
     const venueColor = getVenueBrandColor(venueInfo.abbr);
     const venueStripText = '#ffffff'; // venue strip text is always white
+    // Its plan, resolved: each condition a tag ('If bust #12', 'On: busted #12', 'Off: bagged #14',
+    // 'If up $5,000'). A plan that is off dims the card, all but those tags, which say why.
+    const plan = resolvedPlans.get(Number(event.id)) || null;
+    const planOff = !!plan && plan.state === 'off';
 
     const cardClass = [
       'dash-event-card',
+      planOff ? 'plan-off' : '',
       isBustedDone ? 'done' : (completed ? 'completed' : ''),
       event._type === 'bagged' ? 'bagged' : '',
       event._type === 'anchor' && !isConditionalOnPlaying ? 'anchor' : '',
@@ -606,13 +635,16 @@ export default function DashboardView({
 
     // Status tags above the name. Built as a list so the row is rendered only when
     // it has something in it: an empty flex row still took the content's 1r gap.
+    // [class, label, title?, key?]. A plan's tags show on a card dimmed behind the event being
+    // played too: which branch is on is exactly what is worth knowing mid-session.
     const tags = [];
     if (!isConditionalOnPlaying) {
       if (event._type === 'bagged') tags.push(['bagged', `Bagged — Day ${event._bagUpdate?.bag_day || '?'}`]);
       if (event._type === 'anchor' && !event._conditionalOnBag) tags.push(['anchor', 'Locked In']);
-      if (event._type === 'conditional') tags.push(event._conditionalOnBag ? ['conditional on-bag', 'Conditional on bag'] : ['conditional', 'Conditional']);
-      if (regClosed && event._type !== 'bagged') tags.push(['reg-closed', 'Reg Closed']);
+      if (event._type === 'conditional' && !plan) tags.push(event._conditionalOnBag ? ['conditional on-bag', 'Conditional on bag'] : ['conditional', 'Conditional']);
     }
+    if (plan) plan.items.forEach((it, i) => tags.push([`plan snap-g is-${it.state}`, it.label, it.title, `plan-${i}`]));
+    if (!isConditionalOnPlaying && regClosed && event._type !== 'bagged') tags.push(['reg-closed', 'Reg Closed']);
 
     const activeUpdate = activeEventMap[event.id];
     const liveStack = activeUpdate?.stack;
@@ -652,8 +684,8 @@ export default function DashboardView({
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {tags.length > 0 && (
           <div className="dash-event-tags">
-            {tags.map(([cls, label]) => (
-              <span key={cls} className={`dash-event-tag ${cls}`}><span className="dash-t">{label}</span></span>
+            {tags.map(([cls, label, title, key]) => (
+              <span key={key || cls} className={`dash-event-tag ${cls}`} title={title}><span className="dash-t">{label}</span></span>
             ))}
           </div>
         )}
@@ -928,9 +960,9 @@ export default function DashboardView({
               <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-          {whatsNextEvents.length > 0 ? (() => {
-            const safeIdx = Math.min(selectedUpNextIdx, whatsNextEvents.length - 1);
-            swipeRef.current = whatsNextEvents.length;
+          {slides.length > 0 ? (() => {
+            const safeIdx = Math.min(selectedUpNextIdx, slides.length - 1);
+            swipeRef.current = slides.length;
             return (
               <div
                 onTouchStart={onTouchStart}
@@ -938,29 +970,37 @@ export default function DashboardView({
                 onTouchEnd={onTouchEnd}
                 style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--space-lg) var(--space-lg)', margin:'0 calc(var(--subrow) * -1.5) calc(var(--subrow) * -1.5)'}}
               >
+                {/* Every slide sits in the track's one grid cell, moved by its own whole multiple of
+                    its width from the one shown (home.css), so the card shown is exactly where
+                    the first one is. A flex row of fractional-width slides, translated by -idx
+                    x 100%, drifted 0.005g a slide off the grid (0.11g by the 24th card). */}
                 <div
                   className="dash-carousel-track"
                   ref={trackRef}
                   data-idx={safeIdx}
-                  style={{transform: `translateX(${-(safeIdx * 100)}%)`}}
                 >
-                  {whatsNextEvents.map((evt, i) => (
-                    <div className="dash-carousel-slide" key={evt.id}>
-                      {renderEventCard(evt)}
+                  {slides.map((evt, i) => (
+                    <div className="dash-carousel-slide" key={evt.id} style={{ transform: `translateX(${(i - safeIdx) * 100}%)` }}>
+                      {evt._cash ? (
+                        <HomeCashCard session={cashSession} stacks={cashStacks} skew={cashSkew} token={token}
+                          dragged={() => Math.abs(swipeDx.current || 0) > 10}
+                          onOpen={() => onLog && onLog({ kind: 'cash-live' })}
+                          onCashOut={() => onLog && onLog({ kind: 'cash-end' })} />
+                      ) : renderEventCard(evt)}
                     </div>
                   ))}
                 </div>
                 {/* Dots only while they stay countable. The carousel now runs
                     the whole schedule, so a full season would be forty dots —
                     past the cap it becomes a position readout instead. */}
-                {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
-                  <div className="dash-upnext-dots" style={{ '--n': whatsNextEvents.length }}>
-                    {whatsNextEvents.map((_, i) => (
+                {slides.length > 1 && slides.length <= 8 && (
+                  <div className="dash-upnext-dots" style={{ '--n': slides.length }}>
+                    {slides.map((_, i) => (
                       <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
                     ))}
                   </div>
                 )}
-                {whatsNextEvents.length > 8 && (
+                {slides.length > 8 && (
                   <div className="dash-upnext-counter snap-g-centred">
                     <button
                       type="button"
@@ -969,12 +1009,12 @@ export default function DashboardView({
                       disabled={safeIdx === 0}
                       aria-label="Previous event"
                     ><Icon.chevLeft /></button>
-                    <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
+                    <span className="dash-upnext-pos">{safeIdx + 1} / {slides.length}</span>
                     <button
                       type="button"
                       className="dash-upnext-step"
-                      onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
-                      disabled={safeIdx === whatsNextEvents.length - 1}
+                      onClick={() => setSelectedUpNextIdx(i => Math.min(slides.length - 1, i + 1))}
+                      disabled={safeIdx === slides.length - 1}
                       aria-label="Next event"
                     ><Icon.chevRight /></button>
                   </div>
@@ -982,14 +1022,9 @@ export default function DashboardView({
               </div>
             );
           })() : (
-            <FirstRun
-              icon="calendar"
-              title="Add your first event"
-              body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
-              actionLabel="Browse tournaments"
-              onAction={() => onNavigate('tournaments')}
-              compact
-            />
+            // Nothing scheduled (§1(d)): one 5r prompt with the week's events near the user, which
+            // opens the Schedule.
+            <HomeNothingNext tournaments={tournaments} today={todayISO} onOpen={() => onNavigate('tournaments')} />
           )}
         </div>
       {/* To log (verdict §2; 0r when nothing waits) and the last result (§3), under Up Next. */}

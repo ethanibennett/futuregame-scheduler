@@ -4,7 +4,8 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard (scrolled to its foot; on
 // desktop both its panes; the Playing card's Scan sheet; the Log menu; a To log row's Undo
-// state; its NUMBERS in trip mode, series mode and the edge state), Social, Results (and its
+// state; each Up Next card with a plan's tags; the cash card's stack entry; its NUMBERS in trip
+// mode, series mode and the edge state; the empty-schedule prompt), Social, Results (and its
 // Delete results block at the foot, closed and open), Settings, Cash (Live, Heatmaps), Hands (the
 // list, not the table; the Scanner tool), Calendar (and its filters),
 // the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
@@ -85,6 +86,8 @@ const CONTROLS = [
   '.btn', '.chip', '.filter-chip', '.kind-toggle', '.dk-seg-btn', '.live-update-tab',
   '.badge', '[class*="badge"]', '[class*="-pill"]', '[class*="-chip"]', '.pill', '.tag',
   '.beta-tag', '[class*="beta"]',
+  // Up Next's plan tags (step 5 of the home: 'If bust #12', 'On: busted #12'), content-sized pills.
+  '.dash-event-tag.plan',
 ];
 // Areas left alone entirely: the grid overlay itself, and the replayer's table (another change
 // owns it — its dealer button, seats, chips).
@@ -92,9 +95,10 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 // (.hm-receipt: the home's Last result card, a button that opens the entry, its figures seated; so
-// are its bankroll line, period block and goals cards, .hm-bank-bar / .hm-period-card / .hm-goals.)
+// are its bankroll line, period block and goals cards, .hm-bank-bar / .hm-period-card / .hm-goals,
+// and Up Next's empty-schedule prompt, .hm-next-empty.)
 const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.hm-receipt',
-  '.hm-bank-bar', '.hm-period-card', '.hm-goals'];
+  '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -461,6 +465,39 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
     } finally { await p.unroute('**/api/schedule/*/played'); }
   }, 0);
+  // Up Next's plans, resolved (home step 5): the carousel paged to each card that carries a plan's
+  // tag ('If bust #12', 'On: busted #12', 'Off: busted #12', 'If up $5,000'), each measured. Then
+  // the running cash session's card (admins; the first card) turned into its stack entry by Update
+  // stack — nothing is sent.
+  const pageCarousel = async (i) => {
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) { await dots.nth(i).click({ timeout: 4000, force: overlay }); }
+    else {
+      // Step until the track says it is there (a click can land mid-render and be lost).
+      const at = () => p.evaluate(() => Number(document.querySelector('.dash-carousel-track')?.dataset.idx || 0));
+      for (let n = 0; n < 80 && (await at()) < i; n++) {
+        await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000, force: overlay });
+        await p.waitForTimeout(80);
+      }
+    }
+    await p.waitForTimeout(700); // the slide's transition
+  };
+  if (want('dashboard-plans')) {
+    lastView = 'dashboard-plans';
+    try {
+      await fresh(); await nav('Dashboard');
+      const cards = await p.evaluate(() => [...document.querySelectorAll('.dash-carousel-slide')]
+        .map((sl, i) => (sl.querySelector('.dash-event-tag.plan') ? i : -1)).filter((i) => i >= 0));
+      if (!cards.length) throw new Error('no plans on this schedule');
+      for (const i of cards) { await pageCarousel(i); await run(`dashboard-plans (card ${i + 1})`); }
+    } catch (e) { console.log(`  (view dashboard-plans skipped: ${e.message.split('\n')[0]})`); }
+  }
+  await step('dashboard-cash-entry', async () => {
+    await nav('Dashboard');
+    if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');
+    await p.locator('.hm-cash-card .hm-cash-btn').first().click({ timeout: 4000, force: overlay });
+    await p.locator('.hm-cash-entry').waitFor({ timeout: 3000 });
+  }, 0);
   // The home's NUMBERS in the states the account does not show by itself (scripts/home-states.mjs):
   // trip mode, series mode, and the edge state (the longest signal pill over an empty month and an
   // empty Last result), each staged by answering the home's requests in the page, then paged to the
@@ -476,6 +513,8 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
   await homeState('dashboard-trip', 'trip');
   await homeState('dashboard-series', 'series');
   await homeState('dashboard-edge', 'edge');
+  // Nothing scheduled, nothing in play, no cash session: Up Next's one 5r prompt.
+  await homeState('dashboard-empty', 'empty');
   await step('hands-scanner', async () => {
     await nav('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });

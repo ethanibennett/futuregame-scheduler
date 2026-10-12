@@ -237,11 +237,12 @@ The month grid gets the wide pane, because a calendar is the one Schedule
 surface that wants width. Clicking a day fills the day list, and clicking an
 event there opens the same Event pane in place of the day list, with a back key.
 
-### Dashboard — two panes (built 2026-10-12, home redesign steps 2 to 4)
+### Dashboard — two panes (built 2026-10-12, home redesign steps 2 to 5)
 
 ```
 │ rail │ NOW 37g                          │ NUMBERS 37g                          │
-│ 10g  │ Up Next (the carousel)           │ Bankroll line (admins)               │
+│ 10g  │ Up Next (the carousel; a running │ Bankroll line (admins)               │
+│      │   cash session is its first card)│                                      │
 │      │ To log (only when non-empty)     │ This month / trip / series, with its │
 │      │ Last result (the receipt)        │   goals (admins) under it            │
 │      │                                  │ Signal-or-noise line (admins; 6)     │
@@ -263,6 +264,18 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   `.dk-scroll`'s own 2r foot.
 - The two-pane tier and the three-pane tier both show the same two panes: there
   is no third Dashboard pane.
+- Up Next (step 5) is the same carousel in NOW on both layouts. Its plans resolve
+  themselves (utils/home-upnext.js `resolveConditions`): each condition is a tag
+  on the card ('If bust #12' waiting, 'On: busted #12', 'Off: busted #12'), and a
+  card whose plan is off dims, all but its tags, and moves to the end. An
+  admin's running cash session is the first card (`HomeCashCard.jsx`: clock, in
+  play, last stack; Update stack in place, Cash out opens Results > Cash on the
+  live screen's cash-out panel), and the bar over the nav (`LiveCashBar`) is off
+  on the Dashboard. With nothing scheduled the carousel is one 35g x 5r prompt
+  (`HomeNothingNext.jsx`: the week's events near you; it opens the Schedule).
+  Every slide sits in the track's one grid cell and is moved by its own multiple
+  of its width, so the card shown is on the grid at any index on both layouts
+  (the flex row drifted 0.115px a card at 1440, 0.057px at 402).
 - To log and the Last result (step 3) sit under Up Next in NOW, so what is next,
   what is unlogged and what just happened read down one pane. Their Log menu is
   portalled to the body and anchored to the Log pill (right edges together, 1r

@@ -6,7 +6,8 @@
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
 // Schedule, the home (Dashboard) paged to its foot (plain, then its NUMBERS in trip mode, series
-// mode and the edge state), its Scan sheet, its Log menu and a To log row's Undo state, and Hands'
+// mode and the edge state, and the empty-schedule prompt), its Scan sheet, each Up Next card with a
+// plan's tags, the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
 // Scanner (and, for
 // an admin, each tab of the bankroll dashboard, every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
@@ -178,7 +179,7 @@ function scan(rootSel) {
   // Its NUMBERS in the states the account does not show by itself (scripts/home-states.mjs): trip
   // mode, series mode (long titles that truncate), and the edge state (the longest signal pill, an
   // empty month, an empty Last result), each staged in the page, nothing written.
-  for (const kind of ['trip', 'series', 'edge']) {
+  for (const kind of ['trip', 'series', 'edge', 'empty']) {
     try {
       const undo = await stageHome(p, kind);
       try { await openTab('Dashboard'); await pageHome(`home ${kind}`); } finally { await undo(); }
@@ -194,6 +195,35 @@ function scan(rootSel) {
     await p.waitForTimeout(2500);
     await run('scan sheet', '.scan-sheet');
   } catch (e) { console.log(`  (scan sheet skipped: ${e.message.split('\n')[0]})`); }
+  // Up Next's plans (home step 5): the carousel paged to each card with a plan's tags (their labels
+  // name the parent event); and the running cash session's card (admins) in its stack entry.
+  try {
+    await openTab('Dashboard');
+    const cards = await p.evaluate(() => [...document.querySelectorAll('.dash-carousel-slide')]
+      .map((sl, i) => (sl.querySelector('.dash-event-tag.plan') ? i : -1)).filter((i) => i >= 0));
+    if (!cards.length) throw new Error('no plans on this schedule');
+    for (const i of cards) {
+      const dots = p.locator('.dash-upnext-dot');
+      if (await dots.count()) await dots.nth(i).click({ timeout: 4000 });
+      else {
+        // Step until the track says it is there (a click can land mid-render and be lost).
+        const at = () => p.evaluate(() => Number(document.querySelector('.dash-carousel-track')?.dataset.idx || 0));
+        for (let n = 0; n < 80 && (await at()) < i; n++) {
+          await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000 });
+          await p.waitForTimeout(80);
+        }
+      }
+      await p.waitForTimeout(700);
+      await run(`home plans (card ${i + 1})`, HOME);
+    }
+  } catch (e) { console.log(`  (home plans skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');
+    await p.locator('.hm-cash-card .hm-cash-btn').first().click({ timeout: 4000 });
+    await p.locator('.hm-cash-entry').waitFor({ timeout: 3000 });
+    await run('home cash entry', HOME);
+  } catch (e) { console.log(`  (home cash entry skipped: ${e.message.split('\n')[0]})`); }
   // The home's Log menu (admins), and a To log row turned into its Undo row by Didn't play — that
   // write answered here and never sent, so the guard changes nothing on the server it checks.
   try {
