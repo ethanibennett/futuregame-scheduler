@@ -101,6 +101,13 @@ push-out and 12 on the ship; the GIF 8, 4, 4 and 6. When reproducing this, press
 `page.evaluate`: Playwright's clock does not drive the document timeline, so a second round trip
 lets the springs run in real time (a 90ms label fade is over before it lands).
 
+**The cost, measured** (same 8-max hand, 22 steps, Playwright WebKit on the Windows box, springs
+off vs on): the video export took 95s vs 460s (22 captures vs 102: the flop 16, turn and river 8
+each, ship 12, and 36 for nine push-outs of 4), the GIF 223s vs 288s (its encode dominates). Every
+capture is one modern-screenshot pass, so expect the same ratio on a phone. If that is too slow, the
+cheapest cut is to finish push-outs instead of seeking them in the video (66 captures, about 3x),
+then a motion-frame budget like the GIF's.
+
 ## Autoplay
 
 Each spring's time is divided by `rate = clamp(sqrt(1000 / speed), 1, 2)`. That gives 1 at 0.5x and

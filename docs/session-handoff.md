@@ -25,7 +25,9 @@ wsop-console side and verified against both live services.
   of 3+ frames, 32 frames max), and every still is settled (the five gold chips frozen on the pot are
   gone). Verified frame-for-frame against the live replayer mid-turn in WebKit.
 - **Waiting on Ethan**: A or B (side-by-side MP4s in `weekly-graphics/replayer-springs/compare/`,
-  Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight.
+  Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight. Two calls with it: the video
+  export does about 4.6x the captures (95s → 460s in WebKit here; push-outs are 36 of them), and on
+  a bottom-seat winner the shipped chips cross the name for ~180ms on their way to the stack figure.
 - Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate` — the page clock does
   not drive the document timeline, so a second round trip lets the springs run in real time.
 
