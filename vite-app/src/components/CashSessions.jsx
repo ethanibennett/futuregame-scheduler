@@ -482,7 +482,10 @@ function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete }) {
 }
 
 // ── The view ────────────────────────────────────────────────────────────────
-export default function CashSessionsView({ token, bk }) {
+// intent: what the home's Log menu or Last result card asked for (App's resultsIntent, handed on by
+// TrackingView): { kind: 'cash-add' | 'cash-start' | 'cash-live' | 'cash-session', id? }. Opened
+// once, then reported done.
+export default function CashSessionsView({ token, bk, intent = null, onIntentDone }) {
   const toast = useToast();
   const { session: live, stacks: liveStacks, skew } = useLiveCashSession({ enabled: true, token });
   const [sessions, setSessions] = useState([]);
@@ -550,6 +553,15 @@ export default function CashSessionsView({ token, bk }) {
   const stacksOf = (id) => (detailStacks.id === id ? detailStacks.stacks : []);
 
   const go = (next) => { setScreen(next); setConfirmDelete(false); };
+  useEffect(() => {
+    if (!intent) return;
+    const k = intent.kind;
+    if (k === 'cash-add') go('add');
+    else if (k === 'cash-start') go(live ? 'live' : 'start');
+    else if (k === 'cash-live') go('live');
+    else if (k === 'cash-session' && intent.id) go({ detail: intent.id });
+    if (onIntentDone) onIntentDone();
+  }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (fn, ok) => {
     setBusy(true);
     try { const r = await fn(); if (ok) toast.success(ok); await load(); return r || true; }

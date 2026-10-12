@@ -281,6 +281,10 @@ export default function App() {
 
   // Tracking
   const [trackingData, setTrackingData] = useState([]);
+  // A form or entry in Results that the home asked for (its Log menu, To log's Cashed, the Last
+  // result card): { kind, ... } — TrackingView opens it once and clears it (onIntentDone).
+  const [resultsIntent, setResultsIntent] = useState(null);
+  const clearResultsIntent = useCallback(() => setResultsIntent(null), []);
 
   // Live Updates
   const [myActiveUpdates, setMyActiveUpdates] = useState([]);
@@ -640,9 +644,14 @@ export default function App() {
     } catch {}
   }, [token]);
 
+  // Resolves { ok, status } so a caller can tell a logged result from a refusal. data.ifAbsent
+  // (the home's To log) makes it log-only: a result already there is a 409 that changes nothing,
+  // and the list is refetched so the row that was stale goes away.
   const addTracking = useCallback(async (data) => {
     try {
-      const matchedTournament = tournaments.find(tr => tr.id === data.tournamentId);
+      // The event: the 3-day feed list, else the schedule (an older event the home's To log logs).
+      const matchedTournament = tournaments.find(tr => tr.id === data.tournamentId)
+        || mySchedule.find(tr => tr.id === data.tournamentId);
       const entryForMilestone = {
         ...data,
         buyin: matchedTournament ? matchedTournament.buyin : 0,
@@ -658,18 +667,36 @@ export default function App() {
         body: JSON.stringify(trackingPayload)
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 409 && data.ifAbsent) { fetchTracking(); return { ok: false, status: 409 }; }
         setError(err.error || 'Failed to add tracking entry');
-        return;
+        return { ok: false, status: res.status };
       }
+      const made = await res.json().catch(() => ({}));
       if (totalFieldSize) await saveFieldSize(data.tournamentId, totalFieldSize);
       fetchTracking();
 
       if (milestones.length > 0) {
         setActiveMilestone(milestones[0]);
       }
-    } catch { setError('Failed to add tracking entry'); }
-  }, [token, tournaments, trackingData]);
+      return { ok: true, status: res.status, id: made && made.id };
+    } catch { setError('Failed to add tracking entry'); return { ok: false, status: 0 }; }
+  }, [token, tournaments, mySchedule, trackingData]);
+
+  // The home's To log "Didn't play" (true) and its Undo (false): user_schedules.not_played, so it
+  // syncs across devices. Resolves true when stored.
+  const setNotPlayed = useCallback(async (tournamentId, notPlayed) => {
+    try {
+      const res = await fetch(`${API_URL}/schedule/${tournamentId}/played`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notPlayed: !!notPlayed })
+      });
+      if (!res.ok) return false;
+      setMySchedule(prev => prev.map(t => (t.id === tournamentId ? { ...t, not_played: notPlayed ? 1 : 0 } : t)));
+      return true;
+    } catch { return false; }
+  }, [token]);
 
   const updateTracking = useCallback(async (entryId, data) => {
     try {
@@ -689,14 +716,16 @@ export default function App() {
     } catch { setError('Failed to update tracking entry'); }
   }, [token]);
 
+  // Resolves true when deleted (the home's To log Undo checks it).
   const deleteTracking = useCallback(async (entryId) => {
     try {
-      await fetch(`${API_URL}/tracking/${entryId}`, {
+      const res = await fetch(`${API_URL}/tracking/${entryId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTracking();
-    } catch { setError('Failed to delete tracking entry'); }
+      return res.ok;
+    } catch { setError('Failed to delete tracking entry'); return false; }
   }, [token]);
 
   // ── Sharing functions ──
@@ -1650,6 +1679,12 @@ export default function App() {
                 onPost={postLiveUpdate}
                 onDeleteUpdate={deleteLiveUpdate}
                 onAddTracking={addTracking}
+                isAdmin={isAdmin}
+                token={token}
+                canLog={!isGuest}
+                onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
+                onSetPlayed={setNotPlayed}
+                onDeleteTracking={deleteTracking}
                 tournaments={tournaments}
                 onToggle={toggleTournament}
                 onNavigate={(v) => {
@@ -1764,6 +1799,8 @@ export default function App() {
                 myActiveUpdates={myActiveUpdates}
                 isAdmin={isAdmin}
                 token={token}
+                intent={resultsIntent}
+                onIntentDone={clearResultsIntent}
               />
             )}
             </div>

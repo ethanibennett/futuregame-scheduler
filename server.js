@@ -1294,6 +1294,15 @@ async function initDatabase() {
     // Column already exists — ignore
   }
 
+  // Migrate: not_played — the home's To log "Didn't play" (components/HomeToLog.jsx). The event
+  // stays on the schedule; the app just stops asking for its result. Synced here, not kept in the
+  // browser, so a row cleared on the phone is cleared on the iPad too.
+  try {
+    db.run('ALTER TABLE user_schedules ADD COLUMN not_played INTEGER DEFAULT 0');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+
   // Migrate: add rake breakdown columns for tournament cost analysis
   const rakeColumns = [
     ['prize_pool', 'INTEGER'],
@@ -4529,6 +4538,24 @@ app.put('/api/schedule/:tournamentId/entries', authenticateToken, async (req, re
   }
 });
 
+// The home's To log "Didn't play", and its Undo: { notPlayed: true | false }. The event stays on
+// the schedule (user_schedules.not_played); the home and Results stop asking for its result.
+// 404 when the event is not on the caller's schedule.
+app.put('/api/schedule/:tournamentId/played', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const tid = Number(req.params.tournamentId);
+    if (!Number.isInteger(tid) || tid <= 0) return res.status(400).json({ error: 'Unknown event' });
+    const flag = req.body && req.body.notPlayed ? 1 : 0;
+    db.run('UPDATE user_schedules SET not_played = ? WHERE user_id = ? AND tournament_id = ?', [flag, req.user.id, tid]);
+    if (!db.getRowsModified()) return res.status(404).json({ error: 'Event not on your schedule' });
+    await saveDatabase();
+    res.json({ tournamentId: tid, notPlayed: !!flag });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // Remove condition from a scheduled event (make it firm)
 app.delete('/api/schedule/:tournamentId/condition', authenticateToken, async (req, res) => {
   try {
@@ -4661,7 +4688,7 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
 app.get('/api/my-schedule', authenticateToken, (req, res) => {
   try {
     const query = `
-      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries,
+      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries, us.not_played,
              sc.conditions AS conditions_json,
              sc.is_public AS condition_is_public
       FROM tournaments t
@@ -6022,6 +6049,12 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
     existStmt.bind([req.user.id, tournamentId]);
     const existing = existStmt.step() ? existStmt.getAsObject() : null;
     existStmt.free();
+    // ifAbsent: the home's To log (one-tap Busted, and the Cashed form it opens) LOGS a result, it
+    // never edits one. A result already there (logged on another device, or by the live-update
+    // Finish) is a 409 that changes nothing, not an overwrite with a stale guess.
+    if (existing && req.body.ifAbsent) {
+      return res.status(409).json({ error: 'A result is already logged for this event', entryId: existing.id });
+    }
     const bk = bankrolls.resolveEntryBankroll(db, req, req.body.bankrollId, existing ? existing.bankroll_id : undefined, isAppAdminReq);
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
 
@@ -6039,10 +6072,11 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         'INSERT INTO tracking_entries (user_id, tournament_id, num_entries, cashed, finish_place, cash_amount, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [req.user.id, tournamentId, numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null]
       );
+      const newId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE user_id = ? AND tournament_id = ?', [bk.value, req.user.id, tournamentId]);
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
-      res.status(201).json({ message: 'Entry tracked' });
+      res.status(201).json({ message: 'Entry tracked', id: newId });
     }
   } catch (error) {
     console.error(error);

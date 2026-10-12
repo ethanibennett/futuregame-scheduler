@@ -3,7 +3,8 @@
 // both axes, disregarding the grid. This measures both, for every visible control, in WebKit.
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard (scrolled to its foot; on
-// desktop both its panes; the Playing card's Scan sheet), Social, Results (and its
+// desktop both its panes; the Playing card's Scan sheet; the Log menu; a To log row's Undo
+// state), Social, Results (and its
 // Delete results block at the foot, closed and open), Settings, Cash (Live, Heatmaps), Hands (the
 // list, not the table; the Scanner tool), Calendar (and its filters),
 // the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
@@ -89,7 +90,8 @@ const CONTROLS = [
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row'];
+// (.hm-receipt: the home's Last result card, a button that opens the entry, its figures seated.)
+const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.hm-receipt'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -438,6 +440,23 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await p.locator('.dash-scan-input').setInputFiles({ name: 'table.png', mimeType: 'image/png', buffer: TINY_PNG });
     await p.locator('.scan-sheet').waitFor({ timeout: 4000 });
     await p.waitForTimeout(2500); // the scan's request answers (503 without a key) and the idle state returns
+  }, 0);
+  // The home's Log menu (an admin's Log pill opens it; anyone else's opens the form in Results),
+  // and a To log row turned into its Undo row by Didn't play. That write is answered here and
+  // never sent: a guard must not change the account it signs in as (on :3001, the local DB).
+  await step('dashboard-logmenu', async () => {
+    await nav('Dashboard');
+    if (!(await p.locator('.hm-head-pill--log[aria-haspopup]').count())) throw new Error('no Log menu (not an admin: the pill opens the form)');
+    await p.locator('.hm-head-pill--log').first().click({ timeout: 4000, force: overlay });
+    await p.locator('.hm-logmenu').waitFor({ timeout: 3000 });
+  }, 0);
+  await step('dashboard-tolog-undo', async () => {
+    await nav('Dashboard');
+    await p.route('**/api/schedule/*/played', (r) => r.fulfill({ json: { notPlayed: true } }));
+    try {
+      await p.locator('.hm-tolog-seg--quiet').first().click({ timeout: 4000, force: overlay });
+      await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
+    } finally { await p.unroute('**/api/schedule/*/played'); }
   }, 0);
   await step('hands-scanner', async () => {
     await nav('Hands');

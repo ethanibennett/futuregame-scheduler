@@ -413,7 +413,9 @@ function TripsSheet({ api, toast, trips, bankrolls, rates, openId, onOpenTrip, o
 }
 
 // ── The Results-tab section ─────────────────────────────────────────────────
-export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankrolls = [], rates, events, onChanged }) {
+// intent: the home's Log menu "Expense or income" (App's resultsIntent, handed on by TrackingView):
+// opens the add sheet once, then reports done.
+export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankrolls = [], rates, events, onChanged, intent = null, onIntentDone }) {
   const toast = useToast();
   const api = useApi(token);
   const [list, setList] = useState(null);
@@ -421,6 +423,11 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
   // One sheet at a time: { type: 'add', tx?, preset?, back? } | { type: 'all' } | { type: 'trips', tripId? }
   const [sheet, setSheet] = useState(null);
   const [version, setVersion] = useState(0);
+  useEffect(() => {
+    if (!intent || intent.kind !== 'expense') return;
+    setSheet({ type: 'add', preset: { kind: 'expense', bankroll: bankroll === BANKROLL_ALL ? BANKROLL_MAIN : bankroll } });
+    if (onIntentDone) onIntentDone();
+  }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     try {

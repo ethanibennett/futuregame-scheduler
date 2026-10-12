@@ -5,7 +5,8 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule, the home (Dashboard) paged to its foot, its Scan sheet and Hands' Scanner (and, for
+// Schedule, the home (Dashboard) paged to its foot, its Scan sheet, its Log menu and a To log
+// row's Undo state, and Hands' Scanner (and, for
 // an admin, each tab of the bankroll dashboard, every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
@@ -179,6 +180,24 @@ function scan(rootSel) {
     await p.waitForTimeout(2500);
     await run('scan sheet', '.scan-sheet');
   } catch (e) { console.log(`  (scan sheet skipped: ${e.message.split('\n')[0]})`); }
+  // The home's Log menu (admins), and a To log row turned into its Undo row by Didn't play — that
+  // write answered here and never sent, so the guard changes nothing on the server it checks.
+  try {
+    await openTab('Dashboard');
+    if (!(await p.locator('.hm-head-pill--log[aria-haspopup]').count())) throw new Error('no Log menu (not an admin: the pill opens the form)');
+    await p.locator('.hm-head-pill--log').first().click({ timeout: 4000 });
+    await p.locator('.hm-logmenu').waitFor({ timeout: 3000 });
+    await run('home log menu', '.hm-logmenu');
+  } catch (e) { console.log(`  (home log menu skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    await p.route('**/api/schedule/*/played', (r) => r.fulfill({ json: { notPlayed: true } }));
+    try {
+      await p.locator('.hm-tolog-seg--quiet').first().click({ timeout: 4000 });
+      await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
+    } finally { await p.unroute('**/api/schedule/*/played'); }
+    await run('home to-log undo row', HOME);
+  } catch (e) { console.log(`  (home to-log undo skipped: ${e.message.split('\n')[0]})`); }
   try {
     await openTab('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });

@@ -237,13 +237,13 @@ The month grid gets the wide pane, because a calendar is the one Schedule
 surface that wants width. Clicking a day fills the day list, and clicking an
 event there opens the same Event pane in place of the day list, with a back key.
 
-### Dashboard — two panes (built 2026-10-12, home redesign step 2)
+### Dashboard — two panes (built 2026-10-12, home redesign steps 2 and 3)
 
 ```
 │ rail │ NOW 37g                          │ NUMBERS 37g                          │
 │ 10g  │ Up Next (the carousel)           │ Bankroll line (admins; step 4)       │
-│      │ To log (only when non-empty; 3)  │ This month / trip / series (step 4;  │
-│      │ Last result (step 3)             │   the Results bar stands in today)   │
+│      │ To log (only when non-empty)     │ This month / trip / series (step 4;  │
+│      │ Last result (the receipt)        │   the Results bar stands in today)   │
 │      │                                  │ Signal-or-noise line (admins; 6)     │
 │      │                                  │ Trend, last 3 months (6; a marked    │
 │      │                                  │   slot until BankrollChart lands)    │
@@ -263,6 +263,11 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   `.dk-scroll`'s own 2r foot.
 - The two-pane tier and the three-pane tier both show the same two panes: there
   is no third Dashboard pane.
+- To log and the Last result (step 3) sit under Up Next in NOW, so what is next,
+  what is unlogged and what just happened read down one pane. Their Log menu is
+  portalled to the body and anchored to the Log pill (right edges together, 1r
+  above or below it), so it is not clipped by the pane's scroller. A choice in it,
+  To log's Cashed and a tap on the receipt open Results in this same main pane.
 - Friends Playing and Connections, which the old plan gave a pane, left the home
   (they live in Social). The Table Scanner left it as well: it is the Playing
   card's Scan action and a tool in Hands.

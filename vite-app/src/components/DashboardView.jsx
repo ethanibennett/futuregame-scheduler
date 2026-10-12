@@ -13,6 +13,9 @@ import {
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
 import { tournamentTotals, homeCurrency } from '../utils/home.js';
+import { gridGeom, gridPanelStyle } from '../utils/grid-panel.js';
+import HomeToLog from './HomeToLog.jsx';
+import HomeLastResult from './HomeLastResult.jsx';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
 import './home.css';
 
@@ -32,34 +35,6 @@ function formatEventName(name) {
   );
 }
 
-// ── Grid placement for the portalled dropdowns ──
-// g is read from a 100g probe (what --gu really resolves to), r = 0.71g, and the
-// origin is the top bar — the overlay's origin. A panel's top is snapped to a
-// whole r from the bar (1r below / above its trigger) and emitted as calc() in r,
-// its left edge as calc() in g on a column line; nothing is written in px.
-function gridGeom() {
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:absolute;visibility:hidden;height:0;width:calc(var(--gu) * 100)';
-  document.body.appendChild(probe);
-  const G = probe.getBoundingClientRect().width / 100;
-  probe.remove();
-  const barTop = document.querySelector('.top-bar')?.getBoundingClientRect().top || 0;
-  return { G, R: G * 0.71, barTop };
-}
-function gridPanelStyle(anchorRect, heightR, leftG) {
-  const { R, barTop } = gridGeom();
-  const openAbove = anchorRect.top > window.innerHeight / 2;
-  const topR = openAbove
-    ? Math.round((anchorRect.top - barTop) / R) - 1 - heightR
-    : Math.round((anchorRect.bottom - barTop) / R) + 1;
-  const barR = barTop / R; // 0 when the bar sits at the viewport top
-  return {
-    position: 'fixed',
-    left: `calc(var(--gu) * ${+leftG.toFixed(4)})`,
-    top: `calc(var(--subrow) * ${+(topR + barR).toFixed(4)})`,
-    transform: 'none',
-  };
-}
 
 // ── Countdown Clock (collapsed card) ──
 function CountdownClock({ startMs }) {
@@ -235,6 +210,10 @@ export default function DashboardView({
   onAddTracking, onNavigate, tournaments, onToggle, onRefresh,
   onOpenInSchedule, demoStates = false, demoCard = false,
   homeRight = null, // desktop: the second pane's element, which the NUMBERS column portals into
+  // Step 3 (To log, Last result): admin gating for the cash/expense paths, the token for the
+  // admin-only cash-sessions read, whether this account can log at all (guests cannot), the
+  // route into Results' forms (App's resultsIntent) and the "Didn't play" flag.
+  isAdmin = false, token = null, canLog = true, onLog = null, onSetPlayed = null, onDeleteTracking = null,
 }) {
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
   // Scan table: the screenshot picked from a Playing card, while its sheet is open.
@@ -1048,12 +1027,32 @@ export default function DashboardView({
             />
           )}
         </div>
-      {/* Steps 3+: To log (only when non-empty) and the last result go here, under Up Next. */}
+      {/* To log (verdict §2; 0r when nothing waits) and the last result (§3), under Up Next. */}
+      {onLog && (
+        <HomeToLog
+          schedule={mySchedule}
+          results={trackingData}
+          updates={myActiveUpdates}
+          today={todayISO}
+          canLog={canLog}
+          onAddTracking={onAddTracking}
+          onDeleteTracking={onDeleteTracking}
+          onSetPlayed={onSetPlayed}
+          onLog={onLog}
+          onMore={() => onLog({ kind: 'awaiting' })}
+        />
+      )}
+      {onLog && (
+        <HomeLastResult results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} />
+      )}
     </div>
   );
   const numbersCol = (
     <div className="home-col home-col--numbers">
-        {/* Results */}
+        {/* Results. With nothing logged yet it is not shown: the Last result card in the NOW
+            column already says "Log your first result", and two invitations read as a glitch.
+            (The bar gives way to the period block in step 4.) */}
+        {plData.count > 0 && (
         <div className="dashboard-section">
           {/* Header on the P&L columns (8g | 8g | 17g): title in col 1 and the currency flush
               right with the Net card (30-36g). Reset lives in Results now, scoped to one bankroll
@@ -1139,17 +1138,9 @@ export default function DashboardView({
               </>); })()}
             </div>
             </>
-          ) : (
-            <FirstRun
-              icon="tracking"
-              title="Log your first result"
-              body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
-              actionLabel="Log a result"
-              onAction={() => onNavigate('tracking')}
-              compact
-            />
-          )}
+          ) : null}
         </div>
+        )}
 
       {/* ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
           TODO(home trend): build here once the BankrollChart.jsx rebuild has merged.

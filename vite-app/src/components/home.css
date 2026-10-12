@@ -31,7 +31,11 @@
    carousel's wrapper reaches 1.5r past the column on each side (room for the card's shadow) and
    its slides sit edge to edge, so without this clip the neighbouring cards' edges show in that
    margin (1.5r = 1.07g of the next card's strip, seen at 36..37g on a 402 phone). */
-.dashboard-view.home { overflow: hidden; }
+/* clip, not hidden: a hidden box is still a scroll container, and focusing or scrolling to a control
+   inside it (a keyboard Tab, Playwright's click) scrolled it 1px sideways, since the carousel's
+   wrapper reaches past it, which moved every control in the home 0.09g off its line. (hidden first:
+   iOS 15 has no overflow: clip.) */
+.dashboard-view.home { overflow: hidden; overflow: clip; }
 
 .dashboard-view.home .home-col {
   display: flex;
@@ -131,6 +135,390 @@
    title on +3r and a 6g x 5r Done). The scanner starts 2r under the head: its idle button is
    35g x 5r, its progress and results the same blocks the home used to show. */
 .bk-sheet.scan-sheet .table-scanner { margin-top: calc(var(--subrow) * 2); }
+
+/* ==================================================================
+   Step 3: To log (HomeToLog.jsx) and the Last result (HomeLastResult.jsx).
+
+   GRID. 35g wide, like every home section; the section's 3r header
+   (title seated on +2r, as every Dashboard header) then 1r.
+     To log row   35g x 6r card: the venue strip (2r, the venue's name
+                  centred, as the Up Next card's strip) over a 4r body:
+                  the line of text, then the answers as 4r segments of
+                  the body split by hairlines (the Results bar's
+                  language): Busted 6g | Cashed 6g | Didn't play 5g.
+                  Rows 1r apart. "+N more" is a 6g x 3r pill in the
+                  header. Busted or Didn't play turns the row, where it
+                  stands, into what was done | Undo (6g) for a few
+                  seconds.
+     Receipt      35g x 10r card: a 6r lead (the net in the display face
+                  seated on +5r in the left 15g; the name on +3r and the
+                  room and day on +5r, right-aligned, in the right 17g;
+                  1g in from each edge, 1g between),
+                  then the 4r fact bar on the Results bar's columns
+                  (11g | 11g | 13g, the last raised), every figure and
+                  label seated on its +3r. The Log pill is 5g x 3r in
+                  the header; a milestone tag left of it is 3r, whole g
+                  (snap-g). The Log menu: 17g, one 4r row per choice,
+                  right edge on the pill's, 1r under it.
+     Empty        35g x 12r: title on +3r, note on +6r, then 1r and the
+                  4r buttons, 1r foot.
+
+   BASELINES. Text that is not a control is SEATED, never centred: the
+   analytics recipe (analytics.css .an-cell), a whole-r cell of height
+   --h whose one line is pushed down so its baseline lands on line --k:
+       baseline = h/2 + p/2 + c   =>   p = 2(k - h/2 - c)
+   with c (baseline less half the line box, in r) MEASURED per face
+   and size in WebKit at 402 and 1440 (a zero-size inline-block on the
+   baseline, the app's fonts loaded; values at the roles below). Controls (the
+   segments, pills, menu rows) centre their label both ways (owner
+   rule), with no seating inside them.
+   Truncating text clips in an inner .hm-clip whose overflow box is
+   padded 0.5r beyond its line on both sides and pulled back by an
+   equal negative margin, so no glyph is cut (check:clipping).
+   ================================================================== */
+
+.hm-cell {
+  display: block;
+  box-sizing: border-box;
+  height: calc(var(--subrow) * var(--h));
+  padding-top: calc(var(--subrow) * 2 * (var(--k) - var(--h) / 2 - var(--c)));
+  line-height: calc(var(--subrow) * (var(--h) - 2 * (var(--k) - var(--h) / 2 - var(--c))));
+  white-space: nowrap;
+  min-width: 0;
+  margin: 0;
+  font-variant-numeric: var(--num-tabular);
+}
+.hm-clip {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-block: calc(var(--subrow) * 0.5);
+  margin-block: calc(var(--subrow) * -0.5);
+}
+/* Type roles: face + size, and that face's c. Measured (2026-10-12, after the font-metrics fix)
+   as 402 / 1440: the face's ascent rounds to whole px at each size, so the two differ a little;
+   c is their midpoint, which puts every baseline within 0.025r (0.2px) of its line at both.
+     sm .6478/.6667  sm bold .6478/.6061  xs .5182/.5455  md bold .7126/.7273
+     2xs bold caps .4534/.4242  display 2xl 1.1012/1.1515 */
+.hm-f-sm   { --c: 0.6573; font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-regular); }
+.hm-f-sm-b { --c: 0.6270; font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.hm-f-xs   { --c: 0.5319; font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-regular); }
+.hm-f-md-b { --c: 0.7200; font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.hm-f-2xs  { --c: 0.4388; font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+             text-transform: uppercase; letter-spacing: var(--track-caps); }
+.hm-f-disp { --c: 1.1264; font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: var(--fw-regular); }
+
+/* Controls' labels: centred by their box (flex), one line box of 1em. */
+.hm-seg-t, .hm-hp-t, .hm-tag-t {
+  display: block;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ── The header's right-hand pills: "+N more", the Log pill, a milestone tag ── */
+.hm-head-right {
+  display: flex;
+  align-self: stretch;
+  align-items: flex-start;
+  gap: var(--gu);
+}
+.hm-head-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: calc(var(--gu) * 4);
+  height: calc(var(--subrow) * 3);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  /* A tracked label's last letter carries a letter-space too: the same indent on the left centres
+     its ink. */
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.hm-head-pill--wide { width: calc(var(--gu) * 6); }
+.hm-head-pill--log {
+  width: calc(var(--gu) * 5);
+  background: var(--brand-quiet);
+  color: var(--brand-ink, var(--brand));
+}
+.hm-head-pill:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-head-pill:hover { background: var(--hover-overlay); }
+  .hm-head-pill--log:hover { background: var(--brand-line); }
+}
+/* A milestone ('Biggest cash', 'Back to break-even'): an accolade, so trophy gold, not the brand. */
+.hm-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--accolade);
+  color: var(--accolade);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+}
+
+/* ── To log ── */
+.hm-tolog-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--subrow);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hm-tolog-row {
+  display: flex;
+  flex-direction: column;
+  height: calc(var(--subrow) * 6);
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+}
+/* The venue strip: 2r, the venue's name centred both ways in white on its colour. Its label
+   truncates in a .hm-clip-like box (padded 0.5r beyond its 1em line, pulled back). */
+.hm-tolog-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 2);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  color: #ffffff; /* venue strip text is always white (DashboardView's strip) */
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps-lg);
+  text-transform: uppercase;
+  user-select: none;
+}
+.hm-tolog-strip-t {
+  display: block;
+  min-width: 0;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-block: calc(var(--subrow) * 0.5);
+  margin-block: calc(var(--subrow) * -0.5);
+  /* The trailing letter-space, cancelled, so the name's ink is what centres. */
+  text-indent: var(--track-caps-lg);
+}
+.hm-tolog-body {
+  display: flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 4);
+}
+/* The line: seated on +3r of the body, 1g in from the card's edge. */
+.hm-tolog-text {
+  --h: 4; --k: 3;
+  flex: 1 1 0;
+  padding-left: var(--gu);
+  padding-right: var(--gu);
+  color: var(--text);
+}
+.hm-tolog-muted { color: var(--text-muted); }
+/* An answer: a 4r segment of the body, split from the line and from each other by a hairline
+   drawn inside it (no width added), its caps label centred both ways. */
+.hm-tolog-seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 calc(var(--gu) * 6);
+  height: calc(var(--subrow) * 4);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: inset var(--bw-hair) 0 0 var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+/* Didn't play: quiet (muted ink), 5g, its two words stacked on 1.5r lines. */
+.hm-tolog-seg--quiet { flex-basis: calc(var(--gu) * 5); color: var(--text-muted); font-weight: var(--fw-regular); }
+.hm-seg-t--2 { line-height: calc(var(--subrow) * 1.5); }
+.hm-tolog-seg:disabled { opacity: var(--state-disabled); cursor: default; }
+.hm-tolog-seg:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-tolog-seg:not(:disabled):hover { background: var(--hover-overlay); }
+}
+
+/* ── The receipt ── */
+.hm-receipt {
+  display: block;
+  width: 100%;
+  height: calc(var(--subrow) * 10);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+@media (hover: hover) and (pointer: fine) {
+  button.hm-receipt:hover { background: var(--hover-overlay); }
+}
+button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.hm-receipt-lead {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 17);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 6);
+  padding: 0 var(--gu);
+}
+/* The net: display face, seated on +5r. A gain in the win colour, a loss in the loss colour; no
+   arrow, no trend colour (honesty rules). */
+.hm-receipt-net { --h: 6; --k: 5; color: var(--text); }
+.hm-receipt-net.is-pos { color: var(--pos); }
+.hm-receipt-net.is-neg { color: var(--neg); }
+.hm-receipt-what { display: block; min-width: 0; text-align: right; }
+.hm-receipt-name { --h: 3; --k: 3; color: var(--text); }
+.hm-receipt-meta { --h: 2; --k: 2; color: var(--text-muted); }
+/* The fact bar: the Results bar's 11g | 11g | 13g, the last segment raised (as Net is there).
+   Each figure and its label seated on the bar's +3r, the pair centred in its segment. The hairlines
+   (top, and between segments) are drawn inside each segment, so the raised fill does not hide
+   them. */
+.hm-facts {
+  display: grid;
+  grid-template-columns: var(--pl-cols);
+  height: calc(var(--subrow) * 4);
+}
+.hm-fact {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: calc(var(--gu) * 0.5);
+  min-width: 0;
+  height: calc(var(--subrow) * 4);
+  box-sizing: border-box;
+  padding: 0 calc(var(--gu) * 0.5);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.hm-fact + .hm-fact { box-shadow: inset var(--bw-hair) 0 0 var(--border), inset 0 var(--bw-hair) 0 var(--border); }
+.hm-fact:last-child { background: var(--surface-raised); }
+.hm-fact-v { --h: 4; --k: 3; flex: 0 1 auto; color: var(--text); }
+.hm-fact-l { --h: 4; --k: 3; flex: 0 1 auto; color: var(--text-muted); }
+.hm-fact.is-muted .hm-fact-v { color: var(--text-muted); font-weight: var(--fw-regular); }
+
+/* ── No result yet ── */
+.hm-receipt--empty {
+  height: calc(var(--subrow) * 12);
+  padding: 0 var(--gu);
+  cursor: default;
+}
+.hm-empty-title { --h: 4; --k: 3; color: var(--text); }
+.hm-empty-note { --h: 2; --k: 2; color: var(--text-muted); }
+.hm-empty-actions { display: flex; gap: var(--gu); margin-top: var(--subrow); }
+.hm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+.hm-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+.hm-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.hm-w10 { width: calc(var(--gu) * 10); }
+.hm-w23 { width: calc(var(--gu) * 23); }
+
+/* ── The Log menu (portalled to the body) ── */
+.hm-logmenu {
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--gu) * 17);
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-1) var(--border), var(--elev-2);
+  overflow: hidden;
+}
+.hm-logmenu-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 100%;
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+.hm-logmenu-item + .hm-logmenu-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.hm-logmenu-item:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-logmenu-item:hover { background: var(--hover-overlay); }
+}
+
+/* Results: the entry the home's Last result card opened, ringed for a moment (TrackingView). */
+.tracking-card.is-focus { box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
 
 /* ── Hands > Scanner (components/HandsScanner.jsx) ──
    The home's old Table Scanner section, unchanged: a .dashboard-view, so its 3r header seats the
