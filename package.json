@@ -34,6 +34,7 @@
     "test:gates": "node test/server-gates.test.js",
     "test:tax-report": "node --test vite-app/src/utils/__tests__/tax-report.test.mjs && node test/tax-report-route.test.js",
     "test:venue-coords": "node test/venue-coords.test.js",
+    "test:venue-map": "node test/venue-map.test.js && cd vite-app && node --test src/utils/__tests__/venue-map.test.mjs",
     "test:bankrolls": "node test/bankrolls.test.js && node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs src/utils/__tests__/bankroll-ledger.test.mjs src/utils/__tests__/bankroll-overview.test.mjs",
     "test:transactions": "node test/ledger-source-transactions.test.js && node test/bankroll-transactions.test.js && cd vite-app && node --test src/utils/__tests__/transactions.test.mjs",
     "test:bankroll-reports": "node test/bankroll-reports.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-reports.test.mjs src/utils/__tests__/bankroll-locations.test.mjs",
