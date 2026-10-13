@@ -28,7 +28,15 @@ wsop-console side and verified against both live services.
   bankroll Locations tab (worktree `wf_f6462427-c7b-1`, based on an older master — needs a merge); the
   venue-strip map popup (worktree `venue-map`, branch `feat/venue-map` off `merge/home-tables`:
   MapKit JS when keyed, Google Maps JS on Android when keyed, OSM fallback).
-- **Queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (files the
+- **PAUSED at 94% weekly usage (evening 2026-10-13) to finish the backer page:** springs final review
+  (resume `weekly-graphics/replayer-springs.workflow.js`, run wf_47e1730e-7b7; then switch to Set B,
+  merge, send the comparison videos); Locations (workflow script bankroll-locations-tab-wf_f6462427-c7b,
+  worktree wf_f6462427-c7b-1); venue map (worktree `venue-map`, branch feat/venue-map, uncommitted
+  work — it was re-running the My Schedule guard views at 1440). Backer page: branch
+  `feat/backer-page` (worktree `backer-page`, 627fa70) — merge with master, deploy.
+- **Queued (owner, 2026-10-13):** onboarding questions refinement; an s-points calculator on events
+  whose structures are available (confirm what "s-points" means with Ethan first); letting the user
+  change and reorder what the home (Dashboard) shows. **Also queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (files the
   WSOP.com client writes on the player's computer, parsed into the replayer — never account
   scraping; needs sample files from Ethan); catalogue three (replayer polish, ~25 agents — ask
   first, it is the biggest spender). Ads are paused (memory `ads-paused`).
