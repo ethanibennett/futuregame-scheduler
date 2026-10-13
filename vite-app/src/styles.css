@@ -16501,7 +16501,10 @@
        pane. useDesktopLayout counts the 2g (PANE_GAP_G) into the shell, so every pane stays whole g.
        A hidden pane between them (My Schedule's NUMBERS slot off the Dashboard) still counts as
        the previous sibling, so the gap holds on every tab with two panes. */
-    .dk-pane + .dk-pane { margin-left: calc(var(--gu) * 2); }
+    /* The gap is painted in the header's colour (owner, 2026-10-13): --surface, where the header's
+       gradient ends against the panes. A shadow cast 2g to the left with no blur fills exactly the
+       margin, outside the pane's own box, so nothing in the layout moves. */
+    .dk-pane + .dk-pane { margin-left: calc(var(--gu) * 2); box-shadow: calc(var(--gu) * -2) 0 0 0 var(--surface); }
     .dk-pane + .dk-pane::before { display: none; }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
@@ -16722,8 +16725,10 @@
     .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 4); }
     .dk-pane-detail > .dk-detail-block.is-closing { pointer-events: none; }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
-    /* No rule between them: the 4r of background above is the divider, as the 2g is between
-       panes (owner, 2026-10-13). */
+    /* No rule between them: the 4r above My Schedule is the divider, in the header's colour like the
+       2g between panes (owner, 2026-10-13): a shadow cast 4r up from My Schedule with no blur covers
+       exactly the details' 4r foot, full width, and moves with the open / close as the foot does. */
+    .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--subrow) * -4) 0 0 var(--surface); }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════
