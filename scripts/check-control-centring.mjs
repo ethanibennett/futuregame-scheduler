@@ -451,6 +451,11 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       await p.waitForTimeout(450);   // the body's 0fr <-> 1fr transition (--dur-base)
     }
     if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
+    // Then until every collapse has finished (on a slow frame the last can outlast the wait above).
+    await p.waitForFunction(() => {
+      const o = document.querySelector('.an-sheet .ovt');
+      return !o || !o.getAnimations || o.getAnimations({ subtree: true }).length === 0;
+    }, null, { timeout: 5000 });
     await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
   };
   await step('bankroll-dashboard', async () => { await dash(null); await sections(true); }, 12);

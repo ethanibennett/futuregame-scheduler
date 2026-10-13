@@ -176,6 +176,12 @@ function scan(rootSel) {
         await p.waitForTimeout(450);
       }
       if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('an Overview section did not toggle');
+      // Then until every collapse has finished: a body still mid-transition clips its own rows (by
+      // design), and on a slow frame the last one can outlast the fixed wait above.
+      await p.waitForFunction(() => {
+        const o = document.querySelector('.an-sheet .ovt');
+        return !o || !o.getAnimations || o.getAnimations({ subtree: true }).length === 0;
+      }, null, { timeout: 5000 });
     };
     await sections(true);
     // Every tab in the strip, whatever it holds (Overview, Rules, Goals, Import, and any added
