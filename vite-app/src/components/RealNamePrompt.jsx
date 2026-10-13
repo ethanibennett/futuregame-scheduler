@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { API_URL } from '../utils/api.js';
 
-export default function RealNamePrompt({ onSave, onDismiss, token }) {
-  const [name, setName] = useState('');
+/* The name buddies and groups see. Asked after a password sign-in to an account that has none
+   (accounts from before registration required one); "Later" asks again at the next sign-in.
+   Settings' "Edit name" opens it on the current name (initialName), titled "Your name". */
+export default function RealNamePrompt({ onSave, onDismiss, token, initialName }) {
+  const editing = initialName !== undefined;
+  const [name, setName] = useState(initialName || '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -24,25 +28,26 @@ export default function RealNamePrompt({ onSave, onDismiss, token }) {
 
   return createPortal(
     <div className="modal-backdrop" onClick={onDismiss}>
-      {/* 33g on the grid (see .modal-content); snap-place sets the centred box on the lines. */}
-      <div className="modal-content snap-place" onClick={e => e.stopPropagation()} style={{ width: 'calc(var(--gu) * 33)' }}>
-        <h3>What's your name?</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.252)', marginBottom: 'var(--space-xl)' }}>
-          Your connections and group members will see this.
-        </p>
-        {err && <div className="alert alert-error" style={{ marginBottom: 'var(--space-lg)' }}>{err}</div>}
+      {/* 33g on the grid (.modal-content.ob-name); snap-place sets the centred box on the lines.
+          Its text is seated as first-run setup's (.ob-title, .ob-lead). */}
+      <div className="modal-content snap-place ob ob-name" role="dialog" aria-modal="true" aria-labelledby="name-title" onClick={e => e.stopPropagation()}>
+        <h3 id="name-title" className="ob-title">{editing ? 'Your name' : "What's your name?"}</h3>
+        <p className="ob-lead">Buddies and groups see this instead of your username.</p>
+        {err && <div className="alert alert-error">{err}</div>}
         <input
+          className="ob-search ob-input"
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Your real name"
+          aria-label="Your real name"
           maxLength={40}
           autoFocus
-          style={{ display: 'block', width: '100%', height: 'calc(var(--subrow) * 5)', padding: '0 var(--space-lg)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', boxSizing: 'border-box' }}
+          autoComplete="name"
           onKeyDown={e => { if (e.key === 'Enter' && name.trim()) handleSave(); }}
         />
-        <div style={{ display: 'flex', gap: 'var(--gu)', marginTop: 'var(--space-xl)', justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost btn-sm snap-g" onClick={onDismiss}>Later</button>
+        <div className="ob-foot ob-foot--end">
+          <button className="btn btn-ghost btn-sm snap-g" onClick={onDismiss}>{editing ? 'Cancel' : 'Later'}</button>
           <button className="btn btn-primary btn-sm snap-g" onClick={handleSave} disabled={saving || !name.trim()}>
             {saving ? 'Saving...' : 'Save'}
           </button>

@@ -42,7 +42,8 @@ import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
 import OnboardingWizard from './components/OnboardingWizard.jsx';
-import { hasOnboarded, readLocalLocation, readLocalFilters } from './utils/location-prefs.js';
+import { hasOnboarded, markOnboarded, clearOnboarded, readLocalLocation, readLocalFilters } from './utils/location-prefs.js';
+import { fetchServerOnboarding, adoptServerOnboarding } from './utils/onboarding.js';
 import NotificationsPanel from './components/NotificationsPanel.jsx';
 import SwapModal from './components/SwapModal.jsx';
 import MilestoneCelebration from './components/MilestoneCelebration.jsx';
@@ -312,19 +313,35 @@ function App() {
   // Real name / display name
   const [realName, setRealName] = useState(localStorage.getItem('realName') || null);
   const [showRealNamePrompt, setShowRealNamePrompt] = useState(false);
-  // First-run filter wizard: auto-opens once for a logged-in (non-guest) user who
-  // hasn't been through it. Re-openable later via a 'reopen-onboarding' window event
-  // (fired from the location menu), which bypasses the once-only flag.
+  // Settings' "Edit name": the same prompt, opened on the current name.
+  const [editingName, setEditingName] = useState(false);
+  /* First-run setup (OnboardingWizard, docs/onboarding.md). Opens once per ACCOUNT: the server's
+     users.onboarding says whether this account has finished or skipped it, and
+     localStorage.onboarded is only this browser's cache of that answer. A sign-in hands its record
+     over in onboardingRec (undefined: the server said nothing — an older server — so the old
+     per-browser rule decides). Re-openable from the location menu ('reopen-onboarding'), which
+     bypasses all of it and pre-fills from the current filters. */
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingFirstRun, setOnboardingFirstRun] = useState(true);
+  const onboardingRec = useRef(undefined);
   useEffect(() => {
-    // Auto-open only for genuinely new users: logged in, not a guest, never onboarded,
-    // and no filters/location already chosen — so existing users aren't nagged.
-    if (token && !isGuest && !hasOnboarded() && !readLocalLocation() && !readLocalFilters()) {
-      setShowOnboarding(true);
-    }
+    if (!token || hasOnboarded()) return undefined;
+    const open = () => { setOnboardingFirstRun(true); setShowOnboarding(true); };
+    const nothingSaved = () => !readLocalLocation() && !readLocalFilters();
+    // A guest's answers stay on this device: the old rule, now for guests too.
+    if (isGuest) { if (nothingSaved()) open(); return undefined; }
+    let cancelled = false;
+    const handed = onboardingRec.current;
+    onboardingRec.current = undefined;
+    (handed !== undefined ? Promise.resolve(handed) : fetchServerOnboarding(token)).then(rec => {
+      if (cancelled || hasOnboarded()) return;
+      if (rec) { adoptServerOnboarding(rec); markOnboarded(); return; }
+      if (rec === null || nothingSaved()) open();
+    });
+    return () => { cancelled = true; };
   }, [token, isGuest]);
   useEffect(() => {
-    const reopen = () => setShowOnboarding(true);
+    const reopen = () => { setOnboardingFirstRun(false); setShowOnboarding(true); };
     window.addEventListener('reopen-onboarding', reopen);
     return () => window.removeEventListener('reopen-onboarding', reopen);
   }, []);
@@ -973,25 +990,38 @@ function App() {
       if (!res.ok) { setError(data.error || 'Authentication failed'); return; }
 
       if (isRegister) {
-        setSuccess('Account created! Please sign in.');
+        // Create Account signs you in. An older server answers with no session: say so.
+        if (data.token) completeSignIn(data, true);
+        else setSuccess('Account created. Sign in to continue.');
       } else {
-        const store = keepSignedIn ? localStorage : sessionStorage;
-        store.setItem('token', data.token);
-        store.setItem('username', data.username);
-        if (data.avatar) store.setItem('avatar', data.avatar);
-        else store.removeItem('avatar');
-        if (data.realName) store.setItem('realName', data.realName);
-        else store.removeItem('realName');
-        store.setItem('handReplayerAccess', data.handReplayerAccess ? 'true' : 'false');
-        if (!keepSignedIn) localStorage.setItem('sessionOnly', 'true');
-        setToken(data.token);
-        setUsername(data.username);
-        setAvatar(data.avatar || null);
-        setRealName(data.realName || null);
-        setHandReplayerAccess(!!data.handReplayerAccess);
-        if (!data.realName) setShowRealNamePrompt(true);
+        completeSignIn(data, keepSignedIn);
       }
     } catch { setError('Network error. Please try again.'); }
+  };
+
+  // A session from /api/login or /api/register.
+  const completeSignIn = (data, keepSignedIn) => {
+    const store = keepSignedIn ? localStorage : sessionStorage;
+    store.setItem('token', data.token);
+    store.setItem('username', data.username);
+    if (data.avatar) store.setItem('avatar', data.avatar);
+    else store.removeItem('avatar');
+    if (data.realName) store.setItem('realName', data.realName);
+    else store.removeItem('realName');
+    store.setItem('handReplayerAccess', data.handReplayerAccess ? 'true' : 'false');
+    if (!keepSignedIn) localStorage.setItem('sessionOnly', 'true');
+    /* Setup is the account's: an account that has never finished it clears this browser's flag
+       (a shared browser must not hand the last user's "done" to this one); one that has, adopts
+       its answers and sets it. undefined (an older server) leaves the browser's own rule. */
+    if (data.onboarding === null) clearOnboarded();
+    else if (data.onboarding) { adoptServerOnboarding(data.onboarding); markOnboarded(); }
+    onboardingRec.current = data.onboarding;
+    setToken(data.token);
+    setUsername(data.username);
+    setAvatar(data.avatar || null);
+    setRealName(data.realName || null);
+    setHandReplayerAccess(!!data.handReplayerAccess);
+    if (!data.realName) setShowRealNamePrompt(true);
   };
 
   const handleGuestLogin = async () => {
@@ -1022,6 +1052,8 @@ function App() {
     setAvatar(null);
     setRealName(null);
     setShowRealNamePrompt(false);
+    setEditingName(false);
+    setShowOnboarding(false);
     setCurrentView('dashboard');
     setTournaments([]);
     setMySchedule([]);
@@ -2018,6 +2050,7 @@ function App() {
                 isAdmin={isAdmin}
                 seasonLabel={seasonLabel}
                 isGuest={isGuest}
+                onEditName={isGuest ? undefined : () => setEditingName(true)}
               />
             )}
             </div>
@@ -2335,18 +2368,29 @@ function App() {
         </div>
       )}
 
-      {showRealNamePrompt && (
+      {(showRealNamePrompt || editingName) && (
         <RealNamePrompt
           token={token}
-          onSave={(name) => { setRealName(name); localStorage.setItem('realName', name); setShowRealNamePrompt(false); }}
-          onDismiss={() => setShowRealNamePrompt(false)}
+          initialName={editingName ? (realName || '') : undefined}
+          onSave={(name) => { setRealName(name); localStorage.setItem('realName', name); setShowRealNamePrompt(false); setEditingName(false); }}
+          onDismiss={() => { setShowRealNamePrompt(false); setEditingName(false); }}
         />
       )}
 
-      {/* Onboarding waits behind the real-name prompt so a brand-new user answers
-          one at a time rather than seeing two stacked modals. */}
-      {showOnboarding && !showRealNamePrompt && (
-        <OnboardingWizard token={token} onDone={() => setShowOnboarding(false)} />
+      {/* Setup waits behind the real-name prompt so a brand-new user answers
+          one at a time rather than seeing two stacked modals. A first run that
+          finishes lands on the Schedule it just set up; a re-run stays put. */}
+      {showOnboarding && !showRealNamePrompt && !editingName && (
+        <OnboardingWizard
+          token={token}
+          isGuest={isGuest}
+          tournaments={tournaments}
+          firstRun={onboardingFirstRun}
+          onDone={(res) => {
+            setShowOnboarding(false);
+            if (res && res.applied && onboardingFirstRun) setCurrentView('tournaments');
+          }}
+        />
       )}
 
       {showNotifications && (

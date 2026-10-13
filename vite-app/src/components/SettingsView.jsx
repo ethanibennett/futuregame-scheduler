@@ -18,7 +18,7 @@ const seatedInitial = (baselineR) => ({
   textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
 });
 
-export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel, isGuest }) {
+export default function SettingsView({ username, avatar, realName, nameMode, onToggleNameMode, onAvatarUpload, onAvatarRemove, theme, toggleTheme, contrast, toggleContrast, cardSplay, toggleCardSplay, serifFont, toggleSerifFont, onLogout, onDebugTimeChange, onUpload, uploadError, uploadSuccess, uploadVenue, onUploadVenueChange, shareToken, onGenerateShareToken, onRevokeShareToken, onSendShareRequest, pendingOutgoing, onCancelRequest, shareBuddies, onRemoveBuddy, shareError, shareSuccess, token, onRefreshTournaments, isAdmin, seasonLabel, isGuest, onEditName }) {
   const toast = useToast();
   const displayName = useDisplayName();
   const [debugInput, setDebugInput] = useState(getDebugNow());
@@ -87,6 +87,9 @@ export default function SettingsView({ username, avatar, realName, nameMode, onT
               </label>
               {avatar && (
                 <button className="btn btn-ghost btn-sm settings-btn settings-btn--danger" onClick={onAvatarRemove}><span>Remove</span></button>
+              )}
+              {onEditName && (
+                <button className="btn btn-ghost btn-sm settings-btn settings-btn--w7" onClick={onEditName}><span>Edit name</span></button>
               )}
             </div>
           </div>

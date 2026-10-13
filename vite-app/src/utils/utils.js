@@ -1293,6 +1293,43 @@ export const LOCATION_REGIONS = {
   northeast: { label: 'Northeast US', test: (c) => NORTHEAST_STATES.has(c.region) },
 };
 
+/* The US state a region implies, for the online availability question: a player who picks Las
+   Vegas is in Nevada. Northeast US spans eleven states and Europe none, so they imply nothing.
+   Used by first-run setup (utils/onboarding.js) and the location menu (LocationDropdown.jsx). */
+export const REGION_JURISDICTION = { lasvegas: 'NV', texas: 'TX', florida: 'FL' };
+
+/* The game and buy-in tests of the Schedule list, moved here unchanged from TournamentsView's
+   filter so first-run setup's live count (utils/onboarding.js countSetup) runs the same code and
+   the two cannot disagree. Mixed is every game that is not NLH or PLO. */
+export function matchesGames(t, filters) {
+  if (!filters) return true;
+  const selected = filters.selectedGames || [];
+  if (selected.length > 0 || filters.mixedOnly) {
+    const isMixed = t.game_variant !== 'NLH' && t.game_variant !== 'PLO';
+    const matchesGame = selected.length > 0 && selected.includes(t.game_variant);
+    const matchesMixed = filters.mixedOnly && isMixed;
+    if (!matchesGame && !matchesMixed) return false;
+  }
+  return true;
+}
+
+export function matchesBuyin(t, filters) {
+  if (!filters) return true;
+  if (filters.buyinRanges && filters.buyinRanges.length > 0) {
+    const b = Number(t.buyin) || 0;
+    const matches = filters.buyinRanges.some(r => {
+      if (r === '0-500') return b < 500;
+      if (r === '500-1500') return b >= 500 && b < 1500;
+      if (r === '1500-5000') return b >= 1500 && b < 5000;
+      if (r === '5000-10000') return b >= 5000 && b <= 10000;
+      if (r === '10000+') return b > 10000;
+      return true;
+    });
+    if (!matches) return false;
+  }
+  return true;
+}
+
 // ── Haversine distance (miles) ────────────────────────────
 export function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 3958.8;

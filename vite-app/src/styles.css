@@ -2395,6 +2395,280 @@
     .modal-content h3 { margin: 0 0 var(--subrow); line-height: calc(var(--subrow) * 3); }
     .modal-content p { margin: 0 0 calc(var(--subrow) * 2); line-height: calc(var(--subrow) * 2); }
 
+    /* ── First-run setup (OnboardingWizard.jsx, docs/onboarding.md) ──
+       Inside the 35g modal's 31g content box, every block whole r and whole g. From the content
+       top: the 4r head (step caption on +3r, a 4r Skip), 1r, the 1r progress bar (three 9g
+       segments, 2g apart: 9+2+9+2+9 = 31g), 2r, the 3r title (baseline on its bottom line), 1r,
+       the lead (2r lines, 2r after), the step's body, the count line (2r above, 2r lines) and the
+       4r foot (2r above). Text outside a control is a trimmed block whose padding-top is its
+       first baseline less 1cap, so each baseline sits on an r line (the Settings / Social seat);
+       a control's label is centred in it (.ctl), a tile's two lines seated on its +3r and +5r.
+       Rings are inset shadows. The modal scrolls on a short screen with its scrollbar hidden, so
+       a classic scrollbar can never take width from the 31g. */
+    .modal-content.ob { scrollbar-width: none; }
+    .modal-content.ob::-webkit-scrollbar { display: none; }
+    .ob .ob-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      height: calc(var(--subrow) * 4);
+    }
+    .ob .ob-step,
+    .ob .ob-label,
+    .ob .ob-title,
+    .ob .ob-lead,
+    .ob .ob-help,
+    .ob .ob-error,
+    .ob .ob-status,
+    .ob .ob-tile-title,
+    .ob .ob-tile-sub {
+      display: block;
+      box-sizing: border-box;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .ob .ob-step {
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+    .ob .ob-progress {
+      display: grid;
+      grid-template-columns: repeat(3, calc(var(--gu) * 9));
+      column-gap: calc(var(--gu) * 2);
+      height: var(--subrow);
+      margin-top: var(--subrow);
+    }
+    .ob .ob-seg { border-radius: var(--radius-xs); background: var(--border); }
+    .ob .ob-seg.is-on { background: var(--brand); }
+    .modal-content.ob .ob-title {
+      height: calc(var(--subrow) * 3);
+      margin: calc(var(--subrow) * 2) 0 var(--subrow);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-xl);
+      font-weight: var(--fw-bold);
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    /* The title takes focus on each step (tabindex -1) so a screen reader announces the step. It
+       is not a control and is never reached by Tab, so it draws no ring. */
+    .modal-content.ob .ob-title:focus { outline: none; }
+    /* Wrapping text: 2r lines, the first baseline on the block's +2r, so n lines are n x 2r. */
+    .modal-content.ob .ob-lead,
+    .ob .ob-help,
+    .ob .ob-error,
+    .modal-content.ob .ob-status {
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      line-height: calc(var(--subrow) * 2);
+    }
+    .modal-content.ob .ob-lead { margin: 0 0 calc(var(--subrow) * 2); font-size: var(--fs-md); color: var(--text-muted); }
+    .ob .ob-help { margin: var(--subrow) 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
+    .ob .ob-help--gap { margin-top: calc(var(--subrow) * 2); }
+    .ob .ob-error { margin: var(--subrow) 0 0; font-size: var(--fs-sm); color: var(--danger); }
+    .modal-content.ob .ob-status { margin: calc(var(--subrow) * 2) 0 0; font-size: var(--fs-sm); color: var(--text); }
+    .ob .ob-hide { visibility: hidden; }
+    /* A caption: one 2r line (baseline on its bottom), 2r above, 1r below. */
+    .ob .ob-label {
+      height: calc(var(--subrow) * 2);
+      margin: calc(var(--subrow) * 2) 0 var(--subrow);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+    .ob .ob-label--first { margin-top: 0; }
+    .ob .ob-label-note { font-weight: var(--fw-regular); letter-spacing: 0; text-transform: none; }
+
+    /* Options: a ring when off; a tile or row takes a heavier brand ring on the brand tint when on,
+       a chip or region cell the brand fill. */
+    .ob .onboarding-option {
+      box-sizing: border-box;
+      margin: 0;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      cursor: pointer;
+      transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    }
+    .ob .ob-tile.is-on,
+    .ob .ob-row.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+    .ob .ob-chip.is-on,
+    .ob .ob-cell.is-on { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+    .ob .ob-group { display: block; }
+    .ob .ob-stack { display: flex; flex-direction: column; row-gap: var(--subrow); }
+    /* A tile: 31g x 6r, two seated lines (title on +3r, sub on +5r) centred as a 4r pair, set at the
+       start. The location tile leads with a 2r pin and 1g before the text. A long line ends in an
+       ellipsis, its painted room below the baseline from padding an equal negative margin takes back. */
+    .ob .ob-tile {
+      display: flex;
+      align-items: center;
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 6);
+      padding: 0 var(--gu);
+      text-align: left;
+    }
+    .ob .ob-tile-icon {
+      --icon-size: calc(var(--subrow) * 2);
+      display: flex;
+      width: calc(var(--subrow) * 2);
+      height: calc(var(--subrow) * 2);
+      flex-shrink: 0;
+      color: var(--brand);
+    }
+    .ob .ob-tile-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+    .ob .ob-tile-title,
+    .ob .ob-tile-sub {
+      height: calc(var(--subrow) * 2.5);
+      margin-bottom: calc(var(--subrow) * -0.5);
+      padding: calc(var(--subrow) * 2 - 1cap) 0 calc(var(--subrow) * 0.5);
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ob .ob-tile-title { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+    .ob .ob-tile-sub { font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--text-muted); }
+    /* City search: a 5r field, its text on +3r (the Social search recipe: Univers Condensed A - D
+       = 0.7333em). */
+    .ob .ob-search {
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: var(--subrow) 0 0;
+      padding: calc(var(--subrow) * 2 - 0.7333em) var(--gu) var(--subrow);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
+      border: none;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-md);
+      outline: none;
+    }
+    .ob .ob-search::placeholder { color: var(--text-muted); }
+    .ob .ob-search:focus-visible { box-shadow: inset 0 0 0 var(--bw-1) var(--brand); }
+    /* Results: up to four 31g x 4r rows, the place name set at the start, a tick on the chosen one. */
+    .ob .ob-results { display: flex; flex-direction: column; margin-top: var(--subrow); }
+    .ob .ob-row {
+      display: flex;
+      align-items: center;
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      padding: 0 var(--gu);
+      background: none;
+      box-shadow: none;
+      font-size: var(--fs-md);
+      line-height: 1;
+      text-align: left;
+    }
+    .ob .ob-row-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ob .ob-row-check { --icon-size: calc(var(--subrow) * 2); display: flex; flex-shrink: 0; color: var(--brand); }
+    /* Chips: 7g x 4r, 1g apart on a four-cell rhythm (4 x 7 + 3 x 1 = 31g). */
+    .ob .ob-chips { display: flex; column-gap: var(--gu); }
+    .ob .ob-chip {
+      width: calc(var(--gu) * 7);
+      height: calc(var(--subrow) * 4);
+      padding: 0;
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+    }
+    /* Regions: two 15g columns 1g apart, 5r cells 1r apart (3 rows, 17r). */
+    .ob .ob-grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--gu) * 15));
+      column-gap: var(--gu);
+      row-gap: var(--subrow);
+    }
+    .ob .ob-cell {
+      width: calc(var(--gu) * 15);
+      height: calc(var(--subrow) * 5);
+      padding: 0;
+      font-size: var(--fs-md);
+      font-weight: var(--fw-bold);
+    }
+    /* The state: a 31g x 5r field, its value centred vertically, a chevron in the last 3g. */
+    .ob .ob-select-wrap { position: relative; display: block; }
+    .ob .ob-select {
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 calc(var(--gu) * 3) 0 var(--gu);
+      border: none;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-md);
+      line-height: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .ob .ob-select-chev {
+      --icon-size: calc(var(--subrow) * 2);
+      position: absolute;
+      top: calc(var(--subrow) * 1.5);
+      right: var(--gu);
+      display: flex;
+      pointer-events: none;
+      color: var(--text-muted);
+    }
+    /* "Only sites open in <state>": a 31g x 5r row, a 2r box, 1g, the label. */
+    .ob .ob-check {
+      display: flex;
+      align-items: center;
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      margin-top: calc(var(--subrow) * 2);
+      padding: 0 var(--gu);
+      font-size: var(--fs-md);
+      line-height: 1;
+      text-align: left;
+    }
+    .ob .ob-check-box {
+      --icon-size: calc(var(--subrow) * 1.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: calc(var(--subrow) * 2);
+      height: calc(var(--subrow) * 2);
+      flex-shrink: 0;
+      border-radius: var(--radius-xs);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted);
+    }
+    .ob .ob-check.is-on .ob-check-box { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+    .ob .ob-check-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ob .ob-foot {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      height: calc(var(--subrow) * 4);
+      margin-top: calc(var(--subrow) * 2);
+    }
+    /* The name prompt (RealNamePrompt.jsx) in the same parts: 33g (29g inside), the title first,
+       the lead, a 5r field and the 4r foot with its two buttons at the end, 1g apart. */
+    .modal-content.ob-name { width: calc(var(--gu) * 33); }
+    .modal-content.ob-name .ob-title { margin-top: 0; }
+    .ob .ob-input { margin-top: 0; }
+    .ob .ob-foot--end { justify-content: flex-end; column-gap: var(--gu); }
+
     .live-update-panel {
       position: fixed;
       width: calc(var(--subrow) * 37.5);
