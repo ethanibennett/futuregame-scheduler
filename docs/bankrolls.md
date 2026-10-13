@@ -51,6 +51,7 @@ Tests: `npm run test:bankrolls`.
 | POST | `/api/bankrolls/transfers` | `{ from, to, amount > 0, toAmount?, date?, note? }` |
 | DELETE | `/api/bankrolls/adjustments/:id` | removes both legs of a transfer |
 | POST/PUT | `/api/tracking[/:id]` | now also takes `bankrollId: 'main' \| id`; omitted = leave as is (new = Main). Must be the caller's, not archived (unless unchanged) |
+| DELETE | `/api/tracking` | bulk delete, always scoped: `?bankroll=main\|id` (that bankroll's results; another user's is a 404) or `?all=true` (every bankroll); neither, or `?bankroll=all` alone, is a 400. `?expect=n`: the count the typed confirmation showed — a different count is a 409 and nothing is deleted. → `{ count, scope }`. For everyone, not just the beta (a non-admin's results are all in Main). Results > Delete results (`ResetResults.jsx`, `utils/reset-results.js`) is the only caller; it left the home on 2026-10-11 |
 
 ## The shared filter: `?bankroll=<all|main|id>`
 
@@ -84,8 +85,11 @@ Client — `vite-app/src/utils/bankrolls.js`, dependency-free:
 - `computeBalances(bankrolls, entries, { nativeCurrency, convert })` — superseded for display (it
   only sees tournaments + adjustments); kept as the reference arithmetic. Per-bankroll
   `{ start, adjustments, results, balance, entries, currency }`, plus an `'all'` row in USD
-- `useBankrolls({ enabled: isAdmin, token })` — the list and the Results tab's selected key
-  (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's choice.
+- `useBankrolls({ enabled: isAdmin, token, version })` — the list, the summary and the Results tab's
+  selected key (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's
+  choice. Since 2026-10-12 App creates it once (`version` = the tracking entries, so the summary is
+  refetched after a result changes) and hands the same `bk` to the home (its bankroll line, period
+  block and goals) and to the Results tab: one summary, never two that disagree.
 
 A tax report probably wants the ledger too (deposits/withdrawals are not income):
 `GET /api/bankrolls/adjustments?bankroll=…`.
@@ -135,6 +139,13 @@ date, then entries without a ts first, then source, then ref id.
 | POST | `/api/bankrolls/import` | `{ bankroll, commit, rows }` — preview (commit false) or write; dedupe by fingerprint |
 
 ### The dashboard (`BankrollDashboard.jsx`, behind the bankroll strip's Dashboard button)
+
+The home opens it too, on All bankrolls: its bankroll line on **Rules**, its goals on **Goals** and its
+period block on the **Overview** (`initialTab` / `initialKey`, through `BankrollDashboardSheet`), as
+does its signal-or-noise line when the sentence is about cash (home step 6; a tournament sentence
+opens the Analytics sheet). For cash that line reads the whole ledger once (no `from`), reduced on the
+client to a per-hour spread (`utils/home-noise.js` `cashSpread`: sum of profit over sum of hours, and
+an SD per hour with each session's variance growing with its hours).
 
 A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
 **Overview / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the
@@ -287,7 +298,10 @@ scroll for 10r of overflow).
 
 **The live bar.** While a session runs, `LiveCashBar` (App.jsx, a 5r bar directly above the bottom nav)
 shows its clock and what is in play on every tab, and Open goes to Results › Cash. It hides on that
-view (which shows the full live card) and on Hands. The session is server-side, so the clock survives
+view (which shows the full live card), on Hands, and on the Dashboard, where the session is the first
+Up Next card instead (`HomeCashCard.jsx`, home step 5: the clock, what is in play and the last stack
+against what was in; Update stack posts a stack update in place, Cash out opens the live screen with
+its cash-out panel open, intent `cash-end`; a tap elsewhere opens the live screen). The session is server-side, so the clock survives
 reloads and other devices; `hooks/useLiveCashSession.js` mirrors it (on mount, on return to the
 foreground, every 5 min) and corrects for clock skew with the server's `now`.
 
@@ -338,8 +352,16 @@ income: `rakeback bonus staking sponsorship coaching other`. The client list mus
 | DELETE | `/api/bankrolls/transactions/:id` | |
 | GET | `/api/bankrolls/trips` | → `{ trips: [{ id, name, start_date, end_date, bankroll: 'all'\|'main'\|id, note, transaction_count }] }` |
 | POST/PUT | `/api/bankrolls/trips[/:id]` | `{ name, startDate, endDate, bankroll?: 'all'\|'main'\|id, note? }` |
-| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope. Totals are the client's (`tripPnl()`), because results are in each venue's currency |
+| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results, cash_sessions }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope; cash_sessions the ENDED sessions whose day is inside it, in its scope, read through the ledger's own cash source (`{ id, date, amount, currency, hours, label, bankroll_id }`, amount = cash_out − buy_in − tips − expenses). Totals are the client's (`tripPnl()`), because results are in each venue's currency |
 | DELETE | `/api/bankrolls/trips/:id` | → `{ deleted, untagged }` |
+
+**One trip net.** `tripPnl()` (`utils/transactions.js`) is the only definition of a trip's P&L:
+tournaments (cashes − buy-ins) + cash sessions + income − expenses. The trip page (Results >
+Expenses > Trips) and the home's period block in trip mode both run it on the same `/trips/:id`
+payload with the same exchange rates, so the home's "Net after expenses" is the "Trip net" its tap
+opens (2026-10-12; the home used to add the trip's cash sessions and the page did not, and a trip with
+two sessions read +$3,014 on the home and +$3,567 on the page). It reports `unconverted`, so the
+home shows a dash and "Waiting for exchange rates" rather than a part-total.
 
 ### Ledger source
 

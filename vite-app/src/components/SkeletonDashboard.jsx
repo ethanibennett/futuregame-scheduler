@@ -16,8 +16,9 @@ import React from 'react';
  *
  * 2026-09-30: on the grid. Every box is whole r tall and whole g wide with its
  * edges on grid lines (sizes live in styles.css, .skeleton-hero-* / -title /
- * -slab / -pl-grid): the hero is the real plain card's 12r, the scanner slab
- * the real 5r button, the results grid the real 8g | 8g | 17g x 9r cards.
+ * -pl-grid): the hero is the real plain card's 12r, the results bar the real
+ * 4r bar. (The scanner slab went with the scanner, 2026-10-12: it is the
+ * Playing card's Scan action now.)
  */
 export default function SkeletonDashboard() {
   return (
@@ -34,13 +35,6 @@ export default function SkeletonDashboard() {
             <div className="skeleton skeleton-hero-bar" style={{animationDelay: '180ms'}} />
           </div>
         </div>
-      </div>
-
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="skeleton skeleton-title" style={{width: 'calc(var(--gu) * 11)'}} />
-        </div>
-        <div className="skeleton skeleton-slab" />
       </div>
 
       {/* The results section is a 3-up grid, not another slab. */}

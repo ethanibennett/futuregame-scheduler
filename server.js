@@ -1294,6 +1294,15 @@ async function initDatabase() {
     // Column already exists — ignore
   }
 
+  // Migrate: not_played — the home's To log "Didn't play" (components/HomeToLog.jsx). The event
+  // stays on the schedule; the app just stops asking for its result. Synced here, not kept in the
+  // browser, so a row cleared on the phone is cleared on the iPad too.
+  try {
+    db.run('ALTER TABLE user_schedules ADD COLUMN not_played INTEGER DEFAULT 0');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+
   // Migrate: add rake breakdown columns for tournament cost analysis
   const rakeColumns = [
     ['prize_pool', 'INTEGER'],
@@ -4529,6 +4538,24 @@ app.put('/api/schedule/:tournamentId/entries', authenticateToken, async (req, re
   }
 });
 
+// The home's To log "Didn't play", and its Undo: { notPlayed: true | false }. The event stays on
+// the schedule (user_schedules.not_played); the home and Results stop asking for its result.
+// 404 when the event is not on the caller's schedule.
+app.put('/api/schedule/:tournamentId/played', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const tid = Number(req.params.tournamentId);
+    if (!Number.isInteger(tid) || tid <= 0) return res.status(400).json({ error: 'Unknown event' });
+    const flag = req.body && req.body.notPlayed ? 1 : 0;
+    db.run('UPDATE user_schedules SET not_played = ? WHERE user_id = ? AND tournament_id = ?', [flag, req.user.id, tid]);
+    if (!db.getRowsModified()) return res.status(404).json({ error: 'Event not on your schedule' });
+    await saveDatabase();
+    res.json({ tournamentId: tid, notPlayed: !!flag });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // Remove condition from a scheduled event (make it firm)
 app.delete('/api/schedule/:tournamentId/condition', authenticateToken, async (req, res) => {
   try {
@@ -4661,7 +4688,7 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
 app.get('/api/my-schedule', authenticateToken, (req, res) => {
   try {
     const query = `
-      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries,
+      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries, us.not_played,
              sc.conditions AS conditions_json,
              sc.is_public AS condition_is_public
       FROM tournaments t
@@ -5984,10 +6011,14 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
   try {
     const bk = bankrolls.filterFromQuery(db, req.user.id, req.query.bankroll, 'te.bankroll_id');
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
+    // property: the room, for a venue strip on a series VENUE_MAP does not curate (getVenueInfo).
+    // imported: the row came from a CSV import (lib/bankroll-import.js), so Results' reset can say
+    // how much imported history it would delete.
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin,
-             t.game_variant, t.venue, t.is_satellite, t.total_entries
+             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries,
+             CASE WHEN t.source_pdf = 'bankroll-import' THEN 1 ELSE 0 END AS imported
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id
       WHERE te.user_id = ?${bk.sql}
@@ -6018,6 +6049,12 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
     existStmt.bind([req.user.id, tournamentId]);
     const existing = existStmt.step() ? existStmt.getAsObject() : null;
     existStmt.free();
+    // ifAbsent: the home's To log (one-tap Busted, and the Cashed form it opens) LOGS a result, it
+    // never edits one. A result already there (logged on another device, or by the live-update
+    // Finish) is a 409 that changes nothing, not an overwrite with a stale guess.
+    if (existing && req.body.ifAbsent) {
+      return res.status(409).json({ error: 'A result is already logged for this event', entryId: existing.id });
+    }
     const bk = bankrolls.resolveEntryBankroll(db, req, req.body.bankrollId, existing ? existing.bankroll_id : undefined, isAppAdminReq);
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
 
@@ -6035,10 +6072,11 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         'INSERT INTO tracking_entries (user_id, tournament_id, num_entries, cashed, finish_place, cash_amount, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [req.user.id, tournamentId, numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null]
       );
+      const newId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE user_id = ? AND tournament_id = ?', [bk.value, req.user.id, tournamentId]);
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
-      res.status(201).json({ message: 'Entry tracked' });
+      res.status(201).json({ message: 'Entry tracked', id: newId });
     }
   } catch (error) {
     console.error(error);
@@ -6083,25 +6121,53 @@ app.delete('/api/tracking/:entryId', authenticateToken, requireRegistered, async
   }
 });
 
-// Bulk-clear every tracking entry for the caller — the Dashboard "Reset"
-// button. The client has called this since a929d70 but the route was never
-// added, so it 404'd and surfaced as "Failed to reset results".
-// Returns { count } because the client reports how many were cleared.
+// Bulk-delete the caller's results — Results' "Delete results" (components/ResetResults.jsx),
+// behind a typed confirmation. It used to sit on the home and wipe every result in every
+// bankroll, imported history included, after one inline confirm; now it is always SCOPED:
+//   ?bankroll=main|<id>   that bankroll's results (the shared filter, lib/bankrolls.js: 404 for a
+//                         bankroll that is not the caller's)
+//   ?all=true             every bankroll's — only when asked for in so many words
+// Neither (or ?bankroll=all without all=true) is a 400 and deletes nothing.
+//   ?expect=<n>           the count the confirmation showed ("type DELETE 214 RESULTS"). When the
+//                         scope now holds a different number (a result logged on another device
+//                         meanwhile) it is a 409 with the current count, and nothing is deleted.
+// Cash sessions, expenses, deposits and transfers are other tables and are never touched.
+// Returns { count, scope } because the client reports how many were deleted.
 app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, res) => {
   try {
-    const countStmt = db.prepare('SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?');
-    countStmt.bind([req.user.id]);
+    const q = req.query || {};
+    const all = q.all === 'true' || q.all === '1';
+    const raw = q.bankroll;
+    const scoped = raw !== undefined && raw !== '' && raw !== bankrolls.ALL;
+    if (all && scoped) return res.status(400).json({ error: 'Pass a bankroll or all=true, not both' });
+    if (!all && !scoped) {
+      return res.status(400).json({ error: 'Say which results to delete: ?bankroll=main or a bankroll id, or ?all=true for every bankroll' });
+    }
+    const bk = all ? { sql: '', params: [] } : bankrolls.filterFromQuery(db, req.user.id, raw, 'bankroll_id');
+    if (bk.error) return res.status(bk.status).json({ error: bk.error });
+    const scope = all ? 'all' : (bk.ref.kind === bankrolls.MAIN ? bankrolls.MAIN : String(bk.ref.id));
+
+    const countStmt = db.prepare(`SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?${bk.sql}`);
+    countStmt.bind([req.user.id, ...bk.params]);
     countStmt.step();
     const count = countStmt.getAsObject().n || 0;
     countStmt.free();
 
+    if (q.expect !== undefined) {
+      const want = Number(q.expect);
+      if (!/^\d{1,9}$/.test(String(q.expect)) || !Number.isInteger(want)) return res.status(400).json({ error: 'expect must be a whole number' });
+      if (want !== count) {
+        return res.status(409).json({ error: `There are now ${count} result${count === 1 ? '' : 's'} to delete, not ${want}. Nothing was deleted.`, count, scope });
+      }
+    }
+
     // Only touch the DB when there is something to remove, so a no-op reset
     // does not rewrite the database file.
     if (count > 0) {
-      db.run('DELETE FROM tracking_entries WHERE user_id = ?', [req.user.id]);
+      db.run(`DELETE FROM tracking_entries WHERE user_id = ?${bk.sql}`, [req.user.id, ...bk.params]);
       await saveDatabase();
     }
-    res.json({ message: 'Results cleared', count });
+    res.json({ message: 'Results deleted', count, scope });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -6113,8 +6179,25 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
 //   ?currency=EUR  display currency (default USD; anything unsupported → USD)
 //   ?bankroll=<id> reserved for multiple bankrolls: a no-op until tracking_entries
 //                  carries bankroll_id (te.* below picks it up when it does).
+//   ?from=&to=     YYYY-MM-DD, both or neither: adds `window`, the events dated in that
+//                  span (inclusive) set against the whole history — the home's
+//                  signal-or-noise line (lib/analytics.js windowStats). &venue= narrows
+//                  the window (not the history) to one series title.
 app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) => {
   try {
+    const DAY = /^\d{4}-\d{2}-\d{2}$/;
+    const from = req.query.from, to = req.query.to;
+    let win = null;
+    if (from !== undefined || to !== undefined) {
+      if (typeof from !== 'string' || typeof to !== 'string' || !DAY.test(from) || !DAY.test(to)) {
+        return res.status(400).json({ error: 'from and to must both be YYYY-MM-DD' });
+      }
+      if (from > to) return res.status(400).json({ error: 'from is after to' });
+      const venue = typeof req.query.venue === 'string' ? req.query.venue.trim().slice(0, 200) : '';
+      win = { from, to, venue: venue || null };
+    } else if (req.query.venue !== undefined) {
+      return res.status(400).json({ error: 'venue needs from and to' });
+    }
     const stmt = db.prepare(`
       SELECT te.*, t.event_name, t.date, t.time, t.buyin, t.game_variant, t.venue,
              t.property, t.total_entries, t.is_online, t.site
@@ -6129,7 +6212,7 @@ app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) =
     const cur = String(req.query.currency || 'USD').toUpperCase();
     const currency = SUPPORTED_CURRENCIES.includes(cur) ? cur : 'USD';
     const { rates } = await fetchExchangeRates(); // cached 6 h; falls back to fixed rates offline
-    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll }));
+    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll, window: win }));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -6313,7 +6396,10 @@ app.get('/api/live-updates/active', authenticateToken, (req, res) => {
              lu.is_deal, lu.deal_place, lu.deal_payout, lu.is_busted,
              lu.total_entries, lu.is_bagged, lu.bag_day, lu.play_started_at,
              lu.created_at, t.event_name, t.venue, t.date,
-             (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_busted = 1) AS bust_count
+             (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_busted = 1) AS bust_count,
+             -- The event's bag history: the latest update alone forgets a Day 1 bag once Day 2
+             -- brings a bust, and the home's plans ("If bust #12" vs "If bag #12") turn on it.
+             (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_bagged = 1) AS bag_count
       FROM live_updates lu
       JOIN tournaments t ON lu.tournament_id = t.id
       WHERE lu.user_id = ?

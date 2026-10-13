@@ -26,14 +26,19 @@
 // VIEWS. Every view and state that has controls, phone and desktop, each from a fresh load (a menu
 // left open by one cannot cover the next): the Schedule list, filter sheet, location dropdown, an
 // open card (saved, conditional), Calendar and a day in it, My Schedule (an expanded card, the
-// "if I bag / bust" panel, export, travel), the Dashboard (every Up Next card in the real carousel —
-// playing, bagged, finished, not started — and the D toggle's demo cards; the playing card's Bust
-// menu, its Update and Bag panels; the results header's Reset -> Confirm / Cancel and the P&L
-// dropdowns), Social (search, a buddy, a group, a new group), Hands (each game family, hand entry
-// step by step, PLO entry, Quick add, the replayer on a saved hand with its settings, table
-// settings and share menu, the admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way
-// tools), Cash (Live, Heatmaps, the location picker), Results (the log form, a row in edit, the
-// tax report, the share menu and the series wrap-up, the analytics sheet and its tabs), the
+// "if I bag / bust" panel, export, travel), the Dashboard (scrolled to its foot, on desktop both its
+// panes; every Up Next card in the real carousel — the cash session, playing, bagged, finished, not
+// started — paged to in turn with the track's fit to the card on show, a page turn to a taller card
+// with the mouse left on the pager (dashboard-held), and the D toggle's demo cards; the playing
+// card's Bust menu, its Update and Bag panels and its Scan sheet; the cash card's stack entry; the
+// Log menu; a To log row's Undo state; its NUMBERS in trip mode, series mode and the edge state;
+// the signal-or-noise line as progress and about cash; the empty-schedule prompt), Social (search,
+// a buddy, a group, a new group), Hands (each game family, hand entry step by step, PLO entry,
+// Quick add, the replayer on a saved hand with its settings, table settings and share menu, the
+// admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way / Scanner tools), Cash (Live,
+// Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
+// menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
+// foot, closed and open), the
 // bankroll sheet and dashboard (every tab, report filters, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
@@ -137,9 +142,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { stageHome } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
-const jwt = require('../node_modules/jsonwebtoken');
+// Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
+// node_modules of its own and finds the checkout's.
+const jwt = require('jsonwebtoken');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const args = process.argv.slice(2);
@@ -157,6 +165,8 @@ const shots = opt('--shots', null);          // a directory: a screenshot of eac
 const overlay = args.includes('--overlay');  // with the grid overlay on (for --shots)
 const USER = process.env.CHECK_USERNAME || 'ham5';
 const DPR = 3;
+// A 1x1 PNG: what the Dashboard's Scan step hands the table scanner's picker.
+const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 function token() {
   if (process.env.CHECK_TOKEN) return process.env.CHECK_TOKEN;
@@ -173,6 +183,8 @@ const CONTROLS = [
   '.btn', '.chip', '.filter-chip', '.kind-toggle', '.dk-seg-btn', '.live-update-tab',
   '.badge', '[class*="badge"]', '[class*="-pill"]', '[class*="-chip"]', '.pill', '.tag',
   '.beta-tag', '[class*="beta"]',
+  // Up Next's plan tags (step 5 of the home: 'If bust #12', 'On: busted #12'), content-sized pills.
+  '.dash-event-tag.plan',
 ];
 // Interactive elements that are controls when they draw a visible box (see the header).
 const INTERACTIVE = [
@@ -197,6 +209,11 @@ const NOT_CONTROLS = [
   '.cal-game-mix',
   // Table cells and rows (a sortable header is clickable; it is still a cell of the table).
   'th', 'td', 'tr',
+  // The home's cards that open something but seat their figures (home steps 3-6): the Last result
+  // receipt (.hm-receipt, opens the entry), the bankroll line, period block and goals cards, Up
+  // Next's empty-schedule prompt, and the signal-or-noise line (a sentence that opens Analytics,
+  // its lines seated on 3r).
+  '.hm-receipt', '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty', '.hm-noise',
 ];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
@@ -461,6 +478,8 @@ function scan(cfg) {
 
   const usable = (el) => {
     if (el.closest(excl) || matchesAny(el, NOT_CONTROLS) || matchesAny(el, STRIPS)) return false;
+    // Nobody can reach a control in an inert subtree (the Up Next carousel's slides not on show).
+    if (el.closest('[inert]')) return false;
     if (el.closest('select') && el.tagName !== 'SELECT') return false;
     const b = el.getBoundingClientRect();
     if (b.width < 1 || b.height < 1 || !onScreen(b)) return false;
@@ -974,7 +993,7 @@ function scan(cfg) {
     return out;
   };
   for (const el of document.querySelectorAll(STRIPS.join(','))) {
-    if (el.closest(excl)) continue;
+    if (el.closest(excl) || el.closest('[inert]')) continue;
     const b = el.getBoundingClientRect();
     if (b.width < 1 || b.height < 1 || !onScreen(b) || !visible(el) || clippedAway(el, b)) continue;
     if (coverage(el, b).covered >= 0.9) continue;
@@ -1369,9 +1388,246 @@ function finalize(c) {
   step('filters', async () => { await nav('Schedule'); await click('.filter-chip-square', 800); });
   step('card', async () => { await nav('Schedule'); await click('.cal-event-row:not(.open):not(.past) .cal-event-bar', 900); }, 1);
   step('myschedule', () => desktop ? nav('Schedule') : menu('My Schedule', 'Schedule'), 1);
-  step('dashboard', () => nav('Dashboard'), 1);
+  // The home scrolls (2026-10-12): its main column, and on desktop its second pane (the NUMBERS,
+  // .dk-home-right), each paged to its foot. Then the Playing card's Scan sheet, opened as the
+  // card's Scan button does it — a screenshot handed to the hidden picker — so the sheet's head and
+  // the scanner's own button are measured (a scratch server has no scan key: it lands on the
+  // scanner's idle state with its error line).
+  const pageHome = async (n) => {
+    for (let i = 1; i <= n; i++) {
+      const moved = await p.evaluate((h) => {
+        let any = false;
+        for (const v of document.querySelectorAll('.tab-panel.tab-active .dashboard-view.home, .dk-home-right .dashboard-view.home')) {
+          const sc = v.closest('.content-area, .dk-scroll');
+          if (!sc) continue;
+          const before = sc.scrollTop; sc.scrollTop = Math.min(sc.scrollHeight, sc.scrollTop + Math.round(h * 0.7));
+          if (sc.scrollTop !== before) any = true;
+        }
+        window.scrollTo(0, 0);
+        return any;
+      }, H);
+      if (!moved) break;
+      await run(`${lastView} (home scrolled ${i})`);
+    }
+  };
+  // Up Next's track is as tall as the card ON SHOW (home.css "HEIGHT"), so its dots or counter sit
+  // right under it. A track taller than its card (the old tallest-of-all-slides rule left a hole of
+  // up to 16r under a short card) is reported as a row of its own, failing 'fit' past 1px; dx is
+  // the track's height less the card's, in px.
+  const fitCheck = async (view) => {
+    // The pointer off the counter first: a mouse over it holds the height still (fit.frozen).
+    await p.mouse.move(0, 0);
+    // The height's own transition (320ms), to its end: a busy renderer runs it late. Settled is no
+    // transition running AND the same height on two polls 100ms apart (a lone 'nothing running'
+    // read once measured a track still growing: 15.76r under a 16r card).
+    await p.waitForTimeout(100);
+    await p.waitForFunction(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (!t) return true;
+      if (t.getAnimations().some((a) => a.playState === 'running')) { window.__fitH = null; return false; }
+      const h = t.getBoundingClientRect().height, same = window.__fitH === h;
+      window.__fitH = h;
+      return same;
+    }, null, { timeout: 4000, polling: 100 }).catch(() => {});
+    const f = await p.evaluate(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (!t) return null;
+      const i = Number(t.dataset.idx || 0), sl = t.children[i];
+      if (!sl) return null;
+      // The height the track settles at, not a frame of its ease there: a loaded renderer still
+      // showed the last few px of the move after the wait above (17.14r over a 16r card).
+      for (const a of t.getAnimations()) a.finish();
+      // r off a 100r probe: the first step runs before any scan has measured the grid.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+      return { i, n: t.children.length, track: t.getBoundingClientRect().height, slide: sl.getBoundingClientRect().height, r };
+    });
+    if (!f) return;
+    const r = (grid && grid.r) || f.r || 1;
+    const off = +(f.track - f.slide).toFixed(2);
+    all.push({ view, el: '.dash-carousel-track (height)', text: `card ${f.i + 1} of ${f.n}`, w: '-', h: +(f.track / r).toFixed(2), x: '-', y: '-',
+      dx: off, dy: null, fail: Math.abs(off) > 1 ? ['fit'] : [], ctx: `the card on show, ${+(f.slide / r).toFixed(2)}r` });
+  };
+  // Scanned at the top, then paged to the foot (pageHome scans each page).
+  step('dashboard', async () => { await nav('Dashboard'); await fitCheck('dashboard'); }, 0, {
+    after: async () => { try { await pageHome(4); } catch (e) { console.log(`  (dashboard scroll skipped: ${e.message.split('\n')[0]})`); } },
+  });
+  step('dashboard-scan', async () => {
+    await nav('Dashboard');
+    await p.locator('.dash-scan-input').setInputFiles({ name: 'table.png', mimeType: 'image/png', buffer: TINY_PNG });
+    await p.locator('.scan-sheet').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(2500); // the scan's request answers (503 without a key) and the idle state returns
+  }, 0);
+  // The home's Log menu (an admin's Log pill opens it; anyone else's opens the form in Results),
+  // and a To log row turned into its Undo row by Didn't play. That write is answered here and
+  // never sent: a guard must not change the account it signs in as (on :3001, the local DB).
+  step('dashboard-logmenu', async () => {
+    await nav('Dashboard');
+    if (!(await p.locator('.hm-head-pill--log[aria-haspopup]').count())) throw new Error('no Log menu (not an admin: the pill opens the form)');
+    await p.locator('.hm-head-pill--log').first().click({ timeout: 4000, force: overlay });
+    await p.locator('.hm-logmenu').waitFor({ timeout: 3000 });
+  }, 0);
+  step('dashboard-tolog-undo', async () => {
+    await nav('Dashboard');
+    await p.route('**/api/schedule/*/played', (r) => r.fulfill({ json: { notPlayed: true } }));
+    try {
+      await p.locator('.hm-tolog-seg--quiet').first().click({ timeout: 4000, force: overlay });
+      await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
+    } finally { await p.unroute('**/api/schedule/*/played'); }
+  }, 0);
+  // Up Next's plans, resolved (home step 5): the carousel paged to each card that carries a plan's
+  // tag ('If bust #12', 'On: busted #12', 'Off: busted #12', 'If up $5,000'), each measured. Then
+  // the running cash session's card (admins; the first card) turned into its stack entry by Update
+  // stack — nothing is sent.
+  const pageCarousel = async (i) => {
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) { await dots.nth(i).click({ timeout: 4000, force: overlay }); }
+    else {
+      // Step until the track says it is there (a click can land mid-render and be lost).
+      const at = () => p.evaluate(() => Number(document.querySelector('.dash-carousel-track')?.dataset.idx || 0));
+      for (let n = 0; n < 80 && (await at()) < i; n++) {
+        await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000, force: overlay });
+        await p.waitForTimeout(80);
+      }
+    }
+    await p.waitForTimeout(700); // the slide's transition
+  };
+  // Every card of the carousel, paged to in turn, each one scanned in full (its badges, its plan
+  // tags, the Playing card's Scan / Update / Bag / Bust, the Bagged card's badge and undo key) and
+  // its fit measured. Only the card on show is measured: the others are inert and hidden at rest.
+  // (Until 2026-10-13 only the first card and the cards with a plan were scanned, so for an admin,
+  // whose first card is the cash session, the Playing and Bagged cards never were.)
+  step('dashboard-carousel', async () => {
+    await nav('Dashboard');
+    const n = await p.evaluate(() => document.querySelectorAll('.dashboard-view.home .dash-carousel-slide').length);
+    if (n < 2) throw new Error('fewer than two cards');
+    for (let i = 0; i < n; i++) {
+      if (i) await pageCarousel(i);
+      await fitCheck('dashboard-carousel');
+      const kind = await p.evaluate((k) => {
+        const c = document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')[k];
+        const card = c && c.firstElementChild;
+        if (!card) return '';
+        if (card.classList.contains('hm-cash-card')) return 'cash';
+        return [...card.classList].filter((x) => x !== 'dash-event-card').join('.') || 'plain';
+      }, i);
+      await run(`dashboard-carousel (card ${i + 1}: ${kind})`);
+    }
+  }, 0, { selfRun: true });
+  // A page turn to a TALLER card with the mouse still on the pager (the dots, or the counter's ›):
+  // the track grows to it (it holds still only against a shorter one), so nothing on the card is cut
+  // or covered by the pager. Reported as one row per turn: dx is the track's height less the card's
+  // (px; below −1 fails 'held'), and each control on the card must be the element under its own
+  // centre (fails 'covered' otherwise: the pager's ‹ used to sit over a hidden Update).
+  step('dashboard-held', async () => {
+    await nav('Dashboard');
+    const hs = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')].map((s) => s.getBoundingClientRect().height));
+    // r off a 100r probe (this view can run alone, before any scan has measured the grid).
+    const rr = (grid && grid.r) || await p.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+      return r;
+    }) || 1;
+    const i = hs.findIndex((h, k) => k + 1 < hs.length && hs[k + 1] > h + rr / 2);
+    if (i < 0) throw new Error('no card taller than the one before it');
+    if (i) await pageCarousel(i);
+    await p.mouse.move(0, 0);
+    await p.waitForTimeout(700);
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) await dots.nth(i + 1).click({ timeout: 4000, force: overlay });
+    else await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000, force: overlay });
+    // The pointer stays on the pager: the transitions run out with it held.
+    await p.waitForTimeout(900);
+    const f = await p.evaluate(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      for (const a of t.getAnimations()) a.finish();
+      const k = Number(t.dataset.idx || 0), sl = t.children[k];
+      const card = sl.getBoundingClientRect();
+      const covered = [];
+      for (const b of sl.querySelectorAll('button')) {
+        const q = b.getBoundingClientRect();
+        if (q.width < 1 || q.height < 1 || q.bottom <= 0 || q.top >= innerHeight) continue;
+        const at = document.elementFromPoint((q.left + q.right) / 2, (q.top + q.bottom) / 2);
+        if (!at || !(b === at || b.contains(at))) covered.push((b.textContent || b.getAttribute('aria-label') || '').trim().slice(0, 24) + ' under ' + (at ? at.className || at.tagName : 'nothing'));
+      }
+      return { k, n: t.children.length, track: t.getBoundingClientRect().height, slide: card.height, covered };
+    });
+    const off = +(f.track - f.slide).toFixed(2);
+    const fail = [...(off < -1 ? ['held'] : []), ...(f.covered.length ? ['covered'] : [])];
+    all.push({ view: 'dashboard-held', el: '.dash-carousel-track (pager held)', text: `card ${f.k + 1} of ${f.n}`, w: '-', h: +(f.track / rr).toFixed(2), x: '-', y: '-',
+      dx: off, dy: null, fail, ctx: f.covered.length ? f.covered.join('; ') : `the card on show, ${+(f.slide / rr).toFixed(2)}r` });
+    await run('dashboard-held');
+  }, 0, { selfRun: true });
+  step('dashboard-cash-entry', async () => {
+    await nav('Dashboard');
+    if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');
+    await fitCheck('dashboard-cash-entry');
+    await p.locator('.hm-cash-card .hm-cash-btn').first().click({ timeout: 4000, force: overlay });
+    await p.locator('.hm-cash-entry').waitFor({ timeout: 3000 });
+    await fitCheck('dashboard-cash-entry');
+  }, 0);
+  // The home's NUMBERS in the states the account does not show by itself (scripts/home-states.mjs):
+  // trip mode, series mode, and the edge state (the longest signal pill over an empty month and an
+  // empty Last result), each staged by answering the home's requests in the page, then paged to the
+  // foot like the plain home.
+  // ready: a selector the state must show before it is measured (the noise line loads after the
+  // first paint; an account without it, not an admin, skips the state).
+  // (selfRun: the state is scanned while staged; the routes come off before the next view.)
+  const homeState = (view, kind, ready = null) => step(view, async () => {
+    const undo = await stageHome(p, kind);
+    try {
+      await fresh(); await nav('Dashboard');
+      if (ready) await p.locator(ready).first().waitFor({ state: 'attached', timeout: 6000 }).catch(() => { throw new Error(`no ${ready} (the noise line is an admin's)`); });
+      await run(view); await pageHome(4);
+    } finally { await undo(); }
+  }, 0, { selfRun: true });
+  homeState('dashboard-trip', 'trip');
+  homeState('dashboard-series', 'series');
+  homeState('dashboard-edge', 'edge');
+  // Nothing scheduled, nothing in play, no cash session: Up Next's one 5r prompt.
+  homeState('dashboard-empty', 'empty');
+  // The signal-or-noise line (home step 6; admins) in the states the account does not show by
+  // itself: progress under 30 entries, and a sentence about cash. (Its tournament sentence is on the
+  // plain home, its long-run one in the edge state.) The Analytics sheet the line opens is not
+  // walked here: its Done label is seated on +3r of its 4r box, not centred (AnalyticsView predates
+  // the rule), which is the control sweep's to fix; check-text-clipping walks the sheet.
+  homeState('dashboard-noise-progress', 'noise-progress', '.hm-noise[data-kind="progress"]');
+  homeState('dashboard-noise-cash', 'noise-cash', '.hm-noise[data-kind="window"]');
+  step('hands-scanner', async () => {
+    await nav('Hands');
+    await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(800);
+  }, 0);
   step('social', () => nav('Social'), 1);
   step('results', () => menu('Results & Tracking', 'Results'), 1);
+  // Results > Delete results (components/ResetResults.jsx), at the foot of the results list:
+  // closed, then open with the phrase typed so its Delete button is enabled. The content area is
+  // scrolled, not the window (see toExpenses below).
+  const toReset = async () => {
+    await menu('Results & Tracking', 'Results');
+    await p.locator('.rr').first().waitFor({ timeout: 4000 });
+    await p.evaluate(() => {
+      const ca = document.querySelector('.content-area') || document.scrollingElement;
+      const s = document.querySelector('.rr');
+      ca.scrollTop += s.getBoundingClientRect().top - ca.getBoundingClientRect().top - 40;
+      window.scrollTo(0, 0);
+    });
+    await p.waitForTimeout(500);
+  };
+  step('results-reset', toReset, 0);
+  step('results-reset-open', async () => {
+    await toReset();
+    await p.locator('.rr .bk-btn--danger').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(300);
+    await p.locator('.rr-input').fill(await p.locator('.rr-label b').innerText());
+    await p.waitForTimeout(300);
+  }, 0);
   step('settings', async () => {
     await menu('Settings', 'Settings');
     // Without a share link (settings-share has one): its Generate button.
@@ -1545,11 +1801,14 @@ function finalize(c) {
     await also('day');
     await tap('.cal-event-row:not(.open) .cal-event-bar', 900);
   }, 1);
-  // Dashboard: every Up Next card (the real carousel — playing, bagged, finished, not started —
-  // then the D toggle's demo cards), the playing card's Bust menu and its Update / Bag panels, the
-  // results header's Reset → Confirm / Cancel, and the P&L dropdowns open.
+  // Dashboard: every Up Next card (the real carousel — the cash session, playing, bagged,
+  // finished, not started — then the D toggle's demo cards), and the playing card's Bust menu and
+  // its Update / Bag panels. (The results header's Reset and P&L dropdowns left the home with the
+  // Results bar, home step 4; Delete results is walked in Results, results-reset.)
+  // Counted by slide: the running cash session's card (an admin's first) is a slide, not an
+  // event card.
   const upNextAll = async (tag) => {
-    const n = Math.min(12, await p.locator('.dash-event-card').count());
+    const n = Math.min(12, await p.locator('.dashboard-view.home .dash-carousel-slide').count() || await p.locator('.dash-event-card').count());
     for (let i = 1; i < n; i++) {
       const next = vis('.dash-upnext-step[aria-label="Next event"]').first();
       const dot = vis('.dash-upnext-dot').nth(i);
@@ -1567,12 +1826,17 @@ function finalize(c) {
     await also('demo card 1');
     await upNextAll('demo');
   });
-  step('dashboard-bust-menu', async () => { await nav('Dashboard'); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
-  step('dashboard-update', async () => { await nav('Dashboard'); await tap('.dash-event-card.playing .dash-update-btn', 1000); }, 1);
-  step('dashboard-bag', async () => { await nav('Dashboard'); await tap('.dash-event-card.playing .dash-bag-btn', 1000); }, 1);
-  step('dashboard-reset', async () => { await nav('Dashboard'); await reveal('.dash-results-header'); await tap('.dash-results-reset', 600); });
-  step('dashboard-pl-buyins', async () => { await nav('Dashboard'); await reveal('.dash-results-header'); await vis('.dash-pl-btn').nth(0).click({ timeout: 8000 }); await p.waitForTimeout(700); });
-  step('dashboard-pl-cashes', async () => { await nav('Dashboard'); await reveal('.dash-results-header'); await vis('.dash-pl-btn').nth(1).click({ timeout: 8000 }); await p.waitForTimeout(700); });
+  // The Playing card, paged to first: the slides not on show are inert and hidden at rest, and an
+  // admin's first card is the running cash session.
+  const toPlaying = async () => {
+    await nav('Dashboard');
+    const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
+      .findIndex((sl) => sl.querySelector('.dash-event-card.playing')));
+    if (i > 0) await pageCarousel(i);
+  };
+  step('dashboard-bust-menu', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
+  step('dashboard-update', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-update-btn', 1000); }, 1);
+  step('dashboard-bag', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bag-btn', 1000); }, 1);
   // Social: search, a buddy, a group (its chat), creating one.
   step('social-search', async () => { await nav('Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
   step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);
@@ -1808,8 +2072,12 @@ function finalize(c) {
         if (v.opts.noSkip) { await p.goto(home, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(3500); }
         else await fresh();
         await v.fn();
-        await run(v.view);
-        await scrollMain(v.scrolls);
+        // selfRun: the view scanned its own states (a staged home whose routes are off by now).
+        if (!v.opts.selfRun) {
+          await run(v.view);
+          await scrollMain(v.scrolls);
+        }
+        if (v.opts.after) await v.opts.after();
         visited.push(v.view);
         break;
       } catch (e) {

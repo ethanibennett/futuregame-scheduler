@@ -5,7 +5,12 @@
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
-// Schedule (and, for an admin, each tab of the bankroll dashboard, every Reports table and the
+// Schedule, the home (Dashboard) paged to its foot (plain, then its NUMBERS in trip mode, series
+// mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
+// about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
+// left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
+// Scanner (and, for
+// an admin, each tab of the bankroll dashboard, every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
@@ -15,9 +20,12 @@
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';
+import { stageHome } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
-const jwt = require('../node_modules/jsonwebtoken');
+// Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
+// node_modules of its own and finds the checkout's.
+const jwt = require('jsonwebtoken');
 
 const args = process.argv.slice(2);
 const base = (args.find(a => /^https?:/.test(a)) || process.env.CHECK_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -44,11 +52,14 @@ function scan(rootSel) {
   // (negative insets reach outside it).
   const clipRect = (el) => {
     const r = el.getBoundingClientRect();
-    const m = /^inset\(([^)]*)\)/.exec(getComputedStyle(el).clipPath || '');
-    if (!m) return { top: r.top, bottom: r.bottom };
+    const cs = getComputedStyle(el);
+    const m = /^inset\(([^)]*)\)/.exec(cs.clipPath || '');
+    // Sideways only when it clips sideways (overflow-x, or a clip-path).
+    const xClips = cs.overflowX !== 'visible' || !!m;
+    if (!m) return { top: r.top, bottom: r.bottom, left: xClips ? r.left : -Infinity, right: xClips ? r.right : Infinity };
     const v = m[1].split(/\s+/).map(parseFloat);
-    const [t, , b = t] = v.length === 1 ? [v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0]] : v;
-    return { top: r.top + t, bottom: r.bottom - b };
+    const [t, rr, b = t, l = rr] = v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v;
+    return { top: r.top + t, bottom: r.bottom - b, left: r.left + l, right: r.right - rr };
   };
   for (const root of roots) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -67,6 +78,7 @@ function scan(rootSel) {
       const rects = [...range.getClientRects()].filter(r => r.width > 0 && r.height > 0);
       if (!rects.length) continue;
       const top = Math.min(...rects.map(r => r.top)), bottom = Math.max(...rects.map(r => r.bottom));
+      const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right));
       // Only text on screen: off-screen rows may skip rendering (content-visibility), and their
       // geometry then means nothing.
       const hr = host.getBoundingClientRect();
@@ -79,6 +91,11 @@ function scan(rootSel) {
         // Something scrolled out of a scroller is not "clipped text", it is just off screen.
         const scroller = a.scrollHeight > a.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(a).overflowY);
         if (scroller) break;
+        // Text this ancestor hides SIDEWAYS in full is not cut, it is not shown at all: the Up Next
+        // carousel's neighbour slides, a card to each side of the one shown inside its overflow
+        // box (on desktop they reach on screen, over the rail). Their height is not the track's
+        // (the track fits the card on show), so measured top to bottom they read as cut.
+        if (right <= ar.left + 0.5 || left >= ar.right - 0.5) break;
         const below = bottom - ar.bottom, above = ar.top - top;
         if (below > 0.5 || above > 0.5) {
           out.push({
@@ -103,9 +120,10 @@ function scan(rootSel) {
   await ctx.addInitScript(({ t }) => {
     localStorage.setItem('token', t); localStorage.setItem('username', 'ham5');
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
-    // Past the first-run wizard too: on a busy box its Skip click outran the 1 s wait at 1440 and
-    // the wizard's backdrop then swallowed the Results click, skipping 10 sections while still
-    // printing a passing line.
+    // Past the first-run wizard (utils/location-prefs.js hasOnboarded reads 'onboarded'): on a
+    // busy box its Skip click outran the 1 s wait at 1440 and its entrance animation can outlast
+    // it on a slow desktop render; the wizard's backdrop then swallowed the Results click, skipping
+    // 10 sections while still printing a passing line.
     localStorage.setItem('onboarded', '1');
   }, { t });
   const p = await ctx.newPage();
@@ -132,6 +150,161 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run('schedule list (scrolled)', '.cal-event-row');
   }
+  // The home (Dashboard), which scrolls since 2026-10-12: from a fresh load, paged to its foot (on
+  // desktop both of its panes, the main one and .dk-home-right), then the Playing card's Scan sheet
+  // (a screenshot handed to the card's hidden picker, as its Scan button does; a scratch server
+  // has no scan key, so it lands on the scanner's idle state and its error line), then Hands'
+  // Scanner tool.
+  const isDesktop = () => p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'));
+  const openTab = async (name) => {
+    await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(3500);
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    const sel = (await isDesktop()) ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
+    await p.locator(sel).first().click({ timeout: 4000 });
+    await p.waitForTimeout(1800);
+  };
+  const HOME = '.dashboard-view.home';
+  const pageHome = async (label) => {
+    await run(label, HOME);
+    for (let i = 1; i < 8; i++) {
+      const moved = await p.evaluate((h) => {
+        let any = false;
+        for (const v of document.querySelectorAll('.tab-panel.tab-active .dashboard-view.home, .dk-home-right .dashboard-view.home')) {
+          const sc = v.closest('.content-area, .dk-scroll');
+          if (!sc) continue;
+          const before = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7);
+          if (sc.scrollTop !== before) any = true;
+        }
+        return any;
+      }, H);
+      if (!moved) break;
+      await p.waitForTimeout(300);
+      await run(`${label} (scrolled ${i})`, HOME);
+    }
+  };
+  try {
+    await openTab('Dashboard');
+    await pageHome('home');
+  } catch (e) { console.log(`  (home skipped: ${e.message.split('\n')[0]})`); }
+  // Its NUMBERS in the states the account does not show by itself (scripts/home-states.mjs): trip
+  // mode, series mode (long titles that truncate), and the edge state (the longest signal pill, an
+  // empty month, an empty Last result), each staged in the page, nothing written.
+  // The signal-or-noise line (step 6; admins) loads after the first paint: its states wait for it.
+  const READY = { 'noise-progress': '.hm-noise[data-kind="progress"]', 'noise-cash': '.hm-noise[data-kind="window"]' };
+  for (const kind of ['trip', 'series', 'edge', 'empty', 'noise-progress', 'noise-cash']) {
+    try {
+      const undo = await stageHome(p, kind);
+      try {
+        await openTab('Dashboard');
+        if (READY[kind]) await p.locator(READY[kind]).first().waitFor({ state: 'attached', timeout: 6000 }).catch(() => { throw new Error("no noise line (it is an admin's)"); });
+        await pageHome(`home ${kind}`);
+      } finally { await undo(); }
+    } catch (e) { console.log(`  (home ${kind} skipped: ${e.message.split('\n')[0]})`); }
+  }
+  try {
+    await openTab('Dashboard');
+    await p.locator('.dash-scan-input').setInputFiles({
+      name: 'table.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'),
+    });
+    await p.locator('.scan-sheet').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(2500);
+    await run('scan sheet', '.scan-sheet');
+  } catch (e) { console.log(`  (scan sheet skipped: ${e.message.split('\n')[0]})`); }
+  // Up Next, card by card (home step 5, every card since 2026-10-13): the carousel paged to each one
+  // in turn (the plans' tags name their parent; the Playing card has its Scan / Update / Bag / Bust
+  // row, the Bagged card its badge), each measured at rest. Until then only the cards with a plan
+  // were, so an admin's Playing and Bagged cards (behind the cash card) never were.
+  // Then one page turn to a TALLER card with the mouse left on the pager, the way a desktop user
+  // clicks through: the track grows to it (it holds still only against a shorter card), so no line
+  // of it may be cut. The track used to hold its height outright, slicing the Playing card's stats.
+  const atCard = () => p.evaluate(() => Number(document.querySelector('.dash-carousel-track')?.dataset.idx || 0));
+  const goCard = async (i) => {
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) await dots.nth(i).click({ timeout: 4000 });
+    else {
+      // Step until the track says it is there (a click can land mid-render and be lost).
+      for (let n = 0; n < 80 && (await atCard()) < i; n++) {
+        await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000 });
+        await p.waitForTimeout(80);
+      }
+    }
+  };
+  const settle = async () => {
+    await p.waitForFunction(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (!t) return true;
+      if (t.getAnimations().some((a) => a.playState === 'running')) { window.__fitH = null; return false; }
+      const h = t.getBoundingClientRect().height, same = window.__fitH === h;
+      window.__fitH = h;
+      return same;
+    }, null, { timeout: 4000, polling: 100 }).catch(() => {});
+    // And at its end, not a frame of its ease (a loaded renderer can still be a few px short).
+    await p.evaluate(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (t) for (const a of t.getAnimations()) a.finish();
+    });
+  };
+  try {
+    await openTab('Dashboard');
+    const n = await p.evaluate(() => document.querySelectorAll('.dashboard-view.home .dash-carousel-slide').length);
+    if (n < 2) throw new Error('fewer than two cards');
+    for (let i = 0; i < n; i++) {
+      if (i) await goCard(i);
+      // The pointer off the pager: its hover is a state of its own (the held turn below).
+      await p.mouse.move(0, 0);
+      await p.waitForTimeout(700);
+      await settle();
+      await run(`home cards (card ${i + 1} of ${n})`, HOME);
+    }
+  } catch (e) { console.log(`  (home cards skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    const hs = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')].map((s) => s.getBoundingClientRect().height));
+    const i = hs.findIndex((h, k) => k + 1 < hs.length && hs[k + 1] > h + 4);
+    if (i < 0) throw new Error('no card taller than the one before it');
+    if (i) { await goCard(i); await p.mouse.move(0, 0); await p.waitForTimeout(700); await settle(); }
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) await dots.nth(i + 1).click({ timeout: 4000 });
+    else await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000 });
+    // The mouse stays where it clicked.
+    await p.waitForTimeout(700);
+    await settle();
+    await run(`home cards (pager held, card ${i + 2})`, HOME);
+  } catch (e) { console.log(`  (home cards, pager held, skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');
+    await p.locator('.hm-cash-card .hm-cash-btn').first().click({ timeout: 4000 });
+    await p.locator('.hm-cash-entry').waitFor({ timeout: 3000 });
+    await run('home cash entry', HOME);
+  } catch (e) { console.log(`  (home cash entry skipped: ${e.message.split('\n')[0]})`); }
+  // The home's Log menu (admins), and a To log row turned into its Undo row by Didn't play — that
+  // write answered here and never sent, so the guard changes nothing on the server it checks.
+  try {
+    await openTab('Dashboard');
+    if (!(await p.locator('.hm-head-pill--log[aria-haspopup]').count())) throw new Error('no Log menu (not an admin: the pill opens the form)');
+    await p.locator('.hm-head-pill--log').first().click({ timeout: 4000 });
+    await p.locator('.hm-logmenu').waitFor({ timeout: 3000 });
+    await run('home log menu', '.hm-logmenu');
+  } catch (e) { console.log(`  (home log menu skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    await p.route('**/api/schedule/*/played', (r) => r.fulfill({ json: { notPlayed: true } }));
+    try {
+      await p.locator('.hm-tolog-seg--quiet').first().click({ timeout: 4000 });
+      await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
+    } finally { await p.unroute('**/api/schedule/*/played'); }
+    await run('home to-log undo row', HOME);
+  } catch (e) { console.log(`  (home to-log undo skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Hands');
+    await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await run('hands scanner', '.hands-scan');
+  } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
+
   // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
@@ -276,6 +449,21 @@ function scan(rootSel) {
       await p.locator('.tx-trip-row').first().click({ timeout: 4000 });
     });
   } catch (e) { console.log(`  (expenses views skipped: ${e.message.split('\n')[0]})`); }
+
+  // Results > Delete results (components/ResetResults.jsx) at the foot of the list: its sentence
+  // wraps over 2r lines; closed, then open with the phrase typed.
+  try {
+    await openResults();
+    await p.locator('.rr').first().waitFor({ timeout: 4000 });
+    await p.evaluate(() => document.querySelector('.rr').scrollIntoView({ block: 'center' }));
+    await p.waitForTimeout(500);
+    await run('results reset', '.rr');
+    await p.locator('.rr .bk-btn--danger').first().click({ timeout: 4000 });
+    await p.waitForTimeout(300);
+    await p.locator('.rr-input').fill(await p.locator('.rr-label b').innerText());
+    await p.waitForTimeout(300);
+    await run('results reset (open)', '.rr');
+  } catch (e) { console.log(`  (results reset skipped: ${e.message.split('\n')[0]})`); }
 
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {

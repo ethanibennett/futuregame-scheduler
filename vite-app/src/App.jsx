@@ -3,6 +3,7 @@ import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
+import { resetPath } from './utils/reset-results.js';
 import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
@@ -22,7 +23,9 @@ import GridOverlay from './components/GridOverlay.jsx';
 import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
+import useBankrolls from './hooks/useBankrolls.js';
 import DashboardView from './components/DashboardView.jsx';
+import HandsScanner from './components/HandsScanner.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
 import ScheduleView from './components/ScheduleView.jsx';
 import CalendarView from './components/CalendarView.jsx';
@@ -340,6 +343,10 @@ export default function App() {
 
   // Tracking
   const [trackingData, setTrackingData] = useState([]);
+  // A form or entry in Results that the home asked for (its Log menu, To log's Cashed, the Last
+  // result card): { kind, ... } — TrackingView opens it once and clears it (onIntentDone).
+  const [resultsIntent, setResultsIntent] = useState(null);
+  const clearResultsIntent = useCallback(() => setResultsIntent(null), []);
 
   // Live Updates
   const [myActiveUpdates, setMyActiveUpdates] = useState([]);
@@ -628,22 +635,29 @@ export default function App() {
     } catch (e) { console.error('Fetch tracking:', e); toast.error('Failed to load tracking data'); }
   };
 
-  // Bulk-clear all of the user's tracking entries (Dashboard "Reset"
-  // button). Optimistic — clears local state immediately, then re-fetches.
-  const resetResults = useCallback(async () => {
+  // Results > Delete results (components/ResetResults.jsx): one bankroll's results (or, asked for
+  // in so many words, every bankroll's), held to the count the typed confirmation showed — the
+  // server answers 409 and deletes nothing when that count is stale. Resolves true when deleted.
+  const resetResults = useCallback(async (scope, expect) => {
     try {
-      const res = await fetch(`${API_URL}/tracking`, {
+      const res = await fetch(`${API_URL}${resetPath(scope, expect)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed');
       const data = await res.json().catch(() => ({}));
-      setTrackingData([]);
-      toast.success(`Cleared ${data.count || 0} result${data.count === 1 ? '' : 's'}`);
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to delete results');
+        fetchTracking();
+        return false;
+      }
+      const n = data.count || 0;
+      toast.success(`Deleted ${n.toLocaleString('en-US')} result${n === 1 ? '' : 's'}${scope.name && scope.key !== 'all' ? ` from ${scope.name}` : ''}`);
       fetchTracking();
+      return true;
     } catch (e) {
-      console.error('Reset tracking:', e);
-      toast.error('Failed to reset results');
+      console.error('Delete results:', e);
+      toast.error('Failed to delete results');
+      return false;
     }
   }, [token]);
 
@@ -692,9 +706,14 @@ export default function App() {
     } catch {}
   }, [token]);
 
+  // Resolves { ok, status } so a caller can tell a logged result from a refusal. data.ifAbsent
+  // (the home's To log) makes it log-only: a result already there is a 409 that changes nothing,
+  // and the list is refetched so the row that was stale goes away.
   const addTracking = useCallback(async (data) => {
     try {
-      const matchedTournament = tournaments.find(tr => tr.id === data.tournamentId);
+      // The event: the 3-day feed list, else the schedule (an older event the home's To log logs).
+      const matchedTournament = tournaments.find(tr => tr.id === data.tournamentId)
+        || mySchedule.find(tr => tr.id === data.tournamentId);
       const entryForMilestone = {
         ...data,
         buyin: matchedTournament ? matchedTournament.buyin : 0,
@@ -710,18 +729,36 @@ export default function App() {
         body: JSON.stringify(trackingPayload)
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 409 && data.ifAbsent) { fetchTracking(); return { ok: false, status: 409 }; }
         setError(err.error || 'Failed to add tracking entry');
-        return;
+        return { ok: false, status: res.status };
       }
+      const made = await res.json().catch(() => ({}));
       if (totalFieldSize) await saveFieldSize(data.tournamentId, totalFieldSize);
       fetchTracking();
 
       if (milestones.length > 0) {
         setActiveMilestone(milestones[0]);
       }
-    } catch { setError('Failed to add tracking entry'); }
-  }, [token, tournaments, trackingData]);
+      return { ok: true, status: res.status, id: made && made.id };
+    } catch { setError('Failed to add tracking entry'); return { ok: false, status: 0 }; }
+  }, [token, tournaments, mySchedule, trackingData]);
+
+  // The home's To log "Didn't play" (true) and its Undo (false): user_schedules.not_played, so it
+  // syncs across devices. Resolves true when stored.
+  const setNotPlayed = useCallback(async (tournamentId, notPlayed) => {
+    try {
+      const res = await fetch(`${API_URL}/schedule/${tournamentId}/played`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notPlayed: !!notPlayed })
+      });
+      if (!res.ok) return false;
+      setMySchedule(prev => prev.map(t => (t.id === tournamentId ? { ...t, not_played: notPlayed ? 1 : 0 } : t)));
+      return true;
+    } catch { return false; }
+  }, [token]);
 
   const updateTracking = useCallback(async (entryId, data) => {
     try {
@@ -741,14 +778,16 @@ export default function App() {
     } catch { setError('Failed to update tracking entry'); }
   }, [token]);
 
+  // Resolves true when deleted (the home's To log Undo checks it).
   const deleteTracking = useCallback(async (entryId) => {
     try {
-      await fetch(`${API_URL}/tracking/${entryId}`, {
+      const res = await fetch(`${API_URL}/tracking/${entryId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTracking();
-    } catch { setError('Failed to delete tracking entry'); }
+      return res.ok;
+    } catch { setError('Failed to delete tracking entry'); return false; }
   }, [token]);
 
   // ── Sharing functions ──
@@ -1563,6 +1602,12 @@ export default function App() {
   // keeps the rollout features and simply never sees an editor it cannot save from.
   const canEditEvents = !isGuest && EVENT_EDITOR_USERNAMES.includes(authUsername);
 
+  // Bankrolls (beta, app admins): ONE summary for the home (its bankroll line and period block)
+  // and the Results tab (its switcher, the dashboard, Cash and Expenses), lifted here from
+  // TrackingView so the two never disagree. The balances are the server's combined ledger, so they
+  // are refetched whenever the results change (version). For everyone else it fetches nothing.
+  const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
+
   // A non-admin session never runs on the simulated clock (see the boot-time clear above): this
   // catches an admin signing out and someone else signing in without a reload.
   useEffect(() => {
@@ -1577,6 +1622,8 @@ export default function App() {
   const dk = useDesktopLayout();
   const isDesktop = dk.desktop;
   const [dkSelectedId, setDkSelectedId] = useState(null);
+  // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
+  const [dkHomeRight, setDkHomeRight] = useState(null);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
   // rendering, marked closing, until their collapse ends, so My Schedule rises into their place
   // instead of jumping. Worked out during render (React's "previous value in state" pattern) so
@@ -1745,14 +1792,17 @@ export default function App() {
                 mySchedule={mySchedule}
                 myActiveUpdates={myActiveUpdates}
                 trackingData={trackingData}
-                shareBuddies={shareBuddies}
-                buddyLiveUpdates={buddyLiveUpdates}
-                displayName={displayName}
-                buddyEvents={buddyEvents}
+                homeRight={isDesktop ? dkHomeRight : null}
                 onPost={postLiveUpdate}
                 onDeleteUpdate={deleteLiveUpdate}
                 onAddTracking={addTracking}
-                onResetResults={resetResults}
+                isAdmin={isAdmin}
+                token={token}
+                canLog={!isGuest}
+                onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
+                bk={bk}
+                onSetPlayed={setNotPlayed}
+                onDeleteTracking={deleteTracking}
                 tournaments={tournaments}
                 onToggle={toggleTournament}
                 onNavigate={(v) => {
@@ -1863,9 +1913,13 @@ export default function App() {
                 onAdd={addTracking}
                 onUpdate={updateTracking}
                 onDelete={deleteTracking}
+                onResetResults={resetResults}
                 myActiveUpdates={myActiveUpdates}
                 isAdmin={isAdmin}
                 token={token}
+                bk={bk}
+                intent={resultsIntent}
+                onIntentDone={clearResultsIntent}
               />
             )}
             </div>
@@ -1878,7 +1932,9 @@ export default function App() {
                         footer row above the bottom nav — see HANDS_TOOLS below — so it
                         stays put while the tool content scrolls. */}
                     <div style={{flex:1,minHeight:0}}>
-                      {handsTool === 'solver' && isAdmin
+                      {handsTool === 'scanner' && isAdmin
+                        ? <HandsScanner />
+                        : handsTool === 'solver' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><SolverView pendingSpot={pendingSolverSpot} onConsumeSpot={() => setPendingSolverSpot(null)} /></Suspense>
                         : handsTool === 'trainer' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><SolverTrainerView /></Suspense>
@@ -2032,7 +2088,7 @@ export default function App() {
           {currentView === 'hands' && isAdmin && (
             <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
               {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
-              {[['replayer','Replayer',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
+              {[['replayer','Replayer',6],['scanner','Scanner',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
                 <button key={id} className="ctl" onClick={() => setHandsTool(id)}
                   style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
                     border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
@@ -2294,10 +2350,22 @@ export default function App() {
               onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
             />
           )}
-          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : 'dk-pane-wide')}>
+          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
             {primaryColumn}
             {devToggles}
           </div>
+          {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
+              NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
+              portalled in here by DashboardView. Mounted for the whole desktop session and only
+              hidden off the Dashboard, so the portal's content keeps its state across tabs.
+              Desktop only, by its own guard too: master renders one element tree for both
+              layouts (79a82c3), and in that tree an unguarded pane showed on the phone, an empty
+              15px box over the home's foot. */}
+          {isDesktop && (
+            <div className="dk-pane dk-pane-mine" style={currentView === 'dashboard' ? undefined : { display: 'none' }}>
+              <div className="dk-scroll dk-home-right" ref={setDkHomeRight} />
+            </div>
+          )}
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,
               not in a third column): the selected event on top, My Schedule below it in the same
               scroll. With nothing selected, My Schedule is the whole pane. */}

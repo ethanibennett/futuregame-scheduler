@@ -14,6 +14,27 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-12 — Home redesign (the Dashboard tab), decisions worth knowing
+Built to the panel verdict of 2026-10-11 in steps 1–6 (section 7, Trend, is a marked slot in
+`DashboardView.jsx` waiting for the BankrollChart rebuild; section 8, Backers, is later). After the
+first critic round:
+- **One trip net.** The trip page did not count cash sessions and the home did, so the two showed
+  different nets for the same trip. `/api/bankrolls/trips/:id` now returns `cash_sessions` (the
+  ledger's own cash source) and `utils/transactions.js tripPnl()` is the one definition, run by both
+  (docs/bankrolls.md "One trip net").
+- **To log skips a plan's branch that resolved off** (`awaitingResults(..., { plans })`, also
+  Results' "Awaiting result" card): "If bag #12" after #12 busted on Day 1 was never played, and one
+  tap used to log a phantom bust.
+- **The Table Scanner for non-admins:** on master it was a home section for everyone; now it is the
+  Playing card's Scan action (everyone) and Hands > Scanner (admins only, since Hands is). A
+  non-admin therefore reaches it only once an event is Started. Accepted on purpose (the verdict:
+  a tool used only when seated should not cost a permanent section); if non-admins ask for it,
+  the cheapest path is a Scan entry in the user menu.
+- **Display currency is live:** Results' currency setting is announced
+  (`hooks/useDisplayCurrency.js`) and the home follows it at once, not on the next reload.
+- Desktop at 1440 keeps a 27g page band right of the NUMBERS pane, as every single-pane tab does
+  (docs/desktop-layout.md "Dashboard", Width).
+
 ## 2026-10-11 (evening) — Aqua accent, cross-platform font metrics, Dashboard pass
 - **Brand accent is aqua**, not orange (black + orange read like an adult site's branding):
   dark `#3cc8e0`, light `#0e7490`, cloudy `#0a4f62` (its grey surface needs the darker one), high

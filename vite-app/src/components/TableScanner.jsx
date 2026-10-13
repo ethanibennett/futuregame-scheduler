@@ -34,7 +34,9 @@ function detectImageFormat(img) {
   return 'wsop';
 }
 
-export default function TableScanner() {
+// initialFile: a screenshot already chosen (the Up Next card's Scan button opens the picker itself,
+// so the scan starts the moment its sheet opens).
+export default function TableScanner({ initialFile = null } = {}) {
   const [state, setState] = useState('idle'); // idle | processing | tableSelect | results
   const [progress, setProgress] = useState(0);
   const [players, setPlayers] = useState([]);
@@ -337,8 +339,15 @@ export default function TableScanner() {
     }, 'image/png');
   }
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
+  const handleFile = (e) => scanFile(e.target.files?.[0]);
+  const initialDone = useRef(false);
+  useEffect(() => {
+    if (!initialFile || initialDone.current) return;
+    initialDone.current = true;
+    scanFile(initialFile);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function scanFile(file) {
     if (!file) return;
     setState('processing');
     setProgress(0);
@@ -461,7 +470,7 @@ export default function TableScanner() {
       setState('idle');
     }
     if (fileRef.current) fileRef.current.value = '';
-  };
+  }
 
   return (
     <div className="table-scanner">

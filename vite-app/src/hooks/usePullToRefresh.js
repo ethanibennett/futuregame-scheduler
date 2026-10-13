@@ -8,10 +8,12 @@ export default function usePullToRefresh(scrollRef, onRefresh) {
   const threshold = 60;
 
   const onPtrTouchStart = useCallback((e) => {
+    // Every touch starts with no pull, even one that cannot pull (scrolled down, mid-refresh): the
+    // last pull's distance used to survive into it, and a tap on a scrolled page fired a refresh.
+    ptrDy.current = 0;
     const el = scrollRef.current;
     if (!el || el.scrollTop > 0 || refreshing) return;
     ptrStart.current = e.touches[0].clientY;
-    ptrDy.current = 0;
   }, [refreshing, scrollRef]);
 
   const onPtrTouchMove = useCallback((e) => {
@@ -30,6 +32,7 @@ export default function usePullToRefresh(scrollRef, onRefresh) {
   const onPtrTouchEnd = useCallback(async () => {
     const dy = ptrDy.current;
     ptrStart.current = null;
+    ptrDy.current = 0;
     if (dy >= threshold && !refreshing) {
       setRefreshing(true);
       if (ptrIndicator.current) {

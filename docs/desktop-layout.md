@@ -3,8 +3,9 @@
 The website answers the browser's proportions: a wide, landscape window gets a
 real desktop layout (side rail plus two or three panes); every other window, and
 the iOS app on a phone, gets the phone layout exactly as it was. Phase 1 (this
-change) ships the shell and the Schedule tab. The other tabs render in one
-capped pane until their own phase.
+change) ships the shell and the Schedule tab. The Dashboard has had its two
+panes since 2026-10-12. The other tabs render in one capped pane until their own
+phase.
 
 Code: `vite-app/src/hooks/useDesktopLayout.js` (the decision and the counts),
 `components/DesktopRail.jsx`, `components/DesktopEventDetail.jsx`, the
@@ -326,16 +327,104 @@ The month grid gets the wide pane, because a calendar is the one Schedule
 surface that wants width. Clicking a day fills the day list, and clicking an
 event there opens the same Event pane in place of the day list, with a back key.
 
-### Dashboard (phase 2; today: one capped pane)
+### Dashboard — two panes (built 2026-10-12, home redesign steps 2 to 6)
 
 ```
-│ rail │ Up Next (playing/next card) 37g │ Friends live · Connections 37g │ Results curve 37g │
+│ rail │ NOW 37g                          │ NUMBERS 37g                          │
+│ 10g  │ Up Next (the carousel; a running │ Bankroll line (admins)               │
+│      │   cash session is its first card)│                                      │
+│      │ To log (only when non-empty)     │ This month / trip / series: its card,│
+│      │ Last result (the receipt)        │   the signal-or-noise line (admins), │
+│      │                                  │   then its goals (admins)            │
+│      │                                  │ Trend, last 3 months (section 7; a   │
+│      │                                  │   marked slot until BankrollChart    │
+│      │                                  │   lands)                             │
 ```
 
-The Up Next hero, live-update composer and late-reg card stay in a phone
-canvas, since they were gridded there. Friends and Connections get a second
-canvas. The results curve and ROI stats get a third in the three-pane tier, or
-stack under Friends in the two-pane tier.
+The home's design is the panel verdict of 2026-10-11 (two halves: NOW, then the
+NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
+
+- **NOW** is the main pane (`dk-pane-main dk-pane-list`, 37g), since the Up Next
+  card and its live controls were gridded on the phone canvas.
+- **NUMBERS** is a second 37g pane (`dk-pane-mine` > `.dk-scroll.dk-home-right`).
+  `DashboardView` portals its numbers column into it (the `homeRight` prop). App
+  keeps the pane mounted for the whole desktop session and only hides it off the
+  Dashboard, so the portal's content keeps its state across tabs.
+- Each pane is its own scroller and both start 1r under the bar. The NOW pane
+  ends on its 2r column gap (no nav on desktop); the NUMBERS pane on the
+  `.dk-scroll`'s own 2r foot.
+- The two-pane tier and the three-pane tier both show the same two panes: there
+  is no third Dashboard pane.
+- Up Next (step 5) is the same carousel in NOW on both layouts. Its plans resolve
+  themselves (utils/home-upnext.js `resolveConditions`): each condition is a tag
+  on the card ('If bust #12' waiting, 'On: busted #12', 'Off: busted #12'), and a
+  card whose plan is off dims, all but its tags, and moves to the end. An
+  admin's running cash session is the first card (`HomeCashCard.jsx`: clock, in
+  play, last stack; Update stack in place, Cash out opens Results > Cash on the
+  live screen's cash-out panel), and the bar over the nav (`LiveCashBar`) is off
+  on the Dashboard. With nothing scheduled the carousel is one 35g x 5r prompt
+  (`HomeNothingNext.jsx`: the week's events near you; it opens the Schedule).
+  Every slide sits in the track's one grid cell and is moved by its own multiple
+  of its width, so the card shown is on the grid at any index on both layouts
+  (the flex row drifted 0.115px a card at 1440, 0.057px at 402). The track is as
+  tall as the card ON SHOW, in whole r (fix round 1, 2026-10-12), so the dots or
+  the counter sit right under it: the tallest-of-all rule left up to 16r of hole
+  under a short card (a 12r upcoming card in a 28r track). It eases to each
+  card's height on the page turn's curve; a drag grows it to a taller neighbour
+  as that comes in; and while a mouse is over the dots or the counter the height
+  holds still (a taller card is cut at it meanwhile), so the ‹ › under the
+  pointer does not move between two clicks. check:controls reports the track
+  against the card on show ('fit') on every card (`dashboard-carousel`).
+- To log and the Last result (step 3) sit under Up Next in NOW, so what is next,
+  what is unlogged and what just happened read down one pane. Their Log menu is
+  portalled to the body and anchored to the Log pill (right edges together, 1r
+  above or below it), so it is not clipped by the pane's scroller. A choice in it,
+  To log's Cashed and a tap on the receipt open Results in this same main pane.
+- The NUMBERS pane (step 4, `HomeNumbers.jsx`) opens with the bankroll line
+  (admins: the balance of every roll, the tournament cap a bullet and the rule's
+  move signal as a pill, a 35g x 5r card under its own 3r header, BANKROLL with
+  the scope on the right, so its card starts on 13r, level with the Up Next card
+  beside it; the period block's header leaves the scope out when it is the
+  same), then the period block: the window's
+  name and scope in a 3r header, a 7r lead (the net and its sample; the
+  like-for-like comparison, or the trip's or series' dates, on the right), a 4r
+  row for each figure that exists, then the goals card (admins; 6r a goal with
+  its pace bar). The window is a trip covering today (admins), else a series
+  detected with confidence, else the month. Taps open the deep views: the
+  bankroll line the Bankroll dashboard's Rules, the goals its Goals and the block
+  its Overview (all on All bankrolls, in the dashboard's sheet over the home); a
+  trip's block that trip's page in Results; a non-admin's block Results.
+- Under the period block's card (step 6, `HomeNoiseLine.jsx`; admins) is one
+  plain sentence about the same window: the window in buy-ins over its bullets
+  (or per hour over its hours, when cash moved its net more), how often the
+  player's long-run rate does no better (or as well) over a stretch that long,
+  and that rate's 95% interval against break-even, each figure with its sample
+  ('−4 buy-ins over 11 bullets: about 2 in 5 stretches this long do as well at
+  your long-run rate. Its interval over 195 entries, −54% to +87%, includes
+  break-even.'). Under 30 entries (30 sessions for cash) it is progress instead:
+  '18 of 30 entries before this can separate skill from luck'. It is xs on 3r
+  lines across the column's 35g, two lines typically, its first baseline 3r
+  under the card's foot, so the block is 3n + 1 r. It loads after the first
+  paint (GET /api/analytics?from=&to=, cached per results version; for cash, the
+  whole ledger's per-hour spread) and appears when it has something to say.
+  Tapping it opens the Analytics sheet over the home (a cash sentence opens the
+  bankroll dashboard's Overview instead).
+- The NUMBERS pane is the same on the phone, under the Last result: there it is
+  below the fold, as the verdict expected.
+- Width (decided 2026-10-12, fix round 1): the Dashboard keeps rail 10g + 37g +
+  37g = 84g. At 1024 that is the whole shell; at 1440 the shell is 111g (sized
+  for Schedule's list and its 64g right pane) and 27g of page stays to the right
+  of the NUMBERS. That is the band every single-pane tab already leaves (Social,
+  Hands, Cash and Settings leave 37g at 1440: "the shell to the right of a capped
+  single pane reads as page"), and the alternatives were worse: re-centring an
+  84g shell on the Dashboard moves the rail and the bar 13.5g sideways at every
+  tab change, and widening the NUMBERS to the 64g slot only moves the same empty
+  band inside the pane, since each block is a 35g phone canvas. When Trend
+  (section 7) lands, the NUMBERS can take the 9N+1 slot and set Trend or the
+  goals in its second column.
+- Friends Playing and Connections, which the old plan gave a pane, left the home
+  (they live in Social). The Table Scanner left it as well: it is the Playing
+  card's Scan action and a tool in Hands.
 
 ### Social (phase 2; today: one capped pane)
 
