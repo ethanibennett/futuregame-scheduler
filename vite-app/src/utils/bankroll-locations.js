@@ -11,8 +11,10 @@
 //   hours     cash hours only (a tournament fact has no length); null when the room has no cash
 //   hourly    cash profit / cash hours
 //   roi       tournament profit / tournament cost (buy-ins, re-entries included)
-//   won       cash only: winning sessions / sessions; tournaments only: cashes / bullets (ITM);
-//             both: results with profit > 0 / entries
+//   won       cash only: winning sessions / sessions; tournaments only: cashes / events (ITM, as
+//             the Overview's "In the money" counts it — a re-entered event that cashed is one
+//             cash of one event); both: results with profit > 0 / results. Results, not bullets,
+//             on both sides: a re-entry is one more entry but not one more chance to cash.
 //   total     every result, in the display currency (the facts are already converted)
 
 export const MINUS = '−';
@@ -68,8 +70,8 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
     const entries = c.n + t.bullets;
     let won = null, wonKind = null;
     if (c.n && !t.n) { won = c.wins / c.n; wonKind = 'cash'; }
-    else if (t.n && !c.n) { won = t.bullets > 0 ? t.cashes / t.bullets : null; wonKind = 'itm'; }
-    else if (entries > 0) { won = (c.wins + t.up) / entries; wonKind = 'mixed'; }
+    else if (t.n && !c.n) { won = t.cashes / t.n; wonKind = 'itm'; }
+    else if (c.n + t.n > 0) { won = (c.wins + t.up) / (c.n + t.n); wonKind = 'mixed'; }
     const results = g.results.slice().sort(newestFirst);
     return {
       key: g.key, label: g.label, total: g.total, entries,
@@ -181,6 +183,28 @@ export function statItems(loc, cur) {
       tone: loc.wonKind === 'cash' ? (loc.won >= 0.5 ? 1 : -1) : 0 });
   }
   return out;
+}
+
+/**
+ * An open card's rows, a page at a time: the first `first`, then `page` more per tap, so a room
+ * with a thousand results never renders them all at once. → { rows (how many to draw), more (the
+ * next button: { label, next } or null), fewer (whether "Show fewer" is offered), count ("60 of
+ * 1,030" while a big room is part shown, else null) }. The last page reads "Show all N", so a room
+ * with up to first + page results is one tap from all of them, as before.
+ */
+export const FIRST_ROWS = 10;
+export const PAGE_ROWS = 50;
+export function rowsPage(shown, total, { first = FIRST_ROWS, page = PAGE_ROWS } = {}) {
+  const n = Math.max(0, Math.floor(Number(total) || 0));
+  const rows = Math.min(n, Math.max(first, Math.floor(Number(shown) || 0)));
+  const left = n - rows;
+  const more = left <= 0 ? null
+    : left <= page ? { label: `Show all ${n.toLocaleString('en-US')}`, next: n }
+      : { label: `Show ${page} more`, next: rows + page };
+  return {
+    rows, more, fewer: rows > first,
+    count: left > 0 && n > first + page ? `${rows.toLocaleString('en-US')} of ${n.toLocaleString('en-US')}` : null,
+  };
 }
 
 /** One result row in an open card: what it was. Cash: game and stakes, and the length. */

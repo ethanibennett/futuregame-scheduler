@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CURRENCY_CONFIG, getToday } from '../utils/utils.js';
 import { prepareFacts } from '../utils/bankroll-filters.js';
 import { RANGES, RANGE_NOUN, rangeWindow } from '../utils/bankroll-ledger.js';
 import {
-  SORTS, NO_ROOM, buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, statItems, metaLine,
-  resultWhat, fmtDay,
+  SORTS, NO_ROOM, FIRST_ROWS, buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, statItems, metaLine,
+  resultWhat, fmtDay, rowsPage,
 } from '../utils/bankroll-locations.js';
 import TabStrip from './BankrollTabStrip.jsx';
 import './analytics.css';
@@ -26,12 +26,12 @@ import './bankroll-locations.css';
  * ended cash sessions only: expenses and income are not sessions (utils/bankroll-locations.js).
  *
  * Layout (35g content; bankroll-locations.css lists every row): the range strip 4r; the summary;
- * the sort strip 4r; the cards, 35g x 11r with 1r between, opening to 4r result rows.
+ * the sort strip 4r; the cards, 35g x 11r with 1r between, opening to 4r result rows (ten, then
+ * fifty more a tap) — and an open card's name wraps, so a long one is read whole.
  */
 
 const STORE = 'bankrollLocations';
 const RANGE_KEYS = new Set(RANGES.map((r) => r[0]));
-const SHOWN = 10;
 function load() {
   try {
     const v = JSON.parse(localStorage.getItem(STORE) || 'null') || {};
@@ -67,17 +67,37 @@ function Clock() {
   );
 }
 
-function LocationCard({ loc, cur, open, all, onToggle, onAll }) {
+function LocationCard({ loc, cur, open, onToggle }) {
   const id = 'bl-res-' + (loc.key || 'none').replace(/[^\w-]+/g, '-');
   const items = statItems(loc, cur);
-  const rows = all ? loc.results : loc.results.slice(0, SHOWN);
+  // Ten rows, then fifty more a tap (the last tap "Show all N"); closing the card starts it over.
+  const [shown, setShown] = useState(FIRST_ROWS);
+  useEffect(() => { if (!open) setShown(FIRST_ROWS); }, [open]);
+  const pg = rowsPage(shown, loc.results.length);
+  const rows = loc.results.slice(0, pg.rows);
+  // After a page button: keep the keyboard on a button that is still there, and after Show fewer
+  // bring the card back into view (the rows it hid may have held the whole screen).
+  const itemRef = useRef(null), moreRef = useRef(null), fewerRef = useRef(null);
+  const after = useRef(null);
+  useLayoutEffect(() => {
+    const a = after.current;
+    after.current = null;
+    if (!a) return;
+    if (a.what === 'fewer' && itemRef.current) itemRef.current.scrollIntoView({ block: 'nearest' });
+    if (!a.focused || document.activeElement === a.from) return;   // still there, or never focused
+    const to = (a.what === 'more' ? moreRef.current || fewerRef.current : moreRef.current);
+    if (to) to.focus({ preventScroll: true });
+  }, [shown]);
+  const note = (what, e) => { after.current = { what, from: e.currentTarget, focused: document.activeElement === e.currentTarget }; };
+  const more = (e) => { note('more', e); setShown(pg.more.next); };
+  const fewer = (e) => { note('fewer', e); setShown(FIRST_ROWS); };
   return (
-    <li className={'bl-item' + (open ? ' is-open' : '')}>
+    <li ref={itemRef} className={'bl-item' + (open ? ' is-open' : '')}>
       <button type="button" className="bl-card" aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
         <span className="bl-head">
           <span className={'an-cell bl-name an-clip' + (loc.key === NO_ROOM ? ' is-none' : '')} title={loc.label}>{loc.label}</span>
-          <span className="an-cell bl-meta an-clip"><TypeMark kinds={loc.kinds} />{metaLine(loc)}</span>
-          <span className={'an-cell bl-total' + tone(Math.round(loc.total))}>{compactMoney(loc.total, cur, { sign: true })}</span>
+          <span className="an-cell bl-meta an-clip">{metaLine(loc)}<TypeMark kinds={loc.kinds} /></span>
+          <span className={'an-cell bl-total snap-g' + tone(Math.round(loc.total))}>{compactMoney(loc.total, cur, { sign: true })}</span>
         </span>
         <span className="an-cell bl-stats an-clip">
           {items.map((it, i) => (
@@ -103,10 +123,16 @@ function LocationCard({ loc, cur, open, all, onToggle, onAll }) {
               </li>
             ))}
           </ul>
-          {loc.results.length > SHOWN && (
-            <button type="button" className="bk-btn bl-more" onClick={onAll}>
-              <span>{all ? 'Show fewer' : `Show all ${loc.results.length}`}</span>
-            </button>
+          {(pg.more || pg.fewer) && (
+            <div className="bl-pager">
+              {pg.more && (
+                <button ref={moreRef} type="button" className="bk-btn bl-more" onClick={more}><span>{pg.more.label}</span></button>
+              )}
+              {pg.fewer && (
+                <button ref={fewerRef} type="button" className="bk-btn bl-more bl-fewer" onClick={fewer}><span>Show fewer</span></button>
+              )}
+              {pg.count && <span className="an-cell bl-count" aria-live="polite">{pg.count}</span>}
+            </div>
           )}
         </div>
       )}
@@ -119,7 +145,6 @@ export default function BankrollLocations({ bk, bankrollKey, currency }) {
   const [prefs, setPrefs] = useState(load);
   const [state, setState] = useState({ status: 'loading', facts: [] });
   const [open, setOpen] = useState(() => new Set());
-  const [all, setAll] = useState(() => new Set());
   useEffect(() => { save(prefs); }, [prefs]);
 
   useEffect(() => {
@@ -172,8 +197,8 @@ export default function BankrollLocations({ bk, bankrollKey, currency }) {
             onChange={(sort) => setPrefs((p) => ({ ...p, sort }))} btnClass="bd-seg-btn" />
           <ul className="bl-list">
             {list.map((loc) => (
-              <LocationCard key={loc.key || '-'} loc={loc} cur={cur} open={open.has(loc.key)} all={all.has(loc.key)}
-                onToggle={() => flip(open, setOpen, loc.key)} onAll={() => flip(all, setAll, loc.key)} />
+              <LocationCard key={loc.key || '-'} loc={loc} cur={cur} open={open.has(loc.key)}
+                onToggle={() => flip(open, setOpen, loc.key)} />
             ))}
           </ul>
           <p className="an-p bl-note">

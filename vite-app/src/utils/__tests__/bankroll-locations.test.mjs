@@ -8,9 +8,10 @@ import { prepareFacts } from '../bankroll-filters.js';
 import { buildReport } from '../bankroll-reports.js';
 import {
   buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, fmtHours, fmtPct, fmtSignedPct, statItems,
-  metaLine, resultWhat, fmtDay, NO_ROOM, NO_ROOM_LABEL, MINUS, SORTS,
+  metaLine, resultWhat, fmtDay, rowsPage, NO_ROOM, NO_ROOM_LABEL, MINUS, SORTS, FIRST_ROWS, PAGE_ROWS,
 } from '../bankroll-locations.js';
-import { segmentWidths, fitsDivided, revealScroll, keyStep } from '../tab-strip.js';
+import { overviewStats } from '../bankroll-ledger.js';
+import { segmentWidths, fitsDivided, revealScroll, keyStep, pageScroll, wheelToStrip } from '../tab-strip.js';
 
 const localHour = (iso) => Number(iso.slice(11, 13));
 const T = (id, date, o = {}) => ({ id: 't' + id, type: 'tournament', bankroll: 'main', date, label: 'Event', profit: 0, room: 'Borgata',
@@ -67,7 +68,7 @@ test('expenses and income are not locations and add nothing', () => {
   assert.equal(buildLocations(prepareFacts([X(9, '2026-01-01')], { localHour })).length, 0);
 });
 
-test('a mixed room: entries count bullets, hours are cash only, won % is results up over entries', () => {
+test('a mixed room: entries count bullets, hours are cash only, won % is results up over results', () => {
   const b = byKey(buildLocations(F)).get('borgata');
   assert.equal(b.total, -200 + 900 - 100 + 300);
   assert.equal(b.entries, 1 + 1 + 2 + 1, 'one cash session + four bullets');
@@ -75,7 +76,7 @@ test('a mixed room: entries count bullets, hours are cash only, won % is results
   assert.equal(b.hourly, 300 / 5);
   assert.equal(b.roi, (-200 + 900 - 100) / (200 + 200 + 400));
   assert.equal(b.wonKind, 'mixed');
-  assert.equal(b.won, 2 / 5, 'the 900 score and the winning session, of five entries; the losing min-cash is not a win');
+  assert.equal(b.won, 2 / 4, 'the 900 score and the winning session, of four results (the 2-bullet event is one); the losing min-cash is not a win');
   assert.deepEqual(b.kinds, { tournament: true, cash: true });
   assert.equal(b.format, 'live');
   assert.deepEqual(b.tournament.cashes, 2);
@@ -87,13 +88,32 @@ test('a cash room: winning sessions; no ROI', () => {
   assert.equal(p.hourly, (-150 + 600 + 250) / 15);
 });
 
-test('a tournament room: ITM by bullets, no hours, no per hour; online', () => {
+test('a tournament room: ITM by events, no hours, no per hour; online', () => {
   const g = byKey(buildLocations(F)).get('ggpoker');
   assert.deepEqual([g.entries, g.hours, g.hourly, g.wonKind, g.won, g.format], [2, null, null, 'itm', 0.5, 'online']);
   assert.equal(g.roi, (32000 - 1100) / 2200);
   const items = statItems(g, { symbol: '$', pos: 'pre' });
   assert.deepEqual(items.map((i) => i.key), ['entries', 'roi', 'won'], 'no hours item (not "0 h") and no per hour');
   assert.equal(items.find((i) => i.key === 'won').text, '50% ITM');
+});
+
+test('ITM is cashes / events, as the Overview counts it: a re-entered event that cashed is one cash of one event', () => {
+  const raw = [
+    T(1, '2026-05-01', { bullets: 2, cost: 400, cash: 900, profit: 500, room: 'Wynn' }),
+    T(2, '2026-05-02', { profit: -200, room: 'Wynn' }),
+    T(3, '2026-05-03', { bullets: 3, cost: 600, profit: -600, room: 'Wynn' }),
+  ];
+  const w = buildLocations(prepareFacts(raw, { localHour }))[0];
+  assert.equal(w.entries, 6, 'six bullets are six entries');
+  assert.equal(w.won, 1 / 3, 'one cash of three events, not one of six bullets');
+  assert.equal(statItems(w, { symbol: '$', pos: 'pre' }).find((i) => i.key === 'won').text, '33% ITM');
+  // The Overview's "In the money" over the same results reads the same.
+  const ov = overviewStats(raw.map((f) => ({ ...f, source: 'tournaments', amount_display: f.profit, units: f.bullets, fx_display: 1 })));
+  assert.equal(ov.mtt.itm, w.won);
+  // A mixed room counts results the same way: the 2-bullet score is one winning result.
+  const mixed = buildLocations(prepareFacts([...raw, C(1, '2026-05-04', { profit: 100, room: 'Wynn' })], { localHour }))[0];
+  assert.equal(mixed.entries, 7);
+  assert.equal(mixed.won, 2 / 4);
 });
 
 test('currencies: the room\'s own, most used first', () => {
@@ -177,7 +197,7 @@ test('the stats line: items, text and tone', () => {
   const b = byKey(buildLocations(F)).get('borgata');
   const items = statItems(b, $);
   assert.deepEqual(items.map((i) => i.key), ['entries', 'hours', 'hourly', 'roi', 'won']);
-  assert.deepEqual(items.map((i) => i.text), ['5 entries', '5', '+$60/h', 'ROI +75%', '40% won']);
+  assert.deepEqual(items.map((i) => i.text), ['5 entries', '5', '+$60/h', 'ROI +75%', '50% won']);
   assert.deepEqual(items.map((i) => i.tone), [0, 0, 1, 1, 0], 'won % is judged only in a cash room');
   assert.equal(items[1].icon, 'clock');
   const p = statItems(byKey(buildLocations(F)).get('parx'), $);
@@ -200,6 +220,22 @@ test('a result row: what and when', () => {
   assert.equal(resultWhat({ kind: 'tournament', label: 'Daily', bullets: 1 }), 'Daily');
   assert.equal(fmtDay('2026-10-03'), 'Oct 3, 2026');
   assert.equal(fmtDay(''), '');
+});
+
+test("an open card's rows: ten, then fifty more a tap, the last tap 'Show all'; a count for a big room", () => {
+  assert.deepEqual([FIRST_ROWS, PAGE_ROWS], [10, 50]);
+  assert.deepEqual(rowsPage(10, 7), { rows: 7, more: null, fewer: false, count: null }, 'ten or fewer: no pager');
+  assert.deepEqual(rowsPage(10, 10), { rows: 10, more: null, fewer: false, count: null });
+  assert.deepEqual(rowsPage(10, 23), { rows: 10, more: { label: 'Show all 23', next: 23 }, fewer: false, count: null });
+  assert.deepEqual(rowsPage(23, 23), { rows: 23, more: null, fewer: true, count: null });
+  assert.deepEqual(rowsPage(10, 60), { rows: 10, more: { label: 'Show all 60', next: 60 }, fewer: false, count: null }, 'one page left');
+  assert.deepEqual(rowsPage(10, 1030), { rows: 10, more: { label: 'Show 50 more', next: 60 }, fewer: false, count: '10 of 1,030' });
+  assert.deepEqual(rowsPage(60, 1030), { rows: 60, more: { label: 'Show 50 more', next: 110 }, fewer: true, count: '60 of 1,030' });
+  assert.deepEqual(rowsPage(1010, 1030), { rows: 1010, more: { label: 'Show all 1,030', next: 1030 }, fewer: true, count: '1,010 of 1,030' });
+  assert.deepEqual(rowsPage(1030, 1030), { rows: 1030, more: null, fewer: true, count: null });
+  assert.equal(rowsPage(0, 30).rows, 10, 'never under the first ten');
+  assert.equal(rowsPage(5000, 30).rows, 30, 'never over the total');
+  assert.deepEqual(rowsPage(10, 0), { rows: 0, more: null, fewer: false, count: null });
 });
 
 // ── The tab strip ───────────────────────────────────────────────────────────────────────
@@ -251,4 +287,30 @@ test('tab strip: arrow keys wrap, Home and End jump', () => {
     [1, 6, 1, 6, 0, 6, null]);
   assert.equal(keyStep('ArrowRight', 6, 7), 0);
   assert.equal(keyStep('ArrowRight', 0, 0), null);
+});
+
+test('tab strip: a chevron pages by the view less both fades, to whole g, within the strip', () => {
+  const base = { viewWidth: 350, contentWidth: 610, edge: 30, g: 10 };
+  assert.equal(pageScroll({ ...base, scrollLeft: 0, dir: 1 }), 260, '350 - 60 = 290, but the end is 260');
+  assert.equal(pageScroll({ ...base, contentWidth: 2000, scrollLeft: 0, dir: 1 }), 290, '350 - 60');
+  assert.equal(pageScroll({ ...base, scrollLeft: 260, dir: -1 }), 0, 'no further than the start');
+  assert.equal(pageScroll({ ...base, contentWidth: 2000, scrollLeft: 123, dir: 1 }), 410, '413 to whole g');
+  assert.equal(pageScroll({ ...base, contentWidth: 2000, scrollLeft: 600, dir: -1 }), 310);
+  assert.equal(pageScroll({ ...base, viewWidth: 355, contentWidth: 2000, scrollLeft: 0, dir: 1 }), 290, 'the step itself whole g: 295 down to 290');
+  assert.equal(pageScroll({ ...base, viewWidth: 50, contentWidth: 2000, scrollLeft: 0, dir: 1 }), 10, 'at least a g');
+  assert.equal(pageScroll({ ...base, contentWidth: 300, scrollLeft: 0, dir: 1 }), 0, 'nothing to scroll');
+});
+
+test('tab strip: a vertical wheel scrolls the strip sideways while it can move, else the page', () => {
+  const at = (scrollLeft) => ({ scrollLeft, viewWidth: 350, contentWidth: 610 });
+  assert.equal(wheelToStrip({ deltaY: 100 }, at(0)), 100);
+  assert.equal(wheelToStrip({ deltaY: 100 }, at(200)), 60, 'only as far as the end');
+  assert.equal(wheelToStrip({ deltaY: 100 }, at(260)), 0, 'at the end: the page scrolls');
+  assert.equal(wheelToStrip({ deltaY: -100 }, at(0)), 0, 'at the start: the page scrolls');
+  assert.equal(wheelToStrip({ deltaY: -100 }, at(40)), -40);
+  assert.equal(wheelToStrip({ deltaY: 3, deltaMode: 1 }, at(0)), 48, 'lines');
+  assert.equal(wheelToStrip({ deltaY: 1, deltaMode: 2 }, at(0)), 260, 'a page, clamped');
+  assert.equal(wheelToStrip({ deltaX: 40, deltaY: 10 }, at(0)), 0, 'a sideways swipe scrolls natively');
+  assert.equal(wheelToStrip({ deltaY: 100, ctrlKey: true }, at(0)), 0, 'a pinch is not a scroll');
+  assert.equal(wheelToStrip({ deltaY: 100 }, { scrollLeft: 0, viewWidth: 350, contentWidth: 350 }), 0, 'nothing to scroll');
 });

@@ -6,7 +6,8 @@
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
 // Schedule (and, for an admin, each tab of the bankroll dashboard, every Reports table and the
-// Reports filter sheet, a Locations card open and the Locations sorted by name, then Results > Cash: the running session and its panels, the session
+// Reports filter sheet, a Locations card open a page past its first ten and the Locations sorted by
+// name with every card open, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
 // box (a Range over the text, which spans ascent to descent) against every ancestor that clips
@@ -167,7 +168,7 @@ function scan(rootSel) {
     // Every tab in the strip, whatever it holds (Overview, Rules, Goals, Import, and any added
     // later; once the tabs outgrow 35g the strip scrolls sideways, and each click scrolls it to its
     // tab), then the Overview again with its graph switched to Balance and the range to All.
-    const tabs = p.locator('.an-sheet .bd-tabs button');
+    const tabs = p.locator('.an-sheet .bd-tabs [role="radio"]');   // the tabs, not the page chevrons
     const n = await tabs.count();
     for (let i = 0; i < n; i++) {
       const tab = (await tabs.nth(i).innerText()).trim();
@@ -208,12 +209,13 @@ function scan(rootSel) {
     await scrollRun('bankroll report filters', '.br-fsheet .an-body', '.br-fsheet');
   } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
   // Locations (the bankroll dashboard): a card open on its results (the first room with more than
-  // ten, Show all on), then the cards sorted by name. Long room names and event names truncate.
+  // ten, a page shown past them), then the cards sorted by name with every one open — an open card's
+  // name wraps, so a long one is checked whole. Long event names truncate.
   try {
     await openResults();
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
-    await p.locator('.an-sheet .bd-tabs button:has-text("Locations")').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Locations")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1200);
     const pageThrough = async (label) => {
       await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
@@ -233,16 +235,24 @@ function scan(rootSel) {
     for (let i = 0; i < n; i++) {
       await cards.nth(i).click({ timeout: 4000 });
       await p.waitForTimeout(300);
-      if (await p.locator('.bl-more').count()) break;
+      if (await p.locator('.bl-pager').count()) break;
       await cards.nth(i).click({ timeout: 4000 });
     }
-    await p.locator('.bl-more').first().click({ timeout: 4000 }).catch(() => {});
+    await p.locator('.bl-pager .bl-more').first().click({ timeout: 4000 }).catch(() => {});
     await p.waitForTimeout(400);
     await pageThrough('bankroll locations, a card open');
+    // Show fewer: back to ten, and every card closed again for the next pass.
+    await p.locator('.bl-pager .bl-fewer').first().click({ timeout: 4000 }).catch(() => {});
     await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
     await p.locator('.bl-sort button:has-text("Name")').first().click({ timeout: 4000 });
     await p.waitForTimeout(600);
-    await pageThrough('bankroll locations by name');
+    const shut = p.locator('.bl-card[aria-expanded="false"]');
+    for (let k = await shut.count(); k > 0; k--) {
+      await shut.first().click({ timeout: 4000 });
+      await p.waitForTimeout(150);
+    }
+    await p.waitForTimeout(400);
+    await pageThrough('bankroll locations by name, every card open');
   } catch (e) { console.log(`  (bankroll locations skipped: ${e.message.split('\n')[0]})`); }
   // Results > Cash (cash sessions beta), each screen: the running session (it opens by itself while
   // one runs) and its rebuy and cash-out panels; the list (chip graph, month headers, rows with

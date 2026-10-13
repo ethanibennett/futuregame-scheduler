@@ -148,9 +148,15 @@ their own. The strip (`BankrollTabStrip.jsx`, arithmetic in `utils/tab-strip.js`
 - **Scrolling** otherwise (seven tabs at 5g: "Locations" is wider): one 35g × 5r row of pills, each
   content-sized (label + 1g a side) and rounded up to whole g by `snap-g`, 1g apart. The selected pill
   is scrolled into view when the strip opens and whenever the tab changes, to a whole-g offset with 3g
-  clear for the fade (`revealScroll`), so the pills come to rest on g lines. A 3g fade with a chevron
-  marks an edge with more beyond it; no scrollbar. Touch and trackpads scroll it; ←/→ (and ↑/↓),
-  Home and End move the selection (a radio group with one tab stop).
+  clear for the fade (`revealScroll`), so the pills come to rest on g lines. A 3g fade marks an edge
+  with more beyond it; no scrollbar. Over the fade's outer 2g, a chevron is a real button (2g × 5r,
+  "Earlier tabs" / "More tabs", `tabindex -1`, outside the radio group, gone while its edge has
+  nothing beyond) that pages the strip by the view less both fades, to a whole-g offset
+  (`pageScroll`). Touch and trackpads scroll it natively; a plain mouse wheel turned over it scrolls
+  it sideways while it can still move that way, then the sheet scrolls on (`wheelToStrip`); ←/→
+  (and ↑/↓), Home and End move the selection (a radio group with one tab stop). Roving focus always
+  lands on the selected pill, so its focus ring is its own: inside the selection's brand ring, a
+  0.25r gap of ground, then a 0.25r ring (`--n-8` in high contrast).
 
 **Overview** (`BankrollOverview.jsx`), laid out the way a dedicated poker tracker lays out its home
 screen, in this app's own type, tokens and grid:
@@ -456,20 +462,39 @@ locations (its Bankroll › Locations screen), in this app's type, tokens and gr
   - **per hour** — cash profit / cash hours, when there are hours;
   - **ROI** — tournament profit / buy-ins, when the room has tournaments;
   - **won %** — a cash room: winning sessions / sessions ("60% won", green at 50% and over, red
-    under); a tournament room: cashes / bullets ("17% ITM", plain); a mixed room: results with a
-    profit / entries ("63% won", plain).
-  A type mark (dots in `--series-tourn` aqua and `--series-cash` violet) before "Live • USD" says
-  which kinds the room has; the footnote is its legend, and says expenses aren't included.
-- **Open a card** (tap; `aria-expanded`): its results newest first — date | tournament (× bullets)
-  or game, stakes and length | result — ten, then Show all.
+    under); a tournament room: cashes / events ("11% ITM", plain — the Overview's "In the money"
+    definition, so the two reconcile: a re-entered event that cashed is one cash of one event); a
+    mixed room: results with a profit / results ("63% won", plain). Results, not bullets, on both
+    sides of every won %: bullets count only as entries.
+  A type mark (dots in `--series-tourn` aqua and `--series-cash` violet) after "Live • USD" says
+  which kinds the room has (after, so that line starts on the name's g line on every card); the
+  footnote is its legend, and says expenses aren't included.
+- **Open a card** (tap; `aria-expanded`): the room's name wraps whole (3r a line — a long name is
+  otherwise only in a `title`, which a touch screen never shows), then its results newest first —
+  date | tournament (× bullets) or game, stakes and length | result — ten, then a page at a time
+  (`rowsPage`): "Show 50 more" while more than fifty are left, "Show all N" for the last page, and
+  "Show fewer" once past ten, which puts the card back in view (`scrollIntoView` nearest, 1r scroll
+  margin) and keeps keyboard focus on a pager button. A room with more than sixty results also says
+  "60 of 1,030" at the pager's right. Closing a card starts it over at ten.
 - **Range** (1M · 3M · YTD · 1Y · All, the Overview's windows, default All) and **sort** (Result,
   Entries, Hours, Name; the room-less card stays last) are remembered per device (localStorage
   `bankrollLocations`). Empty state when nothing in the range.
 - **Layout** (35g; the CSS header lists every row): range 35g × 4r; the summary (rooms · entries ·
-  total · range); a 3r "Sort by" label and the 35g × 4r sort; cards 35g × 11r, 1r apart — 1r, the
-  name (Univers Condensed md, measured p 1.565) on line 4, "Live • USD" on line 6, the total (display
-  face xl) level with it in an 11g column, a hairline at line 7, the stats on line 10. Open rows 4r,
-  7g | 17g | 9g, baselines on line 3; Show all 11g × 4r. Baselines measured in WebKit at 402 and 1440:
-  every line within 0.05r of its r line. The cards are list rows (`.bl-card` in the controls guard's
-  NOT_CONTROLS); Show all is a control. The dashboard sheet is 37g on a desktop too, so the cards
-  stay one column there.
+  total · range); a 3r "Sort by" label and the 35g × 4r sort; cards 35g × 11r, 1r apart — the name
+  (Univers Condensed md, measured p 1.565) on line 3, "Live • USD" on line 5, the total (display face
+  xl) level with it, a hairline at line 6, the stats on line 9, 1r below: the name's caps start 1.57r
+  down and the stats' ink ends 1.75–1.88r up, the stats line evenly between hairline and foot.
+  Columns inside 1g a side: the name takes what the total leaves (`minmax(0, 1fr)`); the total is
+  its own width rounded up to whole g (`snap-g`), so "+$150" leaves the name 26g and "−CHF12,345"
+  takes 12g instead of spilling into the padding. Open rows 4r, 7g | 17g | 9g, baselines on line 3;
+  pager buttons 11g × 4r, 1g apart. Baselines measured in WebKit at 402 and 1440: every line within
+  0.05r of its r line. The cards are list rows (`.bl-card` in the controls guard's NOT_CONTROLS); the
+  pager buttons are controls, measured in the guard's `bankroll-location-pager` / `-paged` steps
+  with the pager scrolled into view. The dashboard sheet is 37g on a desktop too, so the cards stay
+  one column there.
+- **Known limit — one room, several names.** Rooms group exactly as the Reports "Room" breakdown
+  does (property, else site, else the venue string, trimmed and case-folded). A result with no
+  `property` (manual entries, feed rows from before 2026-08-31) groups by its venue string, which
+  can be an alias or a series title, so one physical room can show as two cards ("Wynn" and "Wynn
+  Las Vegas"). The fix belongs in one canonical room-alias step shared by Reports and Locations
+  (e.g. folding `VENUE_MAP` aliases that share a strip, or the venue directory), not here alone.

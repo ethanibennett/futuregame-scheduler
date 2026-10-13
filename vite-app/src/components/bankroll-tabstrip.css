@@ -12,7 +12,11 @@
                scroll offset (where the strip comes to rest after it
                reveals the selected tab)
      fades     3g at an edge with more beyond it, the sheet's ground
-               to clear, a 1r-wide chevron at the outer edge
+               solid for 1.5g, then to clear
+     pages     a 2g x 5r button over the fade's outer 2g, a 1r x 2r
+               chevron centred in it: pages the strip (pointer only)
+     focus     the selection's 0.39r ring, a 0.25r gap of ground, then
+               a 0.25r focus ring — all inset, as the scroller clips
    A pill is a control: its box on the grid, its label centred both
    ways by the box (owner rule 2026-10-10).
    ================================================================== */
@@ -66,26 +70,64 @@
   background: var(--brand-quiet); color: var(--brand-ink, var(--brand));
   box-shadow: inset 0 0 0 var(--bw-2) var(--brand);
 }
-/* The scroller clips anything outside it, so the focus ring is drawn inside the pill. */
-.bt-scroll > .bt-pill:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+/* The scroller clips anything outside it, so the focus ring is drawn inside the pill — and as a
+   ring of its own inside the selection's, since roving focus always lands on the selected pill and
+   the selection is already a brand ring at the edge. High contrast takes the app's focus colour for
+   it (styles.css: n-8, readable against brand). */
+.bt-scroll > .bt-pill { --bt-focus: var(--brand); }
+[data-contrast="high"] .bt-scroll > .bt-pill { --bt-focus: var(--n-8); }
+.bt-scroll > .bt-pill:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 var(--bw-hair) var(--border),
+    inset 0 0 0 calc(var(--bw-2) + var(--subrow) * 0.25) var(--bg),
+    inset 0 0 0 calc(var(--bw-2) + var(--subrow) * 0.5) var(--bt-focus);
+}
+.bt-scroll > .bt-pill.is-on:focus-visible {
+  box-shadow:
+    inset 0 0 0 var(--bw-2) var(--brand),
+    inset 0 0 0 calc(var(--bw-2) + var(--subrow) * 0.25) var(--bg),
+    inset 0 0 0 calc(var(--bw-2) + var(--subrow) * 0.5) var(--bt-focus);
+}
 
 .bt-fade {
   position: absolute; top: 0; bottom: 0;
   width: calc(var(--gu) * 3);
-  display: flex; align-items: center;
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out);
-  color: var(--text-muted);
 }
 .bt-fade.is-on { opacity: 1; }
-.bt-fade.is-start { left: 0; justify-content: flex-start; background: linear-gradient(to right, var(--bg) 40%, transparent); }
-.bt-fade.is-end { right: 0; justify-content: flex-end; background: linear-gradient(to left, var(--bg) 40%, transparent); }
-.bt-fade svg {
+.bt-fade.is-start { left: 0; background: linear-gradient(to right, var(--bg) 50%, transparent); }
+.bt-fade.is-end { right: 0; background: linear-gradient(to left, var(--bg) 50%, transparent); }
+
+/* The page buttons: hidden (and inert) while their edge has nothing beyond it. */
+.bt-page {
+  -webkit-appearance: none; appearance: none;
+  position: absolute; top: 0; bottom: 0;
+  width: calc(var(--gu) * 2); min-width: 0; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+  margin: 0; padding: 0; border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0; pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.bt-page.is-on { opacity: 1; pointer-events: auto; }
+.bt-page.is-start { left: 0; }
+.bt-page.is-end { right: 0; }
+@media (hover: hover) {
+  .bt-page.is-on:hover { color: var(--text); }
+}
+.bt-page svg {
   display: block; width: var(--subrow); height: calc(var(--subrow) * 2);
   fill: none; stroke: currentColor; stroke-width: var(--bw-2); stroke-linecap: round; stroke-linejoin: round;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bt-pill, .bt-fade { transition: none; }
+  .bt-pill, .bt-fade, .bt-page { transition: none; }
 }

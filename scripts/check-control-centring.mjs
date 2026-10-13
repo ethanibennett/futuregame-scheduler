@@ -5,7 +5,8 @@
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
 // Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
 // the bankroll sheet, the bankroll dashboard (every tab — the strip scrolls sideways once the tabs
-// outgrow it — its Reports tab and filter sheet, its Locations tab with a card open and a sort on)
+// outgrow it, with its page chevrons — its Reports tab and filter sheet, its Locations tab with a
+// card open, its pager (Show 50 more / Show all, Show fewer) and a sort on)
 // and its CSV import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
 // section, the add sheet, the list sheet, a trip).
 //
@@ -439,40 +440,56 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await p.waitForTimeout(800);
   }, 0);
   // The bankroll dashboard (the bankroll strip's Dashboard button): each of its tabs, and the CSV
-  // import step with a file mapped. A tab is found by its label in the strip (.bd-tabs); when the
-  // tabs outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
+  // import step with a file mapped. A tab is found by its label in the strip (.bd-tabs, its radios:
+  // the strip's page chevrons are buttons too); when the tabs outgrow 35g the strip is a row that
+  // scrolls sideways, and the click scrolls it there.
   const dash = async (tab) => {
     await menu('Results & Tracking', 'Results');
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
-    if (tab) await p.locator(`.an-sheet .bd-tabs button:has-text("${tab}")`).first().click({ timeout: 4000 });
+    if (tab) await p.locator(`.an-sheet .bd-tabs [role="radio"]:has-text("${tab}")`).first().click({ timeout: 4000 });
     await p.waitForTimeout(600);
   };
   await step('bankroll-dashboard', () => dash(null), 4);   // the Overview: hero, graph, statistics, latest sessions
   await step('bankroll-rules', () => dash('Rules'), 2);
   await step('bankroll-goals', () => dash('Goals'), 1);
-  // The tab strip with its last tab selected: scrolled to its end when it scrolls.
+  // The tab strip with its last tab selected: scrolled to its end when it scrolls, so the start's
+  // page chevron is up (the Overview's step has the end's).
   await step('bankroll-tabs-end', async () => {
     await dash(null);
-    await p.locator('.an-sheet .bd-tabs button').last().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bd-tabs [role="radio"]').last().click({ timeout: 4000 });
     await p.waitForTimeout(900);
   }, 0);
-  // Locations: the range and sort strips and the cards; a card open with Show all (a room with
-  // more than ten results), then sorted by name.
+  // Locations: the range and sort strips and the cards; a card open on its results (the first room
+  // with a pager: more than ten results, the biggest first by default sort), its pager scrolled into
+  // view before and after a page (Show 50 more or Show all, then Show fewer beside it), then the
+  // cards sorted by name.
   await step('bankroll-locations', () => dash('Locations'), 3);
-  await step('bankroll-location-open', async () => {
+  const openPaged = async () => {
     await dash('Locations');
     const cards = p.locator('.bl-card');
     const n = await cards.count();
     for (let i = 0; i < n; i++) {
       await cards.nth(i).click({ timeout: 4000, force: overlay });
       await p.waitForTimeout(300);
-      if (await p.locator('.bl-more').count()) break;
+      if (await p.locator('.bl-pager').count()) return;
       await cards.nth(i).click({ timeout: 4000, force: overlay });
     }
-    await p.locator('.bl-more').first().click({ timeout: 4000, force: overlay }).catch(() => {});
+    throw new Error('no room with more than ten results');
+  };
+  const pagerInView = async () => {
+    await p.evaluate(() => document.querySelector('.bl-pager').scrollIntoView({ block: 'center' }));
     await p.waitForTimeout(400);
-  }, 4);
+  };
+  await step('bankroll-location-open', openPaged, 2);
+  await step('bankroll-location-pager', async () => { await openPaged(); await pagerInView(); }, 0);
+  await step('bankroll-location-paged', async () => {
+    await openPaged();
+    await pagerInView();
+    await p.locator('.bl-pager .bl-more').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(500);
+    await pagerInView();
+  }, 0);
   await step('bankroll-location-sort', async () => {
     await dash('Locations');
     await p.locator('.bl-sort button:has-text("Name")').first().click({ timeout: 4000, force: overlay });

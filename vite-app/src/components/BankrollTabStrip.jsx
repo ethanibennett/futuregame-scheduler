@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { segmentWidths, fitsDivided, revealScroll, keyStep } from '../utils/tab-strip.js';
+import { segmentWidths, fitsDivided, revealScroll, keyStep, pageScroll, wheelToStrip } from '../utils/tab-strip.js';
 import './bankroll-tabstrip.css';
 
 /**
@@ -12,7 +12,11 @@ import './bankroll-tabstrip.css';
  * whole g by the app's snap-g utility (utils/grid-snap.js), the selected one is scrolled into view
  * when the strip opens and whenever it changes (to a whole-g offset, so the pills come to rest on
  * g lines), the edges fade where there is more, and there is no scrollbar. Touch and trackpads
- * scroll it natively; the arrow keys, Home and End move the selection (one tab stop, roving).
+ * scroll it natively; a plain mouse wheel turned over it scrolls it sideways while it can move
+ * (then the page scrolls on); the chevron at an edge with more beyond it is a button that pages
+ * the strip by whole g (pointer only: tabindex -1, outside the radio group); the arrow keys, Home
+ * and End move the selection (one tab stop, roving). Keyboard focus on a pill is a ring of its own
+ * inside the selection's ring, since roving focus always lands on the selected pill.
  *
  * The decision is measured, not guessed: a hidden copy of the labels in the tabs' own type is
  * measured in g on mount, when the labels change, on resize and once the webfonts have loaded.
@@ -22,6 +26,9 @@ import './bankroll-tabstrip.css';
  * accessible name), className (the strip's place: bd-tabs), btnClass (each tab's classes).
  */
 const TOTAL = 35;
+const smooth = () => {
+  try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return true; }
+};
 
 function Chevron({ dir }) {
   return (
@@ -77,7 +84,7 @@ export default function TabStrip({ options, value, onChange, label, className = 
   const firstReveal = useRef(true);
   useEffect(() => {
     if (mode !== 'scroll') { firstReveal.current = true; return undefined; }
-    const smooth = !firstReveal.current;
+    const animate = !firstReveal.current && smooth();
     firstReveal.current = false;
     const raf = requestAnimationFrame(() => {
       const s = scrollRef.current, el = btnRefs.current[active];
@@ -88,7 +95,7 @@ export default function TabStrip({ options, value, onChange, label, className = 
         itemLeft: er.left - sr.left + s.scrollLeft, itemWidth: er.width,
         scrollLeft: s.scrollLeft, viewWidth: s.clientWidth, contentWidth: s.scrollWidth, edge: 3 * g, g,
       });
-      if (target != null) s.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
+      if (target != null) s.scrollTo({ left: target, behavior: animate ? 'smooth' : 'auto' });
       updateEdges();
     });
     return () => cancelAnimationFrame(raf);
@@ -103,6 +110,31 @@ export default function TabStrip({ options, value, onChange, label, className = 
     [...s.children].forEach((c) => ro.observe(c));
     return () => ro.disconnect();
   }, [mode, sig, updateEdges]);
+
+  // A vertical mouse wheel over the strip scrolls it sideways while it can still move that way
+  // (React's onWheel is passive, so the listener is attached here to be able to take the turn).
+  useEffect(() => {
+    const s = scrollRef.current;
+    if (mode !== 'scroll' || !s) return undefined;
+    const onWheel = (e) => {
+      const by = wheelToStrip(e, { scrollLeft: s.scrollLeft, viewWidth: s.clientWidth, contentWidth: s.scrollWidth });
+      if (!by) return;
+      e.preventDefault();
+      s.scrollLeft += by;
+    };
+    s.addEventListener('wheel', onWheel, { passive: false });
+    return () => s.removeEventListener('wheel', onWheel);
+  }, [mode]);
+
+  // The chevrons: a page of tabs that way, to a whole-g offset.
+  const page = (dir) => {
+    const s = scrollRef.current;
+    if (!s) return;
+    const g = unit();
+    const left = pageScroll({ scrollLeft: s.scrollLeft, viewWidth: s.clientWidth, contentWidth: s.scrollWidth, edge: 3 * g, g, dir });
+    s.scrollTo({ left, behavior: smooth() ? 'smooth' : 'auto' });
+  };
+  const keepFocus = (e) => e.preventDefault();   // a pointer press on a chevron leaves focus where it was
 
   const onKeyDown = (e) => {
     const j = keyStep(e.key, active, n);
@@ -142,8 +174,18 @@ export default function TabStrip({ options, value, onChange, label, className = 
       <div ref={scrollRef} className="bt-scroll" role="radiogroup" aria-label={label} onKeyDown={onKeyDown} onScroll={updateEdges}>
         {buttons}
       </div>
-      <span className={'bt-fade is-start' + (edges.start ? ' is-on' : '')} aria-hidden="true"><Chevron dir="left" /></span>
-      <span className={'bt-fade is-end' + (edges.end ? ' is-on' : '')} aria-hidden="true"><Chevron dir="right" /></span>
+      <span className={'bt-fade is-start' + (edges.start ? ' is-on' : '')} aria-hidden="true" />
+      <span className={'bt-fade is-end' + (edges.end ? ' is-on' : '')} aria-hidden="true" />
+      <button type="button" className={'bt-page is-start' + (edges.start ? ' is-on' : '')} tabIndex={-1}
+        aria-label="Earlier tabs" aria-hidden={edges.start ? undefined : true} disabled={!edges.start}
+        onMouseDown={keepFocus} onClick={() => page(-1)}>
+        <Chevron dir="left" />
+      </button>
+      <button type="button" className={'bt-page is-end' + (edges.end ? ' is-on' : '')} tabIndex={-1}
+        aria-label="More tabs" aria-hidden={edges.end ? undefined : true} disabled={!edges.end}
+        onMouseDown={keepFocus} onClick={() => page(1)}>
+        <Chevron dir="right" />
+      </button>
       {measurer}
     </div>
   );

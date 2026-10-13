@@ -52,3 +52,32 @@ export function keyStep(key, index, n) {
   if (key === 'End') return n - 1;
   return null;
 }
+
+/**
+ * The scrollLeft a page button moves to, in px: one view's width less the fade at each end (so
+ * the pill that was half under the far fade comes out whole), at least one g, then rounded to a
+ * whole g and kept within the strip. `dir` is 1 (later tabs) or -1 (earlier ones).
+ */
+export function pageScroll({ scrollLeft, viewWidth, contentWidth, edge = 0, g = 0, dir = 1 }) {
+  const max = Math.max(0, contentWidth - viewWidth);
+  let step = Math.max(viewWidth - 2 * edge, g > 0 ? g : 1);
+  if (g > 0) step = Math.max(g, Math.floor(step / g + 0.01) * g);
+  let target = scrollLeft + (dir < 0 ? -step : step);
+  if (g > 0) target = Math.round(target / g) * g;
+  return Math.min(max, Math.max(0, target));
+}
+
+/**
+ * A wheel turned over a sideways-only strip: the px to scroll it by, or 0 to leave the wheel to
+ * the page. Only a mostly-vertical turn is taken (a trackpad's sideways swipe already scrolls the
+ * strip natively), only while the strip can still move that way (at an end, the page scrolls on),
+ * and never a pinch (ctrlKey). deltaMode 1 is lines, 2 pages.
+ */
+export function wheelToStrip({ deltaX = 0, deltaY = 0, deltaMode = 0, ctrlKey = false }, { scrollLeft, viewWidth, contentWidth, line = 16 }) {
+  if (ctrlKey || Math.abs(deltaY) <= Math.abs(deltaX)) return 0;
+  const px = deltaMode === 1 ? deltaY * line : deltaMode === 2 ? deltaY * viewWidth : deltaY;
+  const max = Math.max(0, contentWidth - viewWidth);
+  if (px > 0 && scrollLeft < max - 0.5) return Math.min(px, max - scrollLeft);
+  if (px < 0 && scrollLeft > 0.5) return Math.max(px, -scrollLeft);
+  return 0;
+}
