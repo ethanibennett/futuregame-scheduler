@@ -161,10 +161,49 @@ screen, in this app's own type, tokens and grid:
 | block | what | the tracker pattern it borrows |
 |---|---|---|
 | Hero (2 × 17g, 9r) | balance now · profit over the range, coloured by sign, with the event / session count | the headline profit over the graph |
-| Graph (4r head, 35g × 24r plot, 2r foot) | **Profit** (cumulative results from 0, a hairline at 0, line green / red by where it ends) or **Balance** (deposits included); drawdown from the peak shaded in both | the cumulative "chip graph" |
-| Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage) | the time filter on the graph |
+| Graph (`BankrollChart.jsx`: 4r head, 5r pills, 2r label room over the 35g × 24r plot, 2r foot) | **Profit**: up to three cumulative lines from 0 at the range start — **Total** (every result, the hero's profit), **Tournaments**, **Cash** — toggled by pills that are also the legend (colour swatch, end value), with a **Fill** pill shading each line down to 0; or **Balance** (one line, deposits included). Nice gridlines labelled at the left; drawdown from the peak shaded when one line is drawn | Poker Bankroll Tracker's Trend chart (Cash / Tourney / Total overlays, area fills) and the cumulative "chip graph" |
+| Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage, with the graph's `bankrollSeries` and `bankrollFill`) | the time filter on the graph |
 | Tables (`BankrollOverviewTables.jsx`, `bankroll-overview-tables.css`) | six collapsible sections, each headed by a 35g × 5r disclosure row: the name, the range and bankroll it covers, a chevron, and while closed its headline figure on the right. **Summary** (Cash \| Tournaments \| Total): buy-ins (cash: buy-in incl. rebuys; tournaments: buy-in × bullets), cash-outs, tips & costs (cash, when any), net profit, expenses & income (Total), **total result** (= the hero's profit), deposits & withdrawals (Total), balance change (Total: result + money moved). **Sessions**: sessions / events, bullets, hours and $/h (cash), ROI (tournaments), won % / ITM (tournaments: cashes per entry, the Analytics rule), average buy-in, profit and rebuys / re-entries, biggest win and loss. **Games** and **Rooms** (from the report facts): one row per game / room, cash and tournaments in separate blocks (count, hours, $/h or ROI, total, best first). **Bankroll**: balance, all-time peak, below it, deepest drawdown in the range, money moved, risk of ruin. **By month** (By year for All): results, moved, net. Summary and Sessions start open; open / closed is per device (`bankrollOverviewOpen` in localStorage). The scope line, the currency and the reports query come from the ledger in hand (`d.bankroll`, `d.currency`), not the bankroll chip, which runs one round trip ahead of it; until the ledger (for Games and Rooms, also the report facts) is the one asked for, a section keeps its figures on screen, dimmed, with `aria-busy` | Poker Bankroll Tracker's Bankroll › Overview: tables with a column per game type and a total, zebra rows, right-aligned tabular figures, compact money ($403.2k from $10k) |
 | Latest sessions (6r rows, 14g \| 21g) | the six newest tournament / cash results in the range, each led by its signed profit in the display face, with date, event or game, and hours / bullets; buttons to Results' Tournaments and Cash halves (they also select the dashboard's bankroll on the Results tab) | the session list led by a big green / red profit |
+
+The graph (`BankrollChart.jsx`, fed by `BankrollOverview.jsx`):
+
+- **Lines.** Profit mode draws any mix of three cumulative series over one date axis, each from 0 on
+  the range's first day: **Total** = every result (tournaments + cash sessions + expenses & income;
+  ends at the hero's profit and the Summary's Total result), **Tournaments** = the `tournaments`
+  source, **Cash** = `cash-sessions`. Expenses & income have no line of their own; while Total is on
+  and they moved it, the head note says so ("Total includes expenses & income −$1,630"). Lines are
+  steps (a total holds until money moves). Total is drawn first and wider, so where it runs along
+  Tournaments or Cash (only one of them moves on a given day) both stay visible.
+- **Pills** (5r; Total 8g, Tournaments 10g, Cash 8g, Fill 6g, 1g apart): each is the line's legend
+  (a swatch in its colour, its end value for the range, "None" when the range has no such entries)
+  and its switch (`aria-pressed`). Any mix can be on; the last one on cannot be turned off
+  (`aria-disabled`, "One line always stays on"). Default: all three on. **Fill** (On / Off, default
+  On) shades each drawn line down to the zero line in `--series-fill` alpha of its colour; the
+  fills overlap translucently. Both are remembered per device: `bankrollSeries`
+  (`'total,tourn,cash'`, known keys only, never empty: `parseSeriesPref`) and `bankrollFill`
+  (`'1'` / `'0'`), read and written in try/catch like the range and mode.
+- **Balance mode** stays one line (deposits do not split by game type): the series pills give way to
+  a single, fixed Balance pill; Fill still works on it (down to the bottom gridline when the scale
+  does not reach 0).
+- **Drawdown** (the band between the running peak, dashed, and the line, in `--neg-quiet`) only when
+  one line is drawn — one series in Profit, or Balance; with several it is clutter. The foot says
+  "Shaded: drawdown" when it shows.
+- **Axis.** One y scale over the lines that are on (a hidden line does not stretch it), rounded out
+  by `niceTicks` to 2, 3 or 4 steps of 1 / 2 / 2.5 / 5 × 10ⁿ — 3 to 5 gridlines; Profit always takes
+  in 0 as a gridline, drawn a touch stronger (`--text-muted`, `--bw-1`; the others `--border`,
+  hairline). Each count divides the 24r plot, so every gridline is on an r line. The labels are HTML
+  (the SVG stretches), `compactMoney` in the display currency's own form ($5k, −$2.5k, 5k kr,
+  ¥1.2M), each in a 5g column at the left with its baseline on its gridline; the lines start at 5g,
+  so a label never meets a line, and gridlines are at least 6r apart, so labels never meet each
+  other (the widest plausible label, −CHF2.5k, measures 3.9g). Under the plot: the range's start
+  date at 5g (where the lines start) and its end date at the right.
+- **Colours** (`styles.css`, "Chart series"): `--series-total` (the text colour), `--series-tourn`
+  (the brand aqua), `--series-cash` (a violet), defined for the dark default and overridden for
+  light, cloudy and each high-contrast theme. The same tokens key the tables' column heads, as
+  text, so Cash clears 4.5:1 on the sheet (and so 3:1 non-text on the sheet and on the pills) in
+  every theme; it sits lighter or deeper than the aqua everywhere, so the lines differ in lightness
+  as well as hue. Measured values are in the comment above the tokens. No orange.
 
 Table layout: a 3r head (labels on line 2; Cash, Tournaments and Total carry a key bar in
 `--series-cash` / `--series-tourn` / `--series-total`, the graph's line colours), 4r rows with the
@@ -219,7 +258,12 @@ draws, so −0.38 is a plain "$0", never a red one.
 The arithmetic is pure and tested in `utils/bankroll-ledger.js`: `overviewStats(entries)` (ROI =
 profit / cost with each tournament's cost × `fx_display`, so mixed currencies add up; ITM = rows that
 cashed / rows; hourly = the profit of sessions with both ends / their hours; every ratio null, not 0,
-when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`.
+when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`, and the
+graph's: `gameSeries` (Total / Tournaments / Cash / other on one date axis, summed in integer cents so
+tourn + cash + other == total exactly on every row), `seriesLine`, `parseSeriesPref`, `niceTicks`,
+`compactMoney` — tested in `utils/__tests__/bankroll-ledger.test.mjs` (the series identity, 1M / YTD
+windows restarting at 0, empty, single-entry and negative-only series, flat and junk extents, a 2,000
+extent sweep for the tightest nice step).
 
 Baselines: hero figures are the display face at `--fs-2xl` (c measured 1.0983r at 402 wide, 1.1238r at
 1440 — the face's ascent rounds to whole px, so `p` splits the difference, ≤ 0.03r off); the latest
