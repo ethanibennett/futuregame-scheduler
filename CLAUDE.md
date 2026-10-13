@@ -11,7 +11,7 @@ sessions opened here own scheduler work.
   branch `wip/windows-mtt-feed`.
 - **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
   2 panes (Schedule = list | right pane, the selected event on top and My Schedule under it;
-  the third column was dropped 2026-10-10) on the SAME g as the phone (g stays 430px/37; panes
+  the third column was dropped 2026-10-10; the two panes sit 2g apart on the background, 2026-10-13) on the SAME g as the phone (g stays 430px/37; panes
   are 9N+1 g, widened by a classic scrollbar's width where one shows). Everything narrower, and
   every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
