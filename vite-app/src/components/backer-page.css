@@ -331,10 +331,10 @@
 .bp-sk-name { width: calc(var(--gu) * 17); height: calc(var(--subrow) * 3); margin-top: calc(var(--subrow) * 1); }
 .bp-sk-stakes { width: calc(var(--gu) * 13); height: calc(var(--subrow) * 1); margin-top: calc(var(--subrow) * 2); }
 .bp-skeleton .bp-hero { height: calc(var(--subrow) * 7); }
-.bp-sk-total { height: calc(var(--subrow) * 12); margin-top: calc(var(--subrow) * 2); border-radius: var(--radius) !important; }
+.bp-skeleton .bp-sk-total { height: calc(var(--subrow) * 12); margin-top: calc(var(--subrow) * 2); border-radius: var(--radius); }
 .bp-sk-chart { height: calc(var(--subrow) * 22); margin-top: calc(var(--subrow) * 3); }
 .bp-skeleton .bp-cards { margin-top: calc(var(--subrow) * 4); }
 .bp-sk-card { box-shadow: var(--elev-1); }
-.bp-sk-strip { height: calc(var(--subrow) * 3); border-radius: 0 !important; }
+.bp-skeleton .bp-sk-strip { height: calc(var(--subrow) * 3); border-radius: 0; }
 .bp-sk-line { width: calc(var(--gu) * 21); height: calc(var(--subrow) * 1); margin-top: calc(var(--subrow) * 2); }
 .bp-sk-line.is-short { width: calc(var(--gu) * 13); }
