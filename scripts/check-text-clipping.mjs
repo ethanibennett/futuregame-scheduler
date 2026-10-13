@@ -103,6 +103,10 @@ function scan(rootSel) {
   await ctx.addInitScript(({ t }) => {
     localStorage.setItem('token', t); localStorage.setItem('username', 'ham5');
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
+    // Past the first-run wizard too: on a busy box its Skip click outran the 1 s wait at 1440 and
+    // the wizard's backdrop then swallowed the Results click, skipping 10 sections while still
+    // printing a passing line.
+    localStorage.setItem('onboarded', '1');
   }, { t });
   const p = await ctx.newPage();
   await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
