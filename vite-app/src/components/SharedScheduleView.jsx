@@ -61,21 +61,25 @@ export default function SharedScheduleView({ shareToken }) {
           <small>{(data.real_name || data.username)}'s schedule</small>
         </div>
         <div className="top-bar-actions">
-          <span style={{display:'flex',alignItems:'center',gap:'var(--space-sm)'}}>
+          {/* The app bar's own pattern: 3g x 4r cells 1g apart (an odd 7g, so the centred group
+              starts on a g line), the theme toggle the app's .btn-icon. */}
+          <span style={{display:'flex',alignItems:'center',justifyContent:'center',width:'calc(var(--gu) * 3)',height:'calc(var(--subrow) * 4)'}}>
             <Avatar src={data.avatar} username={data.username} size={22} />
           </span>
-          <button className="btn btn-ghost btn-sm" onClick={() => setTheme(t => { const n = THEME_ORDER[(THEME_ORDER.indexOf(t)+1)%THEME_ORDER.length]; localStorage.setItem('theme', n); return n; })} title={`Switch to ${THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme)+1)%THEME_ORDER.length]]} mode`}>
+          <button className="btn btn-ghost btn-icon" onClick={() => setTheme(t => { const n = THEME_ORDER[(THEME_ORDER.indexOf(t)+1)%THEME_ORDER.length]; localStorage.setItem('theme', n); return n; })} title={`Switch to ${THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme)+1)%THEME_ORDER.length]]} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
         </div>
       </header>
       <main className="content-area">
-        <div className="section-header">
+        {/* A whole 4r header, so the day groups under it start on r lines (content-high it was
+            3.4r); the count a whole-g badge (snap-g) with its label centred. */}
+        <div className="section-header" style={{height:'calc(var(--subrow) * 4)'}}>
           <h2 style={{display:'flex',alignItems:'center',gap:'var(--space-md)'}}>
             <Avatar src={data.avatar} username={data.username} size={26} />
             {(data.real_name || data.username)}'s Schedule
           </h2>
-          <span className="event-count-badge">{sorted.filter(t => !t.is_restart).length} event{sorted.filter(t => !t.is_restart).length !== 1 ? 's' : ''}</span>
+          <span className="event-count-badge snap-g">{sorted.filter(t => !t.is_restart).length} event{sorted.filter(t => !t.is_restart).length !== 1 ? 's' : ''}</span>
         </div>
         <div style={{minHeight:'100vh'}}>
         {sorted.length === 0 ? (
@@ -94,7 +98,7 @@ export default function SharedScheduleView({ shareToken }) {
             <div key={date} data-date-group={date} style={{marginTop: gi === 0 ? 0 : 'var(--space-md)'}}>
               <DateBreak date={date} top={0} isToday={date === todayISO} eventCount={events.filter(t => !t.is_restart).length} />
               {events.map(t => (
-                <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 11.75)'}}>
+                <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
                   <CalendarEventRow
                     tournament={t}
                     isInSchedule={true}

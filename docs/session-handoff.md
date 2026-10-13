@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-09-30 (from Windows). The newest section is 2026-09-30, live
+Last updated: 2026-10-13 (from Windows) — see the 2026-10-13 section first. Earlier note: 2026-09-30. The newest section is 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,56 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
+- **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
+  (`utils/detail-motion.js`); the centring sweep (490 controls + venue strips, 9b142b5; the guard now
+  visits 102+ views); the rebuilt home + Overview tables (b2ade74: To log, Last result, bankroll line,
+  period block, goals, scoped typed "Delete results" with a server guard on `DELETE /api/tracking`).
+- **Nightly TestFlight** (91dcce7, CLAUDE.md "Nightly TestFlight build"): from 04:00 ET, ships master
+  HEAD once a night when nothing is in the way. **Merging several branches into master over time? Write
+  `.testflight-hold` (with a reason) first and delete it when master is whole.**
+- **In flight at the end of the day:** replayer springs (worktree `wf_47e1730e-7b7-1`; owner chose
+  **Set B** as the default — switch `replayer-motion.js` before merging; exports animate everything
+  except bet slide-outs; pot chips land on the winner's plaque edge, never across the name); the
+  bankroll Locations tab (worktree `wf_f6462427-c7b-1`, based on an older master — needs a merge); the
+  venue-strip map popup (worktree `venue-map`, branch `feat/venue-map` off `merge/home-tables`:
+  MapKit JS when keyed, Google Maps JS on Android when keyed, OSM fallback).
+- **PAUSED at 94% weekly usage (evening 2026-10-13) to finish the backer page:** springs final review
+  (resume `weekly-graphics/replayer-springs.workflow.js`, run wf_47e1730e-7b7; then switch to Set B,
+  merge, send the comparison videos); Locations (workflow script bankroll-locations-tab-wf_f6462427-c7b,
+  worktree wf_f6462427-c7b-1); venue map (worktree `venue-map`, branch feat/venue-map, uncommitted
+  work — it was re-running the My Schedule guard views at 1440). Backer page: branch
+  `feat/backer-page` (worktree `backer-page`, 627fa70) — merge with master, deploy.
+- **Queued (owner, 2026-10-13):** onboarding questions refinement; an s-points calculator on events
+  whose structures are available (confirm what "s-points" means with Ethan first); letting the user
+  change and reorder what the home (Dashboard) shows. **Also queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (files the
+  WSOP.com client writes on the player's computer, parsed into the replayer — never account
+  scraping; needs sample files from Ethan); catalogue three (replayer polish, ~25 agents — ask
+  first, it is the biggest spender). Ads are paused (memory `ads-paused`).
+- **Usage:** the weekly limit was hit on 2026-10-13. Default to one builder + one verifier per job,
+  two or three jobs at a time, full guard runs once per size.
+
+## 2026-10-12 — Home redesign (the Dashboard tab), decisions worth knowing
+Built to the panel verdict of 2026-10-11 in steps 1–6 (section 7, Trend, is a marked slot in
+`DashboardView.jsx` waiting for the BankrollChart rebuild; section 8, Backers, is later). After the
+first critic round:
+- **One trip net.** The trip page did not count cash sessions and the home did, so the two showed
+  different nets for the same trip. `/api/bankrolls/trips/:id` now returns `cash_sessions` (the
+  ledger's own cash source) and `utils/transactions.js tripPnl()` is the one definition, run by both
+  (docs/bankrolls.md "One trip net").
+- **To log skips a plan's branch that resolved off** (`awaitingResults(..., { plans })`, also
+  Results' "Awaiting result" card): "If bag #12" after #12 busted on Day 1 was never played, and one
+  tap used to log a phantom bust.
+- **The Table Scanner for non-admins:** on master it was a home section for everyone; now it is the
+  Playing card's Scan action (everyone) and Hands > Scanner (admins only, since Hands is). A
+  non-admin therefore reaches it only once an event is Started. Accepted on purpose (the verdict:
+  a tool used only when seated should not cost a permanent section); if non-admins ask for it,
+  the cheapest path is a Scan entry in the user menu.
+- **Display currency is live:** Results' currency setting is announced
+  (`hooks/useDisplayCurrency.js`) and the home follows it at once, not on the next reload.
+- Desktop at 1440 keeps a 27g page band right of the NUMBERS pane, as every single-pane tab does
+  (docs/desktop-layout.md "Dashboard", Width).
 
 ## 2026-10-11 (evening) — Aqua accent, cross-platform font metrics, Dashboard pass
 - **Brand accent is aqua**, not orange (black + orange read like an adult site's branding):
@@ -564,6 +614,27 @@ again. If builds break and no push arrives, check `pm2 list` first.
 
 ## Waiting on Ethan
 
+- **(2026-10-13) Sample WSOP.com hand-history files** — one or two real files the WSOP.com client
+  saved, to build the hand-history import against.
+- **(2026-10-13) MapKit JS key** — a Maps ID + a key with MapKit JS enabled (.p8) in the Apple
+  Developer account; then `MAPKIT_TEAM_ID` / `MAPKIT_KEY_ID` / `MAPKIT_PRIVATE_KEY` on Render and in
+  `ecosystem.config.cjs`. Later, for Android: `GOOGLE_MAPS_BROWSER_KEY` (+ optional
+  `GOOGLE_MAPS_MAP_ID`). Until then the venue map uses OpenStreetMap.
+- **(2026-10-13) Overview "Shares sold" row** — left out (staking is per agreement, not per result;
+  several settlement rules are still marked GUESS). Needs how a sold share should be counted.
+- **(2026-10-12) "OcalaBetS" vs "OcalaBets"** — PokerAtlas, the feed and VENUE_MAP spell it with a
+  capital S; the regulator and press do not. Change at the source (watcher series_directory) and in
+  `utils.js` VENUE_MAP together if wanted.
+
+0. **Bankroll tracker decisions (asked 2026-10-11; re-ask at the start of a session until answered).**
+   Current behaviour → recommendation: (1) Overview opens on YTD → keep; (2) graph defaults to
+   Profit → keep; (3) "below the peak" counts withdrawals → change to results only; (4) dashboard
+   bankroll ↔ Reports bankroll filter linked one way → link both ways; (5) Results › Cash opens on
+   the live screen during a session → keep; (6) month headers / per-hour muted → keep; (7) live bar
+   above the nav → keep; (8) one live session at a time → keep; (9) move-up/down cash rule not built
+   → derive the big blind from the stakes text ("2/5" → $5); (10) trips count tagged expenses only →
+   use the trip's date range plus tags; (11) imported non-USD results at today's rate → the rate on
+   each result's date (needs a historical-rates source, e.g. ECB data).
 1. **Univers 500/600 woff2** into `vite-app/public/fonts/`. Only he can obtain
    them (Linotype licence). Unblocks audit item 6 — emphasis currently has to
    jump 400→700 with no middle tier.

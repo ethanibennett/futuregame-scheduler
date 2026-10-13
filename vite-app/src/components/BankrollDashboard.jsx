@@ -232,11 +232,12 @@ function Risk({ risk, money }) {
 }
 
 // ── The sheet ────────────────────────────────────────────────────────────────────────────
-export default function BankrollDashboard({ bk, onClose }) {
+// initialTab / initialKey: where it opens (the home's bankroll line opens Rules on All).
+export default function BankrollDashboard({ bk, onClose, initialTab = 'balance', initialKey = null }) {
   const toast = useToast();
   const closeRef = useRef(null);
-  const [key, setKey] = useState(bk.selected);
-  const [tab, setTab] = useState('balance');
+  const [key, setKey] = useState(initialKey ?? bk.selected);
+  const [tab, setTab] = useState(initialTab);
   const [ledger, setLedger] = useState({ status: 'loading', data: null });
   const [prefsAll, setPrefsAll] = useState(null);
   const [risk, setRisk] = useState(null);

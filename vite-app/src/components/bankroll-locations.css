@@ -37,16 +37,10 @@
    centred both ways.
    ================================================================== */
 
-/* Series colours: tournaments aqua (the brand), cash violet. The Overview's graph work defines
-   these in styles.css; until that lands they live here, once. Remove this block at the merge if
-   styles.css carries them. */
-:root {
-  --series-tourn: var(--brand);
-  --series-cash: #a78bfa;
-}
-:is([data-theme="light"], [data-theme="cloudy"]) {
-  --series-cash: #6d28d9;
-}
+/* Series colours (--series-tourn aqua, the brand; --series-cash violet): the Overview's graph work
+   defines them in styles.css. Until it lands they have ONE fallback, in bankroll-overview-tables.css
+   (zero specificity, so styles.css wins whenever it carries them) — always loaded with this sheet,
+   since the dashboard that renders Locations imports the Overview and its tables. */
 
 .bl-range, .bl-sort { height: calc(var(--subrow) * 4); }
 .bl-gap { margin-top: var(--subrow); }

@@ -91,6 +91,14 @@ async function down(child) {
   db.run(`INSERT INTO tournaments (stable_id, event_number, event_name, date, time, buyin, game_variant, venue, notes, uploaded_by)
           VALUES (?, '', 'Alice Private', '2026-06-03', '12:00 AM', 0, 'Personal', 'Personal', '', ?)`, [`PERSONAL-${aliceId}-1`, aliceId]);
   const alicePersonal = db.exec("SELECT id FROM tournaments WHERE event_name = 'Alice Private'")[0].values[0][0];
+  // Cash sessions (Main): two ended inside the June trip, one live inside it (not counted until it
+  // ends), one ended after it.
+  const insC = `INSERT INTO cash_sessions (user_id, bankroll_id, started_at, ended_at, session_date, room, game, stakes,
+                buy_in, cash_out, tips, expenses, currency, created_at) VALUES (?, NULL, ?, ?, ?, 'Txn Room', 'NLH', '2/5', ?, ?, ?, 0, 'USD', ?)`;
+  db.run(insC, [aliceId, '2026-06-03T18:00:00.000Z', '2026-06-03T23:00:00.000Z', '2026-06-03', 1000, 1450, 20, '2026-06-03T18:00:00.000Z']);
+  db.run(insC, [aliceId, '2026-06-05T18:00:00.000Z', '2026-06-05T20:30:00.000Z', '2026-06-05', 500, 200, 0, '2026-06-05T18:00:00.000Z']);
+  db.run(insC, [aliceId, '2026-06-06T18:00:00.000Z', null, '2026-06-06', 300, null, 0, '2026-06-06T18:00:00.000Z']);
+  db.run(insC, [aliceId, '2026-07-02T18:00:00.000Z', '2026-07-02T20:00:00.000Z', '2026-07-02', 300, 900, 0, '2026-07-02T18:00:00.000Z']);
   fs.writeFileSync(dbPath, Buffer.from(db.export()));
   db.close();
 
@@ -234,13 +242,19 @@ async function down(child) {
       // All bankrolls: TX-1, TX-2 ('June 4, 2026') and TX-3 (Online) — not TX-4 (July).
       assert.deepStrictEqual(r.json.results.map((e) => e.event_number), ['TX-1', 'TX-2', 'TX-3']);
       assert.deepStrictEqual(r.json.results.map((e) => e.date_iso), ['2026-06-02', '2026-06-04', '2026-06-10']);
+      // The cash sessions played inside it, ended ones only, at the ledger's amount
+      // (cash_out - buy_in - tips - expenses): +430 over 5 h, -300 over 2.5 h.
+      assert.deepStrictEqual(r.json.cash_sessions.map((c) => [c.date, c.amount, c.hours, c.currency]),
+        [['2026-06-03', 430, 5, 'USD'], ['2026-06-05', -300, 2.5, 'USD']]);
       const o = await get(TRIPS + '/' + onlineTrip.id, A);
       assert.deepStrictEqual(o.json.results.map((e) => e.event_number), ['TX-3']);
+      assert.deepStrictEqual(o.json.cash_sessions, [], "the Online roll's trip: the Main sessions are out of its scope");
     });
     await test('trips: editing the range changes what it covers', async () => {
       const r = await put(TRIPS + '/' + trip.id, A, { endDate: '2026-06-03' });
       assert.strictEqual(r.status, 200, r.body);
       assert.deepStrictEqual((await get(TRIPS + '/' + trip.id, A)).json.results.map((e) => e.event_number), ['TX-1']);
+      assert.deepStrictEqual((await get(TRIPS + '/' + trip.id, A)).json.cash_sessions.map((c) => c.date), ['2026-06-03']);
       assert.strictEqual((await put(TRIPS + '/' + trip.id, A, { endDate: '2026-05-01' })).status, 400);
       await put(TRIPS + '/' + trip.id, A, { endDate: '2026-06-10' });
     });

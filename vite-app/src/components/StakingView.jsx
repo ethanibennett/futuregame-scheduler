@@ -112,20 +112,24 @@ function StakingSettings({ token, tournaments, onBack }) {
     <div style={{padding:'0 0 var(--space-2xl)'}}>
       <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
         <div style={{display:'flex',alignItems:'center',gap:'var(--gu)'}}>
-          <button className="btn btn-ghost btn-sm" onClick={onBack} style={{fontSize:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)'}}>&larr;</button>
+          <button className="btn btn-ghost btn-sm" onClick={onBack} aria-label="Back" style={{width:'calc(var(--gu) * 3)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:0}}><Icon.arrowLeft /></button>
           <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 4)',whiteSpace:'nowrap',margin:0,color:'var(--text-muted)'}}>Sell & Markup Settings</h2>
         </div>
-        <button className="create-group-submit" style={{width:'auto',fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-ml)'}} onClick={handleSave} disabled={saving}>
+        <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)'}} onClick={handleSave} disabled={saving}>
           {saving ? 'Saving\u2026' : 'Save'}
         </button>
       </div>
 
-      <div style={{display:'flex',gap:0,borderBottom:'var(--bw-hair) solid var(--border)',margin:'0 var(--space-xl) var(--space-lg)'}}>
+      {/* Two whole-g tabs, 4r, from the content's edge (each half rounded down to a whole g, the
+          gap the remainder: 17 | 1 | 17 on a phone), each label centred in its box. The active
+          underline and the strip's hairline are inset shadows, so neither takes room from the
+          label nor pushes what follows off its r line. */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(2, round(down, 50%, var(--gu)))',justifyContent:'space-between',boxShadow:'inset 0 calc(var(--bw-hair) * -1) 0 var(--border)',margin:'0 0 var(--space-lg)'}}>
         {[{k:'sell',l:'Default Sell %'},{k:'markup',l:'Default Markup'}].map(t => (
           <button key={t.k}
-            style={{flex:1,padding:'var(--space-md) 0',fontSize:'calc(var(--subrow) * 1.5)',fontWeight:tab === t.k ? 600 : 400,
+            style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(var(--subrow) * 4)',boxSizing:'border-box',minWidth:0,padding:0,lineHeight:1,fontSize:'calc(var(--subrow) * 1.5)',fontWeight:tab === t.k ? 600 : 400,
               color: tab === t.k ? 'var(--accent)' : 'var(--text-muted)',
-              borderBottom: tab === t.k ? 'calc(var(--subrow) * 0.25) solid var(--accent)' : 'calc(var(--subrow) * 0.25) solid transparent',
+              boxShadow: tab === t.k ? 'inset 0 calc(var(--subrow) * -0.25) 0 var(--accent)' : 'none',
               background:'none',border:'none',cursor:'pointer'}}
             onClick={() => setTab(t.k)}>{t.l}</button>
         ))}
@@ -301,11 +305,15 @@ function StakingSeriesList({ series, loading, onSelect, onCreate, onBackers, onB
     <div style={{padding:'0 0 var(--space-2xl)'}}>
       <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
         <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 4)',margin:0,color:'var(--text-muted)'}}>Staking</h2>
-        <div style={{display:'flex',gap:'var(--space-sm)'}}>
-          <button className="btn btn-ghost btn-sm" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)',color:'var(--text-muted)'}} onClick={onSettings} title="Sell & Markup Settings">{'\u2699'}</button>
-          <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)',background:'transparent',color:'var(--accent)',border:'var(--bw-hair) solid var(--accent)'}} onClick={onBackerSummary}>Summary</button>
-          <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)',background:'transparent',color:'var(--accent)',border:'var(--bw-hair) solid var(--accent)'}} onClick={onBackers}>Backers</button>
-          <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-md)'}} onClick={onCreate}>+ Series</button>
+        <div style={{display:'flex',gap:'var(--gu)'}}>
+          <button className="btn btn-ghost btn-sm" style={{fontSize:'calc(var(--subrow) * 1.5)',width:'calc(var(--gu) * 3)',flexShrink:0,height:'calc(var(--subrow) * 4)',lineHeight:1,padding:0,color:'var(--text-muted)'}} onClick={onSettings} title="Sell & Markup Settings">{'\u2699'}</button>
+          {/* Whole-g buttons (snap-g rounds each up; flexShrink 0 so the row cannot squeeze one
+              back off a line), 1g apart, the group ending on the content's right g line, so every
+              button's edges are on the grid; tracked caps indented by their letter-space so the
+              ink centres. The ring an inset shadow: a border would take room from the label. */}
+          <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)',background:'transparent',color:'var(--accent)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--accent)'}} onClick={onBackerSummary}>Summary</button>
+          <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)',background:'transparent',color:'var(--accent)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--accent)'}} onClick={onBackers}>Backers</button>
+          <button className="create-group-submit snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:'0 var(--gu)',margin:0,flexShrink:0,textIndent:'var(--track-caps)'}} onClick={onCreate}>+ Series</button>
         </div>
       </div>
 
@@ -392,10 +400,10 @@ function StakingSeriesForm({ token, series, tournaments, onClose, onSaved }) {
 
   return createPortal(
     <div className="notif-backdrop" onClick={onClose}>
-      <div className="staking-modal" onClick={e => e.stopPropagation()}>
+      <div className="staking-modal snap-place" onClick={e => e.stopPropagation()}>
         <div className="staking-modal-header">
           <h3 style={{margin:0,fontSize:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)'}}>{series ? 'Edit Series' : 'New Series'}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>{'\u2715'}</button>
+          <button className="btn btn-ghost btn-sm staking-modal-close" onClick={onClose} aria-label="Close"><Icon.x /></button>
         </div>
         <div className="staking-modal-body">
           {error && <div style={{color:'#ef4444',fontSize:'calc(var(--subrow) * 1.5)',marginBottom:'var(--space-md)'}}>{error}</div>}
@@ -429,7 +437,7 @@ function StakingSeriesForm({ token, series, tournaments, onClose, onSaved }) {
         <div className="staking-modal-footer">
           {series && <button className="btn btn-ghost btn-sm" style={{color:'#ef4444'}} onClick={handleDelete}>Delete</button>}
           <div style={{flex:1}} />
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-ghost btn-sm snap-g" onClick={onClose}>Cancel</button>
           <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.625)',padding:'var(--space-md) var(--space-2xl)'}} onClick={handleSave} disabled={saving}>
             {saving ? 'Saving\u2026' : 'Save'}
           </button>
@@ -490,9 +498,10 @@ function BackerManager({ token, backers, fetchBackers, onBack }) {
   return (
     <div>
       <div className="group-detail-header">
-        <button className="group-back-btn" onClick={onBack}>&larr;</button>
+        <button className="group-back-btn" onClick={onBack} aria-label="Back"><Icon.arrowLeft /></button>
         <div style={{flex:1}}><div className="social-buddy-name" style={{fontSize:'calc(var(--subrow) * 2)',lineHeight:'calc(var(--subrow) * 5)'}}>Backers</div></div>
-        <button className="create-group-submit" style={{width:'auto',fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:'0 var(--space-ml)'}} onClick={() => { resetForm(); setShowForm(!showForm); }}>
+        {/* 6g, its tracked caps centred (an indent the size of the trailing letter-space). */}
+        <button className="create-group-submit" style={{width:'calc(var(--gu) * 6)',fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 2)',padding:0,textIndent:'var(--track-caps)'}} onClick={() => { resetForm(); setShowForm(!showForm); }}>
           {showForm ? 'Cancel' : '+ Add'}
         </button>
       </div>
@@ -575,10 +584,10 @@ function BackerSummaryView({ token, onBack, onManage }) {
     <div style={{padding:'0 0 var(--space-2xl)'}}>
       <div className="section-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--space-xl) 0 var(--space-md)',marginBottom:0}}>
         <div style={{display:'flex',alignItems:'center',gap:'var(--space-ml)'}}>
-          <button className="btn btn-ghost btn-sm" onClick={onBack} style={{fontSize:'calc(var(--subrow) * 2)',padding:'var(--space-xs) var(--space-md)'}}>&larr;</button>
+          <button className="btn btn-ghost btn-sm" onClick={onBack} aria-label="Back" style={{width:'calc(var(--gu) * 3)',lineHeight:1,padding:0}}><Icon.arrowLeft /></button>
           <h2 style={{fontFamily:'Univers Condensed, Univers, sans-serif',textTransform:'uppercase',letterSpacing:'calc(var(--subrow) * 0.125)',fontSize:'calc(var(--subrow) * 1.75)',margin:0,color:'var(--text-muted)'}}>Backer Summary</h2>
         </div>
-        <button className="btn btn-ghost btn-sm" style={{fontSize:'calc(var(--subrow) * 1.5)'}} onClick={onManage}>Manage</button>
+        <button className="btn btn-ghost btn-sm snap-g" style={{fontSize:'calc(var(--subrow) * 1.5)'}} onClick={onManage}>Manage</button>
       </div>
 
       {summaries.length === 0 ? (
@@ -709,7 +718,7 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
   return (
     <div className="group-detail-view">
       <div className="group-detail-header">
-        <button className="group-back-btn" onClick={onBack}>&larr;</button>
+        <button className="group-back-btn" onClick={onBack} aria-label="Back"><Icon.arrowLeft /></button>
         <div style={{flex:1}}>
           <div className="social-buddy-name" style={{fontSize:'calc(var(--subrow) * 2)'}}>{series.name}</div>
           <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>
@@ -918,10 +927,10 @@ function AgreementForm({ token, seriesId, backers, onClose, onSaved, tournaments
 
   return createPortal(
     <div className="notif-backdrop" onClick={onClose}>
-      <div className="staking-modal" onClick={e => e.stopPropagation()}>
+      <div className="staking-modal snap-place" onClick={e => e.stopPropagation()}>
         <div className="staking-modal-header">
           <h3 style={{margin:0,fontSize:'calc(var(--subrow) * 2)',fontWeight: 'var(--fw-bold)'}}>Add Agreement</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>{'\u2715'}</button>
+          <button className="btn btn-ghost btn-sm staking-modal-close" onClick={onClose} aria-label="Close"><Icon.x /></button>
         </div>
         <div className="staking-modal-body">
           {error && <div style={{color:'#ef4444',fontSize:'calc(var(--subrow) * 1.5)',marginBottom:'var(--space-md)'}}>{error}</div>}
@@ -1010,7 +1019,7 @@ function AgreementForm({ token, seriesId, backers, onClose, onSaved, tournaments
         </div>
         <div className="staking-modal-footer">
           <div style={{flex:1}} />
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-ghost btn-sm snap-g" onClick={onClose}>Cancel</button>
           <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.625)',padding:'var(--space-md) var(--space-2xl)'}} onClick={handleSave} disabled={saving}>
             {saving ? 'Saving\u2026' : 'Add'}
           </button>

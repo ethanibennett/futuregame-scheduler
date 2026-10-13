@@ -9,7 +9,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
 
   return (
     <div className="auth-wrap">
-      <div className="auth-card">
+      <div className="auth-card snap-place">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
           <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
@@ -45,7 +45,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
             <input type="password" name="password" placeholder={isRegister ? 'Min. 6 characters' : 'Your password'} required minLength="6" autoComplete={isRegister ? 'new-password' : 'current-password'} />
           </div>
           {!isRegister && (
-            <label style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',marginTop:'var(--space-ml)',cursor:'pointer'}}>
+            <label className="auth-keep" style={{display:'flex',alignItems:'center',gap:'var(--space-sm)',fontSize:'calc(var(--gu) * 1.178)',color:'var(--text-muted)',cursor:'pointer'}}>
               <input type="checkbox" checked={keepSignedIn} onChange={e => setKeepSignedIn(e.target.checked)}
                 style={{accentColor:'var(--accent)',cursor:'pointer'}} />
               Keep me signed in
@@ -57,7 +57,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
         </form>
 
         {!isRegister && (
-          <p className="auth-hint" style={{textAlign:'center',marginTop:'var(--space-lg)'}}>
+          <p className="auth-hint" style={{textAlign:'center',marginTop:'calc(var(--subrow) * 2)'}}>
             <button onClick={onForgotPassword}
               className="auth-link-quiet">
               Forgot password?
@@ -65,7 +65,7 @@ export default function AuthScreen({ onSubmit, error, success, theme, toggleThem
           </p>
         )}
 
-        <p className="auth-hint" style={{textAlign:'center',marginTop:'var(--space-2xl)'}}>
+        <p className="auth-hint" style={{textAlign:'center',marginTop:'calc(var(--subrow) * 2)'}}>
           {isRegister ? 'Already have an account? ' : "Don't have an account? "}
           <button onClick={() => setIsRegister(r => !r)}
             className="auth-link">

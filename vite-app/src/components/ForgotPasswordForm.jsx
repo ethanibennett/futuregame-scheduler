@@ -30,9 +30,9 @@ export default function ForgotPasswordForm({ onBack, theme, toggleTheme }) {
 
   return (
     <div className="auth-wrap">
-      <div className="auth-card">
+      <div className="auth-card snap-place">
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'var(--space-md)'}}>
-          <button className="btn btn-ghost btn-sm" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
+          <button className="btn btn-ghost btn-sm snap-g" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
             {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
           </button>
         </div>
