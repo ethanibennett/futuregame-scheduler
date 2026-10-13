@@ -190,7 +190,7 @@ export default function BankrollOverviewTables({ d, risk: riskIn, range, today, 
           <Row3 label={perHour} cells={[
             { v: X.cash.hourly, text: sm(X.cash.hourly), toned: true }, { text: DASH }, { v: X.total.hourly, text: sm(X.total.hourly), toned: true }]} />
           <Row3 label="ROI" cells={[{ text: DASH }, { text: fmtPct(X.tournaments.roi, { sign: true }) }, { text: fmtPct(X.total.roi, { sign: true }) }]} />
-          <Row3 label="Won % / ITM" title="Cash: winning sessions. Tournaments: in the money."
+          <Row3 label="Won % / ITM" title="Cash: winning sessions. Tournaments: cashes per entry (re-entries count), as in Analytics."
             cells={[{ text: fmtPct(X.cash.won) }, { text: fmtPct(X.tournaments.won) }, { text: fmtPct(X.total.won) }]} />
           <Row3 label="Avg buy-in" title="Buy-ins per session or event (rebuys and re-entries included)"
             cells={[{ text: m(X.cash.avgBuyin) }, { text: m(X.tournaments.avgBuyin) }, { text: m(X.total.avgBuyin) }]} />
@@ -304,7 +304,7 @@ function Groups({ data, status, dim, scope, sm, perHour }) {
         </span>
         <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{type === 'cash' ? 'Sessions' : 'Events'}</span></span>
         <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Hours</span></span>
-        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>{type === 'cash' ? perHour : 'ROI'}</span></span>
+        <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span className={type === 'cash' ? 'ovt-unit' : undefined}>{type === 'cash' ? perHour : 'ROI'}</span></span>
         <span role="columnheader" className="an-cell an-lbl an-lbl-3b an-num ovt-th"><span>Total</span></span>
       </div>
       {rows.map((r) => (

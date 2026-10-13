@@ -109,6 +109,12 @@
 .ovt-headline.an-pos { color: var(--pos); }
 .ovt-headline.an-neg { color: var(--neg); }
 .ovt-sec.is-open .ovt-headline { opacity: 0; }
+/* While a section is open its headline is hidden, so the title takes that column too: a long
+   bankroll name in the scope line ellipsized beside 12g of blank headline otherwise. One grid row
+   for all three, so the hidden headline stays put underneath (it paints nothing). */
+.ovt-head > * { grid-row: 1; }
+.ovt-head > .ovt-headline { grid-column: 3; }
+.ovt-sec.is-open .ovt-title { grid-column: 2 / -1; }
 
 /* ── The collapsing body ───────────────────────────────────────── */
 .ovt-body {
@@ -162,6 +168,8 @@
 /* Head labels. A right-aligned tracked label hangs its last letter's tracking past the edge, so
    its ink ends on the column's edge like the figures under it. */
 .ovt-th.an-num > span { margin-right: calc(var(--track-caps) * -1); }
+/* A unit keeps its case in a caps head: $/h, not $/H (hours are h). */
+.ovt-th .ovt-unit { text-transform: none; }
 /* Column keys: the label in the series colour over a bar along the head's last line — the same
    colours as the graph's lines. A figure column's bar starts 1g in, so neighbours do not join. */
 .ovt-th.is-key { position: relative; }

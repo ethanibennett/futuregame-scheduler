@@ -117,7 +117,7 @@ test('Sessions: counts, cash-only hours and $/h, tournament ROI and ITM, average
   assert.equal(s.tournaments.hours, null);                 // no playing time on a result: never guessed
   assert.equal(s.tournaments.hourly, null);
   assert.equal(s.tournaments.roi, 100 / 1300);
-  assert.equal(s.tournaments.won, 1 / 3);
+  assert.equal(s.tournaments.won, 1 / 4);                 // ITM per entry: 1 cash in 4 bullets
   assert.equal(s.tournaments.avgBuyin, Math.round(1300 / 3 * 100) / 100);
   assert.equal(s.tournaments.avgRebuys, 1 / 3);           // 4 bullets over 3 events
   assert.deepEqual([s.tournaments.best.amount, s.tournaments.worst.amount], [1200, -600]);

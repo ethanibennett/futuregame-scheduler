@@ -213,7 +213,7 @@ const extreme = (e) => ({ amount: r2(num(e.amount_display)), label: e.label || '
  * tournaments only (a cash buy-in is not a cost — the chips can go home again).
  *   count       sessions / events          bullets   tournament entries (re-entries included)
  *   hours       timed sessions' hours      hourly    their profit / their hours
- *   roi         profit / cost              won       cash: winning sessions · tournaments: in the money
+ *   roi         profit / cost              won       cash: winning sessions · tournaments: cashes per entry
  *   avgBuyin    buy-ins / count            avgProfit net / count
  *   avgRebuys   cash: rebuys per session · tournaments: re-entries per event (bullets − events)
  *   best, worst the single best and worst result ({ amount, label, date, source })
@@ -253,7 +253,9 @@ export function sessionsTable(entries) {
   } : null;
   const tournaments = t.n ? {
     count: t.n, bullets: t.bullets, hours: null, hourly: null,
-    roi: div(t.net, t.cost), won: div(t.cashes, t.n),
+    // ITM per ENTRY, the app's rule (lib/analytics.js, the Analytics tab): a re-entry that cashes
+    // once is one cash in its bullets, so the two tabs never show two ITMs for the same results.
+    roi: div(t.net, t.cost), won: div(t.cashes, t.bullets),
     avgBuyin: r2(t.cost / t.n), avgProfit: r2(t.net / t.n),
     avgRebuys: (t.bullets - t.n) / t.n,
     best: t.best, worst: t.worst,
