@@ -5,19 +5,21 @@
 //
 // THE PERIOD BLOCK. One block whose window follows what is running:
 //   trip    a trip covering today (admins: trips are part of the bankroll beta). Its P&L is the
-//           games played inside its dates, in its bankroll scope, plus the expenses and income
-//           tagged to it: "Net after expenses".
+//           trip page's own (GET /trips/:id through utils/transactions.js tripPnl): the results
+//           and cash sessions dated inside it, in its bankroll scope, plus the expenses and income
+//           tagged to it: "Net after expenses", the same figure as the page the block opens.
 //   series  else a series detected with confidence (currentSeries): the user's own events of one
 //           feed series, today inside them, nothing else competing. Tournaments only.
 //   month   else the calendar month to date, beside the same days of last month (like for like)
 //           and all of last month.
-// Admins' month and trip figures run the Overview's own function (overviewStats) on the combined
-// ledger, so the app has one Net; everyone else's are their tournament results with the ledger's
+// Admins' month figures run the Overview's own function (overviewStats) on the combined ledger,
+// and a trip's the trip page's, so the app has one Net; everyone else's are their tournament results with the ledger's
 // formula (home.js tournamentTotals). The honesty rules hold for every figure: a rate carries its
 // sample, an empty figure is a dash with a reason (never $0 or 0%), money is whole dollars and
 // $12.4k from $10k, profit gets no arrow and no trend colour.
 import { overviewStats, goalProgress, periodWindow, fmtRule, MOVE_KINDS } from './bankroll-ledger.js';
 import { tournamentTotals, convertMoney, isoDay, eventNo } from './home.js';
+import { tripPnl } from './transactions.js';
 
 const MS_DAY = 864e5;
 const MINUS = '−';
@@ -64,7 +66,7 @@ export function paceWindows(today) {
   const prevFull = { from: prev.from, to: `${py}-${pad2(pm)}-${pad2(lastOfMonth(py, pm))}` };
   return {
     cur, prev, prevFull,
-    name: MONTHS[m - 1], prevName: MON3[pm - 1],
+    name: MONTHS[m - 1], prevName: MON3[pm - 1], prevNameLong: MONTHS[pm - 1],
     curLabel: dayRange(cur.from, cur.to), prevLabel: dayRange(prev.from, prev.to),
   };
 }
@@ -200,6 +202,39 @@ export function resultStats(rows, w, opts = {}) {
   };
 }
 
+/**
+ * Admins' trip: GET /api/bankrolls/trips/:id ({ results, cash_sessions, transactions }) through
+ * the trip page's own tripPnl (utils/transactions.js), in the display currency with the app's
+ * exchange rates (GET /api/exchange-rates, as the trip page converts). One definition of a trip's
+ * net, so the home's 'Net after expenses' is the 'Trip net' its tap opens. Same shape as
+ * ledgerStats; an amount that cannot be converted makes every money figure null.
+ *   opts: { currency, rates, currencyOf: row -> its currency (utils.js nativeCurrency(row.venue)) }
+ */
+export function tripStats(data, opts = {}) {
+  const currency = opts.currency || 'USD';
+  const currencyOf = opts.currencyOf || (() => 'USD');
+  const convert = (v, from, to) => {
+    const x = convertMoney(v, from || 'USD', to, opts.rates || null);
+    return x == null ? NaN : x;
+  };
+  const p = tripPnl(data, { currency, convert, nativeCurrency: (venue) => currencyOf({ venue }) });
+  const bad = p.unconverted > 0;
+  const txCount = p.byCategory.count;
+  const t = p.tournaments, c = p.cash;
+  return {
+    net: bad ? null : p.net,
+    count: t.events + c.sessions + txCount,
+    unconverted: p.unconverted,
+    mtt: {
+      profit: bad ? null : t.profit, cost: bad ? null : t.cost,
+      roi: bad || !(t.cost > 0) ? null : t.profit / t.cost,
+      events: t.events, bullets: t.bullets, cashes: t.cashes, itm: t.events ? t.cashes / t.events : null,
+    },
+    cash: { profit: bad ? null : c.profit, sessions: c.sessions, hours: c.hours, hourly: bad ? null : c.hourly },
+    other: { net: bad ? null : Math.round((p.income - p.expenses) * 100) / 100, count: txCount },
+  };
+}
+
 // ── Words ─────────────────────────────────────────────────────────────────────────────────
 export function plural(n, one, many = `${one}s`) { return `${Number(n).toLocaleString('en-US')} ${n === 1 ? one : many}`; }
 function trim1(x) { const r = Math.round(x * 10) / 10; return r % 1 === 0 ? String(r) : r.toFixed(1); }
@@ -222,32 +257,56 @@ export function leadSample(s) {
 }
 
 /**
- * The block's label/value rows, only for what happened. Each { key, label, sample, value, title?,
- * muted? }: the sample sits beside its label ('ROI' '14 bullets'), and an empty figure is a dash
- * whose title gives the reason. money(v, signed) formats an amount in the display currency.
+ * The block's label/value rows, only for what happened, in the verdict's three groups and never
+ * repeating the lead: each { key, label, sample, value, title?, muted? }. The sample sits beside
+ * its label in muted ink; an empty figure is a dash whose REASON is that visible sample ('no
+ * buy-ins', 'waiting for exchange rates'), the title the longer text (a title alone never shows on
+ * a phone). money(v, signed) formats an amount in the display currency.
+ *   Tournaments  its net, only beside another source (alone it is the lead's net again)
+ *   ROI          '−34%', sample '11 bullets · cashed 2 of 8' (the ITM fact folded in)
+ *   Cash games   '+$77 · $15/h', sample '1 session · 5 h' (the net and the rate in one row)
+ *   Expenses & income
  */
 export function periodRows(s, money) {
   const rows = [];
-  const waiting = 'Waiting for exchange rates';
-  const dash = (title) => ({ value: '—', title, muted: true });
-  const amount = (v) => (v == null ? dash(waiting) : { value: money(v, true) });
-  if (s.mtt && s.mtt.events > 0) {
-    rows.push({ key: 'mtt', label: 'Tournaments', sample: plural(s.mtt.events, 'event'), ...amount(s.mtt.profit) });
-    rows.push({
-      key: 'roi', label: 'ROI', sample: plural(s.mtt.bullets, 'bullet'),
-      ...(s.mtt.roi == null ? dash(s.unconverted ? waiting : 'No buy-ins to measure it against') : { value: fmtPct(s.mtt.roi) }),
-    });
-    rows.push({ key: 'itm', label: 'In the money', sample: '', value: `${s.mtt.cashes} of ${s.mtt.events}` });
+  const waiting = 'waiting for exchange rates';
+  const m = s.mtt && s.mtt.events > 0 ? s.mtt : null;
+  const c = s.cash && s.cash.sessions > 0 ? s.cash : null;
+  const o = s.other && s.other.count > 0 ? s.other : null;
+  const sources = (m ? 1 : 0) + (c ? 1 : 0) + (o ? 1 : 0);
+  if (m) {
+    if (sources > 1) {
+      rows.push(m.profit == null
+        ? { key: 'mtt', label: 'Tournaments', sample: waiting, value: '—', muted: true, title: 'Waiting for exchange rates to add these up' }
+        : { key: 'mtt', label: 'Tournaments', sample: '', value: money(m.profit, true) });
+    }
+    const itm = `cashed ${Number(m.cashes).toLocaleString('en-US')} of ${Number(m.events).toLocaleString('en-US')}`;
+    if (m.roi == null) {
+      const why = s.unconverted ? waiting : 'no buy-ins';
+      rows.push({
+        key: 'roi', label: 'ROI', sample: `${why} · ${itm}`, value: '—', muted: true,
+        title: s.unconverted ? 'Waiting for exchange rates to add the buy-ins up' : 'No buy-ins to measure it against (freerolls only)',
+      });
+    } else {
+      rows.push({ key: 'roi', label: 'ROI', sample: `${plural(m.bullets, 'bullet')} · ${itm}`, value: fmtPct(m.roi) });
+    }
   }
-  if (s.cash && s.cash.sessions > 0) {
-    rows.push({ key: 'cash', label: 'Cash games', sample: plural(s.cash.sessions, 'session'), ...amount(s.cash.profit) });
-    rows.push({
-      key: 'hourly', label: 'Per hour', sample: s.cash.hours > 0 ? `${trim1(s.cash.hours)} h` : 'no end times',
-      ...(s.cash.hourly == null ? dash('No session has an end time to divide by') : { value: money(s.cash.hourly, true) }),
-    });
+  if (c) {
+    const timed = c.hours > 0;
+    if (c.profit == null) {
+      rows.push({ key: 'cash', label: 'Cash games', sample: `${plural(c.sessions, 'session')} · ${waiting}`, value: '—', muted: true, title: 'Waiting for exchange rates to add these up' });
+    } else {
+      rows.push({
+        key: 'cash', label: 'Cash games', sample: `${plural(c.sessions, 'session')} · ${timed ? `${trim1(c.hours)} h` : 'no end times'}`,
+        value: `${money(c.profit, true)}${c.hourly != null ? ` · ${money(c.hourly)}/h` : ''}`,
+        ...(c.hourly == null ? { title: 'No session has an end time to divide by, so there is no hourly rate' } : {}),
+      });
+    }
   }
-  if (s.other && s.other.count > 0) {
-    rows.push({ key: 'other', label: 'Expenses & income', sample: plural(s.other.count, 'entry', 'entries'), ...amount(s.other.net) });
+  if (o) {
+    rows.push(o.net == null
+      ? { key: 'other', label: 'Expenses & income', sample: `${plural(o.count, 'entry', 'entries')} · ${waiting}`, value: '—', muted: true, title: 'Waiting for exchange rates to add these up' }
+      : { key: 'other', label: 'Expenses & income', sample: plural(o.count, 'entry', 'entries'), value: money(o.net, true) });
   }
   return rows;
 }
@@ -283,15 +342,33 @@ export function scheduleAhead(schedule, results, updates, venue, today, opts = {
 }
 
 /**
+ * The month's comparison, the lead's right side: the same days of last month over all of it
+ * ('Sep 1–12 −$3.1k' / 'all Sep −$5.2k'), muted. An empty side says why in words ('Sep 1–12:
+ * nothing logged'); with nothing in last month at all it is one line ('Sep: nothing logged').
+ * -> [{ text, title? }, { text, title? }]
+ */
+export function compareSide(pw, prev, prevFull, signed) {
+  const fig = (s) => (!s.count ? null : s.net == null ? { v: null } : { v: signed(s.net) });
+  const a = fig(prev), b = fig(prevFull);
+  if (!b) {
+    return [{ text: `${pw.prevName}: nothing logged`, title: `Nothing logged in ${pw.prevNameLong || pw.prevName}` }, { text: '' }];
+  }
+  const side = (label, f, nothing) => (!f ? { text: `${label}: nothing logged`, title: nothing }
+    : f.v == null ? { text: `${label}: waiting for rates`, title: 'Waiting for exchange rates to add it up' }
+      : { text: `${label} ${f.v}` });
+  return [side(pw.prevLabel, a, `Nothing logged ${pw.prevLabel}`), side(`all ${pw.prevName}`, b, `Nothing logged in ${pw.prevNameLong || pw.prevName}`)];
+}
+
+/**
  * Everything the period block shows. input:
  *   today, isAdmin, currency, money(v, signed)
  *   results, schedule, updates            (GET /api/tracking, /api/my-schedule, live updates)
- *   rates, currencyOf                     (for the tournament rows: exchange rates, venue -> currency)
+ *   rates, currencyOf                     (GET /api/exchange-rates, row -> its currency: the
+ *                                          tournament rows' and the trip's conversions)
  *   ledger                                (admins: ledger entries in `currency`; null while loading)
- *   trip, tripTx, tripScopeName           (admins: the current trip, its tagged transactions as
- *                                          { signed, currency } in their own currency, its scope's name)
- *   txRates                               (rates for those transactions: the summary's)
- * -> null while an admin's ledger loads, else
+ *   trip, tripData, tripScopeName         (admins: the current trip, its GET /trips/:id payload
+ *                                          (null while it loads), its scope's name)
+ * -> null while an admin's ledger (or trip) loads, else
  *   { mode, title, scope, net, sample, side: [{ text, title? }, { text, title? }], rows, ahead, window, stats }
  *   net is null for an empty window, and `sample` then gives the reason. window is the span the
  *   figures cover ({ from, to, venue: a series' title or null, scope: 'all' or a trip's bankroll })
@@ -303,30 +380,23 @@ export function buildPeriod(input) {
   const tOpts = { currency, rates: input.rates || null, currencyOf: input.currencyOf };
   const signed = (v) => money(v, true);
 
-  // Trip mode (admins).
+  // Trip mode (admins): the trip page's own figures (tripStats over GET /trips/:id), so the net the
+  // home leads with is the 'Trip net' the block opens.
   if (isAdmin && input.trip) {
-    if (!input.ledger) return null;
+    if (!input.tripData) return null;
     const trip = input.trip;
-    const w = { from: trip.start_date, to: today < trip.end_date ? today : trip.end_date };
     const scope = trip.bankroll == null || trip.bankroll === 'all' ? null : String(trip.bankroll);
-    const s = ledgerStats(input.ledger, w, (e) => GAME.has(e.source) && (!scope || String(e.bankroll) === scope));
-    let txNet = 0, txCount = 0, txBad = false;
-    for (const tx of Array.isArray(input.tripTx) ? input.tripTx : []) {
-      const v = convertMoney(tx.signed, tx.currency || 'USD', currency, input.txRates || null);
-      txCount++;
-      if (v == null) txBad = true; else txNet += v;
-    }
-    s.other = { net: txBad ? null : Math.round(txNet * 100) / 100, count: txCount };
-    const count = s.count + txCount;
-    const net = count ? (txBad ? null : s.net + txNet) : null;
+    const s = tripStats(input.tripData, { currency, rates: input.rates || null, currencyOf: input.currencyOf });
     const n = daysBetween(trip.start_date, trip.end_date) + 1, k = daysBetween(trip.start_date, today) + 1;
     return {
       mode: 'trip', title: trip.name || 'This trip',
       scope: `${scope ? (input.tripScopeName || 'One bankroll') : 'All bankrolls'} · ${currency}`,
-      net, sample: count ? (leadSample(s) || plural(txCount, 'entry', 'entries')) : 'Nothing logged on this trip yet',
+      net: s.count ? s.net : null,
+      sample: !s.count ? 'Nothing logged on this trip yet' : s.net == null ? 'Waiting for exchange rates'
+        : (leadSample(s) || plural(s.other.count, 'entry', 'entries')),
       side: [{ text: 'Net after expenses' }, { text: `${dayRange(trip.start_date, trip.end_date)} · day ${k} of ${n}` }],
       rows: periodRows(s, money), ahead: null,
-      window: { from: w.from, to: w.to, venue: null, scope: scope || 'all' }, stats: s,
+      window: { from: trip.start_date, to: trip.end_date, venue: null, scope: scope || 'all' }, stats: s,
     };
   }
 
@@ -339,16 +409,15 @@ export function buildPeriod(input) {
     const ahead = scheduleAhead(input.schedule, results, input.updates, series.venue, today, tOpts);
     const rows = periodRows(s, money);
     if (ahead) {
-      rows.push({
-        key: 'ahead', label: 'Still on your schedule', sample: plural(ahead.count, 'event'),
-        ...(ahead.upTo == null ? { value: '—', title: 'Waiting for exchange rates', muted: true } : { value: `up to ${money(ahead.upTo)}` }),
-      });
+      rows.push(ahead.upTo == null
+        ? { key: 'ahead', label: 'Still on your schedule', sample: `${plural(ahead.count, 'event')} · waiting for exchange rates`, value: '—', muted: true, title: 'Waiting for exchange rates to add the buy-ins up' }
+        : { key: 'ahead', label: 'Still on your schedule', sample: plural(ahead.count, 'event'), value: `up to ${money(ahead.upTo)}` });
     }
     const n = daysBetween(series.from, series.to) + 1, k = daysBetween(series.from, today) + 1;
     return {
       mode: 'series', title: series.venue, scope: `Tournaments · ${currency}`,
       net: s.count ? s.net : null,
-      sample: s.count ? leadSample(s) : 'Nothing logged in this series yet',
+      sample: !s.count ? 'Nothing logged in this series yet' : s.net == null ? 'Waiting for exchange rates' : leadSample(s),
       side: [{ text: dayRange(series.from, series.to) }, { text: `day ${k} of ${n}` }],
       rows, ahead,
       window: { from: series.from, to: today, venue: series.venue, scope: 'all' }, stats: s,
@@ -368,14 +437,12 @@ export function buildPeriod(input) {
     prev = resultStats(results, pw.prev, tOpts);
     prevFull = resultStats(results, pw.prevFull, tOpts);
   }
-  const fig = (s, nothing) => (!s.count ? { v: '—', title: nothing } : s.net == null ? { v: '—', title: 'Waiting for exchange rates' } : { v: signed(s.net) });
-  const a = fig(prev, `Nothing logged ${pw.prevLabel}`), b = fig(prevFull, `Nothing logged in ${pw.prevName}`);
   return {
     mode: 'month', title: pw.name,
     scope: `${isAdmin ? 'All bankrolls' : 'Tournaments'} · ${currency}`,
     net: cur.count ? cur.net : null,
-    sample: cur.count ? leadSample(cur) : `Nothing logged in ${pw.name} yet`,
-    side: [{ text: `${pw.prevLabel} ${a.v}`, title: a.title }, { text: `all ${pw.prevName} ${b.v}`, title: b.title }],
+    sample: !cur.count ? `Nothing logged in ${pw.name} yet` : cur.net == null ? 'Waiting for exchange rates' : leadSample(cur),
+    side: compareSide(pw, prev, prevFull, signed),
     rows: periodRows(cur, money), ahead: null,
     window: { from: pw.cur.from, to: today, venue: null, scope: 'all' }, stats: cur,
   };
@@ -401,8 +468,8 @@ export function goalLines(goals, entries, today, money) {
       id: g.id,
       label: `${g.period === 'year' ? 'Yearly' : 'Monthly'} ${volume ? 'volume' : 'profit'}`,
       note: volume ? (reached ? 'reached' : p.ahead ? 'ahead of pace' : 'behind pace') : 'pace is mostly variance',
-      value: volume ? `${Math.round(p.done).toLocaleString('en-US')} of ${Number(p.target).toLocaleString('en-US')} played` : `${empty ? '—' : money(p.done)} of ${money(p.target)}`,
-      ...(empty ? { title: `Nothing logged ${g.period === 'year' ? 'this year' : 'this month'} yet` } : {}),
+      value: volume ? `${Math.round(p.done).toLocaleString('en-US')} of ${Number(p.target).toLocaleString('en-US')} played` : `${empty ? 'nothing yet' : money(p.done)} of ${money(p.target)}`,
+      ...(empty ? { muted: true, title: `Nothing logged ${g.period === 'year' ? 'this year' : 'this month'} yet` } : {}),
       fill: Math.max(0, Math.min(1, p.fraction || 0)),
       tick: p.elapsed < 1 ? p.elapsed : null,
       tone: volume ? (reached || p.ahead ? 'ahead' : 'behind') : 'muted',
@@ -425,7 +492,7 @@ export function bankrollLine(summary, money) {
   const balance = Number(summary.all.balance);
   const cap = m && m.cap > 0
     ? { value: money(m.cap) }
-    : { value: '—', title: 'No balance to size a bullet from' };
+    : { value: '—', note: 'no balance', title: 'No balance to size a bullet from' };
   let signal = null;
   if (m && m.signal === 'hold') {
     signal = { key: 'hold', label: 'Hold', title: `Your last ${m.recentN} entries averaged ${money(m.recentAvg)}, inside the cap` };

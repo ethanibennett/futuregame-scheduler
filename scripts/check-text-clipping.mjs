@@ -52,11 +52,14 @@ function scan(rootSel) {
   // (negative insets reach outside it).
   const clipRect = (el) => {
     const r = el.getBoundingClientRect();
-    const m = /^inset\(([^)]*)\)/.exec(getComputedStyle(el).clipPath || '');
-    if (!m) return { top: r.top, bottom: r.bottom };
+    const cs = getComputedStyle(el);
+    const m = /^inset\(([^)]*)\)/.exec(cs.clipPath || '');
+    // Sideways only when it clips sideways (overflow-x, or a clip-path).
+    const xClips = cs.overflowX !== 'visible' || !!m;
+    if (!m) return { top: r.top, bottom: r.bottom, left: xClips ? r.left : -Infinity, right: xClips ? r.right : Infinity };
     const v = m[1].split(/\s+/).map(parseFloat);
-    const [t, , b = t] = v.length === 1 ? [v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0]] : v;
-    return { top: r.top + t, bottom: r.bottom - b };
+    const [t, rr, b = t, l = rr] = v.length === 1 ? [v[0], v[0], v[0], v[0]] : v.length === 2 ? [v[0], v[1], v[0], v[1]] : v;
+    return { top: r.top + t, bottom: r.bottom - b, left: r.left + l, right: r.right - rr };
   };
   for (const root of roots) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -75,6 +78,7 @@ function scan(rootSel) {
       const rects = [...range.getClientRects()].filter(r => r.width > 0 && r.height > 0);
       if (!rects.length) continue;
       const top = Math.min(...rects.map(r => r.top)), bottom = Math.max(...rects.map(r => r.bottom));
+      const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right));
       // Only text on screen: off-screen rows may skip rendering (content-visibility), and their
       // geometry then means nothing.
       const hr = host.getBoundingClientRect();
@@ -87,6 +91,11 @@ function scan(rootSel) {
         // Something scrolled out of a scroller is not "clipped text", it is just off screen.
         const scroller = a.scrollHeight > a.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(a).overflowY);
         if (scroller) break;
+        // Text this ancestor hides SIDEWAYS in full is not cut, it is not shown at all: the Up Next
+        // carousel's neighbour slides, a card to each side of the one shown inside its overflow
+        // box (on desktop they reach on screen, over the rail). Their height is not the track's
+        // (the track fits the card on show), so measured top to bottom they read as cut.
+        if (right <= ar.left + 0.5 || left >= ar.right - 0.5) break;
         const below = bottom - ar.bottom, above = ar.top - top;
         if (below > 0.5 || above > 0.5) {
           out.push({
@@ -220,7 +229,24 @@ function scan(rootSel) {
           await p.waitForTimeout(80);
         }
       }
+      // The pointer off the counter, and the track settled: a mouse over the counter holds the
+      // track's height still (DashboardView fit.frozen), cutting a taller card at it until it leaves,
+      // which is that hover's own state, not the card's.
+      await p.mouse.move(0, 0);
       await p.waitForTimeout(700);
+      await p.waitForFunction(() => {
+        const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+        if (!t) return true;
+        if (t.getAnimations().some((a) => a.playState === 'running')) { window.__fitH = null; return false; }
+        const h = t.getBoundingClientRect().height, same = window.__fitH === h;
+        window.__fitH = h;
+        return same;
+      }, null, { timeout: 4000, polling: 100 }).catch(() => {});
+      // And at its end, not a frame of its ease (a loaded renderer can still be a few px short).
+      await p.evaluate(() => {
+        const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+        if (t) for (const a of t.getAnimations()) a.finish();
+      });
       await run(`home plans (card ${i + 1})`, HOME);
     }
   } catch (e) { console.log(`  (home plans skipped: ${e.message.split('\n')[0]})`); }

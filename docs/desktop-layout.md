@@ -276,7 +276,15 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   (`HomeNothingNext.jsx`: the week's events near you; it opens the Schedule).
   Every slide sits in the track's one grid cell and is moved by its own multiple
   of its width, so the card shown is on the grid at any index on both layouts
-  (the flex row drifted 0.115px a card at 1440, 0.057px at 402).
+  (the flex row drifted 0.115px a card at 1440, 0.057px at 402). The track is as
+  tall as the card ON SHOW, in whole r (fix round 1, 2026-10-12), so the dots or
+  the counter sit right under it: the tallest-of-all rule left up to 16r of hole
+  under a short card (a 12r upcoming card in a 28r track). It eases to each
+  card's height on the page turn's curve; a drag grows it to a taller neighbour
+  as that comes in; and while a mouse is over the dots or the counter the height
+  holds still (a taller card is cut at it meanwhile), so the ‹ › under the
+  pointer does not move between two clicks. check:controls reports the track
+  against the card on show ('fit') on every card (`dashboard-carousel`).
 - To log and the Last result (step 3) sit under Up Next in NOW, so what is next,
   what is unlogged and what just happened read down one pane. Their Log menu is
   portalled to the body and anchored to the Log pill (right edges together, 1r
@@ -284,7 +292,10 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   To log's Cashed and a tap on the receipt open Results in this same main pane.
 - The NUMBERS pane (step 4, `HomeNumbers.jsx`) opens with the bankroll line
   (admins: the balance of every roll, the tournament cap a bullet and the rule's
-  move signal as a pill, a 35g x 5r card), then the period block: the window's
+  move signal as a pill, a 35g x 5r card under its own 3r header, BANKROLL with
+  the scope on the right, so its card starts on 13r, level with the Up Next card
+  beside it; the period block's header leaves the scope out when it is the
+  same), then the period block: the window's
   name and scope in a 3r header, a 7r lead (the net and its sample; the
   like-for-like comparison, or the trip's or series' dates, on the right), a 4r
   row for each figure that exists, then the goals card (admins; 6r a goal with
@@ -310,6 +321,17 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   bankroll dashboard's Overview instead).
 - The NUMBERS pane is the same on the phone, under the Last result: there it is
   below the fold, as the verdict expected.
+- Width (decided 2026-10-12, fix round 1): the Dashboard keeps rail 10g + 37g +
+  37g = 84g. At 1024 that is the whole shell; at 1440 the shell is 111g (sized
+  for Schedule's list and its 64g right pane) and 27g of page stays to the right
+  of the NUMBERS. That is the band every single-pane tab already leaves (Social,
+  Hands, Cash and Settings leave 37g at 1440: "the shell to the right of a capped
+  single pane reads as page"), and the alternatives were worse: re-centring an
+  84g shell on the Dashboard moves the rail and the bar 13.5g sideways at every
+  tab change, and widening the NUMBERS to the 64g slot only moves the same empty
+  band inside the pane, since each block is a 35g phone canvas. When Trend
+  (section 7) lands, the NUMBERS can take the 9N+1 slot and set Trend or the
+  goals in its second column.
 - Friends Playing and Connections, which the old plan gave a pane, left the home
   (they live in Social). The Table Scanner left it as well: it is the Playing
   card's Scan action and a tool in Hands.

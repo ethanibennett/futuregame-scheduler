@@ -194,7 +194,8 @@ export default function HomeLastResult({ results, rates, isAdmin, token, canLog 
         <div className="dashboard-section-title">Last result</div>
         <span className="hm-head-right">
           {milestone && <span className="hm-tag snap-g"><span className="hm-tag-t">{milestone}</span></span>}
-          {canLog && (
+          {/* With no result yet the card's own buttons are the way to log: one, not two. */}
+          {canLog && last && (
             <button ref={pillRef} type="button" className="hm-head-pill hm-head-pill--log" onClick={onPill}
               aria-haspopup={isAdmin ? 'menu' : undefined} aria-expanded={isAdmin ? menu : undefined}
               aria-label={isAdmin ? 'Log: a result, a cash session, an expense or income' : 'Log a tournament result'}>
@@ -204,7 +205,7 @@ export default function HomeLastResult({ results, rates, isAdmin, token, canLog 
         </span>
       </div>
       {card}
-      {menu && pillRef.current && (
+      {menu && last && pillRef.current && (
         <LogMenu anchor={pillRef.current} isAdmin={isAdmin} live={!!live} onPick={onLog} onClose={closeMenu} />
       )}
     </section>

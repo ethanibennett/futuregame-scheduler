@@ -15,6 +15,7 @@ import { homeCurrency } from '../utils/home.js';
 import { gridGeom } from '../utils/grid-panel.js';
 import { resolveConditions, offLast, planKind } from '../utils/home-upnext.js';
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
+import useDisplayCurrency from '../hooks/useDisplayCurrency.js';
 import HomeCashCard from './HomeCashCard.jsx';
 import HomeNothingNext from './HomeNothingNext.jsx';
 import HomeToLog from './HomeToLog.jsx';
@@ -228,8 +229,10 @@ export default function DashboardView({
   const scanInputRef = useRef(null);
   const [now, setNow] = useState(getNow());
   // The shared display currency (the Results tab's setting), never Native here: a total of euros
-  // and dollars is in no currency (utils/home.js). The home has no currency menu of its own.
-  const [dashCurrency] = useState(() => homeCurrency(localStorage.getItem('trackingCurrency'), Object.keys(CURRENCY_CONFIG)));
+  // and dollars is in no currency (utils/home.js). The home has no currency menu of its own, and
+  // follows a change made in Results at once (hooks/useDisplayCurrency.js), not on the next reload.
+  const storedCurrency = useDisplayCurrency();
+  const dashCurrency = useMemo(() => homeCurrency(storedCurrency, Object.keys(CURRENCY_CONFIG)), [storedCurrency]);
   const [dashRates, setDashRates] = useState(null);
   useEffect(() => {
     fetch(API_URL + '/exchange-rates')
@@ -251,6 +254,54 @@ export default function DashboardView({
   const swipeStartY = useRef(0);
   const swipeAxis = useRef(null);
   const swipeSlop = useRef(0);
+  // The track's height (home.css): the card on show, in whole r; during a drag, the taller of it and
+  // the neighbour being pulled in. fit.shown / fit.peer are slide indexes; fitTrack() measures them.
+  // fit.frozen: a mouse is over the dots or the counter. The height holds still then, so the ‹ ›
+  // under the pointer does not move between two clicks (a taller card is clipped at the held height
+  // until the pointer leaves, and the track then eases to the card on show).
+  const fit = useRef({ shown: 0, peer: null, rPx: 0, frozen: false });
+  const fitTrack = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const f = fit.current;
+    if (!f.rPx) {
+      // r as layout resolves --subrow (WebKit snaps it to 1/64 px: 7.71875 at 402 wide, where
+      // 0.71g is 7.7141), read off a 100r probe, so a 23r card reads 23.000, not 23.014.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      document.body.appendChild(probe);
+      f.rPx = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+    }
+    // Every card is whole r tall; its measured height (px, as layout gives it) back in r, rounded
+    // up past a tenth so a card that is not whole r is never cut short.
+    const rOf = (i) => {
+      const el = i != null ? track.children[i] : null;
+      return el && f.rPx ? Math.ceil(el.getBoundingClientRect().height / f.rPx - 0.1) : 0;
+    };
+    track.classList.toggle('is-frozen', !!f.frozen && track.classList.contains('is-fitted'));
+    if (f.frozen && track.classList.contains('is-fitted')) return;
+    const n = Math.max(rOf(f.shown), rOf(f.peer));
+    if (!(n > 0)) return;
+    track.style.setProperty('--track-r', String(n));
+    track.classList.add('is-fitted');
+  }, []);
+  // The dots' and the counter's hover: hold the height while a mouse (or pen) is over them.
+  const holdFit = useCallback((e) => {
+    if (e.pointerType === 'touch') return;
+    fit.current.frozen = true;
+    fitTrack();
+  }, [fitTrack]);
+  const releaseFit = useCallback(() => {
+    if (!fit.current.frozen) return;
+    fit.current.frozen = false;
+    fitTrack();
+  }, [fitTrack]);
+  useEffect(() => {
+    const onResize = () => { fit.current.rPx = 0; swipeSlop.current = 0; fitTrack(); };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [fitTrack]);
   const onTouchStart = useCallback((e) => {
     swipeStart.current = e.touches[0].clientX;
     swipeStartY.current = e.touches[0].clientY;
@@ -273,6 +324,10 @@ export default function DashboardView({
       }
     }
     swipeDx.current = dx;
+    // The neighbour coming in: the track grows to it if it is taller, so it never covers the dots.
+    const f = fit.current, len = swipeRef.current || 1;
+    const peer = dx < 0 ? (f.shown + 1 < len ? f.shown + 1 : null) : (f.shown > 0 ? f.shown - 1 : null);
+    if (peer !== f.peer) { f.peer = peer; fitTrack(); }
     // The drag moves the whole track; each slide keeps its own offset from the one shown.
     if (trackRef.current) {
       const pct = (dx / trackRef.current.parentElement.offsetWidth) * 100;
@@ -283,6 +338,8 @@ export default function DashboardView({
     if (swipeStart.current === null) return;
     const dx = swipeDx.current;
     swipeStart.current = null;
+    // Back to the card on show (a page turn re-fits to the new one as it renders).
+    if (fit.current.peer != null) { fit.current.peer = null; fitTrack(); }
     if (trackRef.current) {
       trackRef.current.classList.remove('swiping');
       // Back to rest, animated: on a page turn the slides' own offsets animate at the same time with
@@ -295,7 +352,7 @@ export default function DashboardView({
       const len = swipeRef.current || 1;
       return dx < 0 ? Math.min(i + 1, len - 1) : Math.max(i - 1, 0);
     });
-  }, []);
+  }, [fitTrack]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 1000);
@@ -517,6 +574,27 @@ export default function DashboardView({
     });
   }, [slides, selectedUpNextIdx]);
 
+  // The carousel's height follows the card on show (home.css "HEIGHT"): fitted before paint on a
+  // page turn or a new set of slides, and whenever any slide's own height changes (the Bust menu, a
+  // live clock arriving, the cash card's stack entry), via one observer, whose notes land after
+  // layout and before paint too.
+  const shownIdx = slides.length ? Math.min(selectedUpNextIdx, slides.length - 1) : 0;
+  const slideKey = slides.map((x) => x.id).join('|');
+  // A new set of slides can swap the counter for the dots (or the reverse) under the pointer, and a
+  // control that unmounts never gets its pointerleave: start unheld.
+  useLayoutEffect(() => { fit.current.frozen = false; }, [slideKey]);
+  useLayoutEffect(() => {
+    fit.current.shown = shownIdx;
+    fitTrack();
+  }, [shownIdx, slideKey, fitTrack]);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => fitTrack());
+    for (const el of track.children) ro.observe(el);
+    return () => ro.disconnect();
+  }, [slideKey, fitTrack]);
+
   // Next upcoming event (when nothing today)
   function parseLevelDuration(t) {
     if (!t.level_duration) return null;
@@ -680,7 +758,7 @@ export default function DashboardView({
       >
         {/* The Up Next banner shows the FULL venue name, never the strip
             abbreviation — abbr stays only for the brand colour + WSOP casing. */}
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em'}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
+        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {tags.length > 0 && (
           <div className="dash-event-tags">
@@ -995,14 +1073,14 @@ export default function DashboardView({
                     the whole schedule, so a full season would be forty dots —
                     past the cap it becomes a position readout instead. */}
                 {slides.length > 1 && slides.length <= 8 && (
-                  <div className="dash-upnext-dots" style={{ '--n': slides.length }}>
+                  <div className="dash-upnext-dots" style={{ '--n': slides.length }} onPointerEnter={holdFit} onPointerLeave={releaseFit}>
                     {slides.map((_, i) => (
                       <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
                     ))}
                   </div>
                 )}
                 {slides.length > 8 && (
-                  <div className="dash-upnext-counter snap-g-centred">
+                  <div className="dash-upnext-counter snap-g-centred" onPointerEnter={holdFit} onPointerLeave={releaseFit}>
                     <button
                       type="button"
                       className="dash-upnext-step"
@@ -1028,12 +1106,14 @@ export default function DashboardView({
             <HomeNothingNext tournaments={tournaments} today={todayISO} onOpen={() => onNavigate('tournaments')} />
           )}
         </div>
-      {/* To log (verdict §2; 0r when nothing waits) and the last result (§3), under Up Next. */}
+      {/* To log (verdict §2; 0r when nothing waits) and the last result (§3), under Up Next. To log
+          reads the resolved plans: a branch that is off was never played, so it is not asked about. */}
       {onLog && (
         <HomeToLog
           schedule={mySchedule}
           results={trackingData}
           updates={myActiveUpdates}
+          plans={resolvedPlans}
           today={todayISO}
           canLog={canLog}
           onAddTracking={onAddTracking}

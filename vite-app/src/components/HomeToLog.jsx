@@ -5,8 +5,11 @@ import { useToast } from '../contexts/ToastContext.jsx';
 
 // ── The home's To log (verdict section 2) ──────────────────────────────────────────────────
 // Events that are over with no result logged (utils/home.js awaitingResults), newest first: the
-// two newest as rows, and "+N more", which opens Results. Each row is the event's venue strip
-// over one line ("#10 $600 PLO 8-Max · Fri") and three answers:
+// two newest as rows, and "+N more", which opens Results. A branch of a plan that resolved off
+// (Up Next's resolveConditions: "If bag #12" after #12 busted on Day 1) is not asked about: the
+// app knows it was never played. Each row is the event's venue strip with its day ("BORGATA ·
+// YESTERDAY") over one line ("#10 $600 PLO 8-Max") and the answers, each on its own column so they
+// line up from row to row (an answer a row does not offer leaves its column empty):
 //   Busted       logs a no-cash result in one tap: bullets from the bust's live update (else 1),
 //                the place and field when the bust's Finish recorded them. Not offered when that
 //                update carries a deal's payout (a chop is a cash);
@@ -16,7 +19,8 @@ import { useToast } from '../contexts/ToastContext.jsx';
 // Busted and Didn't play turn the row, where it is, into what was done and an Undo for a few
 // seconds: a second tap of a double tap lands on that row's text, not on the next event's Busted
 // (it did, before: the row left at once and the next one slid under the finger). Undo deletes the
-// result just logged, or clears the flag.
+// result just logged, or clears the flag. A held row still counts as one of the two shown, so the
+// section keeps its height through the hold and the next event slides in only when it ends.
 // Every number further down the home is only as true as the log, and players forget busts, not
 // cashes: Bust and Finish on the Up Next card post live updates and stay that.
 // Writes never edit a result: POST /api/tracking with ifAbsent is a 409 when one exists (logged on
@@ -29,23 +33,33 @@ const SETTLE_MS = 600;    // an Undo tap this soon after the row changed is the 
 const labelOf = (e) => [eventNo(e.event_number), e.event_name].filter(Boolean).join(' ');
 const plural = (n) => `${n} bullet${n === 1 ? '' : 's'}`;
 
-function rowText(item, today) {
+// The row's line: the number, the cost and the name. The day is on the strip above it, so the
+// 18g line holds the name ('#14 $1,100 PLO 6-Max Mystery Bounty').
+function rowText(item) {
   const e = item.event;
   const price = formatBuyin(e.buyin, e.venue);
   const cost = item.bullets > 1 ? `${item.bullets} × ${price}` : price;
-  return [eventNo(e.event_number), cost, e.event_name].filter(Boolean).join(' ') + ` · ${dayName(e.date, today)}`;
+  return [eventNo(e.event_number), cost, e.event_name].filter(Boolean).join(' ');
 }
 
-function Strip({ event }) {
+// The venue strip, its name and the day ('BORGATA SPRING POKER OPEN · YESTERDAY'), centred: a long
+// name truncates, the day never does.
+function Strip({ event, today }) {
   const v = getVenueInfo(event.venue, event.property);
+  const day = dayName(event.date, today);
   return (
     <div className="hm-tolog-strip" style={{ background: getVenueBrandColor(v.abbr) }}>
       <span className="hm-tolog-strip-t">{v.longName || v.abbr}</span>
+      {day && <span className="hm-tolog-strip-d">{` · ${day}`}</span>}
     </div>
   );
 }
 
-export default function HomeToLog({ schedule, results, updates, today, canLog = true, onAddTracking, onDeleteTracking, onSetPlayed, onLog, onMore }) {
+// An answer column a row does not offer: its hairline only, so the next row's answers line up.
+// quiet: the 5g Didn't play column.
+const Gap = ({ quiet = false }) => <span className={'hm-tolog-gap' + (quiet ? ' hm-tolog-gap--quiet' : '')} aria-hidden="true" />;
+
+export default function HomeToLog({ schedule, results, updates, plans = null, today, canLog = true, onAddTracking, onDeleteTracking, onSetPlayed, onLog, onMore }) {
   const toast = useToast();
   const [busy, setBusy] = useState(() => new Set());        // ids with a request in flight
   const [logged, setLogged] = useState(() => new Set());    // logged here; the refetch is on its way
@@ -61,8 +75,8 @@ export default function HomeToLog({ schedule, results, updates, today, canLog = 
   const setFlag = (set, id, on) => set((s) => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
 
   const items = useMemo(() => awaitingResults(schedule, results, updates, {
-    today, logged: [...logged], startOf: parseTournamentTime,
-  }), [schedule, results, updates, today, logged]);
+    today, logged: [...logged], startOf: parseTournamentTime, plans,
+  }), [schedule, results, updates, today, logged, plans]);
 
   const drop = (id) => setHeld((h) => h.filter((x) => x.id !== id));
   const hold = (entry) => {
@@ -143,9 +157,13 @@ export default function HomeToLog({ schedule, results, updates, today, canLog = 
   const rows = items.filter((x) => !heldIds.has(x.id));
   if (!rows.length && !held.length) return null;
   // The rows on show, with every held row back at the place it had, so nothing moves under a tap.
-  const shown = rows.slice(0, SHOWN).map((item) => ({ item }));
+  // A held row takes one of the SHOWN places: the section stays its height through the hold, and
+  // the next event comes in when the hold ends (it used to come in at once, and everything below
+  // To log dropped a row and came back up 8 s later).
+  const room = Math.max(0, SHOWN - held.length);
+  const shown = rows.slice(0, room).map((item) => ({ item }));
   for (const h of [...held].sort((a, b) => a.index - b.index)) shown.splice(Math.min(h.index, shown.length), 0, { held: h });
-  const more = rows.length - Math.min(rows.length, SHOWN);
+  const more = rows.length - Math.min(rows.length, room);
 
   return (
     <section className="dashboard-section hm-tolog" aria-label="To log">
@@ -164,7 +182,7 @@ export default function HomeToLog({ schedule, results, updates, today, canLog = 
             const what = h.kind === 'busted' ? `Logged: no cash, ${plural(h.item.bullets)}` : 'Not played';
             return (
               <li key={'held-' + h.id} className="hm-tolog-row is-held" aria-live="polite">
-                <Strip event={h.item.event} />
+                <Strip event={h.item.event} today={today} />
                 <div className="hm-tolog-body">
                   <span className="hm-tolog-text hm-cell hm-f-sm">
                     <span className="hm-clip"><span className="hm-tolog-muted">{what} </span>{labelOf(h.item.event)}</span>
@@ -183,12 +201,12 @@ export default function HomeToLog({ schedule, results, updates, today, canLog = 
           const name = e.event_name || 'this event';
           return (
             <li key={item.id} className="hm-tolog-row">
-              <Strip event={e} />
+              <Strip event={e} today={today} />
               <div className="hm-tolog-body">
-                <span className="hm-tolog-text hm-cell hm-f-sm" title={rowText(item, today)}><span className="hm-clip">{rowText(item, today)}</span></span>
+                <span className="hm-tolog-text hm-cell hm-f-sm" title={rowText(item)}><span className="hm-clip">{rowText(item)}</span></span>
                 {/* A bust whose update carries a deal's payout was a chop, a cash: no one-tap
                     no-cash answer for it, only Cashed (prefilled with the deal). */}
-                {!(item.payout > 0) && (
+                {item.payout > 0 ? <Gap /> : (
                   <button type="button" className="hm-tolog-seg" disabled={wait} aria-busy={wait || undefined}
                     onClick={() => busted(item)}
                     aria-label={`Busted: log ${name} as no cash, ${plural(item.bullets)}`}
@@ -201,7 +219,8 @@ export default function HomeToLog({ schedule, results, updates, today, canLog = 
                   aria-label={`Cashed: log ${name}'s cash in Results`}>
                   <span className="hm-seg-t">Cashed</span>
                 </button>
-                {!item.busted && (
+                {/* A bust was played: no "Didn't play" for it, its column left empty. */}
+                {item.busted ? <Gap quiet /> : (
                   <button type="button" className="hm-tolog-seg hm-tolog-seg--quiet" disabled={wait}
                     onClick={() => notPlayed(item)}
                     aria-label={`Didn't play ${name}: stop asking for its result`}>

@@ -4,8 +4,9 @@
 // guard checks, so it is safe on :3001 too. stageHome(page, kind) installs the routes and returns
 // the function that removes them; reload the page after staging (the home asks at load).
 //
-//   trip    a trip covering today, with a tagged expense: the period block in trip mode, its long
-//           name truncating in the header (admins; everyone else never asks for trips)
+//   trip    a trip covering today, with a cash session played inside it and a tagged expense: the
+//           period block in trip mode (the trip page's own tripPnl), its long name truncating in
+//           the header (admins; everyone else never asks for trips)
 //   series  the schedule's rows within 6 days of today tagged as one feed series with a long title:
 //           the block in series mode, with "Still on your schedule"
 //   edge    the bankroll rule's longest pill ('Move up to $2,000+'), and an empty month: no ledger
@@ -41,6 +42,7 @@ export async function stageHome(p, kind) {
     await on('**/api/bankrolls/trips', (r) => r.fulfill({ json: { trips: [trip] } }));
     await on(`**/api/bankrolls/trips/${TRIP_ID}`, (r) => r.fulfill({ json: {
       trip, results: [],
+      cash_sessions: [{ id: 1, date: day(-2), amount: -553, currency: 'USD', hours: 6.5, label: 'Cash NLH 2/5 · Guard Room', bankroll_id: null }],
       transactions: [{ id: 1, kind: 'expense', category: 'lodging', amount: 640, signed_amount: -640, currency: 'USD', occurred_on: day(-4), trip_id: TRIP_ID }],
     } }));
   } else if (kind === 'series') {

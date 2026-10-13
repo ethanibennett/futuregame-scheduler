@@ -92,35 +92,61 @@ export function inYear(transactions, year) {
 }
 
 /**
- * A trip's whole P&L, in one currency. `data` is GET /api/bankrolls/trips/:id
- * ({ trip, transactions, results }); results are tracking rows with the event's venue, buyin,
- * num_entries, cashed, cash_amount.
+ * A trip's whole P&L, in one currency: the ONE definition of a trip's net, shared by the trip page
+ * (Expenses.jsx TripDetail) and the home's trip block (utils/home-period.js), so tapping the home's
+ * "Net after expenses" opens a page showing the same figure. `data` is GET
+ * /api/bankrolls/trips/:id ({ trip, transactions, results, cash_sessions }): results are tracking
+ * rows with the event's venue, buyin, num_entries, cashed, cash_amount; cash_sessions are the
+ * ended sessions inside the trip at the combined ledger's amount ({ amount, currency, hours }).
  *   nativeCurrency(venue) -> the venue's currency (utils.js); convert(amount, from, to).
- *   -> { currency, events, cashes, buyins, cashed, results, expenses, income, net, byCategory }
- * results = cashes - buy-ins (the Results tab's profit); net = results + income - expenses.
+ *   -> { currency, events, bullets, cashes, buyins, cashed, tournaments, cash, results, expenses,
+ *        income, net, byCategory, unconverted }
+ * tournaments = { events, bullets, cashes, cost, cashed, profit } (cashes - buy-ins, the Results
+ * tab's profit); cash = { sessions, hours, profit, hourly } (hourly over the sessions with an end
+ * time, as the Overview's; null without one); results = tournaments + cash; net = results + income
+ * - expenses. unconverted counts the amounts convert() could not put in `currency` (each counted
+ * as 0 in the sums, as before): a caller that must not show a part-total checks it.
  */
 export function tripPnl(data, { currency = 'USD', convert, nativeCurrency } = {}) {
-  let buy = 0, cash = 0, cashes = 0, events = 0;
+  let unconverted = 0;
+  const conv = typeof convert === 'function'
+    ? (v, from, to) => { const x = convert(v, from, to); if (!Number.isFinite(x)) unconverted++; return x; }
+    : convert;
+  let buy = 0, cash = 0, cashes = 0, events = 0, bullets = 0;
   for (const e of (data && data.results) || []) {
     const from = typeof nativeCurrency === 'function' ? nativeCurrency(e.venue) : 'USD';
-    const cost = (Number(e.buyin) || 0) * Math.max(1, Number(e.num_entries) || 1);
-    buy += toC(inTarget(cost, from, currency, convert));
-    if (e.cashed && Number(e.cash_amount) > 0) { cash += toC(inTarget(e.cash_amount, from, currency, convert)); cashes++; }
+    const units = Math.max(1, Number(e.num_entries) || 1);
+    const cost = (Number(e.buyin) || 0) * units;
+    buy += toC(inTarget(cost, from, currency, conv));
+    if (e.cashed && Number(e.cash_amount) > 0) { cash += toC(inTarget(e.cash_amount, from, currency, conv)); cashes++; }
     events++;
+    bullets += units;
   }
-  const tx = totalsByCategory((data && data.transactions) || [], { currency, convert });
-  const resultsC = cash - buy;
+  let cashC = 0, timedC = 0, sessions = 0, hours = 0;
+  for (const s of (data && data.cash_sessions) || []) {
+    const c = toC(inTarget(Number(s.amount) || 0, s.currency, currency, conv));
+    cashC += c;
+    sessions++;
+    if (Number(s.hours) > 0) { hours += Number(s.hours); timedC += c; }
+  }
+  const tx = totalsByCategory((data && data.transactions) || [], { currency, convert: conv });
+  const mttC = cash - buy;
+  const resultsC = mttC + cashC;
   return {
     currency,
     events,
+    bullets,
     cashes,
     buyins: fromC(buy),
     cashed: fromC(cash),
+    tournaments: { events, bullets, cashes, cost: fromC(buy), cashed: fromC(cash), profit: fromC(mttC) },
+    cash: { sessions, hours: Math.round(hours * 100) / 100, profit: fromC(cashC), hourly: hours > 0 ? fromC(timedC) / hours : null },
     results: fromC(resultsC),
     expenses: tx.expenses,
     income: tx.income_total,
     net: fromC(resultsC + toC(tx.income_total) - toC(tx.expenses)),
     byCategory: tx,
+    unconverted,
   };
 }
 

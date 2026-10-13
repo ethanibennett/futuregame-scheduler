@@ -177,17 +177,22 @@ export function bulletsFromUpdate(u) {
  *     A bagged event, or one still being played (latest update not a bust), waits until it busts
  *     or ends; today's events stay on Up Next until then;
  *   - its day is within opts.lookbackDays (default 30) of today, so a schedule nobody logged long
- *     ago does not sit on the home for ever.
+ *     ago does not sit on the home for ever;
+ *   - its plan is not off (opts.plans: home-upnext.js resolveConditions). A branch whose parent
+ *     went the other way ("If bag #12" after #12 busted on Day 1) was never played, and the app
+ *     knows it: asking for its result would offer a one-tap phantom bust.
  *
  *   opts.today    YYYY-MM-DD (utils.js getToday)
  *   opts.startOf  event -> epoch ms of its start (utils.js parseTournamentTime, venue-zone aware);
  *                 without it, events order by whenKey
+ *   opts.plans    Map(event id -> { state: 'on' | 'off' | 'pending' }), the resolved plans
  *
  * Each item: { id, event, update, busted, bullets, place, payout, field }.
  */
 export function awaitingResults(schedule, results, updates, opts = {}) {
   const today = opts.today || '';
   const lookback = opts.lookbackDays == null ? 30 : opts.lookbackDays;
+  const plans = opts.plans || null;
   const logged = new Set((Array.isArray(results) ? results : []).map((r) => Number(r && r.tournament_id)));
   for (const id of opts.logged || []) logged.add(Number(id));
   const latest = new Map();
@@ -205,6 +210,8 @@ export function awaitingResults(schedule, results, updates, opts = {}) {
     if (!e || e.venue === 'Personal' || Number(e.is_restart) || Number(e.not_played)) continue;
     const id = Number(e.id);
     if (!Number.isInteger(id) || logged.has(id)) continue;
+    const plan = plans && typeof plans.get === 'function' ? plans.get(id) : null;
+    if (plan && plan.state === 'off') continue;      // a branch the app knows was never played
     const day = isoDay(e.date);
     if (!day || (today && day > today) || (floor && day < floor)) continue;
     const u = latest.get(id) || null;

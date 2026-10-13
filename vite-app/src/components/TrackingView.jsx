@@ -16,6 +16,8 @@ import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import ResetResults from './ResetResults.jsx';
 import { resetScope } from '../utils/reset-results.js';
 import { resultMoney, awaitingResults, eventNo } from '../utils/home.js';
+import { resolveConditions } from '../utils/home-upnext.js';
+import { publishDisplayCurrency } from '../hooks/useDisplayCurrency.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
@@ -311,7 +313,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
   const onCurrencyChange = useCallback((c) => {
     setDisplayCurrency(c);
-    localStorage.setItem('trackingCurrency', c);
+    // Stored and announced: the home follows this setting, at once (hooks/useDisplayCurrency.js).
+    publishDisplayCurrency(c);
   }, []);
 
   const stats = useMemo(() => {
@@ -346,12 +349,15 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const existingEntryIds = useMemo(() => new Set(allTrackingData.map(e => e.tournament_id)), [allTrackingData]);
 
   // The newest scheduled event that is over with no result: the home's To log rule (utils/home.js
-  // awaitingResults), so a bagged or running event, today's not yet played, and one marked
-  // "Didn't play" are not asked about here either.
+  // awaitingResults), so a bagged or running event, today's not yet played, one marked "Didn't
+  // play", and a plan's branch that resolved off (never played) are not asked about here either.
   const pendingEvent = useMemo(() => {
-    const first = awaitingResults(mySchedule, allTrackingData, myActiveUpdates, { today: getToday(), startOf: parseTournamentTime })[0];
+    // The plans resolved exactly as the home resolves them (DashboardView: the feed names a parent
+    // that is not on the schedule), so the two never disagree about a branch.
+    const plans = resolveConditions(mySchedule, myActiveUpdates, allTrackingData, { events: tournaments, startOf: parseTournamentTime });
+    const first = awaitingResults(mySchedule, allTrackingData, myActiveUpdates, { today: getToday(), startOf: parseTournamentTime, plans })[0];
     return first ? first.event : null;
-  }, [mySchedule, allTrackingData, myActiveUpdates]);
+  }, [mySchedule, allTrackingData, myActiveUpdates, tournaments]);
 
   // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
   // expense ones are handed to the view that owns that form, which reports back itself.

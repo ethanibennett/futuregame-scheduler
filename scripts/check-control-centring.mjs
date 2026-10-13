@@ -441,7 +441,48 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       await run(`${lastView} (home scrolled ${i})`);
     }
   };
-  await step('dashboard', () => nav('Dashboard'), 0);
+  // Up Next's track is as tall as the card ON SHOW (home.css "HEIGHT"), so its dots or counter sit
+  // right under it. A track taller than its card (the old tallest-of-all-slides rule left a hole of
+  // up to 16r under a short card) is reported as a row of its own, failing 'fit' past 1px; dx is
+  // the track's height less the card's, in px.
+  const fitCheck = async (view) => {
+    // The pointer off the counter first: a mouse over it holds the height still (fit.frozen).
+    await p.mouse.move(0, 0);
+    // The height's own transition (320ms), to its end: a busy renderer runs it late. Settled is no
+    // transition running AND the same height on two polls 100ms apart (a lone 'nothing running'
+    // read once measured a track still growing: 15.76r under a 16r card).
+    await p.waitForTimeout(100);
+    await p.waitForFunction(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (!t) return true;
+      if (t.getAnimations().some((a) => a.playState === 'running')) { window.__fitH = null; return false; }
+      const h = t.getBoundingClientRect().height, same = window.__fitH === h;
+      window.__fitH = h;
+      return same;
+    }, null, { timeout: 4000, polling: 100 }).catch(() => {});
+    const f = await p.evaluate(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (!t) return null;
+      const i = Number(t.dataset.idx || 0), sl = t.children[i];
+      if (!sl) return null;
+      // The height the track settles at, not a frame of its ease there: a loaded renderer still
+      // showed the last few px of the move after the wait above (17.14r over a 16r card).
+      for (const a of t.getAnimations()) a.finish();
+      // r off a 100r probe: the first step runs before any scan has measured the grid.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+      return { i, n: t.children.length, track: t.getBoundingClientRect().height, slide: sl.getBoundingClientRect().height, r };
+    });
+    if (!f) return;
+    const r = (grid && grid.r) || f.r || 1;
+    const off = +(f.track - f.slide).toFixed(2);
+    all.push({ view, el: '.dash-carousel-track (height)', text: `card ${f.i + 1} of ${f.n}`, w: '-', h: +(f.track / r).toFixed(2), x: '-', y: '-',
+      dx: off, dy: null, fail: Math.abs(off) > 1 ? ['fit'] : [], ctx: `the card on show, ${+(f.slide / r).toFixed(2)}r` });
+  };
+  await step('dashboard', async () => { await nav('Dashboard'); await fitCheck('dashboard'); }, 0);
   if (want('dashboard')) { try { await pageHome(4); } catch (e) { console.log(`  (dashboard scroll skipped: ${e.message.split('\n')[0]})`); } }
   await step('dashboard-scan', async () => {
     await nav('Dashboard');
@@ -490,14 +531,28 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       const cards = await p.evaluate(() => [...document.querySelectorAll('.dash-carousel-slide')]
         .map((sl, i) => (sl.querySelector('.dash-event-tag.plan') ? i : -1)).filter((i) => i >= 0));
       if (!cards.length) throw new Error('no plans on this schedule');
-      for (const i of cards) { await pageCarousel(i); await run(`dashboard-plans (card ${i + 1})`); }
+      for (const i of cards) { await pageCarousel(i); await run(`dashboard-plans (card ${i + 1})`); await fitCheck('dashboard-plans'); }
     } catch (e) { console.log(`  (view dashboard-plans skipped: ${e.message.split('\n')[0]})`); }
+  }
+  // Every card of the carousel, paged to in turn: the track fits each one (fitCheck alone, which is
+  // cheap; the controls on the cards with plans are measured above).
+  if (want('dashboard-carousel')) {
+    lastView = 'dashboard-carousel';
+    try {
+      await fresh(); await nav('Dashboard');
+      const n = await p.evaluate(() => document.querySelectorAll('.dashboard-view.home .dash-carousel-slide').length);
+      if (n < 2) throw new Error('fewer than two cards');
+      for (let i = 0; i < n; i++) { if (i) await pageCarousel(i); await fitCheck('dashboard-carousel'); }
+      await run('dashboard-carousel (last card)');
+    } catch (e) { console.log(`  (view dashboard-carousel skipped: ${e.message.split('\n')[0]})`); }
   }
   await step('dashboard-cash-entry', async () => {
     await nav('Dashboard');
     if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');
+    await fitCheck('dashboard-cash-entry');
     await p.locator('.hm-cash-card .hm-cash-btn').first().click({ timeout: 4000, force: overlay });
     await p.locator('.hm-cash-entry').waitFor({ timeout: 3000 });
+    await fitCheck('dashboard-cash-entry');
   }, 0);
   // The home's NUMBERS in the states the account does not show by itself (scripts/home-states.mjs):
   // trip mode, series mode, and the edge state (the longest signal pill over an empty month and an

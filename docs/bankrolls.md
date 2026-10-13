@@ -352,8 +352,16 @@ income: `rakeback bonus staking sponsorship coaching other`. The client list mus
 | DELETE | `/api/bankrolls/transactions/:id` | |
 | GET | `/api/bankrolls/trips` | → `{ trips: [{ id, name, start_date, end_date, bankroll: 'all'\|'main'\|id, note, transaction_count }] }` |
 | POST/PUT | `/api/bankrolls/trips[/:id]` | `{ name, startDate, endDate, bankroll?: 'all'\|'main'\|id, note? }` |
-| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope. Totals are the client's (`tripPnl()`), because results are in each venue's currency |
+| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results, cash_sessions }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope; cash_sessions the ENDED sessions whose day is inside it, in its scope, read through the ledger's own cash source (`{ id, date, amount, currency, hours, label, bankroll_id }`, amount = cash_out − buy_in − tips − expenses). Totals are the client's (`tripPnl()`), because results are in each venue's currency |
 | DELETE | `/api/bankrolls/trips/:id` | → `{ deleted, untagged }` |
+
+**One trip net.** `tripPnl()` (`utils/transactions.js`) is the only definition of a trip's P&L:
+tournaments (cashes − buy-ins) + cash sessions + income − expenses. The trip page (Results >
+Expenses > Trips) and the home's period block in trip mode both run it on the same `/trips/:id`
+payload with the same exchange rates, so the home's "Net after expenses" is the "Trip net" its tap
+opens (2026-10-12; the home used to add the trip's cash sessions and the page did not, and a trip with
+two sessions read +$3,014 on the home and +$3,567 on the page). It reports `unconverted`, so the
+home shows a dash and "Waiting for exchange rates" rather than a part-total.
 
 ### Ledger source
 

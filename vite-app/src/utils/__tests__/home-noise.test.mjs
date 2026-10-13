@@ -168,7 +168,10 @@ test('the request for a window, and buildPeriod hands the window over', () => {
   const m = buildPeriod({ today: '2026-10-12', isAdmin: true, currency: 'USD', money, ledger, results: [], schedule: [] });
   assert.deepEqual(m.window, { from: '2026-10-01', to: '2026-10-12', venue: null, scope: 'all' });
   assert.equal(m.stats.mtt.events, 1); assert.equal(m.stats.cash.sessions, 1); assert.equal(m.stats.cash.hours, 6);
+  // A trip's window is the trip's own dates, the span its figures (the trip page's) cover.
   const t = buildPeriod({ today: '2026-10-12', isAdmin: true, currency: 'USD', money, ledger, results: [], schedule: [],
-    trip: { id: 3, name: 'AC', start_date: '2026-10-04', end_date: '2026-10-20', bankroll: 'main' }, tripTx: [] });
-  assert.deepEqual(t.window, { from: '2026-10-04', to: '2026-10-12', venue: null, scope: 'main' });
+    trip: { id: 3, name: 'AC', start_date: '2026-10-04', end_date: '2026-10-20', bankroll: 'main' },
+    tripData: { results: [], cash_sessions: [{ amount: 420, currency: 'USD', hours: 6 }], transactions: [] } });
+  assert.deepEqual(t.window, { from: '2026-10-04', to: '2026-10-20', venue: null, scope: 'main' });
+  assert.equal(t.stats.cash.sessions, 1); assert.equal(t.stats.cash.hours, 6);
 });

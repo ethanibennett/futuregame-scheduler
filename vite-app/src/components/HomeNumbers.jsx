@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import HomeBankrollLine from './HomeBankrollLine.jsx';
 import HomePeriod from './HomePeriod.jsx';
+import { bankrollLine } from '../utils/home-period.js';
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
 
@@ -39,11 +40,15 @@ export default function HomeNumbers({ isAdmin, token, bk, results, schedule, upd
     else if (admin) setSheet('balance');
     else if (onLog) onLog({ kind: 'results' });
   };
+  // The bankroll line's header states the scope ('All bankrolls · USD'); the period block right
+  // under it states its own only when it differs (a trip on one roll, another display currency).
+  const bankLine = admin ? bankrollLine(bk.summary, String) : null;
+  const scopeAbove = bankLine ? `All bankrolls · ${bankLine.currency}` : null;
   return (
     <>
       {admin && <HomeBankrollLine summary={bk.summary} onOpen={() => setSheet('rules')} />}
       <HomePeriod admin={admin} bk={bk} results={results} schedule={schedule} updates={updates} rates={rates}
-        currency={currency} today={today} onOpen={onOpen} onOpenGoals={() => setSheet('goals')}
+        currency={currency} today={today} scopeAbove={scopeAbove} onOpen={onOpen} onOpenGoals={() => setSheet('goals')}
         onOpenNoise={(game, scope) => (game === 'cash' ? setSheet('balance') : setAnalytics(scope || 'all'))} />
       {admin && sheet && (
         <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={() => setSheet(null)} />

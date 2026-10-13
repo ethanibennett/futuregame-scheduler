@@ -2232,10 +2232,15 @@ export default function App() {
           {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
               NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
               portalled in here by DashboardView. Mounted for the whole desktop session and only
-              hidden off the Dashboard, so the portal's content keeps its state across tabs. */}
-          <div className="dk-pane dk-pane-mine" style={currentView === 'dashboard' ? undefined : { display: 'none' }}>
-            <div className="dk-scroll dk-home-right" ref={setDkHomeRight} />
-          </div>
+              hidden off the Dashboard, so the portal's content keeps its state across tabs.
+              Desktop only, by its own guard too: master renders one element tree for both
+              layouts (79a82c3), and in that tree an unguarded pane showed on the phone, an empty
+              15px box over the home's foot. */}
+          {isDesktop && (
+            <div className="dk-pane dk-pane-mine" style={currentView === 'dashboard' ? undefined : { display: 'none' }}>
+              <div className="dk-scroll dk-home-right" ref={setDkHomeRight} />
+            </div>
+          )}
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,
               not in a third column): the selected event on top, My Schedule below it in the same
               scroll. With nothing selected, My Schedule is the whole pane. */}

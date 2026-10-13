@@ -6,9 +6,10 @@ import assert from 'node:assert/strict';
 import {
   addDays, daysBetween, monthsBack, dayRange, paceWindows, ledgerFrom, currentTrip, currentSeries,
   ledgerStats, resultStats, periodRows, leadSample, fmtPct, plural, scheduleAhead, buildPeriod,
-  goalLines, bankrollLine,
+  goalLines, bankrollLine, tripStats, compareSide,
 } from '../home-period.js';
 import { fmtMoney } from '../home.js';
+import { tripPnl } from '../transactions.js';
 
 const TODAY = '2026-10-12';
 const money = (v, signed) => fmtMoney(v, null, { signed: !!signed });
@@ -158,21 +159,28 @@ test('result stats: the ledger formula on each row, converted; mixed currency wi
 test('rows show only what happened; a rate carries its sample; empty figures are dashes with reasons', () => {
   const s = ledgerStats(ledger, paceWindows(TODAY).cur);
   const rows = periodRows(s, money);
-  assert.deepEqual(rows.map((r) => r.key), ['mtt', 'roi', 'itm', 'cash', 'hourly', 'other']);
-  assert.deepEqual(rows.find((r) => r.key === 'roi'), { key: 'roi', label: 'ROI', sample: '3 bullets', value: '−13%' });
-  assert.equal(rows.find((r) => r.key === 'itm').value, '1 of 2');
-  assert.equal(rows.find((r) => r.key === 'mtt').value, '−$200');
-  assert.equal(rows.find((r) => r.key === 'hourly').value, '+$63');
+  // The verdict's three groups: the tournaments' net (beside other sources), ROI with the ITM fact
+  // folded into its sample, cash as one row with its rate, then expenses and income.
+  assert.deepEqual(rows.map((r) => r.key), ['mtt', 'roi', 'cash', 'other']);
+  assert.deepEqual(rows.find((r) => r.key === 'roi'), { key: 'roi', label: 'ROI', sample: '3 bullets · cashed 1 of 2', value: '−13%' });
+  assert.deepEqual(rows.find((r) => r.key === 'mtt'), { key: 'mtt', label: 'Tournaments', sample: '', value: '−$200' });
+  assert.deepEqual(rows.find((r) => r.key === 'cash'), { key: 'cash', label: 'Cash games', sample: '2 sessions · 4 h', value: '+$160 · $63/h' });
   assert.equal(rows.find((r) => r.key === 'other').sample, '1 entry');
-  // Tournaments only (a non-admin): no cash or expense rows at all, not zeros.
+  // Tournaments only (a non-admin): no Tournaments row (it would be the lead's net again), no cash
+  // or expense rows at all, not zeros.
   const t = periodRows(resultStats([{ date: '2026-10-02', buyin: 0, cashed: 0 }], paceWindows(TODAY).cur), money);
-  assert.deepEqual(t.map((r) => r.key), ['mtt', 'roi', 'itm']);
-  // A freeroll has no spend to divide by: ROI is a dash with its reason, never 0%.
-  assert.equal(t[1].value, '—');
-  assert.equal(t[1].title, 'No buy-ins to measure it against');
-  // Cash with no end times: the rate is a dash, and the sample says why.
+  assert.deepEqual(t.map((r) => r.key), ['roi']);
+  // A freeroll has no spend to divide by: ROI is a dash whose reason is on screen, never 0%.
+  assert.equal(t[0].value, '—');
+  assert.equal(t[0].sample, 'no buy-ins · cashed 0 of 1');
+  assert.equal(t[0].muted, true);
+  // Cash with no end times: no rate, and the sample says why.
   const c = periodRows(ledgerStats([L('2026-10-07', 'cash-sessions', -90, {})], paceWindows(TODAY).cur), money);
-  assert.deepEqual(c.map((r) => [r.key, r.sample, r.value]), [['cash', '1 session', '−$90'], ['hourly', 'no end times', '—']]);
+  assert.deepEqual(c.map((r) => [r.key, r.sample, r.value]), [['cash', '1 session · no end times', '−$90']]);
+  // Figures that cannot be added up yet: a dash, and the visible reason.
+  const w = periodRows({ unconverted: 1, mtt: { events: 2, bullets: 2, cashes: 1, profit: null, roi: null }, cash: { sessions: 1, hours: 2, profit: null, hourly: null }, other: { count: 0 } }, money);
+  assert.deepEqual(w.map((r) => [r.key, r.value, r.sample]), [
+    ['mtt', '—', 'waiting for exchange rates'], ['roi', '—', 'waiting for exchange rates · cashed 1 of 2'], ['cash', '—', '1 session · waiting for exchange rates']]);
   assert.equal(periodRows(ledgerStats([], paceWindows(TODAY).cur), money).length, 0);
   assert.equal(leadSample(ledgerStats(ledger, paceWindows(TODAY).cur)), '2 events · 2 sessions · 4 h');
   assert.equal(fmtPct(0.004), '0%');
@@ -196,8 +204,15 @@ test('the period block: month for admins from the ledger, with the like-for-like
   assert.equal(e.sample, 'Nothing logged in November yet');
   assert.deepEqual(e.side.map((x) => x.text), ['Oct 1–3 −$1,200', 'all Oct −$440']);
   assert.equal(e.rows.length, 0);
+  // Nothing last month either: one line that says so, never bare dashes.
   const none = buildPeriod({ today: '2027-03-03', isAdmin: true, currency: 'USD', money, ledger });
-  assert.deepEqual(none.side, [{ text: 'Feb 1–3 —', title: 'Nothing logged Feb 1–3' }, { text: 'all Feb —', title: 'Nothing logged in Feb' }]);
+  assert.deepEqual(none.side, [{ text: 'Feb: nothing logged', title: 'Nothing logged in February' }, { text: '' }]);
+  // The same days empty, the rest of last month not: that side says why in words.
+  const pw = paceWindows(TODAY);
+  const side = compareSide(pw, { count: 0, net: 0 }, { count: 2, net: -300 }, (v) => money(v, true));
+  assert.deepEqual(side.map((x) => x.text), ['Sep 1–12: nothing logged', 'all Sep −$300']);
+  assert.deepEqual(compareSide(pw, { count: 1, net: null }, { count: 2, net: null }, (v) => money(v, true)).map((x) => x.text),
+    ['Sep 1–12: waiting for rates', 'all Sep: waiting for rates']);
 });
 
 test('the period block: non-admins get their tournaments, never the ledger', () => {
@@ -210,7 +225,9 @@ test('the period block: non-admins get their tournaments, never the ledger', () 
   assert.equal(p.scope, 'Tournaments · USD');
   assert.equal(p.net, 500);
   assert.equal(p.sample, '1 event');
-  assert.deepEqual(p.rows.map((r) => r.key), ['mtt', 'roi', 'itm']);
+  // The lead is the tournaments' net, so there is no Tournaments row repeating it.
+  assert.deepEqual(p.rows.map((r) => r.key), ['roi']);
+  assert.equal(p.rows[0].sample, '1 bullet · cashed 1 of 1');
   assert.deepEqual(p.side.map((x) => x.text), ['Sep 1–12 −$100', 'all Sep −$100']);
 });
 
@@ -235,26 +252,63 @@ test('the period block: a series, with what is still on the schedule', () => {
 
 test('the period block: a trip covering today wins (admins), net after its expenses', () => {
   const trip = { id: 3, name: 'Vegas', start_date: '2026-10-05', end_date: '2026-10-16', bankroll: 'all' };
-  const tripTx = [{ signed: -400, currency: 'USD' }, { signed: -100, currency: 'EUR' }];
-  const p = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, ledger, results: [], schedule: seriesSchedule(), trip, tripTx, txRates: { EUR: 0.5 } });
+  // GET /api/bankrolls/trips/:id: the results and the ended cash sessions dated inside it, and the
+  // expenses and income tagged to it, each in its own currency.
+  const tripData = {
+    trip,
+    results: [
+      { venue: 'Vegas', buyin: 400, num_entries: 1, cashed: 1, cash_amount: 1400 },
+      { venue: 'Dublin', buyin: 100, num_entries: 2, cashed: 0, cash_amount: 0 },   // EUR: 200 EUR = 400 USD
+    ],
+    cash_sessions: [{ amount: 250, currency: 'USD', hours: 4 }, { amount: -90, currency: 'USD', hours: null }],
+    transactions: [
+      { kind: 'expense', category: 'lodging', amount: 400, currency: 'USD' },
+      { kind: 'expense', category: 'food', amount: 100, currency: 'EUR' },          // 200 USD
+    ],
+  };
+  const rates = { EUR: 0.5 };
+  const currencyOf = (r) => (r.venue === 'Dublin' ? 'EUR' : 'USD');
+  const p = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, ledger, results: [], schedule: seriesSchedule(), trip, tripData, rates, currencyOf });
   assert.equal(p.mode, 'trip');
   assert.equal(p.title, 'Vegas');
-  // Games inside its dates (Oct 5..today): +1000 +250 -90; the trip's tagged spend -400 and -200.
-  assert.equal(p.net, 1000 + 250 - 90 - 400 - 200);
+  // Tournaments +1000 - 400, cash +250 - 90, the tagged spend -400 and -200.
+  assert.equal(p.net, 1000 - 400 + 250 - 90 - 400 - 200);
+  // ONE definition: the trip page's 'Trip net' (tripPnl over the same payload, the same rates).
+  const page = tripPnl(tripData, { currency: 'USD', nativeCurrency: (v) => currencyOf({ venue: v }), convert: (v, f, t) => (f === t ? v : (f === 'USD' ? v : v / rates[f]) * (t === 'USD' ? 1 : rates[t])) });
+  assert.equal(p.net, page.net);
+  assert.equal(p.sample, '2 events · 2 sessions · 4 h');
   assert.deepEqual(p.side.map((x) => x.text), ['Net after expenses', 'Oct 5–16 · day 8 of 12']);
+  assert.deepEqual(p.rows.map((r) => r.key), ['mtt', 'roi', 'cash', 'other']);
   assert.deepEqual(p.rows.find((r) => r.key === 'other'), { key: 'other', label: 'Expenses & income', sample: '2 entries', value: '−$600' });
-  // The untagged expense on Oct 8 is not the trip's.
-  assert.equal(p.rows.find((r) => r.key === 'mtt').value, '+$1,000');
-  // A transaction that cannot be converted: the net is a dash, not a part-total.
-  const q = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, ledger, trip, tripTx, txRates: null });
+  assert.equal(p.rows.find((r) => r.key === 'mtt').value, '+$600');
+  assert.equal(p.rows.find((r) => r.key === 'cash').value, '+$160 · $63/h');
+  assert.deepEqual(p.window, { from: '2026-10-05', to: '2026-10-16', venue: null, scope: 'all' });
+  // An amount that cannot be converted: the net is a dash with its reason, not a part-total.
+  const q = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, trip, tripData, rates: null, currencyOf });
   assert.equal(q.net, null);
-  // A trip scoped to one bankroll counts only that roll's games.
-  const scoped = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, trip: { ...trip, bankroll: 'main' }, tripTx: [], tripScopeName: 'Main',
-    ledger: ledger.map((e, i) => ({ ...e, bankroll: i === 4 ? 7 : 'main' })) });
+  assert.equal(q.sample, 'Waiting for exchange rates');
+  // While the trip's payload loads there is nothing to show yet.
+  assert.equal(buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, trip, tripData: null }), null);
+  // Nothing inside it yet.
+  const e = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, trip, tripData: { results: [], cash_sessions: [], transactions: [] } });
+  assert.equal(e.net, null);
+  assert.equal(e.sample, 'Nothing logged on this trip yet');
+  // A trip scoped to one bankroll is named in the scope (the server scoped its payload).
+  const scoped = buildPeriod({ today: TODAY, isAdmin: true, currency: 'USD', money, trip: { ...trip, bankroll: 'main' }, tripScopeName: 'Main',
+    tripData: { results: [], cash_sessions: [{ amount: 250, currency: 'USD', hours: 4 }], transactions: [] } });
   assert.equal(scoped.scope, 'Main · USD');
-  assert.equal(scoped.net, 250 - 90);
+  assert.equal(scoped.net, 250);
+  assert.equal(scoped.window.scope, 'main');
   // Non-admins never get a trip.
   assert.equal(buildPeriod({ today: TODAY, isAdmin: false, currency: 'USD', money, trip, results: [], schedule: [] }).mode, 'month');
+  // tripStats alone: the shape the noise line reads.
+  const st = tripStats(tripData, { currency: 'USD', rates, currencyOf });
+  assert.equal(st.mtt.events, 2);
+  assert.equal(st.mtt.bullets, 3);
+  assert.equal(st.mtt.cashes, 1);
+  assert.equal(st.cash.sessions, 2);
+  assert.equal(st.cash.hours, 4);
+  assert.equal(st.count, 6);
 });
 
 test('goals: a volume goal is coloured by pace, a profit goal stays muted', () => {
@@ -276,7 +330,8 @@ test('goals: a volume goal is coloured by pace, a profit goal stays muted', () =
   // Nothing logged this month: a profit goal is a dash with its reason, never '$0'; volume says 0.
   const [v0, p0] = goalLines(goals, ledger.filter((e) => e.date < '2026-10-01'), TODAY, (x) => fmtMoney(x));
   assert.equal(v0.value, '0 of 10 played');
-  assert.equal(p0.value, '— of $5,000');
+  assert.equal(p0.value, 'nothing yet of $5,000');
+  assert.equal(p0.muted, true);
   assert.equal(p0.title, 'Nothing logged this month yet');
 });
 
@@ -293,7 +348,7 @@ test('the bankroll line: balance, the cap a bullet and the signal; no signal und
   assert.equal(up.signal.label, 'Move up to $2,000+');
   assert.equal(up.rule, '2%');
   const down = bankrollLine(sum({ buyins: 100, cap: 0, signal: 'down', reason: 'empty', recentN: 9, recentAvg: 200 }, -50), m);
-  assert.deepEqual(down.cap, { value: '—', title: 'No balance to size a bullet from' });
+  assert.deepEqual(down.cap, { value: '—', note: 'no balance', title: 'No balance to size a bullet from' });
   assert.equal(down.signal.title, 'The roll is at or below zero');
   const few = bankrollLine(sum({ buyins: 100, cap: 442, signal: null, reason: 'few', recentN: 3 }), m);
   assert.equal(few.signal, null);

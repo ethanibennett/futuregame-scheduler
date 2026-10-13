@@ -234,3 +234,30 @@ test('last result: the newest tournament, or a newer ended cash session (admins)
   assert.equal(lastResult([], []), null);
   assert.equal(lastResult([], [{ id: 49, session_date: '2026-10-09', started_at: local(2026, 10, 9, 19) }]).kind, 'cash');
 });
+
+test('To log: a branch whose plan is off was never played, so it is not asked about', async () => {
+  const { resolveConditions } = await import('../home-upnext.js');
+  // #12 started yesterday at noon and busted 4.6 h in: Day 1, so it never bagged. #5 was the
+  // IF_BAG branch (play it if #12 bags), and #6 the IF_BUST one; both were yesterday.
+  const start12 = Date.UTC(2026, 9, 11, 16);
+  const schedule = [
+    { id: 12, event_number: '12', event_name: 'NLH Deepstack', date: '2026-10-11', time: '12:00 PM', venue: 'V' },
+    { id: 5, event_number: '5', event_name: 'NLH Daily', date: '2026-10-11', time: '7:00 PM', venue: 'V',
+      conditions_json: JSON.stringify([{ type: 'IF_BAG', dependsOnId: 12 }]) },
+    { id: 6, event_number: '6', event_name: 'PLO Turbo', date: '2026-10-11', time: '6:00 PM', venue: 'V',
+      conditions_json: JSON.stringify([{ type: 'IF_BUST', dependsOnId: 12 }]) },
+  ];
+  const ups = [{ id: 300, tournament_id: 12, is_busted: 1, bust_count: 1, created_at: new Date(start12 + 4.6 * 36e5).toISOString() }];
+  const startOf = (e) => (e.id === 12 ? start12 : Date.UTC(2026, 9, 11, e.id === 5 ? 23 : 22));
+  const plans = resolveConditions(schedule, ups, [], { startOf });
+  assert.equal(plans.get(5).state, 'off');
+  assert.equal(plans.get(6).state, 'on');
+  const ids = awaitingResults(schedule, [], ups, { today: TODAY, startOf, plans }).map((x) => x.id);
+  // #12 (the bust) and #6 (the branch that came on) wait for a result; #5 never happened.
+  assert.deepEqual(ids, [6, 12]);
+  // Without the plans it would be offered (the bug: a one-tap phantom -$120 result).
+  assert.equal(awaitingResults(schedule, [], ups, { today: TODAY, startOf }).some((x) => x.id === 5), true);
+  // A plan still waiting stays asked about: the app does not know it was skipped.
+  const pending = new Map([[5, { state: 'pending' }]]);
+  assert.equal(awaitingResults(schedule, [], ups, { today: TODAY, startOf, plans: pending }).some((x) => x.id === 5), true);
+});

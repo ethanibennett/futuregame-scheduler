@@ -16,11 +16,12 @@ import HomeNoiseLine from './HomeNoiseLine.jsx';
 // Taps: the block opens the Bankroll Overview (admins), the trip's page (trip mode) or Results; the
 // goals open the dashboard's Goals; the noise line Analytics (onOpenNoise).
 // Data (admins only, every request gated on `admin`): the ledger from last month's first (or a
-// yearly goal's Jan 1, or the trip's start), the trip list and the current trip's tagged
-// transactions. All are refetched whenever the shared summary is (App's useBankrolls refetches it
-// when the results change, and after any bankroll change).
+// yearly goal's Jan 1), the trip list and the current trip's own payload (GET /trips/:id: its
+// results, cash sessions and tagged transactions, which the trip page adds up the same way). All
+// are refetched whenever the shared summary is (App's useBankrolls refetches it when the results
+// change, and after any bankroll change).
 
-export default function HomePeriod({ admin, bk, results, schedule, updates, rates, currency = 'USD', today, onOpen, onOpenGoals, onOpenNoise }) {
+export default function HomePeriod({ admin, bk, results, schedule, updates, rates, currency = 'USD', today, scopeAbove = null, onOpen, onOpenGoals, onOpenNoise }) {
   const summary = admin && bk ? bk.summary : null;
   const allGuide = summary && summary.guide && summary.guide.byKey ? summary.guide.byKey.all : null;
   const goals = useMemo(() => (allGuide && Array.isArray(allGuide.goals) ? allGuide.goals : []), [allGuide]);
@@ -35,19 +36,18 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
   const trip = useMemo(() => (admin ? currentTrip(trips, today) : null), [admin, trips, today]);
   const tripId = trip ? trip.id : null;
 
-  // The current trip's tagged expenses and income, each in its own currency.
-  const [tripTx, setTripTx] = useState(null); // { id, list: [{ signed, currency }] }
+  // The current trip's payload, the trip page's own (its results, its cash sessions, its tagged
+  // expenses and income), so the block's net is the page's 'Trip net'.
+  const [tripData, setTripData] = useState(null); // { id, data | null (failed) }
   useEffect(() => {
-    if (!admin || !tripId) { setTripTx(null); return undefined; }
+    if (!admin || !tripId) { setTripData(null); return undefined; }
     let on = true;
-    const keep = (list) => { if (on) setTripTx({ id: tripId, list }); };
-    bk.call('GET', `/trips/${tripId}`)
-      .then((d) => keep((d.transactions || []).map((t) => ({ signed: Number(t.signed_amount), currency: t.currency || 'USD' }))))
-      .catch(() => keep(null));
+    const keep = (data) => { if (on) setTripData({ id: tripId, data }); };
+    bk.call('GET', `/trips/${tripId}`).then((d) => keep(d || null)).catch(() => keep(null));
     return () => { on = false; };
   }, [admin, tripId, summary]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const from = ledgerFrom(today, { goals, trip });
+  const from = ledgerFrom(today, { goals });
   const ledgerKey = `${from}|${currency}`;
   const [ledger, setLedger] = useState(null); // { key, entries | null (failed) }
   useEffect(() => {
@@ -69,18 +69,17 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
     const money = (v, signed) => fmtMoney(v, cur, { signed: !!signed });
     const base = { today, currency, money, results, schedule, updates, rates, currencyOf: (r) => nativeCurrency(r.venue) };
     if (!admin || ledgerFailed) return buildPeriod({ ...base, isAdmin: false });
-    // Wait for what decides the window (the trips, and the current trip's spend) and for the ledger,
-    // so the block does not open on the month and jump to the trip.
-    if (trips === null || (trip && !(tripTx && tripTx.id === trip.id)) || !entries) return null;
-    if (trip && !tripTx.list) return buildPeriod({ ...base, isAdmin: true, ledger: entries }); // the trip did not load
+    // Wait for what decides the window (the trips, and the current trip's payload) and for the
+    // ledger, so the block does not open on the month and jump to the trip.
+    if (trips === null || (trip && !(tripData && tripData.id === trip.id)) || !entries) return null;
+    if (trip && !tripData.data) return buildPeriod({ ...base, isAdmin: true, ledger: entries }); // the trip did not load
     const scopeName = trip && trip.bankroll !== 'all'
       ? (trip.bankroll === 'main' ? 'Main' : ((bk.bankrolls || []).find((b) => String(b.id) === String(trip.bankroll)) || {}).name || 'One bankroll')
       : null;
     return buildPeriod({
-      ...base, isAdmin: true, ledger: entries, trip, tripTx: trip ? tripTx.list : null,
-      tripScopeName: scopeName, txRates: summary && summary.rates,
+      ...base, isAdmin: true, ledger: entries, trip, tripData: trip ? tripData.data : null, tripScopeName: scopeName,
     });
-  }, [admin, ledgerFailed, trips, trip, tripTx, entries, results, schedule, updates, rates, currency, today, summary]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [admin, ledgerFailed, trips, trip, tripData, entries, results, schedule, updates, rates, currency, today, summary]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The All roll's goals, against the same ledger. A profit target is set in the summary's currency.
   const goalRows = useMemo(() => {
@@ -101,7 +100,8 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
     <section className="dashboard-section hm-period" aria-label={`${model.title}: the numbers`}>
       <div className="dashboard-section-header hm-period-head">
         <div className="hm-cell hm-sec-title"><span className="hm-clip">{model.title}</span></div>
-        <span className="hm-cell hm-f-2xs hm-period-scope">{model.scope}</span>
+        {/* Not twice in a row: the bankroll line's header above may already say it. */}
+        {model.scope !== scopeAbove && <span className="hm-cell hm-f-2xs hm-period-scope">{model.scope}</span>}
       </div>
       <button type="button" className="hm-period-card" onClick={open}
         aria-label={`${model.title}: ${net}${model.sample ? `, ${model.sample}` : ''}. Open ${where}`}>
@@ -134,7 +134,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
                 <span className="hm-cell hm-f-sm hm-prow-l">
                   <span className="hm-clip">{g.label}<span className="hm-prow-s hm-goal-note">{g.note}</span></span>
                 </span>
-                <span className="hm-cell hm-f-sm-b hm-prow-v" title={g.title}><span className="hm-clip">{g.value}</span></span>
+                <span className={'hm-cell hm-f-sm-b hm-prow-v' + (g.muted ? ' is-muted' : '')} title={g.title}><span className="hm-clip">{g.value}</span></span>
               </span>
               <span className="hm-goal-bar" aria-hidden="true">
                 <span className="hm-goal-fill" style={{ width: `${g.fill * 100}%` }} />
