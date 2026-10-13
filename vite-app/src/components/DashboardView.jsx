@@ -11,7 +11,7 @@ import {
   CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
-import { homeCurrency } from '../utils/home.js';
+import { homeCurrency, playingEnded } from '../utils/home.js';
 import { gridGeom } from '../utils/grid-panel.js';
 import { resolveConditions, offLast, planKind } from '../utils/home-upnext.js';
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
@@ -256,9 +256,11 @@ export default function DashboardView({
   const swipeSlop = useRef(0);
   // The track's height (home.css): the card on show, in whole r; during a drag, the taller of it and
   // the neighbour being pulled in. fit.shown / fit.peer are slide indexes; fitTrack() measures them.
-  // fit.frozen: a mouse is over the dots or the counter. The height holds still then, so the ‹ ›
-  // under the pointer does not move between two clicks (a taller card is clipped at the held height
-  // until the pointer leaves, and the track then eases to the card on show).
+  // fit.frozen: a mouse is over the dots or the counter. The track then grows but never shrinks, so
+  // the ‹ › under the pointer stays put while it clicks through shorter cards, and a taller card is
+  // never cut (it pushes the pager down once); when the pointer leaves, the track eases to the card
+  // on show. (It used to hold the height outright, and a taller card was clipped through its stats
+  // with its Bust and Bag row hidden under the pager until the pointer left.)
   const fit = useRef({ shown: 0, peer: null, rPx: 0, frozen: false });
   const fitTrack = useCallback(() => {
     const track = trackRef.current;
@@ -279,11 +281,11 @@ export default function DashboardView({
       const el = i != null ? track.children[i] : null;
       return el && f.rPx ? Math.ceil(el.getBoundingClientRect().height / f.rPx - 0.1) : 0;
     };
-    track.classList.toggle('is-frozen', !!f.frozen && track.classList.contains('is-fitted'));
-    if (f.frozen && track.classList.contains('is-fitted')) return;
     const n = Math.max(rOf(f.shown), rOf(f.peer));
     if (!(n > 0)) return;
-    track.style.setProperty('--track-r', String(n));
+    // Held (a mouse on the pager): grow to a taller card, keep the height for a shorter one.
+    const held = f.frozen && track.classList.contains('is-fitted') ? Number(track.style.getPropertyValue('--track-r')) || 0 : 0;
+    track.style.setProperty('--track-r', String(Math.max(n, held)));
     track.classList.add('is-fitted');
   }, []);
   // The dots' and the counter's hover: hold the height while a mouse (or pen) is over them.
@@ -415,6 +417,9 @@ export default function DashboardView({
       .map(u => {
         const t = (mySchedule || []).find(x => x.id === u.tournament_id) || (tournaments || []).find(x => x.id === u.tournament_id);
         if (!t) return null;
+        // A run that cannot still be going (the forgotten bust: utils/home.js playingEnded) is To
+        // log's to ask about, not a Currently Playing card.
+        if (playingEnded(t, u, todayISO)) return null;
         return { ...t, _type: 'normal' };
       })
       .filter(Boolean);
@@ -1058,8 +1063,14 @@ export default function DashboardView({
                   ref={trackRef}
                   data-idx={safeIdx}
                 >
+                  {/* The slides not on show are inert and hidden from assistive tech (no Tab into an
+                      unseen Bust), and invisible once a drag or a page turn is over (home.css): the
+                      neighbour, taller than the track that fits the card on show, painted a band of
+                      itself and its shadow below it. */}
                   {slides.map((evt, i) => (
-                    <div className="dash-carousel-slide" key={evt.id} style={{ transform: `translateX(${(i - safeIdx) * 100}%)` }}>
+                    <div className={'dash-carousel-slide' + (i === safeIdx ? '' : ' is-off')} key={evt.id}
+                      inert={i === safeIdx ? undefined : ''} aria-hidden={i === safeIdx ? undefined : 'true'}
+                      style={{ transform: `translateX(${(i - safeIdx) * 100}%)` }}>
                       {evt._cash ? (
                         <HomeCashCard session={cashSession} stacks={cashStacks} skew={cashSkew} token={token}
                           dragged={() => Math.abs(swipeDx.current || 0) > 10}
@@ -1124,7 +1135,7 @@ export default function DashboardView({
         />
       )}
       {onLog && (
-        <HomeLastResult results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} />
+        <HomeLastResult results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} bk={bk} />
       )}
     </div>
   );

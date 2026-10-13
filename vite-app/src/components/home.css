@@ -119,6 +119,25 @@
   border-radius: var(--radius-sm);
   box-shadow: none;
 }
+/* Its twin on the Bagged card: the BAGGED (or RESTART IN 9:40) badge, 31g x 4r. The restart icon and
+   the caps label centred in the badge (the label's trailing letter-space cancelled by the same
+   indent), and the undo-bag key out of the flow as the Playing badge's is: a bare ✕ in a 2g x 4r box
+   on the badge's own lines, 2g in from its right edge. In the flow at margin-left:auto it pulled the
+   label 3.3px left of centre, and its 3r ring in the 4r badge put its top on half an r. */
+.dash-event-card .dash-restart-badge { position: relative; }
+.dash-event-card .dash-restart-badge > .dash-t { text-indent: var(--track-caps); }
+.dash-event-card .dash-restart-badge > .dash-unbag-x {
+  position: absolute;
+  top: 0;
+  right: var(--subcol);
+  width: calc(var(--gu) * 2);
+  min-width: 0;
+  height: calc(var(--subrow) * 4);
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
 
 /* ── The Scan table sheet (components/ScanTableSheet.jsx) ──
    The bankroll sheet's frame (styles.css .bk-scrim / .bk-sheet: 37g, 1g sides, a 5r head with the
@@ -924,18 +943,28 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
   transition: transform var(--dur-base) var(--ease-standard), height var(--dur-base) var(--ease-standard);
 }
 .dashboard-view.home .dash-carousel-track.is-fitted { height: calc(var(--subrow) * var(--track-r)); }
-/* A mouse over the dots or the counter holds the height (DashboardView fit.frozen), so the control
-   under the pointer stays put between clicks; a taller card is cut at the held height meanwhile
-   (its shadow and sides kept), and the track eases to it when the pointer leaves. */
-.dashboard-view.home .dash-carousel-track.is-frozen { clip-path: inset(calc(var(--subrow) * -2) calc(var(--gu) * -37) 0 calc(var(--gu) * -37)); }
+/* A mouse over the dots or the counter (DashboardView fit.frozen): the track grows to a taller card
+   but does not shrink to a shorter one, so the control under the pointer stays put between clicks
+   and no card is ever cut; it eases to the card on show when the pointer leaves. */
 /* A drag moves the track with the finger (no transform easing); the height still eases. */
 .dashboard-view.home .dash-carousel-track.swiping { transition: height var(--dur-base) var(--ease-standard); }
 .dashboard-view.home .dash-carousel-slide {
   grid-area: 1 / 1;
   align-self: start;
-  transition: transform var(--dur-base) var(--ease-standard);
+  transition: transform var(--dur-base) var(--ease-standard), visibility 0s linear 0s;
+}
+/* The slides not on show (inert, aria-hidden) are invisible at rest. A neighbour taller than the
+   track (which fits the card on show) painted a band of itself and its shadow under the track, at
+   the column's edge, down to the wrapper's foot. Visibility goes on the page turn's own clock: a
+   slide leaving keeps it until its slide-out ends (the delay), one arriving gets it at once (no
+   delay on the shown rule above); a drag shows every slide (the neighbour must come in with the
+   finger), and on release they hide again once the slide back or the turn is over. */
+.dashboard-view.home .dash-carousel-slide.is-off {
+  visibility: hidden;
+  transition: transform var(--dur-base) var(--ease-standard), visibility 0s linear var(--dur-base);
 }
 .dashboard-view.home .dash-carousel-track.swiping .dash-carousel-slide { transition: none; }
+.dashboard-view.home .dash-carousel-track.swiping .dash-carousel-slide.is-off { visibility: visible; }
 
 /* ==================================================================
    Step 6: the signal-or-noise line (HomeNoiseLine.jsx; admins), one

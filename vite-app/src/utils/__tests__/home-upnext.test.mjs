@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseConditions, serverTime, parentOutcome, resolveCondition, resolveConditions, offLast, planKind,
-  cashCard, weekAhead, weekAheadLine, DAY_ONE_HOURS,
+  cashCard, weekAhead, weekAheadLine, DAY_ONE_HOURS, wasBagged,
 } from '../home-upnext.js';
 
 const H = 36e5;
@@ -34,40 +34,96 @@ test('server timestamps: SQLite text is UTC, ISO passes through', () => {
 });
 
 test('a parent\'s outcome: a result is final, then the latest update', () => {
-  assert.deepEqual(parentOutcome(null, null), { state: null, cashed: null, bustAt: null });
+  assert.deepEqual(parentOutcome(null, null), { state: null, cashed: null, bustAt: null, bagged: null });
   assert.equal(parentOutcome(null, { is_busted: 0, is_bagged: 0, stack: 40000 }).state, 'playing');
   assert.equal(parentOutcome(null, { is_busted: 0, is_bagged: 1, bag_day: 1 }).state, 'bagged');
   const bust = { is_busted: 1, created_at: sqlite(T12 + 4 * H) };
-  assert.deepEqual(parentOutcome(null, bust), { state: 'over', cashed: false, bustAt: T12 + 4 * H });
+  assert.deepEqual(parentOutcome(null, bust), { state: 'over', cashed: false, bustAt: T12 + 4 * H, bagged: null });
   // A Finish with a deal payout is a cash.
   assert.equal(parentOutcome(null, { ...bust, deal_payout: 5200 }).cashed, true);
   // A result wins over a bag or a no-payout bust (the Cashed form logged after it).
-  assert.deepEqual(parentOutcome({ cashed: 1 }, { is_bagged: 1 }), { state: 'over', cashed: true, bustAt: null });
+  assert.deepEqual(parentOutcome({ cashed: 1 }, { is_bagged: 1 }), { state: 'over', cashed: true, bustAt: null, bagged: true });
   assert.equal(parentOutcome({ cashed: 1 }, bust).cashed, true);
   assert.equal(parentOutcome({ cashed: 1 }, bust).bustAt, T12 + 4 * H);
   assert.equal(parentOutcome({ cashed: 0 }, null).cashed, false);
 });
 
-test('IF_BUST: on once the parent is over, off when it bagged', () => {
+test('the bag history: /active\'s bag_count outlives the bag update itself', () => {
+  assert.equal(wasBagged(null), null);
+  assert.equal(wasBagged({ is_bagged: 1, bag_count: 1 }), true);
+  assert.equal(wasBagged({ is_bagged: 1 }), true);                    // no history, but the update is the bag
+  assert.equal(wasBagged({ is_busted: 1, bag_count: 1 }), true);      // bagged Day 1, busted Day 2
+  assert.equal(wasBagged({ is_busted: 1, bag_count: 0 }), false);     // known: never bagged
+  assert.equal(wasBagged({ is_busted: 1 }), null);                    // an older reply: unknown
+  assert.equal(wasBagged({ is_busted: 0, bag_count: '2' }), true);    // back in it on Day 3
+  // The outcome carries it beside the state: a Day 2 bust is still 'over', and bagged.
+  assert.deepEqual(parentOutcome(null, { is_busted: 1, bag_count: 1, created_at: sqlite(T14 + 20 * H) }),
+    { state: 'over', cashed: false, bustAt: T14 + 20 * H, bagged: true });
+  assert.equal(parentOutcome({ cashed: 1 }, { is_busted: 1, bag_count: 1, deal_payout: 9000 }).bagged, true);
+  assert.equal(parentOutcome(null, { is_busted: 0, is_bagged: 0, bag_count: 1 }).state, 'playing');
+  assert.equal(parentOutcome(null, { is_busted: 0, is_bagged: 0, bag_count: 1 }).bagged, true);
+});
+
+test('IF_BUST: on once the parent is over, off when it bagged (then, or on any day before)', () => {
   const c = { type: 'IF_BUST', dependsOnId: 1 };
   assert.deepEqual(resolveCondition(c, { state: null }), { state: 'pending' });
   assert.deepEqual(resolveCondition(c, { state: 'playing' }), { state: 'pending' });
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false }), { state: 'on', verb: 'busted' });
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: true }), { state: 'on', verb: 'cashed' });
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bagged: false }), { state: 'on', verb: 'busted' });
   assert.deepEqual(resolveCondition(c, { state: 'bagged' }), { state: 'off', verb: 'bagged' });
+  // Bagged 1A, so 1B was off; Day 2 then brought a bust, or a cash: 1B stays off.
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bagged: true }), { state: 'off', verb: 'bagged' });
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: true, bagged: true }), { state: 'off', verb: 'bagged' });
+  assert.deepEqual(resolveCondition(c, { state: 'playing', bagged: true }), { state: 'off', verb: 'bagged' });
 });
 
-test('IF_BAG: on from a bag, or a bust after Day 1; off from a Day 1 bust; a bare result says nothing', () => {
+test('IF_BAG: on from a bag at any point; off from a bust that never bagged; the hour only without a history', () => {
   const c = { type: 'IF_BAG', dependsOnId: 1 };
   assert.deepEqual(resolveCondition(c, { state: 'bagged' }, T14), { state: 'on', verb: 'bagged' });
   assert.deepEqual(resolveCondition(c, { state: 'playing' }, T14), { state: 'pending' });
+  // The history: bagged, then a Day 2 bust 10 h after an evening start (inside DAY_ONE_HOURS, which
+  // the old guess read as a Day 1 bust), or a cash: on either way.
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bustAt: T14 + 10 * H, bagged: true }, T14), { state: 'on', verb: 'bagged' });
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: true, bustAt: null, bagged: true }, T14), { state: 'on', verb: 'bagged' });
+  // Never bagged: off, however late the bust (no 30 h "both branches on").
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bustAt: T14 + 30 * H, bagged: false }, T14), { state: 'off', verb: 'busted' });
+  assert.deepEqual(resolveCondition(c, { state: 'over', cashed: true, bustAt: null, bagged: false }, T14), { state: 'off', verb: 'cashed' });
+  // No history (an older reply): the bust's hour is the fallback.
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bustAt: T14 + 5 * H }, T14), { state: 'off', verb: 'busted' });
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: true, bustAt: T14 + 9 * H }, T14), { state: 'off', verb: 'cashed' });
-  // Busted the next afternoon: Day 1 was bagged (its latest update is the bust, the bag before it).
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bustAt: T14 + (DAY_ONE_HOURS + 2) * H }, T14), { state: 'on', verb: 'bagged' });
   // A result logged with no live update, or no start time to measure from: not known, so pending.
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bustAt: null }, T14), { state: 'pending' });
   assert.deepEqual(resolveCondition(c, { state: 'over', cashed: false, bustAt: T14 + H }, null), { state: 'pending' });
+});
+
+test('resolveConditions: bag 1A, then Day 2 busts or cashes — 1B (IF_BUST) stays off, the IF_BAG branch on', () => {
+  const a = ev(1, '1A', { event_name: 'Main Event - Flight 1A', date: '2026-10-10' });
+  const schedule = [
+    a,
+    plan(10, '1B', [{ type: 'IF_BUST', dependsOnId: 1 }], { date: '2026-10-11' }),
+    plan(11, 77, [{ type: 'IF_BAG', dependsOnId: 1 }], { date: '2026-10-12' }),
+  ];
+  const T1A = Date.parse('2026-10-10T23:00:00Z'); // 7 PM EDT
+  const opts = { startOf: (e) => (e.id === 1 ? T1A : null) };
+  // Day 2 bust 10 h after the evening start (the 18 h guess called that a Day 1 bust).
+  const bustD2 = [{ id: 5, tournament_id: 1, is_busted: 1, bust_count: 1, bag_count: 1, created_at: sqlite(T1A + 10 * H) }];
+  let res = resolveConditions(schedule, bustD2, [], opts);
+  assert.equal(res.get(10).state, 'off');
+  assert.equal(res.get(10).items[0].label, 'Off: bagged #1A');
+  assert.equal(res.get(11).state, 'on');
+  assert.equal(res.get(11).items[0].label, 'On: bagged #1A');
+  // Day 2 cashed, logged as a result (with a Finish update carrying the deal).
+  const cashD2 = [{ id: 6, tournament_id: 1, is_busted: 1, bust_count: 1, bag_count: 1, deal_payout: 9000, created_at: sqlite(T1A + 30 * H) }];
+  res = resolveConditions(schedule, cashD2, [{ tournament_id: 1, cashed: 1, cash_amount: 9000 }], opts);
+  assert.equal(res.get(10).state, 'off');
+  assert.equal(res.get(11).state, 'on');
+  // A bust on Day 1 (never bagged), 30 h in by the clock (a long day, a late reg): 1B on, the IF_BAG branch off.
+  const bustD1 = [{ id: 7, tournament_id: 1, is_busted: 1, bust_count: 1, bag_count: 0, created_at: sqlite(T1A + 30 * H) }];
+  res = resolveConditions(schedule, bustD1, [], opts);
+  assert.equal(res.get(10).state, 'on');
+  assert.equal(res.get(11).state, 'off');
 });
 
 test('satellites: a cash is a seat', () => {

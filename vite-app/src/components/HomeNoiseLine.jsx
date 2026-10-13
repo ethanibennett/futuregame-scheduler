@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchApi } from '../utils/api.js';
 import { CURRENCY_CONFIG } from '../utils/utils.js';
 import { fmtMoney } from '../utils/home.js';
@@ -81,7 +81,14 @@ export default function HomeNoiseLine({ model, results, currency = 'USD', bk, on
 
   const a = analytics && analytics.key === aKey ? analytics.data : null;
   const c = cash && cash.key === cKey ? cash.data : null;
-  const line = useMemo(() => (stats ? noiseLine({ stats, analytics: a, cash: c, money }) : null), [stats, a, c, money]);
+  const fresh = useMemo(() => (stats ? noiseLine({ stats, analytics: a, cash: c, money }) : null), [stats, a, c, money]);
+  // While a new answer is on its way (a result just logged changes the version, so the key), the
+  // sentence already on show stays, rather than unmounting for the request's half second and pulling
+  // the goals card up 3n+1 r and back. It goes only when an answer says there is nothing to say.
+  const pending = (!!aKey && !(analytics && analytics.key === aKey)) || (!!cKey && !(cash && cash.key === cKey));
+  const held = useRef(null);
+  if (fresh || !pending) held.current = fresh;
+  const line = fresh || held.current;
   if (!line) return null;
   const where = line.game === 'cash' ? 'the bankroll overview' : 'Analytics';
   return (

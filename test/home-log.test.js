@@ -3,7 +3,9 @@
 //     user_schedules.not_played and returned by GET /api/my-schedule, so it syncs across devices;
 //   - POST /api/tracking { ifAbsent: true } — the home LOGS a result and never edits one: when a
 //     result already exists (another device, the live-update Finish) it is a 409 that changes
-//     nothing. Without ifAbsent the route still upserts, as the Results form relies on.
+//     nothing. Without ifAbsent the route still upserts, as the Results form relies on;
+//   - GET /api/live-updates/active carries each event's bag history (bag_count) beside its latest
+//     update, which the home's plans and To log read (a Day 1 bag outlives a Day 2 bust).
 //
 //   node test/home-log.test.js        (or: npm run test:home-log)
 //
@@ -167,6 +169,30 @@ async function down(child) {
       assert.strictEqual(row.cash_amount, 1800);
       assert.strictEqual(row.num_entries, 2);
       assert.strictEqual((await get('/api/tracking', L)).json.length, 2);
+    });
+
+    // The home's plans (utils/home-upnext.js wasBagged): a bag outlives its own update. Flight 1A
+    // bagged, then busted on Day 2, has a bust as its latest update; IF_BUST on it must still read
+    // off and IF_BAG on, so /active sends the event's bag history (bag_count) beside it.
+    await test('GET /api/live-updates/active: each event carries its bag history beside its latest update', async () => {
+      const lu = async (t, body) => { const r = await post('/api/live-update', L, { tournamentId: t, ...body }); return r.status === 201 ? 201 : r.body; };
+      assert.strictEqual(await lu(T[2], { stack: 20000, playStartedAt: '2026-10-08T16:00:00Z' }), 201);
+      assert.strictEqual(await lu(T[2], { stack: 61500, isBagged: true, bagDay: 1 }), 201);
+      let rows = (await get('/api/live-updates/active', L)).json;
+      let row = rows.find((x) => x.tournament_id === T[2]);
+      assert.strictEqual(row.is_bagged, 1);
+      assert.strictEqual(row.bag_count, 1);
+      assert.strictEqual(await lu(T[2], { isBusted: true }), 201);
+      assert.strictEqual(await lu(T[1], { isBusted: true }), 201);
+      rows = (await get('/api/live-updates/active', L)).json;
+      row = rows.find((x) => x.tournament_id === T[2]);
+      assert.strictEqual(row.is_busted, 1, 'the latest update is the Day 2 bust');
+      assert.strictEqual(row.bust_count, 1);
+      assert.strictEqual(row.bag_count, 1, 'and the Day 1 bag is still known');
+      const never = rows.find((x) => x.tournament_id === T[1]);
+      assert.strictEqual(never.bag_count, 0, 'an event never bagged says so (0, not missing)');
+      // Another account's bags are not counted in.
+      assert.ok(!(await get('/api/live-updates/active', O)).json.some((x) => x.tournament_id === T[2]));
     });
   } finally { await down(child); }
 

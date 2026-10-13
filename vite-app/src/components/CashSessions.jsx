@@ -567,9 +567,17 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     else if (k === 'cash-session' && intent.id) go({ detail: intent.id });
     if (onIntentDone) onIntentDone();
   }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A session started, ended, added, edited or deleted moves the ledger: the list reloads, and so
+  // does the shared bankroll summary (App's useBankrolls), which the home's bankroll line, period
+  // block and Last result read — they would otherwise show the old balance until a reload.
   const act = async (fn, ok) => {
     setBusy(true);
-    try { const r = await fn(); if (ok) toast.success(ok); await load(); return r || true; }
+    try {
+      const r = await fn();
+      if (ok) toast.success(ok);
+      await Promise.all([load(), bk && bk.refresh ? bk.refresh() : null]);
+      return r || true;
+    }
     catch (e) { toast.error(e.message); return false; }
     finally { setBusy(false); }
   };

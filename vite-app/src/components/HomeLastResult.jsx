@@ -26,7 +26,10 @@ import useLiveCashSession from '../hooks/useLiveCashSession.js';
 const curOf = (code) => CURRENCY_CONFIG[code] || CURRENCY_CONFIG.USD;
 const YEAR_MS = 365 * 864e5;
 
-/** Admins: their cash sessions of the last year, newest first; refetched when a live one ends. */
+/**
+ * Admins: their cash sessions of the last year, newest first; refetched when `version` changes (a
+ * live one starting or ending, or any session saved, edited or deleted in Results > Cash).
+ */
 function useCashSessions(enabled, token, version) {
   const [sessions, setSessions] = useState(null);
   useEffect(() => {
@@ -106,10 +109,12 @@ function Facts({ facts }) {
   );
 }
 
-export default function HomeLastResult({ results, rates, isAdmin, token, canLog = true, onLog }) {
+export default function HomeLastResult({ results, rates, isAdmin, token, canLog = true, onLog, bk = null }) {
   const today = getToday();
   const { session: live } = useLiveCashSession({ enabled: !!isAdmin, token });
-  const cash = useCashSessions(!!isAdmin, token, live ? `live-${live.id}` : 'idle');
+  // A session logged through the Log menu (Results > Cash) refreshes the shared bankroll store
+  // (CashSessionsView's act), whose rev moves; a live session coming or going moves the id.
+  const cash = useCashSessions(!!isAdmin, token, `${live ? `live-${live.id}` : 'idle'}|${bk && bk.rev ? bk.rev : 0}`);
   const last = useMemo(() => lastResult(results, isAdmin ? cash : null), [results, cash, isAdmin]);
 
   // A milestone is claimed only when every earlier result converts into one currency.

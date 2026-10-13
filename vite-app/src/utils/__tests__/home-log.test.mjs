@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   isoDay, minutesOf, whenKey, newestFirst, bulletsFromUpdate, awaitingResults,
   fmtMoney, ordinal, topPercent, dayName, eventNo, tournamentReceipt, cashReceipt,
-  receiptMilestone, lastResult,
+  receiptMilestone, lastResult, playingEnded,
 } from '../home.js';
 
 const TODAY = '2026-10-12';
@@ -260,4 +260,64 @@ test('To log: a branch whose plan is off was never played, so it is not asked ab
   // A plan still waiting stays asked about: the app does not know it was skipped.
   const pending = new Map([[5, { state: 'pending' }]]);
   assert.equal(awaitingResults(schedule, [], ups, { today: TODAY, startOf, plans: pending }).some((x) => x.id === 5), true);
+});
+
+test('To log: bag 1A, then Day 2 busts or cashes — the bagged flight is asked about, 1B never is', async () => {
+  const { resolveConditions } = await import('../home-upnext.js');
+  // 1A two days ago at 7 PM, bagged; Day 2 yesterday. 1B (IF_BUST on 1A) was yesterday; #77 (IF_BAG
+  // on 1A) was yesterday too. The bust came 10 h after 1A's start by the clock (the old 18 h guess
+  // read that as a Day 1 bust and turned 1B on).
+  const start1A = Date.UTC(2026, 9, 10, 23);
+  const schedule = [
+    { id: 1, event_number: '1A', event_name: 'Main Event - Flight 1A', date: '2026-10-10', time: '7:00 PM', venue: 'V', buyin: 1700 },
+    { id: 2, event_number: '1B', event_name: 'Main Event - Flight 1B', date: '2026-10-11', time: '11:00 AM', venue: 'V', buyin: 1700,
+      conditions_json: JSON.stringify([{ type: 'IF_BUST', dependsOnId: 1 }]) },
+    { id: 3, event_number: '77', event_name: 'NLH Deepstack', date: '2026-10-11', time: '1:00 PM', venue: 'V', buyin: 400,
+      conditions_json: JSON.stringify([{ type: 'IF_BAG', dependsOnId: 1 }]) },
+  ];
+  const startOf = (e) => ({ 1: start1A, 2: Date.UTC(2026, 9, 11, 15), 3: Date.UTC(2026, 9, 11, 17) })[e.id];
+  const bust = [{ id: 400, tournament_id: 1, is_busted: 1, bust_count: 1, bag_count: 1, places_left: 140, created_at: new Date(start1A + 10 * 36e5).toISOString() }];
+  let plans = resolveConditions(schedule, bust, [], { startOf });
+  // The bagged flight (busted on Day 2) and the IF_BAG branch wait; 1B was never played.
+  assert.deepEqual(awaitingResults(schedule, [], bust, { today: TODAY, startOf, plans }).map((x) => x.id), [3, 1]);
+  // Cashed on Day 2 and logged: 1A is done; the IF_BAG branch still waits, 1B still is not asked.
+  const cash = [{ ...bust[0], deal_payout: 9000 }];
+  const results = [{ tournament_id: 1, cashed: 1, cash_amount: 9000 }];
+  plans = resolveConditions(schedule, cash, results, { startOf });
+  assert.deepEqual(awaitingResults(schedule, results, cash, { today: TODAY, startOf, plans }).map((x) => x.id), [3]);
+  // Busted on Day 1 instead (never bagged): 1A and 1B wait, the IF_BAG branch never happened.
+  const d1 = [{ ...bust[0], bag_count: 0 }];
+  plans = resolveConditions(schedule, d1, [], { startOf });
+  assert.deepEqual(awaitingResults(schedule, [], d1, { today: TODAY, startOf, plans }).map((x) => x.id), [2, 1]);
+});
+
+test('To log: a Start never busted is asked about once it cannot still be running', () => {
+  const s = [
+    { id: 1, date: '2026-10-09', time: '11:00 AM', venue: 'V', event_number: '7' },                                         // 3 days ago
+    { id: 2, date: '2026-10-11', time: '7:00 PM', venue: 'V', event_number: '14' },                                          // last night
+    { id: 3, date: '2026-10-12', time: '9:00 AM', venue: 'V', event_number: '20', clock_ended_at: '2026-10-12T17:00:00Z' },  // today, the room's clock ended
+    { id: 4, date: '2026-10-08', time: '12:00 PM', venue: 'V', event_number: '1C', event_name: 'Main Event - Flight 1C' },   // bagged once, back on a later day
+    { id: 5, date: '2026-10-09', time: '12:00 PM', venue: 'V', event_number: '9' },                                          // an older reply (no bag history)
+  ];
+  const ups = [
+    { id: 1, tournament_id: 1, is_busted: 0, bust_count: 1, bag_count: 0, stack: 30000 },  // re-entered once, never busted again
+    { id: 2, tournament_id: 2, is_busted: 0, bust_count: 0, bag_count: 0, stack: 46500 },
+    { id: 3, tournament_id: 3, is_busted: 0, bust_count: 0, bag_count: 0 },
+    { id: 4, tournament_id: 4, is_busted: 0, bust_count: 0, bag_count: 1, stack: 88000 },
+    { id: 5, tournament_id: 5, is_busted: 0, bust_count: 0 },
+  ];
+  const list = awaitingResults(s, [], ups, { today: TODAY });
+  assert.deepEqual(list.map((x) => x.id), [3, 1]);
+  const old = list.find((x) => x.id === 1);
+  assert.equal(old.busted, false);        // not a bust: Didn't play is still offered
+  assert.equal(old.bullets, 2);           // on bullet 2 when last seen
+  assert.equal(old.place, null);
+  assert.equal(playingEnded(s[0], ups[0], TODAY), true);
+  assert.equal(playingEnded(s[1], ups[1], TODAY), false);   // yesterday's can run past midnight
+  assert.equal(playingEnded(s[2], ups[2], TODAY), true);
+  assert.equal(playingEnded(s[3], ups[3], TODAY), false);   // multi-day: bagged between days
+  assert.equal(playingEnded(s[4], ups[4], TODAY), false);   // no history: only the clock can say
+  assert.equal(playingEnded(s[0], { is_busted: 1, bag_count: 0 }, TODAY), false);
+  assert.equal(playingEnded(s[0], { is_bagged: 1, bag_count: 1 }, TODAY), false);
+  assert.equal(playingEnded(s[0], null, TODAY), false);
 });

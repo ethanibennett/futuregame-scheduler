@@ -7,8 +7,8 @@
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
 // Schedule, the home (Dashboard) paged to its foot (plain, then its NUMBERS in trip mode, series
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
-// about cash), its Scan sheet, each Up Next card with a
-// plan's tags, the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
+// about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
+// left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
 // Scanner (and, for
 // an admin, each tab of the bankroll dashboard, every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
@@ -211,45 +211,67 @@ function scan(rootSel) {
     await p.waitForTimeout(2500);
     await run('scan sheet', '.scan-sheet');
   } catch (e) { console.log(`  (scan sheet skipped: ${e.message.split('\n')[0]})`); }
-  // Up Next's plans (home step 5): the carousel paged to each card with a plan's tags (their labels
-  // name the parent event); and the running cash session's card (admins) in its stack entry.
+  // Up Next, card by card (home step 5, every card since 2026-10-13): the carousel paged to each one
+  // in turn (the plans' tags name their parent; the Playing card has its Scan / Update / Bag / Bust
+  // row, the Bagged card its badge), each measured at rest. Until then only the cards with a plan
+  // were, so an admin's Playing and Bagged cards (behind the cash card) never were.
+  // Then one page turn to a TALLER card with the mouse left on the pager, the way a desktop user
+  // clicks through: the track grows to it (it holds still only against a shorter card), so no line
+  // of it may be cut. The track used to hold its height outright, slicing the Playing card's stats.
+  const atCard = () => p.evaluate(() => Number(document.querySelector('.dash-carousel-track')?.dataset.idx || 0));
+  const goCard = async (i) => {
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) await dots.nth(i).click({ timeout: 4000 });
+    else {
+      // Step until the track says it is there (a click can land mid-render and be lost).
+      for (let n = 0; n < 80 && (await atCard()) < i; n++) {
+        await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000 });
+        await p.waitForTimeout(80);
+      }
+    }
+  };
+  const settle = async () => {
+    await p.waitForFunction(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (!t) return true;
+      if (t.getAnimations().some((a) => a.playState === 'running')) { window.__fitH = null; return false; }
+      const h = t.getBoundingClientRect().height, same = window.__fitH === h;
+      window.__fitH = h;
+      return same;
+    }, null, { timeout: 4000, polling: 100 }).catch(() => {});
+    // And at its end, not a frame of its ease (a loaded renderer can still be a few px short).
+    await p.evaluate(() => {
+      const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+      if (t) for (const a of t.getAnimations()) a.finish();
+    });
+  };
   try {
     await openTab('Dashboard');
-    const cards = await p.evaluate(() => [...document.querySelectorAll('.dash-carousel-slide')]
-      .map((sl, i) => (sl.querySelector('.dash-event-tag.plan') ? i : -1)).filter((i) => i >= 0));
-    if (!cards.length) throw new Error('no plans on this schedule');
-    for (const i of cards) {
-      const dots = p.locator('.dash-upnext-dot');
-      if (await dots.count()) await dots.nth(i).click({ timeout: 4000 });
-      else {
-        // Step until the track says it is there (a click can land mid-render and be lost).
-        const at = () => p.evaluate(() => Number(document.querySelector('.dash-carousel-track')?.dataset.idx || 0));
-        for (let n = 0; n < 80 && (await at()) < i; n++) {
-          await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000 });
-          await p.waitForTimeout(80);
-        }
-      }
-      // The pointer off the counter, and the track settled: a mouse over the counter holds the
-      // track's height still (DashboardView fit.frozen), cutting a taller card at it until it leaves,
-      // which is that hover's own state, not the card's.
+    const n = await p.evaluate(() => document.querySelectorAll('.dashboard-view.home .dash-carousel-slide').length);
+    if (n < 2) throw new Error('fewer than two cards');
+    for (let i = 0; i < n; i++) {
+      if (i) await goCard(i);
+      // The pointer off the pager: its hover is a state of its own (the held turn below).
       await p.mouse.move(0, 0);
       await p.waitForTimeout(700);
-      await p.waitForFunction(() => {
-        const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
-        if (!t) return true;
-        if (t.getAnimations().some((a) => a.playState === 'running')) { window.__fitH = null; return false; }
-        const h = t.getBoundingClientRect().height, same = window.__fitH === h;
-        window.__fitH = h;
-        return same;
-      }, null, { timeout: 4000, polling: 100 }).catch(() => {});
-      // And at its end, not a frame of its ease (a loaded renderer can still be a few px short).
-      await p.evaluate(() => {
-        const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
-        if (t) for (const a of t.getAnimations()) a.finish();
-      });
-      await run(`home plans (card ${i + 1})`, HOME);
+      await settle();
+      await run(`home cards (card ${i + 1} of ${n})`, HOME);
     }
-  } catch (e) { console.log(`  (home plans skipped: ${e.message.split('\n')[0]})`); }
+  } catch (e) { console.log(`  (home cards skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    const hs = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')].map((s) => s.getBoundingClientRect().height));
+    const i = hs.findIndex((h, k) => k + 1 < hs.length && hs[k + 1] > h + 4);
+    if (i < 0) throw new Error('no card taller than the one before it');
+    if (i) { await goCard(i); await p.mouse.move(0, 0); await p.waitForTimeout(700); await settle(); }
+    const dots = p.locator('.dash-upnext-dot');
+    if (await dots.count()) await dots.nth(i + 1).click({ timeout: 4000 });
+    else await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000 });
+    // The mouse stays where it clicked.
+    await p.waitForTimeout(700);
+    await settle();
+    await run(`home cards (pager held, card ${i + 2})`, HOME);
+  } catch (e) { console.log(`  (home cards, pager held, skipped: ${e.message.split('\n')[0]})`); }
   try {
     await openTab('Dashboard');
     if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');

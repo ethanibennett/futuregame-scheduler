@@ -4,7 +4,8 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard (scrolled to its foot; on
 // desktop both its panes; the Playing card's Scan sheet; the Log menu; a To log row's Undo
-// state; each Up Next card with a plan's tags; the cash card's stack entry; its NUMBERS in trip
+// state; EVERY Up Next card, paged to in turn, and a page turn to a taller card with the mouse left
+// on the pager (dashboard-held); the cash card's stack entry; its NUMBERS in trip
 // mode, series mode and the edge state; the empty-schedule prompt), Social, Results (and its
 // Delete results block at the foot, closed and open), Settings, Cash (Live, Heatmaps), Hands (the
 // list, not the table; the Scanner tool), Calendar (and its filters),
@@ -197,14 +198,30 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     return { dx, dy };
   };
 
+  // A control nobody can see or reach is not measured: one inside an inert subtree (the Up Next
+  // carousel's slides that are not on show), or one that a clipping ancestor (overflow other than
+  // visible) hides in full — on desktop the neighbour slide sits past the NOW column's clip, under
+  // the NUMBERS pane, and was failing checks on controls no one could see.
+  const clippedAway = (el, b) => {
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      const cx = s.overflowX !== 'visible', cy = s.overflowY !== 'visible';
+      if (!cx && !cy) continue;
+      const q = a.getBoundingClientRect();
+      if ((cx && (b.right <= q.left + 0.5 || b.left >= q.right - 0.5)) || (cy && (b.bottom <= q.top + 0.5 || b.top >= q.bottom - 0.5))) return true;
+    }
+    return false;
+  };
   const sel = CONTROLS.join(',');
   const excl = EXCLUDE.join(',');
   let cands = [...document.querySelectorAll(sel)].filter(el => {
     if (el.closest(excl) || el.matches(NOT_CONTROLS.join(','))) return false;
+    if (el.closest('[inert]')) return false;
     const b = el.getBoundingClientRect();
     if (b.width < 1 || b.height < 1) return false;
     if (b.bottom <= 0 || b.top >= innerHeight || b.right <= 0 || b.left >= innerWidth) return false;
     if (!visible(el)) return false;
+    if (clippedAway(el, b)) return false;
     // Class-matched (not a <button>) wrappers named like rows and groups are not controls.
     const isNative = el.matches('button, [role="button"], [role="tab"], a.btn, input');
     if (!isNative && typeof el.className === 'string') {
@@ -524,27 +541,80 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     }
     await p.waitForTimeout(700); // the slide's transition
   };
-  if (want('dashboard-plans')) {
-    lastView = 'dashboard-plans';
-    try {
-      await fresh(); await nav('Dashboard');
-      const cards = await p.evaluate(() => [...document.querySelectorAll('.dash-carousel-slide')]
-        .map((sl, i) => (sl.querySelector('.dash-event-tag.plan') ? i : -1)).filter((i) => i >= 0));
-      if (!cards.length) throw new Error('no plans on this schedule');
-      for (const i of cards) { await pageCarousel(i); await run(`dashboard-plans (card ${i + 1})`); await fitCheck('dashboard-plans'); }
-    } catch (e) { console.log(`  (view dashboard-plans skipped: ${e.message.split('\n')[0]})`); }
-  }
-  // Every card of the carousel, paged to in turn: the track fits each one (fitCheck alone, which is
-  // cheap; the controls on the cards with plans are measured above).
+  // Every card of the carousel, paged to in turn, each one scanned in full (its badges, its plan
+  // tags, the Playing card's Scan / Update / Bag / Bust, the Bagged card's badge and undo key) and
+  // its fit measured. Only the card on show is measured: the others are inert and hidden at rest.
+  // (Until 2026-10-13 only the first card and the cards with a plan were scanned, so for an admin,
+  // whose first card is the cash session, the Playing and Bagged cards never were.)
   if (want('dashboard-carousel')) {
     lastView = 'dashboard-carousel';
     try {
       await fresh(); await nav('Dashboard');
       const n = await p.evaluate(() => document.querySelectorAll('.dashboard-view.home .dash-carousel-slide').length);
       if (n < 2) throw new Error('fewer than two cards');
-      for (let i = 0; i < n; i++) { if (i) await pageCarousel(i); await fitCheck('dashboard-carousel'); }
-      await run('dashboard-carousel (last card)');
+      for (let i = 0; i < n; i++) {
+        if (i) await pageCarousel(i);
+        await fitCheck('dashboard-carousel');
+        const kind = await p.evaluate((k) => {
+          const c = document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')[k];
+          const card = c && c.firstElementChild;
+          if (!card) return '';
+          if (card.classList.contains('hm-cash-card')) return 'cash';
+          return [...card.classList].filter((x) => x !== 'dash-event-card').join('.') || 'plain';
+        }, i);
+        await run(`dashboard-carousel (card ${i + 1}: ${kind})`);
+      }
     } catch (e) { console.log(`  (view dashboard-carousel skipped: ${e.message.split('\n')[0]})`); }
+  }
+  // A page turn to a TALLER card with the mouse still on the pager (the dots, or the counter's ›):
+  // the track grows to it (it holds still only against a shorter one), so nothing on the card is cut
+  // or covered by the pager. Reported as one row per turn: dx is the track's height less the card's
+  // (px; below −1 fails 'held'), and each control on the card must be the element under its own
+  // centre (fails 'covered' otherwise: the pager's ‹ used to sit over a hidden Update).
+  if (want('dashboard-held')) {
+    lastView = 'dashboard-held';
+    try {
+      await fresh(); await nav('Dashboard');
+      const hs = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')].map((s) => s.getBoundingClientRect().height));
+      // r off a 100r probe (this view can run alone, before any scan has measured the grid).
+      const rr = (grid && grid.r) || await p.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+        document.body.appendChild(probe);
+        const r = probe.getBoundingClientRect().height / 100;
+        probe.remove();
+        return r;
+      }) || 1;
+      const i = hs.findIndex((h, k) => k + 1 < hs.length && hs[k + 1] > h + rr / 2);
+      if (i < 0) throw new Error('no card taller than the one before it');
+      if (i) await pageCarousel(i);
+      await p.mouse.move(0, 0);
+      await p.waitForTimeout(700);
+      const dots = p.locator('.dash-upnext-dot');
+      if (await dots.count()) await dots.nth(i + 1).click({ timeout: 4000, force: overlay });
+      else await p.locator('.dash-upnext-step[aria-label="Next event"]').first().click({ timeout: 4000, force: overlay });
+      // The pointer stays on the pager: the transitions run out with it held.
+      await p.waitForTimeout(900);
+      const f = await p.evaluate(() => {
+        const t = document.querySelector('.dashboard-view.home .dash-carousel-track');
+        for (const a of t.getAnimations()) a.finish();
+        const k = Number(t.dataset.idx || 0), sl = t.children[k];
+        const card = sl.getBoundingClientRect();
+        const covered = [];
+        for (const b of sl.querySelectorAll('button')) {
+          const q = b.getBoundingClientRect();
+          if (q.width < 1 || q.height < 1 || q.bottom <= 0 || q.top >= innerHeight) continue;
+          const at = document.elementFromPoint((q.left + q.right) / 2, (q.top + q.bottom) / 2);
+          if (!at || !(b === at || b.contains(at))) covered.push((b.textContent || b.getAttribute('aria-label') || '').trim().slice(0, 24) + ' under ' + (at ? at.className || at.tagName : 'nothing'));
+        }
+        return { k, n: t.children.length, track: t.getBoundingClientRect().height, slide: card.height, covered };
+      });
+      const off = +(f.track - f.slide).toFixed(2);
+      const fail = [...(off < -1 ? ['held'] : []), ...(f.covered.length ? ['covered'] : [])];
+      all.push({ view: 'dashboard-held', el: '.dash-carousel-track (pager held)', text: `card ${f.k + 1} of ${f.n}`, w: '-', h: +(f.track / rr).toFixed(2), x: '-', y: '-',
+        dx: off, dy: null, fail, ctx: f.covered.length ? f.covered.join('; ') : `the card on show, ${+(f.slide / rr).toFixed(2)}r` });
+      await run('dashboard-held');
+    } catch (e) { console.log(`  (view dashboard-held skipped: ${e.message.split('\n')[0]})`); }
   }
   await step('dashboard-cash-entry', async () => {
     await nav('Dashboard');

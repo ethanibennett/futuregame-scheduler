@@ -164,6 +164,27 @@ export function bulletsFromUpdate(u) {
   return Number(u.is_busted) ? Math.max(1, n) : n + 1;
 }
 
+const dayBefore = (iso) => new Date(Date.parse(iso + 'T12:00:00Z') - MS_DAY).toISOString().slice(0, 10);
+
+/**
+ * Whether an event whose latest live update says it is still being played (a Start, a stack update,
+ * a re-entry: not a bust, not a bag) is in fact over: players forget the bust. It is when
+ *   - the room's clock showed it ended (clock_ended_at), or
+ *   - it was never bagged (the update's bag_count, GET /api/live-updates/active's bag history, is 0)
+ *     and its day is before yesterday: a single-day event cannot still be running then (one that
+ *     started last night can be, past midnight). A multi-day event is bagged between days, so it
+ *     is not judged by its day; nor is one whose history did not come (no bag_count).
+ *   today  YYYY-MM-DD (utils.js getToday)
+ */
+export function playingEnded(event, update, today) {
+  const e = event || {}, u = update || null;
+  if (!u || Number(u.is_busted) || Number(u.is_bagged)) return false;
+  if (e.clock_ended_at) return true;
+  const day = isoDay(e.date);
+  if (!day || !today || u.bag_count == null || Number(u.bag_count) > 0) return false;
+  return day < dayBefore(today);
+}
+
 /**
  * The scheduled events whose result is missing: the home's To log (and Results' "Awaiting
  * result" card), newest first. An event waits for a result when
@@ -172,10 +193,12 @@ export function bulletsFromUpdate(u) {
  *   - nothing is logged for it (a result with its tournament_id, or an id in opts.logged: rows the
  *     home has just logged that the next fetch has not brought back yet), and it was not marked
  *     "Didn't play" (user_schedules.not_played);
- *   - it is over as far as the app can tell: its latest live update is a bust, or it has no live
- *     update and its day is before today, or the room's clock showed it ended (clock_ended_at).
- *     A bagged event, or one still being played (latest update not a bust), waits until it busts
- *     or ends; today's events stay on Up Next until then;
+ *   - it is over as far as the app can tell: its latest live update is a bust; or it has no live
+ *     update and its day is before today, or the room's clock showed it ended (clock_ended_at); or
+ *     its latest update says it is still being played but playingEnded says it cannot be (the
+ *     room's clock ended, or a never-bagged event from before yesterday: the forgotten bust).
+ *     A bagged event, or one still being played, waits until it busts or ends; today's events
+ *     stay on Up Next until then;
  *   - its day is within opts.lookbackDays (default 30) of today, so a schedule nobody logged long
  *     ago does not sit on the home for ever;
  *   - its plan is not off (opts.plans: home-upnext.js resolveConditions). A branch whose parent
@@ -187,7 +210,8 @@ export function bulletsFromUpdate(u) {
  *                 without it, events order by whenKey
  *   opts.plans    Map(event id -> { state: 'on' | 'off' | 'pending' }), the resolved plans
  *
- * Each item: { id, event, update, busted, bullets, place, payout, field }.
+ * Each item: { id, event, update, busted, bullets, place, payout, field }. busted: the latest update
+ * is a bust (a Start that was never busted is asked about, but its place and payout are unknown).
  */
 export function awaitingResults(schedule, results, updates, opts = {}) {
   const today = opts.today || '';
@@ -215,16 +239,21 @@ export function awaitingResults(schedule, results, updates, opts = {}) {
     const day = isoDay(e.date);
     if (!day || (today && day > today) || (floor && day < floor)) continue;
     const u = latest.get(id) || null;
-    if (u && !Number(u.is_busted)) continue;          // playing, or bagged: not over yet
-    const over = u ? true : (!!today && day < today) || !!e.clock_ended_at;
+    const bust = u && Number(u.is_busted) ? u : null;
+    // Over: a bust; a Start that cannot still be running (playingEnded); no update at all and a
+    // past day or an ended clock. A bag, or a run still going, is not over yet.
+    const over = bust ? true
+      : u ? playingEnded(e, u, today)
+        : (!!today && day < today) || !!e.clock_ended_at;
     if (!over) continue;
     out.push({
-      id, event: e, update: u, busted: !!u,
+      id, event: e, update: u, busted: !!bust,
+      // A bust's count is its bullets; a run never busted was on bust_count + 1.
       bullets: bulletsFromUpdate(u),
       // What the bust's own update said, for the result form: the place (the Finish tab posts it
       // as places_left), a deal's place and payout, the field.
-      place: u ? (Number(u.deal_place) || Number(u.places_left) || null) : null,
-      payout: u ? (Number(u.deal_payout) || null) : null,
+      place: bust ? (Number(bust.deal_place) || Number(bust.places_left) || null) : null,
+      payout: bust ? (Number(bust.deal_payout) || null) : null,
       field: (u && Number(u.total_entries)) || Number(e.total_entries) || null,
     });
   }

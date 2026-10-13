@@ -36,10 +36,17 @@ export default function useBankrolls({ enabled, token, version }) {
     } catch (e) { console.error('Fetch bankroll summary:', e); }
   }, [enabled, token, call]);
 
+  // rev counts the refreshes after the first load: each follows a change to the bankroll data (a
+  // bankroll, a deposit, a cash session saved in Results > Cash), so anything that reads that data
+  // beside the summary (the home's Last result, which lists cash sessions) can key a refetch on it.
+  const [rev, setRev] = useState(0);
+  const loadedOnce = useRef(false);
   const refresh = useCallback(async () => {
     if (!enabled || !token) return;
     try { setBankrolls((await call('GET', '')).bankrolls || []); } catch (e) { console.error('Fetch bankrolls:', e); }
     await refreshSummary();
+    if (loadedOnce.current) setRev((n) => n + 1);
+    loadedOnce.current = true;
   }, [enabled, token, call, refreshSummary]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -74,6 +81,7 @@ export default function useBankrolls({ enabled, token, version }) {
     enabled: !!enabled,
     bankrolls,
     summary,
+    rev,
     call,
     visible,
     selected: effective,

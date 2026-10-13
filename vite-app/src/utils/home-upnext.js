@@ -22,12 +22,19 @@
 //   bagged   the latest update is a bag (and nothing has been logged)
 //   playing  any other update: still in it
 //   unknown  nothing yet
+// Beside the state, whether the parent was EVER bagged (outcome.bagged): /active sends each event's
+// bag history with its latest update (bag_count, every bag posted for it), because the latest
+// update alone forgets a bag as soon as Day 2 brings a bust or a result. true: bagged at some
+// point; false: the history is known and holds no bag; null: unknown (no update, or a reply with no
+// bag_count, from before the field existed).
 // Each condition then reads on, off or pending (still waiting on its parent):
-//   IF_BUST      over -> on ("On: busted #12", "On: cashed #12": out of it either way);
-//                bagged -> off ("Off: bagged #12")
-//   IF_BAG       bagged -> on. Over: a bust within DAY_ONE_HOURS of the parent's start was on
-//                Day 1, so it never bagged -> off ("Off: busted #14"); a bust after that came on
-//                a later day, so Day 1 was bagged -> on. A result with no bust update says
+//   IF_BUST      bagged at any point -> off ("Off: bagged #12": the flight was bagged, so the
+//                branch was off that day, whatever Day 2 then brought); otherwise over -> on
+//                ("On: busted #12", "On: cashed #12": out of it either way)
+//   IF_BAG       bagged at any point -> on. Over and never bagged -> off ("Off: busted #14").
+//                Only when the history is unknown does the time of the bust decide: within
+//                DAY_ONE_HOURS of the parent's start it was on Day 1 (off), later than that it
+//                came on a later day (on). A result with no bust update and no history says
 //                nothing about when, so the condition stays pending rather than guess.
 //   IF_WIN_SEAT  over -> cashed: on ("On: won seat #23"), else off ("Off: no seat #23")
 //   IF_NO_SEAT   the reverse
@@ -36,8 +43,24 @@
 // event dims and sorts last on Up Next (offLast); an on event sorts as a plain one.
 import { eventNo, isoDay } from './home.js';
 
-/** A Day 1 runs well under this many hours from its start; a bust later than that was on Day 2+. */
+/**
+ * A Day 1 runs well under this many hours from its start; a bust later than that was on Day 2+.
+ * Only a fallback, for an update that carries no bag history (see wasBagged).
+ */
 export const DAY_ONE_HOURS = 18;
+
+/**
+ * Whether an event was ever bagged, from its latest live update (GET /api/live-updates/active):
+ * its bag_count (every bag update posted for it) when the reply carries one, else only what the
+ * update itself says (a bag). true | false | null (unknown: no update, or no history to read).
+ */
+export function wasBagged(update) {
+  const u = update || null;
+  if (!u) return null;
+  if (Number(u.is_bagged)) return true;
+  if (u.bag_count != null) return Number(u.bag_count) > 0;
+  return null;
+}
 
 const KNOWN = new Set(['IF_BUST', 'IF_BAG', 'IF_WIN_SEAT', 'IF_NO_SEAT', 'PROFIT_THRESHOLD']);
 const WAITING = { IF_BUST: 'If bust', IF_BAG: 'If bag', IF_WIN_SEAT: 'If seat', IF_NO_SEAT: 'If no seat' };
@@ -76,17 +99,21 @@ function latestUpdates(updates) {
   return latest;
 }
 
-/** What became of an event, from its result and its latest live update (see the header). */
+/**
+ * What became of an event, from its result and its latest live update (see the header):
+ * { state: 'over' | 'bagged' | 'playing' | null, cashed, bustAt, bagged } (bagged: wasBagged).
+ */
 export function parentOutcome(result, update) {
   const u = update || null;
   const bust = u && Number(u.is_busted) ? u : null;
+  const bagged = wasBagged(u);
   if (result) {
-    return { state: 'over', cashed: !!Number(result.cashed), bustAt: bust ? serverTime(bust.created_at) : null };
+    return { state: 'over', cashed: !!Number(result.cashed), bustAt: bust ? serverTime(bust.created_at) : null, bagged };
   }
-  if (bust) return { state: 'over', cashed: Number(bust.deal_payout) > 0, bustAt: serverTime(bust.created_at) };
-  if (u && Number(u.is_bagged)) return { state: 'bagged', cashed: null, bustAt: null };
-  if (u) return { state: 'playing', cashed: null, bustAt: null };
-  return { state: null, cashed: null, bustAt: null };
+  if (bust) return { state: 'over', cashed: Number(bust.deal_payout) > 0, bustAt: serverTime(bust.created_at), bagged };
+  if (u && Number(u.is_bagged)) return { state: 'bagged', cashed: null, bustAt: null, bagged: true };
+  if (u) return { state: 'playing', cashed: null, bustAt: null, bagged };
+  return { state: null, cashed: null, bustAt: null, bagged: null };
 }
 
 // How a condition names its parent: '#12'; a parent with no number by its name, shortened; '#?'.
@@ -108,14 +135,18 @@ function refFor(row) {
 export function resolveCondition(c, outcome, parentStart = null) {
   const o = outcome || { state: null };
   const over = o.state === 'over';
+  // Bagged at some point (the history), or bagged now (an outcome built without one).
+  const bagged = o.bagged === true || o.state === 'bagged';
   switch (c && c.type) {
     case 'IF_BUST':
+      if (bagged) return { state: 'off', verb: 'bagged' };
       if (over) return { state: 'on', verb: o.cashed ? 'cashed' : 'busted' };
-      if (o.state === 'bagged') return { state: 'off', verb: 'bagged' };
       return { state: 'pending' };
     case 'IF_BAG':
-      if (o.state === 'bagged') return { state: 'on', verb: 'bagged' };
-      if (over && o.bustAt != null && Number.isFinite(parentStart)) {
+      if (bagged) return { state: 'on', verb: 'bagged' };
+      if (over && o.bagged === false) return { state: 'off', verb: o.cashed ? 'cashed' : 'busted' };
+      // No history to read (an older reply): when the bust came is the only clue.
+      if (over && o.bagged == null && o.bustAt != null && Number.isFinite(parentStart)) {
         const hours = (o.bustAt - parentStart) / 36e5;
         if (hours > DAY_ONE_HOURS) return { state: 'on', verb: 'bagged' };
         return { state: 'off', verb: o.cashed ? 'cashed' : 'busted' };
