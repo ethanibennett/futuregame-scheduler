@@ -17,6 +17,7 @@ import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind } from '../hooks/useLiveCashSession.js';
+import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 // BETA cash sessions, admins only: lazy like the tax report.
 const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
@@ -303,6 +304,19 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const bankrollBalances = useMemo(() => balancesFromSummary(bk.summary), [bk.summary]);
   const formBankrolls = bk.enabled && bk.bankrolls.length ? bk.bankrolls : null;
   const resultsKind = useResultsKind();
+  // "Edit in Results" from the bankroll dashboard's Sessions tab: open that result's edit form and
+  // bring it into view (hooks/useResultsFocus.js).
+  const focusId = useResultsFocus('tournaments');
+  useEffect(() => {
+    if (focusId == null || resultsKind !== 'tournaments') return undefined;
+    if (!allTrackingData.some((e) => e.id === focusId)) return undefined;   // not loaded yet
+    clearResultsFocus();
+    setShowAddForm(false);
+    setPendingFormId(null);
+    setEditingId(focusId);
+    const raf = requestAnimationFrame(() => revealInScroller(document.querySelector(`[data-entry-id="${focusId}"]`)));
+    return () => cancelAnimationFrame(raf);
+  }, [focusId, resultsKind, allTrackingData]);
   const newEntryBankroll = { bankrollId: defaultBankrollFor(bk.selected, bk.bankrolls) };
 
   const onCurrencyChange = useCallback((c) => {
@@ -369,6 +383,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {showBankrolls && (
         <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
       )}
+      {/* The bankroll dashboard (beta): mounted beside the strip whose button opens it, so it opens
+          from either half of the tab (it sat in the Tournaments half, and Dashboard did nothing on Cash). */}
+      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} />}
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
       {isAdmin && resultsKind === 'cash' ? (
@@ -457,7 +474,6 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
-      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} />}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
 
       {/* Expenses & income BETA: app admins only; follows the bankroll switcher's selection. */}
@@ -527,8 +543,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         />
       ) : (
         trackingData.map(entry => (
+          <div key={entry.id} data-entry-id={entry.id}>
           <TrackingEntryRow
-            key={entry.id}
             entry={entry}
             onEdit={() => setEditingId(entry.id)}
             onDelete={() => onDelete(entry.id)}
@@ -539,6 +555,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             exchangeRates={exchangeRates}
             bankrolls={formBankrolls}
           />
+          </div>
         ))
       )}
 

@@ -31,6 +31,7 @@ import {
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
+import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 import { useTick } from './CashLive.jsx';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
@@ -532,6 +533,18 @@ export default function CashSessionsView({ token, bk }) {
     return () => { on = false; };
   }, [token]);
   const rooms = useMemo(() => roomSuggestions(venues, sessions), [venues, sessions]);
+
+  // "Edit in Results" from the bankroll dashboard's Sessions tab: that session's edit screen, in view
+  // (hooks/useResultsFocus.js). Taken once the session is in the list.
+  const focusId = useResultsFocus('cash');
+  useEffect(() => {
+    if (focusId == null || !sessions.some((s) => s.id === focusId && !s.live)) return undefined;
+    clearResultsFocus();
+    setScreen({ edit: focusId });
+    setConfirmDelete(false);
+    const raf = requestAnimationFrame(() => revealInScroller(document.querySelector('.cs-view'), 0));
+    return () => cancelAnimationFrame(raf);
+  }, [focusId, sessions]);
 
   const ended = sessions.filter((s) => !s.live);
   const view = screen || (live ? 'live' : 'list');
