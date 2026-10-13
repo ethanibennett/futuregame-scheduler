@@ -1227,6 +1227,30 @@ function finalize(c) {
   const notes = [];
   const run = async (view) => {
     await p.waitForTimeout(300);
+    // Measure the view at rest. The scan reads boxes, then the pixel pass paints and reads ink: a
+    // move still running between the two (the desktop event block's 320 ms open, pushing My
+    // Schedule down 53r) pairs a box with another element's ink, a label "off centre" by tens of
+    // px. Under load (WebKit at 3x, a frame every ~700 ms) the waits above can end with that open
+    // not yet started (pending at t=0, 3 of 5 tries), so every finite animation and transition
+    // still running is waited out, at most 3 s. Not one on an element with nothing inside it (a
+    // late-reg fill's 1 s width tick restarts every second and holds no label), nor an infinite one.
+    await p.evaluate(async () => {
+      const t0 = performance.now();
+      const moving = () => document.getAnimations().filter((a) => {
+        const el = a.effect && a.effect.target;
+        if (a.playState !== 'running' || !el || !Number.isFinite(a.effect.getComputedTiming().endTime)) return false;
+        return el.childElementCount > 0 || !!(el.textContent || '').trim();
+      });
+      let waited = false;
+      for (let m = moving(); m.length && performance.now() - t0 < 3000; m = moving()) {
+        waited = true;
+        await Promise.race([
+          Promise.all(m.map(a => a.finished.catch(() => {}))),
+          new Promise(r => setTimeout(r, Math.max(0, 3000 - (performance.now() - t0)))),
+        ]);
+      }
+      if (waited) await new Promise(r => requestAnimationFrame(r));
+    }).catch(() => {});
     // A scrollIntoView can scroll an overflow:hidden ancestor of the whole app (the .app-shell),
     // lifting the top bar out of the viewport. Put it back, and say so: it is a bug of its own.
     const lifted = await p.evaluate(() => {
