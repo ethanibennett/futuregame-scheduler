@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { MINUS } from '../utils/utils.js';
 import {
   RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, profitSeries, drawdowns, peakOf, periodTable,
   overviewStats, recentResults,
@@ -13,8 +14,9 @@ import BankrollOverviewTables from './BankrollOverviewTables.jsx';
  *   - a hero: the balance now, and the profit over the chosen range, coloured by its sign
  *   - the graph, front and centre: cumulative profit (the "chip graph") or the balance, with a
  *     range picker under it (1M / 3M / YTD / 1Y / All)
- *   - the figures as collapsible tables, columns Cash | Tournaments | Total (Summary, Sessions,
- *     Games, Rooms, Bankroll, By month — BankrollOverviewTables.jsx)
+ *   - statistics as plain label | value rows under group headings (Results, Volume, Bankroll),
+ *     each figure qualified where it only means something for one game type (ROI and ITM for
+ *     tournaments, hourly and winning sessions for cash)
  *   - the latest sessions, each led by its signed profit, with links to the full lists.
  * Everything comes from the combined ledger (GET /api/bankrolls/ledger, every source: tournaments,
  * cash sessions, expenses and income, deposits) plus the risk-of-ruin estimate (GET /risk).
@@ -27,6 +29,8 @@ const store = {
 };
 const RANGE_KEYS = new Set(RANGES.map((r) => r[0]));
 const tone = (v) => (v > 0 ? ' an-pos' : v < 0 ? ' an-neg' : '');
+const pct = (x) => (x === 0 ? '0%' : `${(x * 100).toFixed(Math.abs(x) < 0.1 ? 1 : 0)}%`);
+const signedPct = (x) => (x > 0 ? '+' : x < 0 ? MINUS : '') + pct(Math.abs(x));
 const hrs = (h) => `${h >= 100 ? Math.round(h).toLocaleString() : h.toFixed(1)} h`;
 const count = (n) => Math.round(n).toLocaleString();
 
@@ -41,6 +45,25 @@ export function Segmented({ options, value, onChange, label, className = '', btn
         </button>
       ))}
     </div>
+  );
+}
+
+// One statistic: label (and a muted qualifier) left, value right, on a 4r row.
+function Row({ label, qual, value, toneOf, sub, title }) {
+  return (
+    <div className={'an-row is-body bd-cols-kv' + (sub ? ' is-sub' : '')}>
+      <dt className="an-cell an-td an-clip" title={title}>{label}{qual && <span className="bd-qual"> {qual}</span>}</dt>
+      <dd className={'an-cell an-td an-num an-clip' + (toneOf != null ? tone(toneOf) : '')}>{value}</dd>
+    </div>
+  );
+}
+
+function Group({ id, title, children }) {
+  return (
+    <section className="bd-section" aria-labelledby={id}>
+      <h3 className="an-cell an-sec" id={id}>{title}</h3>
+      <dl className="bd-kv">{children}</dl>
+    </section>
   );
 }
 
@@ -79,6 +102,17 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
   const rangeLabel = (RANGES.find((r) => r[0] === range) || [])[1];
   const open = (kind) => { if (bk.setSelected) bk.setSelected(bkKey); setResultsKind(kind); onClose(); };
 
+  const rorText = (() => {
+    if (!risk) return ['…', null];
+    if (risk.status === 'ok') {
+      const x = risk.ror;
+      return [x >= 0.995 ? '100%' : x < 0.001 ? '<0.1%' : pct(x), x];
+    }
+    if (risk.status === 'insufficient') return ['—', null];
+    return ['—', null];
+  })();
+  const rorQual = risk && risk.status === 'insufficient' ? `tournaments, needs ${risk.minEntries}` : 'tournaments';
+
   return (
     <>
       {/* Hero: the balance now | the range's profit. */}
@@ -105,7 +139,8 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
 
       {view.win.length === 0 && <p className="an-p bd-after">Nothing in the ledger for {noun}.</p>}
 
-      {/* The figures: collapsible tables (Summary, Sessions, Games, Rooms, Bankroll, By month). */}
+      {/* The figures: collapsible Cash | Tournaments | Total tables (Summary, Sessions, Games, Rooms,
+          Bankroll, By month / By year) — BankrollOverviewTables.jsx. */}
       <BankrollOverviewTables d={d} risk={risk} range={range} today={today} bk={bk} bkKey={bkKey} b={b}
         currency={currency} fmtDate={fmtDate} />
 
@@ -137,7 +172,6 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
           <button type="button" className="bk-btn bd-w17" onClick={() => open('cash')}><span>Cash sessions</span></button>
         </div>
       </section>
-
     </>
   );
 }

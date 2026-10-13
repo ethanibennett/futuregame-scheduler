@@ -28,13 +28,15 @@
    ================================================================== */
 
 /* Column identity, shared with the graph (BankrollChart): the graph work defines the same three
-   tokens in styles.css — whichever lands second, the lead reconciles to one definition. */
-:root {
+   tokens in styles.css (with measured per-theme values). These are only a fallback until it lands:
+   :where() gives them zero specificity, so styles.css's :root / [data-theme] definitions win
+   whatever order the sheets load in, and the lead can delete this block at merge. */
+:where(:root) {
   --series-total: var(--text);
   --series-tourn: var(--brand);
   --series-cash: #a78bfa;
 }
-:is([data-theme="light"], [data-theme="cloudy"]) { --series-cash: #6d28d9; }
+:where([data-theme="light"], [data-theme="cloudy"]) { --series-cash: #6d28d9; }
 
 .ovt {
   margin-top: calc(var(--subrow) * 3);
