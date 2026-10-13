@@ -8,6 +8,7 @@ import {
   periodWindow, periodElapsed, balanceSeries, drawdowns, periodTable, bySource, within, goalProgress,
   ledgerToCsv, fmtRule, sourceLabel,
   RANGES, rangeWindow, profitSeries, peakOf, overviewStats, recentResults,
+  SERIES_KEYS, gameSeries, seriesLine, parseSeriesPref, niceTicks, compactMoney,
 } from '../bankroll-ledger.js';
 import { parseCsv, parseNumber, parseDate, detectPreset, applyPreset, guessMapping, applyMapping } from '../bankroll-csv.js';
 import { balancesFromSummary, BANKROLL_ALL, BANKROLL_MAIN } from '../bankrolls.js';
@@ -243,4 +244,181 @@ test('overviewStats: an empty range has null ratios, not zeros', () => {
 test('recentResults: newest game entries first, deposits and expenses skipped', () => {
   assert.deepEqual(recentResults(rows, 4).map((e) => e.date), ['2026-01-07', '2026-01-06', '2026-01-05', '2026-01-04']);
   assert.equal(recentResults(rows, 50).length, 6);
+});
+
+// ── The trend graph: Total / Tournaments / Cash on one date axis ─────────────────────────
+const KEYS4 = ['total', 'tourn', 'cash', 'other'];
+const sumOk = (r) => Math.round((r.tourn + r.cash + r.other) * 100) === Math.round(r.total * 100);
+
+test('gameSeries: rows on the union of dates, from 0 at the start, tourn + cash + other == total', () => {
+  const g = gameSeries(rows, { from: '2026-01-01' });
+  assert.deepEqual(g[0], { date: '2026-01-01', total: 0, tourn: 0, cash: 0, other: 0, start: true });
+  // One row per day with a result; the deposit (1 Jan) and the withdrawal (9 Jan) make none.
+  assert.deepEqual(g.map((r) => r.date), ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05',
+    '2026-01-06', '2026-01-07', '2026-01-08']);
+  for (const r of g) assert.ok(sumOk(r), `identity on ${r.date}`);
+  const last = g[g.length - 1];
+  const s = overviewStats(rows);
+  assert.deepEqual([last.total, last.tourn, last.cash, last.other],
+    [s.results, s.bySource.tournaments, s.bySource.cash, s.bySource.other], 'the ends are the Results rows');
+  // A series holds between its own entries: cash is 0 until 5 Jan, tournaments flat after 4 Jan.
+  assert.deepEqual(g.map((r) => r.cash), [0, 0, 0, 0, 400, 250, 300, 300]);
+  assert.deepEqual(g.map((r) => r.tourn), [0, -200, 1100, 975, 975, 975, 975, 975]);
+});
+
+test('gameSeries: same-day entries merge, a start on an entry day keeps its 0 row, cents add exactly', () => {
+  const eur = [
+    E('2026-02-01', 'tournaments', 'tournament', 153.53, 0),
+    E('2026-02-01', 'cash-sessions', 'cash_session', -162.46, 0),
+    E('2026-02-01', 'transactions', 'income', 0.1, 0),
+    E('2026-02-02', 'transactions', 'income', 0.2, 0),
+    E('2026-02-02', 'tournaments', 'tournament', -562.36, 0),
+  ];
+  const g = gameSeries(eur, { from: '2026-02-01' });
+  assert.equal(g.length, 3);
+  assert.deepEqual(g[0], { date: '2026-02-01', total: 0, tourn: 0, cash: 0, other: 0, start: true });
+  assert.deepEqual(g[1], { date: '2026-02-01', total: -8.83, tourn: 153.53, cash: -162.46, other: 0.1 });
+  assert.deepEqual(g[2], { date: '2026-02-02', total: -570.99, tourn: -408.83, cash: -162.46, other: 0.3 });
+  for (const r of g) assert.ok(sumOk(r));
+  assert.notEqual(0.1 + 0.2, 0.3, 'which is why the sums run in cents');
+});
+
+test('gameSeries: empty, a single entry, a negative-only series', () => {
+  assert.deepEqual(gameSeries([], { from: '2026-03-01' }), [{ date: '2026-03-01', total: 0, tourn: 0, cash: 0, other: 0, start: true }]);
+  assert.equal(gameSeries([], {})[0].date, null);
+  assert.equal(gameSeries([E('2026-01-01', 'adjustments', 'deposit', 500, 0)], { from: '2026-01-01' }).length, 1, 'money moved is no result');
+  const one = gameSeries([C('2026-03-04', 75, 2)], { from: '2026-03-01' });
+  assert.deepEqual(one.map((r) => [r.date, r.total, r.tourn, r.cash]), [['2026-03-01', 0, 0, 0], ['2026-03-04', 75, 0, 75]]);
+  // No from: the first row is dated at the first result.
+  assert.equal(gameSeries([C('2026-03-04', 75, 2)])[0].date, '2026-03-04');
+  const neg = gameSeries([T('2026-04-01', -100, 100, 0), T('2026-04-02', -50, 50, 0), C('2026-04-03', 20, 1)], { from: '2026-04-01' });
+  assert.deepEqual(neg.map((r) => r.tourn), [0, -100, -150, -150]);
+  assert.ok(neg.every((r) => r.tourn <= 0));
+  assert.ok(neg.every(sumOk));
+});
+
+test('gameSeries over the 1M and YTD windows: each series restarts at 0 on the range\'s first day', () => {
+  const led = [
+    T('2025-12-20', 500, 100, 600),
+    C('2026-01-10', -80, 3),
+    T('2026-09-01', -300, 300, 0),
+    C('2026-09-20', 120, 4),
+    E('2026-09-25', 'transactions', 'expense', -40, 0),
+    T('2026-10-02', 1000, 200, 1200),
+  ];
+  const today = '2026-10-11';
+  for (const [range, want] of [['1m', { total: 1080, tourn: 1000, cash: 120, other: -40 }],
+    ['ytd', { total: 700, tourn: 700, cash: 40, other: -40 }]]) {
+    const w = rangeWindow(range, today);
+    const win = within(led, w);
+    const g = gameSeries(win, { from: w.from });
+    assert.equal(g[0].date, w.from);
+    for (const k of KEYS4) assert.equal(g[0][k], 0);
+    assert.ok(g.every(sumOk));
+    const last = g[g.length - 1];
+    assert.deepEqual({ total: last.total, tourn: last.tourn, cash: last.cash, other: last.other }, want, range);
+    assert.equal(last.total, overviewStats(win).results, `${range}: Total ends at the hero`);
+    // The Total line is profitSeries (the hero's own series), point for point.
+    assert.deepEqual(seriesLine(g, 'total').map((p) => [p.date, p.value]), profitSeries(win, { from: w.from }).map((p) => [p.date, p.value]));
+  }
+});
+
+test('seriesLine: the start, then only the rows where that series moved', () => {
+  const g = gameSeries(rows, { from: '2026-01-01' });
+  assert.deepEqual(seriesLine(g, 'cash').map((p) => [p.date, p.value]),
+    [['2026-01-01', 0], ['2026-01-05', 400], ['2026-01-06', 250], ['2026-01-07', 300]]);
+  assert.deepEqual(seriesLine(g, 'tourn').map((p) => p.value), [0, -200, 1100, 975]);
+  assert.equal(seriesLine(gameSeries([], { from: '2026-01-01' }), 'cash').length, 1);
+});
+
+test('parseSeriesPref: known keys in order, junk and empty fall back to all three', () => {
+  assert.deepEqual(SERIES_KEYS, ['total', 'tourn', 'cash']);
+  assert.deepEqual(parseSeriesPref('cash,total'), ['total', 'cash']);
+  assert.deepEqual(parseSeriesPref('cash,cash'), ['cash']);
+  for (const bad of [null, undefined, '', '[]', 'junk', ',,', 'other']) assert.deepEqual(parseSeriesPref(bad), SERIES_KEYS, String(bad));
+  assert.deepEqual(parseSeriesPref(' tourn , junk '), ['tourn']);
+});
+
+// Every gridline must land on an r line of the 24r plot: n steps, n dividing 24.
+const checkTicks = (lo, hi, t, zero = true) => {
+  assert.ok([2, 3, 4].includes(t.ticks.length - 1), `${lo}..${hi}: ${t.ticks.length - 1} steps`);
+  assert.ok(t.lo <= Math.min(lo, zero ? 0 : lo) && t.hi >= Math.max(hi, zero ? 0 : hi), `${lo}..${hi} inside ${t.lo}..${t.hi}`);
+  const e = Math.floor(Math.log10(t.step));
+  const mant = Number((t.step / 10 ** e).toPrecision(6));
+  assert.ok([1, 2, 2.5, 5].includes(mant), `nice step ${t.step}`);
+  t.ticks.forEach((v, i) => assert.ok(Math.abs(v - (t.lo + i * t.step)) < t.step * 1e-9, `tick ${i} = ${v}`));
+  if (zero) assert.ok(t.ticks.includes(0), `${lo}..${hi}: 0 is a gridline`);
+};
+
+test('niceTicks: nice steps, 3 to 5 gridlines, the extent rounded out to them, 0 among them', () => {
+  assert.deepEqual(niceTicks(-7930, 0), { lo: -8000, hi: 0, step: 2000, ticks: [-8000, -6000, -4000, -2000, 0] });
+  // A positive-only Cash and a negative-only Total drawn together: both inside the gridlines.
+  const both = niceTicks(-7930, 1600);
+  checkTicks(-7930, 1600, both);
+  assert.deepEqual(both.ticks, [-10000, -5000, 0, 5000]);
+  checkTicks(-16216, 2574, niceTicks(-16216, 2574));
+  checkTicks(0, 5287, niceTicks(0, 5287));
+  assert.deepEqual(niceTicks(0, 1234).ticks, [0, 500, 1000, 1500]);
+  // Negative-only: 0 on top.
+  const neg = niceTicks(-1550, -10);
+  assert.equal(neg.hi, 0);
+  checkTicks(-1550, -10, neg);
+  // Cents (an EUR bankroll's small range) stay tidy: no 0.30000000000000004.
+  const small = niceTicks(-0.7, 0.35);
+  checkTicks(-0.7, 0.35, small);
+  assert.ok(small.ticks.every((v) => String(v).length <= 5), small.ticks.join(','));
+});
+
+test('niceTicks: flat, single-point and junk extents never loop or return NaN', () => {
+  assert.deepEqual(niceTicks(0, 0), { lo: 0, hi: 0, step: 0, ticks: [0] });
+  assert.deepEqual(niceTicks(5, 5, { zero: false }), { lo: 5, hi: 5, step: 0, ticks: [5] });
+  checkTicks(0, 250, niceTicks(250, 250)); // one point at 250, with 0 taken in
+  assert.deepEqual(niceTicks(NaN, NaN), { lo: 0, hi: 0, step: 0, ticks: [0] });
+  assert.deepEqual(niceTicks(Infinity, -Infinity), { lo: 0, hi: 0, step: 0, ticks: [0] });
+  checkTicks(-300, 0, niceTicks(-Infinity, -300));
+  checkTicks(-200, 900, niceTicks(900, -200)); // ends swapped
+});
+
+test('niceTicks: the balance graph (zero off) keeps 0 out and still lands on whole steps', () => {
+  const b = niceTicks(40120, 41257, { zero: false });
+  checkTicks(40120, 41257, b, false);
+  assert.ok(b.lo > 0, 'no 0 forced into a balance scale');
+  assert.deepEqual(b.ticks, [40000, 40500, 41000, 41500]);
+});
+
+test('niceTicks: the tightest fit, over a sweep of extents', () => {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const steps = [1, 2, 2.5, 5].flatMap((m) => [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7].map((p) => m * 10 ** p));
+  for (let i = 0; i < 2000; i++) {
+    const mag = 10 ** Math.floor(rnd() * 7 - 1);
+    const lo = rnd() < 0.3 ? 0 : -rnd() * mag, hi = rnd() < 0.3 ? 0 : rnd() * mag;
+    if (hi === lo) continue;
+    const t = niceTicks(lo, hi);
+    checkTicks(lo, hi, t);
+    // No smaller nice step would have fitted in 4 steps.
+    for (const s of steps.filter((x) => x < t.step * 0.999)) {
+      const need = Math.ceil(Math.max(hi, 0) / s - 1e-9) - Math.floor(Math.min(lo, 0) / s + 1e-9);
+      assert.ok(need > 4, `${lo}..${hi}: step ${s} would fit (${need}) under ${t.step}`);
+    }
+  }
+});
+
+test('compactMoney: the axis labels, in each currency\'s own form', () => {
+  const USD = { symbol: '$', pos: 'pre' }, EUR = { symbol: '€', pos: 'pre' }, SEK = { symbol: 'kr', pos: 'suf' };
+  const JPY = { symbol: '¥', pos: 'pre' }, CHF = { symbol: 'CHF', pos: 'pre' };
+  assert.equal(compactMoney(5000, USD), '$5k');
+  assert.equal(compactMoney(-2000, USD), '−$2k');
+  assert.equal(compactMoney(2500, USD), '$2.5k');
+  assert.equal(compactMoney(-1250, EUR), '−€1.25k');
+  assert.equal(compactMoney(750, USD), '$750');
+  assert.equal(compactMoney(0, USD), '$0');
+  assert.equal(compactMoney(-0, USD), '$0');
+  assert.equal(compactMoney(5000, SEK), '5k kr');
+  assert.equal(compactMoney(-20000, SEK), '−20k kr');
+  assert.equal(compactMoney(2500000, JPY), '¥2.5M');
+  assert.equal(compactMoney(-1500000, JPY), '−¥1.5M');
+  assert.equal(compactMoney(15000, CHF), 'CHF15k');
+  assert.equal(compactMoney(0.5, EUR), '€0.5');
+  assert.equal(compactMoney(1000), '$1k', 'USD when no currency is given');
 });

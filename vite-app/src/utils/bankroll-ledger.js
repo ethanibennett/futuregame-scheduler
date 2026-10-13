@@ -176,6 +176,105 @@ export function profitSeries(entries, { from = null } = {}) {
   return pts;
 }
 
+// ── The trend graph's lines (Overview, Profit mode) ───────────────────────────────────────
+// Three lines over one date axis, as a poker tracker's trend chart draws them: Total (every
+// result: the hero's profit), Tournaments and Cash. Whatever is neither (expenses & income, any
+// future source) is `other`: inside Total, without a line of its own.
+export const SERIES = [['total', 'Total'], ['tourn', 'Tournaments'], ['cash', 'Cash']];
+export const SERIES_KEYS = SERIES.map((s) => s[0]);
+const seriesOf = (e) => (e.source === 'tournaments' ? 'tourn' : e.source === 'cash-sessions' ? 'cash' : 'other');
+
+/**
+ * Cumulative results per game type, on one date axis. The first row is the window's start, every
+ * series at 0; then one row per day that had a result, each series at its running sum at that
+ * day's close. Total is every non-move entry (the rule overviewStats.results uses), tourn the
+ * 'tournaments' source, cash 'cash-sessions', other the rest, so tourn + cash + other === total on
+ * every row. Sums run in integer cents (amount_display is to the cent), so that identity is exact.
+ * Returns [{ date, total, tourn, cash, other }] (the first row also has start: true).
+ */
+export function gameSeries(entries, { from = null } = {}) {
+  const res = entries.filter((e) => !isMove(e));
+  const rows = [{ date: from || (res[0] ? res[0].date : null), total: 0, tourn: 0, cash: 0, other: 0, start: true }];
+  const c = { total: 0, tourn: 0, cash: 0, other: 0 };
+  for (const e of res) {
+    const a = Math.round((Number(e.amount_display) || 0) * 100);
+    c.total += a;
+    c[seriesOf(e)] += a;
+    let row = rows[rows.length - 1];
+    if (row.start || row.date !== e.date) { row = { date: e.date }; rows.push(row); }
+    for (const k of ['total', 'tourn', 'cash', 'other']) row[k] = c[k] / 100;
+  }
+  return rows;
+}
+
+/** One series of gameSeries rows as chart points: the start, then every row where it moved. */
+export function seriesLine(rows, key) {
+  const pts = [];
+  rows.forEach((r, i) => {
+    if (i === 0) pts.push({ date: r.date, value: r[key], start: true });
+    else if (r[key] !== rows[i - 1][key]) pts.push({ date: r.date, value: r[key] });
+  });
+  return pts;
+}
+
+/** The stored choice of lines ('total,tourn,cash'): known keys only, in order; never empty. */
+export function parseSeriesPref(v) {
+  const got = new Set(String(v == null ? '' : v).split(',').map((s) => s.trim()));
+  const keys = SERIES_KEYS.filter((k) => got.has(k));
+  return keys.length ? keys : [...SERIES_KEYS];
+}
+
+/**
+ * The graph's gridlines: a "nice" step (1, 2, 2.5 or 5 × 10^n) and the extent rounded OUT to it,
+ * in exactly n steps where n is one of `counts`. The chart's plot is 24r tall and each count
+ * divides 24, so every gridline lands on an r line. With `zero` (the profit graph) the extent
+ * takes in 0, and 0 is a tick. The smallest step that fits wins (the tightest scale).
+ * A flat extent (span 0) has one tick and step 0 — the chart draws it across the middle.
+ * Returns { lo, hi, step, ticks } with ticks from lo to hi.
+ */
+export function niceTicks(lo, hi, { counts = [2, 3, 4], zero = true } = {}) {
+  lo = Number(lo); hi = Number(hi);
+  if (!Number.isFinite(lo) && !Number.isFinite(hi)) { lo = 0; hi = 0; }
+  else if (!Number.isFinite(lo)) lo = hi;
+  else if (!Number.isFinite(hi)) hi = lo;
+  if (lo > hi) [lo, hi] = [hi, lo];
+  if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  if (!(hi > lo)) return { lo, hi, step: 0, ticks: [lo] };
+  const ns = [...counts].sort((a, b) => a - b);
+  const maxN = ns[ns.length - 1];
+  const tidy = (v) => Number(v.toPrecision(12)) || 0; // and -0 to 0
+  const p0 = Math.floor(Math.log10((hi - lo) / maxN)) - 1;
+  for (let p = p0; p < p0 + 40; p++) {
+    for (const m of [1, 2, 2.5, 5]) {
+      const step = m * 10 ** p;
+      let a = Math.floor(lo / step + 1e-9), b = Math.ceil(hi / step - 1e-9);
+      const n = ns.find((c) => c >= Math.max(1, b - a));
+      if (n == null) continue;
+      // Any spare steps go on the side the data lean to (above for a rise, below for a fall).
+      const spare = n - (b - a);
+      if (Math.abs(hi) >= Math.abs(lo)) b += spare; else a -= spare;
+      const ticks = [];
+      for (let i = a; i <= b; i++) ticks.push(tidy(i * step));
+      return { lo: ticks[0], hi: ticks[ticks.length - 1], step: tidy(step), ticks };
+    }
+  }
+  return { lo, hi, step: 0, ticks: [lo] };
+}
+
+const MINUS = '−'; // as utils.js MINUS: plus-width, so signed labels align
+const trimNum = (x) => String(Number(x.toFixed(2)));
+/**
+ * An axis label: compact money in a currency's own form — { symbol, pos } as utils.js
+ * CURRENCY_CONFIG — "$5k", "−$2.5k", "¥1.2M", "5k kr", "−C$750". Thousands as k, millions as M,
+ * up to two decimals and no trailing zeros; the minus sign is U+2212.
+ */
+export function compactMoney(v, { symbol = '$', pos = 'pre' } = {}) {
+  const n = Number(v) || 0, a = Math.abs(n);
+  const num = a >= 1e6 ? trimNum(a / 1e6) + 'M' : a >= 1e3 ? trimNum(a / 1e3) + 'k' : trimNum(a);
+  const sign = n < 0 && num !== '0' ? MINUS : '';
+  return pos === 'suf' ? `${sign}${num} ${symbol}` : `${sign}${symbol}${num}`;
+}
+
 /** The highest point of a series, and the first day it was reached. */
 export function peakOf(points) {
   let best = null;

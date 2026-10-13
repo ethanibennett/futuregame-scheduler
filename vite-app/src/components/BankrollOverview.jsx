@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { MINUS } from '../utils/utils.js';
+import { MINUS, CURRENCY_CONFIG } from '../utils/utils.js';
 import {
-  RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, profitSeries, drawdowns, peakOf, periodTable,
-  overviewStats, recentResults,
+  RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, drawdowns, peakOf, periodTable,
+  overviewStats, recentResults, SERIES, SERIES_KEYS, gameSeries, seriesLine, parseSeriesPref, compactMoney,
 } from '../utils/bankroll-ledger.js';
 import { setResultsKind } from '../hooks/useLiveCashSession.js';
 import BankrollChart from './BankrollChart.jsx';
@@ -11,15 +11,16 @@ import BankrollChart from './BankrollChart.jsx';
  * The bankroll dashboard's Overview tab (beta, app admins). The layout of a serious poker tracker,
  * in this app's own type and grid:
  *   - a hero: the balance now, and the profit over the chosen range, coloured by its sign
- *   - the graph, front and centre: cumulative profit (the "chip graph") or the balance, with a
- *     range picker under it (1M / 3M / YTD / 1Y / All)
+ *   - the graph, front and centre: cumulative profit (the "chip graph") as Total, Tournaments and
+ *     Cash lines (any mix; pills toggle them, and Fill shades under them), or the balance, with
+ *     a range picker under it (1M / 3M / YTD / 1Y / All)
  *   - statistics as plain label | value rows under group headings (Results, Volume, Bankroll),
  *     each figure qualified where it only means something for one game type (ROI and ITM for
  *     tournaments, hourly and winning sessions for cash)
  *   - the latest sessions, each led by its signed profit, with links to the full lists.
  * Everything comes from the combined ledger (GET /api/bankrolls/ledger, every source: tournaments,
  * cash sessions, expenses and income, deposits) plus the risk-of-ruin estimate (GET /risk).
- * The arithmetic is utils/bankroll-ledger.js (overviewStats, profitSeries, rangeWindow), tested.
+ * The arithmetic is utils/bankroll-ledger.js (overviewStats, gameSeries, niceTicks, rangeWindow), tested.
  */
 
 const store = {
@@ -69,8 +70,20 @@ function Group({ id, title, children }) {
 export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, money, signed, today, fmtDate, onClose }) {
   const [range, setRangeState] = useState(() => store.get('bankrollRange', 'ytd', (v) => RANGE_KEYS.has(v)));
   const [mode, setModeState] = useState(() => store.get('bankrollChart', 'profit', (v) => v === 'profit' || v === 'balance'));
+  // The graph's lines and fill, per device like the range and mode: 'total,tourn,cash' (known keys
+  // only, never empty — parseSeriesPref) and '1' / '0'.
+  const [shown, setShown] = useState(() => parseSeriesPref(store.get('bankrollSeries', null, (v) => v != null)));
+  const [fill, setFillState] = useState(() => store.get('bankrollFill', '1', (v) => v === '1' || v === '0') === '1');
   const setRange = (v) => { setRangeState(v); store.set('bankrollRange', v); };
   const setMode = (v) => { setModeState(v); store.set('bankrollChart', v); };
+  const toggleSeries = (k) => {
+    const on = shown.includes(k);
+    if (on && shown.length === 1) return; // one line always stays on
+    const next = SERIES_KEYS.filter((x) => (x === k ? !on : shown.includes(x)));
+    setShown(next);
+    store.set('bankrollSeries', next.join(','));
+  };
+  const toggleFill = () => { const v = !fill; setFillState(v); store.set('bankrollFill', v ? '1' : '0'); };
 
   const entries = d.entries;
   const view = useMemo(() => {
@@ -81,25 +94,40 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
     if (w.from) for (const e of entries) { if (e.date < w.from) opening = e.total_display; else break; }
     const start = w.from || (entries[0] ? entries[0].date : today);
     const balPts = balanceSeries(win, { opening, from: w.from });
-    const profPts = profitSeries(win, { from: w.from });
-    const points = mode === 'profit' ? profPts : balPts;
+    // Total / Tournaments / Cash / other (expenses & income) on one date axis, from 0 at start.
+    const rows = gameSeries(win, { from: start });
+    const stats = overviewStats(win);
     // Bankroll figures are all-time: the peak the roll ever reached, and how far below it it is now.
     const allPts = balanceSeries(entries, { opening: d.opening.total_display, from: entries[0] ? entries[0].date : null });
     const peak = peakOf(allPts);
     const balDd = drawdowns(balPts);
     return {
-      w, win, start, points, dd: drawdowns(points), balDd, peak,
+      w, win, start, rows, balPts, balDd, peak,
       below: Math.max(0, peak.value - d.closing.total_display),
-      stats: overviewStats(win),
+      stats,
       recent: recentResults(win, 6),
       table: periodTable(win, range === 'all' ? 'year' : 'month'),
     };
-  }, [d, entries, range, mode, today]);
+  }, [d, entries, range, today]);
 
   const s = view.stats;
   const noun = RANGE_NOUN[range];
   const rangeLabel = (RANGES.find((r) => r[0] === range) || [])[1];
   const open = (kind) => { if (bk.setSelected) bk.setSelected(bkKey); setResultsKind(kind); onClose(); };
+
+  // The graph. Profit: the three lines, each ending at its Results row (Total = the hero = the
+  // Profit row; Tournaments, Cash games); expenses & income sit inside Total with no line of their
+  // own, so the note says so whenever they move it. Balance: one line, deposits included.
+  const cfg = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
+  const tick = (v) => compactMoney(v, cfg);
+  const lastRow = view.rows[view.rows.length - 1];
+  const has = { total: view.rows.length > 1, tourn: s.mtt.events > 0, cash: s.cash.sessions > 0 };
+  const chartLines = mode === 'profit'
+    ? SERIES.map(([key, label]) => ({ key, label, on: shown.includes(key), has: has[key], points: seriesLine(view.rows, key), end: lastRow[key] }))
+    : [{ key: 'balance', label: 'Balance', on: true, has: view.balPts.length > 1, points: view.balPts, end: view.balPts[view.balPts.length - 1].value }];
+  const chartNote = mode === 'balance' ? 'Balance, deposits and withdrawals included'
+    : shown.includes('total') && lastRow.other !== 0 ? `Total includes expenses & income ${signed(lastRow.other)}`
+      : 'Cumulative results';
 
   const rorText = (() => {
     if (!risk) return ['…', null];
@@ -130,9 +158,9 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
         </div>
       </div>
 
-      <BankrollChart points={view.points} dd={view.dd} start={view.start} end={view.w.to || today}
-        money={mode === 'profit' ? signed : money} fmtDate={fmtDate} zero={mode === 'profit'}
-        what={mode === 'profit' ? 'Cumulative profit' : 'Balance'}
+      <BankrollChart lines={chartLines} onToggle={mode === 'profit' ? toggleSeries : null} fill={fill} onFill={toggleFill}
+        start={view.start} end={view.w.to || today} money={mode === 'profit' ? signed : money} tick={tick} fmtDate={fmtDate}
+        zero={mode === 'profit'} what={mode === 'profit' ? 'Cumulative results' : 'Balance'} note={chartNote}
         control={<Segmented className="bd-mode" label="Graph" options={[['profit', 'Profit'], ['balance', 'Balance']]} value={mode} onChange={setMode} />} />
       <Segmented className="bd-range" label="Range" options={RANGES} value={range} onChange={setRange} />
 

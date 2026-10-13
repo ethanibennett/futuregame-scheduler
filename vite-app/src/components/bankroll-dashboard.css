@@ -13,7 +13,8 @@
    Content is 35g (the 37g sheet less 1g each side):
      bankrolls   4 x 8g + 3 x 1g        tabs       one 35g x 5r strip (.bd-seg)
      hero        2 x 17g + 1g, 9r       range      one 35g x 4r strip, 5 x 7g
-     chart       a 4r head (note 22g | Profit/Balance 12g), the 35g x 24r plot, a 2r foot
+     chart       a 4r head (note 22g | Profit/Balance 12g), 5r pills (8 + 10 + 8 + 6g),
+                 2r label room over the 35g x 24r plot, a 2r foot
      statistics  label 21g | value 14g, 4r rows      latest     14g | 21g, 6r rows
      stats       2 x 17g + 1g           tables     columns below, sum 35g
      goal bar    35g x 1r
@@ -135,24 +136,84 @@
 .bd-seg4 .bk-seg-btn, .bd-seg2 .bk-seg-btn { width: 100%; }
 .bk-seg-btn > span { font-variant-numeric: var(--num-tabular); }
 
-/* Chart: a 4r head row (the high, and the Profit | Balance switch), the 24r plot, a 2r foot row. */
+/* Chart (BankrollChart.jsx), top to bottom:
+     head   4r   a note 22g | the Profit / Balance switch 12g
+     pills  5r   1r down: Total 8g, Tournaments 10g, Cash 8g, Fill 6g, 1g apart (35g)
+     plot  26r   2r of room for the top gridline's label, then the 35g x 24r grid
+     foot   2r   5g under the labels | start date 10g | a note 10g | end date 10g
+   The gridlines are 2, 3 or 4 steps of the 24r plot (12r, 8r, 6r), so each sits on an r line, and
+   each label (an-note, baseline on line 2 of its 2r box) sits on its gridline: box top = k r. */
 .bd-chart-block { margin-top: calc(var(--subrow) * 2); }
 .bd-chart-head {
   display: grid; grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 12); column-gap: var(--gu);
   align-items: start; height: calc(var(--subrow) * 4);
 }
-.bd-axis { display: grid; grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 17); column-gap: var(--gu); }
+.bd-axis {
+  display: grid; grid-template-columns: calc(var(--gu) * 5) repeat(3, calc(var(--gu) * 10));
+}
+.bd-axis > :nth-child(3) { text-align: center; }
 .bd-axis > :last-child { text-align: right; }
-.bd-chart { display: block; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 24); }
-.bd-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.bd-line { fill: none; stroke: var(--brand); stroke-width: var(--bw-2); stroke-linejoin: round; }
+
+/* The pills: the legend and the switch in one. Whole g x 5r controls whose two-line face (the
+   swatch and name over the end value) is centred both ways (owner rule 2026-10-10). On: the
+   line's colour as a ring and a filled swatch; off: a hairline and a hollow swatch, muted. */
+.bd-series {
+  display: grid; margin-top: var(--subrow);
+  grid-template-columns: calc(var(--gu) * 8) calc(var(--gu) * 10) calc(var(--gu) * 8) calc(var(--gu) * 6);
+  column-gap: var(--gu);
+}
+.bd-sp, .bd-fill-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; height: calc(var(--subrow) * 5); min-width: 0;
+  box-sizing: border-box; margin: 0; padding: 0; border: 0;
+  border-radius: var(--radius);
+  background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-condensed); font-weight: var(--fw-bold);
+  white-space: nowrap; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.bd-sp:focus-visible, .bd-fill-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.bd-sp.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-1) var(--c); color: var(--text); }
+.bd-sp[aria-disabled="true"] { cursor: default; }
+.bd-sp-name {
+  display: flex; align-items: center;
+  font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: var(--track-caps);
+  line-height: calc(var(--subrow) * 2);
+  /* Letter-spacing also follows the last letter; an equal pad at the row's other end (left of
+     the swatch, when there is one) puts the ink on the centre line. */
+  padding-left: var(--track-caps);
+}
+.bd-sw {
+  flex: none; width: var(--gu); height: var(--subrow); margin-right: calc(var(--gu) * 0.5);
+  border-radius: var(--radius-sm); box-shadow: inset 0 0 0 var(--bw-1) var(--c);
+}
+.bd-sp.is-on .bd-sw { background: var(--c); }
+.bd-sp-val { font-size: var(--fs-sm); font-variant-numeric: var(--num-tabular); line-height: calc(var(--subrow) * 2); }
+/* Fill is not a line, so it has no colour of its own: on, a neutral ring (not the brand aqua,
+   which is the Tournaments line's). */
+.bd-fill-btn { grid-column: 4; }
+.bd-fill-btn.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted); color: var(--text); }
+
+/* Each line's colour (styles.css --series-*), for its pill, line and fill. */
+.bd-sp-total, .bd-c-total, .bd-sp-balance, .bd-c-balance { --c: var(--series-total); }
+.bd-sp-tourn, .bd-c-tourn { --c: var(--series-tourn); }
+.bd-sp-cash, .bd-c-cash { --c: var(--series-cash); }
+
+.bd-chart { position: relative; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 26); }
+.bd-chart svg {
+  position: absolute; left: 0; top: calc(var(--subrow) * 2);
+  display: block; width: 100%; height: calc(var(--subrow) * 24); overflow: visible;
+}
+.bd-tick { position: absolute; left: 0; top: calc(var(--subrow) * var(--k)); width: calc(var(--gu) * 5); }
+.bd-chart-msg { position: absolute; left: 0; right: 0; top: calc(var(--subrow) * 12); text-align: center; }
+.bd-grid { stroke: var(--border); stroke-width: var(--bw-hair); }
+.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-1); }
+.bd-line { fill: none; stroke: var(--c); stroke-width: var(--bw-2); stroke-linejoin: round; }
+.bd-line.bd-c-total { stroke-width: calc(var(--bw-2) * 1.75); }
+.bd-area { fill: var(--c); fill-opacity: var(--series-fill); stroke: none; }
 .bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-1); stroke-dasharray: var(--bw-2) var(--bw-2); }
 .bd-dd { fill: var(--neg-quiet); stroke: none; }
-.bd-edge { stroke: var(--border); stroke-width: var(--bw-hair); }
-.bd-line.is-pos { stroke: var(--pos); }
-.bd-line.is-neg { stroke: var(--neg); }
-.bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-hair); }
-.bd-chart-empty { height: calc(var(--subrow) * 24); }
 
 /* Tables: 11 + 8 + 8 + 8 = 35g. */
 .bd-cols-4 { grid-template-columns: calc(var(--gu) * 11) var(--col) var(--col) var(--col); }

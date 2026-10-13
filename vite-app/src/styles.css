@@ -1405,6 +1405,31 @@
       --neg-quiet: rgba(178,69,60,0.12);
     }
 
+    /* Chart series: the bankroll dashboard's trend graph (BankrollChart.jsx) draws Total,
+       Tournaments and Cash as three lines, each with a translucent fill under it. Total is the
+       text colour, Tournaments the brand aqua, Cash a violet: away from the win green and the
+       loss red, and lighter or deeper than the aqua in every theme, so the lines differ in
+       lightness as well as hue (OKLab L, measured; contrast is on the sheet's --bg, WCAG
+       non-text >= 3:1):
+         dark / dusk   total .93  tourn .77  cash #8b5cf6 .61   cash 4.46:1 on #111111, 4.31 on #0d1525
+         light         total .22  tourn .52  cash #966cf7 .64   cash 3.33:1 on #f5f5f5
+         cloudy        total .22  tourn .40  cash #7c3aed .54   cash 3.51:1 on #cbcbcb
+         HC dark/dusk  total 1.0  tourn .87  cash #a78bfa .71   cash 7.72:1 on #000000
+         HC light      total 0    tourn .38  cash #7c3aed .54   cash 5.70:1 on #ffffff
+         HC cloudy     total 0    tourn .38  cash #7535e8 .53   cash 4.29:1 on #d8d8d8
+       --series-fill is the fills' alpha: low enough that three overlapping stay see-through. */
+    :root {
+      --series-total: var(--text);
+      --series-tourn: var(--brand);
+      --series-cash:  #8b5cf6;
+      --series-fill:  0.12;
+    }
+    [data-theme="light"]  { --series-cash: #966cf7; }
+    [data-theme="cloudy"] { --series-cash: #7c3aed; }
+    [data-contrast="high"] { --series-cash: #a78bfa; }
+    [data-theme="light"][data-contrast="high"]  { --series-cash: #7c3aed; }
+    [data-theme="cloudy"][data-contrast="high"] { --series-cash: #7535e8; }
+
 
     /* ==================================================================
        Results curve. No chart existed anywhere in the app; the tracking
