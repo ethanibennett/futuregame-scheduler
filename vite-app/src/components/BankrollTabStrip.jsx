@@ -27,6 +27,10 @@ import './bankroll-tabstrip.css';
  * accessible name), className (the strip's place: bd-tabs), btnClass (each tab's classes).
  */
 const TOTAL = 35;
+// WebKit keeps scrollLeft in whole CSS px and drops a fraction (measured: 14g = 141.89px lands on
+// 141), so a whole-g offset is rounded to the nearest px before it is asked for: within 0.5px of
+// its g line instead of up to 1px short — enough, at the strip's end, to clip the last pill.
+const toPx = (x) => Math.round(x);
 const smooth = () => {
   try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return true; }
 };
@@ -81,7 +85,7 @@ export default function TabStrip({ options, value, onChange, label, className = 
       itemLeft: er.left - sr.left + s.scrollLeft, itemWidth: er.width,
       scrollLeft: snapped, viewWidth: s.clientWidth, contentWidth: s.scrollWidth, edge: 3 * g, g,
     });
-    const left = target != null ? target : snapped;
+    const left = toPx(target != null ? target : snapped);
     if (Math.abs(left - s.scrollLeft) >= 0.5) s.scrollTo({ left, behavior: animate ? 'smooth' : 'auto' });
     updateEdges();
   }, [updateEdges]);
@@ -160,7 +164,7 @@ export default function TabStrip({ options, value, onChange, label, className = 
     if (!s) return;
     const g = unit();
     const left = pageScroll({ scrollLeft: s.scrollLeft, viewWidth: s.clientWidth, contentWidth: s.scrollWidth, edge: 3 * g, g, dir });
-    s.scrollTo({ left, behavior: smooth() ? 'smooth' : 'auto' });
+    s.scrollTo({ left: toPx(left), behavior: smooth() ? 'smooth' : 'auto' });
   };
   const keepFocus = (e) => e.preventDefault();   // a pointer press on a chevron leaves focus where it was
 

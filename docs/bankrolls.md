@@ -164,7 +164,11 @@ their own. The strip (`BankrollTabStrip.jsx`, arithmetic in `utils/tab-strip.js`
   changes (a rotation, a window resize: g is a new number of px, so the old offset is re-snapped to
   whole g first, then the pill revealed from there — on the window's resize after the strip
   re-decides, and from its ResizeObserver when the strip's or its pills' width moves), to a whole-g
-  offset with 3g clear for the fade (`revealScroll`), so the pills come to rest on g lines. A 3g fade marks an edge
+  offset with 3g clear for the fade (`revealScroll`), so the pills come to rest on g lines. WebKit
+  keeps `scrollLeft` in whole CSS px and drops a fraction, so the offset asked for is rounded to the
+  nearest px (≤ 0.5px from its g line; floored it was up to 1px short). Its scroll range is whole px
+  too: at the strip's very end the last pill can sit up to 1px under the edge (0.69px at 430 wide,
+  measured with a simulated seventh tab), whatever the reveal asks. A 3g fade marks an edge
   with more beyond it; no scrollbar. Over the fade's outer 2g, a chevron is a real button (2g × 5r,
   "Earlier tabs" / "More tabs", `tabindex -1`, outside the radio group, gone while its edge has
   nothing beyond) that pages the strip by the view less both fades, to a whole-g offset
