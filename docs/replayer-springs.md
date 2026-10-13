@@ -150,13 +150,18 @@ badges, the pot pill and its figure, the board container and the table geometry 
     expensive thing a frame can do, and the last arrival is usually mid-moment).
   - Every commit after a direct write first puts the rendered figures back, because React skips a
     text node it thinks is unchanged.
-  - A winner's stack counts up by what its plaque gains (the model's final figure less what it showed
-    before the press, never below 0: a shorthand can commit more than a stack holds).
+  - A winner's stack counts up by what its plaque gains, and never reads below what it showed before
+    the press (nor below 0: a shorthand can commit more than a stack holds). Render counts what is
+    in flight as it saw it, not live, and a moment runs once per step however many layout passes
+    the commit gets: read live, the award was counted twice when the result was pressed while the
+    river's chips were still landing, and the hero's plaque read 0 for half a second.
 - **Removed on the spring path**: the street-change effect's three re-renders (+0, +450, +500ms);
   this is what cancelled the turn card after one frame. Also removed: `turnRiverSlide` (flag `'0'`
   keeps it), `markPotLanding`'s re-renders, the blanket 700ms flying-chip clear, the dead
-  `--chip-start-dx/dy` and `flopCardSlide`, and the re-render after every street press that only
-  replaced an empty set of folding seats with another empty one.
+  `--chip-start-dx/dy` and `flopCardSlide`, the re-render after every street press that only
+  replaced an empty set of folding seats with another empty one, the showdown effect's re-render
+  (the reveal is decided in the press render, see "Frame cost"), and the won pill at a result
+  (see "Nothing is pushed in front of the winner").
 - **Nothing changes on the table root mid-moment.** The plaque's gold delay
   (`--spring-ship-arrive`) was a custom property on `.replayer-table`, recomputed every render. The
   showdown's own render, about 150ms after a result press, changed it, so every element on the
@@ -185,8 +190,12 @@ does not touch them. Under capture the registry creates them paused and holds th
   still. A still is never a frame frozen at a 0% keyframe, and arrivals start no paused springs.
 
 Exports run the springs at the autoplay rate for the export speed. On the 8-max hand at 1x the video
-seeks the flop for 13 frames, the turn and the river 8 each and the result 17 (46 in all); the GIF 7,
-4, 4 and 9 (24).
+seeks the flop for 14 frames, the turn and the river 8 each and the result 15 (45 in all); the GIF 7,
+4, 4 and 8 (23).
+
+The showdown's reveal of the other hands (a CSS animation) is not played under an export: the
+capture pauses CSS animations, which would hold it at its first, transparent frame, so the cards are
+shown as they rest.
 
 Checked in Playwright WebKit on that hand (`node scripts/check-replay-export-motion.mjs <scratch url>
 --out <dir>`): every seeked frame of the turn and the river, and every other one of the result, is
@@ -203,8 +212,8 @@ off vs on, `check-replay-export-motion.mjs --time-only`, runs interleaved, 2026-
 
 | Export | Springs off (today) | Springs on, before the motion-frame fix | Springs on, now | Captures |
 |---|---|---|---|---|
-| Video | 90-112s | 329-357s (3.6-3.9x) | 175-181s (1.6-2.0x) | 22 vs 68 |
-| GIF | 100-113s | 249-282s (2.5-2.7x) | 163-166s (1.5-1.7x) | 22 vs 46 |
+| Video | 91-92s | 329-357s (3.6-3.9x) | 170s (1.9x) | 22 vs 67 |
+| GIF | 99s | 249-282s (2.5-2.7x) | 156-160s (1.6x) | 22 vs 45 |
 
 Owner's target, 2026-10-12: about 3x today's export time (round 1 was 4.8x, with every push-out
 seeked and 102 captures).
@@ -243,32 +252,53 @@ was pressed with a real click. A long frame is a long-animation-frame entry, 50m
 
 | Press | Springs off: press frame, median / max | Springs on | Long frames after the press, springs on |
 |---|---|---|---|
-| Flop | 52 / 74ms | 94 / 125ms | none |
-| Turn | under 50ms | 61 / 78ms | none |
-| River | under 50ms | under 50 (max 63ms) | none |
+| Flop | 62 / 79ms | 100 / 116ms | 1 of 9 (53ms) |
+| Turn | under 50ms (max 51) | 59 / 77ms | none |
+| River | under 50ms | under 50ms (max 67) | none |
 | Bet, call, raise over chips | under 50ms | under 50ms | none |
-| Result | 55 / 71ms | 126 / 142ms | none (was 80-106ms at every result, see "Nothing changes on the table root") |
+| Result | 59 / 83ms | 82 / 142ms | 1 of 9 (73ms) |
 
-Across 57 presses with the springs on, no main-thread frame after the press frame reached 50ms. The
-moments are Web Animations, so they run on the compositor whatever the main thread does.
+(Measured again after round 2's review, 2026-10-13, 57 presses each way. The review's own run had
+the result at 150-183ms against 50-100, with a 51-62ms frame mid-ship in 6 of 9 results.)
 
-The press frame costs more than today's because the moment is built in it, before the press paints.
-That covers reading the rects, creating the ghosts and shipped chips, sampling their keyframes, and
-the style and layout of the new elements. At the result that is the river's sweep and the five
-shipped chips, about 35-50ms at 4x, which is 9-12ms on this machine unthrottled. Today's flop and
-result press frames are already over 50ms at 4x, mostly the forced layout of React's commit.
+The moments are Web Animations on transform and opacity, so once started they run on the compositor
+whatever the main thread does; a long frame after the press delays nothing that is moving.
+
+The press frame costs more than today's because the moment is built in it, before the press paints:
+reading the rects, creating the ghosts and the new pile row, sampling the keyframes, and the style of
+the new elements (about 25ms of style at 4x for the flop's 48). That is about 40ms at 4x over today's
+at the flop and 25ms at the result, roughly 10ms and 6ms on this machine unthrottled. Today's flop
+and result press frames are already over 50ms at 4x, mostly the forced layout of React's commit.
+
+What round 2 took out of it:
+- **The showdown's reveal** of the other hands was set from an effect: a second render of the whole
+  replayer inside the result's press task (React flushes a click's effects synchronously), after a
+  frame that drew the cards bare. The spring path decides it in the press render.
+- **The pot shipped** is built after the press, in two frames (where it lands, then the chips; it was
+  one 40-50ms frame), with its function channels starting at its departure (sampled from 0, 40% of
+  its keyframes held still for the river's wagers) and the landing searched every pixel, not every
+  half.
+- **Keyframes** are sampled channel-major into typed arrays (an object per sample and a closure per
+  comparison were most of the moment's script), and the pile's landings never measure the DOM.
+- **Layers**: the empty, table-sized flight layer over everything is gone, and the ship's clip spans
+  only the flights' box. In Edge's layer tree at 1440 @2x the springs now add 0% drawn area at the
+  flop (was +16%) and 17% at the result (was +62%). What remains at the result is one board-sized
+  layer (Chromium reports it on `.replayer-board-area`), most likely what is drawn over the ship's
+  path (the pot's figure, the button) composited above it.
 
 ## Capturing before and after
 
 From a scratch server running the worktree (never the pm2 app on 3001):
 
 ```
-node scripts/capture-replayer-motion.mjs http://127.0.0.1:<port> --springs 0 --out <before> --parallel 4
-node scripts/capture-replayer-motion.mjs http://127.0.0.1:<port> --springs 1 --out <after> --parallel 4
+node scripts/capture-replayer-motion.mjs http://127.0.0.1:<port> --springs 0 --out <before> --parallel 4 --moments flop,turn,river,bet,call,push
+node scripts/capture-replayer-motion.mjs http://127.0.0.1:<port> --springs 1 --out <after> --parallel 4 --moments flop,turn,river,bet,call,push
 node scripts/capture-replayer-motion.mjs --report --out <after> --against <before>
 node scripts/compare-replayer-motion.mjs --before <before> --after <after> --out <compare>
 ```
 
-Add `--width 1440 --height 900 --seats 8` for desktop. `--springs 2` captures Set B.
+Add `--width 1440 --height 900 --seats 8` for desktop. `--springs 2` captures Set B. Without
+`--moments` the harness captures flop, turn, river, bet and push, not call, which the comparison
+expects.
 
 Tests: `npm run test:springs`.

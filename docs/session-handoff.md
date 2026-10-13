@@ -25,21 +25,34 @@ wsop-console side and verified against both live services.
   the pot and the pot shipped are seeked frame by frame (video 24 fps, GIF 12.5 fps); a push-out
   exports as its settled frame. The closing bookend waits for the settled still, so the ship is seen
   over the table. Checked frame for frame against the live replayer at the turn, the river and the
-  result (`scripts/check-replay-export-motion.mjs`). Cost in WebKit, 8-max hand: video 175-181s
-  against 90-112s with the springs off (1.6-2.0x; the owner's target was about 3x), GIF 163-166s
-  against 100-113s.
+  result (`scripts/check-replay-export-motion.mjs`). Cost in WebKit, 8-max hand: video 170s
+  against 91-92s with the springs off (1.9x; the owner's target was about 3x), GIF 156-160s
+  against 99s (1.6x).
 - **Why exports were slow**: modern-screenshot's Safari decode workaround counts every CSS gradient as
   an image and sleeps 100ms+ per "image", so a capture of the table slept ~3s for 4-11 real images.
   Motion frames now keep one redraw per real image (`captureMotionCanvas` in `replay-capture.js`);
   the settled stills are untouched. **Check on an iPhone before merging**: export a hand and look
   for a missing card face in any frame of the flop or the result.
-- **Frame cost at 4x CPU throttle** (`docs/replayer-springs.md`, "Frame cost"): no long frame after any
-  press. The plaque-gold delay was a custom property on the table root that changed mid-sweep and
-  restyled the whole table (an 80-106ms frame at every result); it lives on the winning seat now.
+- **Frame cost at 4x CPU throttle** (`docs/replayer-springs.md`, "Frame cost"): the press frame is
+  ~40ms (flop) and ~25ms (result) dearer than today's, because the moment is built in it; after the
+  press, one long frame in 9 at the flop and at the result (was 6 in 9 at the result). The showdown
+  reveal no longer re-renders the replayer in the result's press task; the ship is built in two
+  frames after the press. The plaque-gold delay lives on the winning seat, not the table root.
 - **The pot lands on the plaque** (owner, 2026-10-12): never across the winner's name, on the edge of
-  the name plaque nearest the pile, the stack ticking at each landing; measured at all 31 seats
-  (6/8/9-max phone, 8-max desktop). The result collects the river's wagers first, then ships; the
-  pile empties as it goes and the won pill appears as the last chip lands.
+  the name plaque nearest the pile, the stack counting up as it lands; measured at all 46 seats
+  (6/8/9-max, phone and desktop): name overlap 0px², half a chip of room from the cards and the
+  button wherever the plaque allows it. The result collects the river's wagers first, then ships a
+  handful (5 chips leaving 6ms apart); the pile empties as it goes. No won pill on the spring path:
+  the pot goes into the plaque (flag '0' keeps the pill).
+- **The pile changes once per sweep** (round 2, the critic's one "must"): the row becomes the final
+  row as the chips leave the seats, the heights change at the first landing, new stacks fade in under
+  the ghost that brings them (a colour-up when no ghost's own colour does). Never the compositions in
+  between (38,000 is three stacks, 50,000 one, 62,000 three again).
+- **For the Mac**: check the flop, the result and Forward-mashing at 1440 in Safari and the Catalyst
+  app with Web Inspector's timeline. Playwright's WebKit on Windows rasterises in software and gets
+  about one frame a second during any springs moment at 1440 @2x (36 frames in 3s with the springs
+  off, which stalls too); the springs' extra drawing area there is now 0% at the flop and +17% at
+  the result (was +16% and +62%).
 - **Waiting on Ethan**: A or B (side-by-side MP4s in `weekly-graphics/replayer-springs/compare/`,
   Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight.
 - Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate`, and pin at 0 until
