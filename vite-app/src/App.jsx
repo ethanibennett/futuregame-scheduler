@@ -36,6 +36,8 @@ import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
 import { LiveCashBar } from './components/CashLive.jsx';
 import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
+import BackerPage from './components/BackerPage.jsx';
+import { backerTokenFromPath } from './utils/backer-page.js';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
@@ -60,6 +62,10 @@ const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'))
 const CashView = lazy(() => import('./components/CashView.jsx'));
 
 const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.252)'}}>Loading…</div>;
+
+// A backer's private page: /b/<token> (the server's BACKER_TOKEN_RE). Rendered by Root below,
+// before App: a backer has no account, so none of App's session, onboarding, nav or rail applies.
+const BACKER_TOKEN = backerTokenFromPath(window.location.pathname);
 
 // Detect shared schedule URL: /shared/:token
 const SHARED_MATCH = window.location.pathname.match(/^\/shared\/([a-f0-9]+)$/);
@@ -191,7 +197,7 @@ try {
   if (getDebugNow() && !APP_ADMIN_USERNAMES.includes(tokenUsername(bootToken))) setDebugNow('');
 } catch { /* storage unavailable — nothing persisted to clear */ }
 
-export default function App() {
+function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
@@ -2416,4 +2422,11 @@ export default function App() {
     </div>
     </DisplayNameProvider>
   );
+}
+
+// The entry point: a backer link renders its page alone (components/BackerPage.jsx), so App's
+// hooks (the session, the schedule fetches, push for admins) never run for it.
+export default function Root() {
+  if (BACKER_TOKEN) return <BackerPage token={BACKER_TOKEN} />;
+  return <App />;
 }

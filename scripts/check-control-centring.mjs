@@ -43,7 +43,8 @@
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
-// buddy chip's swap sheet, the public shared-schedule page (and a card open on it), the first-run
+// buddy chip's swap sheet, the public shared-schedule page (and a card open on it), the backer
+// page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), the first-run
 // wizard step by step, the signed-out login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
 // backdrop hides what is under it: a control 90% covered by something that paints is not measured.
@@ -229,8 +230,9 @@ const SWITCHES = ['[role="switch"]', '.settings-toggle', '[class*="toggle-switch
 // ways — along the band and across it. .cal-venue-strip is the Schedule / My Schedule row's
 // vertical strip (writing-mode vertical-rl, rotate(180deg)); .dash-venue-strip the Up Next card's
 // banner. .replayer-hand-strip (a saved hand's game strip) and .gto-seat-strip (the hand-entry
-// seat strip) are drawn "property for property" from the venue strip and held to it too.
-const STRIPS = ['.cal-venue-strip', '.dash-venue-strip', '.replayer-hand-strip', '.gto-seat-strip'];
+// seat strip) are drawn "property for property" from the venue strip and held to it too, and
+// .bp-strip is the backer page's session card banner (the Up Next banner's form).
+const STRIPS = ['.cal-venue-strip', '.dash-venue-strip', '.replayer-hand-strip', '.gto-seat-strip', '.bp-strip'];
 // Not a control even though the class matches: wrappers, rows, lists.
 const GROUP_CLASS = /(^|[-_])(row|rows|list|group|wrap|wrapper|strip|bar|container|tabs|area|grid|stack|line|section|panel|menu|header|body|col|cell)$/;
 
@@ -2018,6 +2020,25 @@ function finalize(c) {
     await p.waitForTimeout(3000);
     await tap('.cal-event-row:not(.open):not(.past) .cal-event-bar', 900);
   }, 1, { noSkip: true });
+  // The backer page (/b/<token>, no login: components/BackerPage.jsx): a full history (its range
+  // strip on All, then on 1M, then paged to its foot through the sticky month breaks and cards), a backer
+  // with no sessions yet, one session. CHECK_BACKER_TOKENS (full,empty,one) names made-up backers
+  // on a scratch server (scripts/seed-backer-demo.js prints the line); without it, not reached.
+  const BACKER_TOKENS = (process.env.CHECK_BACKER_TOKENS || '').split(',').map(s => s.trim());
+  const backer = async (i) => {
+    if (!BACKER_TOKENS[i]) throw new Error('needs CHECK_BACKER_TOKENS (full,empty,one: scripts/seed-backer-demo.js)');
+    await p.goto(base + '/b/' + BACKER_TOKENS[i] + (overlay ? '?gridOverlay=1' : ''), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(2500);
+    await vis('.bp-name, .bp-message').first().waitFor({ timeout: 8000 });
+  };
+  step('backer-page', async () => {
+    await backer(0);
+    await vis('.bp-card').first().waitFor({ timeout: 8000 });
+    await also('all');
+    await click('.bp-seg button:has-text("1M")', 700);
+  }, 7, { noSkip: true });
+  step('backer-page-empty', () => backer(1), 0, { noSkip: true });
+  step('backer-page-one', () => backer(2), 0, { noSkip: true });
   // A saved card's buddy chip opens the swap sheet; Results' share menu opens the series wrap-up.
   step('swap-modal', async () => {
     await nav('Schedule');
