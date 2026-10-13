@@ -136,11 +136,21 @@ date, then entries without a ts first, then source, then ref id.
 
 ### The dashboard (`BankrollDashboard.jsx`, behind the bankroll strip's Dashboard button)
 
-A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
-**Overview / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the
-width in whole g by `data-n` (4 tabs 9+9+9+8g, 5 tabs 5 × 7g, 6 tabs 5 × 6g + 5g), so a new tab is one
-entry in `TABS` plus one render line (`{tab === 'key' && …}`, marked in the JSX); the guards walk
-every tab in the strip on their own.
+A 37g sheet (phone and desktop alike). Under the bankroll chips, one tab strip:
+**Overview / Locations / Reports / Rules / Goals / Import**. A new tab is one entry in `TABS` plus one
+render line (`{tab === 'key' && …}`, marked in the JSX); the guards walk every tab in the strip on
+their own. The strip (`BankrollTabStrip.jsx`, arithmetic in `utils/tab-strip.js`) handles any count:
+
+- **Divided** while every label fits: a single 35g `.bd-seg` whose segments split the width in whole g,
+  the first (35 mod N) one g wider (4 tabs 9+9+9+8g, 5 tabs 5 × 7g, 6 tabs 5 × 6g + 5g, 7 tabs 7 × 5g).
+  "Fits" is measured: a hidden copy of the labels in the tabs' type, in g, each label plus 1g of room
+  within its own segment (`fitsDivided`), re-measured on resize and when the webfonts load.
+- **Scrolling** otherwise (seven tabs at 5g: "Locations" is wider): one 35g × 5r row of pills, each
+  content-sized (label + 1g a side) and rounded up to whole g by `snap-g`, 1g apart. The selected pill
+  is scrolled into view when the strip opens and whenever the tab changes, to a whole-g offset with 3g
+  clear for the fade (`revealScroll`), so the pills come to rest on g lines. A 3g fade with a chevron
+  marks an edge with more beyond it; no scrollbar. Touch and trackpads scroll it; ←/→ (and ↑/↓),
+  Home and End move the selection (a radio group with one tab stop).
 
 **Overview** (`BankrollOverview.jsx`), laid out the way a dedicated poker tracker lays out its home
 screen, in this app's own type, tokens and grid:
@@ -373,7 +383,9 @@ dimensions the ledger does not carry (a tournament's room, game and online flag 
 
 `{ id ('t12' | 'c3' | 'x5'), type ('tournament' | 'cash' | 'expense' | 'income'), bankroll ('main' | id), date,
 label, profit, room, game, online, hour (tournament start, 0-23 or null), started_at + hours (cash),
-stakes (cash), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income) }`
+stakes (cash), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income),
+native_currency (what it was played or spent in, before conversion: a tournament's venue currency, a
+session's or a row's own) }`
 
 - Money is the ledger's: tournament net = (cashed ? cash : 0) − buy-in × max(1, entries) in the
   venue's currency (`analytics.normaliseRow`), cash = cash_out − buy_in − tips − expenses, an expense
@@ -419,3 +431,45 @@ rows 5r (a 4r text line, baseline on its line 3, over a 1r bar), total 4r. The f
 the dashboard (z above the modal layer), head as the dashboard's (Clear all 8g on 19g, Done 8g on
 28g), sections 2r apart, chips 4r in 4 × 8g, 3 × 11g or 2 × 17g. Both are walked by
 `check:controls` and `check:clipping`.
+
+## Locations (beta, app admins)
+
+The dashboard's **Locations** tab: one card per room, the way Poker Bankroll Tracker lists its
+locations (its Bankroll › Locations screen), in this app's type, tokens and grid. Code:
+`components/BankrollLocations.jsx`, `components/bankroll-locations.css`, the arithmetic in
+`utils/bankroll-locations.js`. Tests: `src/utils/__tests__/bankroll-locations.test.mjs`, part of
+`npm run test:bankroll-reports`.
+
+- **Data**: `GET /api/bankrolls/reports?bankroll=<the dashboard's>&currency=<its display currency>`
+  — the Reports facts, prepared by `prepareFacts`, so a room is exactly a row of the Room report
+  (`roomKey`: trimmed, case-folded; the label is the first spelling seen). No new route; the facts
+  gained `native_currency` for the card's currency. Tournament results and ENDED cash sessions only:
+  expenses and income are not sessions and have no room. Facts naming no room collect in one
+  "Room not recorded" card, always last and not counted as a room.
+- **A card**: the room's name; "Live • USD" (live, online, or "Live and online", and the room's own
+  currency or currencies, most used first); the total result at the right, signed and green / red,
+  whole below 100,000 ($15,590) and compact from there ($294.5k, $1.2M — the owner's two examples
+  from PBT; "compact ≥ $10k" in the brief contradicts its own $15,590); a hairline; then the stats
+  line, items joined by " • ":
+  - **entries** — cash sessions + tournament bullets (a re-entry is an entry, as PBT counts);
+  - **hours** with a clock — cash hours only; omitted, not "0", for a tournament-only room;
+  - **per hour** — cash profit / cash hours, when there are hours;
+  - **ROI** — tournament profit / buy-ins, when the room has tournaments;
+  - **won %** — a cash room: winning sessions / sessions ("60% won", green at 50% and over, red
+    under); a tournament room: cashes / bullets ("17% ITM", plain); a mixed room: results with a
+    profit / entries ("63% won", plain).
+  A type mark (dots in `--series-tourn` aqua and `--series-cash` violet) before "Live • USD" says
+  which kinds the room has; the footnote is its legend, and says expenses aren't included.
+- **Open a card** (tap; `aria-expanded`): its results newest first — date | tournament (× bullets)
+  or game, stakes and length | result — ten, then Show all.
+- **Range** (1M · 3M · YTD · 1Y · All, the Overview's windows, default All) and **sort** (Result,
+  Entries, Hours, Name; the room-less card stays last) are remembered per device (localStorage
+  `bankrollLocations`). Empty state when nothing in the range.
+- **Layout** (35g; the CSS header lists every row): range 35g × 4r; the summary (rooms · entries ·
+  total · range); a 3r "Sort by" label and the 35g × 4r sort; cards 35g × 11r, 1r apart — 1r, the
+  name (Univers Condensed md, measured p 1.565) on line 4, "Live • USD" on line 6, the total (display
+  face xl) level with it in an 11g column, a hairline at line 7, the stats on line 10. Open rows 4r,
+  7g | 17g | 9g, baselines on line 3; Show all 11g × 4r. Baselines measured in WebKit at 402 and 1440:
+  every line within 0.05r of its r line. The cards are list rows (`.bl-card` in the controls guard's
+  NOT_CONTROLS); Show all is a control. The dashboard sheet is 37g on a desktop too, so the cards
+  stay one column there.

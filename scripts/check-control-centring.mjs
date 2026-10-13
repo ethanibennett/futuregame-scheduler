@@ -4,8 +4,9 @@
 //
 // Views: Schedule (list, filters, an open card), My Schedule, Dashboard, Social, Results,
 // Settings, Cash (Live, Heatmaps), Hands (the list, not the table), Calendar (and its filters),
-// the bankroll sheet, the bankroll dashboard (its Reports tab and filter sheet too) and its CSV
-// import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
+// the bankroll sheet, the bankroll dashboard (every tab — the strip scrolls sideways once the tabs
+// outgrow it — its Reports tab and filter sheet, its Locations tab with a card open and a sort on)
+// and its CSV import step, Results > Cash (cash sessions: list, forms, the live bar), Expenses & income (the
 // section, the add sheet, the list sheet, a trip).
 //
 //   node scripts/check-control-centring.mjs [baseUrl] [--width 402] [--height 874]
@@ -83,7 +84,7 @@ const CONTROLS = [
 const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // Not pills or buttons, though a selector above catches them: event cards and list rows, which
 // are clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
-const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row'];
+const NOT_CONTROLS = ['.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.cal-venue-strip', '.dash-event-card', '.settings-row-btn', '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.bl-card'];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
 // seated like any other block of text, so the centring test does not apply.
@@ -272,6 +273,15 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
       const symbol = !/[\p{L}\p{N}]/u.test(text);
       const allCaps = !/\p{Ll}/u.test(text) && /\p{Lu}/u.test(text);
       const ls = parseFloat(hs.letterSpacing) || 0;
+      // Truncated text paints no further than what clips it: the control's own box, and any
+      // element between the text and the control that clips sideways (a name span that ellipsizes
+      // beside a count — its Range still spans the whole string, past the span's edge).
+      let clipL = b.left, clipR = b.right;
+      for (let a = host; a && a !== el; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === 'visible') continue;
+        const q = a.getBoundingClientRect();
+        clipL = Math.max(clipL, q.left); clipR = Math.min(clipR, q.right);
+      }
       for (const q of rects) {
         const baseline = q.top + m.fontAsc;
         const top = baseline - (allCaps ? m.cap : m.asc);
@@ -281,8 +291,7 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
           left = q.left - m.left;
           right = q.left + m.right + Math.max(0, [...text].length - 1) * ls;
         }
-        // Truncated text paints no further than the control's own box.
-        left = Math.max(left, b.left); right = Math.min(right, b.right);
+        left = Math.max(left, clipL); right = Math.min(right, clipR);
         textBoxes.push([left, top, right, bot]);
       }
     }
@@ -429,18 +438,46 @@ function scan({ CONTROLS, EXCLUDE, NOT_CONTROLS, TILES, START_ALIGNED, GROUP_CLA
     await p.locator('.bk-head-btn').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
   }, 0);
-  // The bankroll dashboard (the bankroll strip's Dashboard button): each of its four tabs, and
-  // the CSV import step with a file mapped.
+  // The bankroll dashboard (the bankroll strip's Dashboard button): each of its tabs, and the CSV
+  // import step with a file mapped. A tab is found by its label in the strip (.bd-tabs); when the
+  // tabs outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
   const dash = async (tab) => {
     await menu('Results & Tracking', 'Results');
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
-    if (tab) await p.locator(`.an-sheet .bk-seg-btn:has-text("${tab}")`).first().click({ timeout: 4000 });
+    if (tab) await p.locator(`.an-sheet .bd-tabs button:has-text("${tab}")`).first().click({ timeout: 4000 });
     await p.waitForTimeout(600);
   };
   await step('bankroll-dashboard', () => dash(null), 4);   // the Overview: hero, graph, statistics, latest sessions
   await step('bankroll-rules', () => dash('Rules'), 2);
   await step('bankroll-goals', () => dash('Goals'), 1);
+  // The tab strip with its last tab selected: scrolled to its end when it scrolls.
+  await step('bankroll-tabs-end', async () => {
+    await dash(null);
+    await p.locator('.an-sheet .bd-tabs button').last().click({ timeout: 4000 });
+    await p.waitForTimeout(900);
+  }, 0);
+  // Locations: the range and sort strips and the cards; a card open with Show all (a room with
+  // more than ten results), then sorted by name.
+  await step('bankroll-locations', () => dash('Locations'), 3);
+  await step('bankroll-location-open', async () => {
+    await dash('Locations');
+    const cards = p.locator('.bl-card');
+    const n = await cards.count();
+    for (let i = 0; i < n; i++) {
+      await cards.nth(i).click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(300);
+      if (await p.locator('.bl-more').count()) break;
+      await cards.nth(i).click({ timeout: 4000, force: overlay });
+    }
+    await p.locator('.bl-more').first().click({ timeout: 4000, force: overlay }).catch(() => {});
+    await p.waitForTimeout(400);
+  }, 4);
+  await step('bankroll-location-sort', async () => {
+    await dash('Locations');
+    await p.locator('.bl-sort button:has-text("Name")').first().click({ timeout: 4000, force: overlay });
+    await p.waitForTimeout(400);
+  }, 2);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   await step('bankroll-reports', () => dash('Reports'), 3);

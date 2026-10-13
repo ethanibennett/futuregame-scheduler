@@ -155,7 +155,8 @@ export default function BankrollLocations({ bk, bankrollKey, currency }) {
       {ready && list.length === 0 && (
         <p className="an-p bl-gap">
           <strong>{state.facts.some((f) => f.kind === 'tournament' || f.kind === 'cash') ? 'Nothing played in this range.' : 'Nothing played yet.'}</strong>
-          {' '}A room appears here once a tournament result or a finished cash session names it{prefs.range !== 'all' ? '; try a longer range' : ''}.
+          {' '}Rooms come from tournament results and finished cash sessions{prefs.range !== 'all' ? '; try a longer range' : ''}.
+          {' '}Expenses aren't included.
         </p>
       )}
       {ready && list.length > 0 && (
@@ -166,7 +167,7 @@ export default function BankrollLocations({ bk, bankrollKey, currency }) {
             {' · '}<span className={'bl-sum' + tone(Math.round(sum.total))}>{compactMoney(sum.total, cur, { sign: true })}</span>
             {' · '}{RANGE_NOUN[prefs.range] || 'all time'}
           </p>
-          <div className="an-cell an-lbl an-lbl-2" aria-hidden="true">Sort by</div>
+          <div className="an-cell an-lbl an-lbl-3b" aria-hidden="true">Sort by</div>
           <TabStrip className="bl-sort" label="Sort the rooms by" options={SORTS} value={prefs.sort}
             onChange={(sort) => setPrefs((p) => ({ ...p, sort }))} btnClass="bd-seg-btn" />
           <ul className="bl-list">
@@ -176,7 +177,7 @@ export default function BankrollLocations({ bk, bankrollKey, currency }) {
             ))}
           </ul>
           <p className="an-p bl-note">
-            <Dot kind="tourn" /> Tournaments <Dot kind="cash" /> Cash. Entries count re-entries; expenses aren't included.
+            <Dot kind="tourn" /> Tournaments <Dot kind="cash" /> Cash. Expenses aren't included.
           </p>
         </>
       )}

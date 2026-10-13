@@ -12,7 +12,7 @@
    Content is 35g:
      range       35g x 4r strip, 5 x 7g (the Overview's ranges)
      summary     an-p, 1r below
-     sort        a 2r caps label, then a 35g x 4r strip, 9 + 9 + 9 + 8g
+     sort        a 3r caps label (baseline on its line 2), then a 35g x 4r strip, 9 + 9 + 9 + 8g
      cards       35g, 1r apart, 2r below the sort. A card is 11r:
                    1r      top padding
                    3r      name (Univers Condensed md, bold), baseline on its line 3   | total: display
@@ -173,6 +173,7 @@
 
 .bl-note { margin-top: calc(var(--subrow) * 2); }
 .bl-note .bl-dot { margin-right: calc(var(--gu) * 0.25); }
+.bl-note .bl-dot ~ .bl-dot { margin-left: calc(var(--gu) * 0.5); }   /* the legend's second entry */
 
 @media (prefers-reduced-motion: reduce) {
   .bl-card { transition: none; }
