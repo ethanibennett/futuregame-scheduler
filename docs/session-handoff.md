@@ -14,6 +14,22 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-13 — First-run setup v2 ("onboarding questions refinement"), branch `feat/onboarding-refine`
+- **Built, not merged** (worktree `.claude/worktrees/onboarding`). Spec, the before/after question
+  list word for word, storage and endpoints: `docs/onboarding.md`. Three optional questions
+  (where you play live, online too, what you play) instead of four required ones; a live count;
+  "Use my location" / city search / regions with the state worked out; Skip keeps confirmed steps.
+- **Per account now:** `users.onboarding` (migration `users-onboarding-2026-10` backfills every
+  existing account with `{"v":1,"legacy":true}`, so no old user is asked again);
+  `GET/PUT /api/user/onboarding`; `/api/login` returns `onboarding`; `/api/register` returns a
+  session (Create Account signs you in).
+- **Fixed on the way (docs/onboarding.md §10):** B1 the state stored as "PENNSYLVANIA" (repaired on
+  read), B2 a re-run not reaching a mounted Schedule, B3 Everywhere not clearing the account copy,
+  B4 a re-run wiping siteRules, B10 setup per browser, and a location GET/PUT race.
+- **Waiting on Ethan:** the wording (docs/onboarding.md §2) and decisions D1–D12 (§9), all built
+  with their defaults. Settings gained "Edit name".
+- Screenshots (grid overlay on): the builder's scratch folder `scratchpad/onboarding/shots/`.
+
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
   (`utils/detail-motion.js`); the centring sweep (490 controls + venue strips, 9b142b5; the guard now
@@ -665,6 +681,14 @@ again. If builds break and no push arrives, check `pm2 list` first.
 ---
 
 ## Traps worth knowing
+
+**Setup state is per account (`users.onboarding`); `localStorage.onboarded` is only a cache.**
+Clearing the flag does not re-run setup for an account that has a record: the next launch asks
+`GET /api/user/onboarding`, adopts the record and sets the flag again. To see setup as a new user,
+use a NEW account (registered after the migration ran, so its column is NULL), or "Run setup
+again" in the location menu. Both guards keep it shut with `onboarded = '1'`; a scratch DB seeded
+by registering accounts on a fresh boot leaves them all NULL (the migration ran before they
+existed), which is why `freshie` reaches setup.
 
 **A PR description can be stale relative to its own branch.** #62's body says
 the runner-persistence question is "still open" — but the second commit on that
