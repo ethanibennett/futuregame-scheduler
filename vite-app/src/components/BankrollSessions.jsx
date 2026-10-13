@@ -28,8 +28,12 @@ import './bankroll-sessions.css';
  * /api/cash-sessions (the fields the facts do not carry). Expenses, income and deposits are not
  * sessions and are not listed.
  *
- * Layout (35g content; bankroll-sessions.css): bar 4 x 8g + 3 x 1g, 4r; rows 7r cards, 1r apart,
- * columns 1g | icon 3g | 1g | text 18g | 1g | result 10g | 1g; year pill 7g x 3r on 14g.
+ * Layout (35g content; bankroll-sessions.css): bar All 6g | Tournaments 9g | Cash 6g | count 11g
+ * (1g apart), 4r; rows 7r cards, 1r apart, columns 1g | icon 3g | 1g | text 18g | 1g | result 10g |
+ * 1g; year pill 7g x 3r on 14g.
+ *
+ * "Edit in Results" is offered only when the sheet is over the Results tab (TrackingView mounts it);
+ * over the home (HomeNumbers) the detail says where to edit instead.
  */
 
 const STORE = 'bankrollSessionsType';
@@ -38,6 +42,11 @@ const loadType = () => { try { const v = localStorage.getItem(STORE); return TYP
 const saveType = (v) => { try { localStorage.setItem(STORE, v); } catch { /* private mode: not remembered */ } };
 
 const cfgOf = (code) => CURRENCY_CONFIG[code] || CURRENCY_CONFIG.USD;
+// The Results tab's panel is laid out (App hides every other tab's panel with display: none).
+const resultsOnScreen = () => {
+  const el = document.querySelector('.tab-panel[data-tab="tracking"]');
+  return !!(el && el.getClientRects().length);
+};
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur);
 const signed = (v, cur) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v || 0), cur);
 const tone = (v) => (v > 0 ? ' an-pos' : v < 0 ? ' an-neg' : '');
@@ -130,13 +139,14 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
   const hourlyShown = isCash && c.hours >= 0.25 ? row.result / c.hours : null;
   const heroRight = isCash
     ? { label: 'Per hour', value: hourlyShown == null ? '—' : `${signed(hourlyShown, currency)}/h`, n: hourlyShown || 0, note: c.hours > 0 ? formatHours(c.hours) : 'No length recorded' }
-    : { label: 'ROI', value: pct(t.roi), n: t.roi || 0, note: t.place ? finishLabel(t.place, t.field) : t.cashed ? 'Cashed' : 'No cash' };
+    // ROI is a percentage, not money: never green / red (the Overview's rule).
+    : { label: 'ROI', value: pct(t.roi), n: 0, note: t.place ? finishLabel(t.place, t.field) : t.cashed ? 'Cashed' : 'No cash' };
   const sw = isCash && stacks.length ? swingSummary(stacks) : null;
   return (
     <div className="bs-detail" aria-label={row.title}>
       <div className="bs-dhead">
         <button type="button" className="bk-btn bs-w9" onClick={onBack}><span>‹ Sessions</span></button>
-        <button type="button" className="bk-btn bk-btn--brand bs-w12" onClick={onEdit}><span>Edit in Results</span></button>
+        {onEdit && <button type="button" className="bk-btn bk-btn--brand bs-w12" onClick={onEdit}><span>Edit in Results</span></button>}
       </div>
 
       <h4 className="bs-dtitle">{row.title}</h4>
@@ -157,7 +167,8 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
         </div>
       </div>
 
-      <section className="bd-section" aria-label="Details">
+      <section className="bd-section" aria-labelledby="bs-fields">
+        <h3 className="an-cell an-sec" id="bs-fields">Details</h3>
         <dl className="bd-kv">
           <KV label="Date" value={row.dateLabel} />
           {isCash ? (
@@ -193,7 +204,7 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
               <KV label="Finish" value={t.place ? finishLabel(t.place, t.field) : '—'} />
               {t.field && !t.place && <KV label="Field" value={t.field.toLocaleString('en-US')} />}
               <KV label="Profit" value={signed(t.net, cur)} toneOf={t.net} />
-              <KV label="ROI" value={pct(t.roi)} toneOf={t.roi || 0} />
+              <KV label="ROI" value={pct(t.roi)} />
               {converted && <KV label={`Profit in ${currency}`} value={signed(row.result, currency)} toneOf={row.result} />}
             </>
           )}
@@ -202,6 +213,7 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
         {converted && (
           <p className="an-p bd-after">{isCash ? 'Played' : 'Paid'} in {cur}; the {currency} figure is at today&apos;s rate, as every bankroll total.</p>
         )}
+        {!onEdit && <p className="an-p bd-after">To change it, open Results{isCash ? ' › Cash' : ''} and edit it there.</p>}
       </section>
 
       {isCash && stacks.length > 0 && (
@@ -225,6 +237,9 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
   const [limit, setLimit] = useState(CHUNK);
   const [openKey, setOpenKey] = useState(null);
   const [stacks, setStacks] = useState({ key: null, list: [] });
+  // "Edit in Results" only where it can land: under the Results tab (TrackingView's sheet). Over the
+  // home (HomeNumbers opens this sheet too) closing it would leave the player on the home.
+  const [onResults] = useState(resultsOnScreen);
   const sectionRef = useRef(null);
   const listScroll = useRef(null);       // the sheet's scroll position when a row was opened
   const setType = (v) => { setTypeState(v); saveType(v); setLimit(CHUNK); };
@@ -306,7 +321,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
       <h3 className="an-cell an-sec" id="bs-title">Sessions</h3>
       {row && (
         <Detail row={row} currency={currency} bankrollName={bankrollName}
-          stacks={stacks.key === row.key ? stacks.list : []} onBack={() => setOpenKey(null)} onEdit={edit} />
+          stacks={stacks.key === row.key ? stacks.list : []} onBack={() => setOpenKey(null)} onEdit={onResults ? edit : null} />
       )}
       <div className="bs-listview" hidden={!!row}>
         <div className="bs-bar">
@@ -320,10 +335,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
           </div>
           <span className="an-cell an-note bd-note-4 an-num an-clip bs-count">{countLabel(shown.length, type)}</span>
         </div>
-        <p className="an-p bs-note">
-          Tournament results and finished cash sessions, newest first. Expenses, income and deposits are not
-          sessions, so they are left out.
-        </p>
+        <p className="an-p bs-note">Not listed: expenses, income and deposits (they are not sessions).</p>
 
         {state.status === 'loading' && !state.rows.length && <p className="an-p">Loading…</p>}
         {state.status === 'error' && <p className="an-p">The sessions could not load. Close the dashboard and try again.</p>}

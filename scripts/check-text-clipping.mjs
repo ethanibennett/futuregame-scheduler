@@ -11,7 +11,8 @@
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
 // Scanner, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
 // sessions, one session) (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
-// section open, then closed — every Reports table and the
+// section open, then closed; Sessions filtered to Cash, a cash session's and a tournament's detail;
+// every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
@@ -381,6 +382,32 @@ function scan(rootSel) {
       await p.waitForTimeout(800);
       await runSheet(`bankroll dashboard ${tab}`);
     }
+    // Sessions (the loop above ran its list on the remembered filter): the Cash filter, then a cash
+    // session's detail and a tournament's (the longest title on show, which wraps), scrolled
+    // through, and the filter back on All.
+    await p.locator('.an-sheet .bd-tabs button:has-text("Sessions")').click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
+    await p.locator('.an-sheet .bs-chip:has-text("Cash")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await runSheet('bankroll sessions (cash)');
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.locator('.an-sheet .bs-row').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await runSheet('bankroll sessions (a cash session)');
+    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-chip:has-text("Tournaments")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.an-sheet .bs-row')];
+      const long = rows.reduce((a, r) => (r.querySelector('.bs-title').textContent.length > a.querySelector('.bs-title').textContent.length ? r : a), rows[0]);
+      long.click();
+    });
+    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(500);
+    await runSheet('bankroll sessions (a tournament)');
+    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-chip:has-text("All")').click({ timeout: 4000 });
     await tabs.first().click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-range button:has-text("All")').click({ timeout: 4000 });

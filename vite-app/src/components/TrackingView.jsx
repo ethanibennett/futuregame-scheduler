@@ -22,7 +22,7 @@ import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
-import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
+import { useResultsFocus, clearResultsFocus } from '../hooks/useResultsFocus.js';
 // BETA cash sessions, admins only: lazy like the tax report.
 const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
@@ -333,10 +333,14 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     clearResultsFocus();
     setShowAddForm(false);
     setPendingFormId(null);
+    setIntentForm(null);
     setEditingId(focusId);
-    const raf = requestAnimationFrame(() => revealInScroller(document.querySelector(`[data-entry-id="${focusId}"]`)));
-    return () => cancelAnimationFrame(raf);
-  }, [focusId, resultsKind, allTrackingData]);
+    // Once the form has rendered and the sheet has gone: its top to the top of the tab's scroller
+    // (bringIntoView, as the home's intents). No cleanup: clearing the focus above re-runs this
+    // effect at once, and cancelling there would cancel the scroll.
+    setTimeout(() => bringIntoView(document.querySelector(`.tab-panel[data-tab="tracking"] [data-entry-id="${focusId}"]`), false), 50);
+    return undefined;
+  }, [focusId, resultsKind, allTrackingData]); // eslint-disable-line react-hooks/exhaustive-deps
   const newEntryBankroll = { bankrollId: defaultBankrollFor(bk.selected, bk.bankrolls) };
 
   const onCurrencyChange = useCallback((c) => {

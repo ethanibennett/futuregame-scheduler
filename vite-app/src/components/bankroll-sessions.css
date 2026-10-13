@@ -1,0 +1,137 @@
+/* ==================================================================
+   Bankroll dashboard › Sessions (BETA, app admins) — BankrollSessions.jsx.
+   bs- prefixed; built on analytics.css's type roles (an-cell / an-note /
+   an-val / an-sec / an-p, baselines measured in WebKit) and the
+   dashboard's parts (bd-hero, bd-kv, bd-section, bd-note-4), so the only
+   new type recipes are the row title and the detail's wrapping title.
+
+   Content is 35g (the 37g sheet less 1g each side):
+     bar      All 6g | 1g | Tournaments 9g | 1g | Cash 6g | 1g | count 11g, 4r
+     year     a 7g x 3r pill on 14g (centred on the 35g column), 1r above the rows
+     row      a 7r card, 1r apart: 1g | icon 3g | 1g | title / room 18g | 1g | result / date 10g | 1g
+              title and result seated on line 3, room and date on line 5; the icon 3r square, 2r down
+     detail   Back 9g | Edit in Results 12g (on 23g), 5r; the title (wrapping, 4r lines, baselines on
+              4, 8, ...); the dashboard's hero, label | value rows and an-sec sections
+   Every label inside a control (chips, pill, buttons) is centred by its container (owner rule
+   2026-10-10); every other line of text sits on an r line. Rows are list rows, not controls
+   (NOT_CONTROLS in scripts/check-control-centring.mjs).
+
+   Type colours: --series-cash / --series-tourn, the graph's and the Overview tables' column
+   identity (defined in bankroll-overview-tables.css, which the dashboard always loads; the graph
+   work moves them to styles.css).
+   ================================================================== */
+
+/* ── Bar: one-select chips and the count ── */
+.bs-bar {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 9) calc(var(--gu) * 6) calc(var(--gu) * 11);
+  column-gap: var(--gu);
+  align-items: start;
+  height: calc(var(--subrow) * 4);
+}
+.bs-chips { display: contents; }
+.bs-chip.bk-seg-btn { width: 100%; height: calc(var(--subrow) * 4); }
+.bs-chip.bk-seg-btn.is-on { background: var(--brand-quiet); }
+.bs-chip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.bs-note { margin-top: var(--subrow); }
+
+/* ── Years ── */
+.bs-year { margin-top: calc(var(--subrow) * 2); }
+.bs-year-head { height: calc(var(--subrow) * 3); }
+.bs-year-pill {
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+  width: calc(var(--gu) * 7); height: calc(var(--subrow) * 3);
+  margin-left: calc(var(--gu) * 14);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-xs);
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+  white-space: nowrap;
+}
+
+/* ── Rows ── */
+.bs-list { list-style: none; margin: var(--subrow) 0 0; padding: 0; }
+.bs-li + .bs-li { margin-top: var(--subrow); }
+.bs-row {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 3) calc(var(--gu) * 18) calc(var(--gu) * 10);
+  column-gap: var(--gu);
+  align-items: start;
+  box-sizing: border-box;
+  height: calc(var(--subrow) * 7);
+  padding-inline: var(--gu);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .bs-row:hover { background-image: linear-gradient(var(--state-hover), var(--state-hover)); } }
+.bs-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.bs-row:active { background-image: linear-gradient(var(--state-hover), var(--state-hover)); }
+.bs-icocell { display: block; height: calc(var(--subrow) * 7); }
+.bs-ico {
+  display: block;
+  width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
+  margin: calc(var(--subrow) * 2) auto 0;
+  fill: none; stroke: currentColor; stroke-width: var(--icon-stroke); stroke-linecap: round; stroke-linejoin: round;
+}
+.bs-ico.is-cash { color: var(--series-cash); }
+.bs-ico.is-tourn { color: var(--series-tourn); }
+.bs-main, .bs-side { display: block; min-width: 0; }
+/* Univers Condensed sm, bold, baseline on line 3 of 3 (analytics.css c = .6511 at --fs-sm). */
+.an-cell.bs-title {
+  --h: 3; --p: 1.6978;
+  font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text);
+}
+.bs-side .an-val { font-weight: var(--fw-bold); }
+.bs-finish { color: var(--text); font-weight: var(--fw-bold); }
+.an-note.is-none { font-style: oblique; }
+
+.bs-more.bk-btn { width: calc(var(--gu) * 35); margin-top: calc(var(--subrow) * 2); }
+
+/* ── Detail ── */
+.bs-dhead {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  height: calc(var(--subrow) * 5);
+}
+.bs-w9 { width: calc(var(--gu) * 9); }
+.bs-w12 { width: calc(var(--gu) * 12); }
+/* The title face xl (c = .9108, analytics.css), wrapping on 4r lines: first baseline on line 4
+   (p = 4 - 2 - c), the bottom pad (c) making the block 4n + 2 r, so what follows starts on a line. */
+.bs-dtitle {
+  margin: calc(var(--subrow) * 2) 0 0;
+  padding-top: calc(var(--subrow) * 1.0892);
+  padding-bottom: calc(var(--subrow) * 0.9108);
+  line-height: calc(var(--subrow) * 4);
+  font-family: var(--font-title); font-size: var(--fs-xl); font-weight: var(--fw-regular); color: var(--text);
+  overflow-wrap: anywhere;
+}
+.bs-dsub { margin: 0; }
+.bs-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.bs-notes.is-none { font-style: oblique; }
+
+/* A session's stack over time: the Cash view's detail graph (CashSessions.css .cs-chart--detail),
+   a 35g x 10r box, the plot inset 1g / 1r. */
+.bs-chart {
+  position: relative;
+  width: calc(var(--gu) * 35); height: calc(var(--subrow) * 10);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+}
+.bs-chart > svg {
+  position: absolute; display: block; overflow: visible;
+  top: var(--subrow); left: var(--gu);
+  width: calc(100% - var(--gu) * 2); height: calc(100% - var(--subrow) * 2);
+}
+.bs-chart-zero { stroke: var(--border); stroke-width: var(--bw-hair); stroke-dasharray: var(--subrow) calc(var(--subrow) * 0.5); }
+.bs-chart-line { fill: none; stroke-width: var(--bw-2); stroke-linejoin: round; stroke-linecap: round; }
+.bs-chart-line.is-pos { stroke: var(--pos); }
+.bs-chart-line.is-neg { stroke: var(--neg); }
+.bs-chart-area { stroke: none; }
+.bs-chart-area.is-pos { fill: var(--pos-quiet); }
+.bs-chart-area.is-neg { fill: var(--neg-quiet); }

@@ -549,8 +549,9 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     clearResultsFocus();
     setScreen({ edit: focusId });
     setConfirmDelete(false);
-    const raf = requestAnimationFrame(() => revealInScroller(document.querySelector('.cs-view'), 0));
-    return () => cancelAnimationFrame(raf);
+    // No cleanup: clearing the focus re-runs this effect at once, and would cancel the scroll.
+    requestAnimationFrame(() => revealInScroller(document.querySelector('.cs-view'), 0));
+    return undefined;
   }, [focusId, sessions]);
 
   const ended = sessions.filter((s) => !s.live);

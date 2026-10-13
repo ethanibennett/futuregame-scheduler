@@ -39,7 +39,8 @@
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
 // foot, closed and open), the
-// bankroll sheet and dashboard (every tab, report filters, CSV import), cash sessions, expenses and
+// bankroll sheet and dashboard (every tab, report filters, CSV import, the Sessions list filtered
+// and a tournament's and a cash session's detail), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
@@ -200,7 +201,7 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
   '.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.dash-event-card', '.settings-row-btn',
-  '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row',
+  '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.bs-row',
   // Pick-list rows that seat their label on an r line by design: the Hands game picker's radio
   // rows ("4r row, label baseline one r above the bottom") and New Group's buddy rows ("the
   // name on +3r").
@@ -1689,6 +1690,24 @@ function finalize(c) {
   step('bankroll-dashboard-closed', async () => { await dash(null); await sections(false); }, 3);
   step('bankroll-rules', () => dash('Rules'), 2);
   step('bankroll-goals', () => dash('Goals'), 1);
+  // Sessions: the list (chips, year pills, rows; scrolled past the next year), a filter on (Cash),
+  // and the read-only detail of a tournament and of a cash session (its stack graph), scrolled
+  // through. The type filter is remembered per device, so each view sets it by clicking.
+  const sessionsTab = async (...steps) => {
+    await dash('Sessions');
+    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
+    for (const sel of steps) await click(sel, 700);
+  };
+  step('bankroll-sessions', () => sessionsTab('.an-sheet .bs-chip:has-text("All")'), 10);
+  // The list's foot: its last year pill and the Show more button (past the first 150 rows).
+  step('bankroll-sessions-foot', async () => {
+    await sessionsTab('.an-sheet .bs-chip:has-text("All")');
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
+    await p.waitForTimeout(400);
+  });
+  step('bankroll-sessions-cash', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")'), 2);
+  step('bankroll-sessions-tournament', () => sessionsTab('.an-sheet .bs-chip:has-text("Tournaments")', '.an-sheet .bs-row'), 3);
+  step('bankroll-sessions-cash-detail', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")', '.an-sheet .bs-row'), 3);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);
