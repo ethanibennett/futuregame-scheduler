@@ -194,6 +194,26 @@ async function down(child) {
       assert.strictEqual(await count(S), 4);
     });
 
+    // A result whose event row is gone (a personal event deleted after its result was logged; old
+    // migrations did the same to feed rows): GET /api/tracking drops it, so the confirmation never
+    // counts it. The server counted it too, and every reset of that scope was a 409 for good.
+    await test('a result whose event is gone is neither counted nor deleted: the typed count matches', async () => {
+      const pe = await post('/api/personal-event', N, { date: '2026-10-02', type: 'Day Off' });
+      assert.strictEqual(pe.status, 201, pe.body);
+      await log(N, pe.json.tournamentId);
+      await log(N, T[5]);
+      assert.strictEqual((await del(`/api/personal-event/${pe.json.tournamentId}`, N)).status, 200);
+      assert.strictEqual(await count(N), 1);
+      const r = await del('/api/tracking?bankroll=main&expect=1', N);
+      assert.strictEqual(r.status, 200, r.body);
+      assert.strictEqual(r.json.count, 1);
+      assert.strictEqual(await count(N), 0);
+      // Again, with nothing listed: a 0 the confirmation agrees with, not a 409.
+      const again = await del('/api/tracking?bankroll=main&expect=0', N);
+      assert.strictEqual(again.status, 200, again.body);
+      assert.strictEqual(again.json.count, 0);
+    });
+
     await test('all=true deletes every bankroll of the CALLER only', async () => {
       await log(S, T[7], staked.id);
       const r = await del('/api/tracking?all=true&expect=5', S);

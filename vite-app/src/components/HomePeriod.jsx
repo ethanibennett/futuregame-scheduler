@@ -21,7 +21,7 @@ import HomeNoiseLine from './HomeNoiseLine.jsx';
 // are refetched whenever the shared summary is (App's useBankrolls refetches it when the results
 // change, and after any bankroll change).
 
-export default function HomePeriod({ admin, bk, results, schedule, updates, rates, currency = 'USD', today, scopeAbove = null, onOpen, onOpenGoals, onOpenNoise }) {
+export default function HomePeriod({ admin, bk, results, schedule, updates, plans = null, rates, currency = 'USD', today, scopeAbove = null, onOpen, onOpenGoals, onOpenNoise }) {
   const summary = admin && bk ? bk.summary : null;
   const allGuide = summary && summary.guide && summary.guide.byKey ? summary.guide.byKey.all : null;
   const goals = useMemo(() => (allGuide && Array.isArray(allGuide.goals) ? allGuide.goals : []), [allGuide]);
@@ -67,7 +67,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
   const cur = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
   const model = useMemo(() => {
     const money = (v, signed) => fmtMoney(v, cur, { signed: !!signed });
-    const base = { today, currency, money, results, schedule, updates, rates, currencyOf: (r) => nativeCurrency(r.venue) };
+    const base = { today, currency, money, results, schedule, updates, plans, rates, currencyOf: (r) => nativeCurrency(r.venue) };
     if (!admin || ledgerFailed) return buildPeriod({ ...base, isAdmin: false });
     // Wait for what decides the window (the trips, and the current trip's payload) and for the
     // ledger, so the block does not open on the month and jump to the trip.
@@ -79,7 +79,7 @@ export default function HomePeriod({ admin, bk, results, schedule, updates, rate
     return buildPeriod({
       ...base, isAdmin: true, ledger: entries, trip, tripData: trip ? tripData.data : null, tripScopeName: scopeName,
     });
-  }, [admin, ledgerFailed, trips, trip, tripData, entries, results, schedule, updates, rates, currency, today, summary]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [admin, ledgerFailed, trips, trip, tripData, entries, results, schedule, updates, plans, rates, currency, today, summary]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The All roll's goals, against the same ledger. A profit target is set in the summary's currency.
   const goalRows = useMemo(() => {

@@ -6143,11 +6143,17 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
     if (!all && !scoped) {
       return res.status(400).json({ error: 'Say which results to delete: ?bankroll=main or a bankroll id, or ?all=true for every bankroll' });
     }
-    const bk = all ? { sql: '', params: [] } : bankrolls.filterFromQuery(db, req.user.id, raw, 'bankroll_id');
+    const bk = all ? { sql: '', params: [] } : bankrolls.filterFromQuery(db, req.user.id, raw, 'te.bankroll_id');
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
     const scope = all ? 'all' : (bk.ref.kind === bankrolls.MAIN ? bankrolls.MAIN : String(bk.ref.id));
 
-    const countStmt = db.prepare(`SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?${bk.sql}`);
+    // The results the confirmation counted are the ones GET /api/tracking lists: joined to their
+    // event, so a result whose event row is gone (old migrations deleted tournaments without their
+    // results) is neither counted nor deleted here. Counting it made ?expect= disagree with the
+    // phrase the user typed, and every reset was then a 409 for good.
+    const visibleRows = `SELECT te.id FROM tracking_entries te JOIN tournaments t ON te.tournament_id = t.id
+      WHERE te.user_id = ?${bk.sql}`;
+    const countStmt = db.prepare(`SELECT COUNT(*) AS n FROM (${visibleRows})`);
     countStmt.bind([req.user.id, ...bk.params]);
     countStmt.step();
     const count = countStmt.getAsObject().n || 0;
@@ -6164,7 +6170,7 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
     // Only touch the DB when there is something to remove, so a no-op reset
     // does not rewrite the database file.
     if (count > 0) {
-      db.run(`DELETE FROM tracking_entries WHERE user_id = ?${bk.sql}`, [req.user.id, ...bk.params]);
+      db.run(`DELETE FROM tracking_entries WHERE user_id = ? AND id IN (${visibleRows})`, [req.user.id, req.user.id, ...bk.params]);
       await saveDatabase();
     }
     res.json({ message: 'Results deleted', count, scope });

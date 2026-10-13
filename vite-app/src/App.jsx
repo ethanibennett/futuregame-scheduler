@@ -730,7 +730,9 @@ export default function App() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        if (res.status === 409 && data.ifAbsent) { fetchTracking(); return { ok: false, status: 409 }; }
+        // ifAbsent and a result is already there: nothing changed. The caller says so (To log's
+        // toast; the Cashed form keeps what was typed and asks before replacing it).
+        if (res.status === 409 && data.ifAbsent) { fetchTracking(); return { ok: false, status: 409, entryId: err.entryId }; }
         setError(err.error || 'Failed to add tracking entry');
         return { ok: false, status: res.status };
       }

@@ -109,6 +109,21 @@ test('what a series still holds: planned entries, converted; logged, busted and 
   assert.equal(scheduleAhead(sch, [], [], 'Nowhere', TODAY), null);
 });
 
+test('what a series still holds leaves out a plan that resolved off, as Up Next and To log do', () => {
+  // #5 ($400 x 2) is "If seat #2" and #2 missed: off. A pending plan still counts (it may be played).
+  const plans = new Map([[5, { state: 'off' }], [4, { state: 'pending' }]]);
+  assert.deepEqual(scheduleAhead(seriesSchedule(), [], [], SER, TODAY, { plans }), { count: 1, upTo: 300 });
+  assert.deepEqual(scheduleAhead(seriesSchedule(), [], [], SER, TODAY, { plans: new Map([[5, { state: 'on' }]]) }), { count: 2, upTo: 300 + 800 });
+  // buildPeriod reads the same plans: the series row says 1 event, up to $300.
+  const money = (v) => `$${Math.round(v)}`;
+  const p = buildPeriod({ today: TODAY, isAdmin: false, money, results: [], schedule: seriesSchedule(), updates: [], plans });
+  assert.equal(p.mode, 'series');
+  assert.deepEqual(p.ahead, { count: 1, upTo: 300 });
+  // Everything still ahead is off: the series has nothing left to play, so it is not running.
+  const allOff = new Map([[4, { state: 'off' }], [5, { state: 'off' }]]);
+  assert.equal(currentSeries(seriesSchedule(), [], TODAY, { plans: allOff }), null);
+});
+
 // Ledger entries as GET /api/bankrolls/ledger returns them (display currency USD).
 const L = (date, source, amount, extra = {}) => ({ date, source, kind: { tournaments: 'tournament', 'cash-sessions': 'cash_session', transactions: amount < 0 ? 'expense' : 'income', adjustments: 'deposit' }[source], amount_display: amount, fx_display: 1, ...extra });
 const ledger = [

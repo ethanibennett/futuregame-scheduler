@@ -167,6 +167,23 @@ export function bulletsFromUpdate(u) {
 const dayBefore = (iso) => new Date(Date.parse(iso + 'T12:00:00Z') - MS_DAY).toISOString().slice(0, 10);
 
 /**
+ * A server timestamp in epoch ms: ISO ('2026-10-11T16:40:00.000Z'), or SQLite's CURRENT_TIMESTAMP
+ * ('2026-10-11 16:40:00', which is UTC with no zone written). null when it cannot be read.
+ * (home-upnext.js re-exports it.)
+ */
+export function serverTime(s) {
+  if (!s) return null;
+  const str = String(s).trim();
+  const sqlite = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/.exec(str);
+  const ms = Date.parse(sqlite ? `${sqlite[1]}T${sqlite[2]}Z` : str);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+// How long a live update vouches for a run still going: a Day 1's length (home-upnext.js
+// DAY_ONE_HOURS, the same 18 h).
+const FRESH_UPDATE_HOURS = 18;
+
+/**
  * Whether an event whose latest live update says it is still being played (a Start, a stack update,
  * a re-entry: not a bust, not a bag) is in fact over: players forget the bust. It is when
  *   - the room's clock showed it ended (clock_ended_at), or
@@ -174,14 +191,20 @@ const dayBefore = (iso) => new Date(Date.parse(iso + 'T12:00:00Z') - MS_DAY).toI
  *     and its day is before yesterday: a single-day event cannot still be running then (one that
  *     started last night can be, past midnight). A multi-day event is bagged between days, so it
  *     is not judged by its day; nor is one whose history did not come (no bag_count).
+ * The day alone is never enough: an update posted within the last 18 h (its created_at) says the
+ * event is being played now, whatever its date (a Day 3 updated without a Bag between days), so
+ * it stays Currently Playing and is not asked about as a forgotten bust.
  *   today  YYYY-MM-DD (utils.js getToday)
+ *   now    epoch ms (utils.js getNow; default the real clock)
  */
-export function playingEnded(event, update, today) {
+export function playingEnded(event, update, today, now = Date.now()) {
   const e = event || {}, u = update || null;
   if (!u || Number(u.is_busted) || Number(u.is_bagged)) return false;
   if (e.clock_ended_at) return true;
   const day = isoDay(e.date);
   if (!day || !today || u.bag_count == null || Number(u.bag_count) > 0) return false;
+  const at = serverTime(u.created_at);
+  if (at != null && Number.isFinite(now) && now - at < FRESH_UPDATE_HOURS * 3600000) return false;
   return day < dayBefore(today);
 }
 
@@ -206,6 +229,7 @@ export function playingEnded(event, update, today) {
  *     knows it: asking for its result would offer a one-tap phantom bust.
  *
  *   opts.today    YYYY-MM-DD (utils.js getToday)
+ *   opts.now      epoch ms (utils.js getNow), for playingEnded's fresh-update rule; default the clock
  *   opts.startOf  event -> epoch ms of its start (utils.js parseTournamentTime, venue-zone aware);
  *                 without it, events order by whenKey
  *   opts.plans    Map(event id -> { state: 'on' | 'off' | 'pending' }), the resolved plans
@@ -243,7 +267,7 @@ export function awaitingResults(schedule, results, updates, opts = {}) {
     // Over: a bust; a Start that cannot still be running (playingEnded); no update at all and a
     // past day or an ended clock. A bag, or a run still going, is not over yet.
     const over = bust ? true
-      : u ? playingEnded(e, u, today)
+      : u ? playingEnded(e, u, today, opts.now == null ? Date.now() : opts.now)
         : (!!today && day < today) || !!e.clock_ended_at;
     if (!over) continue;
     out.push({

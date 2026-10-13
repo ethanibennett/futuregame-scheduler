@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseConditions, serverTime, parentOutcome, resolveCondition, resolveConditions, offLast, planKind,
-  cashCard, weekAhead, weekAheadLine, DAY_ONE_HOURS, wasBagged,
+  cashCard, weekAhead, weekAheadLine, DAY_ONE_HOURS, wasBagged, openBags,
 } from '../home-upnext.js';
 
 const H = 36e5;
@@ -208,6 +208,26 @@ test('resolveConditions: a parent off the schedule is named from the feed, a res
   assert.equal(res.get(33).items[0].label, 'If bust #?');
   // A live update with no row behind it on the schedule still resolves (keyed by tournament_id).
   assert.equal(res.get(34).state, 'pending');
+});
+
+test('open bags: a bag with a result logged is over, as resolveConditions reads it', () => {
+  const ups = [
+    { id: 1, tournament_id: 46, is_bagged: 1, bag_day: 1, stack: 182000 },   // bagged, then cashed and logged
+    { id: 2, tournament_id: 47, is_bagged: 1, bag_day: 1, stack: 90000 },    // bagged, Day 2 to come
+    { id: 3, tournament_id: 48, is_busted: 1 },                               // busted
+    { id: 4, tournament_id: 49, stack: 30000 },                               // playing
+  ];
+  const results = [{ tournament_id: 46, cashed: 1, cash_amount: 1450, finish_place: 88 }];
+  const open = openBags(ups, results);
+  assert.deepEqual([...open.keys()], [47]);
+  assert.equal(open.get(47).stack, 90000);
+  // Without the result, #46 is still a bag to come back to; and its plan child agrees with it.
+  assert.deepEqual([...openBags(ups, []).keys()], [46, 47]);
+  const sch = [ev(46, 46, { event_name: 'NLH Colossus Day 1C' }), plan(60, 60, [{ type: 'IF_BAG', dependsOnId: 46 }])];
+  assert.equal(resolveConditions(sch, ups, results).get(60).state, 'on');
+  // A bust after the bag closes it too; nothing in, nothing out.
+  assert.deepEqual([...openBags([...ups, { id: 5, tournament_id: 47, is_busted: 1 }], results).keys()], []);
+  assert.deepEqual([...openBags(null, null).keys()], []);
 });
 
 test('offLast and planKind', () => {

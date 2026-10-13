@@ -13539,6 +13539,7 @@
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps);
+      text-transform: uppercase; /* 'CASH' on the running cash session's card (DashboardView) */
       color: var(--text-muted);
       font-variant-numeric: tabular-nums;
       text-align: center;

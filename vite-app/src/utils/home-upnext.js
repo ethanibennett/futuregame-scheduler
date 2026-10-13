@@ -41,7 +41,7 @@
 // Several conditions on one event are several routes in (a seat, OR being up $X), so the event is
 // on when any condition is on, off only when every condition is off, and otherwise pending. An off
 // event dims and sorts last on Up Next (offLast); an on event sorts as a plain one.
-import { eventNo, isoDay } from './home.js';
+import { eventNo, isoDay, serverTime } from './home.js';
 
 /**
  * A Day 1 runs well under this many hours from its start; a bust later than that was on Day 2+.
@@ -75,17 +75,8 @@ export function parseConditions(json) {
   return Array.isArray(list) ? list.filter((c) => c && KNOWN.has(c.type)) : [];
 }
 
-/**
- * A server timestamp in epoch ms: ISO ('2026-10-11T16:40:00.000Z'), or SQLite's CURRENT_TIMESTAMP
- * ('2026-10-11 16:40:00', which is UTC with no zone written). null when it cannot be read.
- */
-export function serverTime(s) {
-  if (!s) return null;
-  const str = String(s).trim();
-  const sqlite = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/.exec(str);
-  const ms = Date.parse(sqlite ? `${sqlite[1]}T${sqlite[2]}Z` : str);
-  return Number.isFinite(ms) ? ms : null;
-}
+// A server timestamp in epoch ms (home.js, which playingEnded needs too; re-exported here).
+export { serverTime };
 
 // The latest update per event (the endpoint already sends one each; a list with more is tolerated).
 function latestUpdates(updates) {
@@ -228,6 +219,26 @@ export function resolveConditions(schedule, updates, results, opts = {}) {
     out.set(Number(e.id), { state, items });
   }
   return out;
+}
+
+/**
+ * The bags still open, which Up Next shows as 'Bagged — Day N' cards (and which make today's other
+ * events conditional on them): Map(event id -> its bag update) for every event with a bag update
+ * and no bust update among the live updates, and NO result logged. A result is final, as
+ * parentOutcome and To log read it: a bag whose Day 2 was played out and logged (in Results, or by
+ * To log) is over, not a bag to come back to.
+ */
+export function openBags(updates, results) {
+  const logged = new Set((Array.isArray(results) ? results : []).map((r) => Number(r && r.tournament_id)));
+  const busted = new Set(), bags = new Map();
+  for (const u of Array.isArray(updates) ? updates : []) {
+    if (!u) continue;
+    const id = Number(u.tournament_id);
+    if (Number(u.is_busted)) busted.add(id);
+    if (Number(u.is_bagged)) bags.set(id, u);
+  }
+  for (const id of [...bags.keys()]) if (busted.has(id) || logged.has(id)) bags.delete(id);
+  return bags;
 }
 
 /** Up Next's order with every event whose plan is off moved to the end (both parts keep their order). */

@@ -13,7 +13,7 @@ import {
 import { API_URL } from '../utils/api.js';
 import { homeCurrency, playingEnded } from '../utils/home.js';
 import { gridGeom } from '../utils/grid-panel.js';
-import { resolveConditions, offLast, planKind } from '../utils/home-upnext.js';
+import { resolveConditions, offLast, planKind, openBags } from '../utils/home-upnext.js';
 import useLiveCashSession from '../hooks/useLiveCashSession.js';
 import useDisplayCurrency from '../hooks/useDisplayCurrency.js';
 import HomeCashCard from './HomeCashCard.jsx';
@@ -362,6 +362,7 @@ export default function DashboardView({
   }, []);
 
   const todayISO = getToday();
+  const nowTen = Math.floor(now / 600000);
 
   // The plans on the schedule, resolved (verdict §1(a); utils/home-upnext.js): "If bust #12" turns
   // on once #12 is over, a branch whose parent went the other way is off ("Off: busted #12"),
@@ -377,23 +378,19 @@ export default function DashboardView({
   // view, so a stack update here moves them too.
   const { session: cashSession, stacks: cashStacks, skew: cashSkew } = useLiveCashSession({ enabled: !!(isAdmin && token), token });
 
-  // Build bagged events from previous days
+  // Build bagged events from previous days: the bags still open (utils/home-upnext.js openBags). A
+  // result is final, as resolveConditions and To log read it, so a bag whose result is logged is
+  // over. It used to stay a 'Bagged — Day 1' card for good, and while it stayed, today's other
+  // events were marked conditional on it.
   const baggedEvents = useMemo(() => {
-    const bustedMap = {};
-    const baggedMap = {};
-    (myActiveUpdates || []).forEach(u => {
-      if (u.is_busted) bustedMap[u.tournament_id] = true;
-      if (u.is_bagged) baggedMap[u.tournament_id] = u;
-    });
-    return Object.entries(baggedMap)
-      .filter(([tid]) => !bustedMap[tid])
+    return [...openBags(myActiveUpdates, trackingData)]
       .map(([tid, update]) => {
-        const t = (mySchedule || []).find(x => x.id === Number(tid)) || (tournaments || []).find(x => x.id === Number(tid));
+        const t = (mySchedule || []).find(x => x.id === tid) || (tournaments || []).find(x => x.id === tid);
         if (!t) return null;
         return { ...t, _bagUpdate: update, _type: 'bagged' };
       })
       .filter(Boolean);
-  }, [myActiveUpdates, mySchedule, tournaments]);
+  }, [myActiveUpdates, mySchedule, tournaments, trackingData]);
 
   // Today's events from user schedule
   const todayEvents = useMemo(() => {
@@ -418,12 +415,13 @@ export default function DashboardView({
         const t = (mySchedule || []).find(x => x.id === u.tournament_id) || (tournaments || []).find(x => x.id === u.tournament_id);
         if (!t) return null;
         // A run that cannot still be going (the forgotten bust: utils/home.js playingEnded) is To
-        // log's to ask about, not a Currently Playing card.
-        if (playingEnded(t, u, todayISO)) return null;
+        // log's to ask about, not a Currently Playing card. An update posted in the last 18 h keeps
+        // it here whatever its day (nowTen: the clock, in 10-minute steps).
+        if (playingEnded(t, u, todayISO, nowTen * 600000)) return null;
         return { ...t, _type: 'normal' };
       })
       .filter(Boolean);
-  }, [myActiveUpdates, mySchedule, tournaments, todayISO, baggedEvents]);
+  }, [myActiveUpdates, mySchedule, tournaments, todayISO, baggedEvents, nowTen]);
 
   // Combined "What's Next" list
   const whatsNextEvents = useMemo(() => {
@@ -1088,7 +1086,8 @@ export default function DashboardView({
                 {slides.length > 1 && slides.length <= 8 && (
                   <div className="dash-upnext-dots" style={{ '--n': slides.length }} onPointerEnter={holdFit} onPointerLeave={releaseFit}>
                     {slides.map((_, i) => (
-                      <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
+                      <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)}
+                        aria-label={showCash ? (i === 0 ? 'Show the cash session' : `Show event ${i}`) : `Show event ${i + 1}`} aria-current={i === safeIdx} />
                     ))}
                   </div>
                 )}
@@ -1101,7 +1100,10 @@ export default function DashboardView({
                       disabled={safeIdx === 0}
                       aria-label="Previous event"
                     ><Icon.chevLeft /></button>
-                    <span className="dash-upnext-pos">{safeIdx + 1} / {slides.length}</span>
+                    {/* Events are numbered, as the header's badge counts them ('26 events'): the
+                        running cash session's card is a slide, not an event, so it reads CASH and
+                        the events run 1 / 26 to 26 / 26 (it used to read 1 / 27 under '26 events'). */}
+                    <span className="dash-upnext-pos">{showCash && safeIdx === 0 ? 'Cash' : `${showCash ? safeIdx : safeIdx + 1} / ${whatsNextEvents.length}`}</span>
                     <button
                       type="button"
                       className="dash-upnext-step"
@@ -1133,7 +1135,6 @@ export default function DashboardView({
           onDeleteTracking={onDeleteTracking}
           onSetPlayed={onSetPlayed}
           onLog={onLog}
-          onMore={() => onLog({ kind: 'awaiting' })}
         />
       )}
       {onLog && (
@@ -1145,8 +1146,10 @@ export default function DashboardView({
     <div className="home-col home-col--numbers">
       {/* The bankroll line (admins) and the period block with its goals (verdict sections 4 and
           5; components/HomeNumbers.jsx). The period block replaced the one-line Results bar. */}
+      {/* plans: Up Next's resolved plans, so "Still on your schedule" leaves out a branch that is off,
+          as Up Next and To log do. */}
       <HomeNumbers isAdmin={isAdmin} token={token} bk={bk} results={trackingData} schedule={mySchedule}
-        updates={myActiveUpdates} rates={dashRates} currency={dashCurrency} today={todayISO} onLog={onLog} />
+        updates={myActiveUpdates} plans={resolvedPlans} rates={dashRates} currency={dashCurrency} today={todayISO} onLog={onLog} />
 
       {/* ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
           TODO(home trend): build here once the BankrollChart.jsx rebuild has merged.

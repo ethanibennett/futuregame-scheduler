@@ -17,7 +17,7 @@ const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 // it comes back here); a trip's block to that trip's page in Results; anyone else's block to Results.
 // The signal-or-noise line under the block (admins) opens the Analytics sheet over the home, on the
 // block's scope; a sentence about cash opens the dashboard's Overview instead.
-export default function HomeNumbers({ isAdmin, token, bk, results, schedule, updates, rates, currency, today, onLog }) {
+export default function HomeNumbers({ isAdmin, token, bk, results, schedule, updates, plans = null, rates, currency, today, onLog }) {
   const admin = !!(isAdmin && bk && bk.enabled);
   const [sheet, setSheet] = useState(null); // the dashboard tab to open: 'rules' | 'goals' | 'balance'
   const [analytics, setAnalytics] = useState(null); // the bankroll scope to open Analytics on
@@ -47,7 +47,7 @@ export default function HomeNumbers({ isAdmin, token, bk, results, schedule, upd
   return (
     <>
       {admin && <HomeBankrollLine summary={bk.summary} onOpen={() => setSheet('rules')} />}
-      <HomePeriod admin={admin} bk={bk} results={results} schedule={schedule} updates={updates} rates={rates}
+      <HomePeriod admin={admin} bk={bk} results={results} schedule={schedule} updates={updates} plans={plans} rates={rates}
         currency={currency} today={today} scopeAbove={scopeAbove} onOpen={onOpen} onOpenGoals={() => setSheet('goals')}
         onOpenNoise={(game, scope) => (game === 'cash' ? setSheet('balance') : setAnalytics(scope || 'all'))} />
       {admin && sheet && (

@@ -132,6 +132,10 @@ export default function HomeLastResult({ results, rates, isAdmin, token, canLog 
     else onLog({ kind: 'tournament' });
   };
 
+  // Nothing logged and no way to log (a guest: results need an account): no card at all. "Log your
+  // first result" with no button under it asked for something nobody here could do.
+  if (!last && !canLog) return null;
+
   let card;
   if (!last) {
     card = (

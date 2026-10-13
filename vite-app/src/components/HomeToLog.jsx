@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { getVenueInfo, getVenueBrandColor, formatBuyin, parseTournamentTime } from '../utils/utils.js';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { getVenueInfo, getVenueBrandColor, formatBuyin, parseTournamentTime, getNow } from '../utils/utils.js';
 import { awaitingResults, eventNo, dayName } from '../utils/home.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 
 // ── The home's To log (verdict section 2) ──────────────────────────────────────────────────
 // Events that are over with no result logged (utils/home.js awaitingResults), newest first: the
-// two newest as rows, and "+N more", which opens Results. A branch of a plan that resolved off
+// two newest as rows, and "+N more", which shows every one of them here, in place, with the same
+// answers ("Fewer" folds it back to two). It used to open Results, whose Awaiting card only ever
+// shows the newest, so the rest could not be reached at all. A branch of a plan that resolved off
 // (Up Next's resolveConditions: "If bag #12" after #12 busted on Day 1) is not asked about: the
 // app knows it was never played. Each row is the event's venue strip with its day ("BORGATA ·
 // YESTERDAY") over one line ("#10 $600 PLO 8-Max") and the answers, each on its own column so they
@@ -15,7 +17,9 @@ import { useToast } from '../contexts/ToastContext.jsx';
 //                update carries a deal's payout (a chop is a cash);
 //   Cashed       opens the result form in Results, prefilled (bullets, a deal's place and payout,
 //                the field);
-//   Didn't play  clears the row (user_schedules.not_played, synced across devices).
+//   Didn't play  clears the row (user_schedules.not_played, synced across devices). Not offered
+//                for an event with any live update (a bust, or a Start the player forgot to bust
+//                out of): the live record says it was played.
 // Busted and Didn't play turn the row, where it is, into what was done and an Undo for a few
 // seconds: a second tap of a double tap lands on that row's text, not on the next event's Busted
 // (it did, before: the row left at once and the next one slid under the finger). Undo deletes the
@@ -26,7 +30,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 // Writes never edit a result: POST /api/tracking with ifAbsent is a 409 when one exists (logged on
 // another device, or by the live-update Finish). The section takes no room when nothing waits.
 
-const SHOWN = 2;          // rows on the home; the rest are "+N more" in Results
+const SHOWN = 2;          // rows on the home until "+N more" shows the rest
 const HOLD_MS = 8000;     // how long a row stays as "done, Undo" after Busted or Didn't play
 const SETTLE_MS = 600;    // an Undo tap this soon after the row changed is the double tap's second half
 
@@ -59,8 +63,10 @@ function Strip({ event, today }) {
 // quiet: the 5g Didn't play column.
 const Gap = ({ quiet = false }) => <span className={'hm-tolog-gap' + (quiet ? ' hm-tolog-gap--quiet' : '')} aria-hidden="true" />;
 
-export default function HomeToLog({ schedule, results, updates, plans = null, today, canLog = true, onAddTracking, onDeleteTracking, onSetPlayed, onLog, onMore }) {
+export default function HomeToLog({ schedule, results, updates, plans = null, today, canLog = true, onAddTracking, onDeleteTracking, onSetPlayed, onLog }) {
   const toast = useToast();
+  const [all, setAll] = useState(false);                    // "+N more": every row, in place
+  const listId = useId();
   const [busy, setBusy] = useState(() => new Set());        // ids with a request in flight
   const [logged, setLogged] = useState(() => new Set());    // logged here; the refetch is on its way
   // Rows turned into "done, Undo": [{ id, item, kind: 'busted' | 'skipped', index, at, entryId? }].
@@ -74,9 +80,12 @@ export default function HomeToLog({ schedule, results, updates, plans = null, to
   const release = (id) => { inflight.current.delete(id); };
   const setFlag = (set, id, on) => set((s) => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
 
+  // now: a Start updated in the last 18 h is still being played whatever its day (playingEnded).
+  // Bucketed to the minute with the home's own clock, so a row comes in when that runs out.
+  const nowMinute = Math.floor(getNow() / 60000);
   const items = useMemo(() => awaitingResults(schedule, results, updates, {
-    today, logged: [...logged], startOf: parseTournamentTime, plans,
-  }), [schedule, results, updates, today, logged, plans]);
+    today, now: nowMinute * 60000, logged: [...logged], startOf: parseTournamentTime, plans,
+  }), [schedule, results, updates, today, nowMinute, logged, plans]);
 
   const drop = (id) => setHeld((h) => h.filter((x) => x.id !== id));
   const hold = (entry) => {
@@ -160,23 +169,25 @@ export default function HomeToLog({ schedule, results, updates, plans = null, to
   // A held row takes one of the SHOWN places: the section stays its height through the hold, and
   // the next event comes in when the hold ends (it used to come in at once, and everything below
   // To log dropped a row and came back up 8 s later).
-  const room = Math.max(0, SHOWN - held.length);
+  const room = all ? rows.length : Math.max(0, SHOWN - held.length);
   const shown = rows.slice(0, room).map((item) => ({ item }));
   for (const h of [...held].sort((a, b) => a.index - b.index)) shown.splice(Math.min(h.index, shown.length), 0, { held: h });
   const more = rows.length - Math.min(rows.length, room);
+  const folds = rows.length + held.length > SHOWN;          // there is more than the two to fold
 
   return (
     <section className="dashboard-section hm-tolog" aria-label="To log">
       <div className="dashboard-section-header">
         <div className="dashboard-section-title">To log</div>
-        {more > 0 && (
-          <button type="button" className="hm-head-pill hm-head-pill--wide" onClick={onMore}
-            title="The rest are in Results" aria-label={`${more} more to log, in Results`}>
-            <span className="hm-hp-t">+{more} more</span>
+        {(all ? folds : more > 0) && (
+          <button type="button" className="hm-head-pill hm-head-pill--wide" onClick={() => setAll((a) => !a)}
+            aria-expanded={all} aria-controls={listId}
+            aria-label={all ? 'Show only the newest two' : `Show ${more} more to log`}>
+            <span className="hm-hp-t">{all ? 'Fewer' : `+${more} more`}</span>
           </button>
         )}
       </div>
-      <ul className="hm-tolog-list">
+      <ul className="hm-tolog-list" id={listId}>
         {shown.map(({ item, held: h }) => {
           if (h) {
             const what = h.kind === 'busted' ? `Logged: no cash, ${plural(h.item.bullets)}` : 'Not played';
@@ -219,8 +230,9 @@ export default function HomeToLog({ schedule, results, updates, plans = null, to
                   aria-label={`Cashed: log ${name}'s cash in Results`}>
                   <span className="hm-seg-t">Cashed</span>
                 </button>
-                {/* A bust was played: no "Didn't play" for it, its column left empty. */}
-                {item.busted ? <Gap quiet /> : (
+                {/* Played, as the live record says (a bust, or a Start never busted out of): no
+                    "Didn't play" for it, its column left empty. */}
+                {item.busted || item.update ? <Gap quiet /> : (
                   <button type="button" className="hm-tolog-seg hm-tolog-seg--quiet" disabled={wait}
                     onClick={() => notPlayed(item)}
                     aria-label={`Didn't play ${name}: stop asking for its result`}>

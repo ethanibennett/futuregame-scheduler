@@ -298,6 +298,16 @@ function scan(rootSel) {
     } finally { await p.unroute('**/api/schedule/*/played'); }
     await run('home to-log undo row', HOME);
   } catch (e) { console.log(`  (home to-log undo skipped: ${e.message.split('\n')[0]})`); }
+  // To log's "+N more" opened: every event waiting for a result, in place (the whole home is
+  // measured, scrolled or not).
+  try {
+    await openTab('Dashboard');
+    const more = p.locator('.hm-tolog .hm-head-pill');
+    if (!(await more.count())) throw new Error('two or fewer events to log (no +N more)');
+    await more.first().click({ timeout: 4000 });
+    await p.locator('.hm-tolog-list > li:nth-child(3)').waitFor({ timeout: 3000 });
+    await run('home to-log, every row', HOME);
+  } catch (e) { console.log(`  (home to-log more skipped: ${e.message.split('\n')[0]})`); }
   try {
     await openTab('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });

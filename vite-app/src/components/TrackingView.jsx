@@ -5,7 +5,7 @@ import ShareMenu from './ShareMenu.jsx';
 import WrapUpViewer from './WrapUpViewer.jsx';
 import { API_URL } from '../utils/api.js';
 import {
-  getVenueInfo, normaliseDate, getToday, currencySymbol, nativeCurrency,
+  getVenueInfo, normaliseDate, getToday, getNow, currencySymbol, nativeCurrency,
   CURRENCY_CONFIG, formatCurrencyAmount, convertAmount, isPOYEligible,
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
 } from '../utils/utils.js';
@@ -19,6 +19,7 @@ import { resultMoney, awaitingResults, eventNo } from '../utils/home.js';
 import { resolveConditions } from '../utils/home-upnext.js';
 import { publishDisplayCurrency } from '../hooks/useDisplayCurrency.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
+import { useToast } from '../contexts/ToastContext.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
 // BETA cash sessions, admins only: lazy like the tax report.
@@ -30,8 +31,10 @@ const ExpensesSection = lazy(() => import('./Expenses.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
 // isNew with isEdit: a NEW result for one known event (the home's To log), so no event picker,
-// but it reads as logging, not editing.
-function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls }) {
+// but it reads as logging, not editing. conflict: the sentence saying a result is already logged
+// for the event (the server refused to log over it); the form keeps what was typed, and its
+// submit becomes Replace it (onSubmit's second argument, { replace: true }).
+function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null }) {
   const [tournamentId, setTournamentId] = useState(initialValues?.tournamentId || '');
   const [numEntries, setNumEntries] = useState(initialValues?.numEntries || 1);
   const [cashed, setCashed] = useState(initialValues?.cashed || false);
@@ -74,7 +77,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
       notes: notes || null,
       totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null,
       ...(bankrolls ? { bankrollId } : {})
-    });
+    }, conflict ? { replace: true } : undefined);
   };
 
   return (
@@ -155,9 +158,17 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
             background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
       </div>
 
+      {/* Seated like the rest of the card's text (.tr-seat: each line's baseline on a 2r line), so
+          the form stays whole r with it. */}
+      {conflict && (
+        <p className="tr-seat tr-seat-2" role="alert" style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text)',margin:'0 0 calc(var(--subrow) * 2)'}}>
+          {conflict}
+        </p>
+      )}
+
       <div style={{display:'flex',gap:'var(--gu)'}}>
         <button type="submit" className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}}>
-          {isEdit && !isNew ? 'Save Changes' : 'Log Result'}
+          {conflict ? 'Replace it' : isEdit && !isNew ? 'Save Changes' : 'Log Result'}
         </button>
         <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
       </div>
@@ -280,6 +291,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 
 // ── Tracking View (main export) ─────────────────────────────
 export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone }) {
+  const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
@@ -357,15 +369,44 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     // The plans resolved exactly as the home resolves them (DashboardView: the feed names a parent
     // that is not on the schedule), so the two never disagree about a branch.
     const plans = resolveConditions(mySchedule, myActiveUpdates, allTrackingData, { events: tournaments, startOf: parseTournamentTime });
-    const first = awaitingResults(mySchedule, allTrackingData, myActiveUpdates, { today: getToday(), startOf: parseTournamentTime, plans })[0];
+    const first = awaitingResults(mySchedule, allTrackingData, myActiveUpdates, { today: getToday(), now: getNow(), startOf: parseTournamentTime, plans })[0];
     return first ? first.event : null;
   }, [mySchedule, allTrackingData, myActiveUpdates, tournaments]);
 
   // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
   // expense ones are handed to the view that owns that form, which reports back itself.
-  const [intentForm, setIntentForm] = useState(null); // { tournamentId, label, event, initial }
+  const [intentForm, setIntentForm] = useState(null); // { tournamentId, label, event, initial, conflict }
   const [focusEntry, setFocusEntry] = useState(null);
   const intentFormRef = React.useRef(null);
+  const intentSending = React.useRef(false);
+  // The intent form LOGS (ifAbsent): a result already there is refused, not overwritten. Then the
+  // form stays open with what was typed, says what is logged, and offers Replace it (a plain
+  // upsert) or Cancel (keep the logged one). It used to close as if it had logged, and the cash
+  // typed into it was gone without a word.
+  const submitIntent = async (data, opts = {}) => {
+    if (!intentForm || intentSending.current) return;
+    const { tournamentId, label } = intentForm;
+    intentSending.current = true;
+    try {
+      const r = await onAdd({ ...data, tournamentId, ifAbsent: !opts.replace });
+      if (r && r.ok) { setIntentForm(null); return; }
+      if (r && r.status === 409) {
+        setIntentForm((f) => (f && f.tournamentId === tournamentId ? { ...f, conflict: true } : f));
+        toast?.info(`${label || 'This event'} already has a result. What you typed is still in the form.`);
+      }
+      // Anything else: App has said what went wrong; the form stays open with what was typed.
+    } finally { intentSending.current = false; }
+  };
+  // The logged result the conflict sentence describes (the list is refetched on the 409).
+  const intentConflict = useMemo(() => {
+    if (!intentForm || !intentForm.conflict) return null;
+    const e = allTrackingData.find((x) => x.tournament_id === intentForm.tournamentId);
+    const n = e ? (e.num_entries || 1) : 0;
+    const what = !e ? '' : ` (${e.cashed
+      ? `cashed ${formatCurrencyAmount(e.cash_amount || 0, nativeCurrency(e.venue))}${e.finish_place ? `, ${e.finish_place}${ordinalSuffix(e.finish_place)}` : ''}`
+      : 'no cash'}, ${n} bullet${n === 1 ? '' : 's'})`;
+    return `A result is already logged for this event${what}, from another device or a live update's Finish. Replace it with these figures, or Cancel to keep it.`;
+  }, [intentForm, allTrackingData]);
   const kind = intent ? intent.kind : null;
   const cashIntent = isAdmin && kind && kind.startsWith('cash') ? intent : null;
   const expenseIntent = isAdmin && (kind === 'expense' || kind === 'trip') ? intent : null;
@@ -589,8 +630,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
       <div ref={intentFormRef}>
       {/* The home's To log "Cashed": this event's form, prefilled from its bust (bullets, a deal's
-          place and payout, the field). It logs and never edits: a result already there (another
-          device, the live-update Finish) is refused, not overwritten (ifAbsent). */}
+          place and payout, the field). It logs and never edits on its own: a result already there
+          (another device, the live-update Finish) is refused (ifAbsent), and the form then asks
+          before replacing it (submitIntent). */}
       {intentForm && (
         <TrackingEntryForm
           key={'intent-' + intentForm.tournamentId}
@@ -601,10 +643,11 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           bankrolls={formBankrolls}
           tournamentLabel={intentForm.label}
           entryForPOY={intentForm.event}
-          onSubmit={(data) => { onAdd({ ...data, tournamentId: intentForm.tournamentId, ifAbsent: true }); setIntentForm(null); }}
+          onSubmit={submitIntent}
           onCancel={() => setIntentForm(null)}
           isEdit
           isNew
+          conflict={intentConflict}
         />
       )}
 

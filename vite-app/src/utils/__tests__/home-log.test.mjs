@@ -321,3 +321,20 @@ test('To log: a Start never busted is asked about once it cannot still be runnin
   assert.equal(playingEnded(s[0], { is_bagged: 1, bag_count: 1 }, TODAY), false);
   assert.equal(playingEnded(s[0], null, TODAY), false);
 });
+
+test('To log: a fresh update keeps a never-bagged run playing, whatever its day', () => {
+  // Dated 3 days ago, never bagged, a stack update posted minutes ago: still being played (a Day 3
+  // updated without a Bag between days), so not a forgotten bust and not asked about.
+  const now = Date.parse('2026-10-12T14:40:00Z');
+  const e = { id: 1, date: '2026-10-09', time: '11:00 AM', venue: 'V', event_number: '7' };
+  const fresh = { id: 9, tournament_id: 1, is_busted: 0, bust_count: 0, bag_count: 0, stack: 88000, created_at: '2026-10-12 14:37:05' };
+  assert.equal(playingEnded(e, fresh, TODAY, now), false);
+  assert.deepEqual(awaitingResults([e], [], [fresh], { today: TODAY, now }).map((x) => x.id), []);
+  // The same update 19 h old: the day decides again, and the run is over.
+  const stale = { ...fresh, created_at: '2026-10-11 19:40:00' };
+  assert.equal(playingEnded(e, stale, TODAY, now), true);
+  assert.deepEqual(awaitingResults([e], [], [stale], { today: TODAY, now }).map((x) => x.id), [1]);
+  // ISO timestamps read the same; the room's clock ending still wins over a fresh update.
+  assert.equal(playingEnded(e, { ...fresh, created_at: '2026-10-12T14:00:00.000Z' }, TODAY, now), false);
+  assert.equal(playingEnded({ ...e, clock_ended_at: '2026-10-12T14:00:00Z' }, fresh, TODAY, now), true);
+});

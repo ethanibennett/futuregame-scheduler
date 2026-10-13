@@ -107,6 +107,8 @@ export function currentTrip(trips, today) {
  * It is confident only when exactly ONE venue is running (two series at once is ambiguous) and it
  * holds at least two thirds of everything the user played or scheduled from its first day to today
  * (else the week was mostly elsewhere, and the series is not the unit to count it in).
+ * A row whose plan resolved off (opts.plans: home-upnext.js resolveConditions, as Up Next and To
+ * log read them) was never played, so it counts like one marked Didn't play: not at all.
  *
  * results: GET /api/tracking rows (tournament_id, venue, date). Returns
  *   { venue, from, to, events, behind, ahead, ids }   from..to = the user's first and last day of it,
@@ -114,6 +116,7 @@ export function currentTrip(trips, today) {
  */
 export function currentSeries(schedule, results, today, opts = {}) {
   const span = opts.spanDays == null ? 45 : opts.spanDays;
+  const off = planIsOff(opts.plans);
   const lo = addDays(today, -span), hi = addDays(today, span);
   const logged = new Set((Array.isArray(results) ? results : []).map((r) => Number(r && r.tournament_id)));
   const groups = new Map();
@@ -125,7 +128,7 @@ export function currentSeries(schedule, results, today, opts = {}) {
     if (!day || day < lo || day > hi) continue;
     const id = Number(e.id);
     seen.add(id);
-    if (Number(e.not_played) && !logged.has(id)) continue;
+    if ((Number(e.not_played) || off(id)) && !logged.has(id)) continue;
     activity.push({ day, venue: e.venue });
     const tag = String(e.source_pdf || '');
     if (!tag || tag === 'online-feed' || !e.venue) continue;
@@ -311,13 +314,22 @@ export function periodRows(s, money) {
   return rows;
 }
 
+// opts.plans (Map: event id -> { state }) -> id -> whether that event's plan resolved off.
+function planIsOff(plans) {
+  if (!plans || typeof plans.get !== 'function') return () => false;
+  return (id) => { const p = plans.get(id); return !!p && p.state === 'off'; };
+}
+
 /**
  * What a series still holds on the user's schedule: its events from today on that are not logged,
- * not busted (a bust waits in To log), not marked Didn't play and not restart rows, and the most
- * they can cost (buy-in x planned entries, ScheduleExportModal's totalMax), converted.
+ * not busted (a bust waits in To log), not marked Didn't play, not a plan's branch that resolved
+ * off (opts.plans, the resolution Up Next and To log use: "If seat #7" after #7 missed is never
+ * played) and not restart rows, and the most they can cost (buy-in x planned entries,
+ * ScheduleExportModal's totalMax), converted.
  * -> { count, upTo } (upTo null when a buy-in cannot be converted), or null when none are left.
  */
 export function scheduleAhead(schedule, results, updates, venue, today, opts = {}) {
+  const off = planIsOff(opts.plans);
   const logged = new Set((Array.isArray(results) ? results : []).map((r) => Number(r && r.tournament_id)));
   const latest = new Map();
   for (const u of Array.isArray(updates) ? updates : []) {
@@ -331,7 +343,7 @@ export function scheduleAhead(schedule, results, updates, venue, today, opts = {
     if (!e || e.venue !== venue || Number(e.is_restart) || Number(e.not_played)) continue;
     const id = Number(e.id);
     const day = isoDay(e.date);
-    if (!day || day < today || logged.has(id)) continue;
+    if (!day || day < today || logged.has(id) || off(id)) continue;
     const u = latest.get(id);
     if (u && Number(u.is_busted)) continue;
     count++;
@@ -363,6 +375,8 @@ export function compareSide(pw, prev, prevFull, signed) {
  * Everything the period block shows. input:
  *   today, isAdmin, currency, money(v, signed)
  *   results, schedule, updates            (GET /api/tracking, /api/my-schedule, live updates)
+ *   plans                                 (the resolved plans, home-upnext.js resolveConditions:
+ *                                          a branch that is off is not still on the schedule)
  *   rates, currencyOf                     (GET /api/exchange-rates, row -> its currency: the
  *                                          tournament rows' and the trip's conversions)
  *   ledger                                (admins: ledger entries in `currency`; null while loading)
@@ -401,12 +415,12 @@ export function buildPeriod(input) {
   }
 
   // Series mode (anyone): tournaments only.
-  const series = currentSeries(input.schedule, results, today);
+  const series = currentSeries(input.schedule, results, today, { plans: input.plans });
   if (series) {
     const w = { from: series.from, to: today };
     const ids = new Set(series.ids);
     const s = resultStats(results, w, { ...tOpts, keep: (r) => ids.has(Number(r.tournament_id)) || r.venue === series.venue });
-    const ahead = scheduleAhead(input.schedule, results, input.updates, series.venue, today, tOpts);
+    const ahead = scheduleAhead(input.schedule, results, input.updates, series.venue, today, { ...tOpts, plans: input.plans });
     const rows = periodRows(s, money);
     if (ahead) {
       rows.push(ahead.upTo == null

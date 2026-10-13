@@ -1478,6 +1478,15 @@ function finalize(c) {
       await p.locator('.hm-tolog-row.is-held').waitFor({ timeout: 3000 });
     } finally { await p.unroute('**/api/schedule/*/played'); }
   }, 0);
+  // To log's "+N more" opened: every event waiting for a result, in place, and the pill turned
+  // Fewer; scanned at the top, then paged to the foot.
+  step('dashboard-tolog-more', async () => {
+    await nav('Dashboard');
+    const more = p.locator('.hm-tolog .hm-head-pill');
+    if (!(await more.count())) throw new Error('two or fewer events to log (no +N more)');
+    await more.first().click({ timeout: 4000, force: overlay });
+    await p.locator('.hm-tolog-list > li:nth-child(3)').waitFor({ timeout: 3000 });
+  }, 0, { after: () => pageHome(4) });
   // Up Next's plans, resolved (home step 5): the carousel paged to each card that carries a plan's
   // tag ('If bust #12', 'On: busted #12', 'Off: busted #12', 'If up $5,000'), each measured. Then
   // the running cash session's card (admins; the first card) turned into its stack entry by Update
@@ -1854,7 +1863,7 @@ function finalize(c) {
   const toPlaying = async () => {
     await nav('Dashboard');
     const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
-      .findIndex((sl) => sl.querySelector('.dash-event-card.playing')));
+      .findIndex((sl) => sl.querySelector('.dash-event-card.playing .dash-bust-btn')));   // not the cash card (.playing too)
     if (i > 0) await pageCarousel(i);
   };
   step('dashboard-bust-menu', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
