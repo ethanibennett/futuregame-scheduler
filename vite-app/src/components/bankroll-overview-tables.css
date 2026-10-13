@@ -10,13 +10,17 @@
                      range 21g | the headline 12g (shown while closed)
      table head      3r, labels on line 2; a key bar in the column's series
                      colour along line 3
-     rows            4r, text on line 3; zebra by background, full bleed
-                     (37g, 1g padding each side, so the text stays on the
-                     35g column), no rules between them
+     rows            4r, text on line 3; zebra by background (--ovt-zebra),
+                     full bleed (37g, 1g padding each side, so the text stays
+                     on the 35g column), no rules between them
      columns         Summary, Sessions, By month: label 11g | 3 x 8g
-                     Games, Rooms: label 11g | played 5g | hours 5g |
-                     rate 7g | total 7g
+                     Games, Rooms: label 11g | played 5g | hours 4g |
+                     rate 7g | total 8g
                      Bankroll: label 11g | note 16g | value 8g
+                     Right edges (from the sheet's left, 1g padding): 20 |
+                     28 | 36g in the 3 x 8g tables; 17 | 21 | 28 | 36g in
+                     Games and Rooms, so their rate column ends on the
+                     Tournaments edge and their 8g total under Total.
                      The label column is minmax(11g, 1fr): on a wider sheet
                      it takes the room and the figure columns stay whole g.
      open body       the table, then a note 1r below it, then 2r of space.
@@ -38,10 +42,18 @@
 }
 :where([data-theme="light"], [data-theme="cloudy"]) { --series-cash: #6d28d9; }
 
+/* The zebra stripe. --surface against the sheet's --bg in the standard themes (1.085 to 1.116:1,
+   measured in WebKit); high contrast sets --surface on or next to --bg (light-high #fff on #fff,
+   1.00:1; dark-high 1.06; dusk-high 1.07), so the stripe vanished exactly where a reader asked for
+   more contrast. There it is the theme's own --hover-overlay tint: light-high 1.19, dark-high
+   1.12, dusk-high 1.13. Cloudy-high keeps --surface (1.08): its tint (1.25) would take the green
+   figures on a stripe from 3.5 to 3.1:1. Table in docs/bankrolls.md. */
 .ovt {
+  --ovt-zebra: var(--surface);
   margin-top: calc(var(--subrow) * 3);
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
 }
+[data-contrast="high"]:not([data-theme="cloudy"]) .ovt { --ovt-zebra: var(--hover-overlay); }
 .ovt-h { margin: 0; }
 
 /* ── The disclosure row ────────────────────────────────────────── */
@@ -123,9 +135,9 @@
 }
 .ovt-thead { height: calc(var(--subrow) * 3); }
 .ovt-row { height: calc(var(--subrow) * 4); }
-.ovt-row:nth-child(odd of .ovt-row) { background: var(--surface); }
+.ovt-row:nth-child(odd of .ovt-row) { background: var(--ovt-zebra); }
 .ovt-c4 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) repeat(3, var(--col)); }
-.ovt-c5 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) repeat(2, calc(var(--gu) * 5)) repeat(2, calc(var(--gu) * 7)); }
+.ovt-c5 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 7) var(--col); }
 .ovt-cb { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 16) var(--col); }
 .ovt-span2 { grid-column: span 2; }
 .ovt-span3 { grid-column: span 3; }

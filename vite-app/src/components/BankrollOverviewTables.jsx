@@ -3,7 +3,7 @@ import { CURRENCY_CONFIG } from '../utils/utils.js';
 import { RANGES } from '../utils/bankroll-ledger.js';
 import {
   SECTIONS, OPEN_STORE_KEY, parseOpen, overviewTables, groupTable,
-  fmtMoney, fmtPct, fmtCount, fmtHours, fmtRatio, DASH,
+  fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio, DASH,
 } from '../utils/bankroll-overview.js';
 import { Glyph } from './Icon.jsx';
 import './bankroll-overview-tables.css';
@@ -24,14 +24,19 @@ import './bankroll-overview-tables.css';
  * `bankrollOverviewOpen`, never required). Data: the ledger the Overview already holds (`d`, every
  * entry of the bankroll in the display currency), the risk estimate, and GET /api/bankrolls/reports
  * for the games and rooms. The arithmetic is utils/bankroll-overview.js, tested.
- * Not shown, on purpose: hands and $/100 (no hands are recorded), shares sold (staking is kept
- * per agreement, not per result — see docs/bankrolls.md "Staking"), tournament hours (results
- * carry no playing time).
+ * Not shown, on purpose: hands and $/100 (no hands are recorded), tournament hours (results carry
+ * no playing time), and shares sold. Staking does keep per-event numbers (backer_event_status per
+ * agreement x tournament, per-event overrides, an effective % per event in the settlement route),
+ * but they are filed by staking series, not by bankroll or ledger row, they hold their own copy of
+ * the buy-ins and cashes, and swaps, crossbooks, markup, makeup and budget caps make a backer's cut
+ * something other than a plain share of a result. So the results here are gross; whether to add the
+ * row is the owner's call (docs/bankrolls.md, "The dashboard").
  */
 
 const readOpen = () => { try { return parseOpen(localStorage.getItem(OPEN_STORE_KEY)); } catch { return parseOpen(null); } };
 const saveOpen = (v) => { try { localStorage.setItem(OPEN_STORE_KEY, JSON.stringify(v)); } catch { /* private mode */ } };
-const tone = (v) => (v > 0 ? ' an-pos' : v < 0 ? ' an-neg' : '');
+// Green / red by the sign AS DRAWN (whole units), so a rate of −0.38 is a plain "$0", not a red one.
+const tone = (v) => { const s = moneySign(v); return s > 0 ? ' an-pos' : s < 0 ? ' an-neg' : ''; };
 const RANGE_TEXT = { ...Object.fromEntries(RANGES), all: 'All time' };
 const plural = (n, word) => `${fmtCount(n)} ${word}${n === 1 ? '' : 's'}`;
 
@@ -119,9 +124,13 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
     sessions: { text: played ? `${fmtCount(played)} played` : 'None played' },
     games: { text: games ? (games.named ? plural(games.named, 'game') : DASH) : '…' },
     rooms: { text: rooms ? (rooms.named ? plural(rooms.named, 'room') : DASH) : '…' },
-    bankroll: { text: m(B.balance), v: B.balance < 0 ? -1 : 0, toned: true },
+    bankroll: { text: m(B.balance), v: Math.min(0, moneySign(B.balance)), toned: true },
     periods: { text: t.periods.length ? plural(t.periods.length, t.bucket) : DASH },
   };
+
+  // Below the peak and the drawdown only count when they draw as at least one whole unit.
+  const below = moneySign(B.below) > 0 ? B.below : 0;
+  const dd = B.drawdown && moneySign(B.drawdown.amount) > 0 ? B.drawdown : null;
 
   const extreme = (x) => (x ? { v: x.amount, text: sm(x.amount), toned: true, title: `${x.label}, ${fmtDate(x.date)}` } : { text: DASH });
 
@@ -183,11 +192,11 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
     bankroll: (
       <>
         <div className="ovt-table" role="table" aria-label={`Bankroll, ${scope}`}>
-          <BRow label="Balance" note={currency} text={m(B.balance)} v={B.balance < 0 ? -1 : 0} />
+          <BRow label="Balance" note={currency} text={m(B.balance)} v={Math.min(0, moneySign(B.balance))} />
           <BRow label="Peak" note={B.peak.date ? `all time · ${fmtDate(B.peak.date)}` : 'all time'} text={m(B.peak.value)} />
-          <BRow label="Below the peak" text={B.below > 0 ? sm(-B.below) : 'At the peak'} v={B.below > 0 ? -1 : 0} />
-          <BRow label="Deepest drawdown" note={B.drawdown ? `${fmtDate(B.drawdown.from)} – ${fmtDate(B.drawdown.to)}` : RANGE_TEXT[range]}
-            text={B.drawdown ? sm(-B.drawdown.amount) : 'None'} v={B.drawdown ? -1 : 0} />
+          <BRow label="Below the peak" text={below ? sm(-below) : 'At the peak'} v={-below} />
+          <BRow label="Deepest drawdown" note={dd ? `${fmtDate(dd.from)} – ${fmtDate(dd.to)}` : RANGE_TEXT[range]}
+            text={dd ? sm(-dd.amount) : 'None'} v={dd ? -dd.amount : 0} />
           <BRow label="Deposits & withdrawals" text={sm(B.moved)} />
           {/* A probability, not money: never green / red. */}
           <BRow label="Risk of ruin" note={ror.note} text={ror.text} />
@@ -252,7 +261,7 @@ function BRow({ label, note, text, v }) {
     <div role="row" className="ovt-row ovt-cb">
       <span role="rowheader" aria-colspan={note ? undefined : 2} className={'an-cell an-td an-clip ovt-lab' + (note ? '' : ' ovt-span2')}>{label}</span>
       {note && <span role="cell" className="an-cell an-note ovt-note-4 an-clip">{note}</span>}
-      <span role="cell" className={'an-cell an-td an-num an-clip ovt-fig is-strong' + (v ? tone(v) : '')}>{text}</span>
+      <span role="cell" className={'an-cell an-td an-num an-clip ovt-fig is-strong' + tone(v)}>{text}</span>
     </div>
   );
 }

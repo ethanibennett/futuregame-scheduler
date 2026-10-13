@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DASH, SECTIONS, parseOpen, fmtMoney, fmtPct, fmtCount, fmtHours, fmtRatio,
+  DASH, SECTIONS, parseOpen, fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio,
   summaryTable, sessionsTable, groupTable, bankrollFigures, overviewTables,
 } from '../bankroll-overview.js';
 import { overviewStats, rangeWindow, within } from '../bankroll-ledger.js';
@@ -183,7 +183,7 @@ test('Bankroll: balance, all-time peak and how far below it, the drawdown in the
   assert.equal(all.balance, 5614.5);
   assert.deepEqual(all.peak, { value: 7200, date: '2026-02-01' });
   assert.equal(all.below, 7200 - 5614.5);
-  assert.equal(all.drawdown.amount, 7200 - 5214.5);              // to the trough before the last session   // the trough before the last session
+  assert.equal(all.drawdown.amount, 7200 - 5214.5);              // to the trough before the last session
   assert.equal(all.moved, 4000);
   // 1M: only the March rows; the peak stays all time; the drawdown is measured inside the range.
   const m = bankrollFigures(d, '1m', '2026-03-20');
@@ -222,6 +222,43 @@ test('formatting: compact money from 10k, signs, dashes, the currency\'s own sym
   assert.equal(fmtHours(null), DASH);
   assert.equal(fmtRatio(1 / 3), '0.33');
   assert.equal(fmtRatio(null), DASH);
+});
+
+test('formatting: compact money rounds once, from the unrounded value', () => {
+  // 13,349.63 (the seed's IPO Main Event, EUR 11,950 x 1.117124) is $13.3k, not $13.4k: rounding to
+  // whole units first (13,350) and then to tenths of k pushed it over the .x5 edge.
+  assert.equal(fmtMoney(13349.63, USD), '$13.3k');
+  assert.equal(fmtMoney(13349.63, USD, { sign: true }), '+$13.3k');
+  assert.equal(fmtMoney(-13349.63, USD, { sign: true }), `${MINUS}$13.3k`);
+  assert.equal(fmtMoney(1249999.6, USD), '$1.2M');
+  assert.equal(fmtMoney(999949.9, USD), '$999.9k');
+  assert.equal(fmtMoney(999950, USD), '$1.0M');
+  assert.equal(fmtMoney(9999.4, USD), '$9,999');
+});
+
+test('sign as drawn: a figure that shows as 0 has no sign and no colour', () => {
+  // moneySign is what the tables colour by: the sign of the whole units fmtMoney draws.
+  assert.equal(moneySign(-0.375), 0);                 // a rate of -0.375/h draws "$0": not red
+  assert.equal(fmtMoney(-0.375, USD, { sign: true }), '$0');
+  assert.equal(moneySign(0.49), 0);
+  assert.equal(moneySign(-0.5), 0);                   // Math.round(-0.5) is -0: "$0", unsigned
+  assert.equal(fmtMoney(-0.5, USD, { sign: true }), '$0');
+  assert.equal(moneySign(-0.51), -1);
+  assert.equal(fmtMoney(-0.51, USD, { sign: true }), `${MINUS}$1`);
+  assert.equal(moneySign(0.5), 1);
+  assert.equal(fmtMoney(0.5, USD, { sign: true }), '+$1');
+  assert.equal(moneySign(-13349.63), -1);
+  for (const bad of [null, undefined, NaN]) assert.equal(moneySign(bad), 0);
+  // Every value: the sign drawn and the colour agree.
+  for (let v = -3; v <= 3; v += 0.01) {
+    const text = fmtMoney(v, USD, { sign: true });
+    const drawn = text.startsWith(MINUS) ? -1 : text.startsWith('+') ? 1 : 0;
+    assert.equal(moneySign(v), drawn, String(v));
+  }
+  // Percentages likewise: -0.04% draws as 0%, not "-0.0%".
+  assert.equal(fmtPct(-0.0004, { sign: true }), '0%');
+  assert.equal(fmtPct(0.0004, { sign: true }), '0%');
+  assert.equal(fmtPct(-0.0006, { sign: true }), `${MINUS}0.1%`);
 });
 
 test('open state: Summary and Sessions open by default; saved booleans win; junk is ignored', () => {

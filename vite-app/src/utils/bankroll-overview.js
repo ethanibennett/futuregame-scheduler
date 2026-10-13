@@ -48,31 +48,46 @@ export function parseOpen(raw) {
 const fin = (v) => v != null && Number.isFinite(Number(v));
 
 /**
+ * The sign of money AS fmtMoney DRAWS IT (whole units): 1, −1, or 0 for null and for anything that
+ * rounds to 0. Colour a figure by this, never by the raw value, or −0.38 is a red "$0" — a figure
+ * with no sign must not carry the colour of one.
+ */
+export function moneySign(v) {
+  if (!fin(v)) return 0;
+  const r = Math.round(Number(v));
+  return r > 0 ? 1 : r < 0 ? -1 : 0;
+}
+
+/**
  * Money in whole units, compact from 10,000 up: $1,239 · $403.2k · $1.2M. `cfg` is the currency's
  * { symbol, pos } (utils.js CURRENCY_CONFIG); `sign` prefixes + / − (zero unsigned). null → dash.
+ * Whole units decide the sign and the 10k threshold; the compact body rounds the UNROUNDED
+ * magnitude once (rounding to whole units first would turn 13,349.63 into $13.4k).
  */
 export function fmtMoney(v, cfg = { symbol: '$', pos: 'pre' }, { sign = false } = {}) {
   if (!fin(v)) return DASH;
-  const r = Math.round(Number(v));
-  const a = Math.abs(r);
+  const x = Number(v);
+  const r = Math.abs(Math.round(x));
+  const a = Math.abs(x);
   let body;
-  if (a >= 1e4) {
+  if (r >= 1e4) {
     const k = Math.round(a / 100) / 10;
     body = k >= 1000 ? (Math.round(a / 1e5) / 10).toFixed(1) + 'M' : k.toFixed(1) + 'k';
   } else {
-    body = a.toLocaleString('en-US');
+    body = r.toLocaleString('en-US');
   }
-  const s = r < 0 ? MINUS : sign && r > 0 ? '+' : '';
+  const sg = moneySign(x);
+  const s = sg < 0 ? MINUS : sign && sg > 0 ? '+' : '';
   return cfg.pos === 'suf' ? `${s}${body} ${cfg.symbol}` : `${s}${cfg.symbol}${body}`;
 }
-/** A ratio as a percentage: one decimal under 10%, whole above. */
+/** A ratio as a percentage: one decimal under 10%, whole above. A value that shows as 0 is unsigned. */
 export function fmtPct(x, { sign = false } = {}) {
   if (!fin(x)) return DASH;
   const v = Number(x) * 100;
-  if (v === 0) return '0%';
   const a = Math.abs(v);
-  const body = a.toFixed(a < 10 ? 1 : 0) + '%';
-  return (v < 0 ? MINUS : sign ? '+' : '') + body;
+  const digits = a.toFixed(a < 10 ? 1 : 0);
+  if (Number(digits) === 0) return '0%';
+  return (v < 0 ? MINUS : sign ? '+' : '') + digits + '%';
 }
 export function fmtCount(n) { return fin(n) ? Math.round(Number(n)).toLocaleString('en-US') : DASH; }
 export function fmtHours(h) {
