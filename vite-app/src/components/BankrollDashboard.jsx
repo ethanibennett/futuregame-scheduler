@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
-import BankrollOverview, { Segmented } from './BankrollOverview.jsx';
+import BankrollOverview from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollReports from './BankrollReports.jsx';
 import BankrollLocations from './BankrollLocations.jsx';

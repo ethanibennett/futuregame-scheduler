@@ -160,8 +160,11 @@ their own. The strip (`BankrollTabStrip.jsx`, arithmetic in `utils/tab-strip.js`
   within its own segment (`fitsDivided`), re-measured on resize and when the webfonts load.
 - **Scrolling** otherwise (seven tabs at 5g: "Locations" is wider): one 35g × 5r row of pills, each
   content-sized (label + 1g a side) and rounded up to whole g by `snap-g`, 1g apart. The selected pill
-  is scrolled into view when the strip opens and whenever the tab changes, to a whole-g offset with 3g
-  clear for the fade (`revealScroll`), so the pills come to rest on g lines. A 3g fade marks an edge
+  is scrolled into view when the strip opens, whenever the tab changes and after the viewport's width
+  changes (a rotation, a window resize: g is a new number of px, so the old offset is re-snapped to
+  whole g first, then the pill revealed from there — on the window's resize after the strip
+  re-decides, and from its ResizeObserver when the strip's or its pills' width moves), to a whole-g
+  offset with 3g clear for the fade (`revealScroll`), so the pills come to rest on g lines. A 3g fade marks an edge
   with more beyond it; no scrollbar. Over the fade's outer 2g, a chevron is a real button (2g × 5r,
   "Earlier tabs" / "More tabs", `tabindex -1`, outside the radio group, gone while its edge has
   nothing beyond) that pages the strip by the view less both fades, to a whole-g offset
@@ -534,11 +537,18 @@ locations (its Bankroll › Locations screen), in this app's type, tokens and gr
   - **hours** with a clock — cash hours only; omitted, not "0", for a tournament-only room;
   - **per hour** — cash profit / cash hours, when there are hours;
   - **ROI** — tournament profit / buy-ins, when the room has tournaments;
-  - **won %** — a cash room: winning sessions / sessions ("60% won", green at 50% and over, red
-    under); a tournament room: cashes / events ("11% ITM", plain — the Overview's "In the money"
-    definition, so the two reconcile: a re-entered event that cashed is one cash of one event); a
-    mixed room: results with a profit / results ("63% won", plain). Results, not bullets, on both
-    sides of every won %: bullets count only as entries.
+  - **won % / ITM** — per ENTRY, over the same entries the card counts (owner, 2026-10-13: the app
+    has one ITM, cashes per entry, as `lib/analytics.js`, the Analytics tab and the Overview's
+    Sessions table count it). A cash room: winning sessions / sessions ("60% won"); a tournament
+    room: cashes / bullets ("9% ITM" — a re-entered event that cashed once is one cash in its
+    bullets, so the card and the Sessions table read the same); a mixed room: (winning sessions +
+    cashes) / entries ("38% won/ITM" — the share of its entries that came back with money, a cash
+    session up or a tournament entry paid; each side's own rate weighted by its entries, so it
+    reduces to the won % or the ITM when the room has one kind only. The Overview leaves its Total
+    column blank there instead, since it has both columns beside it; a card has one line). The
+    word carries the tone, the same rule on every card: **won** is green at 50% and over, red
+    under (more winning sessions than losing ones); **ITM** and **won/ITM** have no break-even
+    line at 50% — cashes are in them — and are never coloured.
   A type mark (dots in `--series-tourn` aqua and `--series-cash` violet) after "Live • USD" says
   which kinds the room has (after, so that line starts on the name's g line on every card); the
   footnote is its legend, and says expenses aren't included.
@@ -556,12 +566,15 @@ locations (its Bankroll › Locations screen), in this app's type, tokens and gr
   total · range); a 3r "Sort by" label and the 35g × 4r sort; cards 35g × 11r, 1r apart — the name
   (Univers Condensed md, measured p 1.565) on line 3, "Live • USD" on line 5, the total (display face
   xl) level with it, a hairline at line 6, the stats on line 9, 1r below: the name's caps start 1.57r
-  down and the stats' ink ends 1.75–1.88r up, the stats line evenly between hairline and foot.
+  down; the stats are Univers Condensed sm, the tables' size (`--fs-sm`, p 0.6978 as `an-td`:
+  measured −0.008r at 402 wide, +0.011r at 1440), and the longest plausible line ("1,234 entries •
+  1,234 h • −$1,234/h • ROI −100% • 100% won/ITM") is 30.6g of its 33g.
   Columns inside 1g a side: the name takes what the total leaves (`minmax(0, 1fr)`); the total is
   its own width rounded up to whole g (`snap-g`), so "+$150" leaves the name 26g and "−CHF12,345"
   takes 12g instead of spilling into the padding. Open rows 4r, 7g | 17g | 9g, baselines on line 3;
-  pager buttons 11g × 4r, 1g apart. Baselines measured in WebKit at 402 and 1440: every line within
-  0.05r of its r line. The cards are list rows (`.bl-card` in the controls guard's NOT_CONTROLS); the
+  pager buttons 11g × 4r, 1g apart. Baselines measured in WebKit at 402 and 1440 (2026-10-13, a card
+  open): every line within 0.036r of its r line (the bold result cells take the Overview tables'
+  bold correction, p 0.7586: −0.049r at 1440 before, +0.022r / −0.019r now). The cards are list rows (`.bl-card` in the controls guard's NOT_CONTROLS); the
   pager buttons are controls, measured in the guard's `bankroll-location-pager` / `-paged` steps
   with the pager scrolled into view. The dashboard sheet is 37g on a desktop too, so the cards stay
   one column there.

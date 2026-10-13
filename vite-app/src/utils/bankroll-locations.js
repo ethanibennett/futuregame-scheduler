@@ -11,10 +11,18 @@
 //   hours     cash hours only (a tournament fact has no length); null when the room has no cash
 //   hourly    cash profit / cash hours
 //   roi       tournament profit / tournament cost (buy-ins, re-entries included)
-//   won       cash only: winning sessions / sessions; tournaments only: cashes / events (ITM, as
-//             the Overview's "In the money" counts it — a re-entered event that cashed is one
-//             cash of one event); both: results with profit > 0 / results. Results, not bullets,
-//             on both sides: a re-entry is one more entry but not one more chance to cash.
+//   won       per ENTRY, over the same entries the card counts (owner, 2026-10-13: the app's one
+//             ITM rule — lib/analytics.js, the Analytics tab, the Overview's Sessions table):
+//               cash only    'won'      winning sessions / sessions (a session is one entry)
+//               tournaments  'ITM'      cashes / bullets (a re-entered event that cashed once is
+//                                       one cash in its bullets)
+//               both         'won/ITM'  (winning sessions + cashes) / (sessions + bullets): the
+//                                       share of the room's entries that came back with money, a
+//                                       cash session up or a tournament entry paid. It is each
+//                                       side's own rate weighted by its entries, so it reads as
+//                                       the cash won % in a mostly-cash room and as the ITM in a
+//                                       mostly-tournament one — and, like the ITM in it, it has
+//                                       no break-even line at 50%.
 //   total     every result, in the display currency (the facts are already converted)
 
 export const MINUS = '−';
@@ -30,7 +38,7 @@ const inWindow = (date, from, to) => (!from || date >= from) && (!to || date <= 
 /**
  * Group prepared facts by room. `from` / `to` (YYYY-MM-DD, inclusive, null = open) bound the dates.
  * → [{ key, label, total, entries, hours, hourly, roi, won, wonKind, format, currencies, kinds,
- *      cash: { n, hours, profit, wins }, tournament: { n, bullets, cost, profit, cashes, up }, results }]
+ *      cash: { n, hours, profit, wins }, tournament: { n, bullets, cost, profit, cashes }, results }]
  * in no particular order (sortLocations orders them). `results` are the room's facts, newest first.
  */
 export function buildLocations(facts, { from = null, to = null } = {}) {
@@ -43,7 +51,7 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
       g = {
         key, label: key ? String(f.room).trim() : NO_ROOM_LABEL, total: 0,
         cash: { n: 0, hours: 0, profit: 0, wins: 0 },
-        tournament: { n: 0, bullets: 0, cost: 0, profit: 0, cashes: 0, up: 0 },
+        tournament: { n: 0, bullets: 0, cost: 0, profit: 0, cashes: 0 },
         live: 0, online: 0, cur: new Map(), results: [],
       };
       groups.set(key, g);
@@ -58,7 +66,6 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
       const bullets = Number(f.bullets) > 0 ? Number(f.bullets) : 1;
       t.n++; t.bullets += bullets; t.cost += Number(f.cost) || 0; t.profit += p;
       if (Number(f.cash) > 0) t.cashes++;
-      if (p > 0) t.up++;
     }
     if (f.online) g.online++; else g.live++;
     const cur = f.native_currency || null;
@@ -68,10 +75,12 @@ export function buildLocations(facts, { from = null, to = null } = {}) {
   return [...groups.values()].map((g) => {
     const c = g.cash, t = g.tournament;
     const entries = c.n + t.bullets;
+    // Per entry on every card (see "won" at the top): sessions, bullets, or both, over `entries`.
     let won = null, wonKind = null;
-    if (c.n && !t.n) { won = c.wins / c.n; wonKind = 'cash'; }
-    else if (t.n && !c.n) { won = t.cashes / t.n; wonKind = 'itm'; }
-    else if (c.n + t.n > 0) { won = (c.wins + t.up) / (c.n + t.n); wonKind = 'mixed'; }
+    if (entries > 0) {
+      won = (c.wins + t.cashes) / entries;
+      wonKind = !t.n ? 'cash' : !c.n ? 'itm' : 'mixed';
+    }
     const results = g.results.slice().sort(newestFirst);
     return {
       key: g.key, label: g.label, total: g.total, entries,
@@ -155,6 +164,12 @@ export function fmtSignedPct(x) {
   return (body === '0' ? '' : x > 0 ? '+' : MINUS) + body + '%';
 }
 const toneOf = (v) => (v > 0 ? 1 : v < 0 ? -1 : 0);
+/** The rate's word per kind of room, its screen-reader wording, and whether 50% judges it. */
+export const WON_WORDS = {
+  cash: { word: 'won', label: 'of sessions won', judged: true },
+  itm: { word: 'ITM', label: 'of entries in the money', judged: false },
+  mixed: { word: 'won/ITM', label: 'of entries won or in the money', judged: false },
+};
 
 const FORMAT_LABEL = { live: 'Live', online: 'Online', mixed: 'Live and online' };
 /** Line 2 of a card: "Live • USD". */
@@ -167,8 +182,11 @@ export function metaLine(loc) {
  *   entries · hours (cash rooms only; omitted, not 0, for a tournament-only room) · $/h (cash, when
  *   there are hours) · ROI (when the room has tournaments) · won %.
  * Each { key, text, tone (1 green, -1 red, 0 plain), label (for a screen reader, when the text
- * alone is not enough), icon ('clock' for hours) }. Signed figures are toned; won % is judged only
- * where 50% means something — a cash room's winning sessions — and plain for ITM and mixed rooms.
+ * alone is not enough), icon ('clock' for hours) }. Signed figures are toned. The rate's word says
+ * what it counts, and the tone goes with the word, the same on every card: "won" (a cash room's
+ * winning sessions, where 50% is the line between more up nights than down) is green from 50% and
+ * red below it; "ITM" and "won/ITM" (a mixed room, cashes in the mix) have no such line and are
+ * always plain.
  */
 export function statItems(loc, cur) {
   const out = [{ key: 'entries', text: `${loc.entries.toLocaleString('en-US')} ${loc.entries === 1 ? 'entry' : 'entries'}`, tone: 0 }];
@@ -178,9 +196,9 @@ export function statItems(loc, cur) {
   if (loc.hourly != null) out.push({ key: 'hourly', text: `${compactMoney(loc.hourly, cur, { sign: true })}/h`, tone: toneOf(Math.round(loc.hourly)), label: `${compactMoney(loc.hourly, cur, { sign: true })} per hour` });
   if (loc.roi != null) out.push({ key: 'roi', text: `ROI ${fmtSignedPct(loc.roi)}`, tone: toneOf(Math.round(loc.roi * 1000)) });
   if (loc.won != null) {
-    const what = loc.wonKind === 'itm' ? 'in the money' : 'won';
-    out.push({ key: 'won', text: `${fmtPct(loc.won)} ${loc.wonKind === 'itm' ? 'ITM' : 'won'}`, label: `${fmtPct(loc.won)} ${what}`,
-      tone: loc.wonKind === 'cash' ? (loc.won >= 0.5 ? 1 : -1) : 0 });
+    const w = WON_WORDS[loc.wonKind] || WON_WORDS.cash;
+    out.push({ key: 'won', text: `${fmtPct(loc.won)} ${w.word}`, label: `${fmtPct(loc.won)} ${w.label}`,
+      tone: w.judged ? (loc.won >= 0.5 ? 1 : -1) : 0 });
   }
   return out;
 }

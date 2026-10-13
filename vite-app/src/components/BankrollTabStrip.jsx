@@ -10,8 +10,9 @@ import './bankroll-tabstrip.css';
  * would not fit its segment unclipped with a g of room (7 tabs at 5g: "Locations" is wider), it
  * becomes ONE row of content-sized pills that scrolls sideways: each pill's width is rounded up to a
  * whole g by the app's snap-g utility (utils/grid-snap.js), the selected one is scrolled into view
- * when the strip opens and whenever it changes (to a whole-g offset, so the pills come to rest on
- * g lines), the edges fade where there is more, and there is no scrollbar. Touch and trackpads
+ * when the strip opens, whenever it changes and after the viewport's width changes (a rotation: g
+ * is then a new number of px), always to a whole-g offset, so the pills come to rest on g lines;
+ * the edges fade where there is more, and there is no scrollbar. Touch and trackpads
  * scroll it natively; a plain mouse wheel turned over it scrolls it sideways while it can move
  * (then the page scrolls on); the chevron at an edge with more beyond it is a button that pages
  * the strip by whole g (pointer only: tabindex -1, outside the radio group); the arrow keys, Home
@@ -54,22 +55,6 @@ export default function TabStrip({ options, value, onChange, label, className = 
     return w ? w.getBoundingClientRect().width / TOTAL : 0;
   };
 
-  // Divided or scrolling: every label's natural width against its own segment.
-  const decide = useCallback(() => {
-    const m = measureRef.current;
-    const g = unit();
-    if (!m || !(g > 0)) return;
-    const widths = [...m.children].map((s) => s.getBoundingClientRect().width / g);
-    setMode(fitsDivided(widths, { total: TOTAL, pad: 1 }) ? 'divided' : 'scroll');
-  }, []);
-  useLayoutEffect(() => { decide(); }, [decide, sig]);
-  useEffect(() => {
-    let live = true;
-    window.addEventListener('resize', decide);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (live) decide(); });
-    return () => { live = false; window.removeEventListener('resize', decide); };
-  }, [decide]);
-
   // The fades: shown on a side only while there is more beyond it.
   const updateEdges = useCallback(() => {
     const s = scrollRef.current;
@@ -79,37 +64,80 @@ export default function TabStrip({ options, value, onChange, label, className = 
     setEdges((e) => (e.start === next.start && e.end === next.end ? e : next));
   }, []);
 
-  // Bring the selected pill into view. Runs a frame after the change, once grid-snap has sized the
-  // pills (it does so from a MutationObserver, after React's commit).
+  // Bring the selected pill into view, and leave the strip at rest on a whole-g offset. The offset
+  // is re-snapped first (after a width change g is a different number of px, so the old offset is
+  // between g lines), then the selected pill is revealed from there. Stable: it reads the selection
+  // through a ref, so the resize paths below can call it.
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const reveal = useCallback((animate) => {
+    const s = scrollRef.current, el = btnRefs.current[activeRef.current];
+    if (!s || !el) return;
+    const g = unit();
+    const max = Math.max(0, s.scrollWidth - s.clientWidth);
+    const snapped = g > 0 ? Math.min(max, Math.max(0, Math.round(s.scrollLeft / g) * g)) : s.scrollLeft;
+    const sr = s.getBoundingClientRect(), er = el.getBoundingClientRect();
+    const target = revealScroll({
+      itemLeft: er.left - sr.left + s.scrollLeft, itemWidth: er.width,
+      scrollLeft: snapped, viewWidth: s.clientWidth, contentWidth: s.scrollWidth, edge: 3 * g, g,
+    });
+    const left = target != null ? target : snapped;
+    if (Math.abs(left - s.scrollLeft) >= 0.5) s.scrollTo({ left, behavior: animate ? 'smooth' : 'auto' });
+    updateEdges();
+  }, [updateEdges]);
+
+  // Divided or scrolling: every label's natural width against its own segment.
+  const decide = useCallback(() => {
+    const m = measureRef.current;
+    const g = unit();
+    if (!m || !(g > 0)) return;
+    const widths = [...m.children].map((s) => s.getBoundingClientRect().width / g);
+    setMode(fitsDivided(widths, { total: TOTAL, pad: 1 }) ? 'divided' : 'scroll');
+  }, []);
+  useLayoutEffect(() => { decide(); }, [decide, sig]);
+  // A viewport change (a resize, a rotation) re-decides, then — a frame later, once grid-snap has
+  // re-sized the pills to the new g — brings the selection back into view on a whole-g offset.
+  // (Still scrolling: reveal finds the scroller. Newly scrolling: the [mode] effect below does it.)
+  useEffect(() => {
+    let live = true, raf = 0;
+    const onResize = () => {
+      decide();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => { if (live) reveal(false); });
+    };
+    window.addEventListener('resize', onResize);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (live) decide(); });
+    return () => { live = false; cancelAnimationFrame(raf); window.removeEventListener('resize', onResize); };
+  }, [decide, reveal]);
+
+  // The selection changes, or the strip starts scrolling: reveal it. Runs a frame after the change,
+  // once grid-snap has sized the pills (it does so from a MutationObserver, after React's commit).
   const firstReveal = useRef(true);
   useEffect(() => {
     if (mode !== 'scroll') { firstReveal.current = true; return undefined; }
     const animate = !firstReveal.current && smooth();
     firstReveal.current = false;
-    const raf = requestAnimationFrame(() => {
-      const s = scrollRef.current, el = btnRefs.current[active];
-      if (!s || !el) return;
-      const g = unit();
-      const sr = s.getBoundingClientRect(), er = el.getBoundingClientRect();
-      const target = revealScroll({
-        itemLeft: er.left - sr.left + s.scrollLeft, itemWidth: er.width,
-        scrollLeft: s.scrollLeft, viewWidth: s.clientWidth, contentWidth: s.scrollWidth, edge: 3 * g, g,
-      });
-      if (target != null) s.scrollTo({ left: target, behavior: animate ? 'smooth' : 'auto' });
-      updateEdges();
-    });
+    const raf = requestAnimationFrame(() => reveal(animate));
     return () => cancelAnimationFrame(raf);
-  }, [mode, active, sig, updateEdges]);
+  }, [mode, active, sig, reveal]);
 
-  // Content or width changes (fonts, rotation, grid-snap) move the edges.
+  // Content or width changes (fonts, rotation, grid-snap) move the edges; when the strip's own
+  // width or its content's width changed (a new g), the selection is revealed again and the offset
+  // re-snapped too. A change of neither (the observer's first call) only refreshes the fades.
   useEffect(() => {
     const s = scrollRef.current;
     if (mode !== 'scroll' || !s || typeof ResizeObserver === 'undefined') { updateEdges(); return undefined; }
-    const ro = new ResizeObserver(() => updateEdges());
+    let size = `${s.clientWidth}x${s.scrollWidth}`;
+    const ro = new ResizeObserver(() => {
+      const now = `${s.clientWidth}x${s.scrollWidth}`;
+      if (now === size) { updateEdges(); return; }
+      size = now;
+      reveal(false);
+    });
     ro.observe(s);
     [...s.children].forEach((c) => ro.observe(c));
     return () => ro.disconnect();
-  }, [mode, sig, updateEdges]);
+  }, [mode, sig, updateEdges, reveal]);
 
   // A vertical mouse wheel over the strip scrolls it sideways while it can still move that way
   // (React's onWheel is passive, so the listener is attached here to be able to take the turn).

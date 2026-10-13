@@ -8,9 +8,9 @@ import { prepareFacts } from '../bankroll-filters.js';
 import { buildReport } from '../bankroll-reports.js';
 import {
   buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, fmtHours, fmtPct, fmtSignedPct, statItems,
-  metaLine, resultWhat, fmtDay, rowsPage, NO_ROOM, NO_ROOM_LABEL, MINUS, SORTS, FIRST_ROWS, PAGE_ROWS,
+  metaLine, resultWhat, fmtDay, rowsPage, NO_ROOM, NO_ROOM_LABEL, MINUS, SORTS, FIRST_ROWS, PAGE_ROWS, WON_WORDS,
 } from '../bankroll-locations.js';
-import { overviewStats } from '../bankroll-ledger.js';
+import { sessionsTable } from '../bankroll-overview.js';
 import { segmentWidths, fitsDivided, revealScroll, keyStep, pageScroll, wheelToStrip } from '../tab-strip.js';
 
 const localHour = (iso) => Number(iso.slice(11, 13));
@@ -68,7 +68,7 @@ test('expenses and income are not locations and add nothing', () => {
   assert.equal(buildLocations(prepareFacts([X(9, '2026-01-01')], { localHour })).length, 0);
 });
 
-test('a mixed room: entries count bullets, hours are cash only, won % is results up over results', () => {
+test('a mixed room: entries count bullets, hours are cash only, won/ITM is (winning sessions + cashes) per entry', () => {
   const b = byKey(buildLocations(F)).get('borgata');
   assert.equal(b.total, -200 + 900 - 100 + 300);
   assert.equal(b.entries, 1 + 1 + 2 + 1, 'one cash session + four bullets');
@@ -76,7 +76,7 @@ test('a mixed room: entries count bullets, hours are cash only, won % is results
   assert.equal(b.hourly, 300 / 5);
   assert.equal(b.roi, (-200 + 900 - 100) / (200 + 200 + 400));
   assert.equal(b.wonKind, 'mixed');
-  assert.equal(b.won, 2 / 4, 'the 900 score and the winning session, of four results (the 2-bullet event is one); the losing min-cash is not a win');
+  assert.equal(b.won, (1 + 2) / 5, 'the winning session and two cashes (the 900 score, the 2-bullet min-cash), of five entries');
   assert.deepEqual(b.kinds, { tournament: true, cash: true });
   assert.equal(b.format, 'live');
   assert.deepEqual(b.tournament.cashes, 2);
@@ -88,7 +88,7 @@ test('a cash room: winning sessions; no ROI', () => {
   assert.equal(p.hourly, (-150 + 600 + 250) / 15);
 });
 
-test('a tournament room: ITM by events, no hours, no per hour; online', () => {
+test('a tournament room: ITM per entry, no hours, no per hour; online', () => {
   const g = byKey(buildLocations(F)).get('ggpoker');
   assert.deepEqual([g.entries, g.hours, g.hourly, g.wonKind, g.won, g.format], [2, null, null, 'itm', 0.5, 'online']);
   assert.equal(g.roi, (32000 - 1100) / 2200);
@@ -97,7 +97,7 @@ test('a tournament room: ITM by events, no hours, no per hour; online', () => {
   assert.equal(items.find((i) => i.key === 'won').text, '50% ITM');
 });
 
-test('ITM is cashes / events, as the Overview counts it: a re-entered event that cashed is one cash of one event', () => {
+test('ITM is cashes per ENTRY, as Analytics and the Overview count it: a re-entered event that cashed is one cash in its bullets', () => {
   const raw = [
     T(1, '2026-05-01', { bullets: 2, cost: 400, cash: 900, profit: 500, room: 'Wynn' }),
     T(2, '2026-05-02', { profit: -200, room: 'Wynn' }),
@@ -105,15 +105,26 @@ test('ITM is cashes / events, as the Overview counts it: a re-entered event that
   ];
   const w = buildLocations(prepareFacts(raw, { localHour }))[0];
   assert.equal(w.entries, 6, 'six bullets are six entries');
-  assert.equal(w.won, 1 / 3, 'one cash of three events, not one of six bullets');
-  assert.equal(statItems(w, { symbol: '$', pos: 'pre' }).find((i) => i.key === 'won').text, '33% ITM');
-  // The Overview's "In the money" over the same results reads the same.
-  const ov = overviewStats(raw.map((f) => ({ ...f, source: 'tournaments', amount_display: f.profit, units: f.bullets, fx_display: 1 })));
-  assert.equal(ov.mtt.itm, w.won);
-  // A mixed room counts results the same way: the 2-bullet score is one winning result.
-  const mixed = buildLocations(prepareFacts([...raw, C(1, '2026-05-04', { profit: 100, room: 'Wynn' })], { localHour }))[0];
+  assert.equal(w.won, 1 / 6, 'one cash in six bullets, not one of three events');
+  assert.equal(statItems(w, { symbol: '$', pos: 'pre' }).find((i) => i.key === 'won').text, '17% ITM');
+  // The Overview's Sessions table (utils/bankroll-overview.js, ITM = cashes / bullets) over the
+  // same results, as ledger entries, reads the same.
+  const asEntry = (f) => (f.type === 'cash'
+    ? { ...f, source: 'cash-sessions', kind: 'cash', amount_display: f.profit, fx_display: 1 }
+    : { ...f, source: 'tournaments', kind: 'tournament', amount_display: f.profit, units: f.bullets, fx_display: 1 });
+  assert.equal(sessionsTable(raw.map(asEntry)).tournaments.won, w.won);
+  // A mixed room: each side's own rate, weighted by its entries. One winning session joins the
+  // six bullets: (1 + 1) / 7 — the Sessions table's cash won % and ITM, blended by entries.
+  const rawMixed = [...raw, C(1, '2026-05-04', { profit: 100, room: 'Wynn' })];
+  const mixed = buildLocations(prepareFacts(rawMixed, { localHour }))[0];
   assert.equal(mixed.entries, 7);
-  assert.equal(mixed.won, 2 / 4);
+  assert.equal(mixed.won, 2 / 7);
+  const st = sessionsTable(rawMixed.map(asEntry));
+  assert.equal(mixed.won, (st.cash.won * st.cash.count + st.tournaments.won * st.tournaments.bullets) / mixed.entries);
+  assert.equal(st.total.won, null, 'the Overview leaves its Total blank where the two differ; a room card shows the blend');
+  // One kind only: the blend is that kind's own rate exactly.
+  const two = [C(1, '2026-05-04', { profit: 100 }), C(2, '2026-05-05', { profit: -50 })];
+  assert.equal(buildLocations(prepareFacts(two, { localHour }))[0].won, sessionsTable(two.map(asEntry)).cash.won);
 });
 
 test('currencies: the room\'s own, most used first', () => {
@@ -197,14 +208,27 @@ test('the stats line: items, text and tone', () => {
   const b = byKey(buildLocations(F)).get('borgata');
   const items = statItems(b, $);
   assert.deepEqual(items.map((i) => i.key), ['entries', 'hours', 'hourly', 'roi', 'won']);
-  assert.deepEqual(items.map((i) => i.text), ['5 entries', '5', '+$60/h', 'ROI +75%', '50% won']);
-  assert.deepEqual(items.map((i) => i.tone), [0, 0, 1, 1, 0], 'won % is judged only in a cash room');
+  assert.deepEqual(items.map((i) => i.text), ['5 entries', '5', '+$60/h', 'ROI +75%', '60% won/ITM']);
+  assert.deepEqual(items.map((i) => i.tone), [0, 0, 1, 1, 0], 'won/ITM has no 50% line: plain, at any rate');
+  assert.equal(items[4].label, '60% of entries won or in the money');
   assert.equal(items[1].icon, 'clock');
   const p = statItems(byKey(buildLocations(F)).get('parx'), $);
   assert.deepEqual(p.map((i) => [i.key, i.tone]), [['entries', 0], ['hours', 0], ['hourly', 1], ['won', 1]]);
+  // The word decides the tone, the same rule on every card: "won" green from 50%, red below; ITM and
+  // won/ITM plain whatever the rate (a 60% ITM room is not judged, nor a 20% one).
+  assert.deepEqual(Object.entries(WON_WORDS).map(([k, w]) => [k, w.word, w.judged]),
+    [['cash', 'won', true], ['itm', 'ITM', false], ['mixed', 'won/ITM', false]]);
+  const tone = (wonKind, won) => statItems({ entries: 10, hours: null, hourly: null, roi: null, won, wonKind }, $).find((i) => i.key === 'won').tone;
+  assert.deepEqual([tone('cash', 0.5), tone('cash', 0.49), tone('cash', 0.9)], [1, -1, 1]);
+  assert.deepEqual([tone('itm', 0.6), tone('itm', 0.2), tone('mixed', 0.7), tone('mixed', 0.1)], [0, 0, 0, 0]);
+  for (const loc of buildLocations(F)) {
+    const it = statItems(loc, $).find((i) => i.key === 'won');
+    assert.equal(it.tone !== 0, / won$/.test(it.text), `${loc.key}: toned exactly when the word is "won"`);
+  }
   const loser = buildLocations(prepareFacts([C(1, '2026-01-01', { profit: -90, hours: 2 }), C(2, '2026-01-02', { profit: 10, hours: 1 })], { localHour }))[0];
   assert.deepEqual(statItems(loser, $).map((i) => [i.text, i.tone]),
     [['2 entries', 0], ['3', 0], [MINUS + '$27/h', -1], ['50% won', 1]]);
+  assert.equal(statItems(loser, $).find((i) => i.key === 'won').label, '50% of sessions won');
   const one = buildLocations(prepareFacts([T(1, '2026-01-01', { profit: -200 })], { localHour }))[0];
   assert.equal(statItems(one, $)[0].text, '1 entry');
   // A cash room whose sessions have no length: no hours, no per hour.

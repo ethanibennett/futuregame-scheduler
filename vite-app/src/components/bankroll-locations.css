@@ -17,10 +17,11 @@
                    3r      name (Univers Condensed md, bold), baseline on its line 3   | total: display
                    2r      "Live • USD" and the type mark, baseline on its line 2     |   face xl, its
                    1r                                                                 |   baseline on
-                   4r      hairline, then the stats line, baseline on its line 3       |   the meta's line
+                   4r      hairline, then the stats line (Univers Condensed sm, the     |   the meta's line
+                           tables' size), baseline on its line 3                       |
                    1r      bottom padding
-                 so the name's caps start about 1.6r down and the stats' ink ends about 1.8r up,
-                 and the stats line sits evenly between the hairline and the card's foot.
+                 so the name's caps start about 1.6r down, and the stats' baseline sits on line 9:
+                 3r under the hairline, 2r above the card's foot.
                  Columns inside 1g a side: name (the rest) | 1g | total (its own width rounded up
                  to whole g by snap-g, utils/grid-snap.js), so a short total leaves the name more
                  room and a long one (−CHF12,345) takes it rather than overflowing; the stats 33g.
@@ -132,10 +133,14 @@
 .bl-total.an-pos { color: var(--pos); }
 .bl-total.an-neg { color: var(--neg); }
 
+/* The stats line at the tables' size (Univers Condensed sm, as an-td), baseline on line 3 of 4:
+   measured in WebKit (a probe on the baseline) -0.008r at 402 wide, +0.011r at 1440. The longest
+   plausible line ("1,234 entries • 1,234 h • −$1,234/h • ROI −100% • 100% won/ITM") is 30.6g of
+   its 33g, so it does not truncate. */
 .bl-stats {
-  --h: 4; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 3 of 4 */
+  --h: 4; --p: 0.6978;
   box-shadow: inset 0 var(--bw-hair) 0 var(--border);
-  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
   font-variant-numeric: var(--num-tabular);
 }
 .bl-sep { color: var(--text-muted); }
@@ -183,7 +188,10 @@
   font-variant-numeric: var(--num-tabular);
 }
 .bl-res-what .bl-dot { margin-right: calc(var(--gu) * 0.5); }
-.bl-res-amt { font-weight: var(--fw-bold); }
+/* Bold an-td: the bold face's metrics round to whole px unlike the regular's, so an-td's p seats
+   it high at 1440 (measured in WebKit: -0.008r at 402, -0.049r at 1440). The Overview tables'
+   correction for the same face and size (bankroll-overview-tables.css: p raised by 2 x 0.0304r). */
+.bl-res-amt { font-weight: var(--fw-bold); --p: 0.7586; }
 .bl-res-amt.an-pos { color: var(--pos); }
 .bl-res-amt.an-neg { color: var(--neg); }
 .bl-pager {
