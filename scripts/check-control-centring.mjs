@@ -475,6 +475,8 @@ function scan(cfg) {
   };
   // Pixels cannot see a control that anything covers, even a corner of it.
   const occluded = (el, b) => { const c = coverage(el, b); return c.covered > 0 || c.out > 0; };
+  // 90% or more of what is on screen of it is covered.
+  const hiddenUnder = (el, b) => { const c = coverage(el, b); return c.out < 1 && c.covered / (1 - c.out) >= 0.9; };
 
   const usable = (el) => {
     if (el.closest(excl) || matchesAny(el, NOT_CONTROLS) || matchesAny(el, STRIPS)) return false;
@@ -484,8 +486,11 @@ function scan(cfg) {
     const b = el.getBoundingClientRect();
     if (b.width < 1 || b.height < 1 || !onScreen(b)) return false;
     if (!visible(el) || clippedAway(el, b)) return false;
-    // Hidden under something else (a list behind a full-screen replayer, a sheet's backdrop).
-    if (coverage(el, b).covered >= 0.9) return false;
+    // Hidden under something else (a list behind a full-screen replayer, a sheet's backdrop):
+    // counted over the points that are on screen. A control running off the window's edge
+    // under the replayer (the Hands tool row, scrolled sideways) is as hidden as one inside it,
+    // and its off-screen points used to keep it under the 90% (Watch Solver, 4 views).
+    if (hiddenUnder(el, b)) return false;
     return true;
   };
   const hasLabel = (el) => {
@@ -996,7 +1001,7 @@ function scan(cfg) {
     if (el.closest(excl) || el.closest('[inert]')) continue;
     const b = el.getBoundingClientRect();
     if (b.width < 1 || b.height < 1 || !onScreen(b) || !visible(el) || clippedAway(el, b)) continue;
-    if (coverage(el, b).covered >= 0.9) continue;
+    if (hiddenUnder(el, b)) continue;
     record(el, 'strip', 'strip', paintedBand(el, b));
   }
   // Each layer that measured controls on its own lines: its left edge and width on the shell's.

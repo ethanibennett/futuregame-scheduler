@@ -10804,8 +10804,12 @@
     .cp-btn-pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--subcol); }
     /* Commit + cancel across the 31g column: 23g + 1g + 7g. */
     .cp-actions { display: grid; grid-template-columns: calc(var(--gu) * 23) 1fr; column-gap: var(--gu); }
+    /* A button, so its label is centred in it (owner rule, 2026-10-10), not seated on the cell's
+       foot like the text around it; the box is whole g wide (snap-g, CalendarEventRow.jsx) and
+       keeps the row's 2r. Seated, its caps sat 3.5px below the box's centre in a 9.7g box. */
     .cp-remove {
       margin: 0; padding: 0; background: none; border: none; cursor: pointer; align-self: flex-start;
+      align-items: center; justify-content: center;
     }
     .cp-remove > span {
       font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--accent2);

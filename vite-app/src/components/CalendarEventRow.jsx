@@ -508,7 +508,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       </div>
 
       {conditions.length > 0 && (
-        <button className="cp-remove" onClick={onRemove}><span>Remove All Conditions</span></button>
+        <button className="cp-remove snap-g" onClick={onRemove}><span>Remove All Conditions</span></button>
       )}
     </div>
   );

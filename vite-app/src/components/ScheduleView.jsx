@@ -349,7 +349,8 @@ export default function ScheduleView({
           {pendingIncoming.map(req => (
             <div key={req.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
               background:'var(--surface)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--border)',
-              borderRadius:'var(--radius-sm)',padding:'var(--subrow) calc(var(--subrow) * 1.5)',marginBottom:'calc(var(--subrow) * 1)',
+              // 1g sides (it was 1.5r, 1.065g): Accept and Decline, flush right, end on a g line.
+              borderRadius:'var(--radius-sm)',padding:'var(--subrow) var(--gu)',marginBottom:'calc(var(--subrow) * 1)',
               fontSize:'calc(var(--gu) * 1.252)',color:'var(--text)'}}>
               <span style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)'}}>
                 <Avatar src={req.avatar} username={req.username} size={26} />
