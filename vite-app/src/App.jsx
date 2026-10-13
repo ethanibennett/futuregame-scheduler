@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import AlternatingSubtitle from './components/AlternatingSubtitle.jsx';
 import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
+import { resetPath } from './utils/reset-results.js';
 import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
-import { detectMilestones, measureStickyStack } from './utils/milestones.js';
+import { detectMilestones } from './utils/milestones.js';
+import { moveDetailBlock, settleDetailBlock, detailBlockMoving } from './utils/detail-motion.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
 
 import { useToast } from './contexts/ToastContext.jsx';
@@ -21,7 +23,9 @@ import GridOverlay from './components/GridOverlay.jsx';
 import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
+import useBankrolls from './hooks/useBankrolls.js';
 import DashboardView from './components/DashboardView.jsx';
+import HandsScanner from './components/HandsScanner.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
 import ScheduleView from './components/ScheduleView.jsx';
 import CalendarView from './components/CalendarView.jsx';
@@ -32,6 +36,8 @@ import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
 import { LiveCashBar } from './components/CashLive.jsx';
 import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
+import BackerPage from './components/BackerPage.jsx';
+import { backerTokenFromPath } from './utils/backer-page.js';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
@@ -56,6 +62,10 @@ const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'))
 const CashView = lazy(() => import('./components/CashView.jsx'));
 
 const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.252)'}}>Loading…</div>;
+
+// A backer's private page: /b/<token> (the server's BACKER_TOKEN_RE). Rendered by Root below,
+// before App: a backer has no account, so none of App's session, onboarding, nav or rail applies.
+const BACKER_TOKEN = backerTokenFromPath(window.location.pathname);
 
 // Detect shared schedule URL: /shared/:token
 const SHARED_MATCH = window.location.pathname.match(/^\/shared\/([a-f0-9]+)$/);
@@ -103,6 +113,69 @@ function subrowPx() {
   return r || 1;
 }
 
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && !!window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Schedule pressed again (the bottom nav, or the rail on desktop): the list back on today, landed
+// exactly where its own first landing puts it (TournamentsView scrollDateGroupToTop, the same
+// formula): today's group top on the sticky filters' bottom, so its date break sits flush under
+// them. The smooth scroll passes rows leaving their 13r content-visibility placeholders, which can
+// move today while it runs, so once the scroll has come to rest the list lands again on the same
+// formula, at once. (The follow-up used to put the first card 2px below the sticky stack instead,
+// which left the list about 0.3r short of the stop.) Anything the user does meanwhile (a wheel, a
+// touch, a click, a key) is theirs: the landing is dropped.
+function landListOnToday() {
+  const c = document.querySelector('.content-area');
+  const panel = c && c.querySelector('.tab-panel[data-tab="tournaments"]');
+  if (!panel || !panel.querySelector('[data-today-scroll]')) return;
+  const target = () => {
+    const group = panel.querySelector('[data-today-scroll]');
+    if (!group) return null;
+    const filters = panel.querySelector('.sticky-filters');
+    const filtersH = filters ? filters.getBoundingClientRect().height : 0;
+    const groupAbsTop = group.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
+    return Math.max(0, groupAbsTop - filtersH);
+  };
+  c.scrollTo({ top: target(), behavior: 'smooth' });
+  const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+  let dropped = false;
+  const drop = () => { dropped = true; };
+  inputs.forEach(ev => c.addEventListener(ev, drop, { passive: true }));
+  // At rest: three frames without movement, once it has moved (or a dozen frames if it never
+  // needed to); at most three seconds.
+  let last = c.scrollTop, still = 0, moved = false, frames = 0;
+  const tick = () => {
+    const now = c.scrollTop;
+    if (now !== last) { moved = true; still = 0; } else still++;
+    last = now; frames++;
+    if (!dropped && frames < 180 && (still < 3 || (!moved && frames < 12))) { requestAnimationFrame(tick); return; }
+    inputs.forEach(ev => c.removeEventListener(ev, drop));
+    const top = dropped ? null : target();
+    if (top != null) c.scrollTop = top;
+  };
+  requestAnimationFrame(tick);
+}
+
+// My Schedule on its next event (or at its top when nothing is coming up), in ITS OWN scroller:
+// the phone's My Schedule tab in .content-area, or the desktop's right pane (.dk-mine-block, a
+// .dk-scroll), where the Schedule list's scroller is a different element and is never touched.
+// The header counts by where its bottom sits once STUCK (its sticky top + its height), not where
+// it sits in flow right now: that over-counted and landed the next event 26px low (ScheduleView).
+function landMySchedule() {
+  const panel = document.querySelector('.dk-mine-block')
+    || document.querySelector('.content-area .tab-panel[data-tab="schedule"]');
+  const c = panel && panel.closest('.content-area, .dk-scroll');
+  if (!c) return;
+  const todayEl = panel.querySelector('[data-today-scroll]');
+  if (!todayEl) { c.scrollTop = 0; return; }
+  const sticky = panel.querySelector('.schedule-sticky-header');
+  const stickyH = sticky ? Math.max(0, (parseFloat(getComputedStyle(sticky).top) || 0) + sticky.getBoundingClientRect().height) : 0;
+  const groupAbsTop = todayEl.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
+  c.scrollTop = Math.max(0, groupAbsTop - stickyH);
+}
+
 const APP_ADMIN_USERNAMES = ['ham', 'ham5', 'claude'];   // mirrors server.js APP_ADMIN_USERNAMES
 const EVENT_EDITOR_USERNAMES = ['ham', 'ham5'];          // mirrors the server's write allowlist
 function tokenUsername(tok) {
@@ -124,7 +197,7 @@ try {
   if (getDebugNow() && !APP_ADMIN_USERNAMES.includes(tokenUsername(bootToken))) setDebugNow('');
 } catch { /* storage unavailable — nothing persisted to clear */ }
 
-export default function App() {
+function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
@@ -145,9 +218,17 @@ export default function App() {
   const [viewKey, setViewKey] = useState(0);
   const [visitedTabs, setVisitedTabs] = useState(new Set(['dashboard']));
   const scrollPositions = useRef({});
+  // Desktop only (docs/desktop-layout.md): there My Schedule is not a view but the right pane of
+  // the Schedule tab. Set by the desktop block below to what showing it takes; null on the phone.
+  const dkShowMine = useRef(null);
   const toast = useToast();
 
   const setCurrentView = useCallback((v) => {
+    // Going to My Schedule on desktop is going to the Schedule tab, whose right pane holds it. The
+    // list then takes the phone's own tab-change path below (it keeps its place, or gets back the
+    // place it was left at, else today), as the phone's list does on its way back from My
+    // Schedule, instead of being scrolled for a My Schedule panel it does not show.
+    if (v === 'schedule' && dkShowMine.current) { dkShowMine.current(); v = 'tournaments'; }
     _setCurrentView(prev => {
       if (v !== prev) {
         const container = document.querySelector('.content-area');
@@ -156,18 +237,7 @@ export default function App() {
         requestAnimationFrame(() => {
           const c = document.querySelector('.content-area');
           if (c && v === 'schedule') {
-            const panel = c.querySelector('.tab-panel[data-tab="schedule"]');
-            const todayEl = panel ? panel.querySelector('[data-today-scroll]') : null;
-            if (todayEl) {
-              const sticky = panel.querySelector('.schedule-sticky-header');
-              // The header's bottom once STUCK (its sticky top + its height), not where it sits in
-              // flow right now — that over-counted and landed the next event 26px low (ScheduleView).
-              const stickyH = sticky ? Math.max(0, (parseFloat(getComputedStyle(sticky).top) || 0) + sticky.getBoundingClientRect().height) : 0;
-              const groupAbsTop = todayEl.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
-              c.scrollTop = Math.max(0, groupAbsTop - stickyH);
-            } else {
-              c.scrollTop = 0;
-            }
+            landMySchedule();
           } else if (c && scrollPositions.current[v] != null) {
             c.scrollTop = scrollPositions.current[v];
           } else if (v === 'tournaments' && c) {
@@ -279,6 +349,10 @@ export default function App() {
 
   // Tracking
   const [trackingData, setTrackingData] = useState([]);
+  // A form or entry in Results that the home asked for (its Log menu, To log's Cashed, the Last
+  // result card): { kind, ... } — TrackingView opens it once and clears it (onIntentDone).
+  const [resultsIntent, setResultsIntent] = useState(null);
+  const clearResultsIntent = useCallback(() => setResultsIntent(null), []);
 
   // Live Updates
   const [myActiveUpdates, setMyActiveUpdates] = useState([]);
@@ -567,22 +641,29 @@ export default function App() {
     } catch (e) { console.error('Fetch tracking:', e); toast.error('Failed to load tracking data'); }
   };
 
-  // Bulk-clear all of the user's tracking entries (Dashboard "Reset"
-  // button). Optimistic — clears local state immediately, then re-fetches.
-  const resetResults = useCallback(async () => {
+  // Results > Delete results (components/ResetResults.jsx): one bankroll's results (or, asked for
+  // in so many words, every bankroll's), held to the count the typed confirmation showed — the
+  // server answers 409 and deletes nothing when that count is stale. Resolves true when deleted.
+  const resetResults = useCallback(async (scope, expect) => {
     try {
-      const res = await fetch(`${API_URL}/tracking`, {
+      const res = await fetch(`${API_URL}${resetPath(scope, expect)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed');
       const data = await res.json().catch(() => ({}));
-      setTrackingData([]);
-      toast.success(`Cleared ${data.count || 0} result${data.count === 1 ? '' : 's'}`);
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to delete results');
+        fetchTracking();
+        return false;
+      }
+      const n = data.count || 0;
+      toast.success(`Deleted ${n.toLocaleString('en-US')} result${n === 1 ? '' : 's'}${scope.name && scope.key !== 'all' ? ` from ${scope.name}` : ''}`);
       fetchTracking();
+      return true;
     } catch (e) {
-      console.error('Reset tracking:', e);
-      toast.error('Failed to reset results');
+      console.error('Delete results:', e);
+      toast.error('Failed to delete results');
+      return false;
     }
   }, [token]);
 
@@ -631,9 +712,14 @@ export default function App() {
     } catch {}
   }, [token]);
 
+  // Resolves { ok, status } so a caller can tell a logged result from a refusal. data.ifAbsent
+  // (the home's To log) makes it log-only: a result already there is a 409 that changes nothing,
+  // and the list is refetched so the row that was stale goes away.
   const addTracking = useCallback(async (data) => {
     try {
-      const matchedTournament = tournaments.find(tr => tr.id === data.tournamentId);
+      // The event: the 3-day feed list, else the schedule (an older event the home's To log logs).
+      const matchedTournament = tournaments.find(tr => tr.id === data.tournamentId)
+        || mySchedule.find(tr => tr.id === data.tournamentId);
       const entryForMilestone = {
         ...data,
         buyin: matchedTournament ? matchedTournament.buyin : 0,
@@ -649,18 +735,38 @@ export default function App() {
         body: JSON.stringify(trackingPayload)
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
+        // ifAbsent and a result is already there: nothing changed. The caller says so (To log's
+        // toast; the Cashed form keeps what was typed and asks before replacing it).
+        if (res.status === 409 && data.ifAbsent) { fetchTracking(); return { ok: false, status: 409, entryId: err.entryId }; }
         setError(err.error || 'Failed to add tracking entry');
-        return;
+        return { ok: false, status: res.status };
       }
+      const made = await res.json().catch(() => ({}));
       if (totalFieldSize) await saveFieldSize(data.tournamentId, totalFieldSize);
       fetchTracking();
 
       if (milestones.length > 0) {
         setActiveMilestone(milestones[0]);
       }
-    } catch { setError('Failed to add tracking entry'); }
-  }, [token, tournaments, trackingData]);
+      return { ok: true, status: res.status, id: made && made.id };
+    } catch { setError('Failed to add tracking entry'); return { ok: false, status: 0 }; }
+  }, [token, tournaments, mySchedule, trackingData]);
+
+  // The home's To log "Didn't play" (true) and its Undo (false): user_schedules.not_played, so it
+  // syncs across devices. Resolves true when stored.
+  const setNotPlayed = useCallback(async (tournamentId, notPlayed) => {
+    try {
+      const res = await fetch(`${API_URL}/schedule/${tournamentId}/played`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notPlayed: !!notPlayed })
+      });
+      if (!res.ok) return false;
+      setMySchedule(prev => prev.map(t => (t.id === tournamentId ? { ...t, not_played: notPlayed ? 1 : 0 } : t)));
+      return true;
+    } catch { return false; }
+  }, [token]);
 
   const updateTracking = useCallback(async (entryId, data) => {
     try {
@@ -680,14 +786,16 @@ export default function App() {
     } catch { setError('Failed to update tracking entry'); }
   }, [token]);
 
+  // Resolves true when deleted (the home's To log Undo checks it).
   const deleteTracking = useCallback(async (entryId) => {
     try {
-      await fetch(`${API_URL}/tracking/${entryId}`, {
+      const res = await fetch(`${API_URL}/tracking/${entryId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTracking();
-    } catch { setError('Failed to delete tracking entry'); }
+      return res.ok;
+    } catch { setError('Failed to delete tracking entry'); return false; }
   }, [token]);
 
   // ── Sharing functions ──
@@ -1502,6 +1610,12 @@ export default function App() {
   // keeps the rollout features and simply never sees an editor it cannot save from.
   const canEditEvents = !isGuest && EVENT_EDITOR_USERNAMES.includes(authUsername);
 
+  // Bankrolls (beta, app admins): ONE summary for the home (its bankroll line and period block)
+  // and the Results tab (its switcher, the dashboard, Cash and Expenses), lifted here from
+  // TrackingView so the two never disagree. The balances are the server's combined ledger, so they
+  // are refetched whenever the results change (version). For everyone else it fetches nothing.
+  const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
+
   // A non-admin session never runs on the simulated clock (see the boot-time clear above): this
   // catches an admin signing out and someone else signing in without a reload.
   useEffect(() => {
@@ -1516,25 +1630,70 @@ export default function App() {
   const dk = useDesktopLayout();
   const isDesktop = dk.desktop;
   const [dkSelectedId, setDkSelectedId] = useState(null);
+  // The home's second pane (its NUMBERS column), set by a callback ref once the pane mounts.
+  const [dkHomeRight, setDkHomeRight] = useState(null);
   // Closing an event animates like opening one, in reverse (owner, 2026-10-11): the details keep
   // rendering, marked closing, until their collapse ends, so My Schedule rises into their place
-  // instead of jumping. The collapse starts from the block's own height (in r), not the 55% cap,
-  // or a short block would sit still for the first part of it. Worked out during render (React's
-  // "previous value in state" pattern) so the block is never unmounted between the two.
+  // instead of jumping. Worked out during render (React's "previous value in state" pattern) so
+  // the block is never unmounted between the two. Only while the block is on screen (the ref):
+  // a selection cleared while the pane was away (the user menu's My Schedule from another tab)
+  // has nothing to collapse.
   const dkDetailRef = useRef(null);
-  const [dkClosing, setDkClosing] = useState(null); // { id, hR } while the details collapse
+  const [dkClosing, setDkClosing] = useState(null); // { id } while the details collapse
   const [dkPrevSelected, setDkPrevSelected] = useState(null);
+  const dkPaneShown = isDesktop && currentView === 'tournaments';
   if (dkSelectedId !== dkPrevSelected) {
     setDkPrevSelected(dkSelectedId);
-    const el = dkDetailRef.current;
-    const reduce = typeof window !== 'undefined' && window.matchMedia
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (dkSelectedId == null && dkPrevSelected != null && el && !reduce) {
-      setDkClosing({ id: dkPrevSelected, hR: el.getBoundingClientRect().height / subrowPx() });
+    if (dkSelectedId == null && dkPrevSelected != null && dkDetailRef.current && dkPaneShown && !prefersReducedMotion()) {
+      setDkClosing({ id: dkPrevSelected });
     } else if (dkClosing) {
       setDkClosing(null);
     }
   }
+  // The right pane unmounts on a tab change (or a drop to the phone layout), and a collapse it was
+  // running ends with it: left set, coming back mounted the old event again and replayed its close.
+  if (dkClosing && !dkPaneShown) setDkClosing(null);
+  const dkPhase = dkSelectedId != null ? 'open' : (dkClosing ? 'closing' : null);
+  const dkShownId = dkSelectedId ?? (dkClosing && dkClosing.id);
+  // The move itself (utils/detail-motion.js): the block's height between 0 and its own natural
+  // height, and its opacity, from wherever it is when the move starts (a close mid-open, a new
+  // event mid-close). Run before paint, so the block never shows a frame at its natural height
+  // first. Only a change of phase or of event starts one: an event swapped for another while the
+  // block is settled open just reflows, and a block mounted again with the pane (back from another
+  // tab, the selection kept) shows as it was left, without growing open again.
+  const dkPrevPhase = useRef(null);
+  useLayoutEffect(() => {
+    const was = dkPrevPhase.current;
+    dkPrevPhase.current = dkPhase;
+    const el = dkDetailRef.current;
+    if (!el || !dkPhase) return;
+    if (prefersReducedMotion()) {
+      settleDetailBlock(el);
+      if (dkPhase === 'closing') setDkClosing(null);
+      return;
+    }
+    // was == null: the block mounted in this commit, so it opens from nothing.
+    const over = moveDetailBlock(el, dkPhase === 'open' ? 'open' : 'close', subrowPx(), was == null);
+    if (over && dkPhase === 'closing') setDkClosing(null);
+  }, [dkPhase, dkShownId]);
+  // A move has arrived: an open settles to the stylesheet's height, a close unmounts the block.
+  // Only the block's own transitions count (a hover inside it bubbles up here too), and only once
+  // none of them is still running (height and opacity end on the same frame). A cancelled one
+  // counts too, so a close can never be left mounted; one cancelled by the next move is ignored
+  // here, since that move is still running (or, if it was instant, already done). Native
+  // listeners, attached as the block mounts: React 18 has no onTransitionCancel.
+  const onDkDetailMoveEnd = useCallback((e) => {
+    const el = e.currentTarget;
+    if (e.target !== el || detailBlockMoving(el)) return;
+    if (el.dataset.dkMove === 'close') setDkClosing(null);
+    else if (el.dataset.dkMove === 'open') settleDetailBlock(el);
+  }, []);
+  const dkDetailNode = useCallback((node) => {
+    const prev = dkDetailRef.current;
+    if (prev) ['transitionend', 'transitioncancel'].forEach(ev => prev.removeEventListener(ev, onDkDetailMoveEnd));
+    dkDetailRef.current = node;
+    if (node) ['transitionend', 'transitioncancel'].forEach(ev => node.addEventListener(ev, onDkDetailMoveEnd));
+  }, [onDkDetailMoveEnd]);
   const selectEvent = useCallback((id) => {
     setDkSelectedId(id);
     // The details are the top block of the right pane: bring them into view.
@@ -1550,18 +1709,24 @@ export default function App() {
     if (isDesktop) el.dataset.layout = 'desktop'; else delete el.dataset.layout;
   }, [isDesktop]);
   // My Schedule is a pane of the Schedule tab on desktop, not a view of its
-  // own: route there, and turn a "focus this event" request (the dashboard's
-  // Up Next card) into a selection.
+  // own. setCurrentView routes every request for it there (dkShowMine); showing
+  // it means clearing the selection, since it sits under the event details.
+  useEffect(() => {
+    dkShowMine.current = isDesktop ? () => setDkSelectedId(null) : null;
+  }, [isDesktop]);
+  // The one arrival setCurrentView cannot route: the window widening into the
+  // desktop layout while My Schedule is the phone's tab. Same path as any tab
+  // change, so the list gets back its own saved place rather than inheriting
+  // My Schedule's scrollTop on the shared scroller. And a "focus this event"
+  // request (the dashboard's Up Next card) becomes a selection.
   useEffect(() => {
     if (!isDesktop) return;
     if (currentView === 'schedule') {
-      _setCurrentView('tournaments');
-      setVisitedTabs(s => (s.has('tournaments') ? s : new Set([...s, 'tournaments'])));
-      // My Schedule sits under the event details: clear the selection so it is at the top.
+      setCurrentView('tournaments');
       if (!scheduleFocusId) setDkSelectedId(null);
     }
     if (scheduleFocusId) { selectEvent(scheduleFocusId); setScheduleFocusId(null); }
-  }, [isDesktop, currentView, scheduleFocusId, dk.tier, selectEvent]);
+  }, [isDesktop, currentView, scheduleFocusId, dk.tier, selectEvent, setCurrentView]);
 
   // ── Render: shared schedule page ──
   if (SHARED_TOKEN) {
@@ -1635,14 +1800,17 @@ export default function App() {
                 mySchedule={mySchedule}
                 myActiveUpdates={myActiveUpdates}
                 trackingData={trackingData}
-                shareBuddies={shareBuddies}
-                buddyLiveUpdates={buddyLiveUpdates}
-                displayName={displayName}
-                buddyEvents={buddyEvents}
+                homeRight={isDesktop ? dkHomeRight : null}
                 onPost={postLiveUpdate}
                 onDeleteUpdate={deleteLiveUpdate}
                 onAddTracking={addTracking}
-                onResetResults={resetResults}
+                isAdmin={isAdmin}
+                token={token}
+                canLog={!isGuest}
+                onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
+                bk={bk}
+                onSetPlayed={setNotPlayed}
+                onDeleteTracking={deleteTracking}
                 tournaments={tournaments}
                 onToggle={toggleTournament}
                 onNavigate={(v) => {
@@ -1753,9 +1921,13 @@ export default function App() {
                 onAdd={addTracking}
                 onUpdate={updateTracking}
                 onDelete={deleteTracking}
+                onResetResults={resetResults}
                 myActiveUpdates={myActiveUpdates}
                 isAdmin={isAdmin}
                 token={token}
+                bk={bk}
+                intent={resultsIntent}
+                onIntentDone={clearResultsIntent}
               />
             )}
             </div>
@@ -1768,7 +1940,9 @@ export default function App() {
                         footer row above the bottom nav — see HANDS_TOOLS below — so it
                         stays put while the tool content scrolls. */}
                     <div style={{flex:1,minHeight:0}}>
-                      {handsTool === 'solver' && isAdmin
+                      {handsTool === 'scanner' && isAdmin
+                        ? <HandsScanner />
+                        : handsTool === 'solver' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><SolverView pendingSpot={pendingSolverSpot} onConsumeSpot={() => setPendingSolverSpot(null)} /></Suspense>
                         : handsTool === 'trainer' && isAdmin
                         ? <Suspense fallback={<LazyFallback />}><SolverTrainerView /></Suspense>
@@ -1922,7 +2096,7 @@ export default function App() {
           {currentView === 'hands' && isAdmin && (
             <div className="hands-tool-row" style={{display:'flex',gap:'var(--gu)',overflowX:'auto',whiteSpace:'nowrap',background:'var(--bg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
               {/* Each pill a whole-g box (its width in g beside its label), the label centred in it. */}
-              {[['replayer','Replayer',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
+              {[['replayer','Replayer',6],['scanner','Scanner',6],['solver','Solver',5],['trainer','Solver Trainer',8],['watch','Watch Solver',8],['razz-trainer','Trainer',5],['multiway','3-Way',5]].map(([id,lbl,w]) => (
                 <button key={id} className="ctl" onClick={() => setHandsTool(id)}
                   style={{flex:'0 0 auto',width:`calc(var(--gu) * ${w})`,height:'calc(var(--subrow) * 3)',boxSizing:'border-box',padding:0,borderRadius:'var(--radius)',fontFamily:'inherit',fontSize:'calc(var(--gu) * 1.031)',fontWeight:'var(--fw-bold)',cursor:'pointer',
                     border:'var(--bw-hair) solid ' + (handsTool === id ? 'var(--accent)' : 'var(--border)'),
@@ -1935,8 +2109,9 @@ export default function App() {
           )}
     </>
   );
-  // The floating admin toggles: fixed to the window's corner on the phone,
-  // stacked at the foot of the rail on desktop.
+  // The floating admin toggles, fixed at the foot of the main column's right edge: on the phone
+  // the window's corner; on desktop the main pane's, which for the Schedule list is the list pane
+  // (its containing block, .dk-fab-scope), so they sit over the list where the phone's do.
   const devToggles = (
     <>
           {isAdmin && gridOverlay && (
@@ -1973,7 +2148,7 @@ export default function App() {
   // Desktop Schedule tab's secondary panes.
   const dkDetail = isDesktop ? (
     <DesktopEventDetail
-      selectedId={dkSelectedId ?? (dkClosing && dkClosing.id)}
+      selectedId={dkShownId}
       onSelect={selectEvent}
       tournaments={tournaments}
       mySchedule={mySchedule}
@@ -2020,6 +2195,14 @@ export default function App() {
       selectedEventId={dkSelectedId}
     />
   )) : null;
+  // The phone's bottom nav and the desktop rail run this one handler, so the two behave alike.
+  // Choosing Schedule while already on it scrolls the list back to today (landListOnToday); this
+  // used to live only in BottomNav's onChange, and the rail did nothing. Today is looked up in the
+  // list's own panel: on desktop My Schedule (the right pane) carries a [data-today-scroll] too.
+  const onNavChange = (v) => {
+    if (v === currentView && v === 'tournaments') { landListOnToday(); return; }
+    setCurrentView(v);
+  };
   return (
     <DisplayNameProvider value={displayName}>
     <div
@@ -2068,54 +2251,53 @@ export default function App() {
           {showUserMenu && createPortal(
             <>
               <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={() => setShowUserMenu(false)} />
-              <div style={{position:'fixed',top:'calc(var(--subrow) * 6.5)',right:'calc(var(--subrow) * 1.5)',zIndex:9999,background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 1)',padding:'calc(var(--subrow) * 0.5) 0',minWidth:'calc(var(--subrow) * 22.5)',boxShadow:'0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+              {/* On the grid (owner rule, 2026-10-10): 16g wide, its right edge on the shell's 1g
+                  margin — the shell is centred in the window (37g, or dk.shellG on desktop), so
+                  half the window less half the shell, plus 1g — its top on 7r under the bar. The
+                  ring is an inset shadow, not a border, so the 5r rows inside start on the box's
+                  own lines. */}
+              <div style={{position:'fixed',top:'calc(var(--sa-t) + var(--subrow) * 7)',right:`calc(50% - var(--gu) * ${isDesktop ? dk.shellG : 37} / 2 + var(--gu))`,zIndex:9999,background:'var(--surface)',borderRadius:'calc(var(--subrow) * 1)',padding:0,width:'calc(var(--gu) * 16)',boxSizing:'border-box',boxShadow:'inset 0 0 0 var(--bw-hair) var(--border), 0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
                 <button onClick={() => {
                   setShowUserMenu(false);
                   setCurrentView('schedule');
-                  requestAnimationFrame(() => {
-                    const c = document.querySelector('.content-area');
-                    if (!c) return;
-                    const panel = c.querySelector('.tab-panel[data-tab="schedule"]');
-                    const todayEl = panel ? panel.querySelector('[data-today-scroll]') : null;
-                    if (!todayEl) { c.scrollTop = 0; return; }
-                    const sticky = panel.querySelector('.schedule-sticky-header');
-                    const stickyH = sticky ? Math.max(0, sticky.getBoundingClientRect().bottom - c.getBoundingClientRect().top) : 0;
-                    const groupAbsTop = todayEl.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop;
-                    c.scrollTop = Math.max(0, groupAbsTop - stickyH);
-                  });
+                  // Also when My Schedule is already showing (no tab change, so setCurrentView
+                  // lands nothing). The same landing as the tab change's, in My Schedule's own
+                  // scroller: on desktop the right pane's, never the Schedule list's.
+                  requestAnimationFrame(landMySchedule);
                 }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   My Schedule
                 </button>
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('tracking'); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Results &amp; Tracking
                 </button>
                 {handReplayerAccess && !isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('hands'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     Hand Replayer
                   </button>
                 )}
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('settings'); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Settings
                 </button>
                 {isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('admin'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     Admin
                   </button>
                 )}
                 {isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); openBatch(null); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     New Events
                   </button>
                 )}
-                <div style={{height:'calc(var(--subrow) * 0.125)',background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
+                {/* The divider: a 1r row with the hairline drawn across its middle. */}
+                <div style={{height:'var(--subrow)',background:'linear-gradient(var(--border), var(--border)) center / 100% calc(var(--subrow) * 0.125) no-repeat'}} />
                 <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Sign Out
                 </button>
               </div>
@@ -2163,39 +2345,53 @@ export default function App() {
         />
       )}
 
-      {isDesktop ? (
-        <div className="dk-body">
-          <DesktopRail
-            isAdmin={isAdmin}
-            current={currentView === 'schedule' ? 'tournaments' : currentView}
-            onChange={v => (v === 'batches' ? openBatch(null) : setCurrentView(v))}
-          >{devToggles}</DesktopRail>
-          <div className={'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : 'dk-pane-wide')}>
+      {/* One element tree for both layouts, so the main column (the list's scroller and the list)
+          sits at the same place in it either way and crossing 1024 wide never remounts it: a
+          remount dropped the scroll position and the list landed back on today. On the phone the
+          two wrappers are display: contents (.layout-contents), so the column lays out in
+          .app-shell exactly as it did without them. */}
+      <div className={isDesktop ? 'dk-body' : 'layout-contents'}>
+          {isDesktop && (
+            <DesktopRail
+              isAdmin={isAdmin}
+              current={currentView === 'schedule' ? 'tournaments' : currentView}
+              onChange={v => (v === 'batches' ? openBatch(null) : onNavChange(v))}
+            />
+          )}
+          <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
             {primaryColumn}
+            {devToggles}
           </div>
+          {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
+              NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
+              portalled in here by DashboardView. Mounted for the whole desktop session and only
+              hidden off the Dashboard, so the portal's content keeps its state across tabs.
+              Desktop only, by its own guard too: master renders one element tree for both
+              layouts (79a82c3), and in that tree an unguarded pane showed on the phone, an empty
+              15px box over the home's foot. */}
+          {isDesktop && (
+            <div className="dk-pane dk-pane-mine" style={currentView === 'dashboard' ? undefined : { display: 'none' }}>
+              <div className="dk-scroll dk-home-right" ref={setDkHomeRight} />
+            </div>
+          )}
           {/* One right pane, two blocks (owner, 2026-10-10: My Schedule goes UNDER the event details,
               not in a third column): the selected event on top, My Schedule below it in the same
               scroll. With nothing selected, My Schedule is the whole pane. */}
-          {currentView === 'tournaments' && (
+          {isDesktop && currentView === 'tournaments' && (
             <div className="dk-pane dk-pane-detail dk-fab-scope">
               {/* Two scrollers, not one: My Schedule lands on the next event by scrolling ITS
                   scroller (ScheduleView resolves the nearest .dk-scroll), which must not drag the
                   event details out of view, nor be reset when an event is selected. */}
-              {(dkSelectedId != null || dkClosing) && (
+              {dkPhase && (
                 <div
-                  ref={dkDetailRef}
-                  className={'dk-scroll dk-detail-block' + (dkSelectedId == null ? ' is-closing' : '')}
-                  style={dkSelectedId == null && dkClosing ? { '--dk-h': `calc(var(--subrow) * ${dkClosing.hR.toFixed(3)})` } : undefined}
-                  onAnimationEnd={e => {
-                    if (e.target === e.currentTarget && e.animationName === 'dkDetailClose') setDkClosing(null);
-                  }}
+                  ref={dkDetailNode}
+                  className={'dk-scroll dk-detail-block' + (dkPhase === 'closing' ? ' is-closing' : '')}
                 >{dkDetail}</div>
               )}
               <div className="dk-scroll dk-mine-block">{dkMine}</div>
             </div>
           )}
-        </div>
-      ) : primaryColumn}
+      </div>
 
       {!isDesktop && (
         <BottomNav
@@ -2205,30 +2401,7 @@ export default function App() {
             if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
             return currentView;
           })()}
-          onChange={v => {
-            if (v === currentView && v === 'tournaments') {
-              const todayEl = document.querySelector('[data-today-scroll]');
-              const container = document.querySelector('.content-area');
-              if (todayEl && container) {
-                const caTop = container.getBoundingClientRect().top;
-                const sticky = container.querySelector('.sticky-filters');
-                const stickyH = sticky ? sticky.getBoundingClientRect().bottom - caTop : 0;
-                const elTop = todayEl.getBoundingClientRect().top - caTop + container.scrollTop;
-                container.scrollTo({ top: Math.max(0, elTop - stickyH), behavior: 'smooth' });
-                setTimeout(() => {
-                  const firstCard = todayEl.querySelector('.cal-event-row');
-                  if (!firstCard) return;
-                  const stickyBottom = measureStickyStack(container);
-                  const cardVisualTop = firstCard.getBoundingClientRect().top - container.getBoundingClientRect().top;
-                  if (cardVisualTop < stickyBottom + 2) {
-                    container.scrollBy({ top: -(stickyBottom + 2 - cardVisualTop), behavior: 'smooth' });
-                  }
-                }, 350);
-              }
-              return;
-            }
-            setCurrentView(v);
-          }}
+          onChange={onNavChange}
           scheduleCount={mySchedule.filter(t => !t.is_restart).length}
           newShareCount={newShareCount}
         />
@@ -2246,8 +2419,14 @@ export default function App() {
           floating toggle, so alignment can be checked live and layout fixes made
           by eye. Gated on isAdmin; state persists in localStorage. */}
       {isAdmin && gridOverlay && <GridOverlay showReadout={gridReadout} />}
-      {!isDesktop && devToggles}
     </div>
     </DisplayNameProvider>
   );
+}
+
+// The entry point: a backer link renders its page alone (components/BackerPage.jsx), so App's
+// hooks (the session, the schedule fetches, push for admins) never run for it.
+export default function Root() {
+  if (BACKER_TOKEN) return <BackerPage token={BACKER_TOKEN} />;
+  return <App />;
 }

@@ -71,6 +71,32 @@ test('trip P&L: results (native currency) + income - expenses', () => {
   assert.equal(p.net, 1225);
   const empty = tripPnl({ results: [], transactions: [] });
   assert.equal(empty.net, 0);
+  assert.equal(empty.cash.sessions, 0);
+  assert.equal(empty.cash.hourly, null);
+});
+
+test('trip P&L: the cash sessions played inside it count, at the ledger amount', () => {
+  const data = {
+    results: [{ venue: 'Vegas', buyin: 600, num_entries: 2, cashed: 0, cash_amount: 0 }],
+    cash_sessions: [
+      { amount: 430, currency: 'USD', hours: 5 },
+      { amount: -100, currency: 'EUR', hours: 2.5 }, // -200 USD
+      { amount: 50, currency: 'USD', hours: null },   // no end time: in the profit, not the hourly
+    ],
+    transactions: [tx({ category: 'lodging', amount: 300 })],
+  };
+  const p = tripPnl(data, { currency: 'USD', convert, nativeCurrency: () => 'USD' });
+  assert.deepEqual(p.tournaments, { events: 1, bullets: 2, cashes: 0, cost: 1200, cashed: 0, profit: -1200 });
+  assert.equal(p.cash.sessions, 3);
+  assert.equal(p.cash.profit, 280);
+  assert.equal(p.cash.hours, 7.5);
+  assert.equal(p.cash.hourly, 230 / 7.5, 'the timed sessions over their hours');
+  assert.equal(p.results, -920, 'tournaments + cash');
+  assert.equal(p.net, -1220, 'results - lodging');
+  assert.equal(p.unconverted, 0);
+  // A rate it cannot find is counted, so the home can show a dash instead of a part-total.
+  const q = tripPnl(data, { currency: 'USD', convert: (v, f, t) => (f === t ? v : NaN), nativeCurrency: () => 'USD' });
+  assert.equal(q.unconverted, 1);
 });
 
 test('CSV: columns, sign, formula guard, BOM, CRLF, oldest first', () => {

@@ -1,0 +1,362 @@
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
+import GridOverlay from './GridOverlay.jsx';
+import BackerChart from './BackerChart.jsx';
+import useBackerPush from '../hooks/useBackerPush.js';
+import { useToast } from '../contexts/ToastContext.jsx';
+import { API_URL } from '../utils/api.js';
+import { VENUE_MAP, getVenueBrandColor } from '../utils/utils.js';
+import {
+  summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone,
+} from '../utils/backer-page.js';
+import './backer-page.css';
+
+/**
+ * A backer's private page, /b/<token> (owner, 2026-10-13: "the full futuregame design treatment.
+ * Every session is an event card", and a graph). No login, nav or rail: App.jsx renders this
+ * before anything else when the path is a backer link, and the server serves the app shell there
+ * (server.js app.get('/b/:token')) with no-store, noindex and no-referrer, since the token in the
+ * URL is the backer's whole authentication.
+ *
+ * Phone first; on a desktop window the same 37g column, centred (.app-shell without is-desktop):
+ * this is a page to read, one column wide.
+ *
+ *   top bar     the wordmark, "your action with Ethan", the notifications pill (8r)
+ *   hero        the name (display face) and the stakes summary
+ *   total       running total, signed and toned, over sessions · hours · opening (a 12r card)
+ *   graph       the share over time (BackerChart), with 1M / 3M / YTD / All when history allows
+ *   sessions    month breaks in the Schedule's date-break language, sticky, each session an event
+ *               card: the room's strip, the game, the date and hours, the result and the share
+ *
+ * Themes: there are no settings here, so the page follows the device (prefers-color-scheme,
+ * prefers-contrast), set before first paint by index.html's head script and kept in step below.
+ * Arithmetic and formatting: utils/backer-page.js (tested). Layout: backer-page.css.
+ */
+
+const THEME_META = { dark: '#111111', light: '#f5f5f5' };
+
+function useDeviceTheme() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const mq = (q) => (window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener() {}, removeEventListener() {} });
+    const light = mq('(prefers-color-scheme: light)');
+    const more = mq('(prefers-contrast: more)');
+    const apply = () => {
+      const theme = light.matches ? 'light' : 'dark';
+      root.setAttribute('data-theme', theme);
+      root.setAttribute('data-contrast', more.matches ? 'high' : 'normal');
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', THEME_META[theme]);
+    };
+    apply();
+    light.addEventListener('change', apply);
+    more.addEventListener('change', apply);
+    return () => { light.removeEventListener('change', apply); more.removeEventListener('change', apply); };
+  }, []);
+}
+
+/* A classic scrollbar's width, in g (0 where scrollbars overlay, as on every phone). On a window
+   with room for it the shell is widened by that much (backer-page.css --bp-sb-g), so the content
+   beside the scrollbar keeps its whole 35g, as the desktop panes do (useDesktopLayout.js). */
+function useScrollbarAllowance(ref) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;overflow:scroll;width:calc(var(--gu) * 10);height:calc(var(--gu) * 10)';
+      document.body.appendChild(probe);
+      const g = probe.getBoundingClientRect().width / 10;
+      const px = probe.offsetWidth - probe.clientWidth;
+      probe.remove();
+      const sbG = px > 0 && g ? Math.round((px / g) * 1e4) / 1e4 : 0;
+      const room = g && window.innerWidth / g >= 37 + sbG - 1e-6;
+      el.style.setProperty('--bp-sb-g', room ? String(sbG) : '0');
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [ref]);
+}
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** The graph's range: one 35g x 4r strip of whole-g segments (the bankroll overview's segmented
+ *  strip, drawn here so the page does not load the bankroll chunk). A radio group. */
+function RangeStrip({ options, value, onChange }) {
+  return (
+    <div className="bp-seg" data-n={options.length} role="radiogroup" aria-label="Range">
+      {options.map(([k, text]) => (
+        <button key={k} type="button" role="radio" aria-checked={value === k}
+          className={value === k ? 'is-on' : ''} onClick={() => onChange(k)}>
+          <span>{text}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PushPill({ push }) {
+  const { state } = push;
+  if (state === 'unsupported' || state === 'unavailable' || state === 'checking') return null;
+  const on = state === 'on';
+  const blocked = state === 'blocked';
+  const busy = state === 'busy';
+  const label = blocked ? 'Notifications blocked' : on ? 'Notifications on' : busy ? 'One moment' : 'Notify me';
+  return (
+    <button type="button" className={'bp-push snap-g' + (on ? ' is-on' : '') + (blocked ? ' is-blocked' : '')}
+      aria-pressed={blocked ? undefined : on} disabled={blocked || busy}
+      title={blocked ? 'Allow notifications for futurega.me in your browser settings to get them' : on ? 'Turn notifications off' : 'Get a notification after each session'}
+      onClick={on ? push.disable : push.enable}>
+      <Icon.bell /><span className="bp-push-label">{label}</span>
+    </button>
+  );
+}
+
+function TopBar({ push }) {
+  return (
+    <header className="top-bar bp-top">
+      <div className="top-bar-title">
+        <h1>futurega.me</h1>
+        <small>your action with Ethan</small>
+      </div>
+      {push && <PushPill push={push} />}
+    </header>
+  );
+}
+
+/** One session, as an event card: the room's strip, then the game and the share, the date and
+ *  hours and what the share is of. Not interactive (the strip carries no action here). */
+function SessionCard({ e }) {
+  const strip = stripFor(e.venue, VENUE_MAP);
+  const share = Number(e.shareCents) || 0;
+  const result = Number(e.sessionResultCents) || 0;
+  const pct = Number(e.pct) || 0;
+  const pctText = (Math.round(pct * 100) / 100).toString();
+  return (
+    <li className="bp-card">
+      <div className={'bp-strip' + (strip.abbr ? '' : ' is-neutral')}
+        style={strip.abbr ? { background: getVenueBrandColor(strip.abbr) } : undefined}>
+        <span className="bp-strip-name">{strip.label}</span>
+      </div>
+      <div className="bp-card-body">
+        <div className="bp-card-row">
+          <span className="an-cell bp-game an-clip" title={e.game || ''}>{e.game || 'Session'}</span>
+          <span className={'an-cell bp-share ' + tone(share)}>{fmtSignedCents(share)}</span>
+        </div>
+        <div className="bp-card-row">
+          <span className="an-cell an-note an-clip">{fmtDay(e.date)} · {fmtHours(e.hours)}</span>
+          <span className="an-cell an-note an-num">{pctText}% of {fmtSignedCents(result)}</span>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/* The month pill's label centred by its INK (owner rule 2026-10-10, labels centred both ways). The
+   Schedule's pill holds "DD Mon", whose ends are figures, and balances their side bearing with one
+   fixed pad (styles.css .date-break-label). A month name starts on a letter whose bearing differs
+   by month (J reaches left of its origin, A sits on it) and ends on the year's figure, and some
+   rise above the cap height the label is trimmed to (the l of Jul, the b of Feb). So the bearings
+   and the rise are read from the face itself (canvas metrics of the rendered fonts) and given back
+   as padding in em: the far side of the smaller bearing is padded by the difference, and the top
+   by the rise, so the box the pill centres is the ink. */
+let inkCanvas = null;
+function balanceInk(label) {
+  if (!label) return;
+  const mon = label.querySelector('.date-break-day');
+  const year = label.querySelector('.date-break-mon');
+  if (!mon || !year) return;
+  const ctx = (inkCanvas = inkCanvas || document.createElement('canvas')).getContext('2d');
+  const font = (el) => { const cs = getComputedStyle(el); return `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; };
+  ctx.font = font(mon);
+  const m = ctx.measureText(mon.textContent);
+  const cap = ctx.measureText('H').actualBoundingBoxAscent;
+  ctx.font = font(year);
+  const y = ctx.measureText(year.textContent);
+  const lsb = -m.actualBoundingBoxLeft;                 // ink start, right of the origin
+  const rsb = y.width - y.actualBoundingBoxRight;       // the year's last figure's right bearing
+  const em = parseFloat(getComputedStyle(label).fontSize) || 1;
+  const r = (v) => `${(Math.max(0, v) / em).toFixed(4)}em`;
+  label.style.padding = `${r(m.actualBoundingBoxAscent - cap)} ${r(lsb - rsb)} 0 ${r(rsb - lsb)}`;
+}
+
+/** A month break: the Schedule's date-break pill and count (styles.css .schedule-date-break),
+ *  sticky at the scroller's top, the month's share at its right end. */
+function MonthBreak({ g }) {
+  const { mon, year } = monthLabel(g.key);
+  const labelRef = useRef(null);
+  useLayoutEffect(() => {
+    balanceInk(labelRef.current);
+    let live = true;
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (live) balanceInk(labelRef.current); });
+    return () => { live = false; };
+  }, [mon, year]);
+  return (
+    <div className="schedule-date-break bp-month-break" style={{ top: 0 }}>
+      <span className="date-break-pill bp-month-pill">
+        <span className="date-break-label bp-month-label" ref={labelRef}>
+          <b className="date-break-day">{mon}</b>
+          <span className="date-break-mon">{year}</span>
+        </span>
+      </span>
+      <span className="date-break-count">{plural(g.events.length, 'session')}</span>
+      <span className="date-break-end bp-month-end">
+        <span className={'date-break-dow bp-month-net ' + tone(g.shareCents)}>{fmtSignedCents(g.shareCents)}</span>
+      </span>
+    </div>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div className="bp-skeleton" aria-busy="true" aria-label="Loading your page">
+      <div className="bp-hero">
+        <div className="skeleton bp-sk-name" />
+        <div className="skeleton bp-sk-stakes" />
+      </div>
+      <div className="skeleton bp-sk-total" />
+      <div className="skeleton bp-sk-chart" />
+      <ul className="bp-cards">
+        {[0, 1, 2].map((i) => (
+          <li key={i} className="bp-card bp-sk-card">
+            <div className="skeleton bp-sk-strip" style={{ animationDelay: `${i * 90}ms` }} />
+            <div className="bp-card-body">
+              <div className="skeleton bp-sk-line" style={{ animationDelay: `${i * 90 + 60}ms` }} />
+              <div className="skeleton bp-sk-line is-short" style={{ animationDelay: `${i * 90 + 120}ms` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function BackerPage({ token }) {
+  useDeviceTheme();
+  const shellRef = useRef(null);
+  useScrollbarAllowance(shellRef);
+  const toast = useToast();
+  const push = useBackerPush(token);
+  const [feed, setFeed] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [range, setRange] = useState('all');
+  const today = useMemo(todayISO, []);
+  const gridOverlay = useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get('gridOverlay') === '1'; } catch { return false; }
+  }, []);
+
+  const load = useCallback(() => {
+    setFailed(false);
+    setFeed(null);
+    fetch(`${API_URL}/backer/${token}/feed`, { cache: 'no-store' })
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then((d) => setFeed(d))
+      .catch(() => setFailed(true));
+  }, [token]);
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => { if (push.error && toast) toast.error(push.error); }, [push.error, toast]);
+
+  const view = useMemo(() => {
+    if (!feed) return null;
+    const events = Array.isArray(feed.events) ? feed.events : [];
+    const sum = summarize(feed);
+    const options = rangeOptions(events, today);
+    const r = options.some(([k]) => k === range) ? range : 'all';
+    const series = shareSeries(events, { base: sum.base, range: r, today });
+    return { events, sum, options, range: r, series, months: groupByMonth(events) };
+  }, [feed, range, today]);
+
+  useEffect(() => {
+    const name = feed && feed.name;
+    document.title = name ? `${name} · futurega.me` : 'Your action · futurega.me';
+  }, [feed]);
+
+  let body;
+  if (failed) {
+    body = (
+      <section className="bp-message" aria-live="polite">
+        <h2 className="an-cell bp-message-title">This page did not load</h2>
+        <p className="an-p">Your sessions could not be fetched just now. Check your connection, then try again. Nothing is lost.</p>
+        <button type="button" className="bp-retry" onClick={load}>Try again</button>
+      </section>
+    );
+  } else if (!view) {
+    body = <Skeleton />;
+  } else {
+    const { events, sum, options, series, months } = view;
+    const name = feed.name || 'Your action';
+    const baseNote = view.range !== 'all' ? 'start' : !sum.complete ? 'carried in' : sum.opening ? 'opening' : 'start';
+    const label = view.range === 'all' ? 'Your share' : `Your share, ${RANGE_NOUN[view.range]}`;
+    body = (
+      <>
+        <div className="bp-hero">
+          <h2 className="an-cell bp-name an-clip">{name}</h2>
+          {feed.stakes ? <p className="an-cell bp-stakes an-clip">{feed.stakes}</p> : null}
+        </div>
+
+        {(events.length > 0 || sum.opening !== 0) && (
+          <section className="bp-total" aria-label="Running total">
+            <div className="an-cell an-lbl an-lbl-3">Running total</div>
+            <div className={'an-cell bp-total-val ' + tone(sum.total)}>{fmtSignedCents(sum.total)}</div>
+            <div className="an-cell an-note an-clip">
+              {events.length > 0
+                ? `${plural(sum.sessions, 'session')} · ${fmtHours(sum.hours)}${sum.opening ? ` · opening ${fmtSignedCents(sum.opening)}` : ''}`
+                : `Opening balance · no sessions yet`}
+            </div>
+          </section>
+        )}
+
+        {events.length === 0 ? (
+          <section className="bp-message bp-empty">
+            <h3 className="an-cell bp-message-title">No sessions yet</h3>
+            <p className="an-p">Sessions will appear here after the next one is logged.</p>
+          </section>
+        ) : (
+          <>
+            <BackerChart series={series} label={label} today={today} baseNote={baseNote}
+              control={options.length > 0 && (
+                <RangeStrip options={options} value={view.range} onChange={setRange} />
+              )} />
+
+            <section className="bp-sessions" aria-labelledby="bp-sessions-h">
+              <div className="bp-section-head">
+                <h3 className="an-cell an-sec" id="bp-sessions-h">Sessions</h3>
+                <span className="an-cell an-note an-num">Newest first</span>
+              </div>
+              {months.map((g) => (
+                <div key={g.key} className="bp-month">
+                  <MonthBreak g={g} />
+                  <ul className="bp-cards">
+                    {g.events.map((e, i) => <SessionCard key={(e.ts || '') + ':' + e.date + ':' + i} e={e} />)}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          </>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div className="app-shell bp-shell" ref={shellRef}>
+      <TopBar push={failed ? null : push} />
+      <main className="content-area bp-content">
+        {body}
+        <footer className="bp-foot">
+          <p className="an-p">Private link: only someone with this address can see this page, so keep it to yourself.</p>
+          {push.installHint && (
+            <p className="an-p">On iPhone, add this page to your Home Screen (Share, then Add to Home Screen) to get a notification after each session.</p>
+          )}
+        </footer>
+      </main>
+      {gridOverlay && <GridOverlay showReadout={false} />}
+    </div>
+  );
+}

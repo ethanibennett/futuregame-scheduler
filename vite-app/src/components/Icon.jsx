@@ -24,6 +24,9 @@ const GLYPHS = {
   upload: { filled: false, path: (<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/> <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>) },
   chevLeft: { filled: false, path: (<><polyline points="15 18 9 12 15 6"/></>) },
   chevRight: { filled: false, path: (<><polyline points="9 18 15 12 9 6"/></>) },
+  // A back arrow as a drawing: the "←" character's ink sits on the math axis, below the middle of
+  // a control's box, where an icon's box is its ink (owner rule 2026-10-10, labels centred).
+  arrowLeft: { filled: false, path: (<><line x1="19" y1="12" x2="5" y2="12"/> <polyline points="12 19 5 12 12 5"/></>) },
   chevronDown: { filled: false, path: (<><polyline points="6 9 12 15 18 9"/></>) },
   warn: { filled: false, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/> <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>) },
   clock: { filled: false, path: (<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>) },

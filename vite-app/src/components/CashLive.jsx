@@ -39,7 +39,9 @@ export function ResultsKindTabs() {
 export function LiveCashBar({ enabled, token, currentView, onOpen }) {
   const { session, skew } = useLiveCashSession({ enabled, token });
   const kind = useResultsKind();
-  const hidden = !session || currentView === 'hands' || (currentView === 'tracking' && kind === 'cash');
+  // Off on the home too: the session is its first Up Next card there (HomeCashCard), which says the
+  // same and more.
+  const hidden = !session || currentView === 'hands' || currentView === 'dashboard' || (currentView === 'tracking' && kind === 'cash');
   useTick(!hidden);
   if (hidden) return null;
   const what = [sessionGame(session), session.room].filter(Boolean).join(' · ');

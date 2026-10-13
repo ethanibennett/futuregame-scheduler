@@ -74,6 +74,19 @@ function scrollBelowSticky(el) {
   container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 }
 
+// The list's move when the user opens a row: one frame after React commits, the row's top lands
+// under the sticky rows (scrollBelowSticky). The phone runs it when a row opens inline (the effect
+// on `open` in CalendarEventRow_). A desktop list row selects instead of opening, because its
+// details open in the right pane, and runs this same landing on the click (`toggle`, and `expand`
+// in CalendarEventRowLite), so the desktop list moves exactly as the phone's does. The landing's
+// target depends only on the row's TOP, which opening does not move, so it is the same scroll.
+function landRow(el) {
+  return requestAnimationFrame(() => {
+    const row = el && el.closest('.cal-event-row');
+    if (row && row.isConnected) scrollBelowSticky(row);
+  });
+}
+
 // ── Late Reg Bar (expanded view) ──
 function LateRegBar({ lateRegEnd, date, time, venueAbbr, venue, completed }) {
   const [now, setNow] = useState(getNow());
@@ -304,7 +317,10 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
                  22px avatar plus padding and borders = 3.861r, pushing all below off-grid). */
               height: 'calc(var(--subrow) * 3)',
               boxSizing: 'border-box',
-              padding: '0 var(--gu) 0 calc(var(--subrow) * 0.5)',
+              /* Even sides, so the avatar + name pair is centred in the chip as one group (owner
+                 rule: icon + label centre together); with 1g on the name's side and 0.5r on the
+                 avatar's, the pair sat ~3.9px left of centre. */
+              padding: '0 calc(var(--subrow) * 0.5)',
               borderRadius: 'calc(var(--subrow) * 128)',
               background: 'var(--surface)',
               boxShadow: 'inset 0 0 0 var(--bw-hair) var(--border)',
@@ -492,7 +508,7 @@ function ConditionPicker({ tournament, conditions, allTournaments, onSet, onRemo
       </div>
 
       {conditions.length > 0 && (
-        <button className="cp-remove" onClick={onRemove}><span>Remove All Conditions</span></button>
+        <button className="cp-remove snap-g" onClick={onRemove}><span>Remove All Conditions</span></button>
       )}
     </div>
   );
@@ -506,14 +522,23 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
     catch { return []; }
   }, [conditionsJson]);
   const [open, setOpen] = useState(!!initialOpen || !!detail);
+  const rowRef = useRef(null);
   // Desktop (docs/desktop-layout.md): a list row with onSelect never expands —
   // it selects, and the detail pane renders the open card (detail), which is
-  // held open. On the phone neither prop is passed and this is plain setOpen.
+  // held open. The list still moves as the phone's does when a row opens
+  // (landRow). A click on the row already selected closes its details, as
+  // tapping an open row shuts it on the phone, and like that moves nothing.
+  // On the phone neither prop is passed and this is plain setOpen.
   const toggle = useCallback(() => {
-    if (onSelect) { onSelect(tournament.id); return; }
+    if (onSelect) {
+      if (selected) { onSelect(null); return; }
+      landRow(rowRef.current);
+      onSelect(tournament.id);
+      return;
+    }
     if (detail) return;
     setOpen(o => !o);
-  }, [onSelect, detail, tournament.id]);
+  }, [onSelect, selected, detail, tournament.id]);
   const [showConditionUI, setShowConditionUI] = useState(false);
   const [showRakeBreakdown, setShowRakeBreakdown] = useState(false);
   const [showMixGames, setShowMixGames] = useState(false);
@@ -530,7 +555,6 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   const [clearing, setClearing] = useState(false);
   const toast = useToast();
   const displayName = useDisplayName();
-  const rowRef = useRef(null);
 
   /* Seat the notes (the series name) on the grid however many lines it wraps to: the text is
      trimmed to cap-top..baseline at a 3r line pitch, and its cell is held to 2r + 3r per extra
@@ -593,12 +617,11 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
   // Always scroll on expand — every view uses the same rule with the
   // build-29 sticky-stack math; the natural gap below the sticky stack
   // scales per view (Schedule = filters + date-break, My Schedule =
-  // schedule-header + date-break, Calendar = filters only).
+  // schedule-header + date-break, Calendar = filters only). A desktop list row
+  // selects instead of opening and lands from its click (toggle), same landRow.
   useEffect(() => {
     if (!open || detail || !rowRef.current) return;
-    const raf = requestAnimationFrame(() => {
-      if (rowRef.current) scrollBelowSticky(rowRef.current);
-    });
+    const raf = landRow(rowRef.current);
     return () => cancelAnimationFrame(raf);
   }, [open]);
 
@@ -839,9 +862,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </div>
 
                   {conditions && conditions.length > 0 && (
-                    <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', flexWrap:'wrap'}}>
+                    <div style={{display:'flex', columnGap:'var(--gu)', rowGap:'var(--subrow)', flexWrap:'wrap'}}>
                       {conditions.map((c, ci) => (
-                        <span key={ci} className="badge badge-condition">
+                        <span key={ci} className="badge badge-condition snap-g">
                           {formatConditionBadge(c, allTournaments)}
                         </span>
                       ))}
@@ -955,7 +978,14 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         ) : type === 'select-category' ? (
                           <select value={f[key] || ''}
                             onChange={e => { clearFieldError(key); setEditFields(p => ({...p, [key]: e.target.value})); }}
-                            style={{fontSize:'calc(var(--gu) * 1.222)', padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, background:'var(--surface)', color:'var(--text)'}}>
+                            // A 3r face with its value centred in it: appearance none (the native
+                            // menulist set the value ~1.7px low) and the caret drawn, as .hs-input's.
+                            style={{fontSize:'calc(var(--gu) * 1.222)', height:'calc(var(--subrow) * 3)', boxSizing:'border-box', margin:0, padding:'0 calc(var(--gu) * 2) 0 calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, color:'var(--text)',
+                              WebkitAppearance:'none', appearance:'none',
+                              backgroundColor:'var(--surface)',
+                              backgroundImage:'linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%)',
+                              backgroundPosition:'calc(100% - var(--gu) * 1.5) 50%, calc(100% - var(--gu)) 50%',
+                              backgroundSize:'calc(var(--gu) * 0.5) calc(var(--gu) * 0.5)', backgroundRepeat:'no-repeat'}}>
                             <option value="primary">Primary</option>
                             <option value="side">Side</option>
                           </select>
@@ -1179,7 +1209,17 @@ The feed's own values return at the next hourly sync — your edits stay visible
 // Zero hooks, zero context. ScheduleView renders this for rows that
 // haven't been expanded yet, swapping in the full CalendarEventRow on
 // first tap. Eliminates ~15 hook calls per row on initial mount.
-function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand, selected }) {
+function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, conditionsJson, conditions, onExpand, onSelect, selected }) {
+  // The full row's toggle, for a row not yet swapped in: on the phone (no onSelect) a tap asks the
+  // view to swap in the full row, which mounts open and lands; on desktop it selects the row into
+  // the right pane and lands the same way from the click (landRow), or, already selected, closes
+  // its details without moving, as the full row does.
+  const expand = (e) => {
+    if (!onSelect) { if (onExpand) onExpand(e); return; }
+    if (selected) { onSelect(null); return; }
+    landRow(e.currentTarget);
+    onSelect(tournament.id);
+  };
   const venue = getVenueInfo(tournament.venue, tournament.property);
   const venueClass = getVenueClass(tournament);
   const stripColor = getVenueBrandColor(venue.abbr);
@@ -1214,10 +1254,10 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
-        onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}
+        onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span></div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
-        <div className="cal-event-bar" onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}>
+        <div className="cal-event-bar" onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}>
           {tournament.venue === 'Personal' ? (
             <div className="cal-bar-row2" style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)'}}>
               <span className="cal-event-name" style={{fontSize:'calc(var(--gu) * 1.296)'}}>
@@ -1255,7 +1295,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
             </>
           )}
         </div>
-        <div className="cal-event-chevron" onClick={onExpand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand && onExpand(e); } }}>
+        <div className="cal-event-chevron" onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>

@@ -13,8 +13,11 @@ import Icon from './Icon.jsx';
  * The primary group mirrors BottomNav (same ids, same admin gating). The
  * secondary group holds what the phone keeps in the avatar menu, because a
  * desktop has room to show it and a menu hides it.
+ *
+ * The admin dev keys (#, D, i) are not here: they float over the main column's
+ * foot as on the phone (App.jsx devToggles).
  */
-export default function DesktopRail({ current, onChange, isAdmin, children }) {
+export default function DesktopRail({ current, onChange, isAdmin }) {
   const primary = [
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
     { id: 'social', label: 'Social', icon: Icon.people },
@@ -45,7 +48,6 @@ export default function DesktopRail({ current, onChange, isAdmin, children }) {
     <nav className="dk-rail" aria-label="Main">
       <div className="dk-rail-group">{primary.map(item)}</div>
       <div className="dk-rail-group dk-rail-secondary">{secondary.map(item)}</div>
-      {children ? <div className="dk-rail-dev">{children}</div> : null}
     </nav>
   );
 }

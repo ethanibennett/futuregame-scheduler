@@ -51,6 +51,7 @@ Tests: `npm run test:bankrolls`.
 | POST | `/api/bankrolls/transfers` | `{ from, to, amount > 0, toAmount?, date?, note? }` |
 | DELETE | `/api/bankrolls/adjustments/:id` | removes both legs of a transfer |
 | POST/PUT | `/api/tracking[/:id]` | now also takes `bankrollId: 'main' \| id`; omitted = leave as is (new = Main). Must be the caller's, not archived (unless unchanged) |
+| DELETE | `/api/tracking` | bulk delete, always scoped: `?bankroll=main\|id` (that bankroll's results; another user's is a 404) or `?all=true` (every bankroll); neither, or `?bankroll=all` alone, is a 400. `?expect=n`: the count the typed confirmation showed — a different count is a 409 and nothing is deleted. → `{ count, scope }`. For everyone, not just the beta (a non-admin's results are all in Main). Results > Delete results (`ResetResults.jsx`, `utils/reset-results.js`) is the only caller; it left the home on 2026-10-11 |
 
 ## The shared filter: `?bankroll=<all|main|id>`
 
@@ -84,8 +85,11 @@ Client — `vite-app/src/utils/bankrolls.js`, dependency-free:
 - `computeBalances(bankrolls, entries, { nativeCurrency, convert })` — superseded for display (it
   only sees tournaments + adjustments); kept as the reference arithmetic. Per-bankroll
   `{ start, adjustments, results, balance, entries, currency }`, plus an `'all'` row in USD
-- `useBankrolls({ enabled: isAdmin, token })` — the list and the Results tab's selected key
-  (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's choice.
+- `useBankrolls({ enabled: isAdmin, token, version })` — the list, the summary and the Results tab's
+  selected key (localStorage `resultsBankroll`). Read `bk.selected` to follow the Results tab's
+  choice. Since 2026-10-12 App creates it once (`version` = the tracking entries, so the summary is
+  refetched after a result changes) and hands the same `bk` to the home (its bankroll line, period
+  block and goals) and to the Results tab: one summary, never two that disagree.
 
 A tax report probably wants the ledger too (deposits/withdrawals are not income):
 `GET /api/bankrolls/adjustments?bankroll=…`.
@@ -119,7 +123,9 @@ REAL to the cent. A source that stores cents must divide before returning.
 - Built-in: `tournaments.js` (net = (cashed ? cash : 0) − buy-in × max(1, entries), in the venue's
   currency — exactly the Results tab and `lib/analytics.js`; extra fields `units`, `cost`, `cash`,
   `buyin_per_entry`) and `adjustments.js` (the ledger above). `cash-sessions.js` (extra fields
-  `started_at`, `hours` = ended − started to the hundredth, null without both ends) and
+  `started_at`, `hours` = ended − started to the hundredth, null without both ends, and the money
+  behind the net in the session's currency: `buy_in` (rebuys included), `rebuys` (a count),
+  `cash_out`, `tips`, `expenses` — `amount = cash_out − buy_in − tips − expenses`) and
   `transactions.js` belong to the cash-session and expense features.
 
 Balance of a bankroll = starting balance + Σ its entries, in ITS currency (entries in another
@@ -136,6 +142,13 @@ date, then entries without a ts first, then source, then ref id.
 
 ### The dashboard (`BankrollDashboard.jsx`, behind the bankroll strip's Dashboard button)
 
+The home opens it too, on All bankrolls: its bankroll line on **Rules**, its goals on **Goals** and its
+period block on the **Overview** (`initialTab` / `initialKey`, through `BankrollDashboardSheet`), as
+does its signal-or-noise line when the sentence is about cash (home step 6; a tournament sentence
+opens the Analytics sheet). For cash that line reads the whole ledger once (no `from`), reduced on the
+client to a per-hour spread (`utils/home-noise.js` `cashSpread`: sum of profit over sum of hours, and
+an SD per hour with each session's variance growing with its hours).
+
 A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
 **Overview / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the
 width in whole g by `data-n` (4 tabs 9+9+9+8g, 5 tabs 5 × 7g, 6 tabs 5 × 6g + 5g), so a new tab is one
@@ -150,9 +163,58 @@ screen, in this app's own type, tokens and grid:
 | Hero (2 × 17g, 9r) | balance now · profit over the range, coloured by sign, with the event / session count | the headline profit over the graph |
 | Graph (4r head, 35g × 24r plot, 2r foot) | **Profit** (cumulative results from 0, a hairline at 0, line green / red by where it ends) or **Balance** (deposits included); drawdown from the peak shaded in both | the cumulative "chip graph" |
 | Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage) | the time filter on the graph |
-| Statistics (label 21g \| value 14g, 4r rows, `<dl>`) | **Results**: profit (and its tournament / cash / expenses split), ROI *tournaments*, in the money *k of n*, hourly *cash*, winning sessions *k of n*, biggest win, biggest loss. **Volume**: tournaments (bullets), average buy-in per bullet, cash sessions, hours, average session. **Bankroll**: balance, peak (all time, with its date), below the peak, deepest drawdown in the range, deposits and withdrawals in the range, risk of ruin *tournaments* | plain label-left / value-right rows grouped under headings, each figure qualified where it means something for one game type only |
+| Tables (`BankrollOverviewTables.jsx`, `bankroll-overview-tables.css`) | six collapsible sections, each headed by a 35g × 5r disclosure row: the name, the range and bankroll it covers, a chevron, and while closed its headline figure on the right. **Summary** (Cash \| Tournaments \| Total): buy-ins (cash: buy-in incl. rebuys; tournaments: buy-in × bullets), cash-outs, tips & costs (cash, when any), net profit, expenses & income (Total), **total result** (= the hero's profit), deposits & withdrawals (Total), balance change (Total: result + money moved). **Sessions**: sessions / events, bullets, hours and $/h (cash), ROI (tournaments), won % / ITM (tournaments: cashes per entry, the Analytics rule), average buy-in, profit and rebuys / re-entries, biggest win and loss. **Games** and **Rooms** (from the report facts): one row per game / room, cash and tournaments in separate blocks (count, hours, $/h or ROI, total, best first). **Bankroll**: balance, all-time peak, below it, deepest drawdown in the range, money moved, risk of ruin. **By month** (By year for All): results, moved, net. Summary and Sessions start open; open / closed is per device (`bankrollOverviewOpen` in localStorage). The scope line, the currency and the reports query come from the ledger in hand (`d.bankroll`, `d.currency`), not the bankroll chip, which runs one round trip ahead of it; until the ledger (for Games and Rooms, also the report facts) is the one asked for, a section keeps its figures on screen, dimmed, with `aria-busy` | Poker Bankroll Tracker's Bankroll › Overview: tables with a column per game type and a total, zebra rows, right-aligned tabular figures, compact money ($403.2k from $10k) |
 | Latest sessions (6r rows, 14g \| 21g) | the six newest tournament / cash results in the range, each led by its signed profit in the display face, with date, event or game, and hours / bullets; buttons to Results' Tournaments and Cash halves (they also select the dashboard's bankroll on the Results tab) | the session list led by a big green / red profit |
-| By month / year | results, moved, net per month in the range (per year for All) | — |
+
+Table layout: a 3r head (labels on line 2; Cash, Tournaments and Total carry a key bar in
+`--series-cash` / `--series-tourn` / `--series-total`, the graph's line colours), 4r rows with the
+text on line 3, zebra by background (full bleed, the text on the 35g column), no rules between rows.
+The stripe is `--ovt-zebra`: `--surface` in the standard themes, the theme's `--hover-overlay` under
+high contrast, where `--surface` sits on or next to `--bg` (light-high #fff on #fff) and the stripe
+vanished. Cloudy-high keeps `--surface`: it already stands off, and the darker tint would cost its
+green figures. The stripe against the sheet, measured in WebKit (contrast ratio):
+
+| theme | normal | high contrast |
+|---|---|---|
+| dark | 1.085 (`--surface`) | 1.121 (`--hover-overlay`; was 1.061) |
+| light | 1.090 (`--surface`) | 1.192 (`--hover-overlay`; was 1.000) |
+| dusk | 1.097 (`--surface`) | 1.126 (`--hover-overlay`; was 1.074) |
+| cloudy | 1.116 (`--surface`) | 1.082 (`--surface`; the tint would be 1.25 and take `--pos` on a stripe from 3.5 to 3.1:1) |
+
+Columns: label 11g + 3 × 8g (Summary, Sessions, By month); label 11g + 5g + 4g + 7g + 8g (Games,
+Rooms: the rate column ends on the Tournaments edge, the total is 8g under Total); label 11g + note
+16g + value 8g (Bankroll). The label column is `minmax(11g, 1fr)`, so a wider
+sheet widens it and the figure columns stay whole g. A cell with nothing under it is a dash, never
+$0. Money is compact from 10k in the display currency (its own symbol and side, `CURRENCY_CONFIG`),
+and the hourly rate is labelled in it too ($/h, €/h, kr/h). The bankroll sheet is 37g wide at every
+width, so on desktop the tables keep the phone's 35g column. Green / red only for signed money (not
+ROI, risk of ruin or other percentages). The disclosure rows are controls
+(`.ovt-head` is START_ALIGNED in `check-control-centring.mjs`); the guards open every section by
+its header, scroll through, then close them all. Collapse animates the body's grid row 0fr ↔ 1fr
+(no measured heights), off under prefers-reduced-motion.
+
+Not shown, on purpose: **shares sold** — not for want of data: staking keeps per-event numbers
+(`backer_event_status`, one row per agreement × tournament with its own bullets, buy-in, cash, tip
+and rate; `backer_event_overrides` with a per-event % or opt-out; the settlement route works out an
+effective % per event, joinable to a result through `tournament_id` and `staking_series.user_id`).
+It is left out because those numbers are filed by staking series, not by bankroll or ledger row,
+they are a second copy of the buy-ins and cashes that can disagree with the result, and swaps,
+crossbooks, markup, makeup and budget caps make a backer's cut something other than a plain share of
+a result (the settlement code itself marks several of those rules as guesses). So the results here
+are gross ("Staking, and how they could connect" below). **Owner decision:** add a Shares sold row
+(Tournaments and Total) from the settlement's per-event %, or wait for the seams below. **Hands and $/100**
+(no hands are recorded), **tournament hours** (a result carries no playing time; the cell is a
+dash, never a guess), and **cash ROI** (a cash buy-in is not a cost). A Total cell is a dash where
+the two columns mean different things (hours, $/h, ROI, won % / ITM when both kinds are in the range).
+
+The tables' arithmetic is `utils/bankroll-overview.js` (`summaryTable`, `sessionsTable`,
+`groupTable`, `bankrollFigures`, `overviewTables`, the compact formatters and `moneySign`), tested
+in `utils/__tests__/bankroll-overview.test.mjs` (run by `npm run test:bankroll-ledger` and
+`npm run test:bankrolls`) — among them that the Summary's Total is Cash + Tournaments (+ expenses,
++ money moved for the balance change) and its total result is `overviewStats(...).results`, the
+hero's profit, for every range. Compact money rounds once, from the unrounded value (13,349.63 is
+$13.3k, not $13.4k), and a figure is green / red by `moneySign`, the sign of the whole units it
+draws, so −0.38 is a plain "$0", never a red one.
 
 The arithmetic is pure and tested in `utils/bankroll-ledger.js`: `overviewStats(entries)` (ROI =
 profit / cost with each tournament's cost × `fx_display`, so mixed currencies add up; ITM = rows that
@@ -199,9 +261,9 @@ also part of `npm run test:bankrolls`.
 
 Bankrolls do not touch staking, and in this beta a "Staked" bankroll shows the **gross**
 result of the events filed under it — what `tracking_entries` stores — not the player's share.
-Staking keeps its own per-agreement numbers (`backer_event_status` buy-ins/cashes,
-`backer_settlements`) and is the authority on who owns what. The two do not contradict
-because they answer different questions: staking = what I owe backers; bankroll = where the
+Staking keeps its own numbers per agreement and event (`backer_event_status` buy-ins/cashes,
+`backer_event_overrides`, `backer_settlements`) and is the authority on who owns what. The two do
+not contradict because they answer different questions: staking = what I owe backers; bankroll = where the
 money physically sits.
 
 Later, the clean seams are:
@@ -287,7 +349,10 @@ scroll for 10r of overflow).
 
 **The live bar.** While a session runs, `LiveCashBar` (App.jsx, a 5r bar directly above the bottom nav)
 shows its clock and what is in play on every tab, and Open goes to Results › Cash. It hides on that
-view (which shows the full live card) and on Hands. The session is server-side, so the clock survives
+view (which shows the full live card), on Hands, and on the Dashboard, where the session is the first
+Up Next card instead (`HomeCashCard.jsx`, home step 5: the clock, what is in play and the last stack
+against what was in; Update stack posts a stack update in place, Cash out opens the live screen with
+its cash-out panel open, intent `cash-end`; a tap elsewhere opens the live screen). The session is server-side, so the clock survives
 reloads and other devices; `hooks/useLiveCashSession.js` mirrors it (on mount, on return to the
 foreground, every 5 min) and corrects for clock skew with the server's `now`.
 
@@ -338,8 +403,16 @@ income: `rakeback bonus staking sponsorship coaching other`. The client list mus
 | DELETE | `/api/bankrolls/transactions/:id` | |
 | GET | `/api/bankrolls/trips` | → `{ trips: [{ id, name, start_date, end_date, bankroll: 'all'\|'main'\|id, note, transaction_count }] }` |
 | POST/PUT | `/api/bankrolls/trips[/:id]` | `{ name, startDate, endDate, bankroll?: 'all'\|'main'\|id, note? }` |
-| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope. Totals are the client's (`tripPnl()`), because results are in each venue's currency |
+| GET | `/api/bankrolls/trips/:id` | → `{ trip, transactions, results, cash_sessions }` — results are the tracking rows whose event date (ISO or "Month D, YYYY", read at noon) is inside the trip, in its bankroll scope; cash_sessions the ENDED sessions whose day is inside it, in its scope, read through the ledger's own cash source (`{ id, date, amount, currency, hours, label, bankroll_id }`, amount = cash_out − buy_in − tips − expenses). Totals are the client's (`tripPnl()`), because results are in each venue's currency |
 | DELETE | `/api/bankrolls/trips/:id` | → `{ deleted, untagged }` |
+
+**One trip net.** `tripPnl()` (`utils/transactions.js`) is the only definition of a trip's P&L:
+tournaments (cashes − buy-ins) + cash sessions + income − expenses. The trip page (Results >
+Expenses > Trips) and the home's period block in trip mode both run it on the same `/trips/:id`
+payload with the same exchange rates, so the home's "Net after expenses" is the "Trip net" its tap
+opens (2026-10-12; the home used to add the trip's cash sessions and the page did not, and a trip with
+two sessions read +$3,014 on the home and +$3,567 on the page). It reports `unconverted`, so the
+home shows a dash and "Waiting for exchange rates" rather than a part-total.
 
 ### Ledger source
 
