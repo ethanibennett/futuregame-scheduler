@@ -21,15 +21,21 @@ wsop-console side and verified against both live services.
   transform/opacity, computed once per moment; no per-frame JS.
 - **Flag** `localStorage.replayerSprings`: unset/'1' Set A "house" (default on the branch), '2' or
   'snappy' Set B, '0' today's code paths unchanged. Reduced motion turns it all off.
-- **Exports now carry the motion**: the video seeks each moment at 24 fps, the GIF at 12.5 fps (moments
-  of 3+ frames, 32 frames max), and every still is settled (the five gold chips frozen on the pot are
-  gone). Verified frame-for-frame against the live replayer mid-turn in WebKit.
+- **Exports carry the motion** (owner, 2026-10-12): the flop, the turn and river, the wagers into
+  the pot and the pot shipped are seeked frame by frame (video 24 fps, GIF 12.5 fps); a push-out
+  exports as its settled frame. The closing bookend waits for the settled still, so the ship is seen
+  over the table. Checked frame for frame against the live replayer at the turn, the river and the
+  result (`scripts/check-replay-export-motion.mjs`). Cost: 68 captures against 22 (3.1x by count;
+  3.6-4.1x measured on a loaded box), GIF 46 against 22.
+- **The pot lands on the plaque** (owner, 2026-10-12): never across the winner's name, on the edge of
+  the name plaque nearest the pile, the stack ticking at each landing; measured at all 31 seats
+  (6/8/9-max phone, 8-max desktop). The result collects the river's wagers first, then ships; the
+  pile empties as it goes and the won pill appears as the last chip lands.
 - **Waiting on Ethan**: A or B (side-by-side MP4s in `weekly-graphics/replayer-springs/compare/`,
-  Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight. Two calls with it: the video
-  export does about 4.6x the captures (95s → 460s in WebKit here; push-outs are 36 of them), and on
-  a bottom-seat winner the shipped chips cross the name for ~180ms on their way to the stack figure.
-- Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate` — the page clock does
-  not drive the document timeline, so a second round trip lets the springs run in real time.
+  Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight.
+- Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate`, and pin at 0 until
+  every animation has its start before running the clock — the page clock does not drive the
+  document timeline, and the registry times an arrival from its animation's real start.
 
 ## 2026-10-11 (evening) — Aqua accent, cross-platform font metrics, Dashboard pass
 - **Brand accent is aqua**, not orange (black + orange read like an adult site's branding):

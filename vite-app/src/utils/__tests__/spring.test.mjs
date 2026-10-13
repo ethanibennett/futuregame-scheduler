@@ -43,12 +43,23 @@ test('every tier matches the spec: overshoot, t95, settle to 0.1%', () => {
 
 test('one family: every tier of a set shares stiffness and damping ratio; only mass changes', () => {
   for (const set of ['A', 'B']) {
-    const tiers = Object.entries(SPRING_SETS[set].tiers).filter(([n]) => n !== 'yield');
-    const k = new Set(tiers.map(([, c]) => c.stiffness));
-    assert.equal(k.size, 1, set + ': one stiffness');
+    const all = Object.entries(SPRING_SETS[set].tiers);
+    assert.equal(new Set(all.map(([, c]) => c.stiffness)).size, 1, set + ': one stiffness, every tier');
+    const tiers = all.filter(([n]) => n !== 'yield' && n !== 'slide');
     const zetas = tiers.map(([n]) => tierSpring(set, n).zeta);
     for (const z of zetas) near(z, zetas[0], 0.005, set + ' damping ratio');
+    // The two that differ only in damping, on purpose: pushed aside, and slid on felt.
     near(tierSpring(set, 'yield').zeta, 1, 0.002, set + ' yield is critically damped');
+    near(tierSpring(set, 'slide').zeta, 0.92, 0.005, set + ' slide is damped to 0.92');
+    assert.equal(SPRING_SETS[set].tiers.slide.mass, SPRING_SETS[set].tiers.hand.mass, set + ' slide is the hand\'s mass');
+  }
+});
+
+test('slide: the flop spread stops without springing back', () => {
+  for (const set of ['A', 'B']) {
+    const sp = tierSpring(set, 'slide');
+    assert.ok(sp.overshootPct < 0.1, `${set} overshoot ${sp.overshootPct}%: under 0.1px on a 74px spread`);
+    assert.ok(sp.settleMs(0.1 / 73.6) < 340, `${set} settles to 0.1px by ${sp.settleMs(0.1 / 73.6)}ms`);
   }
 });
 
@@ -105,7 +116,9 @@ test('toLinear: a valid CSS linear() of 26-28 points that follows the spring', (
       const sp = tierSpring(set, tier);
       const L = toLinear(sp, 0.0015, RM);
       assert.match(L.easing, /^linear\(0, (-?\d+(\.\d+)? \d+(\.\d+)?%, )+1\)$/, set + '.' + tier + ' syntax');
-      assert.ok(L.points >= 26 && L.points <= 28, `${set}.${tier}: ${L.points} points`);
+      // The spec's 26-28 for its tiers; the slide (no oscillation to draw) needs fewer.
+      const [lo, hi] = tier === 'slide' ? [16, 28] : [26, 28];
+      assert.ok(L.points >= lo && L.points <= hi, `${set}.${tier}: ${L.points} points`);
       assert.equal(L.durationMs, sp.settleMs(0.001));
       // Parse it back and check it against the curve.
       const inner = L.easing.slice(7, -1).split(', ');

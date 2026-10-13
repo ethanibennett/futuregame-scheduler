@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
 import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip} from '../utils/utils.js';
@@ -13,7 +13,8 @@ import { playTableSound } from '../utils/replay-sound.js';
 import {
   MotionRegistry, SPRINGS_FLAG_KEY, readSpringsFlag, springSetFor, rateFor,
   prefersReducedMotion as springsReducedMotion,
-  dealBoard, yieldBoard, pushOut, sweepWagers, shipPot, clearPush,
+  dealBoard, yieldBoard, pushOut, planSweep, sweepWagers, shipPot, shipFirstArrival, shipStartAfterSweep,
+  shiftPile, emptyPile, appearAt, seatLanding, clearPush, centreOf, unionRect,
 } from '../utils/replayer-motion.js';
 import { SPRING_SETS } from '../utils/spring.js';
 import { exportReplayVideo } from '../utils/replay-video-export.js';
@@ -1303,6 +1304,90 @@ function PotChipVisual({ amount }) {
                hides all but an edge of each chip below. The bet chips already
                carried this; the pot's did not, and with flat ellipses it did
                not show. With a cylinder it does. */
+            <div key={j} className="replayer-pot-chip-disc"
+              style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j),
+                zIndex: Math.min(stack.count, 6) - j }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* The pot's stacks for an amount: one stack per colour, largest denomination first (left to right),
+   as PotChipVisual draws them. The spring sweep lands each ghost on its own colour's stack from this,
+   without measuring the row it has not drawn yet. */
+function potStacksFor(amount) {
+  const stacks = [];
+  let current = null;
+  getChipBreakdown(amount).forEach(color => {
+    if (current && current.color === color) current.count++;
+    else { current = { color, count: 1 }; stacks.push(current); }
+  });
+  return stacks.slice(0, 5);
+}
+
+/* The pile on the spring path. Each swept wager's arrival lands on it (motion.setPile, from the
+   arrival tick), so the pile grows as the chips come in instead of jumping once they all have; only
+   this small component re-renders. Stacks are keyed by colour, so a stack that is still there is the
+   same element, and when one lands beside it the row's centring would shove it sideways in a frame:
+   it is moved there on the critically damped yield spring instead (shiftPile). A live value holds
+   only until the parent next renders (motion.renderSeq), whose own figure is then the truth.
+
+   At the result the pot leaves the pile for the winner: from the moment the shipped chips leave
+   (motion.setPile(value, { shipped: true }), at their departure) the pile is drawn shipped, its
+   stacks transparent, and each stack fades out as its chip comes out from under it (emptyPile).
+   The parent draws it shipped at any result it did not just press into (a jump, a step back to
+   it), so the money is never on the felt twice. */
+function PotChipLive({ amount, motion, set, shipped = false }) {
+  const [live, setLive] = useState(null);
+  const seq = motion.renderSeq;
+  const isLive = !!live && live.seq === seq;
+  const shown = isLive ? live.value : amount;
+  const isShipped = isLive ? !!live.shipped : shipped;
+  const stacks = potStacksFor(shown);
+  const rowRef = useRef(null);
+  const prevColorsRef = useRef(null);
+  const prevShippedRef = useRef(isShipped);
+  useLayoutEffect(() => {
+    motion.setPile = (value, opts) => {
+      const update = () => setLive({ seq: motion.renderSeq, value, shipped: !!(opts && opts.shipped) });
+      // Same frame as the digits: synchronously, except inside a commit (React flushes it there).
+      if (motion.inCommit) update(); else { try { flushSync(update); } catch (e) { update(); } }
+    };
+    return () => { motion.setPile = null; };
+  }, [motion]);
+  useLayoutEffect(() => {
+    const colors = stacks.map(s => s.color);
+    const prev = prevColorsRef.current;
+    const wasShipped = prevShippedRef.current;
+    prevColorsRef.current = colors;
+    prevShippedRef.current = isShipped;
+    const row = rowRef.current;
+    if (!isLive || !row || row.children.length !== colors.length || colors.length < 1) return;
+    const kids = [...row.children];
+    const r0 = kids[0].getBoundingClientRect();
+    if (isShipped && !wasShipped) {
+      emptyPile(motion, { set, rate: motion.rate || 1, stacks: kids.map(el => ({ el, size: { w: r0.width, h: r0.height } })) });
+      return;
+    }
+    if (!prev || isShipped) return;
+    const pitch = kids.length > 1 ? kids[1].getBoundingClientRect().left - r0.left
+      : r0.width + (parseFloat(getComputedStyle(row).columnGap) || 0);
+    const slot = (i, n) => i - (n - 1) / 2;
+    const moves = [];
+    colors.forEach((c, i) => {
+      const j = prev.indexOf(c);
+      if (j < 0) return;
+      moves.push({ el: kids[i], dx: (slot(j, prev.length) - slot(i, colors.length)) * pitch, size: { w: r0.width, h: r0.height } });
+    });
+    if (moves.length) shiftPile(motion, { set, rate: motion.rate || 1, moves });
+  }, [shown, isShipped]);
+  return (
+    <div className={'replayer-pot-chips' + (isShipped ? ' is-shipped' : '')} ref={rowRef}>
+      {stacks.map((stack, i) => (
+        <div key={stack.color} className="replayer-pot-chip-stack">
+          {Array.from({ length: Math.min(stack.count, 6) }, (_, j) => (
             <div key={j} className="replayer-pot-chip-disc"
               style={{ '--chip': stack.color, '--pip-shift': pipShift(amount + i * 977, j),
                 zIndex: Math.min(stack.count, 6) - j }} />
@@ -5398,11 +5483,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const motion = motionRef.current;
   const [, setMotionRender] = useState(0);
   const committedStepRef = useRef(null);   // the step the last commit showed
-  const prevWagerElsRef = useRef(new Map()); // seat -> that commit's wager element
+  const prevWagersRef = useRef(new Map());  // seat -> that commit's wager: { el, geo, topColor }
   const boardDeltaRef = useRef(null);       // this commit's board FLIP measurement, for the springs
   const potTotalRef = useRef(null);
   const motionLayerRef = useRef(null);
+  const sweepLayerRef = useRef(null);
   useEffect(() => () => motion.dispose(), [motion]);
+  // Which parent render the pot's pile last saw: a live arrival on the pile holds only until the next.
+  motion.renderSeq = (motion.renderSeq || 0) + 1;
 
   /* 44: the display surfaces where depth is the point — stacks, pot, wagers —
      go through this; commentary and exports keep chip counts, because prose
@@ -6045,7 +6133,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      chips render by (a seat whose latest action carried an amount shows its street total) — in the
      order the dealer collects them, the street's action order. Only those whose element the last
      commit actually drew. */
-  const sweepPlan = (motionKind === 'street' && rSettings.animateChips) ? (() => {
+  /* The result press collects first: the river's wagers go into the pot as a street press's do,
+     and the pot leaves for the winner once they have landed. */
+  const sweepPlan = ((motionKind === 'street' || motionKind === 'result') && rSettings.animateChips) ? (() => {
     const acts = hand.streets[stepPrev.s]?.actions || [];
     const out = [];
     hand.players.forEach((_, pi) => {
@@ -6053,20 +6143,35 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       for (let ai = 0; ai <= stepPrev.a && ai < acts.length; ai++) {
         if (acts[ai].player === pi) { last = acts[ai]; if (first < 0) first = ai; }
       }
-      if (!last || !last.amount || !prevWagerElsRef.current.has(pi)) return;
+      if (!last || !last.amount || !prevWagersRef.current.has(pi)) return;
       out.push({ seat: pi, order: first, amount: computePlayerContrib(hand, stepPrev.s, acts, stepPrev.a, pi) });
     });
+    // At the result an over-shove's uncalled excess goes back to its seat, not into the pot.
+    if (motionKind === 'result' && out.length > 1) {
+      const cap = out.map(w => w.amount).sort((a, b) => b - a)[1];
+      out.forEach(w => { w.amount = Math.min(w.amount, cap); });
+    }
     return out.sort((a, b) => a.order - b.order);
   })() : null;
-  // The pot shipped to each seat it pays, at the result.
+  /* The pot shipped to each seat it pays, at the result: what that seat's stack gains (the model's
+     final figure less what it showed before the press, which never reads below 0 — a shorthand can
+     commit more than a stack holds, and the plaque read -7,000 at the climax). */
   const shipPlan = (motionKind === 'result' && rSettings.animateChips && potAwards)
-    ? hand.players.map((_, pi) => ({ seat: pi, award: potAwards[pi] || 0 })).filter(d => d.award > 0)
+    ? hand.players.map((_, pi) => ({ seat: pi, award: (potAwards[pi] || 0) > 0 ? shownStacks[pi] - Math.max(0, stacks[pi]) : 0 }))
+      .filter(d => d.award > 0)
     : null;
+  const shipRate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+  // When the pot leaves the pile at this result press (after the river's wagers have landed).
+  if (shipPlan && shipPlan.length) motion.shipStartNow = shipStartAfterSweep(springSet, shipRate, sweepPlan ? sweepPlan.length : 0);
   const pendingPotNow = !springOn ? 0
     : (motionJumped ? 0 : motion.pendingPot) + (sweepPlan ? sweepPlan.reduce((n, w) => n + w.amount, 0) : 0);
   const shownPot = Math.max(0, displayPot - pendingPotNow);
   const pendingStackNow = (pi) => (!springOn ? 0
     : (motionJumped ? 0 : (motion.pendingStacks.get(pi) || 0)) + ((shipPlan && shipPlan.find(d => d.seat === pi)?.award) || 0));
+  /* The pile at a result: shipped (empty) unless this press is about to ship it, or the shipped
+     chips have not left it yet. */
+  const pileShipped = springOn && showResult && rSettings.animateChips && !!potAwards
+    && !(shipPlan && shipPlan.length) && !(motion.pileHeld && !motionJumped);
   // What an arrival writes: always the latest render's numbers, less whatever is still in flight.
   const potTextNode = () => { const el = potTotalRef.current; const tn = el && el.lastChild; return tn && tn.nodeType === 3 ? tn : null; };
   const stackTextNode = (pi) => {
@@ -6075,18 +6180,22 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     return tn && tn.nodeType === 3 ? tn : null;
   };
   motion.writePot = () => {
+    const v = Math.max(0, displayPot - motion.pendingPot);
     const tn = potTextNode();
-    if (tn) { tn.data = fmtChips(Math.max(0, displayPot - motion.pendingPot)); motion.wroteDigits = true; }
+    if (tn) { tn.data = fmtChips(v); motion.wroteDigits = true; }
+    if (motion.setPile && !potLayers.length) motion.setPile(v);
   };
+  // A winner's stack as the pot lands on it: never below 0 on the spring path (see shipPlan).
+  const stackFigure = (pi) => (springOn ? Math.max(0, shownStacks[pi] - pendingStackNow(pi)) : shownStacks[pi] - pendingStackNow(pi));
   motion.writeStack = (pi) => {
     const tn = stackTextNode(pi);
-    if (tn) { tn.data = fmtChips(shownStacks[pi] - (motion.pendingStacks.get(pi) || 0)); motion.wroteDigits = true; }
+    if (tn) { tn.data = fmtChips(Math.max(0, shownStacks[pi] - (motion.pendingStacks.get(pi) || 0))); motion.wroteDigits = true; }
   };
   /* Direct writes and React can disagree: React skips a text node whose value it thinks has not
      changed, so after a step back (the flush lands the pot at the old step's total) the DOM kept
      the flushed figure while React's own value was already right. Every commit after a direct
      write puts the rendered figures back first. */
-  const rendered = { pot: fmtChips(shownPot), stack: (pi) => fmtChips(shownStacks[pi] - pendingStackNow(pi)) };
+  const rendered = { pot: fmtChips(shownPot), stack: (pi) => fmtChips(stackFigure(pi)) };
   const resyncDigits = () => {
     if (!motion.wroteDigits) return;
     motion.wroteDigits = false;
@@ -6493,16 +6602,18 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     };
     const now = new Map();
     const shift = new Map();
+    const rects = new Map();
     for (const el of cards) {
       const r = el.getBoundingClientRect();
       const s = shiftOf(el);
       shift.set(el, s);
+      rects.set(el, r);
       now.set(el.dataset.ck, (r.left + r.right) / 2 - s - originX);
     }
     boardLayoutRef.current = now;
     /* The spring path takes the same measurement — where each card was seen, where it now lies —
        and lands the turn and river from the moments effect below, on a forward step only. */
-    if (springOn) { boardDeltaRef.current = { prev, now, shift, cards }; return; }
+    if (springOn) { boardDeltaRef.current = { prev, now, shift, cards, rects }; return; }
     if (!prev) return;
     const changed = now.size !== prev.size || [...now.keys()].some(k => !prev.has(k));
     if (!changed) return;
@@ -7426,132 +7537,270 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      changes the table, so its first frame is the press frame and nothing shows the new state
      un-animated for a frame. Only a single step forward performs anything (motionKind); a jump
      finishes what is running. Under an export ([data-capturing]) the springs are created paused
-     and the exporter seeks them frame by frame (replay-capture.js). See utils/replayer-motion.js. */
+     and the exporter seeks them frame by frame (replay-capture.js). See utils/replayer-motion.js.
+
+     READ, then WRITE. The press is the frame an old phone can least afford, so every rect this
+     moment needs is read in one pass first, while the layout React just committed is still clean
+     (the board effect above has already laid it out), and only then are ghosts and chips created
+     and springs started. Nothing in the write half reads the DOM back. */
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (table && table.__replayerMotion !== motion) table.__replayerMotion = motion;
-    resyncDigits();
-    const prevEls = prevWagerElsRef.current;
-    const liveWagers = () => {
-      const m = new Map();
-      if (table) table.querySelectorAll('.replayer-bet-chip[data-seat]').forEach(el => m.set(Number(el.dataset.seat), el));
-      return m;
-    };
-    const done = () => {
-      prevWagerElsRef.current = liveWagers();
-      committedStepRef.current = { s: streetIdx, a: actionIdx, r: showResult };
-    };
-    if (!springOn) { motion.finishAll(); done(); return; }
-    if (motionJumped) motion.finishAll();
-    if (!motionKind || !table) { done(); return; }
-
-    const set = springSet;
-    const S = SPRING_SETS[set].stage;
-    const rate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
-    const layer = motionLayerRef.current;
-    const centreOf = (r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-    const potAnchor = () => table.querySelector('.replayer-pot-chips') || potTotalRef.current || table;
-    let planned = false;
-
-    if (motionKind === 'street') {
-      // (3b) The sweep: the chips go in first...
-      let swept = false;
-      if (sweepPlan && sweepPlan.length && layer) {
-        const wagers = sweepPlan.map(w => ({ ...w, el: prevEls.get(w.seat) })).filter(w => w.el);
-        if (wagers.length) {
-          planned = true;
-          motion.pendingPot += wagers.reduce((n, w) => n + w.amount, 0);
-          sweepWagers(motion, {
-            set, rate, layer, wagers, target: centreOf(potAnchor().getBoundingClientRect()),
-            onArrive: (amount) => {
-              motion.pendingPot = Math.max(0, motion.pendingPot - amount);
-              if (motion.writePot) motion.writePot();
+    motion.inCommit = true;
+    try {
+      const prevWagers = prevWagersRef.current;
+      /* Every wager on the felt this commit, at rest: where the next street press finds them when
+         it sweeps them in (by then they are unmounted, so they are measured now). Rects include a
+         push-out still running, so its presented offset is taken back off. */
+      const nowWagers = new Map();
+      if (table && springOn) {
+        table.querySelectorAll('.replayer-bet-chip[data-seat]').forEach(el => {
+          const r = el.getBoundingClientRect();
+          const ch = el.querySelector('.chip-stack-visual');
+          const cr = ch ? ch.getBoundingClientRect() : r;
+          const s = motion.state(el);
+          const ox = s ? s.val.x : 0, oy = s ? s.val.y : 0;
+          const disc = ch && ch.firstElementChild;
+          nowWagers.set(Number(el.dataset.seat), {
+            el,
+            topColor: disc ? disc.style.getPropertyValue('--chip').trim() : '',
+            geo: {
+              cx: r.left + r.width / 2 - ox, cy: r.top + r.height / 2 - oy, w: r.width, h: r.height,
+              chip: { dx: (cr.left + cr.width / 2) - (r.left + r.width / 2), dy: (cr.top + cr.height / 2) - (r.top + r.height / 2), w: cr.width, h: cr.height },
             },
           });
-          swept = true;
-        }
-      }
-      // ...then the board makes room (or the flop is placed), then the new card lands.
-      const delta = boardDeltaRef.current;
-      if (rSettings.animateBoard && delta && delta.cards.length) {
-        const { prev, now, shift, cards } = delta;
-        const stayed = prev ? cards.filter(el => prev.has(el.dataset.ck)) : [];
-        const added = cards.filter(el => !prev || !prev.has(el.dataset.ck));
-        if (!stayed.length && added.length) {
-          dealBoard(motion, { set, rate, cards: added, tPlace: swept ? S.place / rate : 0 });
-        } else if (added.length) {
-          yieldBoard(motion, {
-            set, rate, added, street: cards.length >= 5 ? 'river' : 'turn',
-            tYield: swept ? S.yieldAfterSweep / rate : 0,
-            stayed: stayed.map(el => ({ el, from: prev.get(el.dataset.ck) + shift.get(el) - now.get(el.dataset.ck) })),
-          });
-        }
-      }
-    }
-
-    if (motionKind === 'action' && rSettings.animateChips) {
-      // (3a) The push-out: where the chips came from.
-      const act = currentActions[actionIdx];
-      const el = act && act.amount && (act.action === 'bet' || act.action === 'raise' || act.action === 'call' || act.action === 'all-in')
-        ? liveWagers().get(act.player) : null;
-      if (el) {
-        const addOn = prevEls.get(act.player) === el;
-        const pos = seats[act.player] || [50, 50];
-        const T = table.getBoundingClientRect();
-        const dx = (pos[0] - parseFloat(el.style.left)) / 100 * T.width;
-        const dy = (pos[1] - parseFloat(el.style.top)) / 100 * T.height;
-        const len = Math.hypot(dx, dy);
-        if (len > 0.5) {
-          const dir = { x: dx / len, y: dy / len };
-          // A board card's width (its layout box, not a scaled frame of it); before the flop, the
-          // board's own --card-h rule on this table's size, at the deck's aspect.
-          const card = table.querySelector('.replayer-board-area:not(.replayer-dead-area) .card-row > [data-slot]');
-          if (card && card.offsetWidth) motion.boardCardW = card.offsetWidth;
-          const cq = Math.min(table.clientWidth, table.clientHeight) / 100;
-          const cw = motion.boardCardW || Math.min(140, Math.max(18, 10.9375 * cq)) * 0.8366;
-          const want = (addOn ? S.addOn : S.push) * cw;
-          // That seat's own cards (each card, not the row's box, which runs past the fan) and its
-          // action badge: the push's start must clear them.
-          const seatEl = table.querySelector('.replayer-seat[data-seat="' + act.player + '"]');
-          const obstacles = seatEl
-            ? [...seatEl.querySelectorAll('.replayer-seat-cards .card-row > *, .replayer-action-badge-outer')]
-              .map(o => o.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0)
-            : [];
-          const s = motion.state(el);
-          const r = el.getBoundingClientRect();
-          const box = s ? { left: r.left - s.val.x, right: r.right - s.val.x, top: r.top - s.val.y, bottom: r.bottom - s.val.y } : r;
-          pushOut(motion, { set, rate, el, dir, pushPx: clearPush(box, dir, want, obstacles), addOn });
-        }
-      }
-    }
-
-    if (motionKind === 'result' && shipPlan && shipPlan.length && layer) {
-      // (4) The pot shipped to the winner, to the stack figure on the plaque (never the button).
-      const dests = shipPlan.map(d => {
-        const fig = table.querySelector('.replayer-seat[data-seat="' + d.seat + '"] .replayer-seat-stack');
-        return fig ? { seat: d.seat, award: d.award, ...centreOf(fig.getBoundingClientRect()) } : null;
-      }).filter(Boolean);
-      if (dests.length) {
-        planned = true;
-        dests.forEach(d => motion.pendingStacks.set(d.seat, (motion.pendingStacks.get(d.seat) || 0) + d.award));
-        shipPot(motion, {
-          set, rate, layer, origin: centreOf(potAnchor().getBoundingClientRect()), dests,
-          onArrive: (seat, k, n) => {
-            const d = dests.find(x => x.seat === seat);
-            const left = motion.pendingStacks.get(seat) || 0;
-            // A fifth of the award per chip; the last lands on the exact figure.
-            const share = k === n - 1 ? left : Math.min(left, Math.round(d.award / n));
-            motion.pendingStacks.set(seat, left - share);
-            if (motion.writeStack) motion.writeStack(seat);
-          },
         });
       }
-    }
+      const record = () => {
+        prevWagersRef.current = nowWagers;
+        committedStepRef.current = { s: streetIdx, a: actionIdx, r: showResult };
+      };
+      if (!springOn) { motion.finishAll(); resyncDigits(); record(); return; }
+      if (motionJumped) motion.finishAll();
+      if (!motionKind || !table) { resyncDigits(); record(); return; }
 
-    /* Render subtracted what it expected to fly; if nothing could (no layer, no element to copy),
-       one render puts the full figures back. */
-    if (((sweepPlan && sweepPlan.length) || (shipPlan && shipPlan.length)) && !planned) setMotionRender(n => n + 1);
-    done();
+      const set = springSet;
+      const S = SPRING_SETS[set].stage;
+      const rate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
+      motion.rate = rate;
+      const layer = motionLayerRef.current;
+      const L = layer ? layer.getBoundingClientRect() : null;
+      const potFigure = potTotalRef.current;
+      const pileEl = table.querySelector('.replayer-pot-main .replayer-pot-chips');
+      const pileRect = pileEl ? pileEl.getBoundingClientRect() : null;
+      const pileStacks = pileEl ? [...pileEl.children].map(c => c.getBoundingClientRect()) : [];
+      const pileCentre = pileRect && pileRect.width > 0 ? centreOf(pileRect)
+        : potFigure ? centreOf(potFigure.getBoundingClientRect()) : centreOf(table.getBoundingClientRect());
+      const boardCard = table.querySelector('.replayer-board-area:not(.replayer-dead-area) .card-row > [data-slot]');
+      const cq = Math.min(table.clientWidth, table.clientHeight) / 100;
+      if (boardCard && boardCard.offsetWidth) motion.boardCardW = boardCard.offsetWidth;
+      // A board card's width (its layout box, not a scaled frame of it); before the flop, the
+      // board's own --card-h rule on this table's size, at the deck's aspect.
+      const cardW = motion.boardCardW || Math.min(140, Math.max(18, 10.9375 * cq)) * 0.8366;
+      const writes = [];
+
+      /* (3b) The sweep: the wagers that were on the felt go into the pot, the chips first. Shared by a
+         street press and the result press (the river's wagers are collected before the pot is
+         shipped). `board`: the rect a crossing chip must clear before the board moves. */
+      const sweepLayer = sweepLayerRef.current || layer;
+      const pitchOf = () => (pileStacks.length > 1 ? pileStacks[1].left - pileStacks[0].left
+        : pileStacks.length ? pileStacks[0].width + (parseFloat(getComputedStyle(pileEl).columnGap) || 0) : 0);
+      const tracksPile = !!(pileRect && !potLayers.length && pileStacks.length);
+      const planWagers = (board) => {
+        if (!sweepPlan || !sweepPlan.length || !sweepLayer) return null;
+        const wagers = sweepPlan.map(w => {
+          const g = prevWagers.get(w.seat);
+          return g ? { ...w, el: g.el, geo: g.geo, topColor: g.topColor } : null;
+        }).filter(Boolean);
+        if (!wagers.length) return null;
+        return planSweep(motion, {
+          set, rate, wagers, board,
+          pile: tracksPile
+            ? { cx: pileCentre.x, cy: pileCentre.y, bottom: pileRect.bottom, pitch: pitchOf(), base: shownPot, stacksFor: potStacksFor }
+            : { cx: pileCentre.x, cy: pileCentre.y },
+        });
+      };
+      const sweep = (plan) => {
+        if (!plan) return;
+        motion.pendingPot += plan.reduce((n, p) => n + p.w.amount, 0);
+        sweepWagers(motion, {
+          set, rate, layer: sweepLayer, plan,
+          onArrive: (amount) => {
+            motion.pendingPot = Math.max(0, motion.pendingPot - amount);
+            if (motion.writePot) motion.writePot();
+          },
+        });
+      };
+
+      if (motionKind === 'street') {
+        const delta = boardDeltaRef.current;
+        const boardOn = rSettings.animateBoard && delta && delta.cards.length;
+        const stayed = boardOn && delta.prev ? delta.cards.filter(el => delta.prev.has(el.dataset.ck)) : [];
+        const added = boardOn ? delta.cards.filter(el => !delta.prev || !delta.prev.has(el.dataset.ck)) : [];
+        const fromOf = (el) => delta.prev.get(el.dataset.ck) + delta.shift.get(el) - delta.now.get(el.dataset.ck);
+        /* Where a crossing chip must be clear of before the board moves: the flop's stack in slot 0
+           (scaled up 8% as it is placed), or the whole row with the room it makes. */
+        let boardRect = null;
+        if (boardOn && added.length) {
+          if (!stayed.length) {
+            const r0 = delta.rects.get(added[0]);
+            boardRect = r0 ? { left: r0.left - r0.width * 0.1, right: r0.right + r0.width * 0.1, top: r0.top - r0.height * 0.2, bottom: r0.bottom + r0.height * 0.1 } : null;
+          } else {
+            const u = unionRect(delta.cards.map(el => delta.rects.get(el)));
+            const room = Math.max(0, ...stayed.map(el => Math.abs(fromOf(el))));
+            boardRect = u ? { left: u.left - room, right: u.right + room, top: u.top - (u.bottom - u.top) * 0.2, bottom: u.bottom } : null;
+          }
+        }
+        const plan = planWagers(boardRect);
+        /* ...then the board makes room (or the flop is placed), then the new card lands. A chip
+           whose straight path crosses the board is let through first (planSweep sends those first),
+           as a dealer collects before he deals: the board waits until it has cleared the board's
+           far edge, but never more than boardWaitMax; past that the chip flies over it, lifted. */
+        const cleared = plan ? Math.max(0, ...plan.filter(p => p.crosses).map(p => p.clear)) : 0;
+        const tBoard = (base) => (plan ? Math.min(Math.max(base, cleared), Math.max(base, S.boardWaitMax / rate)) : 0);
+        // What the last street press decided, for a measuring harness.
+        motion.lastStreet = { board: boardRect, cleared, crossing: plan ? plan.filter(p => p.crosses).length : 0, ghosts: plan ? plan.length : 0 };
+        writes.push(() => {
+          sweep(plan);
+          if (!boardOn || !added.length) return;
+          const rectOf = (el) => delta.rects.get(el);
+          if (!stayed.length) {
+            dealBoard(motion, { set, rate, cards: added.map(el => ({ el, rect: rectOf(el) })), tPlace: tBoard(S.place / rate) });
+          } else {
+            const t0 = yieldBoard(motion, {
+              set, rate, street: delta.cards.length >= 5 ? 'river' : 'turn',
+              tYield: tBoard(S.yieldAfterSweep / rate),
+              added: added.map(el => ({ el, rect: rectOf(el) })),
+              stayed: stayed.map(el => ({ el, rect: rectOf(el), from: fromOf(el) })),
+            });
+            motion.lastStreet.yieldAt = t0;
+          }
+        });
+      }
+
+      if (motionKind === 'action' && rSettings.animateChips) {
+        // (3a) The push-out: where the chips came from.
+        const act = currentActions[actionIdx];
+        const w = act && act.amount && (act.action === 'bet' || act.action === 'raise' || act.action === 'call' || act.action === 'all-in')
+          ? nowWagers.get(act.player) : null;
+        if (w) {
+          const el = w.el;
+          const addOn = !!prevWagers.get(act.player) && prevWagers.get(act.player).el === el;
+          const pos = seats[act.player] || [50, 50];
+          const T = table.getBoundingClientRect();
+          const dx = (pos[0] - parseFloat(el.style.left)) / 100 * T.width;
+          const dy = (pos[1] - parseFloat(el.style.top)) / 100 * T.height;
+          const len = Math.hypot(dx, dy);
+          if (len > 0.5) {
+            const dir = { x: dx / len, y: dy / len };
+            const want = (addOn ? S.addOn : S.push) * cardW;
+            // That seat's own cards (each card, not the row's box, which runs past the fan) and its
+            // action badge: the push's start must clear them.
+            const seatEl = table.querySelector('.replayer-seat[data-seat="' + act.player + '"]');
+            const obstacles = seatEl
+              ? [...seatEl.querySelectorAll('.replayer-seat-cards .card-row > *, .replayer-action-badge-outer')]
+                .map(o => o.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0)
+              : [];
+            const g = w.geo;
+            const box = { left: g.cx - g.w / 2, right: g.cx + g.w / 2, top: g.cy - g.h / 2, bottom: g.cy + g.h / 2 };
+            const pushPx = clearPush(box, dir, want, obstacles);
+            writes.push(() => pushOut(motion, { set, rate, el, dir, pushPx, addOn, size: { w: g.w, h: g.h } }));
+          }
+        }
+      }
+
+      if (motionKind === 'result') {
+        /* (4) Collect, then push. The river's wagers go into the pot first (the sweep, as on a street
+           press); once they have landed, the pot leaves the pile for each winner and lands on the
+           edge of the winner's plaque nearest it (seatLanding), never across the name, never on the
+           button; the pile empties as it goes, and the won pill in front of the winner appears as
+           the last of it lands. */
+        const plan = planWagers(null);
+        const ship = shipPlan && shipPlan.length && sweepLayer ? (() => {
+          const probe = table.querySelector('.replayer-chip-probe');
+          const chipD = probe ? probe.getBoundingClientRect().width || 12 : 12;
+          const button = table.querySelector('.replayer-dealer-btn');
+          const buttonRect = button ? button.getBoundingClientRect() : null;
+          const btn = buttonRect && buttonRect.width ? buttonRect : null;
+          const plaques = [], cardBoxes = [];
+          const seatsRead = shipPlan.map(d => {
+            const seatEl = table.querySelector('.replayer-seat[data-seat="' + d.seat + '"]');
+            const info = seatEl && seatEl.querySelector('.replayer-seat-info');
+            if (!info) return null;
+            const plaque = info.getBoundingClientRect();
+            const cards = [...seatEl.querySelectorAll('.replayer-seat-cards .card-row > *')].map(c => c.getBoundingClientRect()).filter(r => r.width > 0);
+            const handNameEl = seatEl.querySelector('.replayer-seat-hand-name');
+            const handName = handNameEl ? handNameEl.getBoundingClientRect() : null;
+            const nameEl = seatEl.querySelector('.replayer-seat-name');
+            let name = null;
+            if (nameEl) { const rg = document.createRange(); rg.selectNodeContents(nameEl); name = rg.getBoundingClientRect(); }
+            const won = table.querySelector('.replayer-bet-chip[data-seat="' + d.seat + '"]');
+            plaques.push(plaque);
+            if (handName && handName.width) plaques.push(handName);
+            const cardsBox = unionRect(cards);
+            if (cardsBox) cardBoxes.push(cardsBox);
+            return { d, plaque, cards, cardsBox, handName: handName && handName.width ? handName : null, name: name && name.width ? name : null, won, wonRect: won ? won.getBoundingClientRect() : null };
+          }).filter(Boolean);
+          if (!seatsRead.length) return null;
+          // Where the chips leave from: the pile's stacks as they will be once the river has landed.
+          const finalStacks = tracksPile ? potStacksFor(displayPot) : [];
+          const pitch = tracksPile ? pitchOf() : 0;
+          const starts = finalStacks.length && pitch > 0 ? finalStacks.map((_, j) => (j - (finalStacks.length - 1) / 2) * pitch) : [0];
+          const dests = seatsRead.map(s => ({
+            seat: s.d.seat, award: s.d.award, won: s.won, wonRect: s.wonRect,
+            ...seatLanding(pileCentre, s.plaque, {
+              cards: s.cards, button: btn, name: s.name, chipD,
+              covers: [s.cardsBox, btn, s.handName].filter(Boolean),
+            }),
+          }));
+          return { dests, starts, chipD, holes: [plaques, cardBoxes, btn ? [btn] : []], layerRect: sweepLayer === layer && L ? L : sweepLayer.getBoundingClientRect() };
+        })() : null;
+        const tShip = ship ? shipStartAfterSweep(set, rate, plan ? plan.length : 0) : 0;
+        motion.lastResult = ship ? { tShip, dests: ship.dests.map(d => ({ seat: d.seat, x: d.x, y: d.y, edge: d.edge, contact: d.contact })) } : null;
+        writes.push(() => {
+          sweep(plan);
+          if (!ship) return;
+          const { dests } = ship;
+          dests.forEach(d => motion.pendingStacks.set(d.seat, (motion.pendingStacks.get(d.seat) || 0) + d.award));
+          motion.pileHeld = true;
+          const shipped = shipPot(motion, {
+            set, rate, layer: sweepLayer, layerRect: ship.layerRect, origin: pileCentre,
+            starts: ship.starts, dests, holes: ship.holes, chipD: ship.chipD, cardW, tStart: tShip,
+            onDepart: () => {
+              motion.pileHeld = false;
+              if (motion.setPile && !potLayers.length) motion.setPile(Math.max(0, displayPot - motion.pendingPot), { shipped: true });
+            },
+            onArrive: (seat, k, n) => {
+              const d = dests.find(x => x.seat === seat);
+              const left = motion.pendingStacks.get(seat) || 0;
+              // A fifth of the award per chip; the last to land lands the exact figure.
+              const share = k === n - 1 ? left : Math.min(left, Math.round(d.award / n));
+              motion.pendingStacks.set(seat, left - share);
+              if (motion.writeStack) motion.writeStack(seat);
+            },
+          });
+          // The won pill appears as the last of that winner's pot lands.
+          for (const d of dests) {
+            const at = shipped.lastArrive.get(d.seat);
+            if (d.won && d.wonRect && at != null) {
+              appearAt(motion, { rate, el: d.won, at, size: { w: d.wonRect.width, h: d.wonRect.height }, prefix: 'translate(-50%, -50%)' });
+            }
+          }
+        });
+      }
+
+      // WRITE.
+      motion.beginMoment(motionKind);
+      for (const w of writes) w();
+      resyncDigits();
+      /* Render subtracted what it expected to fly; if nothing could (no layer, no element to copy),
+         one render puts the full figures back. */
+      const planned = motion.pendingPot > 0 || motion.pendingStacks.size > 0;
+      if (((sweepPlan && sweepPlan.length) || (shipPlan && shipPlan.length)) && !planned) setMotionRender(n => n + 1);
+      record();
+    } finally {
+      motion.inCommit = false;
+    }
   });
 
 
@@ -7665,6 +7914,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         style={(() => {
           const s = { ...(potContrast || {}) };
           s['--card-overlap'] = String((Number(rSettings.cardOverlap ?? 52) || 0) / 100);
+          // The plaque takes its gold as the first shipped chip lands: after the river's wagers have
+          // been collected, when this press collects any.
+          if (springOn) s['--spring-ship-arrive'] = Math.round((shipPlan && shipPlan.length ? motion.shipStartNow || 0 : 0) + shipFirstArrival(springSet, shipRate)) + 'ms';
           if (rSettings.cardBack === 'custom') {
             // Same derivation as the felt below, and for the same reason.
             const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
@@ -7782,7 +8034,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                       {spr && <div className="replayer-spr">SPR {spr}</div>}
                       {/* shownPot: the model's pot less the swept wagers still in flight (the
                           spring path); displayPot itself everywhere else. */}
-                      {chips && <PotChipVisual amount={potLayers.length ? potLayers[0].amount : (shownPot || displayPot)} />}
+                      {chips && (springOn && !potLayers.length
+                        ? <PotChipLive amount={shownPot} motion={motion} set={springSet} shipped={pileShipped} />
+                        : <PotChipVisual amount={potLayers.length ? potLayers[0].amount : (shownPot || displayPot)} />)}
                     </div>
                   );
                 })()}
@@ -8262,7 +8516,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   } : {})}>
                   {allIn.has(pi) && shownStacks[pi] <= 0
                     ? <span className="replayer-allin-mark">ALL-IN</span>
-                    : fmtChips(shownStacks[pi] - pendingStackNow(pi))}
+                    : fmtChips(stackFigure(pi))}
                 </div>
                 {/* 43: estimateRange returns a label AND a CSS class per
                     opponent, four styled tiers exist and the setting was
@@ -8429,7 +8683,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
              the seat direction itself. */
           const chipStyle = {left: chipX + '%', top: chipY + '%'};
           return (
-            <div key={'bet-' + pi} data-seat={pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
+            /* On the spring path the won pill is its own element: the river wager it replaces leaves
+               the felt as itself (its ghost is a copy of it) rather than turning into the award. */
+            <div key={(showResult && springOn ? 'won-' : 'bet-') + pi} data-seat={pi} className={'replayer-bet-chip' + (rSettings.animateChips ? ' animate-chips' : '')} style={chipStyle}>
               <ChipStack amount={chipAmount} />
               {fmtChips(chipAmount)}
               {/* 42: a ten-step classifier from min through overbet was written
@@ -8458,10 +8714,14 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             }} />
         ))}
 
-        {/* The spring path's flights: swept wagers' ghosts and the chips shipped to a winner.
-            React renders the layer and never its children — they are created in the moment's
-            commit and remove themselves when they land (utils/replayer-motion.js). It spans the
-            table's padding box, so a ghost keeps its wager's own left/top percentages. */}
+        {/* The spring path's flights: swept wagers' ghosts (their own layer, under the pot) and
+            the chips shipped to a winner (over everything but the winner's seat). React renders
+            the layers and never their children — they are created in the moment's commit and
+            remove themselves when they land (utils/replayer-motion.js). Both span the table's
+            padding box, so a ghost keeps its wager's own left/top percentages. The probe is an
+            unseen flying chip the ship sizes its chips by. */}
+        {springOn && <div className="replayer-flying-chip replayer-chip-probe" aria-hidden="true" />}
+        {springOn && <div className="replayer-motion-layer replayer-sweep-layer" ref={sweepLayerRef} aria-hidden="true" />}
         {springOn && <div className="replayer-motion-layer" ref={motionLayerRef} aria-hidden="true" />}
 
         {/* Draw discard animations */}

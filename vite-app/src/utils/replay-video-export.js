@@ -9,6 +9,40 @@ import {
 
 const STORY_W = 1080, STORY_H = 1920;
 
+/* The spring moments in a video (24 fps): the flop is about 16 frames, a turn or river 8, the ship 12
+   — about 44 a hand, whatever its length, since only street presses and the result are seeked (a
+   push-out is finished: four frames on every bet and call, a third of the captures, for 150ms of
+   motion). The budget only binds on an unusual hand; past it the moments are finished and each step
+   is one settled still, as before the springs. */
+const VIDEO_MOTION_BUDGET = 64;
+const VIDEO_FPS = 24;
+/* Motion frames are kept decoded (an ImageBitmap, its canvas released) up to this many bytes of
+   pixels, about 30 frames of a phone table at the export width: most hands' whole motion. Past it a
+   frame is kept as a PNG blob (about a quarter of the size) and decoded DECODE_AHEAD frames ahead of
+   playback, so a long hand's motion never sits in memory decoded all at once. The PNG round trip
+   cost more than the capture itself in WebKit (6.3s a motion frame against 3.5s a still), which put
+   the springs' export at 3.4x the time of one without them; under the budget there is none. */
+const MOTION_BITMAP_BYTES = 128 * 1024 * 1024;
+const DECODE_AHEAD = 16;
+
+const canvasToBlob = (c) => new Promise((resolve) => {
+  try { c.toBlob(b => resolve(b), 'image/png'); } catch { resolve(null); }
+});
+async function decodeBlob(blob) {
+  if (typeof createImageBitmap === 'function') {
+    try { return await createImageBitmap(blob); } catch { /* fall through to an <img> */ }
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+}
+
 /**
  * Export the current replay hand as a video.
  *
@@ -62,7 +96,7 @@ export async function exportReplayVideo({
       fileExt = 'webm';
     }
 
-    restore = beginCapture(tableEl, { speed });
+    restore = beginCapture(tableEl, { speed, fps: VIDEO_FPS });
     // Let the padding and the paused-animation rules settle before measuring.
     await new Promise(r => setTimeout(r, 60));
 
@@ -127,7 +161,7 @@ export async function exportReplayVideo({
        was recorded too and the step durations wobbled in the output. Driving
        the track frame by frame collapses the export to capture speed and makes
        every step exactly the same length. */
-    const FPS = 24;
+    const FPS = VIDEO_FPS;
     const perStepMs = stepDelay(speed);
     const framesPerStep = Math.max(1, Math.round((perStepMs / 1000) * FPS));
     const finalHoldFrames = FPS * 2;
@@ -147,39 +181,65 @@ export async function exportReplayVideo({
        itself first: the springs are seeked one output frame at a time (captureStepFrames), so the
        flop deals, the turn lands and the chips fly in the clip exactly as on screen, and the
        settled still takes the rest of the step. A motion frame is kept as an ImageBitmap with its
-       canvas released, so a hand's worth of them does not count against iOS's canvas memory cap. */
+       canvas released, up to MOTION_BITMAP_BYTES, then as a PNG blob (decoded again just ahead of
+       playback, below), so a hand's worth of them is neither a few hundred MB of pixels nor counted
+       against iOS's canvas memory cap. */
     const framesArr = [];
     let lastGood = null;
     let stepsDone = 0;
+    let bitmapBytes = 0;
     const grab = async (hold, settled) => {
-      let img = null;
+      let entry = null;
       try {
         const c = await domToCanvas(tableEl, { backgroundColor: null, width: elW, height: elH, scale });
-        img = c;
-        if (!settled && typeof createImageBitmap === 'function') {
-          try { img = await createImageBitmap(c); c.width = 0; c.height = 0; } catch { img = c; }
+        entry = { img: c, hold };
+        if (!settled) {
+          const bytes = c.width * c.height * 4;
+          let kept = false;
+          if (bitmapBytes + bytes <= MOTION_BITMAP_BYTES && typeof createImageBitmap === 'function') {
+            try { entry = { img: await createImageBitmap(c), hold, bitmap: true }; bitmapBytes += bytes; kept = true; } catch { kept = false; }
+          }
+          if (!kept) {
+            const blob = await canvasToBlob(c);
+            if (blob) entry = { blob, hold };
+          }
+          if (entry.img !== c) { c.width = 0; c.height = 0; }
         }
-        lastGood = img;
+        if (entry.img) lastGood = entry.img;
       } catch {
         // 84: on a capture failure hold the LAST GOOD frame rather than a blank.
-        img = lastGood;
+        entry = lastGood ? { img: lastGood, hold } : null;
       }
-      if (img) framesArr.push({ img, hold });
+      if (entry) framesArr.push(entry);
       if (!settled) return;
+      const img = entry && entry.img;
       stepsDone++;
       if (onFrame && img && img.toDataURL) { try { onFrame(img.toDataURL('image/png')); } catch { /* tainted */ } }
       // Capture is the first 70% of the bar; the encode is the rest.
       onProgress(Math.round((stepsDone / totalSteps) * 70), stepsDone, totalSteps);
     };
 
-    await captureStepFrames(tableEl, { fps: FPS, maxFrames: framesPerStep, grab });
+    let motionLeft = VIDEO_MOTION_BUDGET;
+    const captureStep = async (stepFrames) => {
+      motionLeft -= await captureStepFrames(tableEl, {
+        fps: FPS, maxFrames: motionLeft > 0 ? Math.min(stepFrames, motionLeft + 1) : 1,
+        skipKinds: ['action'], grab,
+      });
+      // The still is held for the rest of the step, whatever the budget allowed.
+      const last = framesArr[framesArr.length - 1];
+      const shown = framesArr.slice(stepStart).reduce((n, f) => n + f.hold, 0);
+      if (last && shown < stepFrames) last.hold += stepFrames - shown;
+    };
+    let stepStart = 0;
+    await captureStep(framesPerStep);
     while (canGoForwardRef.current) {
       stepForward();
       // Let React commit before capturing. CSS animations are paused for the export; the springs
       // are created paused and seeked.
       await new Promise(r => setTimeout(r, 120));
       const isLast = !canGoForwardRef.current;
-      await captureStepFrames(tableEl, { fps: FPS, maxFrames: isLast ? finalHoldFrames : framesPerStep, grab });
+      stepStart = framesArr.length;
+      await captureStep(isLast ? finalHoldFrames : framesPerStep);
     }
 
     // Frames are captured — undo the padding/pinned-theme now, before the encode.
@@ -225,12 +285,25 @@ export async function exportReplayVideo({
       }
     };
 
+    /* A motion frame is decoded from its blob a little ahead of its turn — while the still before
+       it is being held — and released once it has been painted. */
+    const decoded = (f) => {
+      if (f.img) return Promise.resolve(f.img);
+      if (!f.pending) f.pending = decodeBlob(f.blob).then(img => (f.img = img), () => lastGood);
+      return f.pending;
+    };
+    const ahead = (i) => { for (let j = i + 1; j < Math.min(framesArr.length, i + 1 + DECODE_AHEAD); j++) if (framesArr[j].blob) decoded(framesArr[j]); };
+    ahead(-1);
     recorder.start();
     // Latch the first frame before the timed playback begins.
-    if (framesArr.length) { paint(framesArr[0].img); await new Promise(r => setTimeout(r, 80)); }
+    if (framesArr.length) { paint(await decoded(framesArr[0])); await new Promise(r => setTimeout(r, 80)); }
     for (let i = 0; i < framesArr.length; i++) {
-      paint(framesArr[i].img);
-      await emit(framesArr[i].hold);
+      const f = framesArr[i];
+      const img = await decoded(f);
+      if (img) paint(img);
+      ahead(i);
+      await emit(f.hold);
+      if (f.blob && f.img) { try { if (f.img.close) f.img.close(); } catch { /* gone */ } f.img = null; f.blob = null; }
       onProgress(70 + Math.round(((i + 1) / framesArr.length) * 30), totalSteps, totalSteps);
     }
 

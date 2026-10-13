@@ -110,7 +110,7 @@ export async function exportReplayGif({
     // 83 / 88 / 90 / 91: padding for the top seat's overflowing cards, plus
     // the paused animations, pinned theme and raised watermark the video path
     // now shares.
-    restore = beginCapture(tableEl, { speed });
+    restore = beginCapture(tableEl, { speed, fps: GIF_MOTION_FPS });
     await new Promise(r => setTimeout(r, 60));
 
     const elW = tableEl.offsetWidth;
@@ -154,9 +154,9 @@ export async function exportReplayGif({
       const n = await captureStepFrames(tableEl, {
         fps: GIF_MOTION_FPS,
         maxFrames: motionLeft > 0 ? Math.max(1, Math.min(Math.floor(stepMs / GIF_MOTION_MS), motionLeft + 1)) : 1,
-        minMotionFrames: 3,
+        minMotionFrames: 3, skipKinds: ['action'],
         grab: async (hold, settled) => {
-          if (!settled) { used++; await captureFrame(Math.round(GIF_MOTION_MS), false); return; }
+          if (!settled) { used += hold; await captureFrame(Math.round(GIF_MOTION_MS * hold), false); return; }
           await captureFrame(Math.max(20, stepMs - Math.round(used * GIF_MOTION_MS)), true);
         },
       });

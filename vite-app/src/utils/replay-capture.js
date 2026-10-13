@@ -24,11 +24,13 @@ import { rateFor } from './spring.js';
  * @param {HTMLElement} tableEl - the .replayer-table element
  * @param {object} [opts]
  * @param {number} [opts.speed] - the export's ms per step: the springs run at the autoplay rate for it
+ * @param {number} [opts.fps] - the frame rate its moments are seeked at (a fast flight's stretch is
+ *                              sized to the distance between two of its frames)
  * @returns {() => void} restore
  */
-export function beginCapture(tableEl, { speed } = {}) {
+export function beginCapture(tableEl, { speed, fps = 0 } = {}) {
   const motion = motionFor(tableEl);
-  if (motion) motion.setCapture(true, { rate: rateFor(speed) });
+  if (motion) motion.setCapture(true, { rate: rateFor(speed), fps });
   const prev = {
     padTop: tableEl.style.paddingTop,
     marginTop: tableEl.style.marginTop,
@@ -55,31 +57,48 @@ export function beginCapture(tableEl, { speed } = {}) {
  * export speed, or a GIF whose budget is spent) the springs are finished instead and the step is
  * one settled still, as before. Without springs (flag '0') it is exactly one still.
  *
+ * While it seeks, the table carries [data-capture-motion]: the closing bookend, which covers the
+ * whole table at the result, waits for the settled still, so the pot is seen going to the winner.
+ * The result's last seeked frame (the pot landed, the stack counted up) is held a little before
+ * the bookend takes over.
+ *
  * @param {HTMLElement} tableEl
  * @param {object} opts
  * @param {number} opts.fps
  * @param {number} opts.maxFrames         the step's length in output frames
  * @param {number} [opts.minMotionFrames] below this a moment is not worth its frames (a GIF)
+ * @param {string[]} [opts.skipKinds]      moments finished rather than seeked: both exporters skip
+ *                                         the push-outs ('action'; owner, 2026-10-12), four frames on
+ *                                         every bet and call of a hand for 150ms of motion
  * @param {(hold:number, settled:boolean) => Promise<void>} opts.grab  capture one frame, held `hold` frames
- * @returns {Promise<number>} how many motion frames were captured
+ * @returns {Promise<number>} how many motion frames were captured (a GIF's or a video's budget)
  */
-export async function captureStepFrames(tableEl, { fps, maxFrames, minMotionFrames = 2, grab }) {
+export async function captureStepFrames(tableEl, { fps, maxFrames, minMotionFrames = 2, skipKinds = [], grab }) {
   const motion = motionFor(tableEl);
-  let used = 0;
-  if (motion && fps > 0 && maxFrames > 1) {
+  let used = 0, captures = 0;
+  if (motion && fps > 0 && maxFrames > 1 && motion.momentKind && !skipKinds.includes(motion.momentKind)) {
     const ext = motion.extentMs();
     const need = Math.ceil((ext * fps) / 1000);
+    // The result's landed pot, held for a beat (0.4s) before the bookend, when the step has room.
+    const tail = motion.momentKind === 'result' ? Math.max(1, Math.min(Math.round(fps * 0.4), maxFrames - need - 1)) : 1;
     if (ext > 0 && need >= minMotionFrames && need < maxFrames) {
-      for (let f = 0; f < need; f++) {
-        motion.seek((f * 1000) / fps);
-        await grab(1, false);
-        used++;
+      tableEl.setAttribute('data-capture-motion', '1');
+      try {
+        for (let f = 0; f < need; f++) {
+          motion.seek((f * 1000) / fps);
+          const hold = f === need - 1 ? tail : 1;
+          await grab(hold, false);
+          used += hold;
+          captures++;
+        }
+      } finally {
+        tableEl.removeAttribute('data-capture-motion');
       }
     }
   }
   if (motion) motion.finishAll();
   await grab(Math.max(1, maxFrames - used), true);
-  return used;
+  return captures;
 }
 
 /**

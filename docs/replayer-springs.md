@@ -17,7 +17,12 @@ and how to capture before/after video.
 `prefers-reduced-motion: reduce` turns every spring off whatever the flag says. The replayer keeps
 its 140ms `rmFade`, the pot figure changes on the press frame, and no ghost or shipped chip is drawn.
 
-## One spring, five tiers
+Set A stays the default on this branch: choosing between A and B is the owner's call, which is what
+the flag is for. A review of round 2 preferred B's tempo for the moments that repeat every street;
+A now has B's two strongest points folded in (the flop spread on the near-critical slide spring, a
+150ms flop beat, and a turn/river card that waits at most 90ms for crossing chips).
+
+## One spring, six tiers
 
 Every object has stiffness k and damping ratio zeta; only its mass changes, so the whole table reads
 as one physical system. The configs paste into Remotion's `spring({ fps, config })` unchanged.
@@ -25,26 +30,54 @@ as one physical system. The configs paste into Remotion's `spring({ fps, config 
 | Tier | Set A (k 380, zeta 0.80, 1.5% overshoot) | Set B (k 640, zeta 0.86, 0.5%) | Used for |
 |---|---|---|---|
 | flick | damping 23.1, mass 0.55, settles 323ms | 32.3, 0.55, 257ms | a wager pushed out, the landing squash |
-| hand | 31.2, 1.0, 435ms | 43.5, 1.0, 347ms | the flop placed and spread, turn/river placed, the sweep |
-| arm | 39.5, 1.6, 551ms | 55.0, 1.6, 439ms | the pot shipped to the winner |
+| hand | 31.2, 1.0, 435ms | 43.5, 1.0, 347ms | the flop and turn/river placed, the sweep |
+| arm | 39.5, 1.6, 551ms | 55.0, 1.6, 439ms | the pot shipped to the winner (armLight 1.45 and armHeavy 1.75 vary the mass per chip) |
 | inertia | 48.3, 2.4, 674ms | 67.4, 2.4, 537ms | a card squaring up (rotation trails translation) |
 | yield | 28.9, 0.55, critically damped, 351ms | 37.5, 0.55, 271ms | the row making room: never bounces |
+| slide | 35.9, 1.0, zeta 0.92, 339ms | 46.4, 1.0, zeta 0.92, 256ms | the flop spreading: friction stops it |
 
-Settle times are to 0.1%. `utils/spring.js` holds these as `SPRING_SETS`, with the staging (staggers,
-beats, rotation signs) beside each set.
+Settle times are to 0.1%. Two tiers keep the stiffness and the mass and change only the damping
+ratio, on purpose: yield is critically damped (something pushed aside never bounces), and slide is
+damped to 0.92 (a card sliding on felt is stopped by friction). On the hand spring the flop's window
+card ran 1.1px past its slot and crept back for 120ms, the sharpest edge on the table never quite
+still; on slide it overshoots 0.04px. `utils/spring.js` holds these as `SPRING_SETS`, with the
+staging (staggers, beats, rotation signs) beside each set.
 
 ## The moments
 
 | Moment | What happens (Set A, phone) | Ends |
 |---|---|---|
-| Flop | The last street's wagers are swept in first. At 60ms the three cards are placed as one stack in slot 0, window card on top: they drop 0.15 card heights, scale 1.08 to 1 and square up from -3 degrees. At 280ms the window card spreads, and the middle card follows 40ms behind it. | about 650ms |
-| Turn / river | Sweep, then at 40ms the row yields: every card moves from where it was seen on one critically damped spring, and the new card's x rides the same spring a pitch to the right. At 70ms the new card is placed: it drops, scales and squares up (+2.5 degrees on the turn, -2 on the river). | about 250ms for the board, 313ms with the sweep |
+| Flop | The last street's wagers are swept in first. At 60ms the three cards are placed as one stack in slot 0, window card on top: they drop 0.15 card heights, scale 1.08 to 1 and square up from -3 degrees. At 210ms (a 150ms beat: the stack is read as the last swept chip lands) the window card slides to its slot on the slide spring, and the middle card follows 40ms behind it. | about 520ms |
+| Turn / river | Sweep, then the row yields: every card moves from where it was seen on one critically damped spring, and the new card's x rides the same spring a pitch to the right. The row has ONE start. It waits for a chip whose path crosses the board to clear it (those are collected first), at most 90ms; if any card is still moving (a fast tap over a running spread) every card starts at once, each with its own velocity. 30ms after the row the new card is placed: it drops, scales and squares up (+2.5 degrees on the turn, -2 on the river). | about 250ms for the board, 313ms with the sweep |
 | Bet, call, raise | The wager is fully legible on the press frame ("a wager is a fact, not an event"). It is pushed out from 0.55 board-card widths back toward its seat, shortened if the start would touch that seat's cards or badge. A raise over chips already out pushes again from 0.3 widths, from wherever the stack is. | about 150ms |
-| Sweep (street press) | Each wager on the felt becomes a ghost, a copy of the same stack, made in the commit that removes the wagers. Ghosts leave in action order, 40ms apart (all gone within 160ms). The amount and its pill fade as the chips leave, the chips fly to the pot chips lifted over the board, and at arrival the pot figure ticks up by that wager and the ghost squashes once as it fades. | arrivals at 193ms and 233ms |
-| Ship (result) | Five gold chips per winner (ten in all at most) go from the pot chips to the winner's stack figure on the arm spring, 35ms apart, fully opaque, lifted and set down a little smaller. The stack ticks up a fifth of the award at each arrival, and the plaque's gold arrives with the first chip. | last chip gone at about 465ms |
+| Sweep (street press) | Each wager on the felt becomes a ghost, a copy of the same stack, made in the commit that removes the wagers. Ghosts leave 40ms apart (all gone within 160ms), in action order except that a wager whose path crosses the board goes first. The amount and its pill fade as the chips leave, the chips fly to their own colour's stack of the pile under the pot's figure, lifted over the board, and at arrival the pot figure ticks up by that wager and the ghost squashes once as it fades. | arrivals at 193ms and 233ms |
+| Result: collect, then ship | The river's wagers are swept in first, as on a street press. Once they have landed and faded (283ms), the pot leaves the pile: five gold chips per winner (ten in all at most), 22ms apart, on the arm spring with the mass varied per chip. Each comes out from under the pile as its stack fades, so the pile empties. They fan out and close up again, fly under the pot figure, the wagers and the button, and land on the edge of the winner's plaque nearest the pile, tucking under it. The stack ticks up a fifth of the award at each arrival (527-626ms), the plaque takes its gold with the first, and the won pill in front of the winner appears with the last. | last chip gone at 676ms; 393ms when the river went in without wagers |
+
+The pot pill and its figure stay where they are at the result (no collect fade, per the standing
+ruling); the figure is the hand's pot, which the closing bookend reads too.
+
+### Where the pot lands
+
+Owner, 2026-10-12: the shipped chips never cross the winner's name; they land on the edge of the
+name plaque nearest the table's centre, and the stack figure updates on landing, at every seat, 6-,
+8- and 9-max, phone and desktop. `seatLanding()` picks the point. Of the plaque's edges that face
+the pile, every point a chip can touch without touching a hole card or the dealer button (and come
+to rest without touching the name) is a candidate. The nearest to the pile wins, unless the straight
+path to it runs under the cards, the button or the hand's name (heavily penalised) or would arrive
+at a grazing angle. Aimed at the plaque's centre, as before, a chip met the hole cards first
+wherever they hang between the pot and the plaque, and vanished into them 10-80px short of it: the
+hero, the usual winner, every time. The flight layer has the plaques, the hands' names, the hole
+cards and the button cut out of it, so a chip that reaches the seat tucks under the plaque.
+
+Measured over all 31 seats (6, 8 and 9-max at 402x874, 8-max at 1440x900, each seat the winner, 60fps
+frames): no chip box ever overlaps the winner's name text (0px²), every chip comes to rest inside
+the plaque 6.6-10.2px from the edge it entered, and the stack ticks at each landing to the exact
+award. The hero lands on the top edge's free shoulder right of the cards on a phone, and between the
+button and the cards on desktop. Side seats land on the corner of the plaque nearest the pile,
+beside the cards; top seats on the bottom edge, beside the hand's name.
 
 Nothing else moves. Seat plaques (except the winner's digits), the dealer button, hole cards,
-badges, the pot pill, the board container and the table geometry are untouched.
+badges, the pot pill and its figure, the board container and the table geometry are untouched.
 
 ## How it is built
 
@@ -61,16 +94,24 @@ badges, the pot pill, the board container and the table geometry are untouched.
     `CSS.supports('animation-timing-function', 'linear(0, 1)')`. Elsewhere it uses the sampled form
     of the same curve, so an iPhone without `linear()` gets the identical motion.
     `localStorage.replayerSpringsLinear = '0'` forces the sampled form for testing.
+  - Each moment starts its own clock (`beginMoment()`). Arrivals are timed on their flight's
+    animation; a spring an arrival starts (the pile's stacks making room, the pile emptying) is born
+    at that arrival.
 - **HandReplayerView** decides in render whether this commit is a single step forward from the last
   one (`motionKind`) and starts the moment in a layout effect, before the browser paints the press.
+  - It reads every rect the moment needs first, then creates elements and starts springs; nothing
+    in the write half reads the DOM back.
   - A jump, a step back, End/Start, or a hand change finishes everything instead: ghosts and chips
     leave, the pot and stacks land, and nothing plays backwards.
   - A new spring on an element that is still moving takes over its position and velocity.
 - **The pot and stack figures** in render are the model's value minus what is still in flight.
   - Each arrival writes its digits straight into the text node, with no re-render mid-moment.
-  - One render follows the last arrival.
+  - One render follows, once nothing is moving at all (re-rendering the whole replayer is the most
+    expensive thing a frame can do, and the last arrival is usually mid-moment).
   - Every commit after a direct write first puts the rendered figures back, because React skips a
     text node it thinks is unchanged.
+  - A winner's stack counts up by what its plaque gains (the model's final figure less what it showed
+    before the press, never below 0: a shorthand can commit more than a stack holds).
 - **Removed on the spring path**: the street-change effect's three re-renders (+0, +450, +500ms);
   this is what cancelled the turn card after one frame. Also removed: `turnRiverSlide` (flag `'0'`
   keeps it), `markPotLanding`'s re-renders, the blanket 700ms flying-chip clear, and the dead
@@ -78,35 +119,58 @@ badges, the pot pill, the board container and the table geometry are untouched.
 
 ## Exports
 
+Owner, 2026-10-12: the exports keep the motion except the bet/call/raise push-outs. The flop, the
+turn and river, the wagers into the pot and the pot shipped to the winner animate in the video and
+the GIF; a push-out exports as its settled frame.
+
 The springs are Web Animations, so the `[data-capturing]` freeze, which pauses only CSS animations,
 does not touch them. Under capture the registry creates them paused and holds their arrivals.
 `captureStepFrames()` in `replay-capture.js` then does one of two things:
 
 - **Seeks** the moment one output frame at a time and holds the settled still for the rest of the
-  step. The video does this at 24 fps (the flop is about 16 frames, a turn 8, a push-out 4, the ship
-  12). The GIF does it at 12.5 fps, only for moments of 3 frames or more, and spends at most 32
-  motion frames in one GIF.
-- **Finishes** the moment, when it does not fit the step, and captures one settled still. A still is
-  never a frame frozen at a 0% keyframe.
+  step. While it seeks, the table carries `[data-capture-motion]`, so the closing bookend (which
+  covers the table at the result) waits for the settled still and the pot is seen going to the
+  winner; the result's last seeked frame is held 0.4s before the bookend takes over. The video seeks
+  at 24 fps and the GIF at 12.5 fps (only moments of 3 frames or more, at most 32 motion frames a
+  GIF). A shipped chip's stretch is sized to the distance it covers between two output frames (half
+  of it, at most three diameters), so the pot reads as chips in flight, not dots strobing across the
+  table.
+- **Finishes** the moment, when it does not fit the step or is a push-out, and captures one settled
+  still. A still is never a frame frozen at a 0% keyframe, and arrivals start no paused springs.
 
-Exports run the springs at the autoplay rate for the export speed.
+Exports run the springs at the autoplay rate for the export speed. On the 8-max hand at 1x the video
+seeks the flop for 13 frames, the turn and the river 8 each and the result 17 (46 in all); the GIF 7,
+4, 4 and 9 (24).
 
-Checked in Playwright WebKit on the 8-max hand (2026-10-12): every seeked frame of the turn in the
-GIF (0, 80, 160, 240ms) and the video (every 41.7ms to 292ms) put the board cards, the swept
-wagers' ghosts and the pot figure exactly where the live replayer has them at the same instant
-(within 0.01px; the live side pinned through `document.getAnimations()`, not the registry), and
-the frames look the same (`node scripts/check-replay-export-motion.mjs <scratch url> --out <dir>`
-re-runs it and exits non-zero on any difference over 0.5px). The video spends 16 frames on the flop, 8 on a turn or river, 4 on a
-push-out and 12 on the ship; the GIF 8, 4, 4 and 6. When reproducing this, press and pin in ONE
-`page.evaluate`: Playwright's clock does not drive the document timeline, so a second round trip
-lets the springs run in real time (a 90ms label fade is over before it lands).
+Checked in Playwright WebKit on that hand (`node scripts/check-replay-export-motion.mjs <scratch url>
+--out <dir>`): every seeked frame of the turn and the river, and every other one of the result, is
+compared with the live replayer pinned at the same instant through `document.getAnimations()` (not
+the registry): board cards, swept wagers' ghosts, shipped chips and the pot figure, to 0.5px and
+0.005 of opacity. It also writes the frames side by side (`<moment>-gif-vs-live.png`,
+`<moment>-video-vs-live.png`) and exits non-zero on any difference. When reproducing this, press and
+pin in ONE `page.evaluate`, and pin at 0 until every animation has its start before running the
+clock: Playwright's clock does not drive the document timeline, and the registry times an arrival
+from its animation's real start.
 
-**The cost, measured** (same 8-max hand, 22 steps, Playwright WebKit on the Windows box, springs
-off vs on): the video export took 95s vs 460s (22 captures vs 102: the flop 16, turn and river 8
-each, ship 12, and 36 for nine push-outs of 4), the GIF 223s vs 288s (its encode dominates). Every
-capture is one modern-screenshot pass, so expect the same ratio on a phone. If that is too slow, the
-cheapest cut is to finish push-outs instead of seeking them in the video (66 captures, about 3x),
-then a motion-frame budget like the GIF's.
+**The cost, measured** (the same 8-max hand, 22 steps, Playwright WebKit on the Windows box, springs
+off vs on, 2026-10-13). The box was carrying 30-75% CPU from other work, and two runs of one build
+differed by up to 20%, so read the ratios, not the seconds:
+
+| Export | Springs off | Springs on (Set A) | Ratio | Captures |
+|---|---|---|---|---|
+| Video | 115-125s | 421-511s | 3.6-4.1x | 22 vs 68 (3.1x) |
+| GIF | 120-137s | 286-359s | 2.4-2.6x | 22 vs 46 (2.1x) |
+
+Round 1 measured the video at 4.8x with every push-out seeked (102 captures); the push-outs now export
+as their settled frame, and the turn, the river and the result are all seeked. A capture costs about 4s here, nearly all of it WebKit rasterising the
+foreignObject image on the CPU (`image to canvas` 3.4-3.8s against 0.3-0.4s to clone the table), so
+the time is the number of captures. The result's frames cost about half as much again as the
+others: modern-screenshot redraws the image once per embedded image, 100ms apart, to work around a
+Safari decoding bug, and the showdown has 11 images against 4. Motion frames are kept as ImageBitmaps
+up to 128MB (`MOTION_BITMAP_BYTES`) and only past that as PNG blobs; the PNG round trip had cost
+more than the capture itself. What would cut further: fewer seeked frames in the result (17 at
+24fps: the river's wagers going in, then the pot), or a shorter redraw interval on motion frames once
+that is proven on an iPhone.
 
 ## Autoplay
 

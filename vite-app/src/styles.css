@@ -4823,10 +4823,13 @@
       --z-strip: 3;
       --z-seat: 4;
       --z-board: 5;
-      --z-pot: 6;
-      --z-bet: 7;
-      --z-dealer: 8;    /* 57: nothing covers the button */
-      --z-flight: 9;
+      /* A swept wager's chips on their way into the pot (the spring path): over the board, under
+         the pot, so they never cover its figure and they settle into the pile, not on top of it. */
+      --z-sweep: 6;
+      --z-pot: 7;
+      --z-bet: 8;
+      --z-dealer: 9;    /* 57: nothing covers the button */
+      --z-flight: 10;
 
       /* 50: four objects within 40px of each other cast four different
          shadows — the plaques a shared --plaque-bevel at 0 3px 8px / 55%, the
@@ -7480,18 +7483,40 @@
       z-index: var(--z-flight);
       pointer-events: none;
     }
-    .replayer-motion-layer .replayer-chip-ghost { animation: none; transition: none; }
-    /* A ghost's pill, behind its chips and amount, fading with the amount as the chips leave. */
-    .replayer-chip-ghost-pill { position: absolute; z-index: -1; pointer-events: none; }
+    /* The sweep's own layer, the same box one step lower: the ghosts fly over the board and under
+       the pot (--z-sweep), so the pot's figure is never covered as they land on the pile. The pot
+       shipped to a winner flies here too, under the pot's figure, the wagers and the button, so it
+       never covers a figure on its way; it comes out from under the pile as the pile empties. */
+    .replayer-motion-layer.replayer-sweep-layer { z-index: var(--z-sweep); }
+    /* The pile once the pot has gone to the winner: its stacks are not drawn (each fades out as its
+       chip leaves; utils/replayer-motion.js emptyPile), so the money is never on the felt twice. */
+    .replayer-pot-chips.is-shipped > .replayer-pot-chip-stack { opacity: 0; }
+    /* A swept wager's ghost: a wrapper at the wager's own left/top that flies, sized by a copy of
+       the wager inside it (its face: pill, chips and amount, every theme's rules and all), which
+       fades out as the chips leave, and over it a copy of the chips alone, which goes on to land on
+       the pile. Nothing is copied out of computed styles, so making a ghost reads nothing back. */
+    .replayer-chip-ghost { position: absolute; pointer-events: none; }
+    .replayer-chip-ghost > .replayer-chip-ghost-face {
+      position: relative; left: auto; top: auto; transform: none;
+      animation: none; transition: none; z-index: 0;
+    }
+    .replayer-chip-ghost > .replayer-chip-ghost-chips { position: absolute; margin: 0; z-index: 1; }
     /* The shipped chip IS the pot, gold, as the CSS flight's chip was; the spring moves it. */
     .replayer-flying-chip.to-winner.is-spring { animation: none; }
+    /* The ship flies inside these: each is the felt with a set of holes cut out (the winners'
+       plaques and their hands' names, their hole cards, the dealer button; clip-path set by
+       shipPot), so a chip that reaches a winner's seat tucks under the plaque's edge rather than
+       crossing the name or the digits. */
+    .replayer-ship-clip { position: absolute; inset: 0; pointer-events: none; }
+    /* An unseen flying chip, laid out with the table, that the ship sizes its chips by without
+       creating one first and reading it back. */
+    .replayer-chip-probe { visibility: hidden; animation: none; left: 0; top: 0; }
     /* The winner's plaque takes its gold as the first shipped chip lands rather than at the press:
-       the "0.30s, the winner's plaque takes it" beat above, on the spring's arrival (arm, progress
-       0.98). Only into the state; stepping back clears it at once. */
-    .replayer-table[data-springs="A"] { --spring-ship-arrive: 245ms; }
-    .replayer-table[data-springs="B"] { --spring-ship-arrive: 214ms; }
+       the "0.30s, the winner's plaque takes it" beat above, on the spring's first arrival (progress
+       0.98), which the table carries as --spring-ship-arrive for the current autoplay rate. Only
+       into the state; stepping back clears it at once. */
     .replayer-table[data-springs] .replayer-seat:is(.winner, .split) .replayer-seat-info {
-      transition-delay: var(--spring-ship-arrive);
+      transition-delay: var(--spring-ship-arrive, 245ms);
     }
     @media (prefers-reduced-motion: reduce) {
       .replayer-replay .replayer-motion-layer { display: none !important; }
@@ -8187,6 +8212,10 @@
       pointer-events: none;
     }
     .replayer-table[data-capturing="1"] .replayer-bookend.is-live { display: flex; }
+    /* While an export seeks a spring moment frame by frame (replay-capture.js), the table is the
+       picture: the closing bookend waits for the settled still after the pot has been shipped,
+       instead of covering the table from the result's first frame with the chips flying over it. */
+    .replayer-table[data-capturing="1"][data-capture-motion] .replayer-bookend.is-live { display: none; }
     .replayer-bookend-eyebrow {
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold);
@@ -15345,7 +15374,7 @@
          the felt collapsed to 0×0 and every seat card fell back to its SVG's
          natural 19r height. Define the same set here, against this box. */
       container-type: size;
-      --z-felt: 1; --z-mark: 2; --z-strip: 3; --z-seat: 4; --z-board: 5; --z-pot: 6; --z-bet: 7; --z-dealer: 8; --z-flight: 9;
+      --z-felt: 1; --z-mark: 2; --z-strip: 3; --z-seat: 4; --z-board: 5; --z-sweep: 6; --z-pot: 7; --z-bet: 8; --z-dealer: 9; --z-flight: 10;
       --cast-x: 0; --cast-y: calc(var(--subrow) * 0.25); --cast-blur: calc(var(--subrow) * 0.5);
       --plate-bevel:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55),
