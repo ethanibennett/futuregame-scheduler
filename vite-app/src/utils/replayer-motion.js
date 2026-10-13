@@ -69,6 +69,9 @@ export class MotionRegistry {
     this.captureFps = 0;
     this.captureNow = 0;
     this.momentKind = null;
+    // The step the running moment was started for: a moment runs once per step, however many times
+    // the layout pass runs, so an award can never be counted into a stack twice.
+    this.momentKey = null;
     this.pendingPot = 0;
     this.pendingStacks = new Map();
     // Supplied by the component: write the pot / a stack's digits, and one React render when
@@ -90,6 +93,15 @@ export class MotionRegistry {
   beginMoment(kind) {
     this.momentKind = kind;
     this.captureNow = 0;
+    // When the moment's first animation really started (live): the press frame's end, on the
+    // document's clock. Anything built for the moment later keeps the moment's time from it.
+    this.momentStart = null;
+  }
+
+  /** How long the running moment has been playing (ms, live), from its first animation's real start. */
+  momentElapsed(fallbackFrom) {
+    const from = this.momentStart != null ? this.momentStart : fallbackFrom;
+    return from != null ? Math.max(0, nowMs() - from) : 0;
   }
 
   /**
@@ -148,6 +160,7 @@ export class MotionRegistry {
       let ct = 0;
       try { ct = Math.max(0, anim.currentTime || 0); } catch (e) { ct = 0; }
       entry.startedAt = nowMs() - ct;
+      if (this.momentStart == null) this.momentStart = entry.startedAt;
       if (transient) {
         clearTimeout(entry.timer);
         entry.timer = setTimeout(() => this._done(entry), Math.max(0, kf.end + 50 - ct));
@@ -297,6 +310,7 @@ export class MotionRegistry {
     this.pendingPot = 0;
     this.pendingStacks.clear();
     this.momentKind = null;
+    this.momentKey = null;
     this.captureNow = 0;
     this._settle();
   }
@@ -586,23 +600,34 @@ export function pushOut(reg, { set, rate = 1, el, dir, pushPx, addOn = false, si
  * the board. Pure: everything comes from the caller's measurements and the registry's state, so the
  * board can be staged after the crossing before anything is written.
  *
- * Each ghost lands ON the pile: on the stack of its own top chip's colour as the pile will be once
- * it has landed (the pile is a centred row of one stack per colour, so that position is known
- * without measuring), its chips' bottom on the pile's bottom. Without a pile (chip stacks off, side
- * pots) it lands on the pot's anchor.
+ * Each ghost lands ON the pile as it will be once the whole sweep has landed, never on a composition
+ * of the amounts in between. (It used to follow the running total, and a pot of 38,000 is three
+ * stacks, 50,000 one and 62,000 three again: two stacks vanished while chips were being added to
+ * them, and the third slid out from under a stack that reappeared over it.) The caller makes the
+ * pile's row that final row as the chips leave (the stacks that stay make room, the new ones are held
+ * unseen) and changes the heights once, at the first landing. The pile is a centred row of one stack
+ * per colour, so the final row's slots are known without measuring. A ghost lands on its own top
+ * chip's colour; one whose colour the final pile does not have lands on a colour that is new to the
+ * pile, and a new colour no ghost's own colour brings is brought by a ghost that shares a stack with
+ * another (a colour-up), so a new stack never appears without a ghost under it while there are
+ * ghosts enough. Otherwise a ghost lands on the stack nearest the centre. Its chips' bottom lands on
+ * the pile's bottom. Without a pile (chip stacks off, side pots) it lands on the pot's anchor.
  *
  * @param {object} p
  * @param {{seat:number, amount:number, el:Element, geo:object, topColor:string}[]} p.wagers  collect order
  *        geo: { cx, cy, w, h, chip: { dx, dy, w, h } }  client px: the wager's resting centre and box,
  *        its chips' centre relative to it and size
- * @param {object} p.pile  { cx, cy, bottom, pitch, base, stacksFor(amount) => [{color}] } or { cx, cy }
+ * @param {object} p.pile  { cx, cy, bottom, pitch, base, stacksFor(amount) => [{color}], colors } or
+ *        { cx, cy }. base: the pot the pile shows now; colors: the colours it shows now.
  * @param {object} [p.board]  the rect a crossing chip must clear before the board moves
+ * @returns {object[]} the plan, in leaving order, with `final` ({ colors, fresh, unclaimed }: the
+ *          pile once landed, its colours that are not on it now, and those no ghost lands on) and
+ *          `color` per ghost (the stack it lands on)
  */
 export function planSweep(reg, { set, rate = 1, wagers, pile, board = null }) {
   const st = stageOf(set);
   const n = wagers.length;
   const stagger = n > 1 ? Math.min(st.sweepStagger, st.sweepCap / (n - 1)) : 0;
-  let running = pile.base || 0;
   const startOf = (w) => {
     const g = w.geo;
     const s = reg.state(w.el);
@@ -619,18 +644,54 @@ export function planSweep(reg, { set, rate = 1, wagers, pile, board = null }) {
     return !!(span && span[1] > 0 && span[1] < 1);
   }) : wagers.map(() => false);
   const order = wagers.map((_, i) => i).sort((a, b) => (crossing[b] - crossing[a]) || (a - b));
-  return order.map((wi, i) => {
+  // The pile once everything has landed, and which ghost lands on which of its stacks.
+  const tracks = !!(pile.stacksFor && pile.pitch > 0);
+  const finalColors = tracks ? pile.stacksFor((pile.base || 0) + wagers.reduce((t, w) => t + w.amount, 0)).map(x => x.color) : [];
+  const now = new Set(pile.colors || []);
+  const fresh = finalColors.filter(c => !now.has(c));
+  const claimed = new Set();
+  const slotOf = (w) => {
+    let idx = finalColors.indexOf(w.topColor);
+    if (idx < 0) {
+      const c = fresh.find(x => !claimed.has(x) && !wagers.some(o => o.topColor === x));
+      if (c) idx = finalColors.indexOf(c);
+    }
+    if (idx < 0) {
+      const mid = (finalColors.length - 1) / 2;
+      idx = Math.floor(mid);
+    }
+    const color = finalColors[idx] || null;
+    if (color) claimed.add(color);
+    return { idx, color };
+  };
+  const slots = new Map();
+  if (tracks && finalColors.length) {
+    for (const wi of order) slots.set(wi, slotOf(wagers[wi]));
+    /* A colour-up: a stack new to the pile that no ghost's own colour brings is brought by a ghost
+       that shares its stack with another (the later to leave, so it lands last): its chips land in
+       the new stack's place and the stack fades in under them as they fade. Only when every ghost
+       has a stack of its own does a new stack appear with the first landing, under none. */
+    for (const c of fresh.filter(x => !claimed.has(x))) {
+      for (let k = order.length - 1; k >= 0; k--) {
+        const cur = slots.get(order[k]);
+        if (!cur.color || !order.some(o => o !== order[k] && slots.get(o).color === cur.color)) continue;
+        slots.set(order[k], { idx: finalColors.indexOf(c), color: c });
+        claimed.add(c);
+        break;
+      }
+    }
+  }
+  const plan = order.map((wi, i) => {
     const w = wagers[wi];
     const g = w.geo;
     const { s, ox, oy, start } = startOf(w);
     const vx = s ? s.vel.x : 0, vy = s ? s.vel.y : 0;
-    running += w.amount;
     let target = { x: pile.cx, y: pile.cy };
-    if (pile.stacksFor && pile.pitch > 0) {
-      const stacks = pile.stacksFor(running);
-      let idx = stacks.findIndex(x => x.color === w.topColor);
-      if (idx < 0) idx = (stacks.length - 1) / 2;
-      target = { x: pile.cx + (idx - (stacks.length - 1) / 2) * pile.pitch, y: pile.bottom - g.chip.h / 2 };
+    let color = null;
+    if (slots.has(wi)) {
+      const slot = slots.get(wi);
+      color = slot.color;
+      target = { x: pile.cx + (slot.idx - (finalColors.length - 1) / 2) * pile.pitch, y: pile.bottom - g.chip.h / 2 };
     }
     const dX = target.x - start.x, dY = target.y - start.y, travel = Math.hypot(dX, dY);
     const vAlong = travel > 0.5 ? (vx * dX + vy * dY) / travel : 0;
@@ -645,8 +706,11 @@ export function planSweep(reg, { set, rate = 1, wagers, pile, board = null }) {
       const span = segmentInRect(start, target, inflate(board, g.chip.w / 2, g.chip.h / 2));
       if (span && span[1] > 0 && span[1] < 1) clear = d + timeTo(hand, Math.min(0.999, span[1])) / rate;
     }
-    return { w, s, start, target, hand, d, arrive, travel, crosses: clear != null, clear, ox, oy };
+    return { w, s, start, target, hand, d, arrive, travel, crosses: clear != null, clear, ox, oy, color };
   });
+  // A new colour no ghost lands on (fewer ghosts than new stacks) appears with the first landing.
+  plan.final = { colors: finalColors, fresh, unclaimed: fresh.filter(c => !claimed.has(c)) };
+  return plan;
 }
 
 /**
@@ -661,7 +725,7 @@ export function planSweep(reg, { set, rate = 1, wagers, pile, board = null }) {
  * @param {object} p
  * @param {Element} p.layer                         the motion layer (the table's padding box)
  * @param {object[]} p.plan                         from planSweep
- * @param {(amount:number, last:boolean) => void} p.onArrive
+ * @param {(amount:number, last:boolean, item:object) => void} p.onArrive
  * @returns {number} how long the sweep lasts (ms)
  */
 export function sweepWagers(reg, { set, rate = 1, layer, plan, onArrive }) {
@@ -691,6 +755,15 @@ export function sweepWagers(reg, { set, rate = 1, layer, plan, onArrive }) {
     face.style.left = face.style.top = '';
     const chipsEl = face.querySelector('.chip-stack-visual');
     const chips = chipsEl ? chipsEl.cloneNode(true) : null;
+    if (chipsEl && chips && chipsEl.children.length > 1) {
+      /* The face keeps its layout, not its chips: they fly in the copy over it, and a second set
+         left fading in place was drawn twice for the label's fade. One unseen disc holds the
+         stack's width, a margin the height of the rest (fewer elements to style on the press). */
+      const n = chipsEl.children.length;
+      while (chipsEl.children.length > 1) chipsEl.removeChild(chipsEl.lastElementChild);
+      chipsEl.classList.add('is-spacer');
+      chipsEl.style.setProperty('--rest', String(n - 1));
+    }
     ghost.appendChild(face);
     if (chips) {
       chips.classList.add('replayer-chip-ghost-chips');
@@ -708,7 +781,7 @@ export function sweepWagers(reg, { set, rate = 1, layer, plan, onArrive }) {
     const channels = [
       { prop: 'x', spring: hand, from: p.ox, to: tx, delay: d, timeScale: rate },
       { prop: 'y', spring: hand, from: p.oy, to: ty, delay: d, timeScale: rate },
-      { prop: 'scale', fn: (t) => { const q = t <= d ? 0 : t === Infinity ? 1 : hand.at((t - d) * rate); return 1 + lift * liftOf(Math.min(1, Math.max(0, q))); }, end: arrive + fade },
+      { prop: 'scale', fn: (t) => { const q = t <= d ? 0 : t === Infinity ? 1 : hand.at((t - d) * rate); return 1 + lift * liftOf(Math.min(1, Math.max(0, q))); }, start: d, end: arrive + fade },
       { prop: 'scaleX', spring: flick, from: st.squash[0], to: 1, before: 1, delay: arrive, timeScale: rate },
       { prop: 'scaleY', spring: flick, from: st.squash[1], to: 1, before: 1, delay: arrive, timeScale: rate },
       { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: fade } },
@@ -724,8 +797,8 @@ export function sweepWagers(reg, { set, rate = 1, layer, plan, onArrive }) {
         options: { duration: st.labelFade / rate, delay: d, fill: 'backwards' },
       }],
     });
-    if (!entry) { ghost.remove(); onArrive(w.amount, i === n - 1); return; }
-    reg.tick(arrive, () => onArrive(w.amount, i === n - 1), entry);
+    if (!entry) { ghost.remove(); onArrive(w.amount, i === n - 1, p); return; }
+    reg.tick(arrive, () => onArrive(w.amount, i === n - 1, p), entry);
     last = Math.max(last, arrive + fade);
   });
   return last;
@@ -757,21 +830,45 @@ export function sweepWagers(reg, { set, rate = 1, layer, plan, onArrive }) {
  *          first touches the edge
  */
 export function seatLanding(origin, plaque, { cards = [], button = null, covers = [], name = null, chipD = 12 } = {}) {
-  const P = plaque, r = chipD / 2, m = 1;
+  /* Room: how far the chip's edge is from the nearest hole card or the button where it lands, and
+     from the button all the way in (a straight path: the handful's fan has closed by then, see
+     shipPot). A landing keeps half a chip of it where any landing on the plaque can (at 1px the
+     hero's pot threaded a one-chip gap between the button and a card on desktop, and a diagonal
+     way in grazed the button's corner); where none can (the hero on a phone: the cards leave an
+     18px shoulder), a pixel, as before. Within that, a landing with less than a chip of room pays 4
+     per px short, so a roomy shoulder beats a slightly nearer crevice. The way in is measured
+     against the button only: a chip slipping past the edge of a hole card tucks under it, as it
+     does under the plaque, and running under the cards is the hidden-path cost's business; the
+     button is a token on the plaque's corner, and a chip grazing it reads as a collision.
+     mn: the name's own margin (it is inside the plaque; the chip rests half a chip in from the edge). */
+  const P = plaque, r = chipD / 2, mn = 1;
   const edges = [];
   if (origin.y < P.top) edges.push({ edge: 'top', n: { x: 0, y: -1 }, a: { x: P.left, y: P.top }, b: { x: P.right, y: P.top } });
   if (origin.y > P.bottom) edges.push({ edge: 'bottom', n: { x: 0, y: 1 }, a: { x: P.left, y: P.bottom }, b: { x: P.right, y: P.bottom } });
   if (origin.x < P.left) edges.push({ edge: 'left', n: { x: -1, y: 0 }, a: { x: P.left, y: P.top }, b: { x: P.left, y: P.bottom } });
   if (origin.x > P.right) edges.push({ edge: 'right', n: { x: 1, y: 0 }, a: { x: P.right, y: P.top }, b: { x: P.right, y: P.bottom } });
   const diskHits = (c, rad, box) => box && c.x + rad > box.left && c.x - rad < box.right && c.y + rad > box.top && c.y - rad < box.bottom;
+  // How far the chip's edge is from a box, along the axes' worst case (the disk test's own measure).
+  const roomTo = (c, box) => Math.max(box.left - c.x, c.x - box.right, box.top - c.y, c.y - box.bottom) - r;
+  // How far the chip's edge comes to a box along the straight path a -> b (-r where its centre
+  // crosses the box).
+  const pathRoomTo = (a, b, box) => {
+    if (segmentInRect(a, b, box)) return -r;
+    const ptBox = (p) => Math.hypot(Math.max(box.left - p.x, 0, p.x - box.right), Math.max(box.top - p.y, 0, p.y - box.bottom));
+    const vx = b.x - a.x, vy = b.y - a.y, vv = vx * vx + vy * vy || 1;
+    const ptSeg = (p) => { const u = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / vv)); return Math.hypot(a.x + vx * u - p.x, a.y + vy * u - p.y); };
+    const corners = [{ x: box.left, y: box.top }, { x: box.right, y: box.top }, { x: box.left, y: box.bottom }, { x: box.right, y: box.bottom }];
+    return Math.min(ptBox(a), ptBox(b), ...corners.map(ptSeg)) - r;
+  };
   const blockers = [...cards, button].filter(Boolean);
   const hidden = [...covers, P].filter(Boolean);
-  let best = null;
+  const cands = [];
   for (const e of edges) {
     const L = Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y);
     const ux = (e.b.x - e.a.x) / (L || 1), uy = (e.b.y - e.a.y) / (L || 1);
-    // Every half pixel along the edge, a chip's radius in from each corner, both ends included.
-    const span = L - 2 * r, steps = Math.max(0, Math.ceil(span / 0.5));
+    // Every pixel along the edge, a chip's radius in from each corner, both ends included (every half
+    // pixel was twice the work, a few ms of a frame at a 4x CPU throttle, for nothing visible).
+    const span = L - 2 * r, steps = Math.max(0, Math.ceil(span));
     for (let k = 0; k <= steps; k++) {
       const s = r + (steps ? span * k / steps : 0);
       const E = { x: e.a.x + ux * s, y: e.a.y + uy * s };
@@ -780,58 +877,83 @@ export function seatLanding(origin, plaque, { cards = [], button = null, covers 
       const cos = (e.n.x * ox + e.n.y * oy) / dist;
       let cost = dist;
       if (cos < 0.3) cost += 1e5;                                     // a grazing arrival
-      if (blockers.some(bx => diskHits(E, r + m, bx))) cost += 1e5;   // touches a card or the button
-      if (name && diskHits(T, r + m, name)) cost += 1e6;              // the name, never
+      const room = blockers.length
+        ? Math.min(...blockers.map(bx => roomTo(E, bx)), button ? pathRoomTo(origin, E, button) : Infinity) : Infinity;
+      if (blockers.length) cost += 4 * Math.max(0, chipD - room);
+      if (name && diskHits(T, r + mn, name)) cost += 1e6;             // the name, never
       // Under what hides it on the way, px of path: heavily, the chip would vanish short of the edge.
-      const out = { x: E.x + e.n.x * (r + m), y: E.y + e.n.y * (r + m) };
+      const out = { x: E.x + e.n.x * (r + mn), y: E.y + e.n.y * (r + mn) };
       let under = 0;
       for (const h of hidden) {
-        const span = segmentInRect(origin, out, inflate(h, r));
-        if (span) under += (span[1] - span[0]) * Math.hypot(out.x - origin.x, out.y - origin.y);
+        const sp = segmentInRect(origin, out, inflate(h, r));
+        if (sp) under += (sp[1] - sp[0]) * Math.hypot(out.x - origin.x, out.y - origin.y);
       }
       cost += under * 8;
-      if (!best || cost < best.cost) best = { cost, E, T, edge: e.edge };
+      cands.push({ cost, room, under, E, T, edge: e.edge });
     }
   }
+  /* In tiers: half a chip of room with a way in that is not hidden (at most half a chip of it under
+     a card or the button), then a pixel of room with such a way in, then a pixel of room, then the
+     cheapest. A way in under the hole cards would have the pot vanish into them and come out the
+     other side, at the far end of the plaque from the pile: a pixel of room on the edge nearest the
+     pile is better than that. */
+  let best = null;
+  for (const [need, hide] of [[chipD / 2, r], [1, r], [1, Infinity], [-Infinity, Infinity]]) {
+    for (const c of cands) if (c.room >= need && c.under <= hide && (!best || c.cost < best.cost)) best = c;
+    if (best && best.cost < 1e5) break;
+    best = null;
+  }
+  if (!best) for (const c of cands) if (!best || c.cost < best.cost) best = c;
   if (!best) {
     const c = { x: (P.left + P.right) / 2, y: (P.top + P.bottom) / 2 };
     return { x: c.x, y: c.y, contact: c, edge: 'centre' };
   }
-  return { x: best.T.x, y: best.T.y, contact: best.E, edge: best.edge };
+  return { x: best.T.x, y: best.T.y, contact: best.E, edge: best.edge, room: best.room };
 }
 
-/* The flight layer for the ship: nested boxes over the table, each with one evenodd clip (the felt
-   minus a set of non-overlapping holes: the plaques and the hands' names, then the hole cards, then
-   the dealer button), so what flies inside is hidden wherever any of them is. */
-function shipClip(layer, L, holes) {
+/* The flight layer for the ship: nested boxes, each with one evenodd clip (the box minus a set of
+   non-overlapping holes: the plaques and the hands' names, then the hole cards, then the dealer
+   button), so what flies inside is hidden wherever any of them is. The boxes span only the flights'
+   bounding box, not the felt: a clip-path over moving children is a mask the size of its box, and
+   at full size the result press added four table-sized layers (+62% drawn area), which desktop
+   WebKit rasterised at one frame a second. A level whose holes all miss the box is not built. */
+function shipClip(layer, L, B, holes) {
   const pct = (v, o, s) => ((v - o) / s * 100).toFixed(3) + '%';
+  const W = Math.max(1, B.right - B.left), H = Math.max(1, B.bottom - B.top);
   const poly = (rects) => {
     const pts = ['0% 0%', '100% 0%', '100% 100%', '0% 100%', '0% 0%'];
     for (const r of rects) {
-      const x1 = pct(r.left, L.left, L.width), x2 = pct(r.right, L.left, L.width);
-      const y1 = pct(r.top, L.top, L.height), y2 = pct(r.bottom, L.top, L.height);
+      const x1 = pct(Math.max(r.left, B.left), B.left, W), x2 = pct(Math.min(r.right, B.right), B.left, W);
+      const y1 = pct(Math.max(r.top, B.top), B.top, H), y2 = pct(Math.min(r.bottom, B.bottom), B.top, H);
       pts.push(`${x1} ${y1}`, `${x2} ${y1}`, `${x2} ${y2}`, `${x1} ${y2}`, `${x1} ${y1}`, '0% 0%');
     }
     return 'polygon(evenodd, ' + pts.join(', ') + ')';
   };
+  const meets = (r) => r && r.right > B.left && r.left < B.right && r.bottom > B.top && r.top < B.bottom;
+  const box = (parent, first) => {
+    const el = document.createElement('div');
+    el.className = 'replayer-ship-clip';
+    if (first) {
+      el.style.left = pct(B.left, L.left, L.width);
+      el.style.top = pct(B.top, L.top, L.height);
+      el.style.width = (W / L.width * 100).toFixed(3) + '%';
+      el.style.height = (H / L.height * 100).toFixed(3) + '%';
+    }
+    parent.appendChild(el);
+    return el;
+  };
   let parent = layer, outer = null;
   for (const set of holes) {
-    if (!set || !set.length) continue;
-    const box = document.createElement('div');
-    box.className = 'replayer-ship-clip';
-    box.style.clipPath = poly(set);
-    box.style.webkitClipPath = box.style.clipPath;
-    parent.appendChild(box);
-    if (!outer) outer = box;
-    parent = box;
+    const inBox = (set || []).filter(meets);
+    if (!inBox.length) continue;
+    const el = box(parent, !outer);
+    el.style.clipPath = poly(inBox);
+    el.style.webkitClipPath = el.style.clipPath;
+    if (!outer) outer = el;
+    parent = el;
   }
-  if (!outer) {
-    outer = document.createElement('div');
-    outer.className = 'replayer-ship-clip';
-    layer.appendChild(outer);
-    parent = outer;
-  }
-  return { outer, inner: parent };
+  if (!outer) { outer = box(layer, true); parent = outer; }
+  return { outer, inner: parent, box: { left: B.left, top: B.top, width: W, height: H } };
 }
 
 /**
@@ -849,13 +971,14 @@ export function shipStartAfterSweep(set, rate = 1, nWagers = 0) {
 
 /**
  * The pot shipped to the winner on the arm spring: five gold chips per winner (ten at most in all,
- * split pots in parallel), a handful rather than a file. Each leaves from one of the pile's stacks,
- * 22ms apart, on its own weight (arm, with the mass varied between 1.45, 1.6 and 1.75 on the same
- * stiffness and damping ratio), bowing a little to alternate sides, lifted over the board and set
- * down a little smaller, stretched along its path while it is fast (in place of the motion blur the
- * ads have), fully opaque for the whole flight. It comes out from under the pile as its stack
- * leaves (the pile empties, onDepart), lands on the plaque's edge nearest the pile (seatLanding) and
- * tucks under it, and at its arrival the stack takes a fifth of the award.
+ * split pots in parallel), a handful pushed across the felt rather than a file of coins. Each leaves
+ * from one of the pile's stacks, 6ms apart, on its own weight (arm, with the mass 1.55, 1.6 or 1.65
+ * on the same stiffness and damping ratio, so they land within about 30ms of each other), fanning
+ * out to alternate sides and closing up again, lifted over the board and set down a little smaller,
+ * stretched along its path while it is fast (in place of the motion blur the ads have), fully opaque
+ * from its first frame to its landing. It comes out from under the pile as its stack leaves (the
+ * pile empties, onDepart), lands on the plaque's edge nearest the pile (seatLanding) and tucks under
+ * it; onArrive is called at each landing, in the order they land.
  *
  * It flies in the sweep's layer: over the board and the seats, under the pot's figure, the wagers
  * and the button, so it never covers a figure on its way.
@@ -880,8 +1003,17 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts =
   const per = Math.max(1, Math.min(5, Math.floor(10 / dests.length)));
   const L = layerRect;
   const fade = st.arrivalFade / rate;
-  const appear = st.appear / rate;
-  const clip = shipClip(layer, L, holes);
+  /* The flights' bounding box: the pile's stacks, every landing, the widest bow either side, and a
+     chip at its largest (lifted, stretched) with a pixel to spare. */
+  const bowMax = Math.max(...st.shipBows.map(Math.abs)) * st.shipBow * cardW;
+  const pad = bowMax + chipD * (1 + st.shipLift) * (1 + st.stretchMax) + 2;
+  const xs = [...starts.map(x => origin.x + x), ...dests.map(d => d.x)], ys = [origin.y, ...dests.map(d => d.y)];
+  const bounds = {
+    left: Math.max(L.left, Math.min(...xs) - pad), right: Math.min(L.right != null ? L.right : L.left + L.width, Math.max(...xs) + pad),
+    top: Math.max(L.top, Math.min(...ys) - pad), bottom: Math.min(L.bottom != null ? L.bottom : L.top + L.height, Math.max(...ys) + pad),
+  };
+  const clip = shipClip(layer, L, bounds, holes);
+  const C = clip.box;
   // Under an export the frames are 42ms (video) or 80ms (GIF) apart, not 17: the stretch is sized to
   // the distance a chip covers between two of them (a 180-degree shutter, at most three diameters),
   // or five dots strobe across the table instead of a handful of chips in flight.
@@ -897,8 +1029,8 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts =
       chip.className = 'replayer-flying-chip to-winner is-spring';
       chip.setAttribute('aria-hidden', 'true');
       chip.dataset.fly = String(k++);   // a stable name for a measuring harness; they leave one by one
-      chip.style.left = ((origin.x - L.left) / L.width * 100).toFixed(4) + '%';
-      chip.style.top = ((origin.y - L.top) / L.height * 100).toFixed(4) + '%';
+      chip.style.left = ((origin.x - C.left) / C.width * 100).toFixed(4) + '%';
+      chip.style.top = ((origin.y - C.top) / C.height * 100).toFixed(4) + '%';
       chip.style.transform = 'translate(-50%, -50%)';
       clip.inner.appendChild(chip);
       const dx = dest.x - origin.x, dy = dest.y - origin.y;
@@ -910,10 +1042,12 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts =
       const bow = st.shipBows[i % st.shipBows.length] * st.shipBow * cardW;
       const nx = -dy / len, ny = cx / len;
       const prog = (t) => (t <= d ? 0 : t === Infinity ? 1 : arm.at((t - d) * rate));
-      // The handful fans out as it leaves and closes up on the way in: the bow peaks a third of the
-      // way (27q(1-q)^2/4) and is under a pixel by the time a chip passes the winner's cards, so the
-      // path seatLanding cleared is the path flown.
-      const arc = (t) => { const q = prog(t); return bow * 6.75 * q * (1 - q) * (1 - q); };
+      // The handful fans out as it leaves and has closed up by three quarters of the way: the bow
+      // peaks a quarter of the way (27u(1-u)^2/4, u = q/0.75) and is nothing from there on, so the
+      // last stretch past the winner's cards and the button is the straight path seatLanding
+      // cleared. (Closing at the landing, as 27q(1-q)^2/4 did, a wider fan was still 3-6px off that
+      // path there and grazed the button.)
+      const arc = (t) => { const u = Math.min(1, prog(t) / 0.75); return bow * 6.75 * u * (1 - u) * (1 - u); };
       // Live, in diameters per 60fps frame: 1 below about 0.6 (the chip reads as itself), up to
       // 1 + stretchMax along the path at about two diameters a frame (the peak is ~3.7).
       const stretch = (t) => {
@@ -925,12 +1059,14 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, starts =
       const channels = [
         { prop: 'x', spring: arm, from: sx, to: dx, delay: d, timeScale: rate },
         { prop: 'y', spring: arm, from: 0, to: dy, delay: d, timeScale: rate },
-        { prop: 'x', fn: (t) => nx * arc(t), end: arrive },
-        { prop: 'y', fn: (t) => ny * arc(t), end: arrive },
-        { prop: 'scale', fn: (t) => { const q = prog(t); return (1 + lift * 4 * q * (1 - q)) * (1 + (shrink - 1) * q); }, end: arrive + fade },
-        { prop: 'stretch', fn: stretch, end: arrive },
-        // Out from under its stack as the stack leaves; gone into the plaque after it lands.
-        { prop: 'opacity', ramp: { from: 0, to: 1, delay: d, duration: appear } },
+        { prop: 'x', fn: (t) => nx * arc(t), start: d, end: arrive },
+        { prop: 'y', fn: (t) => ny * arc(t), start: d, end: arrive },
+        { prop: 'scale', fn: (t) => { const q = prog(t); return (1 + lift * 4 * q * (1 - q)) * (1 + (shrink - 1) * q); }, start: d, end: arrive + fade },
+        { prop: 'stretch', fn: stretch, start: d, end: arrive },
+        // Fully opaque from its first frame: it is under its stack, which leaves with it (emptyPile),
+        // so the stack going is the chip appearing. Unseen until then (it waits under a pile that
+        // may not have that stack yet). Gone into the plaque after it lands.
+        { prop: 'opacity', ramp: { from: 0, to: 1, delay: d, duration: 0.5 } },
         { prop: 'opacity', ramp: { from: 1, to: 0, delay: arrive, duration: fade } },
       ];
       chip.style.opacity = '0';
@@ -967,25 +1103,10 @@ export function shipFirstArrival(set, rate = 1) {
 }
 
 /**
- * The pot's stacks making room when chips land on them: a stack that is still there moves from its
- * old place in the centred row to its new one on the critically damped yield spring (no bounce: it
- * is pushed aside). New stacks appear under the ghost that brought them.
- */
-export function shiftPile(reg, { set, rate = 1, moves }) {
-  const sp = tierOf(set, 'yield');
-  for (const { el, dx, size } of moves) {
-    if (Math.abs(dx) < 0.25) continue;
-    const s = reg.state(el);
-    const from = dx + (s ? s.val.x : 0);
-    reg.run(el, { channels: [{ prop: 'x', spring: sp, from, to: 0, timeScale: rate }], size, tolPx: 0.1 });
-  }
-}
-
-/**
- * The pile empties as the pot leaves it: each stack fades out (linear, over the arrival fade) as
- * the first shipped chip leaves from under it, the chips coming out where the stacks were. The
- * pile is drawn shipped from then on (its own style is the end state); a stack still making room
- * keeps moving while it fades.
+ * The pile empties as the pot leaves it: each stack goes, in a frame (stackOut), as the first shipped
+ * chip leaves from under it; the chip is under it and fully opaque, so the stack going is the chip
+ * appearing. The pile is drawn shipped from then on (its own style is the end state); a stack still
+ * making room keeps moving while it goes.
  * @param {{el:Element, size:{w:number,h:number}}[]} p.stacks   left to right
  */
 export function emptyPile(reg, { set, rate = 1, stacks }) {
@@ -993,18 +1114,69 @@ export function emptyPile(reg, { set, rate = 1, stacks }) {
   stacks.forEach(({ el, size }, j) => {
     const cont = reg.continuation(el, ['opacity']);
     reg.run(el, {
-      channels: [{ prop: 'opacity', ramp: { from: 1, to: 0, delay: (j * st.shipStagger) / rate, duration: st.arrivalFade / rate } }, ...cont],
+      channels: [{ prop: 'opacity', ramp: { from: 1, to: 0, delay: (j * st.shipStagger) / rate, duration: (st.stackOut || 16) / rate } }, ...cont],
       size, tolPx: 0.1,
     });
   });
 }
 
 /**
- * Something appearing at a moment's beat, linear 0 to 1 over 70ms (opacity is never a spring): the
- * won pill in front of the winner as the last of the pot lands on the plaque.
+ * The pile changing as a sweep comes in. As the chips leave the seats (delay: the sweep's
+ * yieldAfterSweep, as the board's row), a stack that stays moves from its old place in the centred
+ * row to its place in the final row on the critically damped yield spring: it makes room, it does
+ * not bounce. A stack new to the pile is held unseen until a ghost lands on it, then fades in under
+ * it in two frames (pileIn). One spring per stack, so a stack that both moves and appears does both.
+ * @param {{el:Element, dx:number, size:object}[]} p.moves
+ * @param {{el:Element, size:object}[]} p.reveals
+ * @param {number} [p.delay]  ms before the moves start (at rate 1)
  */
-export function appearAt(reg, { rate = 1, el, at, size, prefix = '' }) {
-  return reg.run(el, { channels: [{ prop: 'opacity', ramp: { from: 0, to: 1, delay: at, duration: 70 / rate } }], size, prefix });
+export function settlePile(reg, { set, rate = 1, moves = [], reveals = [], delay = 0 }) {
+  const st = stageOf(set);
+  const sp = tierOf(set, 'yield');
+  const byEl = new Map();
+  for (const { el, dx, size } of moves) {
+    if (Math.abs(dx) < 0.25) continue;
+    const s = reg.state(el);
+    const from = dx + (s ? s.val.x : 0);
+    byEl.set(el, { size, channels: [{ prop: 'x', spring: sp, from, to: 0, timeScale: rate, delay: delay / rate }] });
+  }
+  for (const { el, size } of reveals) {
+    const e = byEl.get(el) || { size, channels: reg.continuation(el, ['opacity']) };
+    e.channels.push({ prop: 'opacity', ramp: { from: 0, to: 1, delay: 0, duration: (st.pileIn || 33) / rate } });
+    byEl.set(el, e);
+  }
+  for (const [el, { size, channels }] of byEl) reg.run(el, { channels, size, tolPx: 0.1 });
+}
+
+/**
+ * Stacks leaving the pile (its colours change as it grows, the smallest chips coloured up): a copy
+ * of each, where it is, fades out over pileOut in the sweep's layer, from `delay`, while the pile is
+ * redrawn without it and the stacks that stay close up, instead of vanishing.
+ * @param {{el:Element, rect:DOMRect}[]} p.stacks   the stacks going, measured where they are seen
+ * @param {number} [p.delay]  ms before the fade starts (at rate 1)
+ */
+export function fadePileOut(reg, { set, rate = 1, layer, layerRect, stacks, delay = 0 }) {
+  const st = stageOf(set);
+  const L = layerRect;
+  for (const { el, rect } of stacks) {
+    const wrap = document.createElement('div');
+    wrap.className = 'replayer-pile-leaving';
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.style.left = ((rect.left - L.left) / L.width * 100).toFixed(4) + '%';
+    wrap.style.top = ((rect.top - L.top) / L.height * 100).toFixed(4) + '%';
+    wrap.style.width = (rect.width / L.width * 100).toFixed(4) + '%';
+    wrap.style.height = (rect.height / L.height * 100).toFixed(4) + '%';
+    const copy = el.cloneNode(true);
+    copy.removeAttribute('data-color');
+    wrap.appendChild(copy);
+    wrap.style.opacity = '0';
+    layer.appendChild(wrap);
+    const entry = reg.run(wrap, {
+      channels: [{ prop: 'opacity', ramp: { from: 1, to: 0, delay: delay / rate, duration: (st.pileOut || 50) / rate } }],
+      size: { w: rect.width, h: rect.height }, transient: true,
+    });
+    if (!entry) wrap.remove();
+  }
 }
 
 /**

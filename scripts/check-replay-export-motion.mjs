@@ -71,6 +71,11 @@ async function open({ clock = false, recorder = false } = {}) {
     localStorage.setItem('hasOnboarded', 'true'); localStorage.setItem('onboarded', '1');
     localStorage.setItem('replayerSprings', springs);
     try { delete Navigator.prototype.share; delete Navigator.prototype.canShare; } catch (e) {}
+    /* When each Web Animation was made, on the page's clock: live, the pot shipped at a result is
+       built a frame after the press (its delay shortened by the time that took), so pinning it at
+       the press's t would run it ahead by that frame. */
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (...a) { const an = animate.apply(this, a); try { an.__born = performance.now(); } catch (e) {} return an; };
     if (!recorder) return;
     window.__vf = { frames: [], dirty: false };
     const draw = CanvasRenderingContext2D.prototype.drawImage;
@@ -194,6 +199,7 @@ async function liveAt(t, shot) {
   // the pot, and removed the ghosts, t early. Then the clock runs to t (the arrivals due by then
   // land) and everything is pinned at t.
   await page.evaluate(async () => {
+    window.__pressAt = performance.now();
     document.querySelector('button[title="Forward"]').click();
     for (let i = 0; i < 6; i++) await Promise.resolve();
     const anims = document.getAnimations();
@@ -201,9 +207,14 @@ async function liveAt(t, shot) {
     await Promise.all(anims.map(a => (a.ready ? a.ready.catch(() => {}) : null)));
   });
   await page.clock.runFor(t); await hops();
-  // The clock run can start nothing measured (an arrival only moves the pile's stacks, which are
-  // not compared), but re-pin in case a commit made something.
-  await page.evaluate((t) => { for (const a of document.getAnimations()) { try { a.pause(); a.currentTime = t; } catch (e) {} } }, t);
+  // Re-pin everything at t from the press: an animation made during the clock run (the ship, built a
+  // frame after the press; a pile stack an arrival moved) at t less the time it was made at.
+  await page.evaluate((t) => {
+    for (const a of document.getAnimations()) {
+      const born = a.__born != null && a.__born > window.__pressAt ? a.__born - window.__pressAt : 0;
+      try { a.pause(); a.currentTime = Math.max(0, t - born); } catch (e) {}
+    }
+  }, t);
   const m = await page.evaluate(() => window.__meas());
   if (shot) await page.locator('.replayer-table').screenshot({ path: shot });
   // back to the step before the moment: Back finishes everything

@@ -31,7 +31,7 @@ as one physical system. The configs paste into Remotion's `spring({ fps, config 
 |---|---|---|---|
 | flick | damping 23.1, mass 0.55, settles 323ms | 32.3, 0.55, 257ms | a wager pushed out, the landing squash |
 | hand | 31.2, 1.0, 435ms | 43.5, 1.0, 347ms | the flop and turn/river placed, the sweep |
-| arm | 39.5, 1.6, 551ms | 55.0, 1.6, 439ms | the pot shipped to the winner (armLight 1.45 and armHeavy 1.75 vary the mass per chip) |
+| arm | 39.5, 1.6, 551ms | 55.0, 1.6, 439ms | the pot shipped to the winner (armLight 1.55 and armHeavy 1.65 vary the mass per chip) |
 | inertia | 48.3, 2.4, 674ms | 67.4, 2.4, 537ms | a card squaring up (rotation trails translation) |
 | yield | 28.9, 0.55, critically damped, 351ms | 37.5, 0.55, 271ms | the row making room: never bounces |
 | slide | 35.9, 1.0, zeta 0.92, 339ms | 46.4, 1.0, zeta 0.92, 256ms | the flop spreading: friction stops it |
@@ -50,11 +50,43 @@ staging (staggers, beats, rotation signs) beside each set.
 | Flop | The last street's wagers are swept in first. At 60ms the three cards are placed as one stack in slot 0, window card on top: they drop 0.15 card heights, scale 1.08 to 1 and square up from -3 degrees. At 210ms (a 150ms beat: the stack is read as the last swept chip lands) the window card slides to its slot on the slide spring, and the middle card follows 40ms behind it. | about 520ms |
 | Turn / river | Sweep, then the row yields: every card moves from where it was seen on one critically damped spring, and the new card's x rides the same spring a pitch to the right. The row has ONE start. It waits for a chip whose path crosses the board to clear it (those are collected first), at most 90ms; if any card is still moving (a fast tap over a running spread) every card starts at once, each with its own velocity. 30ms after the row the new card is placed: it drops, scales and squares up (+2.5 degrees on the turn, -2 on the river). | about 250ms for the board, 313ms with the sweep |
 | Bet, call, raise | The wager is fully legible on the press frame ("a wager is a fact, not an event"). It is pushed out from 0.55 board-card widths back toward its seat, shortened if the start would touch that seat's cards or badge. A raise over chips already out pushes again from 0.3 widths, from wherever the stack is. | about 150ms |
-| Sweep (street press) | Each wager on the felt becomes a ghost, a copy of the same stack, made in the commit that removes the wagers. Ghosts leave 40ms apart (all gone within 160ms), in action order except that a wager whose path crosses the board goes first. The amount and its pill fade as the chips leave, the chips fly to their own colour's stack of the pile under the pot's figure, lifted over the board, and at arrival the pot figure ticks up by that wager and the ghost squashes once as it fades. | arrivals at 193ms and 233ms |
-| Result: collect, then ship | The river's wagers are swept in first, as on a street press. Once they have landed and faded (283ms), the pot leaves the pile: five gold chips per winner (ten in all at most), 22ms apart, on the arm spring with the mass varied per chip. Each comes out from under the pile as its stack fades, so the pile empties. They fan out and close up again, fly under the pot figure, the wagers and the button, and land on the edge of the winner's plaque nearest the pile, tucking under it. The stack ticks up a fifth of the award at each arrival (527-626ms), the plaque takes its gold with the first, and the won pill in front of the winner appears with the last. | last chip gone at 676ms; 393ms when the river went in without wagers |
+| Sweep (street press) | Each wager on the felt becomes a ghost, a copy of the same stack, made in the commit that removes the wagers. Ghosts leave 40ms apart (all gone within 160ms), in action order except that a wager whose path crosses the board goes first. The amount and its pill fade as the chips leave, the chips fly to their own colour's stack of the pile under the pot's figure, lifted over the board, and at arrival the pot figure ticks up by that wager and the ghost squashes once as it fades. The pile changes once (see "The pile" below). | arrivals at 193ms and 233ms |
+| Result: collect, then ship | The river's wagers are swept in first, as on a street press. Once they have landed and faded (283ms), the pot leaves the pile: five gold chips per winner (ten in all at most), leaving 6ms apart, a handful rather than a file, on the arm spring with the mass varied a little per chip. Each comes out from under the pile, fully opaque from its first frame, as its stack goes in a frame. They fan out sideways and have closed up by three quarters of the way, fly under the pot figure, the wagers and the button, and land within about 35ms of each other on the edge of the winner's plaque nearest the pile, tucking under it. The stack counts up at the first, third and last landing (to the exact award) and the plaque takes its gold with the first. Nothing is pushed in front of the seat as well (see below). | last chip gone at about 617ms |
 
 The pot pill and its figure stay where they are at the result (no collect fade, per the standing
 ruling); the figure is the hand's pot, which the closing bookend reads too.
+
+### The pile
+
+The pile under the pot's figure is a centred row of one stack per chip colour, capped at five chips
+in all, so its colours change as the pot grows: 38,000 is teal, orange and gold, 50,000 is teal alone
+and 62,000 is the three again. A sweep never shows the compositions in between (following the
+running total made stacks vanish while chips were being added to them). It goes straight to the
+pile as it will be once every swept wager is in, in two beats:
+
+- **As the chips leave the seats** (40ms in), the row becomes the final row, every stack at the
+  height it has now. A stack that stays makes room on the critically damped yield spring; a stack
+  that leaves fades out where it is (50ms); a stack new to the pile holds its place unseen.
+- **At the first landing** the heights change, once, and the pot's digits tick. A new stack fades
+  in, in two frames, under the ghost that lands on it.
+
+Each ghost lands on its own top chip's colour in the final row. A new colour that no ghost's own
+colour brings is brought by a ghost that shares a stack with another (the later to leave): a
+colour-up, its chips landing in the new stack's place as the stack fades in under them. Only when
+there are fewer ghosts than new stacks does one appear with the first landing, under none.
+
+On the 8-max hand: at the flop the gold stack slides aside as the two orange wagers fly in; the
+first lands on the orange stack, the second colours up into teal. At the turn nothing moves, only
+the heights change. At the river the gold stack fades while teal and orange close up.
+
+### Nothing is pushed in front of the winner
+
+On the spring path the pot goes INTO the winner's plaque, so the won pill that flag `'0'` pushes in
+front of the seat at a result is not drawn. It was the pot on the felt a second time, appearing
+from nowhere 130px from where the pot landed; sent out of the plaque instead, it read as the pot
+leaving the winner. The stack counting up and the plaque's gold carry the award, and the pot pill
+keeps the hand's pot. With chip animation off in the settings the pill stays, since nothing else
+carries the award then.
 
 ### Where the pot lands
 
@@ -64,16 +96,24 @@ name plaque nearest the table's centre, and the stack figure updates on landing,
 the pile, every point a chip can touch without touching a hole card or the dealer button (and come
 to rest without touching the name) is a candidate. The nearest to the pile wins, unless the straight
 path to it runs under the cards, the button or the hand's name (heavily penalised) or would arrive
-at a grazing angle. Aimed at the plaque's centre, as before, a chip met the hole cards first
+at a grazing angle. A landing keeps half a chip of room from the cards and the button where it
+rests, and from the button all the way in, wherever any landing on that plaque can; then a pixel;
+and a way in that would hide the pot under the hole cards comes after any that does not. Within a
+tier, a landing with less than a chip of room pays for it, so a roomy spot beats a slightly nearer
+crevice. Aimed at the plaque's centre, as before, a chip met the hole cards first
 wherever they hang between the pot and the plaque, and vanished into them 10-80px short of it: the
 hero, the usual winner, every time. The flight layer has the plaques, the hands' names, the hole
 cards and the button cut out of it, so a chip that reaches the seat tucks under the plaque.
 
-Measured over all 31 seats (6, 8 and 9-max at 402x874, 8-max at 1440x900, each seat the winner, 60fps
-frames): no chip box ever overlaps the winner's name text (0px²), every chip comes to rest inside
-the plaque 6.6-10.2px from the edge it entered, and the stack ticks at each landing to the exact
-award. The hero lands on the top edge's free shoulder right of the cards on a phone, and between the
-button and the cards on desktop. Side seats land on the corner of the plaque nearest the pile,
+Measured over all 46 seats (6, 8 and 9-max at 402x874 and at 1440x900, each seat the winner, every
+4ms of the flight): no chip box ever overlaps the winner's name text (0px²), every chip comes to rest
+inside the plaque, and the stack ticks to the exact award. 42 seats land with 8px or more of room
+from the cards and the button. The hero on a phone lands on the top edge's shoulder right of the
+cards (4.2px from them; the 18px shoulder allows no more), the chips tucking 3px under the last
+card's edge on the way in. The hero at 1440 lands between the button and the cards with 8px each
+side on 6 and 8-max (it was 1px: the chips grazed the button), and 4px on 9-max, where the way in
+comes past the button's corner; the only roomier landing there is the far end of the plaque,
+behind the hole cards from the pile. Side seats land on the corner of the plaque nearest the pile,
 beside the cards; top seats on the bottom edge, beside the hand's name.
 
 Nothing else moves. Seat plaques (except the winner's digits), the dealer button, hole cards,

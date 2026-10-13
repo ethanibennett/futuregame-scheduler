@@ -7488,9 +7488,18 @@
        shipped to a winner flies here too, under the pot's figure, the wagers and the button, so it
        never covers a figure on its way; it comes out from under the pile as the pile empties. */
     .replayer-motion-layer.replayer-sweep-layer { z-index: var(--z-sweep); }
-    /* The pile once the pot has gone to the winner: its stacks are not drawn (each fades out as its
-       chip leaves; utils/replayer-motion.js emptyPile), so the money is never on the felt twice. */
+    /* The pile once the pot has gone to the winner: its stacks are not drawn (each goes as its chip
+       leaves; utils/replayer-motion.js emptyPile), so the money is never on the felt twice. */
     .replayer-pot-chips.is-shipped > .replayer-pot-chip-stack { opacity: 0; }
+    /* A stack new to the pile holds its place in the row, unseen, until a swept wager lands on it
+       (then it fades in under the ghost: settlePile). */
+    .replayer-pot-chip-stack.is-pending { opacity: 0; }
+    /* A stack leaving the pile as its colours change: a copy where it was, fading out over the
+       sweep's first landing (fadePileOut), in the sweep's layer under the pot's figure. */
+    .replayer-pile-leaving {
+      position: absolute; pointer-events: none;
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    }
     /* A swept wager's ghost: a wrapper at the wager's own left/top that flies, sized by a copy of
        the wager inside it (its face: pill, chips and amount, every theme's rules and all), which
        fades out as the chips leave, and over it a copy of the chips alone, which goes on to land on
@@ -7501,12 +7510,19 @@
       animation: none; transition: none; z-index: 0;
     }
     .replayer-chip-ghost > .replayer-chip-ghost-chips { position: absolute; margin: 0; z-index: 1; }
+    /* The face's own stack is a spacer (its chips fly in the copy over it): one unseen disc for the
+       width, a margin for the height of the discs it no longer has. */
+    .replayer-chip-ghost-face .chip-stack-visual.is-spacer > .chip-disc {
+      visibility: hidden;
+      margin-bottom: calc(var(--chip-h) * var(--rest, 0));
+    }
     /* The shipped chip IS the pot, gold, as the CSS flight's chip was; the spring moves it. */
     .replayer-flying-chip.to-winner.is-spring { animation: none; }
-    /* The ship flies inside these: each is the felt with a set of holes cut out (the winners'
-       plaques and their hands' names, their hole cards, the dealer button; clip-path set by
-       shipPot), so a chip that reaches a winner's seat tucks under the plaque's edge rather than
-       crossing the name or the digits. */
+    /* The ship flies inside these: the flights' bounding box (left/top/width/height set by shipPot;
+       a nested level fills its parent) with a set of holes cut out (the winners' plaques and their
+       hands' names, their hole cards, the dealer button), so a chip that reaches a winner's seat
+       tucks under the plaque's edge rather than crossing the name or the digits. Only the flights'
+       box: a clip over moving children is a mask the size of its box. */
     .replayer-ship-clip { position: absolute; inset: 0; pointer-events: none; }
     /* An unseen flying chip, laid out with the table, that the ship sizes its chips by without
        creating one first and reading it back. */

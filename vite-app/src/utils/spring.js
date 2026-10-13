@@ -19,9 +19,9 @@
    pushed aside to make room never bounces, and slide is damped to 0.92, because a card sliding on
    felt is stopped by friction and does not spring back (on the hand spring the flop's window card
    ran 1.1px past its slot and crept back for 120ms, the sharpest edge on the table never quite
-   still). armLight and armHeavy are the arm with its mass varied (same stiffness, same damping
-   ratio): the five chips shipped to a winner are a handful, each on its own weight, not five
-   copies of one flight. */
+   still). armLight and armHeavy are the arm with its mass varied a little either side of 1.6 (same
+   stiffness, same damping ratio): the five chips shipped to a winner are a handful, each on its own
+   weight, not five copies of one flight, and close enough in weight to arrive together. */
 export const SPRING_SETS = {
   // Set A, "House": k 380, zeta 0.80, 1.5% overshoot. A dealer's hands.
   A: {
@@ -33,8 +33,8 @@ export const SPRING_SETS = {
       inertia:  { stiffness: 380, damping: 48.3, mass: 2.4 },
       yield:    { stiffness: 380, damping: 28.9, mass: 0.55 },
       slide:    { stiffness: 380, damping: 35.9, mass: 1 },
-      armLight: { stiffness: 380, damping: 37.6, mass: 1.45 },
-      armHeavy: { stiffness: 380, damping: 41.3, mass: 1.75 },
+      armLight: { stiffness: 380, damping: 38.8, mass: 1.55 },
+      armHeavy: { stiffness: 380, damping: 40.1, mass: 1.65 },
     },
     stage: {
       sweepStagger: 40, sweepCap: 160,   // between wagers swept in; all gone within the cap
@@ -53,17 +53,27 @@ export const SPRING_SETS = {
       appear: 33, placeVelocity: 5,
       // The ghost touches down and is gone in three frames; its amount is gone in the first 10px.
       arrivalFade: 50, labelFade: 40,
+      // The pile: a stack new to it fades in under the ghost that lands on it, in two frames; one
+      // that leaves it (the pot's colours change as it grows) fades out as the row makes room
+      // (yieldAfterSweep after the sweep starts).
+      pileIn: 33, pileOut: 50,
       placeScale: 1.08, placeDrop: 0.15, // x card height
       rot: { flop: -3, turn: 2.5, river: -2 },
       push: 0.55, addOn: 0.3,            // x board card width
       squash: [1.04, 0.94],
       sweepLift: 0.06, crossLift: 0.15,  // a chip whose path crosses the board is visibly airborne
-      // The ship: a handful, bunched. Chip i flies on shipTiers[i], bowed shipBows[i] * shipBow
-      // board-card widths to one side, stretched up to 1 + stretchMax along its path while fast.
-      shipStagger: 22, shipTiers: ['arm', 'armHeavy', 'armLight', 'arm', 'armHeavy'],
+      // The ship: a handful pushed across the felt, not a file of coins. The five leave within 24ms
+      // (at 22ms apart, 2,400px/s strung them over 205px, 15 diameters), on masses close enough that
+      // they land within about 45ms of each other, and they fan out sideways instead: chip i flies on
+      // shipTiers[i], bowed shipBows[i] * shipBow board-card widths to one side, stretched up to
+      // 1 + stretchMax along its path while fast.
+      shipStagger: 6, shipTiers: ['arm', 'armHeavy', 'armLight', 'arm', 'armHeavy'],
       // stretchMax 0.35: a 1.35:1 smear at the fastest, a chip moving; at 0.6 it was a 2.1:1 capsule.
-      shipBow: 0.2, shipBows: [1, -1, 0.6, -0.6, 0.3], stretchMax: 0.35,
+      shipBow: 0.45, shipBows: [1, -1, 0.6, -0.6, 0.3], stretchMax: 0.35,
       shipLift: 0.15, shipShrink: 0.85,
+      // A pile stack leaves with its chip, in a frame: the chip is under it, fully opaque, so the
+      // stack going is the chip appearing (a 50ms fade over a fading-in chip was a muddy disc).
+      stackOut: 16,
     },
   },
   // Set B, "Snappy": k 640, zeta 0.86, 0.5% overshoot. A broadcast graphic.
@@ -76,22 +86,23 @@ export const SPRING_SETS = {
       inertia:  { stiffness: 640, damping: 67.4, mass: 2.4 },
       yield:    { stiffness: 640, damping: 37.5, mass: 0.55 },
       slide:    { stiffness: 640, damping: 46.4, mass: 1 },
-      armLight: { stiffness: 640, damping: 52.4, mass: 1.45 },
-      armHeavy: { stiffness: 640, damping: 57.6, mass: 1.75 },
+      armLight: { stiffness: 640, damping: 54.2, mass: 1.55 },
+      armHeavy: { stiffness: 640, damping: 55.9, mass: 1.65 },
     },
     stage: {
       sweepStagger: 25, sweepCap: 120,
       place: 40, beat: 140, midLag: 25, yieldAfterSweep: 25, cardLag: 20, boardWaitMax: 60, shipAfterSweep: 0,
       appear: 33, placeVelocity: 5,
       arrivalFade: 40, labelFade: 35,
+      pileIn: 33, pileOut: 40,
       placeScale: 1.05, placeDrop: 0.10,
       rot: { flop: -2, turn: 1.5, river: -1.5 },
       push: 0.4, addOn: 0.22,
       squash: [1.03, 0.955],
       sweepLift: 0.04, crossLift: 0.12,
-      shipStagger: 16, shipTiers: ['arm', 'armHeavy', 'armLight', 'arm', 'armHeavy'],
-      shipBow: 0.2, shipBows: [1, -1, 0.6, -0.6, 0.3], stretchMax: 0.35,
-      shipLift: 0.10, shipShrink: 0.85,
+      shipStagger: 5, shipTiers: ['arm', 'armHeavy', 'armLight', 'arm', 'armHeavy'],
+      shipBow: 0.45, shipBows: [1, -1, 0.6, -0.6, 0.3], stretchMax: 0.35,
+      shipLift: 0.10, shipShrink: 0.85, stackOut: 16,
     },
   },
 };
@@ -424,7 +435,10 @@ export function keyframes(channels, opts = {}) {
   const hasStretch = axis != null && props.includes('stretch');
   const hasScale = hasStretch || props.some(p => p === 'scale' || p === 'scaleX' || p === 'scaleY');
   const hasOpacity = props.includes('opacity');
-  const startOf = (c) => (c.fn ? 0 : c.ramp ? (c.ramp.delay || 0) : (c.delay || 0));
+  // A function channel can say when it starts moving (`start`): before that it holds, and the
+  // animation's delay covers it instead of samples (the pot shipped at a result waits ~280ms for
+  // the river's wagers to land: sampled from 0, that was 40% of its keyframes' work, all holding).
+  const startOf = (c) => (c.fn ? (c.start || 0) : c.ramp ? (c.ramp.delay || 0) : (c.delay || 0));
   let t0 = Infinity, tEnd = endOverride;
   for (const c of channels) t0 = Math.min(t0, startOf(c));
   t0 = Math.max(0, t0);
@@ -448,24 +462,65 @@ export function keyframes(channels, opts = {}) {
     ts.sort((a, b) => a - b);
     for (let i = ts.length - 1; i > 0; i--) if (ts[i] - ts[i - 1] < 1e-3) ts.splice(i, 1);
   }
-  const vals = ts.map(t => composeAt(channels, t));
+  /* Sampled channel-major into one typed array per property (a press builds every element of a
+     moment in the frame an old phone can least afford: an object per sample and a closure per
+     comparison made this most of the moment's script, 16ms of a result press at a 4x CPU throttle). */
+  const n = ts.length;
+  const arr = {};
+  for (const p of ['x', 'y', 'rotate', 'scale', 'scaleX', 'scaleY', 'opacity', 'stretch']) {
+    if (!props.includes(p) && !(p === 'scale' && hasScale)) continue;
+    arr[p] = new Float64Array(n).fill(IDENTITY[p]);
+  }
+  for (const ch of channels) {
+    const A = arr[ch.prop];
+    const add = ADD.has(ch.prop);
+    if (ch.spring && !ch.fn && !ch.ramp) {
+      const d = ch.delay || 0, k = ch.timeScale || 1, from = ch.from, span = ch.to - ch.from, sp = ch.spring;
+      const before = ch.before !== undefined ? ch.before : from;
+      for (let i = 0; i < n; i++) {
+        const t = ts[i];
+        const v = t < d ? before : from + span * sp.at((t - d) * k);
+        if (add) A[i] += v; else A[i] *= v;
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const v = channelValue(ch, ts[i]);
+        if (add) A[i] += v; else A[i] *= v;
+      }
+    }
+  }
   // Unless it is cut short (a ghost, gone at its end), the last keyframe is exactly where the element
   // rests, so the hand-off to its own style never jumps, however small.
-  if (endOverride == null) vals[vals.length - 1] = composeAt(channels, Infinity);
+  if (endOverride == null) {
+    const rest = composeAt(channels, Infinity);
+    for (const p in arr) arr[p][n - 1] = rest[p];
+  }
+  const one = (p) => arr[p] || null;
+  const valAt = (i) => {
+    const v = { ...IDENTITY };
+    for (const p in arr) v[p] = arr[p][i];
+    return v;
+  };
   // The error of a sample against the chord, in px: the largest over every animated dimension.
-  const dims = [['x', 'x'], ['y', 'y']];
-  if (hasRotate) dims.push(['rotate', 'rotate']);
-  if (hasScale) dims.push(['sx', 'scaleX'], ['sy', 'scaleY']);
-  if (hasOpacity) dims.push(['opacity', 'opacity']);
-  const get = hasStretch
-    ? (v, d) => (d === 'sx' ? scaleAlong(v) : d === 'sy' ? scaleAcross(v) : v[d])
-    : (v, d) => (d === 'sx' ? v.scale * v.scaleX : d === 'sy' ? v.scale * v.scaleY : v[d]);
-  const kept = rdp(ts.length, (a, b, i) => {
+  const dims = [[arr.x || new Float64Array(n), weight.x], [arr.y || new Float64Array(n), weight.y]];
+  if (hasRotate) dims.push([arr.rotate, weight.rotate]);
+  if (hasScale) {
+    const sx = new Float64Array(n), sy = new Float64Array(n);
+    const S = one('scale'), SX = one('scaleX'), SY = one('scaleY'), ST = hasStretch ? one('stretch') : null;
+    for (let i = 0; i < n; i++) {
+      const sc = S ? S[i] : 1;
+      sx[i] = sc * (SX ? SX[i] : 1) * (ST ? ST[i] : 1);
+      sy[i] = sc * (SY ? SY[i] : 1) / (ST ? Math.sqrt(ST[i]) : 1);
+    }
+    dims.push([sx, weight.scaleX], [sy, weight.scaleY]);
+  }
+  if (hasOpacity) dims.push([arr.opacity, weight.opacity]);
+  const kept = rdp(n, (a, b, i) => {
     const f = (ts[i] - ts[a]) / (ts[b] - ts[a]);
     let m = 0;
-    for (const [d, wk] of dims) {
-      const va = get(vals[a], d), vb = get(vals[b], d), vi = get(vals[i], d);
-      const err = Math.abs(vi - (va + (vb - va) * f)) * weight[wk];
+    for (let k = 0; k < dims.length; k++) {
+      const D = dims[k][0];
+      const err = Math.abs(D[i] - (D[a] + (D[b] - D[a]) * f)) * dims[k][1];
       if (err > m) m = err;
     }
     return m;
@@ -473,8 +528,9 @@ export function keyframes(channels, opts = {}) {
   const duration = Math.max(1, tEnd - t0);
   const tf = { prefix, rotate: hasRotate, scale: hasScale, axis: hasStretch ? axis : null };
   const frames = kept.map(i => {
-    const kf = { offset: +((ts[i] - t0) / duration).toFixed(6), transform: transformOf(vals[i], tf) };
-    if (hasOpacity) kf.opacity = +Math.min(1, Math.max(0, vals[i].opacity)).toFixed(4);
+    const v = valAt(i);
+    const kf = { offset: +((ts[i] - t0) / duration).toFixed(6), transform: transformOf(v, tf) };
+    if (hasOpacity) kf.opacity = +Math.min(1, Math.max(0, v.opacity)).toFixed(4);
     return kf;
   });
   frames[0].offset = 0;
