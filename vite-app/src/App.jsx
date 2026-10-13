@@ -1632,8 +1632,8 @@ function App() {
   const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
 
   // Edit home (utils/home-layout.js): which Dashboard sections show and in what order, per account
-  // (cached locally, saved to the server). homeEdit holds the control that opened the sheet, so
-  // focus goes back to it on close. Guests get the default home and no sheet.
+  // (cached locally, saved to the server). homeEdit: the sheet is open; homeEditOpener: the control
+  // that opened it, so focus goes back to it on close. Guests get the default home and no sheet.
   const homeUserId = useMemo(() => (isGuest ? null : tokenUserId(token)), [token, isGuest]);
   const homeLayout = useHomeLayout({ token, isGuest, userId: homeUserId });
   const [homeEdit, setHomeEdit] = useState(false);
@@ -2470,9 +2470,6 @@ function App() {
         />
       )}
 
-      {/* Admin-only layout grid: a faint overlay of the real content grid plus a
-          floating toggle, so alignment can be checked live and layout fixes made
-          by eye. Gated on isAdmin; state persists in localStorage. */}
       {/* Edit home (components/HomeEditSheet.jsx): portalled to the body while open. */}
       {homeEdit && !isGuest && (
         <Suspense fallback={null}>
@@ -2481,6 +2478,9 @@ function App() {
         </Suspense>
       )}
 
+      {/* Admin-only layout grid: a faint overlay of the real content grid plus a
+          floating toggle, so alignment can be checked live and layout fixes made
+          by eye. Gated on isAdmin; state persists in localStorage. */}
       {isAdmin && gridOverlay && <GridOverlay showReadout={gridReadout} />}
     </div>
     </DisplayNameProvider>
