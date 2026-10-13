@@ -220,8 +220,8 @@ const NOT_CONTROLS = [
 // seated like any other block of text, so the centring test does not apply.
 const TILES = ['.bk-cell', '.font-pick-tile'];
 // Navigation and disclosure rows: icon or chevron beside a label, start-aligned like a list.
-// Centred vertically only.
-const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head'];
+// Centred vertically only. (.ovt-head: the bankroll Overview's collapsible table sections.)
+const START_ALIGNED = ['.dk-rail-item', '.cal-fp-head', '.ovt-head'];
 // Toggles drawn as a track and a knob: the knob is at one end by design, so it is centred
 // vertically only.
 const SWITCHES = ['[role="switch"]', '.settings-toggle', '[class*="toggle-switch"]', '[class*="-switch"]'];
@@ -1649,9 +1649,32 @@ function finalize(c) {
     await click('.bk-head-btn:has-text("Dashboard")', 1500);
     if (tab) await click(`.an-sheet .bk-seg-btn:has-text("${tab}")`, 600);
   };
-  step('bankroll-dashboard', () => dash(null), 4);
+  // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,
+  // Bankroll, By month) and the latest sessions. First with every section opened by its header
+  // (every table measured, scrolled to the end), then every section closed (each header then
+  // carries its headline figure). The open state is remembered per device, so it is set by clicks.
+  const sections = async (expanded) => {
+    const want = expanded ? 'false' : 'true';
+    for (let i = 0; i < 12; i++) {
+      const head = p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).first();
+      if (!(await head.count())) break;
+      await head.click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(450);   // the body's 0fr <-> 1fr transition (--dur-base)
+    }
+    if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('a section did not toggle');
+    // Then until every collapse has finished (on a slow frame the last can outlast the wait above).
+    await p.waitForFunction(() => {
+      const o = document.querySelector('.an-sheet .ovt');
+      return !o || !o.getAnimations || o.getAnimations({ subtree: true }).length === 0;
+    }, null, { timeout: 5000 });
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+  };
+  step('bankroll-dashboard', async () => { await dash(null); await sections(true); }, 12);
+  step('bankroll-dashboard-closed', async () => { await dash(null); await sections(false); }, 3);
   step('bankroll-rules', () => dash('Rules'), 2);
   step('bankroll-goals', () => dash('Goals'), 1);
+  // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
+  // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);
   step('bankroll-report-filters', async () => {
     await dash('Reports');

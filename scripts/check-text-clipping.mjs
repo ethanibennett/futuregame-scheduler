@@ -9,8 +9,8 @@
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
 // about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
-// Scanner (and, for
-// an admin, each tab of the bankroll dashboard, every Reports table and the
+// Scanner (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
+// section open, then closed — every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
@@ -341,6 +341,25 @@ function scan(rootSel) {
         await run(`${label} (scrolled ${i})`, '.an-sheet');
       }
     };
+    // The Overview's collapsible table sections: every one opened by its header (the state is
+    // remembered per device, so they stay open for the passes below), and closed again at the end.
+    const sections = async (expanded) => {
+      const want = expanded ? 'false' : 'true';
+      for (let i = 0; i < 12; i++) {
+        const head = p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).first();
+        if (!(await head.count())) break;
+        await head.click({ timeout: 4000 });
+        await p.waitForTimeout(450);
+      }
+      if (await p.locator(`.an-sheet .ovt-head[aria-expanded="${want}"]`).count()) throw new Error('an Overview section did not toggle');
+      // Then until every collapse has finished: a body still mid-transition clips its own rows (by
+      // design), and on a slow frame the last one can outlast the fixed wait above.
+      await p.waitForFunction(() => {
+        const o = document.querySelector('.an-sheet .ovt');
+        return !o || !o.getAnimations || o.getAnimations({ subtree: true }).length === 0;
+      }, null, { timeout: 5000 });
+    };
+    await sections(true);
     // Every tab in the strip, whatever it holds (Overview, Rules, Goals, Import, and any added
     // later), then the Overview again with its graph switched to Balance and the range to All.
     const tabs = p.locator('.an-sheet .bd-tabs button');
@@ -356,6 +375,9 @@ function scan(rootSel) {
     await p.locator('.an-sheet .bd-range button:has-text("All")').click({ timeout: 4000 });
     await p.waitForTimeout(800);
     await runSheet('bankroll dashboard overview (balance, all time)');
+    // Every section closed: the headers carry their headline figures.
+    await sections(false);
+    await runSheet('bankroll dashboard overview (sections closed)');
     await p.locator('.an-sheet .bd-mode button:has-text("Profit")').click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-range button:has-text("YTD")').click({ timeout: 4000 });
     // Reports: every report's table, scrolled through the sheet; then the filter sheet with a

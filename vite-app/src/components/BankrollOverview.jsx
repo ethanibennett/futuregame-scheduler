@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { MINUS } from '../utils/utils.js';
 import {
-  RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, profitSeries, drawdowns, peakOf, periodTable,
+  RANGES, RANGE_NOUN, rangeWindow, within, balanceSeries, profitSeries, drawdowns,
   overviewStats, recentResults,
 } from '../utils/bankroll-ledger.js';
 import { setResultsKind } from '../hooks/useLiveCashSession.js';
 import BankrollChart from './BankrollChart.jsx';
+import BankrollOverviewTables from './BankrollOverviewTables.jsx';
 
 /**
  * The bankroll dashboard's Overview tab (beta, app admins). The layout of a serious poker tracker,
@@ -13,9 +13,9 @@ import BankrollChart from './BankrollChart.jsx';
  *   - a hero: the balance now, and the profit over the chosen range, coloured by its sign
  *   - the graph, front and centre: cumulative profit (the "chip graph") or the balance, with a
  *     range picker under it (1M / 3M / YTD / 1Y / All)
- *   - statistics as plain label | value rows under group headings (Results, Volume, Bankroll),
- *     each figure qualified where it only means something for one game type (ROI and ITM for
- *     tournaments, hourly and winning sessions for cash)
+ *   - the figures as collapsible Cash | Tournaments | Total tables (Summary, Sessions, Games, Rooms,
+ *     Bankroll, By month / By year): BankrollOverviewTables.jsx, arithmetic in
+ *     utils/bankroll-overview.js
  *   - the latest sessions, each led by its signed profit, with links to the full lists.
  * Everything comes from the combined ledger (GET /api/bankrolls/ledger, every source: tournaments,
  * cash sessions, expenses and income, deposits) plus the risk-of-ruin estimate (GET /risk).
@@ -28,8 +28,6 @@ const store = {
 };
 const RANGE_KEYS = new Set(RANGES.map((r) => r[0]));
 const tone = (v) => (v > 0 ? ' an-pos' : v < 0 ? ' an-neg' : '');
-const pct = (x) => (x === 0 ? '0%' : `${(x * 100).toFixed(Math.abs(x) < 0.1 ? 1 : 0)}%`);
-const signedPct = (x) => (x > 0 ? '+' : x < 0 ? MINUS : '') + pct(Math.abs(x));
 const hrs = (h) => `${h >= 100 ? Math.round(h).toLocaleString() : h.toFixed(1)} h`;
 const count = (n) => Math.round(n).toLocaleString();
 
@@ -44,25 +42,6 @@ export function Segmented({ options, value, onChange, label, className = '', btn
         </button>
       ))}
     </div>
-  );
-}
-
-// One statistic: label (and a muted qualifier) left, value right, on a 4r row.
-function Row({ label, qual, value, toneOf, sub, title }) {
-  return (
-    <div className={'an-row is-body bd-cols-kv' + (sub ? ' is-sub' : '')}>
-      <dt className="an-cell an-td an-clip" title={title}>{label}{qual && <span className="bd-qual"> {qual}</span>}</dt>
-      <dd className={'an-cell an-td an-num an-clip' + (toneOf != null ? tone(toneOf) : '')}>{value}</dd>
-    </div>
-  );
-}
-
-function Group({ id, title, children }) {
-  return (
-    <section className="bd-section" aria-labelledby={id}>
-      <h3 className="an-cell an-sec" id={id}>{title}</h3>
-      <dl className="bd-kv">{children}</dl>
-    </section>
   );
 }
 
@@ -83,16 +62,10 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
     const balPts = balanceSeries(win, { opening, from: w.from });
     const profPts = profitSeries(win, { from: w.from });
     const points = mode === 'profit' ? profPts : balPts;
-    // Bankroll figures are all-time: the peak the roll ever reached, and how far below it it is now.
-    const allPts = balanceSeries(entries, { opening: d.opening.total_display, from: entries[0] ? entries[0].date : null });
-    const peak = peakOf(allPts);
-    const balDd = drawdowns(balPts);
     return {
-      w, win, start, points, dd: drawdowns(points), balDd, peak,
-      below: Math.max(0, peak.value - d.closing.total_display),
+      w, win, start, points, dd: drawdowns(points),
       stats: overviewStats(win),
       recent: recentResults(win, 6),
-      table: periodTable(win, range === 'all' ? 'year' : 'month'),
     };
   }, [d, entries, range, mode, today]);
 
@@ -100,17 +73,6 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
   const noun = RANGE_NOUN[range];
   const rangeLabel = (RANGES.find((r) => r[0] === range) || [])[1];
   const open = (kind) => { if (bk.setSelected) bk.setSelected(bkKey); setResultsKind(kind); onClose(); };
-
-  const rorText = (() => {
-    if (!risk) return ['…', null];
-    if (risk.status === 'ok') {
-      const x = risk.ror;
-      return [x >= 0.995 ? '100%' : x < 0.001 ? '<0.1%' : pct(x), x];
-    }
-    if (risk.status === 'insufficient') return ['—', null];
-    return ['—', null];
-  })();
-  const rorQual = risk && risk.status === 'insufficient' ? `tournaments, needs ${risk.minEntries}` : 'tournaments';
 
   return (
     <>
@@ -138,43 +100,10 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
 
       {view.win.length === 0 && <p className="an-p bd-after">Nothing in the ledger for {noun}.</p>}
 
-      <Group id="bd-g-results" title={`Results · ${rangeLabel}`}>
-        <Row label="Profit" qual="every result" value={signed(s.results)} toneOf={s.results} />
-        <Row sub label="Tournaments" value={signed(s.bySource.tournaments)} toneOf={s.bySource.tournaments} />
-        <Row sub label="Cash games" value={signed(s.bySource.cash)} toneOf={s.bySource.cash} />
-        {s.bySource.other !== 0 && <Row sub label="Expenses & income" value={signed(s.bySource.other)} toneOf={s.bySource.other} />}
-        <Row label="ROI" qual="tournaments" value={s.mtt.roi == null ? '—' : signedPct(s.mtt.roi)} toneOf={s.mtt.roi || 0} />
-        <Row label="In the money" qual={s.mtt.events ? `${count(s.mtt.cashes)} of ${count(s.mtt.events)}` : 'tournaments'}
-          value={s.mtt.itm == null ? '—' : pct(s.mtt.itm)} />
-        <Row label="Hourly" qual="cash" value={s.cash.hourly == null ? '—' : `${signed(s.cash.hourly)}/h`} toneOf={s.cash.hourly || 0} />
-        <Row label="Winning sessions" qual={s.cash.sessions ? `${count(s.cash.wins)} of ${count(s.cash.sessions)}` : 'cash'}
-          value={s.cash.winRate == null ? '—' : pct(s.cash.winRate)} />
-        <Row label="Biggest win" qual={s.biggestWin ? s.biggestWin.label : null} title={s.biggestWin ? `${s.biggestWin.label}, ${fmtDate(s.biggestWin.date)}` : undefined}
-          value={s.biggestWin ? signed(s.biggestWin.amount_display) : '—'} toneOf={s.biggestWin ? 1 : 0} />
-        <Row label="Biggest loss" qual={s.biggestLoss ? s.biggestLoss.label : null} title={s.biggestLoss ? `${s.biggestLoss.label}, ${fmtDate(s.biggestLoss.date)}` : undefined}
-          value={s.biggestLoss ? signed(s.biggestLoss.amount_display) : '—'} toneOf={s.biggestLoss ? -1 : 0} />
-      </Group>
-
-      <Group id="bd-g-volume" title={`Volume · ${rangeLabel}`}>
-        <Row label="Tournaments" qual={s.mtt.bullets > s.mtt.events ? `${count(s.mtt.bullets)} bullets` : null} value={count(s.mtt.events)} />
-        <Row label="Average buy-in" qual="per bullet" value={s.mtt.avgBuyin == null ? '—' : money(s.mtt.avgBuyin)} />
-        <Row label="Cash sessions" value={count(s.cash.sessions)} />
-        <Row label="Hours played" qual="cash" value={s.cash.hours > 0 ? hrs(s.cash.hours) : '—'} />
-        <Row label="Average session" qual="cash" value={s.cash.avgHours == null ? '—' : hrs(s.cash.avgHours)} />
-      </Group>
-
-      <Group id="bd-g-roll" title="Bankroll">
-        <Row label="Balance now" qual={currency} value={money(d.closing.total_display)} toneOf={d.closing.total_display < 0 ? -1 : 0} />
-        <Row label="Peak" qual={view.peak.date ? fmtDate(view.peak.date) : null} value={money(view.peak.value)} />
-        <Row label="Below the peak" value={view.below > 0 ? money(-view.below) : 'At the peak'} toneOf={view.below > 0 ? -1 : 0} />
-        <Row label="Deepest drawdown" qual={noun} value={view.balDd.max.amount > 0 ? money(-view.balDd.max.amount) : 'None'}
-          toneOf={view.balDd.max.amount > 0 ? -1 : 0}
-          title={view.balDd.max.amount > 0 ? `${fmtDate(view.balDd.max.from)} to ${fmtDate(view.balDd.max.to)}` : undefined} />
-        <Row label="Deposits & withdrawals" qual={noun} value={s.moved ? signed(s.moved) : '—'} />
-        <Row label="Risk of ruin" qual={rorQual} value={rorText[0]} toneOf={rorText[1] != null && rorText[1] > 0.05 ? -1 : 0} />
-      </Group>
-      <p className="an-p bd-after">Profit counts every result (tournaments, cash games, expenses and income), never money moved
-        in or out. Peak and the drawdown below it are all time; risk of ruin is explained under Rules.</p>
+      {/* The figures: collapsible Cash | Tournaments | Total tables (Summary, Sessions, Games, Rooms,
+          Bankroll, By month / By year) — BankrollOverviewTables.jsx. */}
+      <BankrollOverviewTables d={d} risk={risk} range={range} today={today} bk={bk} bkKey={bkKey} b={b}
+        currency={currency} fmtDate={fmtDate} />
 
       <section className="bd-section" aria-labelledby="bd-recent">
         <h3 className="an-cell an-sec" id="bd-recent">Latest sessions</h3>
@@ -204,28 +133,6 @@ export default function BankrollOverview({ d, risk, bk, bkKey, b, currency, mone
           <button type="button" className="bk-btn bd-w17" onClick={() => open('cash')}><span>Cash sessions</span></button>
         </div>
       </section>
-
-      {view.table.length > 0 && (
-        <section className="bd-section" aria-labelledby="bd-periods">
-          <h3 className="an-cell an-sec" id="bd-periods">{range === 'all' ? 'By year' : 'By month'} · {rangeLabel}</h3>
-          <div className="an-table" role="table" aria-label="Net by period">
-            <div className="an-row is-head bd-cols-4" role="row">
-              <span className="an-cell an-lbl an-lbl-3b" role="columnheader">{range === 'all' ? 'Year' : 'Month'}</span>
-              <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Results</span>
-              <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Moved</span>
-              <span className="an-cell an-lbl an-lbl-3b an-num" role="columnheader">Net</span>
-            </div>
-            {view.table.map((r) => (
-              <div key={r.key} className="an-row is-body bd-cols-4" role="row">
-                <span className="an-cell an-td an-clip" role="cell">{r.label}</span>
-                <span className={'an-cell an-td an-num an-clip' + tone(r.results)} role="cell">{r.results ? signed(r.results) : '—'}</span>
-                <span className="an-cell an-td an-num an-clip" role="cell">{r.moved ? signed(r.moved) : '—'}</span>
-                <span className={'an-cell an-td an-num an-clip' + tone(r.net)} role="cell">{signed(r.net)}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </>
   );
 }
