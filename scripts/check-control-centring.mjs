@@ -43,7 +43,8 @@
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
-// buddy chip's swap sheet, the public shared-schedule page (and a card open on it), the first-run
+// buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
+// shared-schedule page (and a card open on it), the first-run
 // wizard step by step, the signed-out login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
 // backdrop hides what is under it: a control 90% covered by something that paints is not measured.
@@ -192,9 +193,10 @@ const INTERACTIVE = [
   '[role="menuitemradio"]', '[role="menuitemcheckbox"]', '[role="option"]', 'summary',
   '[tabindex="0"]', 'label', 'select', 'input[type="reset"]',
 ];
-// Areas left alone entirely: the grid overlay itself, and the replayer's table (another change
-// owns it — its dealer button, seats, chips).
-const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
+// Areas left alone entirely: the grid overlay itself, the replayer's table (another change
+// owns it — its dealer button, seats, chips), and the venue map's canvas, which a map library
+// draws (tiles, its pin and label, the attribution; its own controls are switched off).
+const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot', '.vm-map-canvas'];
 // Not pills or buttons, though a rule above catches them: event cards and list rows, which are
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
@@ -1874,6 +1876,31 @@ function finalize(c) {
   step('dashboard-bust-menu', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
   step('dashboard-update', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-update-btn', 1000); }, 1);
   step('dashboard-bag', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bag-btn', 1000); }, 1);
+  // The venue map (VenueMapSheet.jsx, docs/venue-map.md): what a venue strip opens — a Schedule
+  // card's strip, and an Up Next card's banner (the first card that has one, paged to). Measured
+  // once its map has drawn, or the popup has said why not.
+  const venueMapOpen = async () => {
+    await p.locator('.vm-sheet').waitFor({ timeout: 8000 });
+    await p.waitForFunction(() => {
+      const c = document.querySelector('.vm-map-canvas'), n = document.querySelector('.vm-map-note');
+      return (c && c.dataset.provider) || (n && !/Finding|Loading/.test(n.textContent));
+    }, null, { timeout: 20000, polling: 200 }).catch(() => {});
+    await p.waitForTimeout(500);
+  };
+  step('venue-map', async () => {
+    await nav('Schedule');
+    await tap('.cal-event-row:not(.past) .cal-venue-strip[aria-haspopup="dialog"]', 300);
+    await venueMapOpen();
+  });
+  step('venue-map-upnext', async () => {
+    await nav('Dashboard');
+    const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
+      .findIndex((sl) => sl.querySelector('.dash-venue-strip.has-map')));
+    if (i < 0) throw new Error('no Up Next card with a venue map');
+    if (i > 0) await pageCarousel(i);
+    await tap('.dashboard-view.home .dash-venue-strip.has-map', 300);
+    await venueMapOpen();
+  });
   // Social: search, a buddy, a group (its chat), creating one.
   step('social-search', async () => { await nav('Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
   step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);

@@ -24,6 +24,7 @@ export default defineConfig({
       'upng-js',       // dynamic import in replay-gif-export.js
       'jspdf',         // dynamic import in export.js
       'jspdf-autotable', // dynamic import in export.js
+      'leaflet',       // the venue map's OpenStreetMap provider (utils/venue-map/provider-osm.js)
     ],
     // Disable runtime discovery so no new dep can trigger a second
     // optimisation pass after the server has started serving modules.
