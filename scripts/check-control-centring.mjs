@@ -32,7 +32,7 @@
 // with the mouse left on the pager (dashboard-held), and the D toggle's demo cards; the playing
 // card's Bust menu, its Update and Bag panels and its Scan sheet; the cash card's stack entry; the
 // Log menu; a To log row's Undo state; its NUMBERS in trip mode, series mode and the edge state;
-// the signal-or-noise line as progress and about cash; the empty-schedule prompt), Social (search,
+// the signal-or-noise line as progress and about cash; the empty-schedule prompt; the Edit home sheet as opened and after Reset, the home in a custom layout, and on desktop its empty NUMBERS pane), Social (search,
 // a buddy, a group, a new group), Hands (each game family, hand entry step by step, PLO entry,
 // Quick add, the replayer on a saved hand with its settings, table settings and share menu, the
 // admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way / Scanner tools), Cash (Live,
@@ -143,7 +143,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { stageHome } from './home-states.mjs';
+import { stageHome, routeHomeLayoutPut } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -1237,6 +1237,9 @@ function finalize(c) {
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
   }, { t, u: USER });
+  // Edit home: the sheet's changes (and Reset) are answered here and never written, so the guard
+  // leaves the account's home layout as it found it (scripts/home-states.mjs).
+  if (!listOnly) await routeHomeLayoutPut(ctx);
   // A WebKit page can crash under a long run (a 3x capture of a desktop viewport, view after view);
   // the view loop opens a new one and tries that view again.
   let p = await ctx.newPage();
@@ -1615,6 +1618,30 @@ function finalize(c) {
   // the rule), which is the control sweep's to fix; check-text-clipping walks the sheet.
   homeState('dashboard-noise-progress', 'noise-progress', '.hm-noise[data-kind="progress"]');
   homeState('dashboard-noise-cash', 'noise-cash', '.hm-noise[data-kind="window"]');
+  // Edit home (HomeEditSheet.jsx; utils/home-layout.js). The sheet as the home's own control opens
+  // it: every row (handle, name, the Move up / Move down pair, the switch), This month's parts,
+  // Done and Reset to default (disabled on the default home). On desktop it is grouped NOW | NUMBERS
+  // and docked to the shell's right edge. Then Reset pressed on a custom layout (its Undo reset
+  // label), the home in that custom layout paged to its foot, and (desktop) every NUMBERS section
+  // hidden: the pane's EDIT prompt. Layouts are staged by answering GET /api/user/home-layout; the
+  // sheet's PUTs are answered by the context route above.
+  const openEdit = async () => {
+    await p.locator('.hm-edit').filter({ visible: true }).first().click({ timeout: 8000, force: overlay });
+    await p.locator('.he-sheet .he-card').first().waitFor({ timeout: 8000 });
+    await p.waitForTimeout(700);
+  };
+  step('dashboard-edit', async () => { await nav('Dashboard'); await openEdit(); }, 0);
+  step('dashboard-edit-reset', async () => {
+    const undo = await stageHome(p, 'layout-custom');
+    try {
+      await fresh(); await nav('Dashboard'); await openEdit();
+      await p.locator('.he-reset').click({ timeout: 4000, force: overlay });
+      await p.locator('.he-reset:has-text("Undo reset")').waitFor({ timeout: 3000 });
+      await run('dashboard-edit-reset');
+    } finally { await undo(); }
+  }, 0, { selfRun: true });
+  homeState('dashboard-custom', 'layout-custom');
+  if (desktop) homeState('dashboard-numbers-empty', 'layout-numbers-empty', '.hm-numbers-empty');
   step('hands-scanner', async () => {
     await nav('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });

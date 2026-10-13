@@ -21,7 +21,7 @@
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';
-import { stageHome } from './home-states.mjs';
+import { stageHome, routeHomeLayoutPut } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -127,6 +127,8 @@ function scan(rootSel) {
     // 10 sections while still printing a passing line.
     localStorage.setItem('onboarded', '1');
   }, { t });
+  // Edit home: the sheet's changes are answered here and never written (scripts/home-states.mjs).
+  await routeHomeLayoutPut(ctx);
   const p = await ctx.newPage();
   await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(5000);
@@ -309,6 +311,51 @@ function scan(rootSel) {
     await p.locator('.hm-tolog-list > li:nth-child(3)').waitFor({ timeout: 3000 });
     await run('home to-log, every row', HOME);
   } catch (e) { console.log(`  (home to-log more skipped: ${e.message.split('\n')[0]})`); }
+  // Edit home (HomeEditSheet.jsx): the sheet as the home's control opens it, then with its first
+  // row's name made deliberately long (it must truncate in its cell, cutting no glyph), then Reset
+  // pressed on a custom layout (Undo reset); the home in that custom layout paged to its foot and,
+  // on desktop, with every NUMBERS section hidden (the pane's EDIT prompt); and Settings' Home row.
+  const openEdit = async () => {
+    await p.locator('.hm-edit').filter({ visible: true }).first().click({ timeout: 8000 });
+    await p.locator('.he-sheet .he-card').first().waitFor({ timeout: 8000 });
+    await p.waitForTimeout(700);
+  };
+  try {
+    await openTab('Dashboard');
+    await openEdit();
+    await run('edit home sheet', '.he-sheet');
+    await p.evaluate(() => {
+      for (const c of document.querySelectorAll('.he-sheet .he-name .hm-clip')) {
+        if (c.firstChild && c.firstChild.nodeType === 3) { c.firstChild.textContent = 'A deliberately long section name, gjpqy, that cannot fit'; break; }
+      }
+    });
+    await run('edit home sheet (a long name, truncated)', '.he-sheet');
+  } catch (e) { console.log(`  (edit home sheet skipped: ${e.message.split('\n')[0]})`); }
+  for (const kind of ['layout-custom', ...((await isDesktop()) ? ['layout-numbers-empty'] : [])]) {
+    try {
+      const undo = await stageHome(p, kind);
+      try {
+        await openTab('Dashboard');
+        await pageHome(`home ${kind}`);
+        if (kind === 'layout-custom') {
+          await openEdit();
+          await p.locator('.he-reset').click({ timeout: 4000 });
+          await p.locator('.he-reset:has-text("Undo reset")').waitFor({ timeout: 3000 });
+          await run('edit home sheet (after Reset)', '.he-sheet');
+        }
+      } finally { await undo(); }
+    } catch (e) { console.log(`  (home ${kind} skipped: ${e.message.split('\n')[0]})`); }
+  }
+  try {
+    await openTab('Settings').catch(async () => {
+      await p.locator('.username-chip').first().click({ timeout: 4000 });
+      await p.getByRole('button', { name: 'Settings', exact: true }).first().click({ timeout: 4000 });
+      await p.waitForTimeout(1500);
+    });
+    await p.locator('.settings-home').first().scrollIntoViewIfNeeded({ timeout: 4000 });
+    await p.waitForTimeout(300);
+    await run('settings home row', '.settings-home');
+  } catch (e) { console.log(`  (settings home row skipped: ${e.message.split('\n')[0]})`); }
   try {
     await openTab('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });

@@ -380,7 +380,7 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
   portalled to the body and anchored to the Log pill (right edges together, 1r
   above or below it), so it is not clipped by the pane's scroller. A choice in it,
   To log's Cashed and a tap on the receipt open Results in this same main pane.
-- The NUMBERS pane (step 4, `HomeNumbers.jsx`) opens with the bankroll line
+- The NUMBERS pane (step 4: `HomeBankrollLine.jsx`, `HomePeriod.jsx`; what they share, their sheets, is `HomeNumbers.jsx` useHomeNumbers) opens by default with the bankroll line
   (admins: the balance of every roll, the tournament cap a bullet and the rule's
   move signal as a pill, a 35g x 5r card under its own 3r header, BANKROLL with
   the scope on the right, so its card starts on 13r, level with the Up Next card
@@ -425,6 +425,46 @@ NUMBERS). On the phone they are one scrolling column, NOW first. On desktop:
 - Friends Playing and Connections, which the old plan gave a pane, left the home
   (they live in Social). The Table Scanner left it as well: it is the Playing
   card's Scan action and a tool in Hands.
+- **Edit home (2026-10-13): the user's sections, in the user's order.** An Edit
+  home control at the foot of the main column (11g x 4r, centred: 13..24g of the
+  canvas) and a Home row in Settings > Appearance open a sheet
+  (`HomeEditSheet.jsx`) listing the sections: Up Next (locked on), To log, Last
+  result, Bankroll, This month with its parts Signal or noise and Goals. The
+  ordering rule, which is the same document on both layouts
+  (`utils/home-layout.js`):
+  - **One stored order per account** (`users.home_layout`, `GET`/`PUT
+    /api/user/home-layout`, cached in localStorage for the first paint). The
+    phone shows every visible section in that order, in one column, freely
+    interleaved (Bankroll above Up Next is fine).
+  - **Each section's pane is fixed.** Up Next, To log and Last result are NOW;
+    Bankroll and This month (with its parts) are NUMBERS. On desktop each pane
+    shows its own sections in the user's RELATIVE order: the phone order
+    [Bankroll, Up Next, This month, To log, Last result] is NOW [Up Next, To log,
+    Last result] | NUMBERS [Bankroll, This month].
+  - **A desktop reorder rewrites only that group's slots.** The sheet on desktop
+    has two groups (NOW · LEFT PANE, NUMBERS · RIGHT PANE), and a move within one
+    puts the group's new order back into the slots it held in the stored order,
+    so the other group's sections, and how the two interleave on the phone, do
+    not move: in [Bankroll, Up Next, This month, To log, Last result], moving This
+    month above Bankroll gives [This month, Up Next, Bankroll, To log, Last
+    result].
+  - **The empty pane.** Every NUMBERS section hidden (a non-admin who hid This
+    month; an admin who hid Bankroll and This month): the pane is a 3r NUMBERS
+    header over one 35g x 5r prompt (the Nothing scheduled card's anatomy:
+    'Nothing here' / 'Your numbers are hidden' / an EDIT pill) that opens the
+    sheet. NOW is never empty: Up Next cannot be hidden.
+  - **The first cards still line up in any order.** Every section opens with the
+    same 3r header and 1r gap, so whichever section comes first, each pane's
+    first card starts on 13r (measured at 1440: Up Next | Bankroll in the
+    default and in a custom order, Up Next | the EDIT prompt).
+  - The period header drops its scope ('All bankrolls · USD') only when the
+    bankroll line renders immediately above it in the same column; anywhere else
+    it states its own.
+  - The sheet docks to the shell's right edge on desktop (its left on a shell g
+    line), so the panes it edits stay in view behind the scrim: at 1440 (a 115g
+    shell) the whole NOW pane and the left 27g of the NUMBERS' 35g cards; at 1024
+    (88g) the whole NOW pane, the sheet then covering the NUMBERS (measured).
+    Every change applies at once.
 
 ### Social (phase 2; today: one capped pane)
 

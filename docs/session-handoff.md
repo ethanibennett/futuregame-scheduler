@@ -43,6 +43,49 @@ wsop-console side and verified against both live services.
 - **Usage:** the weekly limit was hit on 2026-10-13. Default to one builder + one verifier per job,
   two or three jobs at a time, full guard runs once per size.
 
+## 2026-10-13 — Edit home: choose and order the Dashboard's sections (branch feat/home-customize)
+Owner request: "the option to change or reorder what's on the dashboard". Built to the spec in the
+worktree `home-custom`. What a later session needs to know:
+- **The list is the real sections**: Up Next (locked on), To log, Last result, Bankroll (admins),
+  This month (the period block) and its two parts, Signal or noise and Goals (admins). The Table
+  Scanner is not a home section (it is the Playing card's Scan action); Trend is one registry entry
+  in `utils/home-layout.js` plus one element in DashboardView's section map once it is built.
+- **Storage**: `users.home_layout` (dataMigration `users-home-layout-2026-10`), `GET`/`PUT
+  /api/user/home-layout`. The server checks the document's SHAPE only (`lib/home-layout.js`), so a
+  newer build's unknown ids are stored as sent and kept in place on save; NULL is the default home
+  (Reset stores null, so a later change to the default reaches that user). Client:
+  `hooks/useHomeLayout.js` (localStorage `homeLayout:u<id>` for the first paint, GET then reconcile,
+  600 ms debounced PUT, retry on online, keepalive on pagehide, storage-event sync between tabs).
+- **Desktop mapping** (docs/desktop-layout.md "Dashboard"): one stored order; each section keeps
+  its pane; each pane shows its sections in the user's relative order; a desktop group reorder
+  rewrites only that group's slots.
+- **A hidden section is not mounted**, so it makes no requests (verified: Last result hidden, no
+  `/api/cash-sessions`; This month hidden, no ledger / trips / analytics). `HomeNumbers.jsx` is now
+  the `useHomeNumbers` hook (its sheets and the summary refresh), because on the phone the bankroll
+  line and the period block can be apart.
+- **Deviations from the spec, on purpose**: the row's switch sits 30..34g of the card (1g in from
+  its edge, Settings' switch exactly), not 31..35g, which put it flush on the card's hairline;
+  the name column is 3..22g. The name is a 4r cell on +3r, not 3r on +3r (the note's own 1em line
+  overflowed the 1.25r line box and moved the baseline 0.06r at 1440). A drag's slot changes when
+  the card's LEADING edge crosses a neighbour's midpoint, not its centre: This month is 15r among
+  5r cards and its centre could never pass the card above it before the list clamp stopped it. The
+  status line says "Saved to your account" while a save is under way and online, and the offline
+  sentence only once a save failed or the device is offline (it flashed for 600 ms on every change
+  otherwise). Under reduced motion the tokens are 0ms but styles.css forces every transition to
+  1ms (!important), so computed durations read 0.001s; moves still land in the same frame.
+- **Owner questions, answered with the spec's recommended defaults** (ask Ethan if any should
+  change): (1) Up Next is locked on but movable; (2) the drag handle is pointer-only, the arrows
+  are the keyboard and screen-reader path; (3) Signal or noise and Goals are parts of This month
+  (they move with it, have their own switches, are disabled while it is off); (4) the Table Scanner
+  stays off the list; (5) guests get no Edit home and keep the default; (6) one order for both
+  layouts, panes fixed per section; (7) no Cancel: changes apply at once, Reset has an 8 s Undo.
+- **New device**: the default paints first and the account's layout lands once (one re-order).
+  Accepted.
+- Guards: `scripts/home-states.mjs` stages `layout-custom` and `layout-numbers-empty` by answering
+  GET /api/user/home-layout and clears the cached copy around them; both guards answer every PUT
+  in the page (`routeHomeLayoutPut`), so they write nothing (safe on :3001). New views:
+  dashboard-edit, dashboard-edit-reset, dashboard-custom, dashboard-numbers-empty (desktop).
+
 ## 2026-10-12 — Home redesign (the Dashboard tab), decisions worth knowing
 Built to the panel verdict of 2026-10-11 in steps 1–6 (section 7, Trend, is a marked slot in
 `DashboardView.jsx` waiting for the BankrollChart rebuild; section 8, Backers, is later). After the

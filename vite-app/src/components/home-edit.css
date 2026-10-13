@@ -15,7 +15,7 @@
               3r, Reset to default (13g x 5r), 1r, the status line.
      row      35g x 5r card, 1r apart; x from the card's left edge:
                 0..3g    the handle (3g x 5r, the grip centred)
-                3..22g   the name, sm bold seated on +3r (a 3r cell at
+                3..22g   the name, sm bold seated on +3r (a 4r cell at
                          the top), its note after it in muted xs on the
                          same baseline; it truncates in .hm-clip
                 23..26g  Move up    } 3g x 3r at +1r..+4r, a joined
@@ -113,7 +113,10 @@
 .he-body .he-list[data-drag] .he-grip { cursor: grabbing; }
 .he-body .he-grip svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
 
-.he-body .he-name { --h: 3; --k: 3; grid-column: 2; color: var(--text); }
+/* A 4r cell seated on +3r (the period block's row labels' recipe, home.css .hm-prow-l), not 3r on
+   +3r: that leaves a 1.25r line box, shorter than the note's own 1em of xs, which then grew the line
+   and moved the baseline 0.06r at 1440 (measured). In 4r the line box is 3.25r. */
+.he-body .he-name { --h: 4; --k: 3; grid-column: 2; color: var(--text); }
 /* The note, on the name's baseline: its own 1em line inside the cell's line box (home.css
    .hm-prow-s), so it cannot move the baseline. */
 .he-body .he-note {
