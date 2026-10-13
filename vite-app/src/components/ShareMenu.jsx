@@ -107,7 +107,7 @@ export default function ShareMenu({ trackingData, tournaments, mySchedule, myAct
   return createPortal(
     <>
       <div className="share-menu-backdrop" onClick={onClose} />
-      <div className="share-menu-panel">
+      <div className="share-menu-panel grid-sheet">
         <h3>Share & Social</h3>
         <div className="share-menu-grid">
           {/* Scorecard */}

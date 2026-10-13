@@ -343,7 +343,7 @@ async function runWatchdog({ dryRun = false, log = console.log, api = { gh, ghJs
     { runId: newest.id, sha: masterSha, attempts: entry.attempts });
 }
 
-module.exports = { runWatchdog, isSleepKill, durationSeconds, STATE_PATH, MAX_ATTEMPTS_PER_SHA };
+module.exports = { runWatchdog, isSleepKill, durationSeconds, STATE_PATH, MAX_ATTEMPTS_PER_SHA, gh, ghJson };
 
 if (require.main === module) {
   const dryRun = process.argv.includes('--dry-run');

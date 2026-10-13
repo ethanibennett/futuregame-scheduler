@@ -5,7 +5,7 @@
 //   TxSheet          quick add / edit — amount first (decimal keypad), category chips, done. Built
 //                    for one thumb at the table or in a hotel lobby.
 //   AllSheet         every row, totals by category, CSV export.
-//   TripsSheet       trips: create, and a trip's whole P&L — results dated inside it plus the
+//   TripsSheet       trips: create, and a trip's whole P&L — results and cash sessions dated inside it plus the
 //                    expenses and income tagged to it.
 // Sheets are portalled to document.body and reuse the bankroll sheet's grid classes (bk-*).
 // Data: /api/bankrolls/transactions and /api/bankrolls/trips (lib/bankroll-transactions.js).
@@ -51,8 +51,13 @@ function useApi(token) {
   }, [token]);
 }
 
+// A label ending in "1" ("Trips · 1"): Univers Condensed's 1 stands 0.126em in from its right edge
+// where the other figures and letters stand ~0.02em, so its ink sat ~1px left of the centre the
+// button gives its advance. Class bk-ends-1 balances that bearing (styles.css), as a tracked
+// label's text-indent balances its trailing letter-space.
+const endsInOne = (children) => /1$/.test(React.Children.toArray(children).filter(c => typeof c === 'string' || typeof c === 'number').join(''));
 function Btn({ kind = 'ghost', w = 8, children, ...rest }) {
-  return <button type="button" className={`bk-btn bk-btn--${kind} bk-w${w}`} {...rest}><span>{children}</span></button>;
+  return <button type="button" className={`bk-btn bk-btn--${kind} bk-w${w}${endsInOne(children) ? ' bk-ends-1' : ''}`} {...rest}><span>{children}</span></button>;
 }
 function Field({ label, wide, children }) {
   return (
@@ -326,7 +331,14 @@ function TripDetail({ api, toast, tripId, bankrolls, rates, onAdd, onOpen, onBac
       <p className="bk-line bk-muted">{tripRange(trip.start_date, trip.end_date)} · {scopeName}</p>
       <section className="bk-section">
         <h3 className="bk-section-title">Profit and loss</h3>
-        <PlRow label={`Results · ${p.events} event${p.events === 1 ? '' : 's'}`} value={p.results} cur={cur} />
+        {/* Tournaments and the cash sessions played inside the trip (the home's trip block adds up
+            the same rows through the same tripPnl, so its net is this page's). */}
+        {(p.events > 0 || p.cash.sessions === 0) && (
+          <PlRow label={`Tournaments · ${p.events} event${p.events === 1 ? '' : 's'}`} value={p.tournaments.profit} cur={cur} />
+        )}
+        {p.cash.sessions > 0 && (
+          <PlRow label={`Cash games · ${p.cash.sessions} session${p.cash.sessions === 1 ? '' : 's'}`} value={p.cash.profit} cur={cur} />
+        )}
         <PlRow label="Expenses" value={-p.expenses} cur={cur} />
         <PlRow label="Income" value={p.income} cur={cur} />
         <PlRow total label="Trip net" value={p.net} cur={cur} />
@@ -339,7 +351,7 @@ function TripDetail({ api, toast, tripId, bankrolls, rates, onAdd, onOpen, onBac
       )}
       <section className="bk-section">
         <h3 className="bk-section-title">Results</h3>
-        {data.results.length === 0 && <p className="bk-line bk-muted">No results dated inside this trip.</p>}
+        {data.results.length === 0 && <p className="bk-line bk-muted">No tournament results dated inside this trip.</p>}
         {data.results.map((e) => {
           const from = nativeCurrency(e.venue);
           const net = (e.cashed ? Number(e.cash_amount) || 0 : 0) - (Number(e.buyin) || 0) * Math.max(1, Number(e.num_entries) || 1);
@@ -352,6 +364,18 @@ function TripDetail({ api, toast, tripId, bankrolls, rates, onAdd, onOpen, onBac
           );
         })}
       </section>
+      {(data.cash_sessions || []).length > 0 && (
+        <section className="bk-section">
+          <h3 className="bk-section-title">Cash games</h3>
+          {data.cash_sessions.map((c) => (
+            <div key={c.id} className="tx-row">
+              <span className="tx-row-date">{shortDay(c.date)}</span>
+              <span className="tx-row-what">{c.label}</span>
+              <span className={'tx-row-amt' + tone(c.amount)}>{signed(c.amount, c.currency)}</span>
+            </div>
+          ))}
+        </section>
+      )}
       <section className="bk-section">
         <h3 className="bk-section-title">Expenses and income</h3>
         {data.transactions.length === 0 && <p className="bk-line bk-muted">Nothing tagged to this trip yet.</p>}
@@ -413,7 +437,10 @@ function TripsSheet({ api, toast, trips, bankrolls, rates, openId, onOpenTrip, o
 }
 
 // ── The Results-tab section ─────────────────────────────────────────────────
-export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankrolls = [], rates, events, onChanged }) {
+// intent (App's resultsIntent, handed on by TrackingView): the home's Log menu "Expense or income"
+// opens the add sheet; the home's period block in trip mode ({ kind: 'trip', tripId }) opens that
+// trip's page. Either once, then it reports done.
+export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankrolls = [], rates, events, onChanged, intent = null, onIntentDone }) {
   const toast = useToast();
   const api = useApi(token);
   const [list, setList] = useState(null);
@@ -421,6 +448,13 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
   // One sheet at a time: { type: 'add', tx?, preset?, back? } | { type: 'all' } | { type: 'trips', tripId? }
   const [sheet, setSheet] = useState(null);
   const [version, setVersion] = useState(0);
+  useEffect(() => {
+    if (!intent) return;
+    if (intent.kind === 'expense') setSheet({ type: 'add', preset: { kind: 'expense', bankroll: bankroll === BANKROLL_ALL ? BANKROLL_MAIN : bankroll } });
+    else if (intent.kind === 'trip') setSheet({ type: 'trips', tripId: intent.tripId || null });
+    else return;
+    if (onIntentDone) onIntentDone();
+  }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     try {

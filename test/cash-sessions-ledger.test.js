@@ -56,8 +56,12 @@ function test(name, fn) {
       date: '2026-10-01', ts: '2026-10-02T04:00:00Z', amount: 1800 - 1000 - 40 - 25, currency: 'USD', bankroll_id: null,
       kind: 'cash_session', label: 'Cash NLH 2/5 · Borgata', ref: { table: 'cash_sessions', id: 1 },
       started_at: '2026-10-01T22:00:00Z', hours: 6,
+      buy_in: 1000, rebuys: 0, cash_out: 1800, tips: 40, expenses: 25,
     });
     assert.strictEqual(second.amount, -1200);
+    // The money behind each net adds up to it (the dashboard's Summary relies on this).
+    for (const e of [first, second, third]) assert.strictEqual(e.cash_out - e.buy_in - e.tips - e.expenses, e.amount);
+    assert.deepStrictEqual([second.buy_in, second.rebuys, second.cash_out], [1500, 1, 300]);
     assert.deepStrictEqual([third.amount, third.currency, third.bankroll_id], [60, 'EUR', 10]);
   });
   test("hours = ended - started, to the hundredth (the dashboard's hourly rate)", () => {

@@ -219,14 +219,15 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
   return (
     <div className="hs-view hs-solver" style={{
       maxWidth: 'calc(var(--subrow) * 110)',
-      /* Grid: 1g column gaps make the four columns land on the app's 8g lines; 2r row gap. */
-      display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', columnGap: 'var(--gu)', rowGap: 'calc(var(--subrow) * 2)',
+      /* Grid: four whole-g columns (.hs-view.hs-solver in styles.css: 8g with 1g gaps on the
+         phone, the app's 8g lines; 14g with 2g gaps on the desktop pane); 2r row gap. */
+      display: 'grid', rowGap: 'calc(var(--subrow) * 2)',
       alignContent: 'start',
     }}>
       {/* Header — 5r row: title (baseline 4r down) on cols 1–2, game pills (5r) on cols 3–4 */}
       <div style={{ ...full, display: 'grid', gridTemplateColumns: 'subgrid', height: 'calc(var(--subrow) * 5)' }}>
         <h2 className="screen-title hs-t hs-title" style={{ ...T(4), gridColumn: '1 / 3' }}>Solver</h2>
-        <div style={{ gridColumn: '3 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 'var(--gu)' }}>
+        <div className="hs-halves" style={{ gridColumn: '3 / -1' }}>
           {GAMES.map(([id, lbl]) => (
             <button key={id} className="hs-btn hs-pill" onClick={() => { setGame(id); if (id !== 'stud8') setAbstraction('hilo'); }} style={pill(game === id)}>
               <span className="hs-t" style={T(3)}>{lbl}</span>
@@ -257,7 +258,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
       )}
 
       {/* Mode switch — two 5r buttons, each spanning 2 columns (17g) */}
-      <div style={{ ...full, display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 'var(--gu)' }}>
+      <div className="hs-halves" style={full}>
         {[['exact', 'Node-locked'], ['range', 'Range vs range']].map(([id, lbl]) => (
           <button key={id} className="hs-btn" onClick={() => setMode(id)}
             style={{
@@ -366,7 +367,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
             <div style={half}>
               <FieldLab>Abstraction {!emdAvailable && <span style={dim}>(EMD is Stud 8 only)</span>}</FieldLab>
               {/* Two 8g pills inside the 17g half: 8 + 1 + 8. */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 'var(--gu)' }}>
+              <div className="hs-halves">
                 {[['hilo', 'Hi/Lo'], ['emd', 'EMD']].map(([id, lbl]) => {
                   const disabled = id === 'emd' && !emdAvailable;
                   const active = abstraction === id;
@@ -395,7 +396,7 @@ export default function SolverView({ pendingSpot, onConsumeSpot } = {}) {
         <button onClick={runSolve} disabled={solving} className="hs-btn"
           style={{
             ...full, '--hs-h': 6, '--hs-edge': 'transparent', '--hs-fill': 'var(--text)', '--hs-ink': 'var(--bg)',
-            fontSize: 'var(--fs-sm)', letterSpacing: '0.08em', textTransform: 'uppercase',
+            fontSize: 'var(--fs-sm)', letterSpacing: '0.08em', textIndent: '0.08em', textTransform: 'uppercase',
             cursor: solving ? 'wait' : 'pointer', opacity: solving ? 0.6 : 1,
           }}>
           <span className="hs-t" style={T(4)}>{solving ? 'Solving…' : 'Solve spot'}</span>

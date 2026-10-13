@@ -1,0 +1,201 @@
+/* ==================================================================
+   Bankroll Overview tables (BETA, app admins) — BankrollOverviewTables.jsx.
+   ovt- prefixed; the type roles are analytics.css's (an-cell / an-td /
+   an-lbl-3b / an-note / an-p, their baselines measured in WebKit) and
+   .bd-sheet .an-clip (bankroll-dashboard.css) gives truncating cells
+   their descenders' room.
+
+   GRID. Content is 35g (the 37g sheet less 1g each side).
+     section header  a 35g x 5r disclosure button: chevron 2g | name and
+                     range 21g | the headline 12g (shown while closed)
+     table head      3r, labels on line 2; a key bar in the column's series
+                     colour along line 3
+     rows            4r, text on line 3; zebra by background (--ovt-zebra),
+                     full bleed (37g, 1g padding each side, so the text stays
+                     on the 35g column), no rules between them
+     columns         Summary, Sessions, By month: label 11g | 3 x 8g
+                     Games, Rooms: label 11g | played 5g | hours 4g |
+                     rate 7g | total 8g
+                     Bankroll: label 11g | note 16g | value 8g
+                     Right edges (from the sheet's left, 1g padding): 20 |
+                     28 | 36g in the 3 x 8g tables; 17 | 21 | 28 | 36g in
+                     Games and Rooms, so their rate column ends on the
+                     Tournaments edge and their 8g total under Total.
+                     The label column is minmax(11g, 1fr): on a wider sheet
+                     it takes the room and the figure columns stay whole g.
+     open body       the table, then a note 1r below it, then 2r of space.
+   The header is a control: its labels are centred vertically (owner rule
+   2026-10-10), start-aligned like every disclosure row (the guard lists
+   .ovt-head under START_ALIGNED). Every other line sits on an r line.
+   Collapse animates the body's grid row from 0fr to 1fr (no measured
+   heights); prefers-reduced-motion turns it off. While the next figures
+   load the section keeps the ones in hand, dimmed (is-busy).
+   ================================================================== */
+
+/* Column identity, shared with the graph (BankrollChart): the graph work defines the same three
+   tokens in styles.css (with measured per-theme values). These are only a fallback until it lands:
+   :where() gives them zero specificity, so styles.css's :root / [data-theme] definitions win
+   whatever order the sheets load in, and the lead can delete this block at merge. */
+:where(:root) {
+  --series-total: var(--text);
+  --series-tourn: var(--brand);
+  --series-cash: #a78bfa;
+}
+:where([data-theme="light"], [data-theme="cloudy"]) { --series-cash: #6d28d9; }
+
+/* The zebra stripe. --surface against the sheet's --bg in the standard themes (1.085 to 1.116:1,
+   measured in WebKit); high contrast sets --surface on or next to --bg (light-high #fff on #fff,
+   1.00:1; dark-high 1.06; dusk-high 1.07), so the stripe vanished exactly where a reader asked for
+   more contrast. There it is the theme's own --hover-overlay tint: light-high 1.19, dark-high
+   1.12, dusk-high 1.13. Cloudy-high keeps --surface (1.08): its tint (1.25) would take the green
+   figures on a stripe from 3.5 to 3.1:1. Table in docs/bankrolls.md. */
+.ovt {
+  --ovt-zebra: var(--surface);
+  margin-top: calc(var(--subrow) * 3);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+[data-contrast="high"]:not([data-theme="cloudy"]) .ovt { --ovt-zebra: var(--hover-overlay); }
+.ovt-h { margin: 0; }
+
+/* ── The disclosure row ────────────────────────────────────────── */
+.ovt-head {
+  display: grid;
+  grid-template-columns: var(--subcol) minmax(0, 1fr) calc(var(--gu) * 12);
+  align-items: center;
+  width: 100%;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  /* Every line in the row is one 5r line box: the face's line box is centred on its capitals. */
+  line-height: calc(var(--subrow) * 5);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Focus: the app's own outset ring (styles.css :where(button):focus-visible, and its high-contrast
+   colour). It sits in the 1g gutter outside the header, clear of the headline's last glyph, which
+   ends on the column's edge. */
+.ovt-chev { display: flex; align-items: center; height: 100%; color: var(--text-muted); }
+.ovt-chev svg {
+  --icon-size: var(--icon-md);
+  transform: rotate(-90deg);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.ovt-sec.is-open .ovt-chev svg { transform: none; }
+.ovt-title { display: flex; gap: var(--gu); min-width: 0; }
+/* Tracked caps: the indent matches the tracking (owner rule). */
+.ovt-name, .ovt-scope {
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+}
+.ovt-name { flex: none; font-weight: var(--fw-bold); color: var(--text); }
+.ovt-scope { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: var(--fw-regular); color: var(--text-muted); }
+.ovt-headline {
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-align: right;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  font-variant-numeric: var(--num-tabular);
+  color: var(--text);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.ovt-headline.an-pos { color: var(--pos); }
+.ovt-headline.an-neg { color: var(--neg); }
+.ovt-sec.is-open .ovt-headline { opacity: 0; }
+/* While a section is open its headline is hidden, so the title takes that column too: a long
+   bankroll name in the scope line ellipsized beside 12g of blank headline otherwise. One grid row
+   for all three, so the hidden headline stays put underneath (it paints nothing). */
+.ovt-head > * { grid-row: 1; }
+.ovt-head > .ovt-headline { grid-column: 3; }
+.ovt-sec.is-open .ovt-title { grid-column: 2 / -1; }
+
+/* ── The collapsing body ───────────────────────────────────────── */
+.ovt-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-inline: calc(var(--gu) * -1);
+  visibility: hidden;
+  transition: grid-template-rows var(--dur-base) var(--ease-standard), visibility 0s linear var(--dur-base);
+}
+.ovt-sec.is-open > .ovt-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows var(--dur-base) var(--ease-standard), visibility 0s linear 0s;
+}
+.ovt-inner { min-height: 0; overflow: hidden; }
+.ovt-content { padding: 0 var(--gu) calc(var(--subrow) * 2); }
+
+/* Busy: while the next ledger (or, for Games and Rooms, the next report facts) loads, the figures
+   in hand stay where they are, so an open section never collapses to a "Loading…" line and snaps
+   back. Their scope, headline and body dim after a beat (a fast reply never flickers); the section
+   name and chevron keep full strength, so the control does not read as disabled. aria-busy on the
+   region says the same to assistive technology. */
+.ovt-content, .ovt-scope { transition: opacity var(--dur-fast) var(--ease-out); }
+.ovt-sec.is-busy .ovt-content,
+.ovt-sec.is-busy .ovt-scope,
+.ovt-sec.is-busy:not(.is-open) .ovt-headline {
+  opacity: var(--state-past);
+  transition-delay: var(--dur-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ovt-body, .ovt-sec.is-open > .ovt-body, .ovt-chev svg, .ovt-headline { transition: none; }
+}
+
+/* ── Tables ────────────────────────────────────────────────────── */
+.ovt-thead, .ovt-row {
+  display: grid;
+  align-items: start;
+  margin-inline: calc(var(--gu) * -1);
+  padding-inline: var(--gu);
+}
+.ovt-thead { height: calc(var(--subrow) * 3); }
+.ovt-row { height: calc(var(--subrow) * 4); }
+.ovt-row:nth-child(odd of .ovt-row) { background: var(--ovt-zebra); }
+.ovt-c4 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) repeat(3, var(--col)); }
+.ovt-c5 { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 7) var(--col); }
+.ovt-cb { grid-template-columns: minmax(calc(var(--gu) * 11), 1fr) calc(var(--gu) * 16) var(--col); }
+.ovt-span2 { grid-column: span 2; }
+.ovt-span3 { grid-column: span 3; }
+
+/* Head labels. A right-aligned tracked label hangs its last letter's tracking past the edge, so
+   its ink ends on the column's edge like the figures under it. */
+.ovt-th.an-num > span { margin-right: calc(var(--track-caps) * -1); }
+/* A unit keeps its case in a caps head: $/h, not $/H (hours are h). */
+.ovt-th .ovt-unit { text-transform: none; }
+/* Column keys: the label in the series colour over a bar along the head's last line — the same
+   colours as the graph's lines. A figure column's bar starts 1g in, so neighbours do not join. */
+.ovt-th.is-key { position: relative; }
+.ovt-th.is-key::after {
+  content: '';
+  position: absolute; bottom: 0; left: var(--gu); right: 0;
+  height: var(--bw-2);
+  background: currentColor;
+}
+.ovt-th.is-key:not(.an-num)::after { left: 0; right: var(--gu); }
+.ovt-th.is-cash { color: var(--series-cash); }
+.ovt-th.is-tourn { color: var(--series-tourn); }
+.ovt-th.is-total { color: var(--series-total); }
+
+.ovt-lab { color: var(--text); }
+.ovt-lab.is-muted { color: var(--text-muted); }
+.ovt-row.is-strong .ovt-lab, .ovt-fig.is-strong { font-weight: var(--fw-bold); }
+/* The bold face's ascent and descent round to whole px differently from the regular's, so an-td's
+   p (measured on the regular) seats bold text high: measured in WebKit, -0.016..-0.004r at 402 wide
+   and -0.057..-0.034r at 1440 (g frozen at 430/37). p is raised by 2 x 0.0304r, the middle of that
+   spread, which leaves every bold baseline within 0.027r (0.2px) of its line at both widths. */
+.ovt .an-td.is-strong, .ovt-row.is-strong .ovt-lab { --p: 0.7586; }
+/* The head labels (an-lbl-3b, bold 2xs caps) likewise: -0.014..-0.004r at 402, -0.044..-0.034r at
+   1440; p raised by 2 x 0.0238r leaves them within 0.020r at both. */
+.ovt .an-lbl-3b { --p: 0.1348; }
+.an-cell.ovt-note-4 { --h: 4; --p: 0.9574; }   /* an-note (Univers Condensed xs), baseline on line 3 of 4 */
+
+.ovt-group + .ovt-group { margin-top: calc(var(--subrow) * 2); }
+.ovt-table + .ovt-note, .ovt-group + .ovt-note { margin-top: var(--subrow); }

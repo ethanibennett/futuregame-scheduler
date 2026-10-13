@@ -43,7 +43,7 @@ export default function DateBreak({
 
   const pill = (
     <span className="date-break-pill">
-      <span className="date-break-label">
+      <span className={`date-break-label${dayNum.includes('7') ? ' has-tall-figure' : ''}`}>
         <b className="date-break-day">{dayNum}</b>
         <span className="date-break-mon">{monthAbbr}</span>
       </span>

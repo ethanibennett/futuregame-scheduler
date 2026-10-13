@@ -5,18 +5,23 @@ import ShareMenu from './ShareMenu.jsx';
 import WrapUpViewer from './WrapUpViewer.jsx';
 import { API_URL } from '../utils/api.js';
 import {
-  getVenueInfo, normaliseDate, getToday, currencySymbol, nativeCurrency,
+  getVenueInfo, normaliseDate, getToday, getNow, currencySymbol, nativeCurrency,
   CURRENCY_CONFIG, formatCurrencyAmount, convertAmount, isPOYEligible,
   calculatePOYPoints, isSixMax, haptic, ordinalSuffix, parseTournamentTime,
 } from '../utils/utils.js';
 import ResultsCurve from './ResultsCurve.jsx';
 import { BankrollSwitcher, BankrollManager, BankrollPicker } from './Bankrolls.jsx';
-import useBankrolls from '../hooks/useBankrolls.js';
 import { filterByBankroll, balancesFromSummary, defaultBankrollFor } from '../utils/bankrolls.js';
 import BankrollDashboardSheet from './BankrollDashboardSheet.jsx';
+import ResetResults from './ResetResults.jsx';
+import { resetScope } from '../utils/reset-results.js';
+import { resultMoney, awaitingResults, eventNo } from '../utils/home.js';
+import { resolveConditions } from '../utils/home-upnext.js';
+import { publishDisplayCurrency } from '../hooks/useDisplayCurrency.js';
 import AnalyticsLauncher from './AnalyticsLauncher.jsx';
+import { useToast } from '../contexts/ToastContext.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
-import { useResultsKind } from '../hooks/useLiveCashSession.js';
+import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 // BETA cash sessions, admins only: lazy like the tax report.
 const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
@@ -26,7 +31,11 @@ const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
 const ExpensesSection = lazy(() => import('./Expenses.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
-function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, bankrolls }) {
+// isNew with isEdit: a NEW result for one known event (the home's To log), so no event picker,
+// but it reads as logging, not editing. conflict: the sentence saying a result is already logged
+// for the event (the server refused to log over it); the form keeps what was typed, and its
+// submit becomes Replace it (onSubmit's second argument, { replace: true }).
+function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null }) {
   const [tournamentId, setTournamentId] = useState(initialValues?.tournamentId || '');
   const [numEntries, setNumEntries] = useState(initialValues?.numEntries || 1);
   const [cashed, setCashed] = useState(initialValues?.cashed || false);
@@ -69,17 +78,19 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
       notes: notes || null,
       totalFieldSize: totalFieldSize ? parseInt(totalFieldSize) : null,
       ...(bankrolls ? { bankrollId } : {})
-    });
+    }, conflict ? { replace: true } : undefined);
   };
 
   return (
     <form onSubmit={handleSubmit} className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
-      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',marginBottom:'var(--space-lg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
-        {isEdit ? `Edit: ${tournamentLabel}` : 'Log Tournament Result'}
+      {/* Every row of the form a whole number of r (a 3r title, 2r labels over 5r fields, 2r
+          between groups), so its controls and everything under the form start on r lines. */}
+      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',lineHeight:'calc(var(--subrow) * 3)',marginBottom:'var(--subrow)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+        {isEdit ? `${isNew ? 'Log' : 'Edit'}: ${tournamentLabel}` : 'Log Tournament Result'}
       </div>
 
       {!isEdit && (
-        <div className="filter-group" style={{marginBottom:'var(--space-lg)'}}>
+        <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <label>Tournament</label>
           <select value={tournamentId} onChange={e => setTournamentId(e.target.value)} required>
             <option value="">Select event...</option>
@@ -100,7 +111,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
         </div>
         <div className="filter-group">
           <label>Cashed?</label>
-          <div style={{display:'flex',gap:'var(--space-md)',marginTop:'var(--space-xs)',alignItems:'center'}}>
+          <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
             <button type="button" className={`filter-chip ${!cashed ? 'active' : ''}`}
               onClick={() => { setCashed(false); setShowLfg(false); }}>No</button>
             <button type="button" className={`filter-chip ${cashed ? 'active' : ''}`}
@@ -126,13 +137,13 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
       )}
 
       {showFieldSize && (
-        <div className="filter-group" style={{marginBottom:'var(--space-lg)'}}>
+        <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <label>Field Size (total entries)</label>
           <input type="number" min="1" value={totalFieldSize}
             onChange={e => setTotalFieldSize(e.target.value)} placeholder="e.g. 8500"
             style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
               background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
-          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',marginTop:'var(--space-2xs)',display:'block'}}>
+          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',lineHeight:'calc(var(--subrow) * 2)',display:'block'}}>
             Used for POY points calculation
           </span>
         </div>
@@ -140,7 +151,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
 
       {bankrolls && <BankrollPicker bankrolls={bankrolls} value={bankrollId} onChange={setBankrollId} />}
 
-      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 1.75)'}}>
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <label>Notes (optional)</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Optional notes about this session"
@@ -148,9 +159,17 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
             background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
       </div>
 
+      {/* Seated like the rest of the card's text (.tr-seat: each line's baseline on a 2r line), so
+          the form stays whole r with it. */}
+      {conflict && (
+        <p className="tr-seat tr-seat-2" role="alert" style={{fontSize:'calc(var(--gu) * 1.104)',color:'var(--text)',margin:'0 0 calc(var(--subrow) * 2)'}}>
+          {conflict}
+        </p>
+      )}
+
       <div style={{display:'flex',gap:'var(--gu)'}}>
         <button type="submit" className="btn btn-primary btn-sm" style={{width:'calc(var(--gu) * 10)',padding:0}}>
-          {isEdit ? 'Save Changes' : 'Log Result'}
+          {conflict ? 'Replace it' : isEdit && !isNew ? 'Save Changes' : 'Log Result'}
         </button>
         <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
       </div>
@@ -166,8 +185,8 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
   const fmt = (val) => formatCurrencyAmount(val, to);
   const fmtSigned = (val) => { const c = cv(val); return (c >= 0 ? '+' : '') + formatCurrencyAmount(c, to); };
 
-  const totalCost = (entry.buyin || 0) * (entry.num_entries || 1);
-  const profit = (entry.cash_amount || 0) - totalCost;
+  // The ledger's rule (utils/home.js): a cash counts only when the entry cashed.
+  const { cost: totalCost, net: profit } = resultMoney(entry);
   const poyEligible = isPOYEligible(entry);
   const poyPoints = poyEligible
     ? calculatePOYPoints(entry.buyin, entry.finish_place, entry.total_entries, !!entry.cashed, entry.event_name)
@@ -197,7 +216,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
   }
 
   return (
-    <div className="tracking-card">
+    <div className="tracking-card" data-entry={entry.id}>
       {/* Date on its 2r line, the event name's first baseline 3r below it, the profit seated on
           line 3 at the right: 5r, then 1r. */}
       <div className="tracking-head">
@@ -272,7 +291,8 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, myActiveUpdates, isAdmin, token }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone }) {
+  const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [pendingFormId, setPendingFormId] = useState(null);
@@ -292,9 +312,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       .catch(() => { setExchangeRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); setRatesStale(true); });
   }, []);
 
-  // Bankrolls (beta, admins only). For everyone else `bk.selected` is 'all', the filter is the
-  // identity, and `formBankrolls` is null so the form neither shows nor sends a bankroll.
-  const bk = useBankrolls({ enabled: !!isAdmin, token, version: allTrackingData });
+  // Bankrolls (beta, admins only): App's useBankrolls, shared with the home (one summary). For
+  // everyone else `bk.selected` is 'all', the filter is the identity, and `formBankrolls` is null
+  // so the form neither shows nor sends a bankroll.
   const [showBankrolls, setShowBankrolls] = useState(false);
   const [showBankrollDashboard, setShowBankrollDashboard] = useState(false);
   const closeBankrollDashboard = useCallback(() => setShowBankrollDashboard(false), []);
@@ -321,7 +341,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
   const onCurrencyChange = useCallback((c) => {
     setDisplayCurrency(c);
-    localStorage.setItem('trackingCurrency', c);
+    // Stored and announced: the home follows this setting, at once (hooks/useDisplayCurrency.js).
+    publishDisplayCurrency(c);
   }, []);
 
   const stats = useMemo(() => {
@@ -329,7 +350,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     const poyScores = [];
     for (const e of trackingData) {
       const from = nativeCurrency(e.venue);
-      const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
+      // Native is per row; a total of euros and dollars is in no currency, so it sums in USD
+      // (which fmtStat labels it).
+      const to = displayCurrency === 'NATIVE' ? 'USD' : displayCurrency;
       const cost = (e.buyin || 0) * (e.num_entries || 1);
       totalBuyins += convertAmount(cost, from, to, exchangeRates);
       if (e.cashed) { totalCashes += convertAmount(e.cash_amount || 0, from, to, exchangeRates); eventsCashed++; }
@@ -353,18 +376,118 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
 
   const existingEntryIds = useMemo(() => new Set(allTrackingData.map(e => e.tournament_id)), [allTrackingData]);
 
-  // Find most recent scheduled event that hasn't been tracked yet
+  // The newest scheduled event that is over with no result: the home's To log rule (utils/home.js
+  // awaitingResults), so a bagged or running event, today's not yet played, one marked "Didn't
+  // play", and a plan's branch that resolved off (never played) are not asked about here either.
   const pendingEvent = useMemo(() => {
-    if (!mySchedule || mySchedule.length === 0) return null;
-    const todayISO = getToday();
-    return [...mySchedule]
-      .filter(t => t.venue !== 'Personal' && !existingEntryIds.has(t.id) && normaliseDate(t.date) <= todayISO)
-      .sort((a, b) => {
-        const da = parseTournamentTime(a);
-        const db = parseTournamentTime(b);
-        return db - da; // most recent first
-      })[0] || null;
-  }, [mySchedule, existingEntryIds]);
+    // The plans resolved exactly as the home resolves them (DashboardView: the feed names a parent
+    // that is not on the schedule), so the two never disagree about a branch.
+    const plans = resolveConditions(mySchedule, myActiveUpdates, allTrackingData, { events: tournaments, startOf: parseTournamentTime });
+    const first = awaitingResults(mySchedule, allTrackingData, myActiveUpdates, { today: getToday(), now: getNow(), startOf: parseTournamentTime, plans })[0];
+    return first ? first.event : null;
+  }, [mySchedule, allTrackingData, myActiveUpdates, tournaments]);
+
+  // What the home asked for (App's resultsIntent): a form, an entry, a sheet. The cash and
+  // expense ones are handed to the view that owns that form, which reports back itself.
+  const [intentForm, setIntentForm] = useState(null); // { tournamentId, label, event, initial, conflict }
+  const [focusEntry, setFocusEntry] = useState(null);
+  const intentFormRef = React.useRef(null);
+  const intentSending = React.useRef(false);
+  // The intent form LOGS (ifAbsent): a result already there is refused, not overwritten. Then the
+  // form stays open with what was typed, says what is logged, and offers Replace it (a plain
+  // upsert) or Cancel (keep the logged one). It used to close as if it had logged, and the cash
+  // typed into it was gone without a word.
+  const submitIntent = async (data, opts = {}) => {
+    if (!intentForm || intentSending.current) return;
+    const { tournamentId, label } = intentForm;
+    intentSending.current = true;
+    try {
+      const r = await onAdd({ ...data, tournamentId, ifAbsent: !opts.replace });
+      if (r && r.ok) { setIntentForm(null); return; }
+      if (r && r.status === 409) {
+        setIntentForm((f) => (f && f.tournamentId === tournamentId ? { ...f, conflict: true } : f));
+        toast?.info(`${label || 'This event'} already has a result. What you typed is still in the form.`);
+      }
+      // Anything else: App has said what went wrong; the form stays open with what was typed.
+    } finally { intentSending.current = false; }
+  };
+  // The logged result the conflict sentence describes (the list is refetched on the 409).
+  const intentConflict = useMemo(() => {
+    if (!intentForm || !intentForm.conflict) return null;
+    const e = allTrackingData.find((x) => x.tournament_id === intentForm.tournamentId);
+    const n = e ? (e.num_entries || 1) : 0;
+    const what = !e ? '' : ` (${e.cashed
+      ? `cashed ${formatCurrencyAmount(e.cash_amount || 0, nativeCurrency(e.venue))}${e.finish_place ? `, ${e.finish_place}${ordinalSuffix(e.finish_place)}` : ''}`
+      : 'no cash'}, ${n} bullet${n === 1 ? '' : 's'})`;
+    return `A result is already logged for this event${what}, from another device or a live update's Finish. Replace it with these figures, or Cancel to keep it.`;
+  }, [intentForm, allTrackingData]);
+  const kind = intent ? intent.kind : null;
+  const cashIntent = isAdmin && kind && kind.startsWith('cash') ? intent : null;
+  const expenseIntent = isAdmin && (kind === 'expense' || kind === 'trip') ? intent : null;
+  useEffect(() => {
+    if (!intent) return;
+    if (intent.kind.startsWith('cash')) {
+      if (isAdmin) setResultsKind('cash'); else onIntentDone && onIntentDone();
+      return;
+    }
+    setResultsKind('tournaments');
+    // Expenses & income (the Log menu's choice) and a trip's page (the home's period block in trip
+    // mode) belong to ExpensesSection, which reports back itself.
+    if (intent.kind === 'expense' || intent.kind === 'trip') { if (!isAdmin) onIntentDone && onIntentDone(); return; }
+    if (intent.kind === 'tournament') {
+      setEditingId(null);
+      setPendingFormId(null);
+      if (intent.tournamentId) {
+        const ev = intent.event || (mySchedule || []).find((t) => t.id === intent.tournamentId) || {};
+        setShowAddForm(false);
+        setIntentForm({
+          tournamentId: intent.tournamentId,
+          event: ev,
+          label: [eventNo(ev.event_number), ev.event_name].filter(Boolean).join(' '),
+          initial: { tournamentId: intent.tournamentId, ...(intent.prefill || {}), ...newEntryBankroll },
+        });
+      } else {
+        setIntentForm(null);
+        setShowAddForm(true);
+      }
+    } else if (intent.kind === 'entry') {
+      setFocusEntry({ id: intent.entryId, at: intent.at || Date.now() });
+    } else if (intent.kind === 'import') {
+      if (bk.enabled) setShowBankrollDashboard(true);
+    } else if (intent.kind === 'awaiting') {
+      setFocusEntry({ id: 'pending', at: intent.at || Date.now() });
+    }
+    onIntentDone && onIntentDone();
+  }, [intent]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bring what was asked for into view: the form, or the entry (briefly ringed). The tab's own
+  // scroller moves (the content area, or the desktop pane), never the window: scrollIntoView
+  // would scroll the document too and slide the top bar off the screen.
+  const bringIntoView = (el, centre) => {
+    const sc = el && el.closest('.content-area, .dk-scroll');
+    if (!sc) return;
+    const box = sc.getBoundingClientRect(), r = el.getBoundingClientRect();
+    sc.scrollTop += centre ? (r.top + r.height / 2) - (box.top + box.height / 2) : r.top - box.top;
+    window.scrollTo(0, 0);
+  };
+  useEffect(() => {
+    if (!intentForm && !showAddForm) return;
+    requestAnimationFrame(() => bringIntoView(intentFormRef.current, false));
+  }, [intentForm, showAddForm]);
+  useEffect(() => {
+    if (!focusEntry) return undefined;
+    let t1 = 0;
+    const t0 = setTimeout(() => {
+      const el = document.querySelector(focusEntry.id === 'pending'
+        ? '.tab-panel[data-tab="tracking"] .tracking-pending'
+        : `.tab-panel[data-tab="tracking"] [data-entry="${focusEntry.id}"]`);
+      if (!el) return;
+      bringIntoView(el, true);
+      el.classList.add('is-focus');
+      t1 = setTimeout(() => el.classList.remove('is-focus'), 2000);
+    }, 50);
+    return () => { clearTimeout(t0); clearTimeout(t1); };
+  }, [focusEntry]);
 
   if (showTaxReport && isAdmin) {
     return (
@@ -389,7 +512,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
       {isAdmin && resultsKind === 'cash' ? (
-        <Suspense fallback={null}><CashSessionsView token={token} bk={bk} /></Suspense>
+        <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
       ) : (<>
       <div className="section-header">
         <h2>Tracking</h2>
@@ -480,12 +603,12 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {isAdmin && bk.enabled && (
         <Suspense fallback={null}>
           <ExpensesSection token={token} bankroll={bk.selected} bankrolls={bk.bankrolls} rates={exchangeRates}
-            events={allTrackingData} onChanged={bk.refresh} />
+            events={allTrackingData} onChanged={bk.refresh} intent={expenseIntent} onIntentDone={onIntentDone} />
         </Suspense>
       )}
 
-      {pendingEvent && !showAddForm && pendingFormId !== pendingEvent.id && (
-        <div className="tracking-card" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
+      {pendingEvent && !showAddForm && !intentForm && pendingFormId !== pendingEvent.id && (
+        <div className="tracking-card tracking-pending" style={{padding:'calc(var(--subrow) * 2) var(--gu)', marginBottom:'calc(var(--subrow) * 2)', border:0, outline:'var(--bw-1) dashed var(--accent)', outlineOffset:'calc(var(--bw-1) * -1)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
             <div style={{flex:1, minWidth:0}}>
               <div style={{fontSize:'calc(var(--gu) * 1.031)', lineHeight:'calc(var(--subrow) * 2)', color:'var(--text-muted)', fontFamily:"'Univers Condensed','Univers',sans-serif", letterSpacing:'0.03em'}}>
@@ -521,6 +644,29 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         />
       )}
 
+      <div ref={intentFormRef}>
+      {/* The home's To log "Cashed": this event's form, prefilled from its bust (bullets, a deal's
+          place and payout, the field). It logs and never edits on its own: a result already there
+          (another device, the live-update Finish) is refused (ifAbsent), and the form then asks
+          before replacing it (submitIntent). */}
+      {intentForm && (
+        <TrackingEntryForm
+          key={'intent-' + intentForm.tournamentId}
+          tournaments={tournaments}
+          mySchedule={mySchedule}
+          existingEntryIds={existingEntryIds}
+          initialValues={intentForm.initial}
+          bankrolls={formBankrolls}
+          tournamentLabel={intentForm.label}
+          entryForPOY={intentForm.event}
+          onSubmit={submitIntent}
+          onCancel={() => setIntentForm(null)}
+          isEdit
+          isNew
+          conflict={intentConflict}
+        />
+      )}
+
       {showAddForm && (
         <TrackingEntryForm
           tournaments={tournaments}
@@ -532,6 +678,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           onCancel={() => setShowAddForm(false)}
         />
       )}
+      </div>
 
       {trackingData.length === 0 && !showAddForm && !pendingFormId ? (
         <FirstRun
@@ -558,6 +705,20 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
           </div>
         ))
       )}
+
+      {/* Delete results: the bankroll on show only, typed confirmation (moved off the home). */}
+      {onResetResults && trackingData.length > 0 && (() => {
+        const scope = resetScope(bk.selected, { bankrolls: bk.bankrolls, enabled: bk.enabled });
+        return (
+          <ResetResults
+            key={String(scope.key)}
+            count={trackingData.length}
+            imported={trackingData.reduce((n, e) => n + (Number(e.imported) ? 1 : 0), 0)}
+            scope={scope}
+            onReset={onResetResults}
+          />
+        );
+      })()}
 
       {showShareMenu && (
         <ShareMenu

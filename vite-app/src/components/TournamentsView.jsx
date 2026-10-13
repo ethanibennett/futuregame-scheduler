@@ -303,10 +303,13 @@ function Filters({ filters, setFilters, setFiltersRaw, gameVariants, venues, buy
           const r = toggleRef.current?.getBoundingClientRect();
           if (!r) return { top: 'calc(var(--subrow) * 8)', left: 'var(--gu)', right: 'var(--gu)' };
           const vh = window.innerHeight || document.documentElement.clientHeight || 700;
+          // Desktop: the list pane is the phone's 37g canvas, so the panel gets the phone's 35g box
+          // from 1g in. It was the pane's measured width less 2g, which a classic scrollbar widens
+          // (not the canvas), so the panel ran that much past the pane's 1g margin.
           const pane = toggleRef.current.closest('.dk-pane');
           if (pane) {
             const pr = pane.getBoundingClientRect();
-            return { top: `calc(${r.bottom}px + var(--subrow))`, left: `calc(${pr.left}px + var(--gu))`, width: `calc(${pr.width}px - var(--gu) * 2)`, maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
+            return { top: `calc(${r.bottom}px + var(--subrow))`, left: `calc(${pr.left}px + var(--gu))`, width: 'calc(var(--gu) * 35)', maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
           }
           return { top: `calc(${r.bottom}px + var(--subrow))`, left: 'var(--gu)', right: 'var(--gu)', maxHeight: `calc(${vh - r.bottom}px - var(--subrow) * 3)` };
         })()}>
@@ -1125,11 +1128,13 @@ const DEFAULT_FILTERS = {
 // LocationDropdown lives in its own file now (shared with CalendarView).
 
 /* Keep the list's top row where it is while a filter adds or removes rows ABOVE it (owner, 2026-10-10:
-   turning Online on made the schedule jump; it should hold still and only grow downward). Safari has
-   no CSS scroll anchoring (overflow-anchor), so: before the change, note the first event row showing
-   under the sticky filters and its distance from that line; after React commits, scroll so the same
-   row is back at the same distance. If that row is gone (Online turned OFF while an online event was
-   on top), its date group stands in. Measured both times, nothing assumed. */
+   turning Online on made the schedule jump; it should hold still and only grow downward). Browser
+   scroll anchoring does not hold this list on the phone's WebKit, and the desktop pane is arranged
+   like the phone (.dk-pane, styles.css) so it behaves the same, so: before the change, note the
+   first event row showing under the sticky filters and its distance from that line; after React
+   commits, scroll so the same row is back at the same distance. If that row is gone (Online turned
+   OFF while an online event was on top), its date group stands in. Measured both times, nothing
+   assumed. */
 function pinListTopAcross(apply) {
   const c = document.querySelector('.content-area');
   if (!c) { apply(); return; }
@@ -1384,7 +1389,9 @@ export default function TournamentsView({
     // rootMargin is an IntersectionObserver API value — the spec requires an
     // absolute px/% length and rejects calc()/var(), so derive the 150-subrow
     // pre-load buffer from r in JS and emit it as the px the API demands.
-    const r = (window.innerWidth / 37) * 0.71;
+    // g freezes at 430px (styles.css --gu), so a desktop pane — a 37g phone canvas in a wide
+    // window — pre-loads at the phone's distance, not 3.35x further (same cap as CalendarEventRow).
+    const r = (Math.min(window.innerWidth, 430) / 37) * 0.71;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setRenderedGroupCount(prev => prev + 30);
@@ -1776,7 +1783,7 @@ export default function TournamentsView({
           actions={[{ label: 'Clear filters', onClick: clearAllFilters }]}
         />
       ) : (
-        <div style={{minHeight:'100vh', paddingBottom:'60vh'}}>
+        <div className="schedule-list-tail">
           {(() => {
             const todayISO = getToday();
             // Some tournament rows have legacy non-ISO date strings
@@ -1866,7 +1873,8 @@ export default function TournamentsView({
                           isPast={past}
                           isAnchor={anchorSet.has(t.id)}
                           conditions={conditionMap[t.id]}
-                          onExpand={() => (onSelectEvent ? onSelectEvent(t.id) : activateRow(t.id))}
+                          onExpand={() => activateRow(t.id)}
+                          onSelect={onSelectEvent}
                           selected={onSelectEvent ? selectedEventId === t.id : undefined}
                         />
                       )}
