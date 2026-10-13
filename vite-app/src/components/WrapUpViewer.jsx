@@ -53,7 +53,7 @@ export default function WrapUpViewer({ trackingData, tournaments, onClose }) {
   return createPortal(
     <>
       <div className="share-menu-backdrop" onClick={onClose} />
-      <div className="share-menu-panel" style={{ maxHeight: '85vh' }}>
+      <div className="share-menu-panel grid-sheet">
         <h3>Series Wrap-Up</h3>
         <div className="wrapup-slide-picker">
           {slideNames.map((name, i) => (
@@ -64,16 +64,19 @@ export default function WrapUpViewer({ trackingData, tournaments, onClose }) {
             >{name}</button>
           ))}
         </div>
-        <div style={{ textAlign: 'center', margin: 'var(--space-lg) 0' }}>
+        {/* The preview a whole 44r tall (9:16, so 24.75r wide), a block so no line box adds to it,
+            2r above and below: the buttons after it start on an r line. */}
+        <div style={{ margin: 'calc(var(--subrow) * 2) 0' }}>
           <canvas
             ref={previewRef}
-            style={{ width: 'calc(var(--subrow) * 25)', height: 'calc(var(--subrow) * 44.5)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)' }}
+            style={{ display: 'block', margin: '0 auto', width: 'calc(var(--subrow) * 24.75)', height: 'calc(var(--subrow) * 44)', boxSizing: 'border-box', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)' }}
           />
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center' }}>
-          <button className="btn btn-primary btn-sm" onClick={handleShare}>Share This Slide</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleShareAll}>Download All</button>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+        {/* Whole-g buttons 1g apart; the group is centred, so snap-place sets it on the g lines. */}
+        <div className="snap-place" style={{ display: 'flex', gap: 'var(--gu)', width: 'max-content', margin: '0 auto' }}>
+          <button className="btn btn-primary btn-sm snap-g" style={{ flexShrink: 0 }} onClick={handleShare}>Share This Slide</button>
+          <button className="btn btn-ghost btn-sm snap-g" style={{ flexShrink: 0 }} onClick={handleShareAll}>Download All</button>
+          <button className="btn btn-ghost btn-sm snap-g" style={{ flexShrink: 0 }} onClick={onClose}>Close</button>
         </div>
       </div>
     </>,

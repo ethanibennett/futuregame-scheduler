@@ -98,8 +98,10 @@
   display: flex; align-items: center; justify-content: center; box-sizing: border-box;
   background: var(--brand-quiet); border-radius: var(--radius);
 }
+/* A control, so its label is CENTRED in the 8g x 4r box, not seated (owner rule, 2026-10-10). */
 .an-close {
-  --h: 4; --p: 0.6978;                         /* as .an-td: baseline on line 3 of 4 */
+  --h: 4; --p: 0;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
   position: absolute; left: calc(var(--gu) * 28); top: calc(var(--subrow) * 2);
   width: var(--col); margin: 0; border: 0; border-radius: var(--radius-sm);
   background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
@@ -151,7 +153,8 @@
   margin-bottom: calc(var(--subrow) * 2);
 }
 .an-chip {
-  --h: 4; --p: 0.6978;
+  --h: 4; --p: 0;                              /* a control: label centred, not seated */
+  display: flex; align-items: center; justify-content: center; line-height: 1;
   width: calc(var(--gu) * 11); margin: 0; border: 0; border-radius: var(--radius-sm);
   background: transparent; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
   font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--text-muted);

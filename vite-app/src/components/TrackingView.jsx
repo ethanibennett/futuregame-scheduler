@@ -73,12 +73,14 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
 
   return (
     <form onSubmit={handleSubmit} className="tracking-card" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
-      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',marginBottom:'var(--space-lg)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
+      {/* Every row of the form a whole number of r (a 3r title, 2r labels over 5r fields, 2r
+          between groups), so its controls and everything under the form start on r lines. */}
+      <div style={{fontSize:'calc(var(--gu) * 1.325)',fontWeight:700,color:'var(--text)',lineHeight:'calc(var(--subrow) * 3)',marginBottom:'var(--subrow)',fontFamily:"'Univers Condensed','Univers',sans-serif"}}>
         {isEdit ? `Edit: ${tournamentLabel}` : 'Log Tournament Result'}
       </div>
 
       {!isEdit && (
-        <div className="filter-group" style={{marginBottom:'var(--space-lg)'}}>
+        <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <label>Tournament</label>
           <select value={tournamentId} onChange={e => setTournamentId(e.target.value)} required>
             <option value="">Select event...</option>
@@ -99,7 +101,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
         </div>
         <div className="filter-group">
           <label>Cashed?</label>
-          <div style={{display:'flex',gap:'var(--space-md)',marginTop:'var(--space-xs)',alignItems:'center'}}>
+          <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
             <button type="button" className={`filter-chip ${!cashed ? 'active' : ''}`}
               onClick={() => { setCashed(false); setShowLfg(false); }}>No</button>
             <button type="button" className={`filter-chip ${cashed ? 'active' : ''}`}
@@ -125,13 +127,13 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
       )}
 
       {showFieldSize && (
-        <div className="filter-group" style={{marginBottom:'var(--space-lg)'}}>
+        <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
           <label>Field Size (total entries)</label>
           <input type="number" min="1" value={totalFieldSize}
             onChange={e => setTotalFieldSize(e.target.value)} placeholder="e.g. 8500"
             style={{padding:'var(--space-ml) var(--space-lg)',border:'var(--bw-1) solid var(--border)',borderRadius:'var(--radius-sm)',
               background:'var(--bg)',color:'var(--text)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.325)',width:'100%'}} />
-          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',marginTop:'var(--space-2xs)',display:'block'}}>
+          <span style={{fontSize:'calc(var(--gu) * 1.031)',color:'var(--text-muted)',lineHeight:'calc(var(--subrow) * 2)',display:'block'}}>
             Used for POY points calculation
           </span>
         </div>
@@ -139,7 +141,7 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
 
       {bankrolls && <BankrollPicker bankrolls={bankrolls} value={bankrollId} onChange={setBankrollId} />}
 
-      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 1.75)'}}>
+      <div className="filter-group" style={{marginBottom:'calc(var(--subrow) * 2)'}}>
         <label>Notes (optional)</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Optional notes about this session"

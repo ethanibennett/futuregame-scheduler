@@ -51,8 +51,13 @@ function useApi(token) {
   }, [token]);
 }
 
+// A label ending in "1" ("Trips · 1"): Univers Condensed's 1 stands 0.126em in from its right edge
+// where the other figures and letters stand ~0.02em, so its ink sat ~1px left of the centre the
+// button gives its advance. Class bk-ends-1 balances that bearing (styles.css), as a tracked
+// label's text-indent balances its trailing letter-space.
+const endsInOne = (children) => /1$/.test(React.Children.toArray(children).filter(c => typeof c === 'string' || typeof c === 'number').join(''));
 function Btn({ kind = 'ghost', w = 8, children, ...rest }) {
-  return <button type="button" className={`bk-btn bk-btn--${kind} bk-w${w}`} {...rest}><span>{children}</span></button>;
+  return <button type="button" className={`bk-btn bk-btn--${kind} bk-w${w}${endsInOne(children) ? ' bk-ends-1' : ''}`} {...rest}><span>{children}</span></button>;
 }
 function Field({ label, wide, children }) {
   return (

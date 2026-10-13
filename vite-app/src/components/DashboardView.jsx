@@ -266,6 +266,20 @@ export default function DashboardView({
   const swipeStart = useRef(null);
   const swipeDx = useRef(0);
   const trackRef = useRef(null);
+  // The carousel steps a card at a time in PX, not by -N x 100%: WebKit resolves a translate
+  // percentage against the track's width snapped to device pixels, so each card further along sat
+  // ~0.05px further left (the tenth 0.05g off the g lines, its ✕ with it). The track's measured
+  // width is kept in --slide-w (100% until it is measured).
+  const trackRO = useRef(null);
+  const setTrackEl = useCallback((el) => {
+    trackRef.current = el;
+    if (trackRO.current) { trackRO.current.disconnect(); trackRO.current = null; }
+    if (!el) return;
+    const measure = () => el.style.setProperty('--slide-w', `${el.getBoundingClientRect().width}px`);
+    measure();
+    if (typeof ResizeObserver === 'function') { trackRO.current = new ResizeObserver(measure); trackRO.current.observe(el); }
+  }, []);
+  const slideX = (idx) => `translateX(calc(var(--slide-w, 100%) * ${-idx}))`;
   const onTouchStart = useCallback((e) => {
     swipeStart.current = e.touches[0].clientX;
     swipeDx.current = 0;
@@ -291,7 +305,7 @@ export default function DashboardView({
     if (Math.abs(dx) < threshold) {
       if (trackRef.current) {
         const idx = parseInt(trackRef.current.dataset.idx || '0', 10);
-        trackRef.current.style.transform = `translateX(${-(idx * 100)}%)`;
+        trackRef.current.style.transform = slideX(idx);
       }
       return;
     }
@@ -653,7 +667,7 @@ export default function DashboardView({
       >
         {/* The Up Next banner shows the FULL venue name, never the strip
             abbreviation — abbr stays only for the brand colour + WSOP casing. */}
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em'}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
+        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em', textIndent: '0.06em'}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {tags.length > 0 && (
           <div className="dash-event-tags">
@@ -1062,13 +1076,16 @@ export default function DashboardView({
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--space-lg) var(--space-lg)', margin:'0 calc(var(--subrow) * -1.5) calc(var(--subrow) * -1.5)'}}
+              // The shadow's room sideways is a whole g (it was 1.5r): the track, and so every card
+              // in it, is then the section's whole-g width exactly. 1.5r a side made it 35.02g, and
+              // each card further along the carousel slid a little further off the g lines.
+              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--gu) var(--space-lg)', margin:'0 calc(var(--gu) * -1) calc(var(--subrow) * -1.5)'}}
             >
               <div
                 className="dash-carousel-track"
-                ref={trackRef}
+                ref={setTrackEl}
                 data-idx={safeIdx}
-                style={{transform: `translateX(${-(safeIdx * 100)}%)`}}
+                style={{transform: slideX(safeIdx)}}
               >
                 {whatsNextEvents.map((evt, i) => (
                   <div className="dash-carousel-slide" key={evt.id}>
@@ -1193,7 +1210,7 @@ export default function DashboardView({
           {plData.count > 0 && dashRates && (
             <label className="dash-results-right dash-results-currency">
               <span aria-hidden="true">
-                {dashCurrency === 'NATIVE' ? 'Native' : `${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
+                {dashCurrency === 'NATIVE' ? 'Native' : `${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} <span className="dash-caret">&#9662;</span>
               </span>
               <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
                 <option value="NATIVE">Native</option>
@@ -1215,7 +1232,7 @@ export default function DashboardView({
               {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
               <span className="dash-pl-line">
                 <span className="dash-pl-value">{fmtPl(plData.invested)}</span>
-                <span className="dash-pl-label">Buy-ins &#9662;</span>
+                <span className="dash-pl-label">Buy-ins <span className="dash-caret">&#9662;</span></span>
               </span>
               {plDropdown === 'buyins' && createPortal(
                 <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('invested').length)} onClick={e => e.stopPropagation()}>
@@ -1234,7 +1251,7 @@ export default function DashboardView({
             <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}>
               <span className="dash-pl-line">
                 <span className="dash-pl-value">{fmtPl(plData.cashed)}</span>
-                <span className="dash-pl-label">Cashes &#9662;</span>
+                <span className="dash-pl-label">Cashes <span className="dash-caret">&#9662;</span></span>
               </span>
               {plDropdown === 'cashes' && createPortal(
                 <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cashed').length)} onClick={e => e.stopPropagation()}>

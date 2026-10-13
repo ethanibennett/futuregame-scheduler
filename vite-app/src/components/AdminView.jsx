@@ -85,12 +85,15 @@ export default function AdminView({ token, onNavigate }) {
 
 return (
     <div style={{padding:'calc(var(--subrow) * 2) 0',maxWidth:'100%'}}>
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',height:'calc(var(--subrow) * 4)',marginBottom:'calc(var(--subrow) * 2)',position:'relative',top:'calc(var(--subrow) * 0.375)'}}>
-        <h2 className="screen-title" style={{fontSize:'calc(var(--gu) * 1.767)',lineHeight:'calc(var(--subrow) * 3)',margin:0}}>
+      {/* A 4r row with no offset: the button is its full height (on the r lines), its label
+          centred; the title a trimmed block whose baseline lands 3r down, on a line. (The row
+          used to be nudged 0.375r down to seat the title, which took the button off the grid.) */}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',height:'calc(var(--subrow) * 4)',marginBottom:'calc(var(--subrow) * 2)'}}>
+        <h2 className="screen-title" style={{fontSize:'calc(var(--gu) * 1.767)',lineHeight:'calc(var(--subrow) * 3)',margin:0,paddingTop:'calc(var(--subrow) * 3 - 1cap)',textBoxTrim:'trim-both',textBoxEdge:'cap alphabetic'}}>
           ADMIN &mdash; {users.length} Users
         </h2>
         {onNavigate && (
-          <button onClick={() => onNavigate('hands')} style={{height:'calc(var(--subrow) * 4)',lineHeight:'calc(var(--subrow) * 4)',padding:'0 var(--gu)',boxSizing:'border-box',borderRadius:'var(--radius-sm)',border:'var(--bw-hair) solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.149)',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
+          <button onClick={() => onNavigate('hands')} style={{display:'flex',alignItems:'center',justifyContent:'center',width:'calc(var(--gu) * 9)',height:'calc(var(--subrow) * 4)',lineHeight:1,padding:0,boxSizing:'border-box',borderRadius:'var(--radius-sm)',border:'var(--bw-hair) solid var(--border)',background:'var(--surface)',color:'var(--text)',fontSize:'calc(var(--gu) * 1.149)',fontFamily:'var(--font-condensed)',fontWeight: 'var(--fw-bold)',cursor:'pointer'}}>
             Hand Replayer
           </button>
         )}
@@ -105,11 +108,13 @@ return (
       <div style={{overflowX:'auto'}}>
         <table className="admin-table" style={{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:'calc(var(--gu) * 1.178)'}}>
           <colgroup>
+            {/* Email takes whatever the table has over 26g (9g on a phone), so the columns after
+                it stay on whole g on a wider pane too; Replayer is the 4g toggle's own column. */}
             <col style={{width:'calc(var(--gu) * 9)'}} />
             <col style={{width:'calc(var(--gu) * 6)'}} />
-            <col style={{width:'calc(var(--gu) * 9)'}} />
-            <col style={{width:'calc(var(--gu) * 5)'}} />
-            <col style={{width:'calc(var(--gu) * 6)'}} />
+            <col />
+            <col style={{width:'calc(var(--gu) * 4)'}} />
+            <col style={{width:'calc(var(--gu) * 7)'}} />
           </colgroup>
           <thead>
             <tr>
