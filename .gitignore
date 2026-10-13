@@ -145,6 +145,8 @@ mtt-feed/
 
 # Retry budget for the TestFlight sleep-kill watchdog (runtime state, this box only)
 .testflight-watchdog.json
+.testflight-nightly.json
+.testflight-hold
 
 # Local smoke-test inputs (one holds a guest token)
 .smoke-*.txt

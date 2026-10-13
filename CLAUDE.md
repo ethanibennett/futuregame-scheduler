@@ -106,6 +106,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   newest build), capped at 3 attempts per SHA, then opens a handoff issue for the Mac.
   Opt-in via `TESTFLIGHT_WATCHDOG=1` so only this box runs it; Render has no `gh` and no
   business dispatching builds. Mitigation only — the cure for the dark wake is on the Mac.
+- **Nightly TestFlight build (out)** (owner, 2026-10-13): commits to master carry `[skip ci]`, so
+  `scripts/testflight-nightly.js` ships master HEAD once a night instead — armed with the
+  watchdog, ticking at :00/:30 from 04:00 to 09:30 Eastern, dispatching on the first tick where it
+  makes sense: HEAD not already built or building, no other run live, no `.testflight-hold` at
+  the repo root (fresh within 6 h), and futurega.me already serving HEAD when `RENDER_API_KEY` is
+  set. Nothing new = no build; still blocked at 09:30 = the night is skipped, logged. One per
+  night (`.testflight-nightly.json`). **A session merging several branches should `echo "why" >
+  .testflight-hold` first and delete it when master is whole.** `TESTFLIGHT_NIGHTLY=0` turns it
+  off; `node scripts/testflight-nightly.js --dry-run` says what it would do now;
+  `npm run test:testflight-nightly`.
 - **Online feed (in)**: `online-poker-watcher` runs its own pm2 app (a persistent
   loop, emitting at :10 past the hour and at boot) into `./online-feed/` — sources
   ACR, GGPoker, WSOP.com (bracelets + monthly Circuit rings), Phenom, and ClubWPT

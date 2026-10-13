@@ -14022,6 +14022,17 @@ initDatabase().then(() => {
           runWatchdog().catch((err) => console.error('[testflight] watchdog error:', err.message));
         }, { timezone: CONSOLE_TZ });
         console.log('[testflight] sleep-kill watchdog armed (:05, :25, :45)');
+        // Nightly build (owner, 2026-10-13): commits carry [skip ci], so master ships once a night,
+        // from 04:00 Eastern on the first half-hour tick where nothing is in the way (a live run,
+        // a session's .testflight-hold, a deploy not yet serving HEAD). Ticks to 09:30; the 05:00
+        // tick can fall in the nightly pm2 restart, which 05:30 covers. TESTFLIGHT_NIGHTLY=0 turns it off.
+        if (process.env.TESTFLIGHT_NIGHTLY !== '0') {
+          const { runNightly } = require('./scripts/testflight-nightly');
+          cron.schedule('0,30 4-9 * * *', () => {
+            runNightly().catch((err) => console.error('[testflight-nightly] error:', err.message));
+          }, { timezone: CONSOLE_TZ });
+          console.log('[testflight-nightly] nightly build armed (04:00–09:30 Eastern)');
+        }
       }
     } catch (err) {
       console.error('[testflight] watchdog setup error:', err.message);
