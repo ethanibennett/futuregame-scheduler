@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CURRENCY_CONFIG } from '../utils/utils.js';
 import { RANGES } from '../utils/bankroll-ledger.js';
 import {
-  SECTIONS, OPEN_STORE_KEY, parseOpen, overviewTables, groupTable,
+  SECTIONS, OPEN_STORE_KEY, parseOpen, overviewTables, groupTable, ledgerScope, sameScope,
   fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio, DASH,
 } from '../utils/bankroll-overview.js';
 import { Glyph } from './Icon.jsx';
@@ -24,6 +24,12 @@ import './bankroll-overview-tables.css';
  * `bankrollOverviewOpen`, never required). Data: the ledger the Overview already holds (`d`, every
  * entry of the bankroll in the display currency), the risk estimate, and GET /api/bankrolls/reports
  * for the games and rooms. The arithmetic is utils/bankroll-overview.js, tested.
+ * Whose figures: the dashboard keeps the previous ledger on screen while the next one loads, but
+ * its bankroll chip and display currency change at once. So the scope line, the currency and the
+ * reports query all come from the ledger in hand (ledgerScope), never from the chip — and Games and
+ * Rooms take theirs from the report facts in hand, which can be a round trip behind the ledger.
+ * Until they are the ones asked for, a section is busy: its figures stay where they are, dimmed,
+ * with aria-busy, so an open Games never collapses to "Loading…" and back.
  * Not shown, on purpose: hands and $/100 (no hands are recorded), tournament hours (results carry
  * no playing time), and shares sold. Staking does keep per-event numbers (backer_event_status per
  * agreement x tournament, per-event overrides, an effective % per event in the settlement route),
@@ -78,9 +84,14 @@ function Head3() {
   );
 }
 
-export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKey, b, currency, fmtDate }) {
+export default function BankrollOverviewTables({ d, risk: riskIn, range, today, bk, bkKey, currency: asked, fmtDate }) {
   const [open, setOpen] = useState(readOpen);
   const toggle = (k) => setOpen((o) => { const n = { ...o, [k]: !o[k] }; saveOpen(n); return n; });
+  // The bankroll and currency of the ledger in hand, which lag the chip by one round trip.
+  const sc = ledgerScope(d, { key: bkKey, currency: asked, bankrolls: bk.bankrolls });
+  const currency = sc.currency;
+  // The risk estimate arrives on its own: only the one for this ledger's scope counts.
+  const risk = sameScope(riskIn, sc) ? riskIn : null;
   const cfg = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
   const m = (v) => fmtMoney(v, cfg);
   const sm = (v) => fmtMoney(v, cfg, { sign: true });
@@ -90,22 +101,30 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
   const t = useMemo(() => overviewTables(d, range, today), [d, range, today]);
 
   // Games and rooms come from the report facts (the ledger carries money, not rooms or games),
-  // fetched whenever a new ledger arrives — a new bankroll, currency or import reloads it, and by
-  // then bkKey and currency are the ones it was loaded for.
-  const [facts, setFacts] = useState({ status: 'loading', list: null });
+  // fetched for the ledger in hand whenever a new one arrives (a new bankroll, currency or import).
+  // The previous facts stay on screen until the new ones land; only a first load shows "Loading…".
+  const [facts, setFacts] = useState({ status: 'loading', list: null, scope: null });
   useEffect(() => {
     let live = true;
-    setFacts({ status: 'loading', list: null });
-    bk.call('GET', `/reports?bankroll=${encodeURIComponent(String(bkKey))}&currency=${encodeURIComponent(currency)}`)
-      .then((r) => { if (live) setFacts({ status: 'ready', list: r.facts || [] }); })
-      .catch(() => { if (live) setFacts({ status: 'error', list: null }); });
+    setFacts((f) => ({ ...f, status: 'loading' }));
+    bk.call('GET', `/reports?bankroll=${encodeURIComponent(sc.key)}&currency=${encodeURIComponent(currency)}`)
+      .then((r) => { if (live) setFacts({ status: 'ready', list: r.facts || [], scope: { bankroll: r.bankroll ?? sc.key, currency: r.currency || currency } }); })
+      .catch(() => { if (live) setFacts({ status: 'error', list: null, scope: null }); });
     return () => { live = false; };
   }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The facts on screen can be a round trip behind the ledger, so Games and Rooms name, and format
+  // their money in, the scope of the FACTS (a USD list must not draw with the next ledger's €).
+  // Busy until they are the ones asked for.
+  const fsc = facts.scope ? ledgerScope(facts.scope, { key: bkKey, currency: asked, bankrolls: bk.bankrolls }) : sc;
+  const fcfg = CURRENCY_CONFIG[fsc.currency] || CURRENCY_CONFIG.USD;
+  const fsm = (v) => fmtMoney(v, fcfg, { sign: true });
+  const factsBusy = sc.stale || (facts.list != null && (facts.status === 'loading' || fsc.stale));
   const games = useMemo(() => (facts.list ? groupTable(facts.list, 'game', t.window) : null), [facts.list, t.window]);
   const rooms = useMemo(() => (facts.list ? groupTable(facts.list, 'room', t.window) : null), [facts.list, t.window]);
 
   const S = t.summary, X = t.sessions, B = t.bankroll;
-  const scope = `${RANGE_TEXT[range] || range} · ${b ? b.name : 'All bankrolls'}`;
+  const scopeOf = (x) => `${RANGE_TEXT[range] || range} · ${x.name}`;
+  const scope = scopeOf(sc), factsScope = scopeOf(fsc);
   const periodsLabel = t.bucket === 'year' ? 'By year' : 'By month';
 
   const ror = (() => {
@@ -187,8 +206,8 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
           tournaments only. Hands are not recorded, so there is no {cfg.symbol}/100.</p>
       </>
     ),
-    games: <Groups data={games} status={facts.status} dim="game" scope={scope} sm={sm} perHour={perHour} />,
-    rooms: <Groups data={rooms} status={facts.status} dim="room" scope={scope} sm={sm} perHour={perHour} />,
+    games: <Groups data={games} status={facts.status} dim="game" scope={factsScope} sm={fsm} perHour={`${fcfg.symbol}/h`} />,
+    rooms: <Groups data={rooms} status={facts.status} dim="room" scope={factsScope} sm={fsm} perHour={`${fcfg.symbol}/h`} />,
     bankroll: (
       <>
         <div className="ovt-table" role="table" aria-label={`Bankroll, ${scope}`}>
@@ -231,20 +250,23 @@ export default function BankrollOverviewTables({ d, risk, range, today, bk, bkKe
         const isOpen = !!open[sec.key];
         const label = sec.key === 'periods' ? periodsLabel : sec.label;
         const h = headline[sec.key];
+        const isFacts = sec.key === 'games' || sec.key === 'rooms';
+        const busy = isFacts ? factsBusy : sc.stale;
         return (
-          <section key={sec.key} className={'ovt-sec' + (isOpen ? ' is-open' : '')}>
+          <section key={sec.key} className={'ovt-sec' + (isOpen ? ' is-open' : '') + (busy ? ' is-busy' : '')}>
             <h3 className="ovt-h">
               <button type="button" className="ovt-head" id={`ovt-h-${sec.key}`} aria-expanded={isOpen}
                 aria-controls={`ovt-b-${sec.key}`} onClick={() => toggle(sec.key)}>
                 <span className="ovt-chev" aria-hidden="true"><Glyph name="chevronDown" /></span>
                 <span className="ovt-title">
                   <span className="ovt-name">{label}</span>
-                  <span className="ovt-scope">{scope}</span>
+                  <span className="ovt-scope">{isFacts ? factsScope : scope}</span>
                 </span>
                 <span className={'ovt-headline' + (h.toned && h.v != null ? tone(h.v) : '')} aria-hidden={isOpen ? 'true' : undefined}>{h.text}</span>
               </button>
             </h3>
-            <div className="ovt-body" id={`ovt-b-${sec.key}`} role="region" aria-labelledby={`ovt-h-${sec.key}`}>
+            <div className="ovt-body" id={`ovt-b-${sec.key}`} role="region" aria-labelledby={`ovt-h-${sec.key}`}
+              aria-busy={busy ? 'true' : undefined}>
               <div className="ovt-inner"><div className="ovt-content">{body[sec.key]}</div></div>
             </div>
           </section>

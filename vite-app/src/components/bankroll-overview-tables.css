@@ -28,7 +28,8 @@
    2026-10-10), start-aligned like every disclosure row (the guard lists
    .ovt-head under START_ALIGNED). Every other line sits on an r line.
    Collapse animates the body's grid row from 0fr to 1fr (no measured
-   heights); prefers-reduced-motion turns it off.
+   heights); prefers-reduced-motion turns it off. While the next figures
+   load the section keeps the ones in hand, dimmed (is-busy).
    ================================================================== */
 
 /* Column identity, shared with the graph (BankrollChart): the graph work defines the same three
@@ -75,7 +76,9 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.ovt-head:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--focus-offset) * -1); }
+/* Focus: the app's own outset ring (styles.css :where(button):focus-visible, and its high-contrast
+   colour). It sits in the 1g gutter outside the header, clear of the headline's last glyph, which
+   ends on the column's edge. */
 .ovt-chev { display: flex; align-items: center; height: 100%; color: var(--text-muted); }
 .ovt-chev svg {
   --icon-size: var(--icon-md);
@@ -122,6 +125,20 @@
 }
 .ovt-inner { min-height: 0; overflow: hidden; }
 .ovt-content { padding: 0 var(--gu) calc(var(--subrow) * 2); }
+
+/* Busy: while the next ledger (or, for Games and Rooms, the next report facts) loads, the figures
+   in hand stay where they are, so an open section never collapses to a "Loading…" line and snaps
+   back. Their scope, headline and body dim after a beat (a fast reply never flickers); the section
+   name and chevron keep full strength, so the control does not read as disabled. aria-busy on the
+   region says the same to assistive technology. */
+.ovt-content, .ovt-scope { transition: opacity var(--dur-fast) var(--ease-out); }
+.ovt-sec.is-busy .ovt-content,
+.ovt-sec.is-busy .ovt-scope,
+.ovt-sec.is-busy:not(.is-open) .ovt-headline {
+  opacity: var(--state-past);
+  transition-delay: var(--dur-fast);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ovt-body, .ovt-sec.is-open > .ovt-body, .ovt-chev svg, .ovt-headline { transition: none; }
 }

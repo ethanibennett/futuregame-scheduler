@@ -44,6 +44,29 @@ export function parseOpen(raw) {
   return out;
 }
 
+// ── Whose figures these are ──────────────────────────────────────────────────────────────
+/**
+ * The bankroll and currency the figures in hand belong to. The dashboard keeps the previous ledger
+ * on screen while the next one loads, but its bankroll chip and display currency change at once —
+ * so the tables name their scope, format their money and query the reports from the LEDGER
+ * (`d.bankroll`, `d.currency`), and are `stale` until it is the one asked for.
+ *   d          the ledger response: { bankroll: 'all' | 'main' | id, currency }
+ *   key        the bankroll asked for ('all' | 'main' | id); `currency` the one asked for
+ *   bankrolls  the user's bankrolls ({ id, name }), to name it
+ * Returns { key (a string), currency, name, stale }.
+ */
+export function ledgerScope(d, { key, currency, bankrolls = [] } = {}) {
+  const k = d && d.bankroll != null ? String(d.bankroll) : String(key);
+  const cur = (d && d.currency) || currency;
+  const found = k === 'all' ? null : (bankrolls || []).find((x) => String(x.id) === k);
+  const name = k === 'all' ? 'All bankrolls' : found ? found.name : 'Bankroll';
+  return { key: k, currency: cur, name, stale: k !== String(key) || cur !== currency };
+}
+/** Whether a response that names its scope (/risk, /reports: { bankroll, currency }) is for `scope`. */
+export function sameScope(res, scope) {
+  return !!res && !!scope && res.bankroll != null && String(res.bankroll) === scope.key && res.currency === scope.currency;
+}
+
 // ── Formatting ───────────────────────────────────────────────────────────────────────────
 const fin = (v) => v != null && Number.isFinite(Number(v));
 

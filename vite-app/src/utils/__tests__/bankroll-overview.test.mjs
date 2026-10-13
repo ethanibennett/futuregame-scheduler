@@ -1,11 +1,11 @@
 // node --test src/utils/__tests__/bankroll-overview.test.mjs  (from vite-app/)
 // The bankroll Overview's tables (utils/bankroll-overview.js): Summary, Sessions, Games / Rooms,
-// Bankroll, the formatting, and the open / closed state.
+// Bankroll, the formatting, the open / closed state, and whose figures the ledger in hand holds.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DASH, SECTIONS, parseOpen, fmtMoney, moneySign, fmtPct, fmtCount, fmtHours, fmtRatio,
-  summaryTable, sessionsTable, groupTable, bankrollFigures, overviewTables,
+  summaryTable, sessionsTable, groupTable, bankrollFigures, overviewTables, ledgerScope, sameScope,
 } from '../bankroll-overview.js';
 import { overviewStats, rangeWindow, within } from '../bankroll-ledger.js';
 
@@ -268,4 +268,30 @@ test('open state: Summary and Sessions open by default; saved booleans win; junk
   assert.deepEqual(parseOpen('not json'), parseOpen(null));
   assert.deepEqual(parseOpen('[1,2]'), parseOpen(null));
   assert.equal(SECTIONS.length, 6);
+});
+
+test('scope: the figures name, format and fetch by the ledger in hand, stale until it is the one asked for', () => {
+  const bankrolls = [{ id: 'main', name: 'Main' }, { id: 7, name: 'Euro' }, { id: 9, name: 'Online' }];
+  // Settled: the ledger is the one asked for.
+  assert.deepEqual(ledgerScope({ bankroll: 'all', currency: 'USD' }, { key: 'all', currency: 'USD', bankrolls }),
+    { key: 'all', currency: 'USD', name: 'All bankrolls', stale: false });
+  assert.deepEqual(ledgerScope({ bankroll: 7, currency: 'EUR' }, { key: 7, currency: 'EUR', bankrolls }),
+    { key: '7', currency: 'EUR', name: 'Euro', stale: false });
+  assert.equal(ledgerScope({ bankroll: 'main', currency: 'USD' }, { key: 'main', currency: 'USD', bankrolls }).name, 'Main');
+  // The chip moved to Euro, the All ledger is still on screen: name and currency stay the ledger's.
+  assert.deepEqual(ledgerScope({ bankroll: 'all', currency: 'USD' }, { key: 7, currency: 'EUR', bankrolls }),
+    { key: 'all', currency: 'USD', name: 'All bankrolls', stale: true });
+  // Same bankroll, another display currency: stale too.
+  assert.equal(ledgerScope({ bankroll: 7, currency: 'USD' }, { key: 7, currency: 'EUR', bankrolls }).stale, true);
+  // An older response without the fields falls back to what was asked for.
+  assert.deepEqual(ledgerScope({}, { key: 9, currency: 'USD', bankrolls }), { key: '9', currency: 'USD', name: 'Online', stale: false });
+  assert.equal(ledgerScope({ bankroll: 42, currency: 'USD' }, { key: 42, currency: 'USD', bankrolls }).name, 'Bankroll');
+
+  // Risk and reports name their scope; a reply for another bankroll or currency is not this one's.
+  const sc = ledgerScope({ bankroll: 7, currency: 'EUR' }, { key: 7, currency: 'EUR', bankrolls });
+  assert.equal(sameScope({ bankroll: 7, currency: 'EUR' }, sc), true);
+  assert.equal(sameScope({ bankroll: '7', currency: 'EUR' }, sc), true);
+  assert.equal(sameScope({ bankroll: 'all', currency: 'EUR' }, sc), false);
+  assert.equal(sameScope({ bankroll: 7, currency: 'USD' }, sc), false);
+  for (const bad of [null, undefined, {}, { currency: 'EUR' }]) assert.equal(sameScope(bad, sc), false);
 });
