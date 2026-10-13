@@ -4,7 +4,7 @@
 // streaming overlay, a chroma-key MP4 for editing, or a 9:16 story clip.
 
 import {
-  beginCapture, captureStepFrames, EXPORT_WIDTH, exportScale, feltBackdrop, CHROMA_GREEN, stepDelay,
+  beginCapture, captureStepFrames, captureMotionCanvas, EXPORT_WIDTH, exportScale, feltBackdrop, CHROMA_GREEN, stepDelay,
 } from './replay-capture.js';
 
 const STORY_W = 1080, STORY_H = 1920;
@@ -72,7 +72,8 @@ export async function exportReplayVideo({
        every plaque bevel, the card edge-light and the pot plaque's blur. The
        video was therefore a flatter, lighting-free version of the same hand
        the GIF exported correctly. One renderer, the one that works. */
-    const { domToCanvas } = await import('modern-screenshot');
+    const ms = await import('modern-screenshot');
+    const { domToCanvas } = ms;
 
     const totalSteps = hand.streets.reduce((sum, s) => sum + 1 + (s.actions?.length || 0), 0) + 1;
 
@@ -191,7 +192,9 @@ export async function exportReplayVideo({
     const grab = async (hold, settled) => {
       let entry = null;
       try {
-        const c = await domToCanvas(tableEl, { backgroundColor: null, width: elW, height: elH, scale });
+        const opts = { backgroundColor: null, width: elW, height: elH, scale };
+        // A motion frame waits only for the images that can need decoding (captureMotionCanvas).
+        const c = settled ? await domToCanvas(tableEl, opts) : await captureMotionCanvas(ms, tableEl, opts);
         entry = { img: c, hold };
         if (!settled) {
           const bytes = c.width * c.height * 4;

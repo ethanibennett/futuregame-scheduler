@@ -114,8 +114,14 @@ badges, the pot pill and its figure, the board container and the table geometry 
     before the press, never below 0: a shorthand can commit more than a stack holds).
 - **Removed on the spring path**: the street-change effect's three re-renders (+0, +450, +500ms);
   this is what cancelled the turn card after one frame. Also removed: `turnRiverSlide` (flag `'0'`
-  keeps it), `markPotLanding`'s re-renders, the blanket 700ms flying-chip clear, and the dead
-  `--chip-start-dx/dy` and `flopCardSlide`.
+  keeps it), `markPotLanding`'s re-renders, the blanket 700ms flying-chip clear, the dead
+  `--chip-start-dx/dy` and `flopCardSlide`, and the re-render after every street press that only
+  replaced an empty set of folding seats with another empty one.
+- **Nothing changes on the table root mid-moment.** The plaque's gold delay
+  (`--spring-ship-arrive`) was a custom property on `.replayer-table`, recomputed every render. The
+  showdown's own render, about 150ms after a result press, changed it, so every element on the
+  table had its style recomputed in the middle of the sweep: an 80-106ms frame at a 4x CPU
+  throttle, at every result. It is decided once per result now and lives on the winning seats only.
 
 ## Exports
 
@@ -153,30 +159,64 @@ clock: Playwright's clock does not drive the document timeline, and the registry
 from its animation's real start.
 
 **The cost, measured** (the same 8-max hand, 22 steps, Playwright WebKit on the Windows box, springs
-off vs on, 2026-10-13). The box was carrying 30-75% CPU from other work, and two runs of one build
-differed by up to 20%, so read the ratios, not the seconds:
+off vs on, `check-replay-export-motion.mjs --time-only`, runs interleaved, 2026-10-13):
 
-| Export | Springs off | Springs on (Set A) | Ratio | Captures |
+| Export | Springs off (today) | Springs on, before the motion-frame fix | Springs on, now | Captures |
 |---|---|---|---|---|
-| Video | 115-125s | 421-511s | 3.6-4.1x | 22 vs 68 (3.1x) |
-| GIF | 120-137s | 286-359s | 2.4-2.6x | 22 vs 46 (2.1x) |
+| Video | 90-112s | 329-357s (3.6-3.9x) | 175-181s (1.6-2.0x) | 22 vs 68 |
+| GIF | 100-113s | 249-282s (2.5-2.7x) | 163-166s (1.5-1.7x) | 22 vs 46 |
 
-Round 1 measured the video at 4.8x with every push-out seeked (102 captures); the push-outs now export
-as their settled frame, and the turn, the river and the result are all seeked. A capture costs about 4s here, nearly all of it WebKit rasterising the
-foreignObject image on the CPU (`image to canvas` 3.4-3.8s against 0.3-0.4s to clone the table), so
-the time is the number of captures. The result's frames cost about half as much again as the
-others: modern-screenshot redraws the image once per embedded image, 100ms apart, to work around a
-Safari decoding bug, and the showdown has 11 images against 4. Motion frames are kept as ImageBitmaps
-up to 128MB (`MOTION_BITMAP_BYTES`) and only past that as PNG blobs; the PNG round trip had cost
-more than the capture itself. What would cut further: fewer seeked frames in the result (17 at
-24fps: the river's wagers going in, then the pot), or a shorter redraw interval on motion frames once
-that is proven on an iPhone.
+Owner's target, 2026-10-12: about 3x today's export time (round 1 was 4.8x, with every push-out
+seeked and 102 captures).
+
+Where a capture's time goes. A WebKit capture took 4.1-4.7s, and 0.6-0.9s of it was the capture
+itself (the same pixels). The rest was modern-screenshot's workaround for a Safari/Firefox bug, in
+which the images nested in the captured SVG (the card faces are svg+xml) are not decoded on the
+first draw. The library redraws the SVG once per embedded image, 100ms + i apart. It counts every
+non-`none` CSS background as an image, gradients included, and the table has 19-23 of them, so a
+capture scheduled 27-30 redraws and slept about 3s for 4-11 real images. iOS takes the same path.
+
+`captureMotionCanvas()` (in `replay-capture.js`) captures every motion frame. It keeps one redraw per
+image that can need decoding (`<img>`, SVG `<image>`, CSS `url()`), at the library's own interval
+and never fewer than four, and drops the redraws counted for gradients, which paint with the SVG.
+This uses the library's public hook (`onCreateForeignObjectSvg` sets `context.drawImageCount`). The
+settled stills, which every step is held on, keep the library's behaviour untouched, so an export
+with the springs off is byte for byte today's.
+
+To confirm on an iPhone before merging: export a hand and check that no seeked frame of the flop or
+the result is missing a card face. A miss would be one 1/24s frame.
+
+Motion frames are kept as ImageBitmaps up to 128MB (`MOTION_BITMAP_BYTES`) and past that as PNG
+blobs. The PNG round trip had cost more than the capture itself.
 
 ## Autoplay
 
 Each spring's time is divided by `rate = clamp(sqrt(1000 / speed), 1, 2)`. That gives 1 at 0.5x and
 1x, 1.41 at 2x and 2 at 4x. The shape is identical, motion never slows below 1x, and no autoplay
 delay changed. A step never waits for motion.
+
+## Frame cost
+
+Measured in Edge at a 4x CPU throttle, the stand-in for an old iPhone. The setup: 402x874 at dpr 3,
+the 8-max, 8-max multiway and 9-max hands, three reps each, flags interleaved, 2026-10-13. Each moment
+was pressed with a real click. A long frame is a long-animation-frame entry, 50ms or more.
+
+| Press | Springs off: press frame, median / max | Springs on | Long frames after the press, springs on |
+|---|---|---|---|
+| Flop | 52 / 74ms | 94 / 125ms | none |
+| Turn | under 50ms | 61 / 78ms | none |
+| River | under 50ms | under 50 (max 63ms) | none |
+| Bet, call, raise over chips | under 50ms | under 50ms | none |
+| Result | 55 / 71ms | 126 / 142ms | none (was 80-106ms at every result, see "Nothing changes on the table root") |
+
+Across 57 presses with the springs on, no main-thread frame after the press frame reached 50ms. The
+moments are Web Animations, so they run on the compositor whatever the main thread does.
+
+The press frame costs more than today's because the moment is built in it, before the press paints.
+That covers reading the rects, creating the ghosts and shipped chips, sampling their keyframes, and
+the style and layout of the new elements. At the result that is the river's sweep and the five
+shipped chips, about 35-50ms at 4x, which is 9-12ms on this machine unthrottled. Today's flop and
+result press frames are already over 50ms at 4x, mostly the forced layout of React's commit.
 
 ## Capturing before and after
 

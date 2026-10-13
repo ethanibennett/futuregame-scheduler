@@ -7513,7 +7513,9 @@
     .replayer-chip-probe { visibility: hidden; animation: none; left: 0; top: 0; }
     /* The winner's plaque takes its gold as the first shipped chip lands rather than at the press:
        the "0.30s, the winner's plaque takes it" beat above, on the spring's first arrival (progress
-       0.98), which the table carries as --spring-ship-arrive for the current autoplay rate. Only
+       0.98), which the winning seat carries as --spring-ship-arrive for the current autoplay rate
+       (on the seat, not the table: a custom property changed on the table root recomputes the
+       style of every element on it, an 80ms frame mid-sweep at a 4x CPU throttle). Only
        into the state; stepping back clears it at once. */
     .replayer-table[data-springs] .replayer-seat:is(.winner, .split) .replayer-seat-info {
       transition-delay: var(--spring-ship-arrive, 245ms);

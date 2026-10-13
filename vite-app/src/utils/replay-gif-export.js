@@ -1,4 +1,4 @@
-import { beginCapture, captureStepFrames, exportScale, feltBackdrop, stepDelay } from './replay-capture.js';
+import { beginCapture, captureStepFrames, captureMotionCanvas, exportScale, feltBackdrop, stepDelay } from './replay-capture.js';
 
 /* The spring moments in a GIF: 12.5 fps (80ms, 8cs a frame), only for a moment of three frames or
    more (the flop, a turn or river, the pot shipped — not a push-out's 140ms), and at most this
@@ -97,10 +97,11 @@ export async function exportReplayGif({
   const frameDelay = stepDelay(speed);
   let restore = () => {};
   try {
-    const [{ domToCanvas }, gifenc] = await Promise.all([
+    const [ms, gifenc] = await Promise.all([
       import('modern-screenshot'),
       import('gifenc'),
     ]);
+    const { domToCanvas } = ms;
     const { GIFEncoder, quantize } = gifenc;
 
     const totalSteps = hand.streets.reduce(
@@ -126,12 +127,9 @@ export async function exportReplayGif({
     let frameW = 0, frameH = 0, step = 0;
 
     const captureFrame = async (delay, settled) => {
-      const canvas = await domToCanvas(tableEl, {
-        backgroundColor: null,
-        width: elW,
-        height: elH,
-        scale: s,
-      });
+      const opts = { backgroundColor: null, width: elW, height: elH, scale: s };
+      // A motion frame waits only for the images that can need decoding (captureMotionCanvas).
+      const canvas = settled ? await domToCanvas(tableEl, opts) : await captureMotionCanvas(ms, tableEl, opts);
       const cw = canvas.width, ch = canvas.height;
       if (!frameW) { frameW = cw; frameH = ch; }
       const ctx = canvas.getContext('2d');

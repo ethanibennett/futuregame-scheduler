@@ -101,6 +101,55 @@ export async function captureStepFrames(tableEl, { fps, maxFrames, minMotionFram
   return captures;
 }
 
+/* At least this many redraws for a motion frame (the first at 100ms, the fourth at 403ms). */
+const MOTION_MIN_REDRAWS = 4;
+
+/* What in the table can need decoding in the captured SVG: images and CSS url() images. Gradients
+   cannot; they paint with the SVG. */
+function decodableImages(el) {
+  let n = el.querySelectorAll('img, image').length;
+  const props = ['background-image', 'border-image-source', '-webkit-mask-image', 'mask-image', 'list-style-image'];
+  for (const e of el.querySelectorAll('*')) {
+    const cs = getComputedStyle(e);
+    for (const p of props) { const v = cs.getPropertyValue(p); if (v && v.indexOf('url(') >= 0) n++; }
+  }
+  return n;
+}
+
+/**
+ * Capture one MOTION frame of a spring moment (a seeked frame, never a settled still).
+ *
+ * modern-screenshot works around a Safari/Firefox decoding bug by redrawing the captured SVG once
+ * per embedded image, 100ms + i apart, so the nested svg+xml images (the card faces) have decoded
+ * by the last draw. It counts every non-'none' CSS background as an image, gradients included, and
+ * the table has 19-23 of them: a capture scheduled 27-30 redraws and slept about 3s for 4-11 images
+ * (Playwright WebKit, the 8-max hand: 4.1-4.7s a capture, 0.6-0.9s with no redraws at all, the same
+ * pixels). A motion frame keeps one redraw per image that can need decoding, at the library's own
+ * interval, and never fewer than four; it drops the redraws counted for gradients. The settled
+ * stills, which every step is held on, keep the library's behaviour untouched. Elsewhere (Chromium)
+ * the library schedules no redraws and this changes nothing.
+ *
+ * @param {object} ms       the modern-screenshot module
+ * @param {HTMLElement} el
+ * @param {object} options  domToCanvas options
+ * @returns {Promise<HTMLCanvasElement>}
+ */
+export async function captureMotionCanvas(ms, el, options) {
+  if (!ms.createContext || !ms.destroyContext) return ms.domToCanvas(el, options);
+  const keep = Math.max(MOTION_MIN_REDRAWS, decodableImages(el));
+  let context = null;
+  context = await ms.createContext(el, {
+    ...options,
+    // After every image has been embedded (and counted), before the SVG is drawn.
+    onCreateForeignObjectSvg: () => { if (context) context.drawImageCount = Math.min(context.drawImageCount, keep); },
+  });
+  try {
+    return await ms.domToCanvas(context);
+  } finally {
+    try { ms.destroyContext(context); } catch { /* already gone */ }
+  }
+}
+
 /**
  * 82: the GIF scaled by devicePixelRatio, so the same ~380px table captured at
  * about 380px from a desktop monitor and about 1100px from an iPhone, while

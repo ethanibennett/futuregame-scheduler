@@ -25,8 +25,17 @@ wsop-console side and verified against both live services.
   the pot and the pot shipped are seeked frame by frame (video 24 fps, GIF 12.5 fps); a push-out
   exports as its settled frame. The closing bookend waits for the settled still, so the ship is seen
   over the table. Checked frame for frame against the live replayer at the turn, the river and the
-  result (`scripts/check-replay-export-motion.mjs`). Cost: 68 captures against 22 (3.1x by count;
-  3.6-4.1x measured on a loaded box), GIF 46 against 22.
+  result (`scripts/check-replay-export-motion.mjs`). Cost in WebKit, 8-max hand: video 175-181s
+  against 90-112s with the springs off (1.6-2.0x; the owner's target was about 3x), GIF 163-166s
+  against 100-113s.
+- **Why exports were slow**: modern-screenshot's Safari decode workaround counts every CSS gradient as
+  an image and sleeps 100ms+ per "image", so a capture of the table slept ~3s for 4-11 real images.
+  Motion frames now keep one redraw per real image (`captureMotionCanvas` in `replay-capture.js`);
+  the settled stills are untouched. **Check on an iPhone before merging**: export a hand and look
+  for a missing card face in any frame of the flop or the result.
+- **Frame cost at 4x CPU throttle** (`docs/replayer-springs.md`, "Frame cost"): no long frame after any
+  press. The plaque-gold delay was a custom property on the table root that changed mid-sweep and
+  restyled the whole table (an 80-106ms frame at every result); it lives on the winning seat now.
 - **The pot lands on the plaque** (owner, 2026-10-12): never across the winner's name, on the edge of
   the name plaque nearest the pile, the stack ticking at each landing; measured at all 31 seats
   (6/8/9-max phone, 8-max desktop). The result collects the river's wagers first, then ships; the

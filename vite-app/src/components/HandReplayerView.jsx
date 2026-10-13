@@ -5586,7 +5586,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     }
     prevActionIdxRef.current = actionIdx;
   }, [actionIdx, currentActions, rSettings.animateFold]);
-  useEffect(() => { setAnimFolded(new Set()); }, [streetIdx]);
+  /* On the spring path an empty set stays the same set: a new one re-rendered the whole replayer
+     right after every street press, in the middle of the flop's spread and the turn's landing. */
+  useEffect(() => { setAnimFolded(prev => (springOn && !prev.size ? prev : new Set())); }, [streetIdx]);
 
   // Showdown animation
   useEffect(() => {
@@ -6163,6 +6165,20 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const shipRate = motion.capture ? motion.captureRate : (playing ? rateFor(speed) : 1);
   // When the pot leaves the pile at this result press (after the river's wagers have landed).
   if (shipPlan && shipPlan.length) motion.shipStartNow = shipStartAfterSweep(springSet, shipRate, sweepPlan ? sweepPlan.length : 0);
+  /* The plaque takes its gold as the first shipped chip lands (after the river's wagers have been
+     collected, when this press collects any). Decided once, in the render that shows the result, and
+     held for as long as it shows: it was a custom property on the table root, recomputed every
+     render, and the render that follows a result press (the showdown's own state) changed it, so
+     every element of the table had its style recomputed in the middle of the sweep — an 80ms frame
+     at a 4x CPU throttle, and a quarter of the press frame's style work. It lives on the winning
+     seats only now. */
+  if (springOn && showResult) {
+    if (stepChanged || motion.shipArriveMs == null) {
+      motion.shipArriveMs = Math.round((shipPlan && shipPlan.length ? motion.shipStartNow || 0 : 0) + shipFirstArrival(springSet, shipRate));
+    }
+  } else {
+    motion.shipArriveMs = null;
+  }
   const pendingPotNow = !springOn ? 0
     : (motionJumped ? 0 : motion.pendingPot) + (sweepPlan ? sweepPlan.reduce((n, w) => n + w.amount, 0) : 0);
   const shownPot = Math.max(0, displayPot - pendingPotNow);
@@ -7914,9 +7930,6 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         style={(() => {
           const s = { ...(potContrast || {}) };
           s['--card-overlap'] = String((Number(rSettings.cardOverlap ?? 52) || 0) / 100);
-          // The plaque takes its gold as the first shipped chip lands: after the river's wagers have
-          // been collected, when this press collects any.
-          if (springOn) s['--spring-ship-arrive'] = Math.round((shipPlan && shipPlan.length ? motion.shipStartNow || 0 : 0) + shipFirstArrival(springSet, shipRate)) + 'ms';
           if (rSettings.cardBack === 'custom') {
             // Same derivation as the felt below, and for the same reason.
             const m = String(rSettings.cardBackColor || '').match(/#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i);
@@ -8404,7 +8417,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
               + (pi === replayHeroIdx ? ' is-hero' : '') + (allIn.has(pi) ? ' is-allin' : '')
               + (!isLandscape && pos[0] === gx(CL) ? ' seat-edge-left' : '')
               + (!isLandscape && pos[0] === gx(CR) ? ' seat-edge-right' : '')}
-              style={{left: (!isLandscape && pos[0] === gx(CL) ? 0 : !isLandscape && pos[0] === gx(CR) ? 100 : pos[0]) + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos), ...foldOrigin(pos)}}>
+              style={{left: (!isLandscape && pos[0] === gx(CL) ? 0 : !isLandscape && pos[0] === gx(CR) ? 100 : pos[0]) + '%', top: pos[1] + '%', ...muckStyle, ...castStyle(pos), ...foldOrigin(pos),
+                // When this winner's plaque takes its gold (the first shipped chip's landing).
+                ...(springOn && motion.shipArriveMs != null && (seatClass === 'winner' || seatClass === 'split') ? { '--spring-ship-arrive': motion.shipArriveMs + 'ms' } : null)}}>
               {/* 12: opponent cards were hidden until showResult and then
                   appeared in a single frame — the only card event in the
                   replayer with no motion, at the moment the whole replay has
