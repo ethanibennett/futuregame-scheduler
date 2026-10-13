@@ -1,0 +1,213 @@
+/* ==================================================================
+   Edit home (HomeEditSheet.jsx): which Dashboard sections show, and
+   in what order. he- prefixed; the sheet is analytics.css's
+   (.an-scrim / .an-sheet / .an-head / .an-body / .an-p / .an-sec) and
+   its text cells the home's (home.css .hm-cell / .hm-f-* / .hm-clip).
+
+   GRID. Every measurement is g or r (the drag's too: the pointer's
+   travel is turned into r once, with gridGeom().R, and the transform
+   is written in --subrow).
+     head     8r: the title on the an-title-row (1g, 2r down), Done an
+              8g x 4r bk-btn at 28g, 2r down (.he-close).
+     body     1g sides, 2r top. The intro (.an-p: xs on 2r lines, the
+              block 2m + 1 r), 1r, the list; on desktop two groups
+              (a 3r .an-sec header, 1r, the rows; 2r between groups),
+              3r, Reset to default (13g x 5r), 1r, the status line.
+     row      35g x 5r card, 1r apart; x from the card's left edge:
+                0..3g    the handle (3g x 5r, the grip centred)
+                3..22g   the name, sm bold seated on +3r (a 3r cell at
+                         the top), its note after it in muted xs on the
+                         same baseline; it truncates in .hm-clip
+                23..26g  Move up    } 3g x 3r at +1r..+4r, a joined
+                26..29g  Move down  } pair, the chevron centred
+                30..34g  the switch, 4g x 3r at +1r..+4r: a 2.5r knob
+                         travelling 4g - 3r; 1g in from the card's right
+                         edge, so it is Settings' switch exactly (31..35g
+                         of the canvas). The spec's 31..35g of the CARD
+                         put it flush on the card's hairline.
+              This month carries its parts as 5r bands inside its
+              card (15r for an admin), each under a top hairline, its
+              name at 3g and only a switch (no handle, no arrows).
+   ================================================================== */
+
+/* Desktop docks the sheet to the shell's right edge (an inline left, set by the sheet); the head's
+   Done sits where the bankroll dashboard's does (bankroll-dashboard.css .bd-close, which is lazy
+   and so cannot be relied on here). */
+.an-sheet.he-sheet .he-close {
+  position: absolute;
+  left: calc(var(--gu) * 28);
+  top: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 4);
+}
+
+.he-body .he-intro { margin: 0; }
+.he-body .he-group { margin: var(--subrow) 0 0; }
+.he-body .he-group + .he-group { margin-top: calc(var(--subrow) * 2); }
+.he-body .he-group-h { margin: 0 0 var(--subrow); }
+.he-body .he-reset {
+  width: calc(var(--gu) * 13);
+  margin-top: calc(var(--subrow) * 3);
+}
+.he-body .he-status { margin: var(--subrow) 0 0; }
+
+/* ── The rows ── */
+.he-body .he-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--subrow);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.he-body .he-card {
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  /* The neighbours' shift while a card is dragged past them; the drop clears it with no transition
+     (data-settling) so nothing slides back. 0ms under reduced motion (styles.css). */
+  transition: transform var(--dur-snap) var(--ease-standard);
+}
+/* A hidden section keeps its row (it can still be moved): the card goes flat, its name muted. */
+.he-body .he-card.is-off { background: transparent; }
+.he-body .he-card.is-off > .he-row:first-child .he-name,
+.he-body .he-sub.is-off .he-name { color: var(--text-muted); }
+/* Lifted: raised over its neighbours with the second elevation, following the pointer at once. A
+   flat (hidden) card keeps its look by painting the sheet's own ground. */
+.he-body .he-list[data-drag] .he-card[data-lifted] {
+  z-index: 2;
+  transition: none;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
+}
+.he-body .he-list[data-drag] .he-card.is-off[data-lifted] { background: var(--bg); }
+.he-body .he-list[data-settling] .he-card { transition: none; }
+
+.he-body .he-row {
+  display: grid;
+  grid-template-columns:
+    calc(var(--gu) * 3) calc(var(--gu) * 19) var(--gu)
+    calc(var(--gu) * 3) calc(var(--gu) * 3) var(--gu) calc(var(--gu) * 4) var(--gu);
+  align-items: start;
+  height: calc(var(--subrow) * 5);
+}
+/* A part (Signal or noise, Goals): a 5r band of This month's card, under a hairline. */
+.he-body .he-sub { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.he-body .he-sub.is-disabled { opacity: var(--state-disabled); }
+
+.he-body .he-grip {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--subrow) * 5);
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.he-body .he-list[data-drag] .he-grip { cursor: grabbing; }
+.he-body .he-grip svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+
+.he-body .he-name { --h: 3; --k: 3; grid-column: 2; color: var(--text); }
+/* The note, on the name's baseline: its own 1em line inside the cell's line box (home.css
+   .hm-prow-s), so it cannot move the baseline. */
+.he-body .he-note {
+  margin-left: calc(var(--gu) * 0.5);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: 1;
+}
+
+/* Move up | Move down: one joined pair of 3g x 3r keys, the chevron centred in each. */
+.he-body .he-move {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--gu) * 3);
+  height: calc(var(--subrow) * 3);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.he-body .he-move--up { grid-column: 4; }
+.he-body .he-move--down {
+  grid-column: 5;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  box-shadow: inset var(--bw-hair) 0 0 var(--border);
+}
+.he-body .he-move svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+.he-body .he-move:disabled { opacity: var(--state-disabled); cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .he-body .he-move:not(:disabled):hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); }
+}
+
+/* The switch: Settings' 4g x 3r (styles.css .settings-toggle, scoped there to .settings-view). */
+.he-body .he-switch {
+  grid-column: 7;
+  position: relative;
+  display: block;
+  width: calc(var(--gu) * 4);
+  height: calc(var(--subrow) * 3);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  cursor: pointer;
+  transition: background-color var(--dur-snap) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.he-body .he-switch::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--subrow) * 0.25);
+  left: calc(var(--subrow) * 0.25);
+  width: calc(var(--subrow) * 2.5);
+  height: calc(var(--subrow) * 2.5);
+  border-radius: var(--radius-circle);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  transition: transform var(--dur-snap) var(--ease-out);
+}
+.he-body .he-switch.on { background: var(--brand); }
+.he-body .he-switch.on::after {
+  background: var(--on-brand);
+  transform: translateX(calc(var(--gu) * 4 - var(--subrow) * 3));
+}
+/* Up Next's: on, and staying on (aria-disabled, so it keeps its focus and its title). */
+.he-body .he-switch:disabled,
+.he-body .he-switch[aria-disabled="true"] { opacity: var(--state-disabled); cursor: default; }
+
+.he-body .he-move:focus-visible,
+.he-body .he-switch:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The live region: read, not seen (its text is the host itself, opacity 0, so the clipping guard
+   reads it as not painted). */
+.he-sheet .he-sr {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--gu);
+  height: var(--subrow);
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}

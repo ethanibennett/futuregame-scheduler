@@ -10,11 +10,23 @@
    GRID. Every measurement is g or r.
      columns  NOW (Up Next, To log, the last result) and NUMBERS (the
               bankroll line, the period block, its noise line and its
-              goals; Trend, section 7, later). One scrolling column on the phone,
-              2r between sections, NOW first. Desktop (>= 1024): NOW is
-              the main pane (37g), NUMBERS a second 37g pane beside it
-              (App.jsx portals it into .dk-home-right); each pane is its
-              own scroller, both starting 1r under the bar.
+              goals; Trend, section 7, later). Which show and in what
+              order is the user's (Edit home, utils/home-layout.js). One
+              scrolling column on the phone, 2r between sections, in the
+              user's order (default: NOW first). Desktop (>= 1024): NOW
+              is the main pane (37g), NUMBERS a second 37g pane beside it
+              (App.jsx portals it into .dk-home-right), each section in
+              its own pane, each pane in the user's relative order; each
+              pane is its own scroller, both starting 1r under the bar.
+              Every section opens with the same 3r header and 1r gap, so
+              the first cards of the two panes share an r line in any
+              order. All NUMBERS hidden: a 3r NUMBERS header over one
+              35g x 5r prompt (the Nothing scheduled card's anatomy:
+              'Nothing here' / 'Your numbers are hidden' / EDIT).
+     Edit     the main column's last item (after its 2r gap, before the
+              foot): Edit home, 11g x 4r, centred in the 35g column
+              (13..24g of the canvas), the home's control face (.hm-btn)
+              with the sliders icon and its label centred together.
      foot     the Cash view's nav-height spacer: 2r (the column gap)
               + the nav's height, so the last section scrolls clear of
               the nav and the live-cash bar. App's tab panels are
@@ -922,6 +934,34 @@ button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: va
 .hm-cash-input::-webkit-inner-spin-button,
 .hm-cash-input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
 .hm-cash-input { -moz-appearance: textfield; }
+
+/* ── Edit home: the foot control, and the empty NUMBERS pane ──
+   The control is the column's last flex item, 11g wide and centred (an odd 35 - 11 = 24g of slack
+   is 12g a side, whole). The icon leads the label, so the label's trailing letter-space is
+   cancelled at its end (as Scan's), not by the face's indent. */
+.dashboard-view.home .hm-btn.hm-edit {
+  align-self: center;
+  width: calc(var(--gu) * 11);
+  gap: var(--space-sm);
+  text-indent: 0;
+}
+.dashboard-view.home .hm-edit svg {
+  flex: 0 0 auto;
+  width: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 2);
+}
+.dashboard-view.home .hm-edit .hm-edit-t {
+  display: block;
+  line-height: 1;
+  white-space: nowrap;
+  margin-inline-end: calc(-1 * var(--track-caps));
+}
+@media (hover: hover) and (pointer: fine) {
+  .dashboard-view.home .hm-btn.hm-edit:hover {
+    background: var(--hover-overlay);
+    box-shadow: inset 0 0 0 var(--bw-hair) var(--text-muted);
+  }
+}
 
 /* ── Venue strips: one tracking everywhere on the home (the strip's own --track-caps-lg; the
    tournament cards used to override it to 0.06em inline), and the trailing letter-space of the

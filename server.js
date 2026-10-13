@@ -548,6 +548,7 @@ const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const bankrollTransactions = require('./lib/bankroll-transactions');
+const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3310,6 +3311,17 @@ async function initDatabase() {
         console.log('Created bankroll_transactions + bankroll_trips tables');
       }
     },
+    {
+      // Edit home: which Dashboard sections a user shows and in what order, as the client's own
+      // JSON document (lib/home-layout.js checks its shape; vite-app/src/utils/home-layout.js owns
+      // it). NULL is the default home. Idempotent: a DB that already has the column is left alone.
+      name: 'users-home-layout-2026-10',
+      fn: () => {
+        const t = db.exec('PRAGMA table_info(users)');
+        if (!(t.length && t[0].values.some((r) => r[1] === 'home_layout'))) db.run('ALTER TABLE users ADD COLUMN home_layout TEXT');
+        console.log('Added users.home_layout');
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -4822,6 +4834,40 @@ app.put('/api/user/location', authenticateToken, requireRegistered, async (req, 
     db.run('UPDATE users SET saved_location = ? WHERE id = ?', [blob, req.user.id]);
     await saveDatabase();
     res.json({ message: 'Location saved' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+/* Edit home (the Dashboard's sections, which show and in what order), so a layout follows the
+   user between devices. The client keeps a localStorage copy that paints first and is pushed when
+   it changed offline; this is the copy every device converges on. Last write wins, as location.
+   The document is the client's (vite-app/src/utils/home-layout.js); only its shape is checked
+   here (lib/home-layout.js), so an id this server does not know is stored as sent. A guest has
+   no row: GET answers null, PUT is refused by requireRegistered. */
+app.get('/api/user/home-layout', authenticateToken, (req, res) => {
+  try {
+    if (!req.user || !req.user.id || req.user.isGuest) return res.json({ layout: null });
+    const r = db.exec('SELECT home_layout FROM users WHERE id = ?', [req.user.id]);
+    const raw = r && r[0] && r[0].values[0] && r[0].values[0][0];
+    res.json({ layout: parseStoredHomeLayout(raw) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+app.put('/api/user/home-layout', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== 'object' || !('layout' in body)) return res.status(400).json({ error: 'Invalid home layout' });
+    const v = validateHomeLayout(body.layout);
+    if (!v.ok) return res.status(400).json({ error: 'Invalid home layout' });
+    // null clears it: Reset to default, so a later change to the default reaches this user.
+    db.run('UPDATE users SET home_layout = ? WHERE id = ?', [v.layout ? JSON.stringify(v.layout) : null, req.user.id]);
+    await saveDatabase();
+    res.json({ layout: v.layout });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong' });

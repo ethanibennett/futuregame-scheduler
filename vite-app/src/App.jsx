@@ -24,6 +24,7 @@ import DesktopRail from './components/DesktopRail.jsx';
 import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
 import useBankrolls from './hooks/useBankrolls.js';
+import useHomeLayout from './hooks/useHomeLayout.js';
 import DashboardView from './components/DashboardView.jsx';
 import HandsScanner from './components/HandsScanner.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
@@ -60,6 +61,8 @@ const StakingView = lazy(() => import('./components/StakingView.jsx'));
 const AdminView = lazy(() => import('./components/AdminView.jsx'));
 const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'));
 const CashView = lazy(() => import('./components/CashView.jsx'));
+// Edit home: the sheet that chooses and orders the Dashboard's sections, loaded when first opened.
+const HomeEditSheet = lazy(() => import('./components/HomeEditSheet.jsx'));
 
 const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.252)'}}>Loading…</div>;
 
@@ -186,6 +189,18 @@ function tokenUsername(tok) {
     if (!claims || claims.isGuest) return '';
     return typeof claims.username === 'string' ? claims.username.toLowerCase() : '';
   } catch { return ''; }
+}
+// The account id from the token's own claim (null for a guest or no session): the key of the
+// user's cached home layout (hooks/useHomeLayout.js), so one account never reads another's.
+function tokenUserId(tok) {
+  try {
+    const part = String(tok || '').split('.')[1];
+    if (!part) return null;
+    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    if (!claims || claims.isGuest) return null;
+    const id = Number(claims.id);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  } catch { return null; }
 }
 
 // debugNow (utils.js) is the admin-only simulated clock. It lives in localStorage and getNow()
@@ -1616,6 +1631,26 @@ function App() {
   // are refetched whenever the results change (version). For everyone else it fetches nothing.
   const bk = useBankrolls({ enabled: isAdmin, token, version: trackingData });
 
+  // Edit home (utils/home-layout.js): which Dashboard sections show and in what order, per account
+  // (cached locally, saved to the server). homeEdit holds the control that opened the sheet, so
+  // focus goes back to it on close. Guests get the default home and no sheet.
+  const homeUserId = useMemo(() => (isGuest ? null : tokenUserId(token)), [token, isGuest]);
+  const homeLayout = useHomeLayout({ token, isGuest, userId: homeUserId });
+  const [homeEdit, setHomeEdit] = useState(false);
+  const homeEditOpener = useRef(null);
+  const homeCtx = useMemo(() => ({ admin: !!(isAdmin && bk.enabled), registered: !isGuest }), [isAdmin, bk.enabled, isGuest]);
+  const openHomeEdit = useCallback((el) => { homeEditOpener.current = el || null; setHomeEdit(true); }, []);
+  const flushHomeLayout = homeLayout.flush;
+  const closeHomeEdit = useCallback(() => {
+    flushHomeLayout();
+    setHomeEdit(false);
+    const el = homeEditOpener.current;
+    homeEditOpener.current = null;
+    if (el && el.isConnected) requestAnimationFrame(() => { try { el.focus({ preventScroll: true }); } catch { /* gone */ } });
+  }, [flushHomeLayout]);
+  // Signed out, or now a guest: nothing to edit.
+  useEffect(() => { if (isGuest || !token) setHomeEdit(false); }, [isGuest, token]);
+
   // A non-admin session never runs on the simulated clock (see the boot-time clear above): this
   // catches an admin signing out and someone else signing in without a reload.
   useEffect(() => {
@@ -1825,6 +1860,9 @@ function App() {
                 canLog={!isGuest}
                 onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
                 bk={bk}
+                layout={homeLayout.layout}
+                isDesktop={isDesktop}
+                onEditHome={isGuest ? null : openHomeEdit}
                 onSetPlayed={setNotPlayed}
                 onDeleteTracking={deleteTracking}
                 tournaments={tournaments}
@@ -2018,6 +2056,7 @@ function App() {
                 isAdmin={isAdmin}
                 seasonLabel={seasonLabel}
                 isGuest={isGuest}
+                onEditHome={isGuest ? null : openHomeEdit}
               />
             )}
             </div>
@@ -2434,6 +2473,14 @@ function App() {
       {/* Admin-only layout grid: a faint overlay of the real content grid plus a
           floating toggle, so alignment can be checked live and layout fixes made
           by eye. Gated on isAdmin; state persists in localStorage. */}
+      {/* Edit home (components/HomeEditSheet.jsx): portalled to the body while open. */}
+      {homeEdit && !isGuest && (
+        <Suspense fallback={null}>
+          <HomeEditSheet layout={homeLayout.layout} set={homeLayout.set} status={homeLayout.status}
+            ctx={homeCtx} isDesktop={isDesktop} onClose={closeHomeEdit} />
+        </Suspense>
+      )}
+
       {isAdmin && gridOverlay && <GridOverlay showReadout={gridReadout} />}
     </div>
     </DisplayNameProvider>

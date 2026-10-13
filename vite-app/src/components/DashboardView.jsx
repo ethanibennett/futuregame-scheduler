@@ -20,7 +20,10 @@ import HomeCashCard from './HomeCashCard.jsx';
 import HomeNothingNext from './HomeNothingNext.jsx';
 import HomeToLog from './HomeToLog.jsx';
 import HomeLastResult from './HomeLastResult.jsx';
-import HomeNumbers from './HomeNumbers.jsx';
+import useHomeNumbers from './HomeNumbers.jsx';
+import HomeBankrollLine from './HomeBankrollLine.jsx';
+import HomePeriod from './HomePeriod.jsx';
+import { resolve as resolveLayout, bankrollAbovePeriod } from '../utils/home-layout.js';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
 import './home.css';
 
@@ -222,6 +225,10 @@ export default function DashboardView({
   // Step 4: App's useBankrolls (the summary the Results tab shares) for the bankroll line and the
   // period block. Admins only; for everyone else it is disabled and fetches nothing.
   bk = null,
+  // Edit home (utils/home-layout.js): the user's layout (null = the default home), whether the app
+  // is in its desktop layout (each section then keeps its pane), and the opener of the Edit home
+  // sheet (App; null for a guest, who gets the default home and no control).
+  layout = null, isDesktop = false, onEditHome = null,
 }) {
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
   // Scan table: the screenshot picked from a Playing card, while its sheet is open.
@@ -1021,15 +1028,21 @@ export default function DashboardView({
     );
   }
 
-  // The home's two halves (verdict "placement"): NOW — Up Next, then To log and the last result —
-  // and the NUMBERS — the bankroll line, the period block with its noise line, and (section 7, not yet built)
-  // Trend. On the phone they are one scrolling
-  // column, NOW first. On desktop (>= 1024) NOW is the main pane and the NUMBERS are portalled
-  // into a second 37g pane App renders beside it (homeRight), each pane its own scroller.
-  const nowCol = (
-    <div className="home-col home-col--now">
-        {/* Up Next */}
-        <div className="dashboard-section">
+  // The home's sections (verdict "placement"), each a keyed element so a reorder moves it without
+  // remounting it (To log's held Undo rows and "+N more", the carousel's page, survive): NOW (Up
+  // Next, To log and the last result) and the NUMBERS (the bankroll line, the period block with
+  // its noise line and goals as parts, and, section 7, not yet built, Trend). Which show, and in
+  // what order, is the user's (Edit home, utils/home-layout.js resolve): on the phone one scrolling
+  // column in that order; on desktop (>= 1024) each section keeps its pane, NOW the main pane and
+  // the NUMBERS portalled into a second 37g pane App renders beside it (homeRight), each in the
+  // user's relative order (docs/desktop-layout.md "Dashboard"). A hidden section is not rendered at
+  // all, so it asks the server for nothing. No section is wrapped: To log and the bankroll line
+  // render null when they have nothing, and an empty wrapper would still take the column's 2r gap.
+  const num = useHomeNumbers({ isAdmin, token, bk, onLog });
+  const registered = !!(onLog && canLog);
+  const view = useMemo(() => resolveLayout(layout, { admin: num.admin, registered }), [layout, num.admin, registered]);
+  const upNextSection = (
+        <div key="upnext" className="dashboard-section">
           <div className="dashboard-section-header">
             <div className="dashboard-section-title dash-title-swap" aria-live="polite">
               <span key={upNextTitle} className={upNextTitleOut ? 'dash-title-in' : undefined}>{upNextTitle}</span>
@@ -1121,53 +1134,101 @@ export default function DashboardView({
             <HomeNothingNext tournaments={tournaments} today={todayISO} onOpen={() => onNavigate('tournaments')} />
           )}
         </div>
-      {/* To log (verdict §2; 0r when nothing waits) and the last result (§3), under Up Next. To log
-          reads the resolved plans: a branch that is off was never played, so it is not asked about. */}
-      {onLog && (
-        <HomeToLog
-          schedule={mySchedule}
-          results={trackingData}
-          updates={myActiveUpdates}
-          plans={resolvedPlans}
-          today={todayISO}
-          canLog={canLog}
-          onAddTracking={onAddTracking}
-          onDeleteTracking={onDeleteTracking}
-          onSetPlayed={onSetPlayed}
-          onLog={onLog}
-        />
-      )}
-      {onLog && (
-        <HomeLastResult results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} bk={bk} />
-      )}
-    </div>
   );
-  const numbersCol = (
-    <div className="home-col home-col--numbers">
-      {/* The bankroll line (admins) and the period block with its goals (verdict sections 4 and
-          5; components/HomeNumbers.jsx). The period block replaced the one-line Results bar. */}
-      {/* plans: Up Next's resolved plans, so "Still on your schedule" leaves out a branch that is off,
-          as Up Next and To log do. */}
-      <HomeNumbers isAdmin={isAdmin} token={token} bk={bk} results={trackingData} schedule={mySchedule}
-        updates={myActiveUpdates} plans={resolvedPlans} rates={dashRates} currency={dashCurrency} today={todayISO} onLog={onLog} />
+  const SECTIONS = {
+    upnext: () => upNextSection,
+    // To log (verdict §2; 0r when nothing waits) and the last result (§3). To log reads the resolved
+    // plans: a branch that is off was never played, so it is not asked about.
+    tolog: () => (onLog ? (
+      <HomeToLog
+        key="tolog"
+        schedule={mySchedule}
+        results={trackingData}
+        updates={myActiveUpdates}
+        plans={resolvedPlans}
+        today={todayISO}
+        canLog={canLog}
+        onAddTracking={onAddTracking}
+        onDeleteTracking={onDeleteTracking}
+        onSetPlayed={onSetPlayed}
+        onLog={onLog}
+      />
+    ) : null),
+    last: () => (onLog ? (
+      <HomeLastResult key="last" results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} bk={bk} />
+    ) : null),
+    // The bankroll line (admins; verdict section 4).
+    bankroll: () => (num.admin ? <HomeBankrollLine key="bankroll" summary={bk.summary} onOpen={num.onOpenRules} /> : null),
+    // The period block with its goals (section 5) and its noise line (section 6), which replaced the
+    // one-line Results bar. plans: Up Next's resolved plans, so "Still on your schedule" leaves out a
+    // branch that is off, as Up Next and To log do. Its header leaves the scope out only when the
+    // bankroll line renders immediately above it in the same column (that line already says it).
+    period: (column) => (
+      <HomePeriod key="period" admin={num.admin} bk={bk} results={trackingData} schedule={mySchedule} updates={myActiveUpdates}
+        plans={resolvedPlans} rates={dashRates} currency={dashCurrency} today={todayISO}
+        scopeAbove={bankrollAbovePeriod(column) && num.bankLine ? `All bankrolls · ${num.bankLine.currency}` : null}
+        showNoise={view.on.has('noise')} showGoals={view.on.has('goals')}
+        onOpen={num.onOpenBlock} onOpenGoals={num.onOpenGoals} onOpenNoise={num.onOpenNoise} />
+    ),
+    // ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
+    // TODO(home trend): build here once the BankrollChart.jsx rebuild has merged: one registry
+    // entry in utils/home-layout.js (pane 'numbers', placed after 'period') and one element here.
+    // Placement: after the period block (section 5) and its noise line; the right pane on
+    // desktop, the first thing below the fold on the phone. It reuses BankrollChart.jsx,
+    // which another workflow is rebuilding, so it waits for that to land. Verdict "home" §7:
+    // a 3r title ("Last 3 months · N entries · H h") over a 35g x 14r cumulative profit
+    // chart, a 4r figures row, a 3r downswing line in buy-ins; taps open the Overview at 3M.
+    // Admins: ledger + rangeWindow('3m'); non-admins: a compact ResultsCurve.
+  };
+  const renderColumn = (ids) => ids.map((id) => (SECTIONS[id] ? SECTIONS[id](ids) : null));
 
-      {/* ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
-          TODO(home trend): build here once the BankrollChart.jsx rebuild has merged.
-          Placement: after the period block (section 5) and its noise line; the right pane on
-          desktop, the first thing below the fold on the phone. It reuses BankrollChart.jsx,
-          which another workflow is rebuilding, so it waits for that to land. Verdict "home" §7:
-          a 3r title ("Last 3 months · N entries · H h") over a 35g x 14r cumulative profit
-          chart, a 4r figures row, a 3r downswing line in buy-ins; taps open the Overview at 3M.
-          Admins: ledger + rangeWindow('3m'); non-admins: a compact ResultsCurve. */}
+  // The Edit home control: the main column's last item (the phone's one column, desktop's NOW pane),
+  // 11g x 4r centred in the 35g column (13..24g of the canvas), in the home's control face.
+  const editHome = onEditHome ? (
+    <button key="edit-home" type="button" className="hm-btn hm-edit" aria-label="Edit home: choose and order its sections"
+      onClick={(e) => onEditHome(e.currentTarget)}>
+      <Icon.sliders /><span className="hm-edit-t">Edit home</span>
+    </button>
+  ) : null;
+
+  // Desktop: until App's second pane has mounted (its first frame) NOW renders alone; falling back
+  // to the phone's order there would flash the NUMBERS in the main pane.
+  const desktop = !!isDesktop;
+  const nowCol = (
+    <div className="home-col home-col--now">
+      {renderColumn(desktop ? view.now : view.phone)}
+      {editHome}
     </div>
   );
+  // Every NUMBERS section hidden (a non-admin who hid This month; an admin who hid Bankroll and This
+  // month): the pane says so, and opens the sheet. NOW is never empty: Up Next is locked on.
+  const numbersEmpty = onEditHome ? (
+    <section key="numbers-empty" className="dashboard-section hm-numbers-empty" aria-label="Numbers">
+      <div className="dashboard-section-header">
+        <div className="dashboard-section-title">Numbers</div>
+      </div>
+      <button type="button" className="hm-next-empty" aria-label="Your numbers are hidden. Edit home"
+        onClick={(e) => onEditHome(e.currentTarget)}>
+        <span className="hm-next-col">
+          <span className="hm-cell hm-f-2xs hm-next-k"><span className="hm-clip">Nothing here</span></span>
+          <span className="hm-cell hm-f-md-b hm-next-v"><span className="hm-clip">Your numbers are hidden</span></span>
+        </span>
+        <span className="hm-next-pill snap-g"><span className="hm-tag-t">Edit</span></span>
+      </button>
+    </section>
+  ) : null;
+  const numbersCol = desktop && homeRight ? (
+    <div className="home-col home-col--numbers">
+      {view.numbers.length ? renderColumn(view.numbers) : numbersEmpty}
+    </div>
+  ) : null;
 
   return (
     <div className="dashboard-view home">
       {nowCol}
-      {homeRight
-        ? createPortal(<div className="dashboard-view home home--numbers">{numbersCol}</div>, homeRight)
-        : numbersCol}
+      {numbersCol && createPortal(<div className="dashboard-view home home--numbers">{numbersCol}</div>, homeRight)}
+      {/* The sheets the NUMBERS open (the bankroll dashboard, Analytics): portalled to the body. */}
+      {num.sheets}
       {/* The Playing card's Scan table action: one hidden picker for every card, and the sheet
           that runs the scan once a screenshot is chosen (the Table Scanner, moved off the home). */}
       <input ref={scanInputRef} className="dash-scan-input" type="file" accept="image/*" hidden
