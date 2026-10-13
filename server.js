@@ -613,9 +613,15 @@ app.get('/api/backer/:token/feed', (req, res) => {
       grossCents += e.sessionResultCents || 0;
       netSessionCents += e.shareCents || 0;
     }
+    // Totals over EVERY recorded session (the list stops at 200), for the page's headline.
+    let sessions = 0, hours = 0;
+    const tstmt = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(hours), 0) AS h FROM backer_events WHERE token = ?');
+    tstmt.bind([token]); if (tstmt.step()) { const t = tstmt.getAsObject(); sessions = t.n || 0; hours = t.h || 0; } tstmt.free();
+    res.set('Cache-Control', 'no-store');
     res.json({
       name, stakes, openingCents, grossCents, netSessionCents,
       cumulativeCents: backerCumulativeCents(token) + openingCents,
+      sessions, hours,
       events,
     });
   } catch (err) {
@@ -663,14 +669,36 @@ app.post('/api/backer/:token/unsubscribe', async (req, res) => {
   }
 });
 
-// The backer's private page (same shell for every token; JS reads the token
-// from the URL and fetches its own feed).
+// The backer's private page: the app shell (public-vite/index.html), whose client renders
+// components/BackerPage.jsx for a /b/<token> path with no login (App.jsx Root). The token in the
+// URL is the backer's whole authentication, so the page is never cached or indexed, and the
+// browser is told to send no Referer anywhere (no-referrer: a link out of the page cannot carry
+// the token to another site). The manifest link is dropped: its start_url is the app's "/", and a
+// backer who adds the page to their Home Screen (which iOS requires for web push) must come back
+// to this page, not to the app's login.
+function backerShell(html) {
+  return html
+    .replace(/\s*<link rel="manifest"[^>]*>/, '')
+    .replace(/<title>[^<]*<\/title>/, '<title>Your action · futurega.me</title>')
+    .replace('</head>',
+      '<meta name="robots" content="noindex,nofollow">\n'
+      + '<meta name="referrer" content="no-referrer">\n'
+      + `<meta name="build-version" content="${BUILD_VERSION}">\n</head>`);
+}
 app.get('/b/:token', (req, res) => {
   const token = String(req.params.token || '');
   if (!BACKER_TOKEN_RE.test(token)) return res.status(404).send('Not found');
+  let html;
+  try {
+    html = require('fs').readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
+  } catch (err) {
+    console.error('Backer page: no app shell to serve (public-vite/index.html):', err.message);
+    return res.status(503).send('Unavailable');
+  }
   res.set('Cache-Control', 'no-store');
-  res.set('Content-Type', 'text/html; charset=utf-8');
-  res.send(BACKER_PAGE_HTML);
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.type('html').send(backerShell(html));
 });
 
 // ── Dashboard seam #2 (the ONLY dashboard surface left on the scheduler) ──
@@ -11752,141 +11780,6 @@ async function sendBackerWeeklyDigests() {
     console.error('Backer weekly digest error:', err);
   }
 }
-
-// The backer page — one self-contained shell for every token. Client JS reads
-// the token from the URL, fetches its own feed, and (opt-in) enables web push.
-const BACKER_PAGE_HTML = `<!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#111111">
-<title>Your action</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet">
-<style>
-@font-face{font-family:'Univers Condensed';src:url('/bfonts/univers-condensed.woff2') format('woff2');font-weight:400;font-display:swap}
-@font-face{font-family:'Univers Condensed';src:url('/bfonts/univers-bold-condensed.woff2') format('woff2');font-weight:700;font-display:swap}
-@font-face{font-family:'Univers';src:url('/bfonts/univers-regular.woff2') format('woff2');font-weight:400;font-display:swap}
-@font-face{font-family:'Univers';src:url('/bfonts/univers-bold.woff2') format('woff2');font-weight:700;font-display:swap}
-:root{--ink:#111111;--surface:#1a1a1a;--surface-2:#242424;--line:#333333;--bone:#e8e8e8;--muted:#808080;--good:#5a9e7a;--bad:#c96b6b}
-*{box-sizing:border-box}
-body{margin:0;background:var(--ink);color:var(--bone);font-family:'Univers Condensed','Univers',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
-.wrap{max-width:520px;margin:0 auto;padding:26px 18px 64px}
-.title{font-family:'Libre Baskerville',Georgia,serif;font-weight:700;font-size:26px;letter-spacing:-.03em;margin:0}
-.sub{font-family:'Univers Condensed','Univers',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px}
-.stakes{color:var(--muted);font-size:13px;margin-top:10px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0 14px}
-.card-label{font-family:'Univers Condensed','Univers',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-.big{font-family:'Univers Condensed','Univers',monospace;font-weight:700;font-size:40px;letter-spacing:-.01em;line-height:1;font-variant-numeric:tabular-nums}
-.small{color:var(--muted);font-size:12px;margin-top:8px}
-.pos{color:var(--good)}.neg{color:var(--bad)}
-.muted{color:var(--muted)}
-.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
-.row:first-of-type{border-top:0;padding-top:0}
-.row-label{font-weight:700;font-size:15px}
-.row-meta{color:var(--muted);font-size:12.5px;margin-top:4px;line-height:1.4}
-.row-result{font-family:'Univers Condensed','Univers',monospace;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.btn{display:block;width:100%;margin:2px 0 8px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--bone);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
-.btn:active{opacity:.8}
-.pushnote{color:var(--muted);font-size:12px;text-align:center;margin:6px 0 10px}
-.pushrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:2px 0 8px}
-.pushon{font-size:14px;font-weight:700}
-.btn-off{flex:0 0 auto;width:auto;margin:0;padding:8px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:inherit;cursor:pointer}
-.btn-off:active{opacity:.8}
-.foot{color:#5f5f5f;font-size:10.5px;text-align:center;margin-top:30px;font-family:'Univers Condensed','Univers',monospace;letter-spacing:.06em;text-transform:uppercase}
-</style></head><body>
-<div id="app"><div class="wrap"><p class="muted">Loading…</p></div></div>
-<script>
-(function(){
-  var token=location.pathname.split('/').filter(Boolean).pop();
-  var app=document.getElementById('app');
-  var feed=null;
-  function money(c){var v=(c||0)/100;var neg=v<0;var n=Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0});return (neg?'−':'+')+'$'+n;}
-  function fmtH(h){return (Math.round((h||0)*10)/10)+'h';}
-  function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
-  function urlB64(s){var pad='='.repeat((4-s.length%4)%4);var b=(s+pad).replace(/-/g,'+').replace(/_/g,'/');var raw=atob(b);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;}
-  function render(){
-    var evs=(feed&&feed.events)||[];
-    var cum=(feed&&feed.cumulativeCents)||0;
-    var name=(feed&&feed.name)||'Your action';
-    var stakes=(feed&&feed.stakes)||'';
-    var openingCents=(feed&&feed.openingCents)||0;
-    var grossCents=(feed&&feed.grossCents)||0;
-    var rows=evs.map(function(e){
-      var cls=e.shareCents>=0?'pos':'neg';
-      return '<div class="row"><div><div class="row-label">'+esc(e.game)+'</div>'
-        +'<div class="row-meta">'+esc(e.venue)+' · '+fmtH(e.hours)+' · '+esc(e.date)+' · gross '+money(e.sessionResultCents)+' · your '+esc(e.pct)+'%</div></div>'
-        +'<div class="row-result '+cls+'">'+money(e.shareCents)+'</div></div>';
-    }).join('');
-    var openingRow=openingCents?('<div class="row"><div><div class="row-label">Opening balance</div>'
-      +'<div class="row-meta">carried in</div></div>'
-      +'<div class="row-result '+(openingCents>=0?'pos':'neg')+'">'+money(openingCents)+'</div></div>'):'';
-    var sessionsInner=(rows+openingRow)||'<div class="muted" style="font-size:13px">No sessions yet — they\\'ll show up here as Ethan logs them.</div>';
-    app.innerHTML='<div class="wrap">'
-      +'<h1 class="title">'+esc(name)+'</h1>'
-      +'<div class="sub">your action with Ethan</div>'
-      +(stakes?'<div class="stakes">Staked: '+esc(stakes)+'</div>':'')
-      +'<div class="card"><div class="card-label">Net · your share</div>'
-        +'<div class="big '+(cum>=0?'pos':'neg')+'">'+money(cum)+'</div>'
-        +'<div class="small">running position — what settles up with Ethan</div>'
-        +(grossCents?'<div class="small">Gross across your games: <span class="'+(grossCents>=0?'pos':'neg')+'">'+money(grossCents)+'</span></div>':'')
-        +'</div>'
-      +'<div id="pushbox"></div>'
-      +'<div class="card"><div class="card-label">Sessions</div>'
-        +sessionsInner
-        +'</div>'
-      +'<div class="foot">Private link · only you can see this</div></div>';
-    renderPush();
-  }
-  function renderPush(){
-    var box=document.getElementById('pushbox'); if(!box)return;
-    if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){box.innerHTML='';return;}
-    if(Notification.permission==='denied'){box.innerHTML='<div class="pushnote">Notifications are blocked in your browser settings.</div>';return;}
-    box.innerHTML='<div class="pushnote">…</div>';
-    navigator.serviceWorker.getRegistration('/b/').then(function(reg){
-      return reg?reg.pushManager.getSubscription():null;
-    }).then(function(sub){
-      if(sub){
-        box.innerHTML='<div class="pushrow"><span class="pushon">🔔 Notifications on</span><button class="btn-off" id="pushoff">Turn off</button></div>';
-        document.getElementById('pushoff').onclick=disablePush;
-      }else{
-        box.innerHTML='<button class="btn" id="enable">🔔 Notify me after each session</button>';
-        document.getElementById('enable').onclick=enablePush;
-      }
-    }).catch(function(){
-      box.innerHTML='<button class="btn" id="enable">🔔 Notify me after each session</button>';
-      var e=document.getElementById('enable'); if(e)e.onclick=enablePush;
-    });
-  }
-  function enablePush(){
-    var b=document.getElementById('enable'); if(b){b.textContent='Enabling…';b.disabled=true;}
-    navigator.serviceWorker.register('/b/sw.js',{scope:'/b/'}).then(function(reg){
-      return Notification.requestPermission().then(function(p){
-        if(p!=='granted')throw new Error('permission denied');
-        return fetch('/api/backer/vapid').then(function(r){return r.json();}).then(function(v){
-          if(!v.key)throw new Error('unavailable');
-          return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(v.key)});
-        });
-      });
-    }).then(function(sub){
-      return fetch('/api/backer/'+token+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub})});
-    }).then(function(){renderPush();}).catch(function(err){
-      var box=document.getElementById('pushbox'); if(box)box.innerHTML='<div class="pushnote">Notifications unavailable here ('+esc(err&&err.message||'error')+'). You can still open this link anytime.</div>';
-    });
-  }
-  function disablePush(){
-    var b=document.getElementById('pushoff'); if(b){b.textContent='…';b.disabled=true;}
-    navigator.serviceWorker.getRegistration('/b/').then(function(reg){
-      return reg?reg.pushManager.getSubscription():null;
-    }).then(function(sub){
-      if(!sub)return null;
-      var endpoint=sub.endpoint;
-      return sub.unsubscribe().then(function(){
-        return fetch('/api/backer/'+token+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:endpoint})});
-      });
-    }).then(function(){renderPush();}).catch(function(){renderPush();});
-  }
-  fetch('/api/backer/'+token+'/feed').then(function(r){return r.json();}).then(function(d){feed=d;render();}).catch(function(){render();});
-})();
-</script></body></html>`;
 
 // ── Schedule Parser: extract tournament data from PDF/image via Claude Vision ──
 const scheduleUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });

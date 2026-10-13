@@ -17,6 +17,13 @@
     (function() {
       var t = localStorage.getItem('theme') || 'dark';
       var c = localStorage.getItem('contrast') || 'normal';
+      // A backer's private page (/b/<token>) has no settings: it follows the device's scheme and
+      // contrast (components/BackerPage.jsx keeps them in step), never the app's stored theme.
+      if (/^\/b\/[A-Za-z0-9]{6,64}\/?$/.test(location.pathname)) {
+        var mm = window.matchMedia ? function (q) { return window.matchMedia(q).matches; } : function () { return false; };
+        t = mm('(prefers-color-scheme: light)') ? 'light' : 'dark';
+        c = mm('(prefers-contrast: more)') ? 'high' : 'normal';
+      }
       document.documentElement.setAttribute('data-theme', t);
       document.documentElement.setAttribute('data-contrast', c);
       var meta = document.querySelector('meta[name="theme-color"]');
@@ -110,6 +117,12 @@
     // static string paints. App.jsx retitles again once the feed lands, which
     // is what corrects a first-ever load.
     (function() {
+      // A backer's page is not about a season: the splash shows the wordmark alone.
+      if (/^\/b\//.test(location.pathname)) {
+        var s = document.getElementById('splash-season');
+        if (s) s.textContent = '';
+        return;
+      }
       var label = localStorage.getItem('seasonLabel');
       if (!label) return;
       var el = document.getElementById('splash-season');

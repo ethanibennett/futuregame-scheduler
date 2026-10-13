@@ -86,6 +86,25 @@ export function settleDetailBlock(el) {
   el.dataset.dkMove = 'open';
 }
 
+// Another event's details while the block is settled open (owner, 2026-10-13: "differently-sized
+// event panes should animate the expansion or contraction"). The caller runs after the commit, so the
+// content has already swapped: it hands in the height the OLD details had (fromPx, kept by a
+// ResizeObserver), and the block travels from there to the new details' own height on the same
+// curve. A resize is a short trip, so it takes at least RESIZE_MIN_FRAC of the duration rather
+// than reading as a snap. Returns true when the heights already match (nothing to animate).
+export const RESIZE_MIN_FRAC = 0.6;
+export function resizeDetailBlock(el, fromPx, R) {
+  el.style.transition = 'none';
+  el.style.height = rLen(fromPx / R);
+  el.getBoundingClientRect();
+  const over = moveDetailBlock(el, 'open', R, false);
+  if (!over) {
+    const f = parseFloat(el.style.getPropertyValue('--dk-frac')) || 0;
+    el.style.setProperty('--dk-frac', String(Math.max(f, RESIZE_MIN_FRAC)));
+  }
+  return over;
+}
+
 // True while a transition on the block itself (not one inside it) has yet to finish.
 export function detailBlockMoving(el) {
   if (!el.getAnimations) return false;

@@ -7,7 +7,7 @@ import { resetPath } from './utils/reset-results.js';
 import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
-import { moveDetailBlock, settleDetailBlock, detailBlockMoving } from './utils/detail-motion.js';
+import { moveDetailBlock, settleDetailBlock, detailBlockMoving, resizeDetailBlock } from './utils/detail-motion.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
 
 import { useToast } from './contexts/ToastContext.jsx';
@@ -36,6 +36,8 @@ import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
 import { LiveCashBar } from './components/CashLive.jsx';
 import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
+import BackerPage from './components/BackerPage.jsx';
+import { backerTokenFromPath } from './utils/backer-page.js';
 import SkeletonDashboard from './components/SkeletonDashboard.jsx';
 import SkeletonSchedule from './components/SkeletonSchedule.jsx';
 import RealNamePrompt from './components/RealNamePrompt.jsx';
@@ -60,6 +62,10 @@ const AdminBatchesView = lazy(() => import('./components/AdminBatchesView.jsx'))
 const CashView = lazy(() => import('./components/CashView.jsx'));
 
 const LazyFallback = () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontFamily:"'Univers Condensed','Univers',sans-serif",fontSize:'calc(var(--gu) * 1.252)'}}>Loading…</div>;
+
+// A backer's private page: /b/<token> (the server's BACKER_TOKEN_RE). Rendered by Root below,
+// before App: a backer has no account, so none of App's session, onboarding, nav or rail applies.
+const BACKER_TOKEN = backerTokenFromPath(window.location.pathname);
 
 // Detect shared schedule URL: /shared/:token
 const SHARED_MATCH = window.location.pathname.match(/^\/shared\/([a-f0-9]+)$/);
@@ -191,7 +197,7 @@ try {
   if (getDebugNow() && !APP_ADMIN_USERNAMES.includes(tokenUsername(bootToken))) setDebugNow('');
 } catch { /* storage unavailable — nothing persisted to clear */ }
 
-export default function App() {
+function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || sessionStorage.getItem('token'));
   const [username, setUsername] = useState(localStorage.getItem('username') || sessionStorage.getItem('username'));
   const [isGuest, setIsGuest] = useState(localStorage.getItem('isGuest') === 'true');
@@ -1653,9 +1659,20 @@ export default function App() {
   // height, and its opacity, from wherever it is when the move starts (a close mid-open, a new
   // event mid-close). Run before paint, so the block never shows a frame at its natural height
   // first. Only a change of phase or of event starts one: an event swapped for another while the
-  // block is settled open just reflows, and a block mounted again with the pane (back from another
+  // block is settled open glides between the two heights (resizeDetailBlock), and a block mounted again with the pane (back from another
   // tab, the selection kept) shows as it was left, without growing open again.
   const dkPrevPhase = useRef(null);
+  // The block's height as last laid out, kept current by a ResizeObserver: when another event is
+  // chosen while the block is settled open, the new details are already in the DOM by the time the
+  // effect below runs, so this is the only record of how tall the old ones were.
+  const dkLastH = useRef(0);
+  useEffect(() => {
+    const el = dkDetailRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => { dkLastH.current = el.getBoundingClientRect().height; });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dkPhase != null]);
   useLayoutEffect(() => {
     const was = dkPrevPhase.current;
     dkPrevPhase.current = dkPhase;
@@ -1664,6 +1681,11 @@ export default function App() {
     if (prefersReducedMotion()) {
       settleDetailBlock(el);
       if (dkPhase === 'closing') setDkClosing(null);
+      return;
+    }
+    // Open to open: another event's details, of another height, glide from the old height to theirs.
+    if (was === 'open' && dkPhase === 'open' && !detailBlockMoving(el) && dkLastH.current > 0) {
+      resizeDetailBlock(el, dkLastH.current, subrowPx());
       return;
     }
     // was == null: the block mounted in this commit, so it opens from nothing.
@@ -2201,7 +2223,7 @@ export default function App() {
     <DisplayNameProvider value={displayName}>
     <div
       className={'app-shell' + (isDesktop ? ' is-desktop dk-' + dk.tier : '')}
-      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols, '--dk-sb-g': dk.sbG } : undefined}
+      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols, '--dk-sb-g': dk.sbG, '--dk-ov-g': dk.ovG } : undefined}
     >
       <header className="top-bar">
         <div className="top-bar-title">
@@ -2416,4 +2438,11 @@ export default function App() {
     </div>
     </DisplayNameProvider>
   );
+}
+
+// The entry point: a backer link renders its page alone (components/BackerPage.jsx), so App's
+// hooks (the session, the schedule fetches, push for admins) never run for it.
+export default function Root() {
+  if (BACKER_TOKEN) return <BackerPage token={BACKER_TOKEN} />;
+  return <App />;
 }

@@ -11,7 +11,7 @@ sessions opened here own scheduler work.
   branch `wip/windows-mtt-feed`.
 - **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
   2 panes (Schedule = list | right pane, the selected event on top and My Schedule under it;
-  the third column was dropped 2026-10-10) on the SAME g as the phone (g stays 430px/37; panes
+  the third column was dropped 2026-10-10; the two panes sit 2g apart on the background, 2026-10-13) on the SAME g as the phone (g stays 430px/37; panes
   are 9N+1 g, widened by a classic scrollbar's width where one shows). Everything narrower, and
   every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
@@ -145,6 +145,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   mtt-series-watcher `docs/pokeratlas-clock.md` and `docs/bravo-tournaments-blocker.md`.
 - **Backer surface stays here**: `/b/:token` public pages, Sunday weekly digest, backer
   web-push (`backer_push_subs`), `console_records` store='backers' (fed by seam #3).
+  The page is the vite app since 2026-10-13 (`components/BackerPage.jsx`, rendered by App.jsx's
+  `Root` before any login; arithmetic in `utils/backer-page.js`): the server serves the app shell
+  to valid tokens only, `no-store` + `noindex` + `Referrer-Policy: no-referrer`, with the manifest
+  link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
+  `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
+  into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

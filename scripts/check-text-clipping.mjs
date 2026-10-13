@@ -9,7 +9,8 @@
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
 // about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
-// Scanner, the venue map opened from a Schedule strip and from an Up Next banner (and, for an
+// Scanner, the venue map opened from a Schedule strip and from an Up Next banner, the backer page
+// (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no sessions, one session) (and, for an
 // admin, each tab of the bankroll dashboard — the Overview with every table
 // section open, then closed — every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
@@ -522,6 +523,39 @@ function scan(rootSel) {
     await p.waitForTimeout(300);
     await run('results reset (open)', '.rr');
   } catch (e) { console.log(`  (results reset skipped: ${e.message.split('\n')[0]})`); }
+
+  // The backer page (/b/<token>, no login: components/BackerPage.jsx), paged through: a full
+  // history (then its graph on 1M), a backer with no sessions yet, one session. CHECK_BACKER_TOKENS
+  // (full,empty,one) names made-up backers on a scratch server (scripts/seed-backer-demo.js prints
+  // the line); without it these are skipped and say so.
+  {
+    const toks = (process.env.CHECK_BACKER_TOKENS || '').split(',').map(s => s.trim());
+    const names = ['full history', 'no sessions', 'one session'];
+    if (!toks[0]) console.log('  (backer page skipped: needs CHECK_BACKER_TOKENS, from scripts/seed-backer-demo.js)');
+    for (let i = 0; i < 3 && toks[i]; i++) {
+      try {
+        await p.goto(base + '/b/' + toks[i], { waitUntil: 'domcontentloaded' });
+        await p.locator('.bp-name, .bp-message').first().waitFor({ timeout: 8000 });
+        await p.waitForTimeout(800);
+        for (let k = 0; k < 12; k++) {
+          await run(`backer page, ${names[i]}${k ? ` (scrolled ${k})` : ''}`, '.bp-shell');
+          const moved = await p.evaluate((h) => {
+            const sc = document.querySelector('.bp-content');
+            const before = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7); return sc.scrollTop !== before;
+          }, H);
+          if (!moved) break;
+          await p.waitForTimeout(300);
+        }
+        const r1 = p.locator('.bp-seg button:has-text("1M")');
+        if (i === 0 && await r1.count()) {
+          await p.evaluate(() => { document.querySelector('.bp-content').scrollTop = 0; });
+          await r1.first().click({ timeout: 4000 });
+          await p.waitForTimeout(400);
+          await run('backer page, full history (1M)', '.bp-shell');
+        }
+      } catch (e) { console.log(`  (backer page, ${names[i]} skipped: ${e.message.split('\n')[0]})`); }
+    }
+  }
 
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
   if (uniq.length) {

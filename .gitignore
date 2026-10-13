@@ -163,3 +163,4 @@ ios/App/capacitor-swift-pm/.built-version
 test/quick-add/reports/*
 !test/quick-add/reports/.gitkeep
 weekly-graphics/
+hh-samples/

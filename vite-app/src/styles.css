@@ -16506,19 +16506,38 @@
     }
     /* The divider is drawn OVER the pane's left edge, not added to its width, so
        every pane stays a whole number of g. */
+    /* Every pane is edged left and right with the header's own bottom line (var(--bw-hair) var(--border);
+       owner, 2026-10-13): drawn OVER the pane's edges, not added to its width, so every pane stays a
+       whole number of g, and above the sticky rows so a sticky header cannot hide it. The header's line
+       is the panes' top edge. */
     .dk-pane::before {
-      content: ''; position: absolute; top: 0; bottom: 0; left: 0;
-      width: var(--bw-hair); background: var(--border);
+      content: ''; position: absolute; inset: 0;
+      border-left: var(--bw-hair) solid var(--border);
+      border-right: var(--bw-hair) solid var(--border);
       z-index: calc(var(--z-sticky) + 1); pointer-events: none;
     }
+    /* Two panes side by side sit 2g apart on the page background (owner, 2026-10-13), with the
+       header-coloured gap between their hairline edges. useDesktopLayout counts the 2g (PANE_GAP_G) into the shell, so every pane stays whole g.
+       A hidden pane between them (My Schedule's NUMBERS slot off the Dashboard) still counts as
+       the previous sibling, so the gap holds on every tab with two panes. */
+    /* The gap is painted in the header's colour (owner, 2026-10-13): --surface, where the header's
+       gradient ends against the panes. A shadow cast 2g to the left with no blur fills exactly the
+       margin, outside the pane's own box, so nothing in the layout moves. */
+    .dk-pane + .dk-pane { margin-left: calc(var(--gu) * 2); box-shadow: calc(var(--gu) * -2) 0 0 0 var(--surface); }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
     /* .dk-pane-home: the Dashboard's NOW pane, the list's 37g without the list's nav band
        (.dk-pane-list::after below is the Schedule list's phone parity; the home has no nav on
        desktop, and its own spacer is 0 there, home.css). */
-    .dk-pane-list, .dk-pane-mine, .dk-pane-home { width: calc(var(--gu) * (37 + var(--dk-sb-g, 0))); }
-    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + var(--dk-sb-g, 0))); }
-    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + var(--dk-sb-g, 0))); }
+    .dk-pane-list, .dk-pane-mine, .dk-pane-home { width: calc(var(--gu) * (37 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    /* --dk-ov-g (useDesktopLayout OVERLAY_LANE_G): where scrollbars overlay the content, each scroller
+       keeps that many g on its right for the bar to float in, so it never sits on a card's edge or the
+       selection ring (owner, 2026-10-13). The pane is widened by the same, so the content keeps its 37g
+       / 9N+1 g exactly. 0 where a classic scrollbar takes its own width (--dk-sb-g). */
+    .app-shell.is-desktop .content-area,
+    .app-shell.is-desktop .dk-scroll { padding-right: calc(var(--gu) * (1 + var(--dk-ov-g, 0))); }
     /* A pane is the containing block for the views' fixed-position children (the
        Today/Next button, the admin dev keys), so each one centres in ITS pane instead of the window.
        Only on panes whose views have nothing else fixed and unportalled. Desktop-only because the
@@ -16535,7 +16554,7 @@
        does not scroll; its foot is the window's): the same corner, on the grid, still above the
        grid overlay as on the phone. */
     .dk-fab-scope .grid-dev-toggle,
-    .dk-pane-wide > .grid-dev-toggle { right: calc(var(--gu) * (1 + var(--dk-sb-g, 0))); }
+    .dk-pane-wide > .grid-dev-toggle { right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
     .dk-pane-wide > .grid-dev-toggle { position: absolute; }
     /* Centred in its pane, on a g line. Desktop-only, for two things a phone never has: a classic
        scrollbar (--dk-sb-g) widens the pane but not the content beside it, so the middle is taken
@@ -16543,7 +16562,7 @@
        centre); and the right pane can be an even number of g (46g, 64g), whose exact middle would
        leave the 9g button a half-g off the grid, so it rounds to a g line counted from the pane's
        own edge. On the 37g list pane both come to the phone's 14g. */
-    .dk-fab-scope .back-to-today-fab { left: round(nearest, 50% - var(--gu) * (4.5 + var(--dk-sb-g, 0) / 2), var(--gu)); }
+    .dk-fab-scope .back-to-today-fab { left: round(nearest, 50% - var(--gu) * (4.5 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)) / 2), var(--gu)); }
 
     /* The Schedule list pane is the phone's column below the header, nav band included. The rail
        does the nav's job, so the band stays empty, but it is kept at the pane's foot: the list's
@@ -16672,9 +16691,13 @@
       .cal-event-row.is-detail:hover { box-shadow: none; }
       .cal-event-row.is-detail:hover .cal-event-bar { background: none; }
     }
-    /* The list row whose event is in the detail pane. An outline, so the card's
-       box (and the list's r rhythm) does not move by a hair. */
-    .cal-event-row.is-selected { outline: var(--bw-2) solid var(--brand); outline-offset: 0; }
+    /* The list row whose event is in the detail pane: a brand ring drawn INSIDE the card, over the
+       strip and the content (the priority ring's technique, .cal-event-row.anchor::after), so the
+       card's box (and the list's r rhythm) does not move by a hair. It was an outline, which sits
+       OUTSIDE the box: each row paints on its own (content-visibility), so the date break above
+       and the next card painted over most of it, and what showed was stray aqua at the corners and
+       a band along the foot (owner, 2026-10-13). Inside the box nothing covers it and it follows
+       the card's radius exactly. The rule is the one below, after the ::after reset. */
     /* Clicking a row focuses its bar, and Safari matches :focus-visible on that click, so the
        selected card drew the inset focus ring INSIDE the selection outline: two brand rings. The
        selection outline already says where you are; keyboard focus on any other row still rings. */
@@ -16685,7 +16708,16 @@
        the one in the detail pane, the selection outline is its only ring — the pane says whether
        it is saved. Unselected rows keep every marker. */
     .cal-event-row.is-selected .cal-event-row-content { box-shadow: none; outline: none; }
-    .cal-event-row.is-selected::after { display: none; }
+    .cal-event-row.is-selected::after {
+      content: '';
+      display: block;
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: var(--bw-2) solid var(--brand);
+      pointer-events: none;
+      z-index: 3;
+    }
     /* The right pane's two blocks, each its own scroller: the selected event on top at its
        natural height (at most about half the pane), My Schedule filling the rest below a hairline. */
     /* Opening and closing an event (owner, 2026-10-10 and -11): the details grow DOWNWARD from the
@@ -16712,12 +16744,15 @@
         height calc(var(--dur-base) * var(--dk-frac, 1)) var(--ease-out),
         opacity calc(var(--dur-base) * var(--dk-frac, 1)) var(--ease-out);
     }
-    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 2); }
+    /* 4r between the selected event and My Schedule (owner, 2026-10-13): the details' own foot, so it
+       grows and shrinks with the open / close move and is gone when nothing is selected. */
+    .dk-pane-detail > .dk-detail-block > .dk-detail { padding-bottom: calc(var(--subrow) * 4); }
     .dk-pane-detail > .dk-detail-block.is-closing { pointer-events: none; }
     .dk-pane-detail > .dk-mine-block { flex: 1 1 0; }
-    /* The rule between them is a shadow above My Schedule, not a border: a border pushed its
-       content (the header's buttons, the date pills) a pixel off the grid. */
-    .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+    /* No rule between them: the 4r above My Schedule is the divider, in the header's colour like the
+       2g between panes (owner, 2026-10-13): a shadow cast 4r up from My Schedule with no blur covers
+       exactly the details' 4r foot, full width, and moves with the open / close as the foot does. */
+    .dk-detail-block + .dk-mine-block { box-shadow: 0 calc(var(--subrow) * -4) 0 0 var(--surface); }
     /* ══ end Desktop layout ══════════════════════════════════════════════════ */
 
     /* ══ Admin "New events" (one alert's batch) ══════════════════════════════

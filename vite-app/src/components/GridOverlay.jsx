@@ -204,12 +204,25 @@ export default function GridOverlay({ showReadout = true }) {
     };
     const measurePanes = () => {
       const els = [...document.querySelectorAll('.app-shell.is-desktop .dk-rail, .app-shell.is-desktop .dk-pane')];
-      if (!els.length) { setPanes(null); return; }
       const probe = document.createElement('div');
       probe.style.cssText = 'position:absolute;visibility:hidden;width:calc(var(--gu) * 100);height:0';
       document.body.appendChild(probe);
       const g = probe.getBoundingClientRect().width / 100;
       probe.remove();
+      // The phone's single column centred on a wider window (the backer page, the shared schedule,
+      // a phone-layout window over 430 wide): one 37g grid from the shell's left, not four
+      // columns stretched across the window.
+      if (!els.length) {
+        const shell = document.querySelector('.app-shell:not(.is-desktop)');
+        const sr = shell && shell.getBoundingClientRect();
+        if (sr && sr.left > g / 2) {
+          const dpr = window.devicePixelRatio || 1;
+          setPanes([{ left: Math.round(sr.left * dpr) / dpr, n: 4 }]);
+          return;
+        }
+        setPanes(null);
+        return;
+      }
       // Each pane's grid is drawn as the phone's is: 9N+1 g, N 8g columns inside the 1g padding
       // of .grid-dev-cols. It was the pane's measured width, which a classic scrollbar widens
       // (not the pane's grid), stretching every column. Drawn from the pane's origin snapped to

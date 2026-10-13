@@ -39,7 +39,7 @@ One arrangement at every desktop width (since 2026-10-10; the two-tier/three-tie
 
 | Layout | Arrangement |
 |---|---|
-| desktop | rail 10 · list 37 · right pane 9N+1 — the selected event on top, My Schedule below it in the same scroll; with nothing selected, My Schedule is the whole pane |
+| desktop | rail 10 · list 37 · 2g of background · right pane 9N+1 (owner, 2026-10-13: the 2g replaces the hairline between panes; 4r of background, the details' own foot, separates the event from My Schedule) — the selected event on top, My Schedule below it in the same scroll; with nothing selected, My Schedule is the whole pane |
 
 The owner asked for My Schedule under the event details rather than in a third column. Each pane is
 also widened by a classic scrollbar's width where one is drawn (`--dk-sb-g`), so its content keeps the
