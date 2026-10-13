@@ -886,6 +886,15 @@
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
+      /* A badge box on the grid: the 4r header row's height, whole g wide (class snap-g), the
+         count centred in it (the trailing letter-space balanced by an equal indent). */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: calc(var(--subrow) * 4);
+      line-height: 1;
+      text-indent: var(--track-caps);
+      white-space: nowrap;
     }
 
 
@@ -1587,7 +1596,7 @@
     /* The theme toggle on the auth card was a btn-ghost btn-sm, i.e. a ~45x33
        lozenge, where the same control in the app shell is a 32px circle. */
     .auth-card .btn-icon {
-      width: calc(var(--subrow) * 4);
+      width: calc(var(--gu) * 3);   /* the app bar's 3g x 4r icon cell: whole g, on the card's lines */
       height: calc(var(--subrow) * 4);
       border-radius: var(--radius-circle);
       padding: 0;
@@ -1631,8 +1640,11 @@
       letter-spacing: var(--track-caps);
       text-transform: uppercase;
       color: var(--text-muted);
-      /* 1px: the uppercase label already separates the head from the body. */
-      border-bottom: var(--bw-hair) solid var(--border);
+      /* 1px: the uppercase label already separates the head from the body. An inset shadow, not
+         a border: WebKit grew the 4r head cell by its snapped border (4.07r), which put every
+         row and Replayer toggle under it 0.07r off the grid. */
+      border-bottom: 0;
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
       cursor: pointer;
       white-space: nowrap;
       overflow: hidden;
@@ -1665,8 +1677,10 @@
     .admin-table td.admin-toggle-cell .admin-toggle {
       position: absolute;
       top: calc((var(--subrow) * 5 - var(--subrow) * 3) / 2);
-      left: 50%;
-      margin-left: calc(var(--gu) * -2);
+      /* The column is the toggle's own 4g (AdminView's colgroup), so it fills it from the
+         column's g line; centred in the old 5g column it sat half a g off. */
+      left: 0;
+      margin-left: 0;
     }
     /* Username cell clears the avatar with a fixed indent (1g rail + 24px avatar
        + 1 subrow gap). */
@@ -1787,7 +1801,16 @@
       font-size: calc(var(--gu) * 2.3);
       line-height: 1;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      /* Across, the box is the INK too: Libre Baskerville's figures stand ~0.055em in from their
+         left edge (0 1 2 3: 61 69 50 51 units), where the month's last letter ends at its edge, so
+         the advance the pill centred put the ink ~0.8px right of centre. The far end is padded by
+         that bearing — the same balance as a tracked label's text-indent for its trailing
+         letter-space — so the ink, not the advance, is centred. */
+      padding-right: 0.055em;
     }
+    /* A day with a 7: that figure's flag rises 0.06em above the cap height the trim stops at, so
+       the ink ran above the box by that much and sat ~0.8px high. Its box takes the 7's top. */
+    .date-break-label.has-tall-figure { padding-top: 0.06em; }
     .date-break-label > .date-break-mon { margin-left: calc(var(--gu) * 0.3442); } /* 4px @ 430pt, in g */
     /* The one mark the whole list is scrolled to on mount. --brand exists so
        exactly one thing per screen can claim priority; this is the candidate. */
@@ -2363,16 +2386,24 @@
       position: fixed; inset: 0; z-index: var(--z-modal);
       background: rgba(0,0,0,0.6);
       display: flex; align-items: center; justify-content: center;
-      padding: var(--space-xl);
+      padding: var(--space-xl) var(--gu);
     }
+    /* On the grid (owner rule, 2026-10-10): 35g wide — 31g inside 2g sides — with whole-r
+       padding, and the ring an inset shadow, so no border pushes what is inside off a line. The
+       box is centred, so it carries class snap-place: utils/grid-snap.js moves it (by under half a
+       g and half an r) until its edges are on the lines, and every whole-g, whole-r control
+       inside it lands on them too. */
     .modal-content {
-      max-width: calc(var(--subrow) * 52.5); width: 100%; max-height: 90vh; overflow-y: auto;
+      width: calc(var(--gu) * 35); max-width: 100%; box-sizing: border-box;
+      max-height: 90vh; max-height: round(down, 90dvh, var(--subrow)); overflow-y: auto;
       background: var(--surface);
-      border: var(--bw-1) solid var(--border);
       border-radius: var(--radius-lg, calc(var(--subrow) * 1.75));
-      padding: var(--space-2xl);
-      box-shadow: 0 calc(var(--subrow) * 1.25) calc(var(--subrow) * 5) rgba(0,0,0,0.5);
+      padding: calc(var(--subrow) * 2) calc(var(--gu) * 2);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border), 0 calc(var(--subrow) * 1.25) calc(var(--subrow) * 5) rgba(0,0,0,0.5);
     }
+    /* Its text runs on whole-r lines, so the controls after it start on one. */
+    .modal-content h3 { margin: 0 0 var(--subrow); line-height: calc(var(--subrow) * 3); }
+    .modal-content p { margin: 0 0 calc(var(--subrow) * 2); line-height: calc(var(--subrow) * 2); }
 
     .live-update-panel {
       position: fixed;
@@ -2416,6 +2447,29 @@
     .live-update-panel input[type="number"] { -moz-appearance: textfield; }
     .live-update-panel input[type="number"]::-webkit-inner-spin-button,
     .live-update-panel input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    /* On the grid (owner rule, 2026-10-10). The panel is a LAYER: 26g wide (24g inside 1g sides,
+       four 6g tabs), its ring an inset shadow, class snap-place (utils/grid-snap.js) setting its
+       JS-centred box on the g and r lines; every row inside a whole number of r — select 5r, the
+       Last line 3r, tabs 3r, a field 2r label over a 4r input, a toggle 2r, the footer's 4r
+       buttons whole g — with the panel's 1r gap between, so each control starts on a line. */
+    .live-update-panel {
+      width: calc(var(--gu) * 26);
+      box-sizing: border-box;
+      border: 0;
+      padding: calc(var(--subrow) * 2) var(--gu);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border), var(--elev-2);
+    }
+    .live-update-panel select { height: calc(var(--subrow) * 5); padding-block: 0; margin: 0; }
+    .live-update-panel input[type="text"],
+    .live-update-panel input[type="number"] { height: calc(var(--subrow) * 4); padding-block: 0; margin: 0; }
+    .live-update-panel .live-update-field { gap: 0; }
+    .live-update-panel .live-update-field > label { line-height: calc(var(--subrow) * 2); }
+    .live-update-panel .live-update-toggle { height: calc(var(--subrow) * 2); }
+    .live-update-panel .live-update-toggle input[type="checkbox"] { margin: 0; }
+    .live-update-panel .live-update-last { line-height: calc(var(--subrow) * 2); padding-block: calc(var(--subrow) * 0.5); }
+    .live-update-panel .live-update-tournament-label { line-height: calc(var(--subrow) * 2); }
+    .live-update-panel .hand-game-pills { gap: var(--subrow); }
+    .live-update-panel .hand-game-pill-row button { height: calc(var(--subrow) * 3); box-sizing: border-box; padding-block: 0; }
 
     .live-update-row {
       display: flex;
@@ -2533,6 +2587,20 @@
       transition: background var(--dur-fast), color var(--dur-fast);
     }
     .live-update-tabs button:last-child { border-right: none; }
+    /* In the live-update panel: a 3r strip of four whole-g tabs (6g in its 24g), each label
+       centred both ways; ring and dividers inset shadows, so no border moves a tab off its line. */
+    .live-update-panel .live-update-tabs {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      height: calc(var(--subrow) * 3); margin-bottom: 0; border: 0;
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    .live-update-panel .live-update-tabs button {
+      box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; border: 0;
+    }
+    .live-update-panel .live-update-tabs button + button { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
+    .live-update-panel .live-update-tabs button.active { box-shadow: none; }
     .live-update-tabs button.active {
       background: var(--brand); color: var(--on-brand); font-weight: var(--fw-bold);
     }
@@ -2738,6 +2806,10 @@
     /* The hands LIST keeps the pane's grid: a whole-g cap, from the pane's left margin (centred
        at 75r it began 4.37g in). The replay screen is untouched. */
     .replayer-view.is-list { max-width: calc(var(--gu) * 53); margin: 0; }
+    /* Hand entry the same (desktop: centred at 75r it began 4.38g in and ran 53.24g, so every
+       control in it sat off the g lines and its 1fr tracks were fractional). A phone's 35g
+       column is under the cap either way. The action footer's card matches it on desktop. */
+    .replayer-view.replayer-entry-view { max-width: calc(var(--gu) * 53); margin: 0; }
     /* Replay mode is a full-height column: header, then the table taking
        whatever is left, then the bar. Without this the height chain is broken
        here — .replayer-view is a block with auto height, so the `height:100%`
@@ -2843,11 +2915,16 @@
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       position: relative;
       user-select: none;
-      padding: 0 var(--space-2xs) 0 0;
+      /* Name centred both ways, as on the schedule's strip: a 1em line box centred by
+         place-items (no padding or wide line box pinning it to one side), the trailing
+         letter-space balanced by an equal indent. No ring here: the content's border
+         stops short of the strip (border-left: none). */
+      padding: 0;
       white-space: nowrap;
       overflow: hidden;
       text-align: center;
-      line-height: calc(var(--subrow) * 2.75);
+      line-height: 1;
+      text-indent: var(--track-caps);
       box-sizing: border-box;
       /* No margin: the row's own gap already spaces the strip from the cards,
          and the calendar's strip carries none either. With both, the gap was
@@ -3838,9 +3915,10 @@
     .replayer-entry-view .entry-game-row { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--gu); align-items: end; }
     .replayer-entry-view .entry-game-row:has(> :nth-child(2)) { grid-template-columns: calc(var(--gu) * 26) minmax(0, 1fr); }
     .replayer-entry-view .entry-game-row:has(> :nth-child(2)) .live-update-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    /* Currency matches the 3r MTT/Cash strip, baseline on its 2r line. It was the same
-       specificity as the 5r field rule below and lost to it; .replayer-field lifts it. */
-    .replayer-entry-view .entry-game-row .replayer-field select { height: calc(var(--subrow) * 3); padding: 0 var(--gu) calc(0.7692em - var(--subrow)); }
+    /* Currency matches the 3r MTT/Cash strip, its value centred in it (a control, not seated).
+       It was the same specificity as the 5r field rule below and lost to it; .replayer-field
+       lifts it. */
+    .replayer-entry-view .entry-game-row .replayer-field select { height: calc(var(--subrow) * 3); padding: 0 var(--gu); }
 
     /* Field: 2r label track (baseline on its bottom), 1r gap, control. */
     .replayer-entry-view .replayer-field {
@@ -3859,6 +3937,9 @@
       box-sizing: border-box; height: calc(var(--subrow) * 5); min-height: 0;
       padding: 0 var(--gu) calc(0.7692em - var(--subrow)); line-height: normal;
     }
+    /* A select is a control: its value centred in the 5r box (the select centres its line),
+       not seated on the inputs' 3r line. */
+    .replayer-entry-view .replayer-field select { padding-block: 0; }
     /* Muted multi-line copy: first baseline 2r under the box top, then 2r steps. */
     .replayer-entry-view .replayer-field-hint,
     .replayer-entry-view .replayer-field-error,
@@ -3964,16 +4045,19 @@
     }
     .replayer-entry-view .gto-cap-row input { text-align: right; }
 
-    /* Buttons: 5r, label baseline 3r: pb = 0.7692em − r (cond sm). */
+    /* Buttons: 5r, the label centred both ways (owner rule, 2026-10-10): .btn's flex centres
+       it, so no padding seats it. Undo is a plain button: flex-centred here, and centred even
+       where its 4g footer track is narrower than the label and its 1g sides. */
     .replayer-entry-view .btn-sm,
     .gto-sticky-footer .btn-sm {
       box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0;
-      padding: 0 var(--gu) calc(0.7692em - var(--subrow)); white-space: nowrap;
+      padding: 0 var(--gu); white-space: nowrap;
     }
     .replayer-entry-view .gto-undo-btn,
     .gto-sticky-footer .gto-undo-btn {
       box-sizing: border-box; height: calc(var(--subrow) * 5);
-      padding: 0 var(--gu) calc(0.6956em - var(--subrow)); white-space: nowrap;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0 var(--gu); line-height: 1; white-space: nowrap;
     }
     /* Footer rows: 8g buttons with 1g gaps, right-aligned, so they sit on the
        column tracks 28–36 and 19–27. The bordered wrapper card, where one wraps
@@ -4046,15 +4130,27 @@
       line-height: 1; padding-top: calc(var(--subrow) * 2 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
-    /* 13 ranks cannot land on the 2g sub-grid (29g / 13); the block is exact
-       (x 5..34 or 3..34, whole-r rows) and the ranks divide it evenly. */
+    /* 13 ranks, each a button whose box is on the g lines (owner rule, 2026-10-10): columns of
+       the widest whole g the block allows, from its left edge — 2g in a phone's 29g or 31g
+       block (x 5..34 or 3..34; 3g or 5g spare at the right), 3g on desktop. They divided the
+       block evenly before, 2.23g each. Whole-r rows. The art is object-fit into each cell. The
+       1fr line is the fallback where round() is unsupported (iOS < 15.4). */
     .replayer-entry-view .card-picker-grid {
-      grid-template-columns: repeat(13, minmax(0, 1fr)); grid-auto-rows: calc(var(--subrow) * 5);
+      grid-template-columns: repeat(13, minmax(0, 1fr));
+      grid-template-columns: repeat(13, round(down, 100% / 13, var(--gu)));
+      grid-auto-rows: calc(var(--subrow) * 5);
       gap: 0; margin-top: var(--subrow);
     }
     .replayer-entry-view .card-picker-btn { aspect-ratio: auto; height: 100%; padding: 0 calc(var(--gu) * 0.1); }
 
-    /* Action pad: 7r buttons — 1r · icon 3r · label 2r (baseline 6r) · 1r.
+    /* Action pad: 7r buttons; the icon over its label, the pair centred in the box as one group
+       (owner rule, 2026-10-10: no baseline seat inside a control) — as .cal-action-btn. Each
+       part's box is its ink, so centring the boxes centres the ink: the label trimmed to
+       cap..baseline (a centring trim, as .cal-action-label), the glyph centred in a box one
+       cap height of its own font tall (the symbols' ink is about that; a 3r cell left room
+       above the glyph that the label's box did not match, and the pair sat ~1.4px low).
+       The tracked caps take a text-indent of their letter-spacing, so the ink, not the
+       advance, is centred across. 1.25r between them, as the cells had it.
        Widths on the column lines across 3..36 (33g):
        2 → 16|17 (3–19–36) · 3 → 11|11|11 (3–14–25–36) · 4 → 7|9|9|8 (3–10–19–28–36). */
     .replayer-entry-view .gto-action-row {
@@ -4065,19 +4161,19 @@
     .replayer-entry-view .gto-action-row:has(> :nth-child(3)) { grid-template-columns: calc(var(--gu) * 11) calc(var(--gu) * 11) minmax(0, 1fr); }
     .replayer-entry-view .gto-action-row:has(> :nth-child(4)) { grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 9) calc(var(--gu) * 9) minmax(0, 1fr); }
     .replayer-entry-view .gto-action-btn {
-      display: grid; grid-template-rows: var(--subrow) calc(var(--subrow) * 3) calc(var(--subrow) * 2) var(--subrow);
-      justify-items: center; min-width: 0; min-height: 0; height: calc(var(--subrow) * 7); padding: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-ml);
+      min-width: 0; min-height: 0; height: calc(var(--subrow) * 7); padding: 0;
     }
     .replayer-entry-view .gto-action-btn + .gto-action-btn { border-left: 0; box-shadow: inset var(--bw-hair) 0 0 var(--border); }
-    .replayer-entry-view .gto-action-icon { grid-row: 2; height: calc(var(--subrow) * 3); }
+    .replayer-entry-view .gto-action-icon { flex: none; height: 1cap; }
     .replayer-entry-view .gto-action-label {
-      grid-row: 3; align-self: end; display: block; margin: 0; line-height: 1; white-space: nowrap;
+      display: block; margin: 0; line-height: 1; white-space: nowrap; text-indent: var(--track-caps);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
 
     /* Sizing: joined 5r segments across 3..36, dividers on valid lines.
        6 → 6|5|5|6|5|6 (3–9–14–19–25–30–36) · 5 → 7|6|7|7|6 (3–10–16–23–30–36).
-       Baseline 3r: pt − pb = r − 0.70em (cond 2xs bold). */
+       Each label centred both ways in its segment (flex), not seated. */
     .replayer-entry-view .gto-sizing-row {
       display: grid; grid-auto-flow: column; gap: 0; padding: 0; border-top: 0;
       grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 6) calc(var(--gu) * 7) calc(var(--gu) * 7) minmax(0, 1fr);
@@ -4088,7 +4184,8 @@
     }
     .replayer-entry-view .gto-sizing-pill {
       box-sizing: border-box; height: calc(var(--subrow) * 5); min-width: 0; border: 0; border-radius: 0;
-      padding: calc(var(--subrow) - 0.7em) 0 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; line-height: 1; white-space: nowrap;
     }
     .replayer-entry-view .gto-sizing-pill + .gto-sizing-pill { box-shadow: inset var(--bw-hair) 0 0 var(--border); }
     .replayer-entry-view .gto-sizing-pill:active { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
@@ -6354,10 +6451,13 @@
        sat under the swipe bar. It also had bare literals for radius and
        shadow, no width cap — spanning a desktop viewport edge to edge beneath
        a 600px column — and no overscroll containment, so scrolling past the
-       end of the sheet scrolled the replayer behind it. */
+       end of the sheet scrolled the replayer behind it.
+       The cap is whole g (53g; it was 75r = 53.25g), so on a window wider
+       than that the sheet is a layer on the shell's grid — ReplayerSettingsPanel
+       shifts it onto the nearest shell line where centring alone misses. */
     .replayer-settings-panel {
       position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-      width:100%; max-width:calc(var(--subrow) * 75); z-index: var(--z-panel);
+      width:100%; max-width:calc(var(--gu) * 53); z-index: var(--z-panel);
       background:var(--surface);
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
       max-height:85vh; overflow-y:auto; overscroll-behavior: contain;
@@ -6662,22 +6762,68 @@
     .replayer-fullbleed .replayer-controls button svg {
       width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2);
     }
-    /* "1x": the circle is 4r, so its baseline can sit 2r or 3r down; 3r
-       puts the caps at 1.95..3r against a centre of 2r, the nearer of the two
-       to optical centre for figures (2r would put them at 0.95..2). */
-    .replayer-fullbleed .replayer-speed-btn {
-      align-items: flex-end;
-      padding-bottom: var(--subrow);
-      box-sizing: border-box;
-      /* The hairline as an inset shadow: a 0.13r border lifted the seated
-         baseline to 2.87r (measured 101.88 against 102). */
-      border-width: 0;
-      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.10), inset 0 0 0 var(--bw-hair) rgba(255,255,255,0.14);
+    /* Pills and buttons (owner rule, 2026-10-10): each BUTTON is its whole cell — 4g x 4r (play
+       5g x 6r) on the capsule's g lines and its 1r / 0 r lines — and the circle the design wants
+       is the button's ::before, centred in it (a circle cannot be whole g and whole r; the button
+       now is). The glyph or "1x" is centred in the button, so in the circle. isolation keeps the
+       circle (z -1) behind the glyph and above the capsule. States move onto the circle. */
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button,
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:hover,
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:disabled:hover {
+      justify-self: stretch; width: auto; height: calc(var(--subrow) * 4);
+      border: 0; border-radius: 0; background: none; box-shadow: none;
+      padding: 0; isolation: isolate;
     }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn,
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn:hover { height: calc(var(--subrow) * 6); background: none; color: var(--on-brand-on-dark); }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn.is-playing { color: var(--brand-on-dark); }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button::before {
+      content: ''; position: absolute; z-index: -1;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: calc(var(--subrow) * 4); height: calc(var(--subrow) * 4);
+      box-sizing: border-box; border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+      box-shadow: 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.45), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.10), inset 0 0 0 var(--bw-hair) rgba(255,255,255,0.14);
+      transition: background var(--dur-fast), box-shadow var(--dur-fast);
+    }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn::before {
+      width: calc(var(--subrow) * 6); height: calc(var(--subrow) * 6);
+      background: var(--brand-on-dark);
+      box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 calc(var(--subrow) * 0.125) 0 rgba(255,255,255,0.28), inset 0 0 0 var(--bw-hair) var(--brand-on-dark);
+    }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >.replayer-play-btn.is-playing::before {
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 0.75) rgba(0,0,0,0.5), inset 0 0 0 var(--bw-hair) var(--brand-line-on-dark);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:not(:disabled):not(.replayer-play-btn):hover::before {
+        background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+        box-shadow: inset 0 0 0 var(--bw-hair) var(--brand-line-on-dark);
+      }
+    }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:focus-visible { outline: none; }
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button:focus-visible::before { outline: var(--focus-ring-on-dark); outline-offset: var(--focus-offset); }
+    /* The cell is the tap target now (the ::after stand-in grew a 4r circle to 5.5r). */
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-controls >button::after { content: none; }
+    /* "1x": centred in its button (no baseline seat inside a control) — a plain 1em line box,
+       the button's flex centre. */
+    :is(.replayer-fullbleed, .app-shell.is-desktop .replayer-landscape) .replayer-speed-btn { align-items: center; padding: 0; }
+    /* The full-window desktop replayer's transport: the phone's capsule — six whole-g cells
+       (4 4 5 4 4 4) inside 1g sides, 6r tall — so its buttons are on the grid; class snap-place
+       on it (HandReplayerView) sets the centred capsule on the window's g and r lines. */
+    .app-shell.is-desktop .replayer-landscape .replayer-controls {
+      display: grid;
+      grid-template-columns: calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 5) calc(var(--gu) * 4) calc(var(--gu) * 4) calc(var(--gu) * 4);
+      grid-template-rows: calc(var(--subrow) * 6);
+      align-items: center; justify-items: center;
+      width: calc(var(--gu) * 27); height: calc(var(--subrow) * 6); max-width: none;
+      box-sizing: border-box; flex: none;
+      padding: 0 var(--gu); gap: 0; margin: 0;
+    }
+    .app-shell.is-desktop .replayer-landscape .replayer-controls button svg { width: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }
+    .app-shell.is-desktop .replayer-landscape .replayer-speed-btn .replayer-speed-label { font-size: var(--fs-xs); line-height: 1; }
     .replayer-fullbleed .replayer-speed-btn .replayer-speed-label {
-      display: block; font-size: var(--fs-xs); line-height: calc(var(--subrow) * 2);
-      padding-top: calc(var(--subrow) * 2 - 1cap);
-      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+      display: block; font-size: var(--fs-xs); line-height: 1;
     }
 
     /* Action row: 35 one-g tracks from x = 1g, 4r tall, 1g between every two
@@ -6817,6 +6963,9 @@
     .replayer-quick-btn {
       position: absolute; z-index: var(--z-raised);
       top: calc(var(--rp-top, var(--sa-t)) + var(--subrow)); right: var(--gu);
+      /* 1g in from the right — plus, on a desktop window that is no whole number of g, the
+         fraction, so its left edge is on a g line counted from the replayer's left. */
+      right: calc(var(--gu) + 100% - round(down, 100%, var(--gu)));
       width: calc(var(--gu) * 4); height: calc(var(--subrow) * 5);
       display: flex; align-items: center; justify-content: center;
       padding: 0; border: 0; border-radius: var(--radius-sm);
@@ -6857,6 +7006,35 @@
       width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
       border: 0; box-sizing: border-box;
     }
+    /* A colour swatch BUTTON is the whole 3g x 3r cell — the control's box on
+       the grid, and a bigger tap target. The 3r circle (its colour in
+       --swatch, set per button) is the button's ::before, centred in it; the
+       hover/active scale and the active ring are on the circle, so the box
+       never leaves the cell. The button was the 3r circle itself: 2.13g wide,
+       0.43g in from the g line, and 3.3r tall once scaled. */
+    .replayer-settings-swatches .felt-color-swatch,
+    .replayer-settings-swatches .felt-color-swatch:hover,
+    .replayer-settings-swatches .felt-color-swatch.active {
+      width: calc(var(--gu) * 3);
+      display: flex; align-items: center; justify-content: center;
+      background: none; border-radius: 0; box-shadow: none; transform: none;
+    }
+    .replayer-settings-swatches .felt-color-swatch::before {
+      content: ''; flex: none;
+      width: calc(var(--subrow) * 3); height: calc(var(--subrow) * 3);
+      border-radius: var(--radius-circle); background: var(--swatch);
+      box-shadow: var(--elev-1), inset 0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(255,255,255,0.15);
+      transition: box-shadow var(--dur-fast), transform var(--dur-fast);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-settings-swatches .felt-color-swatch:hover::before { transform: scale(1.1); }
+    }
+    .replayer-settings-swatches .felt-color-swatch.active::before {
+      box-shadow: 0 0 0 calc(var(--subrow) * 0.25) var(--surface), 0 0 0 calc(var(--subrow) * 0.5) var(--text), var(--elev-1);
+      transform: scale(1.1);
+    }
+    .replayer-settings-swatches .felt-color-swatch:focus-visible { outline: none; }
+    .replayer-settings-swatches .felt-color-swatch:focus-visible::before { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
     .replayer-settings-swatches .felt-color-custom { box-shadow: var(--elev-1), inset 0 0 0 calc(var(--subrow) * 0.25) var(--border); }
     .replayer-settings-swatches.is-disabled { opacity: var(--state-disabled); }
     .replayer-settings-swatches.is-disabled .felt-color-swatch { cursor: default; }
@@ -6889,18 +7067,25 @@
       font-variant-numeric: var(--num-tabular); font-size: var(--fs-xs); color: var(--text-muted);
     }
     .rs-splay .rs-splay-pct .rs-t { padding-top: calc(var(--subrow) * 3 - 1cap); }
-    /* In the sheet: 6g preview | 1g | slider | 3g figure | 1g | 5g Reset, 5r. */
+    /* In the sheet: 6g preview | 1g | 12g slider | 3g figure | 1g | 4g Reset
+       = 27g, 5r. The slider's column was 1fr of a row sized to its content
+       (12.9g on a phone, 12.1g on desktop), which put Reset off the g lines;
+       12g is the dropdown's slider. */
     .rs-splay.has-preview {
-      grid-template-columns: calc(var(--gu) * 6) 1fr calc(var(--gu) * 3) calc(var(--gu) * 5);
+      grid-template-columns: calc(var(--gu) * 6) calc(var(--gu) * 13) calc(var(--gu) * 3) calc(var(--gu) * 5);
       column-gap: 0; height: calc(var(--subrow) * 5); margin-top: var(--subrow);
     }
     .rs-splay.has-preview .rs-splay-slider { margin-left: var(--gu); margin-right: 0; width: calc(100% - var(--gu)); }
+    /* Reset: 4g x 5r, its label centred both ways (not seated on an r-line):
+       the label's line box is its own 1em, untrimmed — Univers Condensed's
+       line box is centred on its capitals. */
     .rs-splay.has-preview .rs-splay-reset {
       margin-left: var(--gu); height: calc(var(--subrow) * 5); box-sizing: border-box;
-      display: flex; align-items: flex-end; justify-content: center;
-      padding: 0 0 calc(var(--subrow) * 2); border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border);
       font-size: var(--fs-sm);
     }
+    .rs-splay.has-preview .rs-splay-reset .rs-t { padding-top: 0; line-height: 1; text-box-trim: none; white-space: nowrap; }
 
     /* The full sheet. 1g sides, so the content runs 1..36g; bottom pad
        carries the inset and the sub-r remainder so the sheet's TOP is whole r
@@ -6919,10 +7104,15 @@
       align-items: flex-start;
     }
     .replayer-settings-header .rs-t { padding-top: calc(var(--subrow) * 3 - 1cap); }
+    /* Close: 4g x 4r, an icon X centred both ways. It was the text "×", whose
+       ink sits on the maths axis, ~2.5px below the middle of the line box
+       that flex centres — so the glyph read low in its box. --icon-lg draws
+       about the same X the glyph did (~1.4r across). */
     .replayer-settings-close {
       width: calc(var(--gu) * 4); height: calc(var(--subrow) * 4); padding: 0;
       margin-right: calc(var(--gu) * -1);
       display: flex; align-items: center; justify-content: center; line-height: 1;
+      --icon-size: var(--icon-lg);
     }
     .replayer-settings-group {
       margin-bottom: calc(var(--subrow) * 2); padding-bottom: var(--subrow);
@@ -6934,6 +7124,11 @@
     .replayer-settings-fold > summary::after { align-self: center; }
     .replayer-settings-row { align-items: flex-start; margin-bottom: var(--subrow); gap: var(--gu); }
     .replayer-settings-row .rs-text { min-width: 0; }
+    /* A trimmed .rs-t comes out 1/64px short of its 2r (its padding and its
+       trimmed line each round down to WebKit's 1/64px unit), and the sheet
+       stacks some forty of them: by the Analysis switches the rows had slid
+       0.05r up off their lines. Each text cell holds its whole 2r instead. */
+    .replayer-settings-panel .rs-cell { min-height: calc(var(--subrow) * 2); }
     .replayer-settings-row.is-stacked { gap: 0; }
     /* Label --fs-sm and gloss --fs-xs: the gloss was --fs-2xs in sentence
        case, and the scale keeps --fs-2xs for capitals. */
@@ -8475,7 +8670,7 @@
       min-height: 100dvh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      padding: max(var(--space-3xl), var(--sa-t)) var(--space-xl)
+      padding: max(var(--space-3xl), var(--sa-t)) var(--gu)
                max(var(--space-3xl), var(--sa-b));
       /* Something for the card to float over, echoing the app-shell header. */
       background: radial-gradient(120% 80% at 50% 0%, var(--surface2), var(--bg) 60%);
@@ -8483,15 +8678,19 @@
 
     /* --surface on --bg is a nine-point luminance step, so a 1px hairline was
        the only thing separating the card from the page - on the first screen
-       anyone sees. --elev-3 exists for exactly this and had no consumers. */
+       anyone sees. --elev-3 exists for exactly this and had no consumers.
+       On the grid (owner rule, 2026-10-10): 35g wide, 31g inside 2g sides, 4r top and bottom,
+       the hairline an inset shadow so nothing inside is pushed off a line, and every row inside
+       a whole number of r. The card is centred, so it carries class snap-place
+       (utils/grid-snap.js), which sets it on the lines; its whole-g, whole-r buttons follow. */
     .auth-card {
-      width: 100%;
-      max-width: calc(var(--subrow) * 50);
+      width: calc(var(--gu) * 35);
+      max-width: 100%;
+      box-sizing: border-box;
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-lg);
-      box-shadow: var(--elev-3);
-      padding: var(--space-4xl) var(--space-3xl);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-3);
+      padding: var(--space-4xl) calc(var(--gu) * 2);
     }
 
     .auth-logo {
@@ -8501,6 +8700,16 @@
 
     .auth-logo h1 { font-family: var(--serif); font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--text); margin-bottom: var(--space-xs); letter-spacing: var(--track-wordmark); }
     .auth-logo p { font-size: var(--fs-sm); color: var(--text-muted); }
+    /* Whole-r rows inside the card: the wordmark 4r, the season 2r; a field's label 2r over its
+       6r input, 1r apart; the hints 2r lines. */
+    .auth-card .auth-logo h1 { line-height: calc(var(--subrow) * 4); margin-bottom: 0; }
+    .auth-card .auth-logo p { line-height: calc(var(--subrow) * 2); }
+    .auth-card .form-field { gap: var(--subrow); }
+    .auth-card .form-field label { line-height: calc(var(--subrow) * 2); }
+    .auth-card .form-field input { height: calc(var(--subrow) * 6); box-sizing: border-box; padding-block: 0; }
+    .auth-card .auth-hint { line-height: calc(var(--subrow) * 2); height: calc(var(--subrow) * 2); }   /* one line; its inline link button would grow the line box */
+    .auth-card .auth-keep { height: calc(var(--subrow) * 2); margin-top: var(--subrow); }
+    .auth-card .auth-divider { border-top: 0; box-shadow: inset 0 var(--bw-hair) 0 var(--border); padding-top: calc(var(--subrow) * 3); }
 
     .form-field { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-xl); }
 
@@ -10308,12 +10517,16 @@
     }
 
     .cal-venue-strip {
-      grid-column: 1;
       /* The rotated full name (static when open) must not size the row: a long one held every
-         open card at a 29.21r floor with dead space under the action row. It clips already. */
-      contain: size;
-      width: 100%;
-      align-self: stretch;
+         open card at a 29.21r floor with dead space under the action row. It clips already.
+         So the strip is out of flow, filling the first column's 2g from the row's top to its
+         bottom (an absolute child of the grid row, its containing block that column). It was
+         contain:size and stretched, and WebKit laid a desktop list's strips out 0px tall —
+         painted full height, but reported (and centred the name) as an empty box above the
+         card, so the name could not be measured as centred in its band. */
+      position: absolute;
+      grid-column: 1 / 2;
+      inset: 0;
       display: grid;
       place-items: center;
       writing-mode: vertical-rl;
@@ -10333,15 +10546,28 @@
          The values look mirrored because transform: rotate(180deg) below swaps
          the corners: element top-right/bottom-right paint at visual LEFT. */
       border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-      position: relative;
       user-select: none;
-      padding: 0 var(--space-2xs) 0 0;
+      /* The name is centred both ways in the band (owner, 2026-10-11): a 1em line box, centred by
+         place-items, so nothing overflows the strip and pins the run to one side; the trailing
+         letter-space is balanced by an equal indent so the INK centres along the strip. */
+      padding: 0;
       white-space: nowrap;
       overflow: hidden;
       text-align: center;
-      line-height: calc(var(--subrow) * 2.75);
+      line-height: 1;
+      text-indent: var(--track-caps);
       box-sizing: border-box;
       transition: font-size var(--dur-base) ease, letter-spacing var(--dur-base) var(--ease-out);
+    }
+    /* A saved card's content draws a venue-colour ring against the strip (.cal-event-row-content's
+       inset --card-outline), so the band the eye sees runs --bw-1 past the strip: pad the far side
+       by as much to centre the name in the whole band. Physical right is the visual LEFT here
+       (rotate(180deg)). Not where the ring is another colour or style (conditional: dashed, in
+       the conditional colour), absent (desktop selection) or not dimmed with the strip
+       (completed). A bracelet's ring is the strip's colour too: the inline --card-outline
+       outranks the .bracelet.saved grey. */
+    .cal-event-row.saved:not(.conditional):not(.is-selected):not(.completed) > .cal-venue-strip {
+      padding-right: var(--bw-1);
     }
     .venue-strip-abbr,
     .venue-strip-full {
@@ -10351,10 +10577,17 @@
     .venue-strip-full { opacity: 0; position: absolute; pointer-events: none; }
     .cal-event-row.open .venue-strip-abbr { opacity: 0; }
     .cal-event-row.open .venue-strip-full { opacity: 1; position: static; pointer-events: auto; }
+    /* The full name balances its trailing letter-space with an equal negative end margin rather
+       than the strip's indent: a name that fits is centred the same way, and one longer than the
+       band ("BORGATA SPRING POKER OPEN" on a 24r desktop card) starts AT the band's start and is cut
+       at its end, so what shows fills the band and is centred — the indent left a gap at the start
+       only, and the visible run sat 0.9px toward the cut end. */
+    .cal-event-row.open .venue-strip-full { text-indent: 0; margin-inline-end: calc(-1 * var(--track-caps-lg)); }
 
     .cal-event-row.open .cal-venue-strip {
       font-size: var(--fs-xs);
       letter-spacing: var(--track-caps-lg);
+      text-indent: var(--track-caps-lg);
     }
 
     /* saved border color applied inline via venue brand color */
@@ -11171,6 +11404,22 @@
       gap: var(--space-ml);
       margin-bottom: var(--space-lg);
     }
+    /* The Log / Edit result form on the grid (owner rule, 2026-10-10): a group is a 2r label over
+       a 5r field with no gap; the two-up rows split into whole g (16 | 1 | 16 in the phone's 33g,
+       29 | 2 | 29 in the desktop pane's 60g) with 1r between rows and 2r under; the Yes / No
+       chips 4g each, 1g apart. Every row whole r, so the buttons and the list under the form are
+       on the lines. */
+    form.tracking-card .filter-group { gap: 0; }
+    form.tracking-card .filter-group > label { line-height: calc(var(--subrow) * 2); }
+    form.tracking-card .filter-group select,
+    form.tracking-card .filter-group input { height: calc(var(--subrow) * 5); padding-block: 0; margin: 0; box-sizing: border-box; }
+    form.tracking-card .tracking-form-grid {
+      row-gap: var(--subrow);
+      column-gap: calc(100% - 2 * round(down, calc((100% - var(--gu)) / 2), var(--gu)));
+      margin-bottom: calc(var(--subrow) * 2);
+    }
+    form.tracking-card .bk-picker { margin-bottom: calc(var(--subrow) * 2); }
+    form.tracking-card .filter-chip { width: calc(var(--gu) * 4); padding: 0; }
     .tracking-poy { color: #fbbf24; }
     :is([data-theme="light"],[data-theme="cloudy"]) .tracking-poy { color: #d97706; }
 
@@ -11324,6 +11573,9 @@
       /* whole-r row gap (1r) so stacked detail rows stay on the grid; a 1g column gap makes the
          two columns 15g each (31g - 1g), the second starting on 20g. */
       gap: var(--space-md) var(--gu);
+      /* Whole-g halves at any width: 1g where the row less 1g halves evenly (31g: 15 | 1 | 15),
+         else 2g (the desktop pane's 56g: 27 | 2 | 27, where 1fr 1fr gave 27.5g fields). */
+      column-gap: calc(100% - 2 * round(down, calc((100% - var(--gu)) / 2), var(--gu)));
     }
     /* An empty grid still cost the panel a 1r flex gap. */
     .cal-detail-grid:empty { display: none; }
@@ -11701,6 +11953,13 @@
       top: 0; left: 0; right: 0; bottom: 0;
       display: flex;
     }
+    /* The two tap halves are the whole 6r cell (its box on the grid), not the 2r stepper row,
+       which the centred icon-over-label stack puts a fraction of an r down. The left half is
+       half the cell rounded down to a whole g, so both halves are whole g (4 | 4 on a phone's 8g,
+       17 | 18 in the desktop pane's 35g). */
+    .cal-entries-counter { position: relative; }
+    .cal-entries-counter > .cal-entries-stepper { position: static; }
+    .cal-entries-overlay button:first-child { flex: 0 0 round(down, 50%, var(--gu)); }
     .cal-entries-overlay button {
       flex: 1;
       background: none;
@@ -12156,11 +12415,17 @@
     .dash-event-card.manually-expanded .dash-venue-strip {
       height: calc(var(--subrow) * 3);
       box-sizing: border-box;
-      align-items: flex-end;
-      padding: 0 var(--space-lg) var(--subrow);
+      /* Venue strips centre their name both ways (owner, 2026-10-11): centred in the 3r
+         band, not seated on its 2r line. */
+      align-items: center;
+      padding: 0 var(--space-lg);
       font-size: var(--fs-2xs);
       letter-spacing: var(--track-caps-lg);
     }
+    /* The name's line box (1em) is what centres — untrimmed, so every engine centres the same
+       box; the trailing letter-space is balanced by an equal indent (set beside the inline
+       letter-spacing in DashboardView). */
+    .dash-event-card .dash-venue-strip > .dash-t { text-box-trim: none; }
 
     .dash-event-card.playing,
     .dash-event-card.next-up,
@@ -12701,6 +12966,10 @@
       grid-auto-flow: column;
       grid-auto-columns: minmax(0, 1fr);
       column-gap: var(--gu);
+      /* Two cells are whole g wide at any card width: the gap is 1g where the row less 1g halves
+         into whole g (the phone's 31g: 15 | 1 | 15), else 2g (the desktop pane's 58g: 28 | 2 | 28,
+         where a 1g gap left two 28.5g cells and their ✕ off the grid). */
+      column-gap: calc(100% - 2 * round(down, calc((100% - var(--gu)) / 2), var(--gu)));
       align-items: stretch;
     }
     .dash-status-row:has(> :nth-child(3)) {
@@ -12793,6 +13062,8 @@
       cursor: pointer;
       text-transform: uppercase;
       letter-spacing: var(--track-caps);
+      /* balances the trailing letter-space, so the tracked label's ink centres */
+      text-indent: var(--track-caps);
       background: rgba(160,160,160,0.12);
       border: 0;
       box-shadow: inset 0 0 0 var(--bw-hair) var(--accent);
@@ -12880,6 +13151,11 @@
     .dash-event-card .dash-undo-x, .dash-event-card .dash-unbag-x {
       padding: 0;
       border: 0;
+    }
+    /* In a 4r badge a 3r ring centred sat half an r off its line; 2r centres on whole r (1r above
+       and below). The header's ✕ (a 3r row) keeps 3r. */
+    .dash-event-card :is(.dash-playing-badge, .dash-finished-badge, .dash-restart-badge) > :is(.dash-undo-x, .dash-unbag-x) {
+      height: calc(var(--subrow) * 2);
     }
     .dash-event-card .dash-undo-x { box-shadow: inset 0 0 0 var(--bw-hair) rgba(160,160,160,0.40); }
     .dash-event-card .dash-undo-x.muted { box-shadow: inset 0 0 0 var(--bw-hair) rgba(136,136,136,0.40); }
@@ -13025,7 +13301,11 @@
     /* Currency: a 6g x 3r face showing the choice, the native <select> laid over
        it transparent — a select's own text can't be trimmed or seated. */
     .dash-results-currency {
-      display: block;
+      /* The face centres its label both ways (owner, 2026-10-11: "$ USD ▾" sat at the top of
+         its box as a display:block line). The select is absolute, so it is no flex item. */
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: relative;
       width: calc(var(--gu) * 6);
       height: calc(var(--subrow) * 3);
@@ -13047,6 +13327,17 @@
       -webkit-appearance: none; appearance: none; border: 0; margin: 0;
     }
     .dash-results-currency:focus-within { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+    /* The ▾ on the currency face and the Buy-ins / Cashes segments: no Univers glyph, so a fallback
+       font draws it with ~0.2em of empty bearing each side, which pulled every label's ink a pixel
+       or more off centre. Its box is cut to its ink — 0.47em with the glyph centred in it
+       (flex centring overflows both sides equally, and the triangle is symmetric in its advance) —
+       and it carries no tracking, so the label ends where its ink ends. */
+    .dash-caret {
+      display: inline-flex;
+      justify-content: center;
+      width: 0.47em;
+      letter-spacing: 0;
+    }
 
     /* One 4r bar, three segments (owner, 2026-10-11): figure and label on one line in each,
        centred in its segment both ways (the pill rule: a control's label is centred, not seated).
@@ -13097,6 +13388,8 @@
       white-space: nowrap;
     }
     .dash-pl-line > :last-child { margin-right: calc(var(--track-caps) * -1); }
+    /* Buy-ins / Cashes end on the untracked .dash-caret: no trailing letter-space to cancel. */
+    .dash-pl-btn .dash-pl-line > :last-child { margin-right: 0; }
     .dash-pl-value {
       display: block;
       flex: 0 0 auto;
@@ -14040,6 +14333,9 @@
       font-size: var(--fs-xl);
       cursor: pointer;
       font-family: inherit;
+      /* The arrow is Icon.arrowLeft (its box is its ink, so the grid centre centres it); 3r draws
+         about the arrow the fs-xl "←" did. */
+      --icon-size: calc(var(--subrow) * 3);
     }
     .group-detail-title {
       flex: 1;
@@ -14684,12 +14980,19 @@
       padding: 0 var(--space-sm); border-radius: var(--radius-xs); letter-spacing: var(--track-tight);
       background: var(--border); color: var(--text-muted);
     }
+    /* On the grid (owner rule, 2026-10-10): 35g wide, the ring an inset shadow (a border pushed
+       every row inside a pixel off its line), every row a whole number of r; class snap-place
+       (utils/grid-snap.js) sets the centred box on the lines. */
     .staking-modal {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: var(--surface); border: var(--bw-hair) solid var(--border);
-      border-radius: var(--radius); width: min(calc(var(--subrow) * 50), 90vw); max-height: 85vh;
+      background: var(--surface); box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+      border-radius: var(--radius); width: calc(var(--gu) * 35); max-width: calc(100vw - var(--gu) * 2); max-height: 85vh;
+      box-sizing: border-box;
       overflow-y: auto; z-index: var(--z-modal);
     }
+    .staking-modal-close { width: calc(var(--gu) * 4); padding: 0; }
+    /* Cancel matches the 5r Save beside it, so both start on the footer's line. */
+    .staking-modal-footer .btn-sm { height: calc(var(--subrow) * 5); flex-shrink: 0; }   /* keeps its whole-g (snap-g) width */
     .staking-modal-header {
       display: flex; justify-content: space-between; align-items: center;
       padding: var(--space-xl) var(--gu); box-shadow: inset 0 calc(var(--subrow) * -0.125) 0 0 var(--border);
@@ -14702,7 +15005,7 @@
     .staking-field {
       display: block; margin-bottom: var(--space-md); font-size: var(--fs-xs); color: var(--text-muted);
     }
-    .staking-field span { display: block; line-height: calc(var(--subrow) * 2); margin-bottom: var(--space-xs); font-weight: var(--fw-regular); }
+    .staking-field span { display: block; line-height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); font-weight: var(--fw-regular); }   /* 2r + 1r + the 5r field: whole r */
     .staking-field input, .staking-field select {
       width: 100%; height: calc(var(--subrow) * 5); padding: 0 var(--gu); border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
@@ -14750,6 +15053,22 @@
     .export-option-icon { font-size: var(--fs-3xl); flex-shrink: 0; }
     .export-option-label { font-weight: var(--fw-bold); font-size: var(--fs-md); margin-bottom: var(--space-2xs); }
     .export-option-desc { font-size: var(--fs-xs); color: var(--text-muted); }
+    /* On the grid: the tiles fill the sheet's whole-g width (the 35g row on a phone; rounded down
+       to a whole g on a wider sheet), a whole 9r tall with the icon and text centred in it, 1r
+       apart, the ring an inset shadow. */
+    .export-options { gap: var(--subrow); padding: 0; }
+    /* The export menu's rows on whole r: a checkbox row is 2r (the 2r box, no UA margin), a range
+       row's fields 3r. */
+    .share-menu-panel.grid-sheet label:has(> input[type="checkbox"]) { height: calc(var(--subrow) * 2); }
+    .share-menu-panel.grid-sheet input[type="checkbox"] { margin: 0; flex: none; }
+    .export-ranges input { height: calc(var(--subrow) * 3); box-sizing: border-box; margin: 0; }
+    .export-option-btn {
+      box-sizing: border-box; width: round(down, 100%, var(--gu)); height: calc(var(--subrow) * 9);
+      padding: 0 calc(var(--gu) * 2); border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .export-option-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
+    }
 
     /* ── Notifications ── */
     .notif-btn {
@@ -14760,15 +15079,20 @@
     .notif-btn svg { width: calc(var(--subrow) * 2.25); height: calc(var(--subrow) * 2.25); }
     .notif-badge {
       position: absolute;
-      top: calc(var(--subrow) * 0.25);
-      right: calc(var(--subrow) * 0.25);
+      /* On the grid (owner rule, 2026-10-10): a 2g x 2r pill in the bell's top-right corner, its
+         edges on the button's own (whole-g, whole-r) top and right edges — the offsets cancel
+         the ghost button's border, which absolute positioning is measured inside. It was a 1.75r
+         circle 0.25r in: 1.24g wide, on no line. The count is centred in it. */
+      top: calc(var(--bw-1) * -1);
+      right: calc(var(--bw-1) * -1);
       background: #ef4444;
       color: #fff;
       font-size: var(--fs-2xs);
       font-weight: var(--fw-bold);
-      width: calc(var(--subrow) * 1.75);
-      height: calc(var(--subrow) * 1.75);
-      border-radius: var(--radius-circle);
+      width: calc(var(--gu) * 2);
+      height: calc(var(--subrow) * 2);
+      box-sizing: border-box;
+      border-radius: var(--radius-pill);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -14783,17 +15107,20 @@
        header's real bottom edge is inset + --header-h. Positioning at a flat
        64px opened this 47px too high on an iPhone 14 - over the header it is
        anchored to - and over-reported max-height by the same amount. */
+    /* On the grid (owner rule, 2026-10-10): 32g wide, 1r under the bar, its right edge on the
+       shell's 1g margin (NotificationsPanel measures the shell, which a desktop window centres);
+       the ring is an inset shadow so the rows inside start on the panel's own lines. */
     .notif-panel {
       position: fixed;
-      top: calc(var(--sa-t) + var(--header-h, calc(var(--subrow) * 7.5)) + var(--space-xs));
-      right: max(var(--space-lg), env(safe-area-inset-right, 0));
-      width: min(calc(var(--subrow) * 45), calc(100vw - calc(var(--subrow) * 3)));
+      top: calc(var(--sa-t) + var(--header-h, calc(var(--subrow) * 7.5)) + var(--subrow));
+      right: max(var(--gu), env(safe-area-inset-right, 0));
+      width: calc(var(--gu) * 32); max-width: calc(100vw - var(--gu) * 2);
       max-height: calc(100vh - var(--sa-t) - var(--header-h, calc(var(--subrow) * 7.5)) - var(--nav-h) - var(--space-xl));
       overflow-y: auto;
+      box-sizing: border-box;
       background: var(--surface);
-      border: var(--bw-hair) solid var(--border);
       border-radius: var(--radius);
-      box-shadow: var(--elev-3);
+      box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-3);
       z-index: var(--z-modal);
       animation: notifSlideDown 0.15s ease-out;
     }
@@ -14801,13 +15128,18 @@
       from { opacity: 0; transform: translateY(calc(var(--subrow) * -1)); }
       to { opacity: 1; transform: translateY(0); }
     }
+    /* A 6r row, 1g in: the close button (4g x 4r) 1r from its top and bottom. The rule under it
+       is an inset shadow, not a border, so the next row starts on 6r. */
     .notif-panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: var(--space-lg) var(--space-xl) var(--space-md);
-      border-bottom: var(--bw-hair) solid var(--border);
+      height: calc(var(--subrow) * 6);
+      box-sizing: border-box;
+      padding: 0 var(--gu);
+      box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
     }
+    .notif-panel-header .notif-close { width: calc(var(--gu) * 4); padding: 0; }
     .notif-panel-title {
       font-family: var(--font-condensed);
       text-transform: uppercase;
@@ -14816,8 +15148,8 @@
       letter-spacing: var(--track-caps);
     }
     .notif-list { padding: 0; }
-    .notif-section { padding: var(--space-md) 0; border-bottom: var(--bw-hair) solid var(--border); }
-    .notif-section:last-child { border-bottom: none; }
+    .notif-section { padding: var(--space-md) 0; box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border); }
+    .notif-section:last-child { box-shadow: none; }
     .notif-section-title {
       font-family: var(--font-condensed);
       text-transform: uppercase;
@@ -14842,6 +15174,22 @@
       gap: var(--space-sm);
       flex-shrink: 0;
     }
+    /* On the grid (owner rule, 2026-10-10): every row of the panel a whole number of r — the
+       section title a 2r line with 1r under it, an item 1r above and below its content, whose
+       lines are 2r (the avatar a 3r disc, NotificationsPanel) — and 1g in from each side, so
+       Accept / Decline (6g x 3r each, 1g apart) sit at the item's top on an r line with their
+       right edge on the panel's last g line. Their labels are centred by .btn. */
+    .notif-panel .notif-section-title { line-height: calc(var(--subrow) * 2); padding: 0 var(--gu) var(--subrow); }
+    .notif-panel .notif-item { align-items: flex-start; column-gap: var(--gu); padding: var(--subrow) var(--gu); }
+    .notif-panel .notif-item-text { line-height: calc(var(--subrow) * 2); }
+    /* The bold name's own inline box sat ~0.75px lower than the line's and grew each line it was on
+       by that much (two lines came to 4.12r): it takes no height of its own, the line's 2r strut
+       sets it. Its baseline is unchanged. */
+    .notif-panel .notif-item-text strong { line-height: 0; }
+    .notif-panel .notif-item-time { line-height: calc(var(--subrow) * 2); margin-top: 0; }
+    .notif-panel .notif-item-who { min-height: calc(var(--subrow) * 3); }
+    .notif-panel .notif-item-actions { column-gap: var(--gu); }
+    .notif-panel .notif-item-actions .btn-xs { width: calc(var(--gu) * 6); padding: 0 !important; }
     .btn-xs {
       height: calc(var(--subrow) * 3) !important; /* a whole 3r box; .btn centres the label */
       padding: 0 var(--space-ml) !important;
@@ -15010,6 +15358,26 @@
       font-size: var(--fs-lg); font-weight: var(--fw-bold);
       color: var(--text); margin: 0 0 var(--space-xl);
     }
+    /* A sheet on the grid (the Series Wrap-Up and schedule export sheets): 1g sides, 3r top, the
+       title a 3r line, and the bottom pad carrying the safe area and the sub-r remainder of the
+       window, so the sheet's TOP sits on an r line counted from the bar whether it is
+       content-high or at its 85% cap (the replayer settings sheet's construction). */
+    .share-menu-panel.grid-sheet {
+      box-sizing: border-box;
+      max-height: 85vh;
+      padding: calc(var(--subrow) * 3) var(--gu) calc(var(--subrow) * 4 + var(--sa-b));
+    }
+    /* The sheet spans the window, which on desktop is no whole number of g: the right pad takes
+       the fraction too, so the content is a whole number of g wide and what is set at its right
+       end (a toggle, a remove ✕) lands on a g line counted from the sheet's left. 1g on a phone. */
+    .share-menu-panel.grid-sheet { padding-right: calc(var(--gu) + 100% - round(down, 100%, var(--gu))); }
+    .share-menu-panel.grid-sheet h3 { line-height: calc(var(--subrow) * 3); margin-bottom: calc(var(--subrow) * 2); }
+    @supports (padding-top: mod(1dvh, 1dvh)) and (padding-top: round(up, 1dvh, 1dvh)) {
+      .share-menu-panel.grid-sheet {
+        max-height: calc(100dvh - var(--sa-t) - round(up, 15dvh - var(--sa-t), var(--subrow)));
+        padding-bottom: calc(var(--subrow) * 4 + var(--sa-b) + mod(100dvh - var(--sa-t) - var(--sa-b), var(--subrow)));
+      }
+    }
     .share-menu-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -15042,6 +15410,21 @@
     }
     .share-menu-item.disabled {
       opacity: 0.4; pointer-events: none;
+    }
+    /* The Results share menu on the grid (a grid-sheet): two whole-g columns 1g apart (17g on a
+       phone; the half rounded down on a wider sheet), 1r between rows, and each tile a whole 14r
+       with its stack centred in it and its ring an inset shadow (a border took room). */
+    .share-menu-panel.grid-sheet .share-menu-grid {
+      grid-template-columns: repeat(2, round(down, calc((100% - var(--gu)) / 2), var(--gu)));
+      column-gap: var(--gu); row-gap: var(--subrow);
+    }
+    .share-menu-panel.grid-sheet .share-menu-item {
+      box-sizing: border-box; height: calc(var(--subrow) * 14);
+      justify-content: center; padding: 0 var(--gu);
+      border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .share-menu-panel.grid-sheet .share-menu-item:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
     }
 
     /* Milestone celebration modal */
@@ -15105,6 +15488,20 @@
     .wrapup-slide-picker button.active {
       border-color: #22c55e; color: #22c55e;
     }
+    /* On the grid (owner rule, 2026-10-10): 7g x 3r tabs 1g apart (the longest label, "Best
+       Moment", is ~6g), each label centred; the ring an inset shadow so it takes no room; 1r above
+       and below the strip. It scrolls sideways, as before, when the tabs outrun the sheet. */
+    .wrapup-slide-picker {
+      display: grid; grid-auto-flow: column; grid-auto-columns: calc(var(--gu) * 7);
+      justify-content: start; column-gap: var(--gu);
+      padding: var(--subrow) 0;
+    }
+    .wrapup-slide-picker button {
+      box-sizing: border-box; height: calc(var(--subrow) * 3); min-width: 0;
+      padding: 0; border: 0; box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      white-space: nowrap;
+    }
+    .wrapup-slide-picker button.active { box-shadow: inset 0 0 0 var(--bw-1) #22c55e; }
 
     /* Share button style */
     .btn-share-overlay {
@@ -15447,6 +15844,24 @@
       display: grid; grid-template-columns: repeat(var(--hs-n, 4), minmax(0, 1fr));
       column-gap: var(--gu); row-gap: calc(var(--subrow) * var(--hs-gap, 1));
     }
+    /* Whole-g columns at any width (the Solver's root grid too). On the phone's 35g / a panel's 31g
+       this is exactly the 1fr split above (8 | 1 | 8 …, 17 | 1 | 17, 15 | 1 | 15); on the desktop
+       pane's 62g, 1fr gave 14.75g and 30.5g pills, buttons and fields. Each column is the 1fr share
+       rounded DOWN to a whole g, and the gap takes what is left over, also in whole g (62g: four
+       14g columns with 2g gaps, two 30g with 2g). */
+    .hs-view .hs-cols, .hs-view.hs-solver {
+      --hs-col: round(down, calc((100% - (var(--hs-n, 4) - 1) * var(--gu)) / var(--hs-n, 4)), var(--gu));
+      grid-template-columns: repeat(var(--hs-n, 4), var(--hs-col));
+      column-gap: max(var(--gu), round(down, calc((100% - var(--hs-n, 4) * var(--hs-col)) / (var(--hs-n, 4) - 1)), var(--gu)));
+    }
+    .hs-view.hs-solver { row-gap: calc(var(--subrow) * 2); }
+    /* Two whole-g halves of any whole-g width: a 1g gap where that splits evenly (17 = 8 | 1 | 8),
+       else 2g (30 = 14 | 2 | 14, the desktop Solver's half and full rows). */
+    .hs-view .hs-halves {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--gu);
+      column-gap: calc(100% - 2 * round(down, calc((100% - var(--gu)) / 2), var(--gu)));
+    }
     /* Three equal boxes inside a panel: 9g + 2g + 9g + 2g + 9g = 31g, edges on
        3 | 12, 14 | 23, 25 | 34 — all subcolumn lines. */
     .hs-view .hs-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: calc(var(--gu) * 2); }
@@ -15485,6 +15900,17 @@
     .hs-view .hs-btn.hs-left { align-items: stretch; text-align: left; }
     .hs-view .hs-btn:disabled { cursor: default; opacity: 0.45; }
     .hs-view .hs-pill { border-radius: var(--radius-pill); }
+    /* Pills and buttons (owner rule, 2026-10-10): the label is CENTRED in the button, not seated
+       --hs-b r down. A button's label line is a plain 1em line box (no trim, no seat padding) and
+       the button centres it; Univers Condensed's line box is centred on its capitals. A label pair
+       (.hs-split: a name and a figure) centres each part. A list row drawn as a button
+       (.hs-row, the trainer's history rows) keeps its seated text. */
+    .hs-view .hs-btn:not(.hs-row) { justify-content: center; }
+    .hs-view .hs-btn:not(.hs-row) > .hs-t,
+    .hs-view .hs-btn:not(.hs-row) > .hs-split > .hs-t {
+      padding-top: 0; line-height: 1; text-box-trim: none;
+    }
+    .hs-view .hs-btn:not(.hs-row) > .hs-split { align-items: center; }
 
     /* Text input / select: 5r tall, baseline 3r from the top. WebKit centres the
        line (ascent 13 + descent 3 at 13px, the fs-sm size) in the content box, so
@@ -15506,6 +15932,9 @@
       background-size: calc(var(--gu) * 0.5) calc(var(--gu) * 0.5);
       background-repeat: no-repeat;
       padding-right: calc(var(--gu) * 2);
+      /* A select is a control: its value is centred in the face (WebKit centres the line in the
+         content box), not lifted onto the 3r baseline the text inputs keep. */
+      padding-bottom: 0;
     }
 
     /* Cards (SolverCard): whole-g wide, whole-r tall. 2g × 4r and 3g × 6r are both
@@ -15541,6 +15970,13 @@
       color: var(--hs-ink, var(--text-muted)); background: var(--hs-bg, transparent);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: var(--track-caps);
     }
+    /* A badge is a pill: its label centred both ways, not seated 2r down — a plain 1em line box
+       the badge centres, the trailing letter-space balanced by an equal indent. */
+    .hs-view .hs-gbadge {
+      display: inline-flex; align-items: center; justify-content: center;
+      text-indent: var(--track-caps);
+    }
+    .hs-view .hs-gbadge > .hs-t { padding-top: 0; line-height: 1; text-box-trim: none; }
     .hs-view .hs-gbadges { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: var(--gu); row-gap: var(--subrow); min-width: 0; }
 
     /* Horizontal meter: label | track | value, one 2r row. Columns are set per
@@ -15594,6 +16030,11 @@
       .trainer-cols {
         grid-template-columns: 1.28fr 1fr; /* LEFT ≈56% play · RIGHT ≈44% feedback */
         gap: var(--space-2xl);
+        /* The same split in whole g, so every pill and button in a column is on the grid (1.28fr /
+           1fr with a 2.5r gap made a 26.42g column at x 46.58g on the 62g pane): the play column
+           is its 56% share rounded to a whole g, a 2g gap, the feedback column the rest. */
+        grid-template-columns: round(nearest, calc((100% - var(--subcol)) * 0.5614), var(--gu)) minmax(0, 1fr);
+        gap: var(--space-2xl) var(--subcol);
         align-items: start;
       }
       /* Keep the feedback column in view while the (usually taller) play column
@@ -16167,6 +16608,40 @@
     .app-shell.is-desktop .top-bar-user { margin-left: calc(var(--gu) * 2); }
     .app-shell.is-desktop .username-chip { max-width: calc(var(--gu) * 16); }
 
+    /* The replayer's action row in the full-window desktop replayer, on the grid as the phone's
+       full-bleed row is (owner rule 2026-10-10): 35 one-g tracks, 4r tall, whole-g buttons 1g
+       apart with their labels centred — Back 8g | Edit 8g | Share 8g | gear 8g, or with Solve
+       Back 5g | Edit 4g | Solve 12g | Share 6g | gear 4g. The row is centred in the transport, so
+       it carries class snap-place, which sets it on the window's g lines. Desktop only: g is the
+       frozen 430/37 there, where a phone held sideways has a g too wide for 35 of them. */
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar {
+      display: grid;
+      grid-template-columns: repeat(35, var(--gu));
+      grid-template-rows: calc(var(--subrow) * 4);
+      width: calc(var(--gu) * 35);
+      flex: none; gap: 0;
+    }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar > * {
+      grid-row: 1;
+      height: calc(var(--subrow) * 4); min-width: 0; min-height: 0;
+      box-sizing: border-box; margin: 0;
+    }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-back  { grid-column: 1 / 9; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-edit  { grid-column: 10 / 18; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-share { grid-column: 19 / 27; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .rab-gear  { grid-column: 28 / 36; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-back  { grid-column: 1 / 6; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-edit  { grid-column: 7 / 11; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-solve { grid-column: 12 / 24; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-share { grid-column: 25 / 31; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.has-solve .rab-gear,
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar.is-linked .rab-gear  { grid-column: 32 / 36; }
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .btn,
+    .app-shell.is-desktop .replayer-landscape .replayer-actions-bar .replayer-gear-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: auto; padding: 0;
+    }
+
     /* --bg, so the shell to the right of a capped single pane reads as page, not as a gap. */
     .dk-body { flex: 1; min-height: 0; display: flex; align-items: stretch; background: var(--bg); }
 
@@ -16335,6 +16810,18 @@
        the filter panel need nothing here: the window-width rules a pane used to have to undo are
        gone ("Window-width rules") or scoped out of the desktop shell where they are written (the
        filter panel there, the .gto-sticky-header block), so a pane runs the phone's rules. */
+    /* Hand entry's action footer is portalled INTO the shell on desktop (HandReplayerView), so it
+       reads the --dk-* counts set there: it spans the main pane — the shell centred in the
+       window, the 10g rail, then the pane's 9N+1 g — with the phone's 1r / 1g padding, and its
+       card takes the entry view's whole-g width from the pane's 1g margin. Centred on the
+       window at 75r, its buttons sat a third of a g off the shell's lines. */
+    .app-shell.is-desktop .gto-sticky-footer {
+      left: calc(50% - var(--gu) * var(--dk-shell-n) / 2 + var(--gu) * 10);
+      right: auto;
+      width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1));
+      padding: var(--subrow) var(--gu);
+    }
+    .app-shell.is-desktop .gto-sticky-footer > * { max-width: calc(var(--gu) * 53); margin: 0; }
 
     /* ── Two-pane tier: Event / My schedule switch, 6r: 2r, 3r keys, 1r ── */
     .dk-seg {
@@ -16434,6 +16921,9 @@
        hold the block 2r tall at the end of a close and the start of an open. */
     .dk-pane-detail > .dk-detail-block {
       flex: 0 1 auto; max-height: 55%;
+      /* The cap is rounded DOWN to a whole r (55% of a 101.09r pane is 55.6r): an event taller than
+         it put My Schedule's top 0.6r off a line, and its header buttons and date pills with it. */
+      max-height: round(down, 55%, var(--subrow));
       padding-bottom: 0;
       transition:
         height calc(var(--dur-base) * var(--dk-frac, 1)) var(--ease-out),
@@ -16858,6 +17348,10 @@
     .bk-btn:disabled { opacity: var(--state-disabled); cursor: not-allowed; }
     .bk-w6 { width: calc(var(--gu) * 6); }
     .bk-w8 { width: var(--col); }
+    /* A label ending in "1" (Expenses.jsx): that figure's 0.12em of extra right bearing balanced at
+       the start, so the ink, not the advance, is centred (text-indent in a centred line moves the
+       ink half its length). */
+    .bk-btn.bk-ends-1 > span { text-indent: 0.12em; }
     .bk-seg { display: grid; grid-template-columns: repeat(3, calc(var(--gu) * 11)); column-gap: var(--gu); }
     .bk-seg-btn.is-on { box-shadow: inset 0 0 0 var(--bw-2) var(--brand); color: var(--brand); }
 

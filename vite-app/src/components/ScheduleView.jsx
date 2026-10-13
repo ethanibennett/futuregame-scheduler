@@ -36,26 +36,33 @@ function TravelDayPicker({ onSave, onCancel }) {
     onSave(date, notes);
   };
 
+  // The picker on the grid (pills-and-buttons rule): every select and button box is whole g by
+  // whole r on grid lines, so the form is too — 2r / 1g padding, its outline an inset ring that
+  // takes no room, and every row a whole number of r. Selects 4r tall: 4g (hour, minute), 5g
+  // (AM/PM), with the ":" in a 1g cell, so one time is 15g and two plus the arrow's 3g fill the
+  // phone's 33g. A select's value is centred in it by the select itself (padding 0).
   const selectStyle = {
-    padding: 'calc(var(--subrow) * 0.75) calc(var(--subrow) * 0.5)', fontSize: 'calc(var(--gu) * 1.252)', borderRadius: 'calc(var(--subrow) * 0.75)',
+    padding: 0, fontSize: 'calc(var(--gu) * 1.252)', borderRadius: 'calc(var(--subrow) * 0.75)',
     border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)',
     color: 'var(--text)', outline: 'none', cursor: 'pointer',
     WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
-    textAlign: 'center', minWidth: 'calc(var(--subrow) * 5.5)'
+    textAlign: 'center', boxSizing: 'border-box', margin: 0,
+    width: 'calc(var(--gu) * 4)', height: 'calc(var(--subrow) * 4)', flex: '0 0 auto'
   };
+  const labelStyle = {fontSize:'calc(var(--gu) * 1.060)', color:'var(--text-muted)', lineHeight:'calc(var(--subrow) * 2)', fontWeight: 'var(--fw-bold)'};
 
   const TimeSelector = ({ hour, minute, amPm, onHour, onMinute, onAmPm, label }) => (
     <div>
-      <div style={{fontSize:'calc(var(--gu) * 1.060)', color:'var(--text-muted)', marginBottom:'calc(var(--subrow) * 0.5)', fontWeight: 'var(--fw-bold)'}}>{label}</div>
-      <div style={{display:'flex', gap:'calc(var(--subrow) * 0.375)', alignItems:'center'}}>
+      <div style={labelStyle}>{label}</div>
+      <div style={{display:'flex', gap:0, alignItems:'center'}}>
         <select value={hour} onChange={e => onHour(Number(e.target.value))} style={selectStyle}>
           {hours.map(h => <option key={h} value={h}>{h}</option>)}
         </select>
-        <span style={{color:'var(--text-muted)', fontWeight:700}}>:</span>
+        <span style={{color:'var(--text-muted)', fontWeight:700, width:'var(--gu)', textAlign:'center', flex:'0 0 auto'}}>:</span>
         <select value={minute} onChange={e => onMinute(Number(e.target.value))} style={selectStyle}>
           {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2,'0')}</option>)}
         </select>
-        <select value={amPm} onChange={e => onAmPm(e.target.value)} style={{...selectStyle, minWidth:'calc(var(--subrow) * 6.25)'}}>
+        <select value={amPm} onChange={e => onAmPm(e.target.value)} style={{...selectStyle, width:'calc(var(--gu) * 5)', marginLeft:'var(--gu)'}}>
           <option value="AM">AM</option>
           <option value="PM">PM</option>
         </select>
@@ -65,15 +72,15 @@ function TravelDayPicker({ onSave, onCancel }) {
 
   return (
     <div style={{
-      background: 'var(--surface)', border: 'var(--bw-hair) solid var(--border)',
-      borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'calc(var(--subrow) * 1.75)', marginBottom: 'calc(var(--subrow) * 1.5)'
+      background: 'var(--surface)', border: 0, boxShadow: 'inset 0 0 0 var(--bw-hair) var(--border)',
+      borderRadius: 'calc(var(--subrow) * 1.25)', padding: 'calc(var(--subrow) * 2) var(--gu)', marginBottom: 'calc(var(--subrow) * 2)'
     }}>
-      <div style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)', marginBottom:'calc(var(--subrow) * 1.5)'}}>
+      <div style={{display:'flex', alignItems:'center', gap:'calc(var(--subrow) * 1)', height:'calc(var(--subrow) * 3)', marginBottom:'var(--subrow)'}}>
         <span style={{fontSize:'calc(var(--gu) * 1.473)'}}>&#9992;&#65039;</span>
         <span style={{fontWeight:700, fontSize:'calc(var(--gu) * 1.296)', color:'var(--text)'}}>Add Travel Day</span>
       </div>
-      <div style={{marginBottom:'calc(var(--subrow) * 1.75)'}}>
-        <div style={{fontSize:'calc(var(--gu) * 1.060)', color:'var(--text-muted)', marginBottom:'calc(var(--subrow) * 0.5)', fontWeight: 'var(--fw-bold)'}}>Date</div>
+      <div style={{marginBottom:'calc(var(--subrow) * 2)'}}>
+        <div style={labelStyle}>Date</div>
         <input ref={dateRef} type="date" value={date} onChange={e => setDate(e.target.value)}
           // iOS WKWebView frequently fails to open the native date picker
           // for `<input type="date">` inside a fixed-position overlay. Force
@@ -82,28 +89,29 @@ function TravelDayPicker({ onSave, onCancel }) {
           onMouseDown={e => { try { e.currentTarget.showPicker?.(); } catch {} }}
           onClick={e => { try { e.currentTarget.showPicker?.(); } catch {} }}
           style={{
-            padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.252)', borderRadius:'calc(var(--subrow) * 0.75)',
+            padding:'0 calc(var(--subrow) * 1.25)', fontSize:'calc(var(--gu) * 1.252)', borderRadius:'calc(var(--subrow) * 0.75)',
             border:'var(--bw-hair) solid var(--border)', background:'var(--surface)',
-            color:'var(--text)', outline:'none', width:'100%', boxSizing:'border-box'
+            color:'var(--text)', outline:'none', width:'100%', boxSizing:'border-box',
+            height:'calc(var(--subrow) * 4)', margin:0
           }}
         />
       </div>
-      <div style={{display:'flex', gap:'calc(var(--subrow) * 2)', marginBottom:'calc(var(--subrow) * 1.75)', flexWrap:'wrap'}}>
+      <div style={{display:'flex', columnGap:'var(--gu)', rowGap:'var(--subrow)', marginBottom:'calc(var(--subrow) * 2)', flexWrap:'wrap'}}>
         <TimeSelector label="DEPART" hour={depHour} minute={depMinute} amPm={depAmPm}
           onHour={setDepHour} onMinute={setDepMinute} onAmPm={setDepAmPm} />
-        <div style={{display:'flex', alignItems:'flex-end', paddingBottom:'calc(var(--subrow) * 0.25)'}}>
-          <span style={{color:'var(--text-muted)', fontSize:'calc(var(--gu) * 1.325)'}}>&rarr;</span>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'center', alignSelf:'flex-end', width:'var(--gu)', height:'calc(var(--subrow) * 4)'}}>
+          <span style={{color:'var(--text-muted)', fontSize:'calc(var(--gu) * 1.325)', lineHeight:1}}>&rarr;</span>
         </div>
         <TimeSelector label="ARRIVE" hour={arrHour} minute={arrMinute} amPm={arrAmPm}
           onHour={setArrHour} onMinute={setArrMinute} onAmPm={setArrAmPm} />
       </div>
-      <div style={{display:'flex', gap:'calc(var(--subrow) * 1)', justifyContent:'flex-end'}}>
+      <div style={{display:'flex', gap:'var(--gu)', justifyContent:'flex-end'}}>
         <button className="btn btn-ghost btn-sm" onClick={onCancel}
-          style={{fontSize:'calc(var(--gu) * 1.178)'}}>Cancel</button>
+          style={{fontSize:'calc(var(--gu) * 1.178)', width:'calc(var(--gu) * 7)', padding:0}}>Cancel</button>
         <button className="btn btn-sm" onClick={handleSave}
           style={{
             fontSize:'calc(var(--gu) * 1.178)', background:'var(--accent)', color:'#fff',
-            border:'none', borderRadius:'calc(var(--subrow) * 0.75)', padding:'calc(var(--subrow) * 0.75) calc(var(--subrow) * 2)', cursor:'pointer',
+            border:'none', borderRadius:'calc(var(--subrow) * 0.75)', padding:0, width:'calc(var(--gu) * 6)', cursor:'pointer',
             opacity: date ? 1 : 0.4
           }}
           disabled={!date}>Save</button>
@@ -332,13 +340,16 @@ export default function ScheduleView({
     <div ref={rootRef}>
       {pendingIncoming && pendingIncoming.length > 0 && (
         <div style={{marginBottom:'calc(var(--subrow) * 2)'}}>
-          <div className="section-header">
+          {/* Whole r, so My Schedule below stays on the grid: a 4r header and a 6r row (1r padding
+              round the 4r buttons, the outline an inset ring that takes no room). It was
+              3.40r + 6.76r, which put every card, pill and strip under it 0.16r off its line. */}
+          <div className="section-header" style={{height:'calc(var(--subrow) * 4)'}}>
             <h2>Share Requests</h2>
           </div>
           {pendingIncoming.map(req => (
             <div key={req.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-              background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',
-              borderRadius:'var(--radius-sm)',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 1.5)',marginBottom:'calc(var(--subrow) * 1)',
+              background:'var(--surface)',border:0,boxShadow:'inset 0 0 0 var(--bw-hair) var(--border)',
+              borderRadius:'var(--radius-sm)',padding:'var(--subrow) calc(var(--subrow) * 1.5)',marginBottom:'calc(var(--subrow) * 1)',
               fontSize:'calc(var(--gu) * 1.252)',color:'var(--text)'}}>
               <span style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 1)'}}>
                 <Avatar src={req.avatar} username={req.username} size={26} />
@@ -408,11 +419,13 @@ export default function ScheduleView({
             position:'fixed', inset:0, zIndex:9999,
             background:'rgba(0,0,0,0.55)',
             display:'flex', alignItems:'flex-start', justifyContent:'center',
-            padding:'calc(var(--subrow) * 10) calc(var(--subrow) * 2) calc(var(--subrow) * 2)', overflowY:'auto'
+            // 1g sides and a 37g cap (an odd number of g, so centred in the window it still starts
+            // on a g line of the centred shell): the picker's controls land on the grid.
+            padding:'calc(var(--subrow) * 10) var(--gu) calc(var(--subrow) * 2)', overflowY:'auto'
           }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowTravelPicker(false); }}
         >
-          <div style={{width:'100%', maxWidth:'calc(var(--subrow) * 52.5)'}}>
+          <div style={{width:'100%', maxWidth:'calc(var(--gu) * 37)'}}>
             <TravelDayPicker
               onSave={(date, notes) => {
                 onAddPersonalEvent(date, 'Travel Day', notes);
@@ -453,7 +466,10 @@ export default function ScheduleView({
                   // Activated rows have been tapped open at least once.
                   const needsFull = isGroupToday || activatedIds.has(t.id) || focusEventId === t.id;
                   return (
-                  <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 11.75)'}}>
+                  // A row not yet rendered stands in at a whole 13r (a 12r card and its 1r gap, as
+                  // the Schedule tab's list does): at 11.75r every unrendered row above the one
+                  // scrolled to put everything under it a fraction of an r off the grid.
+                  <div key={t.id} style={{contentVisibility:'auto', containIntrinsicSize:'auto calc(var(--subrow) * 13)'}}>
                     {needsFull ? (
                       <CalendarEventRow
                         tournament={t}

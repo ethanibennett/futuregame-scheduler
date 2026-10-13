@@ -603,7 +603,8 @@ function ProModeToggle({ on, onToggle, disabled, game }) {
       transition: 'background .2s ease',
     }}>
       <div className="hs-gbadges" style={{ alignItems: 'flex-start' }}>
-        <span className="hs-t hs-sm hs-bold" style={T(2)}>Pro mode</span>
+        {/* snap-g: a whole-g label, so the badge after it starts on a g line */}
+        <span className="hs-t hs-sm hs-bold snap-g" style={T(2)}>Pro mode</span>
         <GridBadge edge="var(--accent)" ink="var(--accent)">true GTO</GridBadge>
       </div>
       {/* switch: 3r × 4g, knob 2r inset 0.5r */}
@@ -1503,7 +1504,7 @@ function TrainerHistory({ game, gameName, rev }) {
               return (
                 <div key={h.id} className="hs-box" style={{ '--hs-bg': 'var(--surface)', padding: 0, overflow: 'hidden' }}>
                   {/* Row: 5r — 1r pad, then time | per-round strip | loss | caret, baselines 4r down. */}
-                  <button onClick={() => toggleRow(h.id)} className="hs-btn"
+                  <button onClick={() => toggleRow(h.id)} className="hs-btn hs-row"
                     style={{ '--hs-h': 5, '--hs-edge': 'transparent', width: '100%', flexDirection: 'row', alignItems: 'flex-start', columnGap: 'var(--gu)', padding: 'var(--subrow) calc(var(--gu) * 2) 0', fontWeight: 'var(--fw-regular)' }}>
                     <span className="hs-t hs-xs hs-mut hs-num" style={{ ...T(3), flex: '0 0 auto' }}>{fmtPlayedAt(h.played_at)}</span>
                     <PerRoundStrip perRound={h.per_round} game={game} />

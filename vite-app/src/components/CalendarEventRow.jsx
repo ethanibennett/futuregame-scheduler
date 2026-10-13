@@ -317,7 +317,10 @@ function BuddyAvatarRow({ buddies, liveUpdates, onBuddyClick }) {
                  22px avatar plus padding and borders = 3.861r, pushing all below off-grid). */
               height: 'calc(var(--subrow) * 3)',
               boxSizing: 'border-box',
-              padding: '0 var(--gu) 0 calc(var(--subrow) * 0.5)',
+              /* Even sides, so the avatar + name pair is centred in the chip as one group (owner
+                 rule: icon + label centre together); with 1g on the name's side and 0.5r on the
+                 avatar's, the pair sat ~3.9px left of centre. */
+              padding: '0 calc(var(--subrow) * 0.5)',
               borderRadius: 'calc(var(--subrow) * 128)',
               background: 'var(--surface)',
               boxShadow: 'inset 0 0 0 var(--bw-hair) var(--border)',
@@ -859,9 +862,9 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                   </div>
 
                   {conditions && conditions.length > 0 && (
-                    <div style={{display:'flex', gap:'calc(var(--subrow) * 0.75)', flexWrap:'wrap'}}>
+                    <div style={{display:'flex', columnGap:'var(--gu)', rowGap:'var(--subrow)', flexWrap:'wrap'}}>
                       {conditions.map((c, ci) => (
-                        <span key={ci} className="badge badge-condition">
+                        <span key={ci} className="badge badge-condition snap-g">
                           {formatConditionBadge(c, allTournaments)}
                         </span>
                       ))}
@@ -975,7 +978,14 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
                         ) : type === 'select-category' ? (
                           <select value={f[key] || ''}
                             onChange={e => { clearFieldError(key); setEditFields(p => ({...p, [key]: e.target.value})); }}
-                            style={{fontSize:'calc(var(--gu) * 1.222)', padding:'calc(var(--subrow) * 0.5) calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, background:'var(--surface)', color:'var(--text)'}}>
+                            // A 3r face with its value centred in it: appearance none (the native
+                            // menulist set the value ~1.7px low) and the caret drawn, as .hs-input's.
+                            style={{fontSize:'calc(var(--gu) * 1.222)', height:'calc(var(--subrow) * 3)', boxSizing:'border-box', margin:0, padding:'0 calc(var(--gu) * 2) 0 calc(var(--subrow) * 1)', borderRadius:'calc(var(--subrow) * 0.75)', border:`var(--bw-hair) solid ${fieldErrors[key] ? '#ef4444' : 'var(--border)'}`, color:'var(--text)',
+                              WebkitAppearance:'none', appearance:'none',
+                              backgroundColor:'var(--surface)',
+                              backgroundImage:'linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%)',
+                              backgroundPosition:'calc(100% - var(--gu) * 1.5) 50%, calc(100% - var(--gu)) 50%',
+                              backgroundSize:'calc(var(--gu) * 0.5) calc(var(--gu) * 0.5)', backgroundRepeat:'no-repeat'}}>
                             <option value="primary">Primary</option>
                             <option value="side">Side</option>
                           </select>

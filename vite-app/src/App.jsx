@@ -2187,7 +2187,12 @@ export default function App() {
           {showUserMenu && createPortal(
             <>
               <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={() => setShowUserMenu(false)} />
-              <div style={{position:'fixed',top:'calc(var(--subrow) * 6.5)',right:'calc(var(--subrow) * 1.5)',zIndex:9999,background:'var(--surface)',border:'var(--bw-hair) solid var(--border)',borderRadius:'calc(var(--subrow) * 1)',padding:'calc(var(--subrow) * 0.5) 0',minWidth:'calc(var(--subrow) * 22.5)',boxShadow:'0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
+              {/* On the grid (owner rule, 2026-10-10): 16g wide, its right edge on the shell's 1g
+                  margin — the shell is centred in the window (37g, or dk.shellG on desktop), so
+                  half the window less half the shell, plus 1g — its top on 7r under the bar. The
+                  ring is an inset shadow, not a border, so the 5r rows inside start on the box's
+                  own lines. */}
+              <div style={{position:'fixed',top:'calc(var(--sa-t) + var(--subrow) * 7)',right:`calc(50% - var(--gu) * ${isDesktop ? dk.shellG : 37} / 2 + var(--gu))`,zIndex:9999,background:'var(--surface)',borderRadius:'calc(var(--subrow) * 1)',padding:0,width:'calc(var(--gu) * 16)',boxSizing:'border-box',boxShadow:'inset 0 0 0 var(--bw-hair) var(--border), 0 calc(var(--subrow) * 1) calc(var(--subrow) * 3) rgba(0,0,0,0.4)',fontFamily:'Univers Condensed, Univers, sans-serif'}}>
                 <button onClick={() => {
                   setShowUserMenu(false);
                   setCurrentView('schedule');
@@ -2196,38 +2201,39 @@ export default function App() {
                   // scroller: on desktop the right pane's, never the Schedule list's.
                   requestAnimationFrame(landMySchedule);
                 }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   My Schedule
                 </button>
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('tracking'); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Results &amp; Tracking
                 </button>
                 {handReplayerAccess && !isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('hands'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     Hand Replayer
                   </button>
                 )}
                 <button onClick={() => { setShowUserMenu(false); setCurrentView('settings'); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Settings
                 </button>
                 {isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('admin'); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     Admin
                   </button>
                 )}
                 {isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); openBatch(null); }}
-                    style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                    style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                     New Events
                   </button>
                 )}
-                <div style={{height:'calc(var(--subrow) * 0.125)',background:'var(--border)',margin:'calc(var(--subrow) * 0.25) 0'}} />
+                {/* The divider: a 1r row with the hairline drawn across its middle. */}
+                <div style={{height:'var(--subrow)',background:'linear-gradient(var(--border), var(--border)) center / 100% calc(var(--subrow) * 0.125) no-repeat'}} />
                 <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
-                  style={{display:'block',width:'100%',textAlign:'left',padding:'calc(var(--subrow) * 1.25) calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
+                  style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   Sign Out
                 </button>
               </div>

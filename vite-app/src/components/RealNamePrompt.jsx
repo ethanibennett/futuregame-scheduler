@@ -24,8 +24,9 @@ export default function RealNamePrompt({ onSave, onDismiss, token }) {
 
   return createPortal(
     <div className="modal-backdrop" onClick={onDismiss}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 'calc(var(--subrow) * 47.5)' }}>
-        <h3 style={{ marginBottom: 'var(--space-xs)' }}>What's your name?</h3>
+      {/* 33g on the grid (see .modal-content); snap-place sets the centred box on the lines. */}
+      <div className="modal-content snap-place" onClick={e => e.stopPropagation()} style={{ width: 'calc(var(--gu) * 33)' }}>
+        <h3>What's your name?</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 'calc(var(--gu) * 1.252)', marginBottom: 'var(--space-xl)' }}>
           Your connections and group members will see this.
         </p>
@@ -37,12 +38,12 @@ export default function RealNamePrompt({ onSave, onDismiss, token }) {
           placeholder="Your real name"
           maxLength={40}
           autoFocus
-          style={{ width: '100%', padding: 'var(--space-ml) var(--space-lg)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', boxSizing: 'border-box' }}
+          style={{ display: 'block', width: '100%', height: 'calc(var(--subrow) * 5)', padding: '0 var(--space-lg)', borderRadius: 'var(--radius-sm)', border: 'var(--bw-hair) solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'calc(var(--gu) * 1.399)', boxSizing: 'border-box' }}
           onKeyDown={e => { if (e.key === 'Enter' && name.trim()) handleSave(); }}
         />
-        <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-xl)', justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost btn-sm" onClick={onDismiss}>Later</button>
-          <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving || !name.trim()}>
+        <div style={{ display: 'flex', gap: 'var(--gu)', marginTop: 'var(--space-xl)', justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost btn-sm snap-g" onClick={onDismiss}>Later</button>
+          <button className="btn btn-primary btn-sm snap-g" onClick={handleSave} disabled={saving || !name.trim()}>
             {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
