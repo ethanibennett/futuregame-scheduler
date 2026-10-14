@@ -1,4 +1,15 @@
-import { beginCapture, exportScale, feltBackdrop, stepDelay } from './replay-capture.js';
+import { beginCapture, captureStepFrames, captureMotionCanvas, exportScale, feltBackdrop, stepDelay } from './replay-capture.js';
+
+/* The spring moments in a GIF: 12.5 fps (80ms, 8cs a frame), only for a moment of three frames or
+   more (the flop, a turn or river, the pot shipped — not a push-out's 140ms), and at most this
+   many motion frames in one GIF, because every frame is dithered and encoded whole. Past the
+   budget, or when a step is too short to hold the moment, the springs are finished and the step
+   is one settled still, as before. */
+const GIF_MOTION_FPS = 12.5;
+const GIF_MOTION_MS = 1000 / GIF_MOTION_FPS;
+// A hand's flop, turn, river and ship come to about 25 frames; the cap keeps the file and the
+// encode bounded on a long multiway hand (each frame is a full dithered 720px image).
+const GIF_MOTION_BUDGET = 32;
 
 // ── Replay GIF Export ──
 // Drives HandReplayerReplayView through all steps, capturing pixel-perfect
@@ -86,10 +97,11 @@ export async function exportReplayGif({
   const frameDelay = stepDelay(speed);
   let restore = () => {};
   try {
-    const [{ domToCanvas }, gifenc] = await Promise.all([
+    const [ms, gifenc] = await Promise.all([
       import('modern-screenshot'),
       import('gifenc'),
     ]);
+    const { domToCanvas } = ms;
     const { GIFEncoder, quantize } = gifenc;
 
     const totalSteps = hand.streets.reduce(
@@ -99,7 +111,7 @@ export async function exportReplayGif({
     // 83 / 88 / 90 / 91: padding for the top seat's overflowing cards, plus
     // the paused animations, pinned theme and raised watermark the video path
     // now shares.
-    restore = beginCapture(tableEl);
+    restore = beginCapture(tableEl, { speed, fps: GIF_MOTION_FPS });
     await new Promise(r => setTimeout(r, 60));
 
     const elW = tableEl.offsetWidth;
@@ -114,18 +126,16 @@ export async function exportReplayGif({
     const delays = [];
     let frameW = 0, frameH = 0, step = 0;
 
-    const captureFrame = async (isLast) => {
-      const canvas = await domToCanvas(tableEl, {
-        backgroundColor: null,
-        width: elW,
-        height: elH,
-        scale: s,
-      });
+    const captureFrame = async (delay, settled) => {
+      const opts = { backgroundColor: null, width: elW, height: elH, scale: s };
+      // A motion frame waits only for the images that can need decoding (captureMotionCanvas).
+      const canvas = settled ? await domToCanvas(tableEl, opts) : await captureMotionCanvas(ms, tableEl, opts);
       const cw = canvas.width, ch = canvas.height;
       if (!frameW) { frameW = cw; frameH = ch; }
       const ctx = canvas.getContext('2d');
       frames.push(ctx.getImageData(0, 0, cw, ch).data);
-      delays.push(isLast ? 2000 : frameDelay);
+      delays.push(delay);
+      if (!settled) return;
       step++;
       // 85: hand the caller the frame, so the overlay can show the capture
       // rather than covering it with a progress bar.
@@ -133,13 +143,31 @@ export async function exportReplayGif({
       onProgress(Math.round((step / totalSteps) * 60), step, totalSteps);
     };
 
-    await captureFrame(false);
+    /* One step: the spring moment it starts (when it fits the step and the budget), then the
+       settled still for the rest of the step — 2s on the last. */
+    let motionLeft = GIF_MOTION_BUDGET;
+    const captureStep = async (isLast) => {
+      const stepMs = isLast ? 2000 : frameDelay;
+      let used = 0;
+      const n = await captureStepFrames(tableEl, {
+        fps: GIF_MOTION_FPS,
+        maxFrames: motionLeft > 0 ? Math.max(1, Math.min(Math.floor(stepMs / GIF_MOTION_MS), motionLeft + 1)) : 1,
+        minMotionFrames: 3, skipKinds: ['action'],
+        grab: async (hold, settled) => {
+          if (!settled) { used += hold; await captureFrame(Math.round(GIF_MOTION_MS * hold), false); return; }
+          await captureFrame(Math.max(20, stepMs - Math.round(used * GIF_MOTION_MS)), true);
+        },
+      });
+      motionLeft -= n;
+    };
+
+    await captureStep(false);
     while (canGoForwardRef.current) {
       stepForward();
-      // The animations are frozen for the export's duration, so this only has
-      // to cover React's commit, not an in-flight chip.
+      // CSS animations are frozen for the export's duration and the springs are created paused,
+      // so this only has to cover React's commit, not an in-flight chip.
       await new Promise(r => setTimeout(r, 120));
-      await captureFrame(!canGoForwardRef.current);
+      await captureStep(!canGoForwardRef.current);
     }
 
     restore();

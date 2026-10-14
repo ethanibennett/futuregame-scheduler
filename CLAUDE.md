@@ -294,6 +294,17 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   get its painted room from padding cancelled by an equal negative margin (or a clip-path that
   reaches below the box), never from `overflow-x: clip; overflow-y: visible`, which WebKit
   clips on both axes. Run it before deploying any change to card or list text.
+- **Replayer motion is springs**: the flop deal and spread, the turn/river landing, wagers
+  pushed out and swept in, and the pot shipped to the winner run on ONE spring family (the
+  launch ads' Remotion numbers): `vite-app/src/utils/spring.js` (pure, `npm run test:springs`)
+  and `replayer-motion.js` (the registry and the moments). They play as Web Animations on
+  transform/opacity, computed once per moment. `localStorage.replayerSprings` unset is Set B
+  "snappy" (the default, owner 2026-10-13); '1' Set A, '2' Set B, '0' the old code paths. Exports
+  seek them frame by frame (the bet push-outs export settled). Work a moment builds after its press
+  belongs to that moment's generation (`MotionRegistry.defer`); `scripts/check-replayer-ship-once.mjs`
+  guards the Back/Forward double ship.
+  Before/after video: `scripts/capture-replayer-motion.mjs` + `compare-replayer-motion.mjs`.
+  See `docs/replayer-springs.md`.
 - **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
   tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
   for the steps and what each replaces. Never write a bare literal for anything a
