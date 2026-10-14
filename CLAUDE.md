@@ -202,6 +202,19 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
     retires, a leaked link is best replaced in the dashboard: a later dashboard edit of that backer
     would send the old token back and the roster sync would rotate it back.
   - Tests: `npm run test:backers` (surface, rotation, parity), booting on ports 4540-4549.
+  **Bankroll merge, Phase 3: series settlement** (`docs/bankroll-merge.md` §10; code in
+  `lib/staking/settlement.js` and `settlement-routes.js`; the panel's logic in
+  `vite-app/src/utils/staking-settlement.js`):
+  - **The server computes every figure.** Backers pay for their piece up front (owner, Q11), so
+    `owed = share of cashes − (piece price − prepaid)`; + = the player pays the backer. Settle stores
+    one row per agreement with a snapshot, and a settled series is read back, never recomputed.
+  - **Paid writes one `settlement` row** into the series' bankroll (`staking_series.bankroll_id`,
+    NULL = Main), `settlement_ref 'bs:<id>'`; unpaid deletes it.
+  - **The disputed type meanings are switches**: `STAKING_SETTLEMENT_RULES` (JSON; crossbook as a bet
+    or a swap, swap and profit-share bases, budget and package refunds, makeup prepaid). Unset = the
+    defaults; every boot logs `[staking] settlement rules: …`. The owner's questions are §17.1.
+  - Tests: `npm run test:staking-settlement`, booting on ports 4570-4579. The guards' staking
+    settlement views need `scripts/seed-staking-demo.js <scratch.db>` first.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)
