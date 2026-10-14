@@ -549,9 +549,12 @@ const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const moneyMerge = require('./lib/money-merge');
+// The backer surface (feed, digest, delivery gate and sweep, link rotation): lib/backer-surface.js.
+const backerSurface = require('./lib/backer-surface');
+const { fmtSignedCents, fmtHours, escapeHtml } = backerSurface;
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
-const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
+const BACKER_TOKEN_RE = backerSurface.BACKER_TOKEN_RE; // short base62 codes + legacy 32-hex
 
 // Push service worker for the backer page (scope /b/). Must be registered
 // before /b/:token so 'sw.js' isn't captured as a token.
@@ -577,54 +580,14 @@ app.get('/api/backer/:token/feed', (req, res) => {
   const token = String(req.params.token || '');
   if (!BACKER_TOKEN_RE.test(token)) return res.status(404).json({ error: 'Not found' });
   try {
-    let name = null;
-    const nstmt = db.prepare('SELECT name FROM backer_public WHERE token = ?');
-    nstmt.bind([token]); if (nstmt.step()) name = nstmt.getAsObject().name; nstmt.free();
-    // Fall back to the synced backer object for name + stakes, so a freshly
-    // created backer's page is presentable before the first session is notified.
-    let stakes = '';
-    let openingCents = 0;
-    const rec = backerRecordByToken(token);
-    if (rec) {
-      if (!name) name = rec.name || null;
-      stakes = stakesSummaryServer(rec.stakes || []);
-      openingCents = Math.round((Number(rec.opening) || 0) * 100);
-    }
-    const events = [];
-    // Newest session FIRST, by the session's own date — not by `ts`, which is
-    // when notify fired. The two diverge whenever a session is logged late (a
-    // Saturday session notified after Sunday's has a larger ts but an earlier
-    // date), which put older sessions above newer ones on the page. `date` is
-    // an ISO YYYY-MM-DD string, so it orders correctly as text; ts breaks ties
-    // within a day.
-    const estmt = db.prepare(
-      'SELECT ts, date, game, venue, hours, session_result_cents, pct, share_cents FROM backer_events WHERE token = ? ORDER BY date DESC, ts DESC LIMIT 200'
-    );
-    estmt.bind([token]);
-    while (estmt.step()) {
-      const r = estmt.getAsObject();
-      events.push({
-        ts: r.ts, date: r.date, game: r.game, venue: r.venue, hours: r.hours,
-        sessionResultCents: r.session_result_cents, pct: r.pct, shareCents: r.share_cents,
-      });
-    }
-    estmt.free();
-    let grossCents = 0, netSessionCents = 0;
-    for (const e of events) {
-      grossCents += e.sessionResultCents || 0;
-      netSessionCents += e.shareCents || 0;
-    }
-    // Totals over EVERY recorded session (the list stops at 200), for the page's headline.
-    let sessions = 0, hours = 0;
-    const tstmt = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(hours), 0) AS h FROM backer_events WHERE token = ?');
-    tstmt.bind([token]); if (tstmt.step()) { const t = tstmt.getAsObject(); sessions = t.n || 0; hours = t.h || 0; } tstmt.free();
+    // lib/backer-surface.js buildFeed. BACKER_PAGE_SOURCE decides where the name, stakes and
+    // opening come from: 'console' (the default, the dashboard-era roster in console_records,
+    // exactly as before) or 'sql' (the backers table, console_records as the fallback). The
+    // history is backer_events either way. docs/bankroll-merge.md §7.6; check
+    // GET /api/staking/standing/parity before flipping it.
+    const feed = backerSurface.buildFeed(db, token, { source: backerSurface.pageSource() });
     res.set('Cache-Control', 'no-store');
-    res.json({
-      name, stakes, openingCents, grossCents, netSessionCents,
-      cumulativeCents: backerCumulativeCents(token) + openingCents,
-      sessions, hours,
-      events,
-    });
+    res.json(feed);
   } catch (err) {
     console.error('Backer feed error:', err);
     res.status(500).json({ error: 'feed failed' });
@@ -751,15 +714,22 @@ app.get('/api/schedule/:token/upcoming', (req, res) => {
            ON CONFLICT(token) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`,
           [r.token, String(r.name || '').slice(0, 80), ts]
         );
+        // A relayed share is delivered INLINE by this request (the push and text below), so it is
+        // born delivered: source 'dashboard' and notified_* = its own share. The delivery sweep
+        // (lib/backer-surface.js) only ever takes source 'ledger' rows, and these columns say the
+        // same thing a second way, so a relayed share can never be delivered twice. Without the
+        // columns (a database whose money-merge migration failed) the insert is the old one.
+        const born = backerEventsHaveDeliveryColumns();
         db.run(
           `INSERT OR IGNORE INTO backer_events
-             (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, token, session_id, ts, date, game, venue, hours, session_result_cents, pct, share_cents${born ? ', source, notified_share_cents, notified_at' : ''})
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${born ? ", 'dashboard', ?, ?" : ''})`,
           [
             `${r.token}:${session.id}`, r.token, session.id, ts,
             String(session.date || ''), String(session.game || '').slice(0, 120),
             String(session.venue || '').slice(0, 80), Number(session.hours) || 0,
             Math.round(Number(session.resultCents) || 0), pct, shareCents,
+            ...(born ? [shareCents, ts] : []),
           ]
         );
         const inserted = db.getRowsModified() > 0;
@@ -787,7 +757,11 @@ app.get('/api/schedule/:token/upcoming', (req, res) => {
             `Your ${pct}% = ${fmtSignedCents(shareCents)}. Running ${fmtSignedCents(cum)}. futurega.me/b/${r.token}`
           );
         }
-        results.push({ token: r.token, name: r.name, sent: out.sent, subs: out.subs, cumulativeCents: cum, duplicate: !inserted, sms: smsStatus });
+        results.push({
+          token: r.token, name: r.name, sent: out.sent, subs: out.subs, cumulativeCents: cum, duplicate: !inserted, sms: smsStatus,
+          // Only where delivery is off (not Render, BACKER_DELIVERY unset): nothing was sent, and the answer says so.
+          ...(out.off ? { delivery: 'off' } : {}),
+        });
       }
       if (changed) await saveDatabase();
       res.json({ results });
@@ -3319,6 +3293,18 @@ async function initDatabase() {
       fn: () => {
         const r = moneyMerge.migrate(db);
         console.log(`Money merge schema: ${r.tables.length} tables, ${r.columns.length} columns added, ${r.backfilled} backer events marked delivered`);
+      }
+    },
+    {
+      // Phase 2 of the bankroll merge (docs/bankroll-merge.md §7.3): how many legacy per-agreement
+      // backer links exist? A COUNT, never the rows (they are credentials). Zero is the expected
+      // answer and lets Phase 13 remove the routes that mint and read them; any other number is the
+      // owner's question (§17 Q14). GET /api/staking/standing/parity reports it again.
+      name: 'backer-tokens-audit-2026-10',
+      fn: () => {
+        const q = db.exec('SELECT COUNT(*) FROM backer_tokens');
+        const n = q.length ? q[0].values[0][0] : 0;
+        console.log(`Legacy backer_tokens: ${n} row(s)${n ? ' - the owner decides what happens to these links (docs/bankroll-merge.md Q14)' : ' - none, as expected'}`);
       }
     },
   ];
@@ -6594,6 +6580,13 @@ const stakingLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many staking requests, please try again later.' },
+});
+
+// Standing-% agreements (docs/bankroll-merge.md §6.10). Phase 2 mounts the parity route and "New
+// link" only; lib/staking/standing-routes.js. Under the /api/staking admin gate above.
+require('./lib/staking/standing-routes').mountRoutes(app, {
+  getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, requireRegistered, limiter: stakingLimiter,
+  getOwnerId: () => HAM_OWNER_ID,
 });
 
 // ── Validation: check total action sold for a tournament doesn't exceed 100% ──
@@ -10658,31 +10651,24 @@ const CONSOLE_TZ = 'America/New_York';
 
 // ── Backer notification helpers ──
 function backerCumulativeCents(token) {
-  let c = 0;
-  const s = db.prepare('SELECT COALESCE(SUM(share_cents),0) AS c FROM backer_events WHERE token = ?');
-  s.bind([token]); if (s.step()) c = s.getAsObject().c; s.free();
-  return c || 0;
+  return backerSurface.backerCumulativeCents(db, token);
+}
+// Does backer_events have the delivery columns (source, notified_*) the money-merge migration adds?
+// Cached once seen: they never go away. A database whose migration failed gets the old insert.
+let backerEventsDeliveryColumns = false;
+function backerEventsHaveDeliveryColumns() {
+  if (!backerEventsDeliveryColumns) {
+    backerEventsDeliveryColumns = moneyMerge.hasColumn(db, 'backer_events', 'notified_at')
+      && moneyMerge.hasColumn(db, 'backer_events', 'notified_share_cents')
+      && moneyMerge.hasColumn(db, 'backer_events', 'source');
+  }
+  return backerEventsDeliveryColumns;
 }
 function backerSubCount(token) {
   let n = 0;
   const s = db.prepare('SELECT COUNT(*) AS n FROM backer_push_subs WHERE token = ?');
   s.bind([token]); if (s.step()) n = s.getAsObject().n; s.free();
   return n || 0;
-}
-// The synced backer object (from console_records) for a token, or null. Lets the
-// backer page show a name + stakes the moment the backer is created in the app,
-// before any session has been notified (backer_public is only set on notify).
-function backerRecordByToken(token) {
-  const s = db.prepare("SELECT data FROM console_records WHERE store = 'backers' AND deleted = 0");
-  let found = null;
-  while (s.step()) {
-    try {
-      const b = JSON.parse(s.getAsObject().data);
-      if (b && b.token === token) { found = b; break; }
-    } catch (_) { /* skip malformed */ }
-  }
-  s.free();
-  return found;
 }
 
 // ── MTT feed ingest (mtt-series-watcher → scheduler) ──
@@ -11454,61 +11440,13 @@ const ROSTER_FETCH_TIMEOUT_MS = Number(process.env.ROSTER_FETCH_TIMEOUT_MS) > 0
   ? Number(process.env.ROSTER_FETCH_TIMEOUT_MS) : 30000;
 let rosterOffLogged = false; // the "ROSTER_TOKEN not set" line is said once per boot, not hourly
 let rosterPullHealthy = false; // log a good pull on the transition to healthy, not every hour
-/* Move a backer's page from one token to another.
- *
- * A backer's token is a CAPABILITY — it is the whole of the authentication on
- * /b/:token — so it has to be rotatable, and one leaked in a public repo on
- * 2026-09-14 is why this exists. But the token is also the FOREIGN KEY that
- * three tables use to find that backer's data:
- *
- *     backer_public     token PRIMARY KEY      their display name
- *     backer_events     token + session_id     every session they are staked in
- *     backer_push_subs  token                  their push subscriptions
- *
- * Change the token without moving those and the new link resolves a name and a
- * stake and shows ZERO sessions, while their push notifications stop — a worse
- * outcome than the leak, and a silent one. So all three move together or none
- * of them do.
- *
- * Returns a per-table count of what moved, so a caller can assert on it rather
- * than trust it. */
+/* Move a backer's page from one token to another: every table that carries the link moves or none
+ * does. The function lives in lib/backer-surface.js (tested there against a real database); this is
+ * the roster sync's call into it. A rotation done in the dashboard arrives here as "same backer id,
+ * different token", and now moves backers.public_token and the share audit trail with the three
+ * tables it always moved. */
 function rotateBackerToken(oldToken, newToken) {
-  if (!BACKER_TOKEN_RE.test(String(oldToken || '')) || !BACKER_TOKEN_RE.test(String(newToken || ''))) {
-    return { ok: false, error: 'invalid token shape' };
-  }
-  if (oldToken === newToken) return { ok: false, error: 'tokens are identical' };
-
-  /* A new token that is already in use would MERGE two backers: one would
-     inherit the other's sessions. Checked before anything is written, because
-     there is no unpicking it afterwards. */
-  const inUse = (tok) => {
-    for (const sql of [
-      'SELECT 1 FROM backer_public WHERE token = ? LIMIT 1',
-      'SELECT 1 FROM backer_events WHERE token = ? LIMIT 1',
-      'SELECT 1 FROM backer_push_subs WHERE token = ? LIMIT 1',
-    ]) {
-      const r = db.exec(sql, [tok]);
-      if (r.length && r[0].values.length) return true;
-    }
-    return false;
-  };
-  if (inUse(newToken)) return { ok: false, error: 'new token already carries data' };
-
-  const counts = {};
-  try {
-    db.run('BEGIN');
-    db.run('UPDATE backer_public SET token = ? WHERE token = ?', [newToken, oldToken]);
-    counts.backer_public = db.getRowsModified();
-    db.run('UPDATE backer_events SET token = ? WHERE token = ?', [newToken, oldToken]);
-    counts.backer_events = db.getRowsModified();
-    db.run('UPDATE backer_push_subs SET token = ? WHERE token = ?', [newToken, oldToken]);
-    counts.backer_push_subs = db.getRowsModified();
-    db.run('COMMIT');
-  } catch (err) {
-    try { db.run('ROLLBACK'); } catch (_) { /* the BEGIN may not have landed */ }
-    return { ok: false, error: err.message };
-  }
-  return { ok: true, counts };
+  return backerSurface.rotateBackerToken(db, oldToken, newToken);
 }
 
 async function syncBackerRoster() {
@@ -11688,22 +11626,13 @@ function computeDashboardEvents(now = new Date(), limit = 6) {
 }
 
 
-const SRV_FMT_LABEL = {
-  PLO: 'PLO', PLO8: 'PLO8', NLH: 'NLH', mixed: 'Mixed', stud8: 'Stud8',
-  razz: 'Razz', '2-7': '2-7', BigO: 'Big O', other: 'Other', all: 'all games',
-};
-function stakesSummaryServer(stakes) {
-  if (!Array.isArray(stakes) || !stakes.length) return '';
-  return stakes
-    .map((s) => {
-      const f = SRV_FMT_LABEL[s.format] || s.format;
-      const c = s.channel && s.channel !== 'any' ? ` (${s.channel})` : '';
-      return `${s.pct}% ${f}${c}`;
-    })
-    .join(' · ');
-}
+// A backer is messaged (web push, SMS, the weekly email) only where delivery is on: Render, or
+// BACKER_DELIVERY=1. So the local pm2 box can never reach a backer, whatever it holds in its
+// database. The gate sits IN the senders, not at their callers, so no path (the notify relay, the
+// delivery sweep, the digest) can forget it. lib/backer-surface.js deliveryDecision.
 async function sendBackerPush(token, title, body, url) {
   let sent = 0, subs = 0, changed = false;
+  if (!backerSurface.deliveryOn()) return { sent, subs, changed, off: true };
   if (!process.env.VAPID_PUBLIC_KEY) return { sent, subs, changed };
   const list = [];
   const s = db.prepare('SELECT endpoint, keys_p256dh, keys_auth FROM backer_push_subs WHERE token = ?');
@@ -11729,19 +11658,6 @@ async function sendBackerPush(token, title, body, url) {
   }
   return { sent, subs, changed };
 }
-function fmtSignedCents(cents) {
-  const v = (Number(cents) || 0) / 100;
-  const n = Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
-  return (v < 0 ? '−' : '+') + '$' + n;
-}
-function fmtHours(h) {
-  return (Math.round((Number(h) || 0) * 10) / 10) + 'h';
-}
-function escapeHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 // Generic console email via the existing SMTP transporter (password resets use
 // the same one). Returns true on send, false if SMTP isn't configured.
 async function sendConsoleEmail(to, subject, html) {
@@ -11761,6 +11677,7 @@ async function sendConsoleEmail(to, subject, html) {
 // Per-session backer text via Twilio's REST API (no SDK dependency). Inert
 // until TWILIO_* env vars are set — returns 'unconfigured' so the UI can say so.
 async function sendBackerSms(phone, body) {
+  if (!backerSurface.deliveryOn()) return 'off';
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM || process.env.TWILIO_FROM_NUMBER;
@@ -11787,50 +11704,35 @@ async function sendBackerSms(phone, body) {
   }
 }
 
-// Weekly email digest for backers with an email on file: the past 7 days of
-// their recorded sessions + their running total. Reads backer objects from the
-// synced console_records (store='backers'); events from backer_events.
+// The delivery sweep (docs/bankroll-merge.md §6.7): tells a backer about a posted share a couple of
+// minutes after the owner's Notify tap, once. Scheduled only where delivery is on, and idle until a
+// later phase posts 'ledger' events with posting switched on; the dashboard-era relay above delivers
+// its own shares inline and the sweep never takes them (lib/backer-surface.js sweep).
+let backerSweepRunning = false;
+async function runBackerSweep() {
+  if (backerSweepRunning) return;
+  backerSweepRunning = true;
+  try {
+    const r = await backerSurface.sweep(db, {
+      saveDatabase,
+      deliver: async ({ event, backer, messages }) => {
+        await sendBackerPush(event.token, messages.title, messages.body, `/b/${event.token}`);
+        if (backer && backer.notify_sms && backer.phone) await sendBackerSms(backer.phone, messages.sms);
+      },
+    });
+    if (r.delivered || r.failed) console.log(`[backers] sweep: ${r.delivered} delivered, ${r.failed} failed`);
+  } catch (err) {
+    console.error('[backers] sweep error:', err && err.message);
+  } finally { backerSweepRunning = false; }
+}
+
+// Weekly email digest for backers who take one: the past 7 days of their recorded sessions + their
+// running total. Built by lib/backer-surface.js weeklyDigests, from the roster in console_records
+// (the default) or, under BACKER_PAGE_SOURCE=sql, from the backers table with console_records as
+// the fallback. Sent only where delivery is on (see sendBackerPush).
 async function sendBackerWeeklyDigests() {
   try {
-    const backers = [];
-    const s = db.prepare("SELECT data FROM console_records WHERE store = 'backers' AND deleted = 0");
-    while (s.step()) {
-      try {
-        const b = JSON.parse(s.getAsObject().data);
-        if (b && b.token && b.delivery && b.delivery.email) backers.push(b);
-      } catch (_) { /* skip malformed */ }
-    }
-    s.free();
-    if (!backers.length) return;
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    for (const b of backers) {
-      const evs = [];
-      const es = db.prepare(
-        'SELECT date, game, venue, hours, session_result_cents, pct, share_cents FROM backer_events WHERE token = ? AND ts >= ? ORDER BY ts DESC'
-      );
-      es.bind([b.token, weekAgo]);
-      while (es.step()) evs.push(es.getAsObject());
-      es.free();
-      if (!evs.length) continue; // nothing to report this week
-      const cum = backerCumulativeCents(b.token) + Math.round((Number(b.opening) || 0) * 100);
-      const weekShare = evs.reduce((a, e) => a + (e.share_cents || 0), 0);
-      const rows = evs.map((e) => {
-        const col = (e.share_cents || 0) >= 0 ? '#2c7a52' : '#c0544c';
-        return `<tr>
-          <td style="padding:6px 10px 6px 0;">${escapeHtml(e.game)}</td>
-          <td style="padding:6px 10px 6px 0;color:#888;">${escapeHtml(e.venue)} · ${fmtHours(e.hours)} · ${escapeHtml(e.date)}</td>
-          <td style="padding:6px 0;text-align:right;font-weight:600;color:${col};">${fmtSignedCents(e.share_cents)}</td>
-        </tr>`;
-      }).join('');
-      const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111;">
-        <h2 style="margin:0 0 2px;">Your week with Ethan</h2>
-        <p style="color:#888;margin:0 0 16px;">${evs.length} session${evs.length > 1 ? 's' : ''} · your week ${fmtSignedCents(weekShare)}</p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px;">${rows}</table>
-        <p style="margin:18px 0 4px;font-size:16px;"><strong>Running total: ${fmtSignedCents(cum)}</strong></p>
-        <p style="color:#888;font-size:12px;">Full detail anytime: <a href="https://futurega.me/b/${b.token}">your private page</a>.</p>
-      </div>`;
-      await sendConsoleEmail(b.delivery.email, 'Your weekly staking digest', html);
-    }
+    await backerSurface.sendWeeklyDigests(db, { sendEmail: sendConsoleEmail });
   } catch (err) {
     console.error('Backer weekly digest error:', err);
   }
@@ -14097,6 +13999,19 @@ initDatabase().then(() => {
       cron.schedule('0 18 * * 0', () => { sendBackerWeeklyDigests(); }, { timezone: CONSOLE_TZ });
     } catch (err) {
       console.error('Backer digest cron setup error:', err.message);
+    }
+    // Backer delivery (docs/bankroll-merge.md §6.7): say whether this instance may message a backer,
+    // and where the page reads its roster from, in the log of every boot. The sweep that delivers
+    // posted shares is scheduled only where delivery is on.
+    try {
+      const gate = backerSurface.deliveryDecision();
+      console.log(`[backers] delivery is ${gate.on ? 'ON' : 'OFF'} on this instance (${gate.why})` +
+        (gate.on ? '' : ': no push, text or digest email will be sent'));
+      console.log(`[backers] page source: ${backerSurface.pageSource()}` +
+        (backerSurface.pageSource() === 'sql' ? ' (backers table, console_records as the fallback)' : ' (console_records; BACKER_PAGE_SOURCE=sql switches it)'));
+      if (gate.on) cron.schedule('* * * * *', () => { runBackerSweep(); }, { timezone: CONSOLE_TZ });
+    } catch (err) {
+      console.error('[backers] delivery setup error:', err.message);
     }
     // Backer-roster seam: pull the current roster from the dashboard at boot +
     // hourly (:35, offset from the mtt-emit :15), self-disables w/o token.
