@@ -32,6 +32,7 @@ import {
 } from '../utils/cash-sessions.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useTick } from './CashLive.jsx';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -621,6 +622,9 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
 
   const back = <Btn w={9} h={4} onClick={() => go('list')}>‹ Sessions</Btn>;
   let head, body, focus = true;
+  // The floating + (BankrollFab) steps aside on the screens it leads to or would sit over: the live
+  // screen, which has the tab to itself, and the add, start and edit forms.
+  let fabAway = true;
   if (shown === 'live' && live) {
     head = <>{back}<h2 className="cs-t cs-title cs-title--live"><span className="cs-dot" aria-hidden="true">●</span> Live</h2></>;
     body = <LiveScreen key={live.id} session={live} stacks={liveStacks || []} skew={skew} busy={busy}
@@ -633,6 +637,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
         : <SessionForm key={editId || 'add'} bk={bk} rooms={rooms} sessions={ended} session={current} busy={busy}
           onSave={(b) => save(b, editId)} onCancel={() => go(editId ? { detail: editId } : 'list')} />;
   } else if (detailId && current) {
+    fabAway = false;
     head = (
       <>
         {back}
@@ -645,6 +650,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
       onConfirm={setConfirmDelete} onDelete={() => remove(current.id)} />;
   } else {
     focus = false;
+    fabAway = false;
     head = (
       <>
         <h2 className="cs-t cs-title">Cash</h2>
@@ -673,6 +679,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
       </>
     );
   }
+  useHideBankrollFab(fabAway);
   return (
     <div className={'cs-view' + (focus ? ' is-focus' : '')}>
       <div className="cs-head">{head}</div>

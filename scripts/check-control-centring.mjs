@@ -39,6 +39,8 @@
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
 // foot, closed and open), the
+// floating + on the bankroll pages (the Results tab's and the dashboard sheet's, closed and with its
+// menu open, with and without a running cash session), the
 // bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
 // with its page chevrons — report filters, Locations with a card open, its pager (Show 50 more /
 // Show all, Show fewer) and a sort on, CSV import), cash sessions, expenses and
@@ -1764,6 +1766,34 @@ function finalize(c) {
     });
     await p.waitForTimeout(500);
   }, 2);
+  // The floating + on the bankroll pages (components/BankrollFab.jsx): on the Results tab (the page's,
+  // in the main pane on desktop; 2r over the live cash bar while the seed's session runs, 2r over the
+  // nav without one) and inside the dashboard sheet, each closed and with its menu open. The menu is
+  // a portalled panel of 5r rows (a layer), its right edge on the +. Opened by the + itself, so the
+  // click also proves it is a real button that takes a tap.
+  const openFab = async (sel) => {
+    await click(sel, 500);
+    await p.locator('.bk-fab-menu').waitFor({ timeout: 3000 });
+  };
+  step('bankroll-fab', () => nav('Bankroll'), 2);
+  step('bankroll-fab-menu', async () => { await nav('Bankroll'); await openFab('.bk-fab--page'); }, 0);
+  // No session running: the live fetch is answered here and never sent (a guard must not change the
+  // account it signs in as), the + sits 2r over the nav, and the menu has its fourth row, Start live
+  // session. The store keeps the answer once the route is gone.
+  const idleFab = async (open) => {
+    await p.route('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
+    try {
+      await fresh();
+      await nav('Bankroll');
+      await p.locator('.bk-fab--page').waitFor({ timeout: 4000 });
+      if (await p.locator('.cs-bar').count()) throw new Error('the cash bar is still up (the stub did not take)');
+      if (open) await openFab('.bk-fab--page');
+    } finally { await p.unroute('**/api/cash-sessions/live'); }
+  };
+  step('bankroll-fab-idle', () => idleFab(false), 0);
+  step('bankroll-fab-idle-menu', () => idleFab(true), 0);
+  step('bankroll-fab-sheet', () => dash(null), 2);
+  step('bankroll-fab-sheet-menu', async () => { await dash(null); await openFab('.bk-fab--sheet'); }, 0);
   const cashHalf = async (...steps) => {
     await nav('Bankroll');
     await click('.results-kind-tabs button:has-text("Cash")', 1500);

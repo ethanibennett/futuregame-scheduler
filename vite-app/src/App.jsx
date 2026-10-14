@@ -34,6 +34,7 @@ import SettingsView from './components/SettingsView.jsx';
 import SocialView from './components/SocialView.jsx';
 import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
 import { LiveCashBar } from './components/CashLive.jsx';
+import BankrollFab from './components/BankrollFab.jsx';
 import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
 import BackerPage from './components/BackerPage.jsx';
@@ -353,6 +354,12 @@ function App() {
   // result card): { kind, ... } — TrackingView opens it once and clears it (onIntentDone).
   const [resultsIntent, setResultsIntent] = useState(null);
   const clearResultsIntent = useCallback(() => setResultsIntent(null), []);
+  // Show Results with a form open (the home's Log menu and To log, the bankroll tab's floating +
+  // and the bankroll dashboard sheet's): the intent is set first, TrackingView opens it once.
+  const logIntoResults = useCallback((intent) => {
+    setResultsIntent({ ...intent, at: Date.now() });
+    setCurrentView('tracking');
+  }, [setCurrentView]);
 
   // Live Updates
   const [myActiveUpdates, setMyActiveUpdates] = useState([]);
@@ -1823,7 +1830,7 @@ function App() {
                 isAdmin={isAdmin}
                 token={token}
                 canLog={!isGuest}
-                onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
+                onLog={logIntoResults}
                 bk={bk}
                 onSetPlayed={setNotPlayed}
                 onDeleteTracking={deleteTracking}
@@ -1944,6 +1951,7 @@ function App() {
                 bk={bk}
                 intent={resultsIntent}
                 onIntentDone={clearResultsIntent}
+                onLog={logIntoResults}
               />
             )}
             </div>
@@ -2379,6 +2387,9 @@ function App() {
           <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
             {primaryColumn}
             {devToggles}
+            {/* The Results tab's floating +: a direct child of the main pane, so on desktop it sits
+                in that pane (bankroll-fab.css). Guests cannot log results. */}
+            {currentView === 'tracking' && !isGuest && <BankrollFab scope="page" isAdmin={isAdmin} onPick={logIntoResults} />}
           </div>
           {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
               NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
