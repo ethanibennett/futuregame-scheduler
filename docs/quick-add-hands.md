@@ -103,12 +103,20 @@ the parse tool's input, in `hand.quickAdd`, or a new gap.
   its running totals are cleaned.
 - `lib/quick-add/speech.js` reads number words ("two hundred and ten", "fifty three hundred"),
   spoken cards ("ace of spades king of hearts") and fused rank runs ("1087" → T87). It answers
-  spoken free-text gap answers without the model, and gives the parse a list of number-word
-  conversions as a reading aid; the transcript itself is sent unchanged.
+  spoken free-text gap answers without the model (a pair of numbers for the blinds is read as stakes:
+  "ten twenty" is 10/20, never 1,020), and runs the pre-pass on a transcript (decision I): the number
+  words that are certainly numbers are rewritten as digits, listed beside the transcript and logged;
+  rank words are never touched, and two numbers said in a row ("five hundred one thousand") stay two.
+- `lib/quick-add/hh.js` (decision H) reads a pasted PokerStars / GG / Full Tilt history, or a
+  converter's "Stacks: … / Flop ($1.20) 7c 8d 2h: BB checks, Hero bets $0.60" layout, in code: seats, button
+  seat (positions come from it), stacks, blinds, antes (per player or a big blind ante), actions,
+  boards, showdown cards and the winner of each pot. A line it cannot read is read by the model on its
+  own (`read_lines`, names already replaced); a converter layout with one unreadable clause goes to
+  the model whole. Whichever way the switch is set, a detected history is anonymised first.
 
 **Prompt** (`lib/quick-add/prompt.js`): hero words (we/us/our, H, Hero, second-person "you"),
 observers, names that look like cards ("KK raises"), collective and relative actions, the
-straddle-vs-UTG rule (two players who both act cannot be one seat), stakes with a trailing k,
+straddle rule (decision A: the opener called UTG is the seat after the straddler), stakes with a trailing k,
 "behind" stacks, noise that is not this hand's stacks (tournament starting stack, average,
 winnings), suit descriptions in their own fields, completing a short holding from later words,
 what is never cards (ranges, made-hand spellings, table talk), two-way values in `boardChoices` /
@@ -119,23 +127,56 @@ dialogue rules (speech), and a second worked example.
 
 **New gaps** (client): `blinds.scale` (6 with a 12,000 big blind), a real small-blind ladder
 (0.02 for 0.05, 10 for 25, never 0, always sb = bb too), "Record it in big blinds (0.5/1)" when
-every size is in big blinds, `ante-type`, the hero question's "I wasn't in this hand" (then
-"whose seat should the replay follow?"), `scope` (not a hand), `hand-choice` (other hands),
-`unsupported` (bomb pot, double board, run it twice, button blind, PLO5/6, short deck, NLO8), and
+every size is in big blinds, `ante-type`, the hero question's "I wasn't in this hand" (the hand is
+stored hero-less and nothing more is asked about a hero), `scope` (not a hand), `hand-choice` (other
+hands: always asked, blocking), `unsupported` (bomb pot, double board, run it twice, button blind), and
 the server's own questions from `hand.quickAdd.questions` (`rules-quick.js`; option op
 `answerQuestion`).
 
-**Still the owner's to decide** (the code takes the analysis' proposed default meanwhile;
-every default is a value in `lib/quick-add/decisions.js`, so an answer is a one-line change there):
-A) "UTG" with a UTG straddle on — the prompt only separates them when both act (`UTG_WITH_STRADDLE`,
-`'ask'` to never decide); B) estimates are recorded with a note, not asked (`HEDGED_VALUES`,
-`'ask'` also raises a question; a value given two ways is always a question); C) observer hands
-follow a chosen seat as the hero (`OBSERVER_HANDS`, `'refuse'`); D) bomb pots, double boards,
-run-it-twice and button blinds are approximated with a note (`UNSUPPORTED_FORMATS`, `'refuse'`);
-E) PLO5/PLO6 are recorded as PLO (extra hole cards not kept), short deck as NLH, NLO8 as PLO8
-(`VARIANT_GAMES`); F) posts with several hands record the most detailed one and list the rest
-(`SEVERAL_HANDS`: `'last-asked'`, or `'ask'` to make the choice blocking); G) per-pot winners are
-not stored (`PER_POT_WINNERS`, no switch yet); H) no deterministic hand-history fast path yet, seat
-arithmetic only (`HAND_HISTORY_FAST_PATH`, no switch yet); I) number words are a reading aid, not a
-rewrite (`NUMBER_WORDS`, `'rewrite'`). The collector's item-level questions (OTTNH, "A10h", "1/2/4/800", ".8bb deep", "we 3x",
-"635", and others) are in the corpus notes of the cases they come from.
+**The owner's answers (2026-10-14)** — each is a named value in `lib/quick-add/decisions.js`, so a
+change of mind is a one-line change there:
+A) with a UTG straddle on, the opener ("UTG", "under the gun") is the seat AFTER the straddler
+(`UTG_WITH_STRADDLE: 'next-seat'`); B) hedged values are recorded with a note, "A or B" is a question;
+C) observer hands are stored HERO-LESS (`hand.heroless`); D) bomb pots, double boards, run it twice,
+button blinds and rock straddles: **deferred by the owner on 2026-10-14 ("mark this as something to
+come back to")**, current behaviour kept; E) PLO5, PLO6, PLO6 8/b, Short Deck and NLO8 are each their own
+game, and E2) "Big Easy" is PLO6 8/b everywhere in quick add; F) a post with several hands ALWAYS asks
+which (blocking `hand-choice`, options re-parse with `hints.handIndex`); G) a winner PER POT
+(`result.pots`); H) a deterministic hand-history fast path (`lib/quick-add/hh.js`: PokerStars, GG,
+Full Tilt, and a converter's compact layout) that reads the lines it can and has the model read the
+rest line by line, screen names replaced before anything is sent; I) a logged number-word pre-pass for
+speech that never touches rank words.
+
+**Follow-ups for the replayer** (not built here, written down so the next job can start):
+1. *Hero-less hands* — the replayer reads `heroIdx ?? 0` everywhere. For `hand.heroless` it needs: no
+   hero highlight or hero-relative copy; `cards.hero` read as seat 0's cards and every known card
+   drawn face up from the start; hand-shorthand encode/decode and the saved-hand schema carrying the
+   flag; the hands list and stats skipping such a hand. Until then `toReplayable` opens it with
+   `heroIdx` 0 and the flag.
+2. *Per-pot winners* — `result.pots` is parsed, normalised and kept; the replayer shows and edits only
+   `result.winners`.
+3. *Own game configs* — PLO5, PLO6, PLO6 8/b (the replayer's "Big Easy": rename it there, in
+   `HandReplayerView.jsx`, `utils.js`, `poker-engine.js` and `hand-shorthand.js`, which this job did
+   not touch), Short Deck (36-card deck, button blind and ante) and NLO8 need `HAND_CONFIG` entries and
+   game codes. Until then `toReplayable` maps them to the nearest game (`REPLAYER_FALLBACK`) and keeps
+   the quick-add name in `variant`.
+4. *Deferred (D)* — bomb pots, double boards, run it twice, button blinds, rock straddles.
+
+The switches, in `lib/quick-add/decisions.js`: `UTG_WITH_STRADDLE` (`'next-seat'`; `'both-act'` is the
+analysis' first proposal, `'ask'` never decides), `HEDGED_VALUES` (`'note'`; `'ask'` also raises a
+question), `OBSERVER_HANDS` (`'heroless'`; `'refuse'`), `UNSUPPORTED_FORMATS` (`'approximate'`, the
+deferred D; `'refuse'`), `OWN_GAMES` and `VARIANT_GAMES` (what a variant with no game of its own is
+recorded as), `SEVERAL_HANDS` (`'ask'`; `'most-detailed'` and `'last-asked'` make the gap a note),
+`PER_POT_WINNERS` (`true`), `HAND_HISTORY_FAST_PATH` (`true`) and `NUMBER_WORDS` (`'rewrite'`; `'aid'`
+sends the transcript as said).
+
+**The owner's readings of the collector's item-level questions** (in the prompt's glossaries and in
+the corpus notes of the cases they come from): OTTNH is "on to the next hand"; one suit letter after
+a two-card holding means both cards ("AKh", "A10h", "J 10d" = JdTd); a parenthesised amount after a
+player ("BB cold calls ($430)", "SB c (386)") is that player's starting stack; "1/2/4/800 PLO" is
+100/200 blinds with a 400 straddle and an 800 double straddle; "$5/T" is 5/10; "we 3x" is a raise to
+3x the open, not a 3-bet; "click" is a min-raise; pink is bink; "pull" is call; "base" in badugi is
+an ace; WHAP is a sound effect; unclear positions are estimated with the seat order kept (hero LJ,
+V2 UTG+2/MP1 in the nine-handed web-014); and the user is asked about "10/10/10/20/20 Stud 8",
+"BB limps", ".8bb deep", the 3-6 / 6-6 hand, the 635 shove, the doubled "goose deuce", "norris" and
+"nori", the order of "I raise in lamps I raise", and "from the hijack in the button".

@@ -12,6 +12,7 @@ test/quick-add/
   eval.js         validator + runner + scorer (Node 18+, no dependencies)
   normalisers.test.js   node --test: the server's deterministic readers and normaliser steps
   gaps-round2.test.mjs  node --test: the gaps added from the collected corpora
+  hh.test.js            node --test: the hand-history fast path (made-up PokerStars / GG / Full Tilt hands)
   reports/        timestamped .md + .json reports (local output; do not commit)
 ```
 
@@ -47,7 +48,7 @@ It exits 1 on any error.
 
 **Mac or PC:**
 ```bash
-node --test test/quick-add/normalisers.test.js test/quick-add/gaps-round2.test.mjs
+node --test test/quick-add/normalisers.test.js test/quick-add/gaps-round2.test.mjs test/quick-add/hh.test.js
 node test/quick-add/server.test.js
 node test/quick-add/gaps.test.mjs
 ```
@@ -181,17 +182,18 @@ Each file is an array of cases:
 | `draws` | `{ "predraw": [["BTN", 1, "Kd", "5c"], ["CO", 2]] }` | `[seat, count, discarded?, new?]`, recorded on the betting round **before** the draw |
 | `studUp` | `{ "@Qh": "Qh7c7sJd" }` | an opponent's up cards from 3rd to 6th street |
 | `showdown` | `{ "UTG": "KcJc" }` | opponents only; stud lists every card shown |
-| `winners` | `["UTG"]` or `{ "refs": ["BTN","BB"], "split": true }` | left out where side pots go to different players |
-| `observer` | `true` | the narrator was not in the hand; no `heroPosition` or `heroCards` |
+| `winners` | `["UTG"]` or `{ "refs": ["BTN","BB"], "split": true }` | the main pot's winners |
+| `pots` | `[{ "name": "board 1", "winners": ["UTG"] }, { "name": "board 2", "winners": ["BTN"] }]` | a winner per pot (side pots, a hand run twice); scored by pot name |
+| `observer` | `true` | the narrator was not in the hand: stored hero-less (`hand.heroless`), no hero question; no `heroPosition` or `heroCards` |
 | `recordable` | `false` | the text is not one recordable hand (a rules question, a story, a montage) |
 | `anteUnclear` | `5000` | an ante said with no type and no pot to settle it; leave `blinds.ante` out |
 | `unsupported` | `true` | a format the replayer cannot store: bomb pot, double board, run it twice, button blind, PLO5/6, short deck |
 | `otherHands` | `3` | how many other hands the text also tells |
 
 The last five are what only the parse can tell. The server carries them in `hand.quickAdd`
-(`observer`, `notRecordable`, `anteUnclear`, `unsupported`, `otherHands`), the oracle hand sets
-them there, and the gaps engine turns them into questions (`hero`, `scope`, `ante-type`,
-`unsupported`, `hand-choice`).
+(`notRecordable`, `anteUnclear`, `unsupported`, `otherHands`) and `hand.heroless` (`observer`), the
+oracle hand sets them there, and the gaps engine turns them into questions (`scope`, `ante-type`,
+`unsupported`, `hand-choice`; an observer hand asks nothing about a hero).
 
 Street keys: `preflop flop turn river`; `predraw draw1 draw2 draw3` (triple draw);
 `predraw draw` (single draw); `3rd 4th 5th 6th 7th` (stud). Stud players are `hero` or
