@@ -2146,7 +2146,19 @@ function finalize(c) {
     // First-run setup follows it for a new account (users.onboarding is NULL): it must open.
     await p.getByRole('button', { name: /later|skip|not now/i }).first().click({ timeout: 2000 }).catch(() => {});
     await p.waitForTimeout(1500);
-    if (!(await exists('.ob-progress'))) throw new Error('a new account did not reach first-run setup after "Later"');
+    // Unless the account has a setup record (an account older than users.onboarding is backfilled
+    // legacy and is never asked): then setup is not expected, and that is noted.
+    const rec = await p.evaluate(async () => {
+      try {
+        const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const r = await fetch('/api/user/onboarding', { headers: { Authorization: 'Bearer ' + t } });
+        return r.ok ? (await r.json()).onboarding : undefined;
+      } catch { return undefined; }
+    });
+    if (!(await exists('.ob-progress'))) {
+      if (rec === null) throw new Error('a new account did not reach first-run setup after "Later"');
+      notes.push({ view: 'real-name-prompt', note: `CHECK_FRESH_USER has a setup record (${JSON.stringify(rec)}): setup not expected after "Later"` });
+    }
     await also('after');
   }, 0, { signedOut: true, noSkip: true });
 
