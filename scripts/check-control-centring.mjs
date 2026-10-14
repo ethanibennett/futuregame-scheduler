@@ -44,7 +44,8 @@
 // menu open, with and without a running cash session), the
 // bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
 // with its page chevrons — report filters, Locations with a card open, its pager (Show 50 more /
-// Show all, Show fewer) and a sort on, the Sessions list filtered and a tournament's and a cash
+// Show all, Show fewer) and a sort on, Backers (the list, every card open on its last ten shares,
+// none yet, refused), the Sessions list filtered and a tournament's and a cash
 // session's detail, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
@@ -226,7 +227,8 @@ const NOT_CONTROLS = [
   // its lines seated on 3r).
   '.hm-receipt', '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty', '.hm-noise',
   // The bankroll dashboard's Locations cards: a room's name, meta, total and stats seated on r
-  // lines (bankroll-locations.css); the pager buttons in an open card are controls.
+  // lines (bankroll-locations.css); the pager buttons in an open card are controls. The Backers
+  // tab's cards are the same card (bankroll-backers.css): its Copy link and Open page are controls.
   '.bl-card',
 ];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
@@ -1843,6 +1845,31 @@ function finalize(c) {
     await dash('Locations');
     await click('.bl-sort [role="radio"]:has-text("Name")', 400);
   }, 2);
+  // Backers (read-only, the owner's backers as their pages show them): the list (a card is the
+  // Locations card with an actions row, Copy link and Open page, under it), every card open on its
+  // last ten shares (a history of none, one, two and more than ten, with its count line), and the
+  // empty and refused states. The last two are staged: the route is answered here and never sent.
+  // A card is a list row, so its text is seated (NOT_CONTROLS lists .bl-card); the two buttons in
+  // each card are controls.
+  const backersTab = async (answer) => {
+    if (answer) await p.route('**/api/staking/standing/backers', (r) => r.fulfill(answer));
+    try {
+      await dash('Backers');
+      await p.locator('.an-sheet .bb-backers .bl-item, .an-sheet .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
+    } finally { if (answer) await p.unroute('**/api/staking/standing/backers'); }
+  };
+  step('bankroll-backers', () => backersTab(), 2);
+  step('bankroll-backers-open', async () => {
+    await backersTab();
+    const shut = p.locator('.an-sheet .bb-item .bl-card[aria-expanded="false"]');
+    for (let k = await shut.count(); k > 0; k--) {
+      await shut.first().click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(250);
+    }
+    if (await p.locator('.an-sheet .bb-item .bl-card[aria-expanded="false"]').count()) throw new Error('a card did not open');
+  }, 4);
+  step('bankroll-backers-empty', () => backersTab({ status: 200, json: { backers: [] } }), 0);
+  step('bankroll-backers-refused', () => backersTab({ status: 403, json: { error: 'Forbidden' } }), 0);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);

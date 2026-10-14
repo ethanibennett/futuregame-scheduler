@@ -781,6 +781,7 @@ from a fresh derivation. A feed buy-in change is the usual cause. Each line has 
 | Method | Path | Body / result |
 |---|---|---|
 | GET | `/` | the player's standing agreements with backer, stakes in force, opening, running total, delivery flags, masked token |
+| GET | `/backers` | **built ahead of Phase 8, read-only**: the owner's roster as each backer's page shows it (see "Backers view" below) |
 | POST | `/` | `{ backerId \| newBacker{name,email,phone}, effectiveFrom, openingCents, stakes:[{format,channel,pct}] }` (a new link is minted with the dashboard's `newToken` shape: 8 base62, crypto random) |
 | PUT | `/:id` | `{ effectiveTo?, status?, openingCents?, openingNote? }` |
 | POST | `/:id/stakes` | `{ stakes:[…], mode:'from-today' \| 'correct', confirm? }`: `correct` without `confirm` returns the affected-share preview |
@@ -1891,6 +1892,36 @@ Expect `200`. The same command with the header removed must print `404`.
 
 Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
 parallel after Phase 2.
+
+### Backers view (read-only), ahead of Phase 8 (2026-10-14, branch `feat/backers-view`)
+
+The owner manages backers on the dashboard app, and none showed in the futurega.me web app. This
+shows them now, from data this app already holds and with no new table. **Read-only: no edit, no
+Notify.** Editing stays on the dashboard app until Phase 8 moves it here.
+
+- **Route.** `GET /api/staking/standing/backers` (`lib/staking/standing-routes.js`), under the
+  `/api/staking` admin gate and **owner only** (`HAM_OWNER_ID`, as `parity`): another admin gets 403.
+  The roster is one person's, and its links are credentials.
+- **Data.** `backersView(db)` in `lib/backer-surface.js` takes every live roster record
+  (`console_records`, `store = 'backers'`, `deleted = 0`, with a usable token) and builds it through
+  `buildFeed(db, token, { source: pageSource() })`. So the running total, sessions, hours, opening,
+  stakes line and share list are **exactly what that backer's `/b/` page shows**; nothing is
+  recomputed. Ordered by name.
+- **Per backer.** `{ id (the roster record's id, not the token), name, stakes, openingCents,
+  cumulativeCents, sessions, hours, shares (the last 10: date, game, venue, hours,
+  sessionResultCents, pct, shareCents), delivery: { sms, email } (booleans), link }`.
+  `link` is `https://futurega.me/b/<token>`, the owner's own credential to copy and open.
+- **Never returned.** A phone number, an email address, or a `backer_events.id` (it embeds the token,
+  see the Phase 2 traps). Under `BACKER_PAGE_SOURCE=sql`, a token a `backers` row owns takes its
+  delivery flags from that row, as the weekly email does.
+- **UI.** Bankroll dashboard > Backers (`BankrollBackers.jsx`, `bankroll-backers.css`,
+  `utils/bankroll-backers.js`): the Locations card plus an actions row (Copy link, Open page, and
+  whether SMS and email are set up); tap a card for its last ten shares.
+- **Tests.** `test/backers-view.test.js` (in `npm run test:backers`): shape, the gate (401, 403 for a
+  user and for another admin), no number, address or event id in the body, and every field equal to
+  `/api/backer/:token/feed` for the same token under both settings of the switch;
+  `vite-app/src/utils/__tests__/bankroll-backers.test.mjs`. Guard views: `bankroll-backers*` in
+  `scripts/check-control-centring.mjs`, the `bankroll-backers` pass in `scripts/check-text-clipping.mjs`.
 
 ---
 
