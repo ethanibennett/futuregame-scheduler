@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallba
 import { API_URL } from '../utils/api.js';
 import { HAND_CONFIG } from '../utils/utils.js';
 import { findGaps, applyAnswer } from '../utils/quick-add/gaps.js';
-import { replayerGame, gameConfig } from '../utils/quick-add/game.js';
+import { gameConfig } from '../utils/quick-add/game.js';
 
 /* Quick Add — describe a hand in words, then answer one question at a time
    until the replayer has what it needs. Contract: docs/quick-add-contract.md.
@@ -158,10 +158,6 @@ function toReplayable(hand) {
      watched) is opened with heroIdx 0 until the replayer can show one with every known card
      face up; the flag travels with the hand. See lib/quick-add/decisions.js, OBSERVER_HANDS. */
   if (h.heroIdx == null) h.heroIdx = 0;
-  /* TODO(replayer follow-up, owner 2026-10-14): PLO5, PLO6, PLO6 8/b, Short Deck and NLO8 get
-     replayer configs of their own; until then the replayer is given the nearest game it has and
-     the hand keeps the quick-add name in `variant`. */
-  if (typeof h.gameType === 'string' && replayerGame(h.gameType) !== h.gameType) { h.variant = h.gameType; h.gameType = replayerGame(h.gameType); }
   delete h.quickAddDismissed; // the gaps engine's "don't ask again" list
   // What the parse left pending or asked (docs/quick-add-contract.md, hand.quickAdd) is the
   // quick-add flow's, not the replayer's: its questions and their options must not be saved.

@@ -4207,6 +4207,13 @@
       gap: 0; margin-top: var(--subrow);
     }
     .replayer-entry-view .card-picker-btn { aspect-ratio: auto; height: 100%; padding: 0 calc(var(--gu) * 0.1); }
+    /* Short Deck: nine ranks to a suit (the twos to fives are out of the deck), so each suit is
+       still one row. Columns of the widest whole g the block allows, as above: 3g in a phone's 29g
+       or 31g block. */
+    .replayer-entry-view .card-picker-grid.is-short-deck {
+      grid-template-columns: repeat(9, minmax(0, 1fr));
+      grid-template-columns: repeat(9, round(down, 100% / 9, var(--gu)));
+    }
 
     /* Action pad: 7r buttons; the icon over its label, the pair centred in the box as one group
        (owner rule, 2026-10-10: no baseline seat inside a control) — as .cal-action-btn. Each
@@ -4494,6 +4501,7 @@
       justify-content: center;
       transition: opacity var(--dur-fast), transform var(--dur-fast);
     }
+    .card-picker-grid.is-short-deck { grid-template-columns: repeat(9, 1fr); }
     .card-picker-btn:active { transform: scale(0.92); }
     .card-picker-btn.selected {
       border-color: var(--accent);
@@ -5552,7 +5560,26 @@
     /* Seven of them still have to fit one seat, so they take a smaller share
        of the plaque — but the SAME share in both orientations, which the two
        separate cqmin rules were not giving. */
-    .replayer-table:is([data-hand-cards="6"],[data-hand-cards="7"]) .replayer-seat {
+    .replayer-table[data-hand-cards="7"] .replayer-seat {
+      --card-h: calc(var(--plaque-w) * 0.46);
+      --card-w: calc(var(--card-h) * 0.7143);
+    }
+    /* Five and six hole cards (PLO5, Big O; PLO6, PLO6 8/b) have to fit the plaque too: a fan wider
+       than its plaque runs under the next seat's. Measured at 402x874 and 1440x900, at 6, 8 and 9-max,
+       fan width over the seat's plaque width:
+         six cards at 0.46 of the plaque (the rule above, which stud's seven still takes): 1.057 on
+           both, 0.2g..0.5g past the plaque each side; at 0.42: 0.968 phone, 0.965 desktop;
+         five cards at the default 0.56 (with the hero a step bigger): phone 1.119 opponent / 1.153
+           hero; desktop 0.838 / 0.961, already inside, so the desktop is left as it was;
+           at 0.46 on the phone, hero included: 0.918.
+       The seven-card rule's "no hero exception" holds for these too. The five-card rule is for the
+       community games only: a five-card DRAW hand (2-7 triple draw, 5-card draw) is a different
+       table and keeps the sizes it was tuned at. */
+    .replayer-table[data-hand-cards="6"] .replayer-seat {
+      --card-h: calc(var(--plaque-w) * 0.42);
+      --card-w: calc(var(--card-h) * 0.7143);
+    }
+    .replayer-fullbleed .replayer-table[data-hand-cards="5"][data-community="1"] .replayer-seat {
       --card-h: calc(var(--plaque-w) * 0.46);
       --card-w: calc(var(--card-h) * 0.7143);
     }

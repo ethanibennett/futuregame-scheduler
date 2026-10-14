@@ -32,7 +32,7 @@ function lengthBand(h) {
 
 const CATEGORY_LABELS = {
   travel: 'Travel', lodging: 'Lodging', food: 'Food', entry_fees: 'Entry fees', coaching: 'Coaching', software: 'Software',
-  tips: 'Tips', other: 'Other', rakeback: 'Rakeback', bonus: 'Bonus', staking: 'Staking', sponsorship: 'Sponsorship',
+  tips: 'Tips', equipment: 'Equipment', fees: 'Fees', other: 'Other', rakeback: 'Rakeback', bonus: 'Bonus', staking: 'Staking', sponsorship: 'Sponsorship',
 };
 const catLabel = (c) => CATEGORY_LABELS[c] || (c ? c[0].toUpperCase() + c.slice(1).replace(/_/g, ' ') : 'Other');
 

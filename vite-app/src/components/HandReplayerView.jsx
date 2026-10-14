@@ -2,9 +2,9 @@ import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useR
 import { createPortal, flushSync } from 'react-dom';
 import Icon from './Icon.jsx';
 import { API_URL, SITE_URL } from '../utils/api.js';
-import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip} from '../utils/utils.js';
+import { HAND_CONFIG, HAND_CONFIG_DEFAULT, getGamePills, haptic, getVariantStrip, canonicalGameType, canonicalHand } from '../utils/utils.js';
 import { parseCardNotation, dualPlaceholder, evaluateHand, evaluateShowdown, assignNeutralSuits, GAME_EVAL,
-         bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
+         bestHighFor, bestLow8For, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
          computePotAwards, hiLoWinnersAmong, potLayerWinners, reconcileLayersToPot,
          seatOrderFromButton } from '../utils/poker-engine.js';
 import { encodeHand, decodeHand, GAME_CODES, VISUAL_SWITCHES } from '../utils/hand-shorthand.js';
@@ -25,6 +25,17 @@ import { parseHandText } from '../utils/hand-text-parser.js';
 import QuickAddView from './QuickAddView.jsx';
 import { checkExportable } from '../utils/hand-history/index.js';
 import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
+
+/* The ranks a game deals, high to low, for its card pickers. Short Deck plays a 36-card deck, the
+   twos to fives taken out, so its pickers have nine ranks to a suit and say so in a class that
+   narrows the grid to match (the grid is 13 columns wide for everything else). */
+const ALL_RANKS = 'AKQJT98765432'.split('');
+const SHORT_DECK_RANKS = 'AKQJT9876'.split('');
+function ranksFor(gameType) {
+  const cfg = HAND_CONFIG[gameType] || HAND_CONFIG[String(gameType || '').replace(/^Super /, '')];
+  return cfg && cfg.shortDeck ? SHORT_DECK_RANKS : ALL_RANKS;
+}
+const pickerGridClass = (ranks) => 'card-picker-grid' + (ranks.length < ALL_RANKS.length ? ' is-short-deck' : '');
 
 // ── Street definitions ──────────────────────────────────────
 const STREET_DEFS = {
@@ -555,13 +566,18 @@ function buildSolverSpot({ hand, game, streetIdx, heroCards, opponentCards, repl
    "AhAh" as two identical ones, and a bare "A" as an unknown-suit card - all
    of which render as a shorter card row than the player typed, with nothing
    anywhere saying why. This reports what the parser threw away. */
-function checkCardText(text) {
+function checkCardText(text, shortDeck) {
   if (!text) return null;
   const stripped = String(text).replace(/\s/g, '');
   if (!stripped) return null;
   const bad = [...new Set(stripped.split('').filter(ch =>
     !'AKQJT98765432'.includes(ch.toUpperCase()) && !'hdcsx'.includes(ch.toLowerCase())))];
   if (bad.length) return 'Not card notation: ' + bad.join(' ');
+  // Short Deck plays 36 cards: the twos to fives are not in the deck.
+  if (shortDeck) {
+    const out = [...new Set(stripped.split('').filter(ch => '2345'.includes(ch)))];
+    if (out.length) return 'Not in a Short Deck: ' + out.join(' ');
+  }
   const cards = parseCardNotation(stripped);
   const seen = new Set();
   for (const c of cards) {
@@ -1243,14 +1259,13 @@ function calcShowdownEquity(hand, heroCardsStr, opponentCardsArr, boardCardsStr,
         return ev && ev.score < Infinity ? (1e9 - ev.score) : 0;
       }
       if (gameEval.type === 'hilo') {
-        const hiEv = gameEval.method === 'omaha' ? bestOmahaHigh(hole, bCards) : bestHighHand(all);
-        const loEv = gameEval.method === 'omaha' ? bestOmahaLow(hole, bCards) : bestLowA5Hand(all, true);
+        const hiEv = bestHighFor(gameEval, hole, bCards);
+        const loEv = bestLow8For(gameEval, hole, bCards);
         const hiScore = hiEv && hiEv.score ? hiEv.score : 0;
         const loScore = loEv && loEv.qualified ? (1e9 - loEv.score) : 0;
         return hiScore + loScore;
       }
-      if (gameEval.method === 'omaha') ev = bestOmahaHigh(hole, bCards);
-      else ev = bestHighHand(all);
+      ev = bestHighFor(gameEval, hole, bCards);
       return ev && ev.score ? ev.score : 0;
     } catch { return 0; }
   };
@@ -2442,26 +2457,26 @@ function HandReplayerEntry({ hand, setHand, onDone, onCancel }) {
             use, which is information the parser already has. */}
         <div className="replayer-field">
           <label>Hero Cards</label>
-          <input type="text" className={checkCardText(currentStreet.cards.hero) ? 'is-invalid' : undefined}
+          <input type="text" className={checkCardText(currentStreet.cards.hero, gameCfg.shortDeck) ? 'is-invalid' : undefined}
             placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'AhKd'} value={currentStreet.cards.hero} onChange={e => updateHeroCards(currentStreetIdx, e.target.value)} />
-          {checkCardText(currentStreet.cards.hero) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.hero)}</div>}
+          {checkCardText(currentStreet.cards.hero, gameCfg.shortDeck) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.hero, gameCfg.shortDeck)}</div>}
           <CardRow text={currentStreet.cards.hero} stud={gameCfg.isStud} max={gameCfg.heroCards} />
         </div>
         {category === 'community' && currentStreetIdx > 0 && (
           <div className="replayer-field">
             <label>Board ({currentStreet.name})</label>
-            <input type="text" className={checkCardText(currentStreet.cards.board) ? 'is-invalid' : undefined}
+            <input type="text" className={checkCardText(currentStreet.cards.board, gameCfg.shortDeck) ? 'is-invalid' : undefined}
               placeholder={gameCfg.boardPlaceholder || 'Qh7d2c'} value={currentStreet.cards.board} onChange={e => updateBoardCards(currentStreetIdx, e.target.value)} />
-            {checkCardText(currentStreet.cards.board) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.board)}</div>}
+            {checkCardText(currentStreet.cards.board, gameCfg.shortDeck) && <div className="replayer-field-error">{checkCardText(currentStreet.cards.board, gameCfg.shortDeck)}</div>}
             <CardRow text={currentStreet.cards.board} max={streetDef.boardCards[currentStreetIdx]} />
           </div>
         )}
         {hand.players.slice(1).map((p, oi) => (
           <div key={oi} className="replayer-field">
             <label>{p.name} Cards</label>
-            <input type="text" className={checkCardText((currentStreet.cards.opponents || [])[oi] || '') ? 'is-invalid' : undefined}
+            <input type="text" className={checkCardText((currentStreet.cards.opponents || [])[oi] || '', gameCfg.shortDeck) ? 'is-invalid' : undefined}
               placeholder={gameCfg.heroPlaceholder ? dualPlaceholder(gameCfg.heroPlaceholder) : 'XxXx'} value={(currentStreet.cards.opponents || [])[oi] || ''} onChange={e => updateOpponentCards(currentStreetIdx, oi, e.target.value)} />
-            {checkCardText((currentStreet.cards.opponents || [])[oi] || '') && <div className="replayer-field-error">{checkCardText((currentStreet.cards.opponents || [])[oi] || '')}</div>}
+            {checkCardText((currentStreet.cards.opponents || [])[oi] || '', gameCfg.shortDeck) && <div className="replayer-field-error">{checkCardText((currentStreet.cards.opponents || [])[oi] || '', gameCfg.shortDeck)}</div>}
             <CardRow text={(currentStreet.cards.opponents || [])[oi] || ''} stud={gameCfg.isStud} max={gameCfg.heroCards} placeholderCount={!(currentStreet.cards.opponents || [])[oi] ? gameCfg.heroCards : 0} />
           </div>
         ))}
@@ -3390,7 +3405,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const heroCardsLabel = gameCfg.isStud ? '3rd Street' : 'Hero Cards';
     const heroCurrentCards = parseCardNotation(heroCardsVal).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
     const heroCurrentSet = new Set(heroCurrentCards);
-    const heroAllRanks = 'AKQJT98765432'.split('');
+    const heroAllRanks = ranksFor(hand.gameType);
     const heroAllSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
     /* Read the hand from `prev`, not from the closure. Both branches used
        heroCurrentCards and heroCardsVal, which are this render's values, so
@@ -3423,7 +3438,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 onChange={e => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === 0 ? { ...s, cards: { ...s.cards, hero: e.target.value } } : s) }))} />
               <CardRow text={heroCardsVal} stud={gameCfg.isStud} max={heroMaxCards} />
             </div>
-            <div className="card-picker-grid">
+            <div className={pickerGridClass(heroAllRanks)}>
               {heroAllSuits.map(suit => (
                 <React.Fragment key={suit.key}>
                   {heroAllRanks.map(rank => {
@@ -3465,7 +3480,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     const currentBoardCards = parseCardNotation(boardVal).filter(c => c.suit !== 'x').map(c => c.rank + c.suit);
     const currentBoardSet = new Set(currentBoardCards);
     currentBoardCards.forEach(c => usedCards.delete(c));
-    const allRanks = 'AKQJT98765432'.split('');
+    const allRanks = ranksFor(hand.gameType);
     const allSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
 
     const toggleCard = (card) => {
@@ -3491,7 +3506,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
               <label>{streetName} Cards</label>
               <input type="text" placeholder={nextStreet === 1 ? 'Qh7d2c' : 'Ts'} value={boardVal} onChange={e => setHand(prev => ({ ...prev, streets: prev.streets.map((s, i) => i === nextStreet ? { ...s, cards: { ...s.cards, board: e.target.value } } : s) }))} />
             </div>
-            <div className="card-picker-grid">
+            <div className={pickerGridClass(allRanks)}>
               {allSuits.map(suit => (
                 <React.Fragment key={suit.key}>
                   {allRanks.map(rank => {
@@ -3528,7 +3543,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
     });
     const showdownPlayers = hand.players.map((p, i) => ({ player: p, idx: i })).filter(o => o.idx !== heroIdx && !foldedSet.has(o.idx));
     const sdMaxCards = gameCfg.heroCards || 2;
-    const sdAllRanks = 'AKQJT98765432'.split('');
+    const sdAllRanks = ranksFor(hand.gameType);
     const sdAllSuits = [{key:'h'},{key:'d'},{key:'c'},{key:'s'}];
 
     // For stud: accumulate cards from all streets for each player
@@ -3650,7 +3665,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                       </div>}
                     </div>}
                     {!isComplete && (
-                      <div className="card-picker-grid">
+                      <div className={pickerGridClass(sdAllRanks)}>
                         {sdAllSuits.map(suit => (
                           <React.Fragment key={suit.key}>
                             {sdAllRanks.map(rank => {
@@ -3702,8 +3717,8 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                 const _hs = {}; const _ls = {};
                 playerHands.forEach(ph => {
                   const al = boardParsed.length ? ph.cards.concat(boardParsed) : ph.cards;
-                  _hs[ph.idx] = _ec.method === 'omaha' ? bestOmahaHigh(ph.cards, boardParsed) : bestHighHand(al);
-                  const lo = _ec.method === 'omaha' ? bestOmahaLow(ph.cards, boardParsed) : bestLowA5Hand(al, true);
+                  _hs[ph.idx] = bestHighFor(_ec, ph.cards, boardParsed);
+                  const lo = bestLow8For(_ec, ph.cards, boardParsed);
                   _ls[ph.idx] = lo && lo.qualified ? lo : null;
                 });
                 let _bh = -1, _bl = Infinity;
@@ -4267,7 +4282,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                     const heroHasCards = hcParsed.length >= hcMaxCards;
                     const pickerOpen = showHeroCardPicker || !heroHasCards;
                     if (!pickerOpen) return null;
-                    const hcRanks = 'AKQJT98765432'.split('');
+                    const hcRanks = ranksFor(hand.gameType);
                     const hcSuits = [{key:'h',color:'#ef4444'},{key:'d',color:'#3b82f6'},{key:'c',color:'#22c55e'},{key:'s',color:'var(--text)'}];
                     const toggleHCard = (card) => {
                       setHand(prev => {
@@ -4285,7 +4300,7 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
                         <div className="gto-picker-label">
                           {heroHasCards ? 'Edit Cards' : 'Select Your Cards'}
                         </div>
-                        <div className="card-picker-grid">
+                        <div className={pickerGridClass(hcRanks)}>
                           {hcSuits.map(suit => (
                             <React.Fragment key={suit.key}>
                               {hcRanks.map(rank => {
@@ -4456,7 +4471,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [shorthandErrors, setShorthandErrors] = useState([]);
   const [hands, setHands] = useState([]);
   const [games, setGames] = useState([]);
-  const [currentHand, setCurrentHand] = useState(initialHand || null);
+  const [currentHand, setCurrentHand] = useState(initialHand ? canonicalHand(initialHand) : null);
   const [currentHandId, setCurrentHandId] = useState(null);
   // A hand that arrived by a shared link (initialHand) is someone else's: the hand-history export
   // is for hands the user saved or entered, since it writes the hero as the user and files it
@@ -4475,7 +4490,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [studAction, setStudAction] = useState(false);
   const [showMoreFor, setShowMoreFor] = useState(null); // 'Omaha' | 'Draw' | null
   const [gameHistory, setGameHistory] = useState(() => {
-    try { const s = localStorage.getItem('replayer_game_history'); return s ? JSON.parse(s) : []; }
+    /* A favourite chosen before the rename says "Big Easy"; the picker's row is now PLO6 8/b. */
+    try {
+      const s = localStorage.getItem('replayer_game_history');
+      return s ? JSON.parse(s).map(f => (f && typeof f.game === 'string' ? { ...f, game: canonicalGameType(f.game) } : f)) : [];
+    }
     catch { return []; }
   });
   // Custom game config
@@ -4486,8 +4505,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   // Game selection config
   const structureGameMap = {
-    'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NLH', 'Short Deck': 'NLH',
-      'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'Big Easy': 'Big Easy', 'PLO5': 'PLO', 'PLO6': 'PLO',
+    'No Limit':  { "Hold'em": 'NLH', 'Pineapple': 'NLH', 'Short Deck': 'Short Deck',
+      'Omaha': 'PLO', 'Omaha 8/b': 'NLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
       'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
       'Stud Hi': 'NL Stud Hi', 'Stud 8/b': 'NL Stud 8', 'Razz': 'NL Razz',
       'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
@@ -4498,8 +4517,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
       '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
       'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-    'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PLH', 'Short Deck': 'PLH',
-      'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'Big Easy': 'Big Easy', 'PLO5': 'PLO', 'PLO6': 'PLO',
+    'Pot Limit': { "Hold'em": 'PLH', 'Pineapple': 'PLH', 'Short Deck': 'Short Deck',
+      'Omaha': 'PLO', 'Omaha 8/b': 'PLO8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
       'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
       'Stud Hi': 'PL Stud Hi', 'Stud 8/b': 'PL Stud 8', 'Razz': 'PL Razz',
       'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
@@ -4510,8 +4529,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
       'Archie 66': 'Badugi', 'Archie 99': 'Badugi', 'Ari': 'Badugi',
       '5-Card Draw': 'PL 5CD Hi', 'OFC': 'OFC',
       'Dramaha Hi': 'PLO', 'Dramaha 2-7': 'PLO', 'Dramaha 49': 'PLO', 'Dramaha 0': 'PLO', 'Dramadugi': 'PLO', 'Omajack': 'PLO' },
-    'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'LHE',
-      'Omaha': 'O8', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'Big Easy': 'Big Easy', 'PLO5': 'PLO', 'PLO6': 'PLO',
+    'Limit':     { "Hold'em": 'LHE', 'Pineapple': 'LHE', 'Short Deck': 'Short Deck',
+      'Omaha': 'O8', 'Omaha 8/b': 'O8', 'Big O': 'Big O', 'PLO6 8/b': 'PLO6 8/b', 'PLO5': 'PLO5', 'PLO6': 'PLO6',
       'Double Board Bomb Pot': 'PLO', 'Courchevel': 'PLO',
       'Stud Hi': 'Stud Hi', 'Stud 8/b': 'Stud 8', 'Razz': 'Razz',
       'Stud Hi/Lo Regular': 'Stud 8', '2-7 Razz': 'Razz',
@@ -4525,7 +4544,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   };
   const defaultStructure = {
     "Hold'em": 'No Limit', 'Pineapple': 'No Limit', 'Short Deck': 'No Limit',
-    'Omaha': 'Pot Limit', 'Omaha 8/b': 'Pot Limit', 'Big O': 'Pot Limit', 'Big Easy': 'Pot Limit',
+    'Omaha': 'Pot Limit', 'Omaha 8/b': 'Pot Limit', 'Big O': 'Pot Limit', 'PLO6 8/b': 'Pot Limit',
     'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit',
     'Double Board Bomb Pot': 'No Limit', 'Courchevel': 'Pot Limit',
     'Stud Hi': 'Limit', 'Stud 8/b': 'Limit', 'Razz': 'Limit',
@@ -4540,6 +4559,11 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     'Dramaha 0': 'Pot Limit', 'Dramadugi': 'Pot Limit', 'Omajack': 'Pot Limit',
   };
 
+  /* Games that are played one way only, with that structure. Their rows offer no other, and the
+     label is the game's own name: "PLO6 8/b", not "Limit PLO6 8/b". (Short Deck is a no-limit game,
+     with a button blind and an ante; PLO5, PLO6 and PLO6 8/b are pot-limit.) */
+  const FIXED_STRUCTURE = { 'Short Deck': 'No Limit', 'PLO5': 'Pot Limit', 'PLO6': 'Pot Limit', 'PLO6 8/b': 'Pot Limit' };
+
   const RAZZ_VARIANTS = ['Razz', '2-7 Razz', 'Razzdugi', 'Razzdeucy'];
 
   const variantDisplayName = useMemo(() => {
@@ -4547,15 +4571,16 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     const superPrefix = studSuper && selectedCategory === 'Stud' ? 'Super ' : '';
     const actionPrefix = studAction && isRazz ? 'Action ' : '';
     const overrides = {
-      "Pot Limit|Omaha": 'Pot Limit Omaha', "Pot Limit|Omaha 8/b": 'PLO8', "Pot Limit|Big O": 'Big O', "Pot Limit|Big Easy": 'Big Easy',
-      "No Limit|Omaha": 'No Limit Omaha', "No Limit|Omaha 8/b": 'NLO8', "No Limit|Big O": 'No Limit Big O', "No Limit|Big Easy": 'Big Easy',
-      "Limit|Omaha": 'Limit Omaha Hi', "Limit|Omaha 8/b": 'O8', "Limit|Big O": 'Limit Big O', "Limit|Big Easy": 'Big Easy',
-      "Pot Limit|PLO5": 'PLO5', "Pot Limit|PLO6": 'PLO6',
+      "Pot Limit|Omaha": 'Pot Limit Omaha', "Pot Limit|Omaha 8/b": 'PLO8', "Pot Limit|Big O": 'Big O',
+      "No Limit|Omaha": 'No Limit Omaha', "No Limit|Omaha 8/b": 'NLO8', "No Limit|Big O": 'No Limit Big O',
+      "Limit|Omaha": 'Limit Omaha Hi', "Limit|Omaha 8/b": 'O8', "Limit|Big O": 'Limit Big O',
       "No Limit|Double Board Bomb Pot": 'Bomb Pot',
       "Pot Limit|Courchevel": 'Courchevel',
     };
     // Points-based games — no structure prefix
     if (selectedGame === 'OFC') return 'OFC';
+    // Games played one way only are known by their own name.
+    if (FIXED_STRUCTURE[selectedGame]) return selectedGame;
     const key = bettingStructure + '|' + selectedGame;
     const base = overrides[key] || (
       ['Stud Hi','Stud 8/b','Razz','Stud Hi/Lo Regular','2-7 Razz','Razzdugi','Razzdeucy',
@@ -4568,7 +4593,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
 
   const categoryGroups = useMemo(() => [
     { label: "Hold'em", games: ["Hold'em", 'Pineapple', 'Short Deck'] },
-    { label: 'Omaha',   games: ['Omaha', 'Omaha 8/b', 'Big O', 'Big Easy', 'PLO5', 'PLO6'],
+    { label: 'Omaha',   games: ['Omaha', 'Omaha 8/b', 'Big O', 'PLO6 8/b', 'PLO5', 'PLO6'],
                         more:  ['Double Board Bomb Pot', 'Courchevel'] },
     { label: 'Stud',    games: ['Stud Hi', 'Stud 8/b', 'Razz'],
                         more:  ['Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'] },
@@ -4622,7 +4647,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
     // Sync category tab
     const cat =
       ["Hold'em", 'Pineapple', 'Short Deck'].includes(game) ? "Hold'em" :
-      ['Omaha', 'Omaha 8/b', 'Big O', 'Big Easy', 'PLO5', 'PLO6', 'Double Board Bomb Pot', 'Courchevel'].includes(game) ? 'Omaha' :
+      ['Omaha', 'Omaha 8/b', 'Big O', 'PLO6 8/b', 'PLO5', 'PLO6', 'Double Board Bomb Pot', 'Courchevel'].includes(game) ? 'Omaha' :
       ['Stud Hi', 'Stud 8/b', 'Razz', 'Stud Hi/Lo Regular', '2-7 Razz', 'Razzdugi', 'Razzdeucy'].includes(game) ? 'Stud' :
       ['2-7 Triple Draw', '2-7 Single Draw', 'A-5 Triple Draw', 'A-5 Single Draw',
        'Badugi', 'Badeucy', 'Badacey', 'Archie 66', 'Archie 99', 'Ari', '5-Card Draw'].includes(game) ? 'Draw' :
@@ -4633,6 +4658,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   };
 
   const handleStructureChange = (s) => {
+    if (FIXED_STRUCTURE[selectedGame] && FIXED_STRUCTURE[selectedGame] !== s) return;
     setBettingStructure(s);
     const map = structureGameMap[s];
     if (map && map[selectedGame]) setSelectedGameType(map[selectedGame]);
@@ -4646,7 +4672,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         fetch(`${API_URL}/replayer/hands`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/replayer/games`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      if (handsRes.ok) setHands(await handsRes.json());
+      // Hands saved before 2026-10-14 call six-card PLO hi-lo "Big Easy"; the list says PLO6 8/b.
+      if (handsRes.ok) { const rows = await handsRes.json(); setHands(Array.isArray(rows) ? rows.map(canonicalHand) : rows); }
       if (gamesRes.ok) setGames(await gamesRes.json());
     } catch (e) { console.error('Replayer fetch error:', e); }
     finally { setLoading(false); }
@@ -4657,7 +4684,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   // Handle initialHand prop changes
   useEffect(() => {
     if (initialHand) {
-      setCurrentHand(initialHand);
+      setCurrentHand(canonicalHand(initialHand));
       setMode('replay');
       setHandIsShared(true);
       setTitle('');
@@ -4682,6 +4709,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         // Backwards-compat: old saves wrapped the entire POST body as hand_data,
         // so the actual hand object lives under handData.handData
         if (handData && handData.handData && !handData.streets) handData = handData.handData;
+        // A hand saved as "Big Easy" opens as PLO6 8/b (the same game, renamed 2026-10-14).
+        handData = canonicalHand(handData);
         // Normalize missing fields so the replay view never crashes on old/incomplete records
         if (!handData.streets) handData.streets = [];
         if (!handData.players) handData.players = [];
@@ -5156,10 +5185,13 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           })()}
           {/* Betting structure — hidden for OFC */}
           {selectedGame !== 'OFC' && (()=> {
+            const fixed = FIXED_STRUCTURE[selectedGame];
             const dimmed = new Set(
+              fixed                           ? ['No Limit', 'Pot Limit', 'Limit'].filter(x => x !== fixed) :
               selectedCategory === 'Stud'     ? ['No Limit', 'Pot Limit'] :
               selectedCategory === "Hold'em"  ? ['Pot Limit'] :
-              selectedCategory === 'Omaha'    ? ['No Limit'] : []
+              /* No-limit Omaha is a game now, but only the hi-lo one (NLO8). */
+              selectedCategory === 'Omaha'    ? (selectedGame === 'Omaha 8/b' ? [] : ['No Limit']) : []
             );
             return (
               <>
@@ -6083,7 +6115,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             const parsed = parseCardNotation(pCards).filter(c => c.suit !== 'x');
             const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
             let ev = null;
-            if (cfg.type === 'high' || cfg.type === 'hilo') ev = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
+            if (cfg.type === 'high' || cfg.type === 'hilo') ev = bestHighFor(cfg, parsed, board);
             else if (cfg.type === 'low') ev = cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(board), false) : bestLow27Hand(parsed.concat(board));
             else if (cfg.type === 'badugi') ev = bestBadugiHand(parsed);
             if (ev) winHandName = ev.name;
@@ -6172,8 +6204,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       const raw = pi === replayHeroIdx ? heroCards : (opponentCards[pi] || '');
       const parsed = raw && raw !== 'MUCK' ? parseCardNotation(raw).filter(c => c.suit !== 'x') : [];
       if (parsed.length < (gameCfg.isStud ? 5 : (gameCfg.heroCards || 2))) { readable = false; return; }
-      const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
-      const lo = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(parsed.concat(board), true);
+      const hi = bestHighFor(cfg, parsed, board);
+      const lo = bestLow8For(cfg, parsed, board);
       map[pi] = { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
     });
     if (readable && Object.keys(map).length) {
@@ -6221,12 +6253,12 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       if (!cfg) return null;
       const all = parsed.concat(board);
       if (cfg.type === 'high') {
-        const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(all);
+        const hi = bestHighFor(cfg, parsed, board);
         return { hi: hi ? hi.score : null, lo: null };
       }
       if (cfg.type === 'hilo') {
-        const hi = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(all);
-        const lo = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(all, true);
+        const hi = bestHighFor(cfg, parsed, board);
+        const lo = bestLow8For(cfg, parsed, board);
         return { hi: hi ? hi.score : null, lo: lo && lo.qualified ? lo.score : null };
       }
       if (cfg.type === 'low') {
@@ -6749,8 +6781,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
     if (parsed.length < (gameCfg.heroCards || 2)) return null;
     const board = category === 'community' ? parseCardNotation(boardCards).filter(c => c.suit !== 'x') : [];
     if (cfg.type === 'hilo') {
-      const hiEv = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
-      const loEv = cfg.method === 'omaha' ? bestOmahaLow(parsed, board) : bestLowA5Hand(parsed.concat(board), true);
+      const hiEv = bestHighFor(cfg, parsed, board);
+      const loEv = bestLow8For(cfg, parsed, board);
       /* Only a half this player won gets its label: "Hi:" is a claim, and it
          belongs to whoever won the high. */
       const wonHi = !hiLoHalves || hiLoHalves.hi.has(playerIdx);
@@ -6765,7 +6797,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
       return null;
     }
     let ev = null;
-    if (cfg.type === 'high') ev = cfg.method === 'omaha' ? bestOmahaHigh(parsed, board) : bestHighHand(parsed.concat(board));
+    if (cfg.type === 'high') ev = bestHighFor(cfg, parsed, board);
     else if (cfg.type === 'low') ev = cfg.lowType === 'a5' ? bestLowA5Hand(parsed.concat(board), false) : bestLow27Hand(parsed.concat(board));
     else if (cfg.type === 'badugi') ev = bestBadugiHand(parsed);
     if (!ev) return null;

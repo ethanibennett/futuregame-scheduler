@@ -99,6 +99,26 @@ function test(name, fn) {
     assert.strictEqual(tx.eventDate(null), '');
   });
 
+  // ── the bankroll merge: affects_balance, equipment and fees ──
+  test('before the money-merge migration every row moves its balance (no affects_balance column)', () => {
+    assert.strictEqual(source.entries(db, 1).length, 3);
+  });
+  test('affects_balance = 0 rows are skipped; the new categories are labelled', () => {
+    db.run('ALTER TABLE bankroll_transactions ADD COLUMN affects_balance INTEGER NOT NULL DEFAULT 1'); // what money-merge-2026-10 adds
+    assert.strictEqual(source.entries(db, 1).length, 3, 'every existing row defaults to 1');
+    db.run(ins, [1, null, '2026-08-01', 'expense', 'equipment', 61, 'USD', 'imported', null, null]);
+    db.run(ins, [1, null, '2026-08-02', 'expense', 'fees', 12.25, 'USD', null, null, null]);
+    db.run("UPDATE bankroll_transactions SET affects_balance = 0 WHERE category = 'equipment'");
+    const rows = source.entries(db, 1);
+    assert.deepStrictEqual(rows.map((r) => [r.category, r.amount, r.label]).slice(3), [['fees', -12.25, 'Fees']], 'the outside-roll equipment row is not in the ledger');
+    assert.strictEqual(rows.length, 4);
+    assert.strictEqual(db.exec("SELECT COUNT(*) FROM bankroll_transactions WHERE category = 'equipment'")[0].values[0][0], 1, 'but the row exists, for the list and the tax report');
+    db.run("UPDATE bankroll_transactions SET affects_balance = 1 WHERE category = 'equipment'");
+    assert.deepStrictEqual(source.entries(db, 1).map((r) => r.label).slice(3), ['Equipment · imported', 'Fees']);
+    assert.ok(tx.CATEGORIES.expense.includes('equipment') && tx.CATEGORIES.expense.includes('fees'));
+    assert.ok(!tx.CATEGORIES.income.includes('equipment'));
+  });
+
   db.close();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

@@ -10,13 +10,13 @@ encodes (`vite-app/src/utils/hand-shorthand.js` is the canonical serialisation; 
 form in `HandReplayerView.jsx` for field meanings). Key facts:
 
 - `gameType` — one of the replayer's game names (`HAND_CONFIG` in `vite-app/src/utils/utils.js`:
-  NLH, PLO, LHE, O8, Stud Hi, Stud 8, Razz, 2-7 TD, A-5 TD, Badugi, NL 2-7 SD, …) **or one of quick
-  add's own games** (owner decision E, 2026-10-14): `PLO5`, `PLO6`, `PLO6 8/b`, `Short Deck`,
-  `NLO8`. They are recognised and output under their own names and are never collapsed into PLO or
-  NLH in the parse; `PLO6 8/b` is what the replayer still calls "Big Easy" ("Big Easy" is only an
-  input alias). Until the replayer has configs for them, QuickAddView opens a hand in the nearest
-  game it has (`PLO5`/`PLO6` → PLO, `PLO6 8/b` → Big Easy, `Short Deck` → NLH, `NLO8` → PLO8) and
-  keeps the quick-add name in `variant`.
+  NLH, PLO, LHE, O8, Stud Hi, Stud 8, Razz, 2-7 TD, A-5 TD, Badugi, NL 2-7 SD, …), which includes
+  the five games owner decision E (2026-10-14) made their own: `PLO5`, `PLO6`, `PLO6 8/b`,
+  `Short Deck`, `NLO8`. They are recognised and output under their own names and are never
+  collapsed into PLO or NLH in the parse, and the replayer plays each natively (its own
+  `HAND_CONFIG` entry, evaluator and picker row), so QuickAddView opens a hand under the name it
+  has. `PLO6 8/b` is the replayer's name too (it was "Big Easy" until the 2026-10-14 rename;
+  "Big Easy" is only an input alias, and an old saved hand or link that says it opens as PLO6 8/b).
 - `gameMode` `'mtt'|'cash'`, `currency` (cash only).
 - `blinds` `{ sb, bb, ante, … }` (+ straddles, bring-in / big bet for stud and limit).
 - `players[]` `{ name, position, startingStack }`; `heroIdx` is the hero's index.

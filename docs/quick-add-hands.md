@@ -155,11 +155,16 @@ speech that never touches rank words.
    `heroIdx` 0 and the flag.
 2. *Per-pot winners* — `result.pots` is parsed, normalised and kept; the replayer shows and edits only
    `result.winners`.
-3. *Own game configs* — PLO5, PLO6, PLO6 8/b (the replayer's "Big Easy": rename it there, in
-   `HandReplayerView.jsx`, `utils.js`, `poker-engine.js` and `hand-shorthand.js`, which this job did
-   not touch), Short Deck (36-card deck, button blind and ante) and NLO8 need `HAND_CONFIG` entries and
-   game codes. Until then `toReplayable` maps them to the nearest game (`REPLAYER_FALLBACK`) and keeps
-   the quick-add name in `variant`.
+3. *Own game configs* — DONE (2026-10-14, `feat/replayer-games`). PLO5, PLO6, PLO6 8/b, Short Deck and
+   NLO8 each have a `HAND_CONFIG` entry (`vite-app/src/utils/utils.js`, copied exactly into
+   `vite-app/src/utils/quick-add/game.js`), a `GAME_EVAL` entry and its own rows in the replayer's game
+   picker, and "Big Easy" is now "PLO6 8/b" everywhere a user sees it (hands saved as "Big Easy", links
+   with the code `BE` and a header that spells the old name all still open as PLO6 8/b:
+   `canonicalGameType` in `utils.js`, `decodeHand` in `hand-shorthand.js`). `REPLAYER_FALLBACK` and
+   `replayerGame` are gone, so quick add opens these games natively. Short Deck is a 36-card deck
+   (`poker-engine.js` `SHORT_DECK_RULES`: a flush beats a full house, A-6-7-8-9 is the lowest straight,
+   a straight beats three of a kind unless `SHORT_DECK_TRIPS_BEAT_STRAIGHT` is flipped); its button blind
+   stays with the deferred formats (D).
 4. *Deferred (D)* — bomb pots, double boards, run it twice, button blinds, rock straddles.
 
 The switches, in `lib/quick-add/decisions.js`: `UTG_WITH_STRADDLE` (`'next-seat'`; `'both-act'` is the

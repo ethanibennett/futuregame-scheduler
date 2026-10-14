@@ -19,7 +19,7 @@ import { API_URL } from '../utils/api.js';
 import { CURRENCY_CONFIG, convertAmount, nativeCurrency, getToday, normaliseDate, MINUS } from '../utils/utils.js';
 import { BANKROLL_ALL, BANKROLL_MAIN, bankrollQuery, entryBankrollKey } from '../utils/bankrolls.js';
 import {
-  EXPENSE_CATEGORIES, INCOME_CATEGORIES, categoryLabel, totalsByCategory, inYear, tripPnl,
+  EXPENSE_CATEGORIES, INCOME_CATEGORIES, categoryLabel, totalsByCategory, inYear, tripPnl, isOutsideRoll, OUTSIDE_ROLL_LABEL,
   transactionsToCsv, parseAmount, shortDay, tripRange, signedAmount,
 } from '../utils/transactions.js';
 
@@ -92,7 +92,7 @@ function Sheet({ title, label, onClose, closeText = 'Done', children }) {
 
 // One transaction as a row: date | category · note | amount. A button when it can be edited.
 function TxRow({ t, onOpen }) {
-  const what = [categoryLabel(t.kind, t.category), t.note || t.series || t.tournament_name || t.trip_name].filter(Boolean).join(' · ');
+  const what = [categoryLabel(t.kind, t.category), isOutsideRoll(t) && OUTSIDE_ROLL_LABEL, t.note || t.series || t.tournament_name || t.trip_name].filter(Boolean).join(' · ');
   const inner = (
     <>
       <span className="tx-row-date">{shortDay(t.occurred_on)}</span>

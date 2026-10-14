@@ -44,7 +44,8 @@
 // menu open, with and without a running cash session), the
 // bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
 // with its page chevrons — report filters, Locations with a card open, its pager (Show 50 more /
-// Show all, Show fewer) and a sort on, CSV import), cash sessions, expenses and
+// Show all, Show fewer) and a sort on, the Sessions list filtered and a tournament's and a cash
+// session's detail, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
@@ -209,7 +210,7 @@ const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot', '.vm-map-canvas'];
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
   '.cal-event-row', '.cal-event-bar', '.cal-event-chevron', '.dash-event-card', '.settings-row-btn',
-  '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row',
+  '.bk-row', '.tx-row', '.tx-trip-row', '.cs-row', '.bs-row',
   // Pick-list rows that seat their label on an r line by design: the Hands game picker's radio
   // rows ("4r row, label baseline one r above the bottom") and New Group's buddy rows ("the
   // name on +3r").
@@ -508,12 +509,19 @@ function scan(cfg) {
     if (Number(s.opacity) === 0 || s.visibility === 'hidden') return false;
     return hasBox(s) || /^(img|svg|canvas|video)$/i.test(h.tagName);
   };
+  // The bankroll tab strip's edge fades (.bt-fade: 3g of the sheet's ground fading to clear, shown
+  // only where more tabs lie beyond) paint over the pills under them, yet are pointer-events: none,
+  // so elementsFromPoint never lists them. Their area covers like anything else that paints: the
+  // pill that peeks out under one (a seventh tab, "Rules" at x32g) has its glyphs washed, and a
+  // pixel read of its ink centre is off by the wash, not by the label.
+  const fades = [...document.querySelectorAll('.bt-fade')].filter(visible).map((f) => f.getBoundingClientRect());
   const coverage = (el, b) => {
     let n = 0, covered = 0, out = 0;
     for (const fy of FS) for (const fx of FS) {
       n++;
       const x = b.left + b.width * fx, y = b.top + b.height * fy;
       if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) { out++; continue; }
+      if (!el.closest('.bt-fade') && fades.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) { covered++; continue; }
       for (const h of document.elementsFromPoint(x, y)) {
         if (h === el || el.contains(h) || h.contains(el)) break;
         if (h.closest('svg') && h.tagName.toLowerCase() !== 'svg') continue;
@@ -1778,6 +1786,24 @@ function finalize(c) {
   step('bankroll-dashboard-closed', async () => { await dash(null); await sections(false); }, 3);
   step('bankroll-rules', () => dash('Rules'), 2);
   step('bankroll-goals', () => dash('Goals'), 1);
+  // Sessions: the list (chips, year pills, rows; scrolled past the next year), a filter on (Cash),
+  // and the read-only detail of a tournament and of a cash session (its stack graph), scrolled
+  // through. The type filter is remembered per device, so each view sets it by clicking.
+  const sessionsTab = async (...steps) => {
+    await dash('Sessions');
+    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
+    for (const sel of steps) await click(sel, 700);
+  };
+  step('bankroll-sessions', () => sessionsTab('.an-sheet .bs-chip:has-text("All")'), 10);
+  // The list's foot: its last year pill and the Show more button (past the first 150 rows).
+  step('bankroll-sessions-foot', async () => {
+    await sessionsTab('.an-sheet .bs-chip:has-text("All")');
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
+    await p.waitForTimeout(400);
+  });
+  step('bankroll-sessions-cash', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")'), 2);
+  step('bankroll-sessions-tournament', () => sessionsTab('.an-sheet .bs-chip:has-text("Tournaments")', '.an-sheet .bs-row'), 3);
+  step('bankroll-sessions-cash-detail', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")', '.an-sheet .bs-row'), 3);
   // The tab strip with its last tab selected: scrolled to its end when it scrolls, so the start's
   // page chevron is up (the Overview's step has the end's).
   step('bankroll-tabs-end', async () => {

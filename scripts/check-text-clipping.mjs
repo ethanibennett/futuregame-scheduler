@@ -9,11 +9,13 @@
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
 // about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
-// Scanner, its Export for PokerTracker sheet and a replay's Share sheet, the venue map opened from a
-// Schedule strip and from an Up Next banner, the backer page (/b/<token>, with CHECK_BACKER_TOKENS:
-// full history paged through, no sessions, one session) (and, for an admin, each tab of the
-// bankroll dashboard — the Overview with every table
-// section open, then closed — every Reports table and the
+// Scanner, its Export for PokerTracker sheet (over a staged list with a hand of every kind it sorts) and a
+// replay's Share sheet (and one on a hand that came by a share link), the venue map opened from a
+// Schedule strip and from an Up Next banner, the backer page
+// (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no sessions, one session) (and, for an
+// admin, each tab of the bankroll dashboard — the Overview with every table
+// section open, then closed; Sessions paged to the list's end, filtered to Cash, a cash session's and
+// a tournament's detail, and the rows Show more adds; every Reports table and the
 // Reports filter sheet, a Locations card open a page past its first ten and the Locations sorted by
 // name with every card open, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), the floating + on the bankroll pages and its
@@ -396,11 +398,13 @@ function scan(rootSel) {
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
     // The sheet scrolls, and only text on screen is measured: run at the top, then page down
-    // through the sheet's body to its end.
-    const runSheet = async (label) => {
-      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    // through the sheet's body, 11 pages at most. { toEnd } pages on until the body stops moving
+    // (the Sessions list: 150 rows, ~10,000 px, then Show more); { from: 'here' } starts where the
+    // body already is (the rows Show more just added) instead of at the top.
+    const runSheet = async (label, { toEnd = false, from = 0 } = {}) => {
+      if (from !== 'here') await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
       await run(label, '.an-sheet');
-      for (let i = 1; i < 12; i++) {
+      for (let i = 1; i < (toEnd ? 80 : 12); i++) {
         const moved = await p.evaluate((h) => {
           const s = document.querySelector('.an-sheet .an-body');
           if (!s) return false;
@@ -439,7 +443,43 @@ function scan(rootSel) {
       const tab = (await tabs.nth(i).innerText()).trim();
       await tabs.nth(i).click({ timeout: 4000 });
       await p.waitForTimeout(800);
-      await runSheet(`bankroll dashboard ${tab}`);
+      // Sessions to the list's end: its last rows and the Show more button.
+      await runSheet(`bankroll dashboard ${tab}`, { toEnd: tab === 'Sessions' });
+    }
+    // Sessions (the loop above ran its list on the remembered filter): the Cash filter, then a cash
+    // session's detail and a tournament's (the longest title on show, which wraps), scrolled
+    // through, and the filter back on All, where Show more adds the rows past the first 150 (when
+    // the account has that many), measured from the button to the list's new end.
+    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Sessions")').click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
+    await p.locator('.an-sheet .bs-chip:has-text("Cash")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await runSheet('bankroll sessions (cash)');
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.locator('.an-sheet .bs-row').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await runSheet('bankroll sessions (a cash session)');
+    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-chip:has-text("Tournaments")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.an-sheet .bs-row')];
+      const long = rows.reduce((a, r) => (r.querySelector('.bs-title').textContent.length > a.querySelector('.bs-title').textContent.length ? r : a), rows[0]);
+      long.click();
+    });
+    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(500);
+    await runSheet('bankroll sessions (a tournament)');
+    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-chip:has-text("All")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    if (await p.locator('.an-sheet .bs-more').count()) {
+      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
+      await p.waitForTimeout(300);
+      await p.locator('.an-sheet .bs-more').click({ timeout: 4000 });
+      await p.waitForTimeout(500);
+      await runSheet('bankroll sessions (shown more)', { toEnd: true, from: 'here' });
     }
     await tabs.first().click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
