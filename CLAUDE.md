@@ -201,7 +201,28 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   - **"New link"** is `POST /api/staking/standing/backers/:id/rotate-link`. Until the roster seam
     retires, a leaked link is best replaced in the dashboard: a later dashboard edit of that backer
     would send the old token back and the roster sync would rotate it back.
-  - Tests: `npm run test:backers` (surface, rotation, parity), booting on ports 4540-4549.
+  - **The Notify tap** (built ahead of Phase 7; `lib/staking/notify.js`, `components/BackerNotify.jsx`).
+    The owner sends a saved result's backer shares from a tournament result's edit form or a cash
+    session's page, through `POST /api/staking/standing/notify` (owner only; the client sends
+    `{ refTable, refId }`, never a figure).
+    - **A manual tap (Q1):** nothing posts on save. A second tap on an unchanged result sends nothing.
+    - **Where the shares come from:** the stakes of the roster in `console_records`, plus, under
+      `BACKER_PAGE_SOURCE=sql`, the `backers` rows that own a link.
+    - **What is recorded:** `backer_events` rows with `source='ledger'` and id
+      `<token>:fg-te-<id>` / `fg-cs-<id>`, born delivered, so the sweep never resends them. Delivery
+      goes through the gated senders.
+    - **Every result write path calls `followShares`:** a notified result's shares follow an edit
+      and are voided on delete, silently (Q2), with a revision row each time.
+    - **The dashboard overlap:** a share the dashboard already sent that backer on that date, or a
+      series agreement on the event for a backer of the same name (Q7), needs a second confirm.
+      The dashboard's own Notify does NOT check this app's shares, so notify a night from one app
+      only.
+    - Spec: `docs/bankroll-merge.md` "Notify tap".
+    - Tests: `npm run test:notify-tap` (ports 4600-4609, also in `test:backers`). The guard views
+      `results-notify*` and `cash-notify*` are staged by `scripts/notify-states.mjs`, which never
+      lets a tap through.
+  - Tests: `npm run test:backers` (surface, rotation, parity, the Backers view, the Notify tap),
+    booting on ports 4540-4549 and 4600-4609.
   **Bankroll merge, Phase 3: series settlement** (`docs/bankroll-merge.md` §10; code in
   `lib/staking/settlement.js` and `settlement-routes.js`; the panel's logic in
   `vite-app/src/utils/staking-settlement.js`):
