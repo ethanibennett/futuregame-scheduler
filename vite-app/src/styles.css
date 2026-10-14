@@ -10804,7 +10804,9 @@
     .cp-btn.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
     .cp-btn:disabled { opacity: 0.4; cursor: default; }
     /* Two choices across the 28g sub-column: 13g + 2g + 13g. */
-    .cp-btn-pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--subcol); }
+    /* Two whole-g buttons: an even-g pair (the desktop pane) would split into half g each, so the
+       first rounds down to whole g and the second takes the rest (as .font-pick does). */
+    .cp-btn-pair { display: grid; grid-template-columns: round(down, (100% - var(--subcol)) / 2, var(--gu)) minmax(0, 1fr); column-gap: var(--subcol); }
     /* Commit + cancel across the 31g column: 23g + 1g + 7g. */
     .cp-actions { display: grid; grid-template-columns: calc(var(--gu) * 23) 1fr; column-gap: var(--gu); }
     /* A button, so its label is centred in it (owner rule, 2026-10-10), not seated on the cell's
