@@ -15,19 +15,22 @@
   <script>
     // Set theme + contrast before React mounts to prevent flash of wrong theme
     (function() {
-      var t = localStorage.getItem('theme') || 'dark';
+      var stored = localStorage.getItem('theme');
+      var t = stored || 'dark';
       var c = localStorage.getItem('contrast') || 'normal';
-      // A backer's private page (/b/<token>) has no settings: it follows the device's scheme and
-      // contrast (components/BackerPage.jsx keeps them in step), never the app's stored theme.
+      var mc = {dark:'#111111',dusk:'#0d1525',light:'#f5f5f5',cloudy:'#cbcbcb'};
+      // A backer's private page (/b/<token>) has no Settings: its theme button stores the same
+      // 'theme' the app's does, and with none stored it follows the device's scheme; its contrast
+      // always follows the device (components/BackerPage.jsx and hooks/useThemeChoice.js keep both
+      // in step). A stored value that is not one of the four themes counts as none.
       if (/^\/b\/[A-Za-z0-9]{6,64}\/?$/.test(location.pathname)) {
         var mm = window.matchMedia ? function (q) { return window.matchMedia(q).matches; } : function () { return false; };
-        t = mm('(prefers-color-scheme: light)') ? 'light' : 'dark';
+        t = stored && Object.prototype.hasOwnProperty.call(mc, stored) ? stored : (mm('(prefers-color-scheme: light)') ? 'light' : 'dark');
         c = mm('(prefers-contrast: more)') ? 'high' : 'normal';
       }
       document.documentElement.setAttribute('data-theme', t);
       document.documentElement.setAttribute('data-contrast', c);
       var meta = document.querySelector('meta[name="theme-color"]');
-      var mc = {dark:'#111111',dusk:'#0d1525',light:'#f5f5f5',cloudy:'#cbcbcb'};
       if (meta) meta.setAttribute('content', mc[t] || '#111111');
     })();
     // Platform detection — sets data-platform attribute for CSS targeting

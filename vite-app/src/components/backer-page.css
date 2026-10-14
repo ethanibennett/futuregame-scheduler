@@ -22,6 +22,22 @@
    sizes; the display sizes added here were measured for this page at 402 and 1440 wide).
    ================================================================== */
 
+/* Cloudy, the one theme with a mid-grey ground (#cbcbcb page, #d6d6d6 cards): the light theme's green
+   and red (#12794a, #b2453c, styles.css) fall to 3.3 to 3.8:1 on it, and on this page every figure is
+   one of them (the running total, each session's share, the month nets, the graph's change). Deeper
+   ones for Cloudy, as styles.css does for its brand (#0a4f62): #0a5f36 and #952f28, measured at 4.8:1
+   (green) and 4.8:1 (red) on the page, 5.4:1 and 5.3:1 on a card. The chart's baseline takes the ramp's
+   --n-6, as the line a share is read from should not vanish (1.3:1 with --border-strong, 2.2:1 with
+   this), and so does the empty card's dashed outline. */
+[data-theme="cloudy"] .bp-shell {
+  --pos: #0a5f36;
+  --pos-quiet: rgba(10, 95, 54, 0.12);
+  --neg: #952f28;
+  --neg-quiet: rgba(149, 47, 40, 0.12);
+}
+[data-theme="cloudy"] .bp-base { stroke: var(--n-6); }
+[data-theme="cloudy"] .bp-empty { outline-color: var(--n-6); }
+
 /* The shell: the phone's 37g column, centred on a wider window (no rail, no panes). A classic
    scrollbar (Windows, a Mac with a mouse) takes its width beside the content rather than out of
    it: --bp-sb-g is that width in g (BackerPage measures it; 0 where scrollbars overlay). */
@@ -41,13 +57,23 @@
   margin-bottom: calc(var(--subrow) * -1);
 }
 
-/* ── Top bar: the wordmark and its line (styles.css .top-bar-title), the notifications pill ── */
-/* A pill: 4r tall, top on 2r (so centred on the bar's 4r line), its right edge on the 1g margin,
-   whole g wide (snap-g rounds the content up). Label and bell centred in it, both ways. */
-.bp-push {
+/* ── Top bar: the wordmark and its line (styles.css .top-bar-title), the notifications pill and the
+   theme button ── */
+/* The two controls in a row, 4r tall with the top on 2r (so centred on the bar's 4r line), the
+   right edge on the 1g margin, 1g between. The theme button is the app's own (ThemeButton: 3g x 4r,
+   styles.css .bp-top .btn-icon) and sits last. */
+.bp-top-actions {
   position: absolute;
   top: calc(var(--subrow) * 2);
   right: var(--gu);
+  height: calc(var(--subrow) * 4);
+  display: flex;
+  align-items: center;
+  gap: var(--gu);
+}
+/* A pill: 4r tall, whole g wide (snap-g rounds the content up). Label and bell centred in it, both ways. */
+.bp-push {
+  flex: none;
   height: calc(var(--subrow) * 4);
   min-width: 0;
   display: inline-flex;
