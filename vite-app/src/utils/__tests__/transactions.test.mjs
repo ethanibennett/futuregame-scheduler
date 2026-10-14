@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import {
   EXPENSE_CATEGORIES, INCOME_CATEGORIES, categoryLabel, totalsByCategory, inYear, tripPnl,
   transactionsToCsv, TX_CSV_COLUMNS, parseAmount, shortDay, tripRange, signedAmount,
+  isOutsideRoll, OUTSIDE_ROLL_LABEL,
 } from '../transactions.js';
 
 const require = createRequire(import.meta.url);
@@ -19,6 +20,29 @@ const convert = (v, from, to) => (from === to ? v : (from === 'USD' ? v : v / ra
 test('category keys match the server', () => {
   assert.deepEqual(EXPENSE_CATEGORIES.map((c) => c.key), server.CATEGORIES.expense);
   assert.deepEqual(INCOME_CATEGORIES.map((c) => c.key), server.CATEGORIES.income);
+});
+
+test('the bankroll merge adds equipment and fees as expense categories (and not as income)', () => {
+  const keys = EXPENSE_CATEGORIES.map((c) => c.key);
+  assert.deepEqual(keys.slice(-3), ['equipment', 'fees', 'other'], 'before "other", which stays last');
+  assert.equal(categoryLabel('expense', 'equipment'), 'Equipment');
+  assert.equal(categoryLabel('expense', 'fees'), 'Fees');
+  assert.ok(!INCOME_CATEGORIES.some((c) => c.key === 'equipment' || c.key === 'fees'));
+  const t = totalsByCategory([tx({ category: 'equipment', amount: 60 }), tx({ category: 'fees', amount: 12.25 })], { currency: 'USD', convert });
+  assert.deepEqual(t.expense.map((r) => [r.key, r.label, r.amount]), [['equipment', 'Equipment', 60], ['fees', 'Fees', 12.25]]);
+});
+
+test('paid outside the roll: only an explicit affects_balance of 0 marks a row', () => {
+  assert.equal(OUTSIDE_ROLL_LABEL, 'Paid outside the roll');
+  assert.equal(isOutsideRoll(tx({ affects_balance: 0 })), true);
+  assert.equal(isOutsideRoll(tx({ affects_balance: '0' })), true);
+  assert.equal(isOutsideRoll(tx({ affects_balance: 1 })), false);
+  assert.equal(isOutsideRoll(tx({})), false, 'a server that predates the column sends no flag');
+  assert.equal(isOutsideRoll(tx({ affects_balance: null })), false);
+  assert.equal(isOutsideRoll(null), false);
+  // it changes how a row is LISTED, never what the totals count: the tax report still sees it
+  const t = totalsByCategory([tx({ category: 'equipment', amount: 60, affects_balance: 0 })], { currency: 'USD', convert });
+  assert.equal(t.expenses, 60);
 });
 
 test('labels: short and long', () => {

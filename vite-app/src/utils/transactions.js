@@ -17,6 +17,8 @@ export const EXPENSE_CATEGORIES = [
   { key: 'coaching', label: 'Coaching' },
   { key: 'software', label: 'Software' },
   { key: 'tips', label: 'Dealer tips' },
+  { key: 'equipment', label: 'Equipment' },
+  { key: 'fees', label: 'Fees' },
   { key: 'other', label: 'Other' },
 ];
 export const INCOME_CATEGORIES = [
@@ -45,6 +47,12 @@ export function categoryLabel(kind, key, { long = false } = {}) {
 const toC = (v) => Math.round((Number(v) || 0) * 100);
 const fromC = (c) => c / 100;
 export const signedAmount = (t) => (t && t.kind === 'expense' ? -1 : 1) * (Number(t && t.amount) || 0);
+
+// A row with affects_balance = 0 was paid from outside the roll (e.g. an expense imported from the
+// dashboard, whose roll never included expenses): the bankroll ledger skips it, the list marks it
+// and the tax report still counts it. A server that predates the column sends no flag: counted.
+export const OUTSIDE_ROLL_LABEL = 'Paid outside the roll';
+export const isOutsideRoll = (t) => !!t && t.affects_balance !== undefined && t.affects_balance !== null && Number(t.affects_balance) === 0;
 
 // A transaction's amount in `target`, via convert(amount, from, to). Same currency: as is.
 function inTarget(amount, currency, target, convert) {

@@ -4,7 +4,8 @@
 // running total_display, in the dashboard's currency. See docs/bankrolls.md "The combined ledger".
 
 // Money moved between pockets or in/out of poker — not won or lost. Mirrors MOVE_KINDS server-side.
-export const MOVE_KINDS = new Set(['deposit', 'withdrawal', 'transfer_in', 'transfer_out']);
+// `correction` and `settlement` (the bankroll merge's two adjustment kinds) move a balance and are never profit.
+export const MOVE_KINDS = new Set(['deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'correction', 'settlement']);
 // Sources whose entries are sessions played (for volume goals). Names per the source contract.
 export const GAME_SOURCES = new Set(['tournaments', 'cash-sessions']);
 

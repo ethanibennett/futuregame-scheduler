@@ -115,6 +115,18 @@ function addTx(db, o) {
       [550, 5.5, '2026-10-02T23:00:00.000Z', '2/5', 'Parx', false, null]);
     assert.deepStrictEqual([c[1].profit, c[1].online, c[1].bankroll], [-150, true, STAKED]);
   });
+  await test('cash, time_known = 0 (money merge): the fact carries no start instant, so no hour of day can be derived; length and net survive', () => {
+    const d2 = scratchDb(SQL);
+    // what the 'money-merge-2026-10' migration adds to cash_sessions
+    d2.run('ALTER TABLE cash_sessions ADD COLUMN time_known INTEGER NOT NULL DEFAULT 1');
+    addCash(d2, { date: '2026-10-02', start: '2026-10-02T16:00:00.000Z', end: '2026-10-02T19:30:00.000Z', room: 'Parx', buyIn: 200, cashOut: 260 }); // a placeholder noon
+    addCash(d2, { date: '2026-10-03', start: '2026-10-03T23:00:00.000Z', end: '2026-10-04T01:00:00.000Z', room: 'Parx', buyIn: 100, cashOut: 90 });
+    d2.run("UPDATE cash_sessions SET time_known = 0 WHERE session_date = '2026-10-02'");
+    const c = reports.collectFacts(d2, 1, { currency: 'USD', rates: RATES }).filter((x) => x.type === 'cash');
+    assert.deepStrictEqual(c.map((x) => [x.date, x.started_at, x.hour, x.hours, x.profit]), [
+      ['2026-10-02', null, null, 3.5, 60], ['2026-10-03', '2026-10-03T23:00:00.000Z', null, 2, -10]]);
+    d2.close();
+  });
   await test('expenses: negative, with a category and no room', () => {
     const x = facts().find((r) => r.type === 'expense');
     assert.deepStrictEqual([x.profit, x.category, x.room, x.label], [-240.5, 'lodging', '', 'Hotel']);
@@ -130,7 +142,7 @@ function addTx(db, o) {
       [11, 19, 12, 0, 14, 0, null, null, null]);
   });
   await test('online rooms: named sites only', () => {
-    for (const r of ['ACR', 'GGPoker', 'PokerStars', 'WSOP.com', 'ClubWPT Gold', 'Online home game']) assert.ok(reports.ONLINE_ROOM.test(r), r);
+    for (const r of ['ACR', 'GGPoker', 'PokerStars', 'WSOP.com', 'ClubWPT Gold', 'Online home game', 'BetRivers', 'Borgata Online', 'Phenom']) assert.ok(reports.ONLINE_ROOM.test(r), r);
     for (const r of ['Parx', 'Borgata', 'Maryland Live', 'Rivers Philadelphia', 'Stars Casino']) assert.ok(!reports.ONLINE_ROOM.test(r), r);
   });
 
