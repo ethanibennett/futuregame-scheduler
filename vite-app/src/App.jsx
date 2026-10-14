@@ -2284,9 +2284,11 @@ function App() {
                   style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   My Schedule
                 </button>
-                <button onClick={() => { setShowUserMenu(false); setCurrentView('tracking'); }}
+                {/* Social moved here from the bottom nav (owner, 2026-10-14); its slot there is Bankroll,
+                    which opens Results & Tracking. */}
+                <button onClick={() => { setShowUserMenu(false); setCurrentView('social'); }}
                   style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                  Results &amp; Tracking
+                  Social
                 </button>
                 {handReplayerAccess && !isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('hands'); }}
@@ -2414,7 +2416,7 @@ function App() {
           isAdmin={isAdmin}
           current={(() => {
             if (currentView === 'hands' && isAdmin) return 'hands';
-            if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
+            if (['social', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
             return currentView;
           })()}
           onChange={onNavChange}

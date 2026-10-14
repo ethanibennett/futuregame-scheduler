@@ -343,18 +343,15 @@ function scan(rootSel) {
     await run('hands scanner', '.hands-scan');
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
 
-  // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
+  // Results & Tracking (the Bankroll tab), from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
-    if (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'))) {
-      await p.locator('.dk-rail-item:has-text("Results")').first().click({ timeout: 4000 });
-    } else {
-      await p.locator('.username-chip').first().click({ timeout: 4000 });
-      await p.waitForTimeout(400);
-      await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
-    }
+    // Results is the Bankroll tab on both layouts since 2026-10-14 (it took Social's slot).
+    const sel = (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop')))
+      ? '.dk-rail-item:has-text("Bankroll")' : '.bottom-nav .nav-tab:has-text("Bankroll")';
+    await p.locator(sel).first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
   };
   // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.

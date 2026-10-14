@@ -1636,13 +1636,13 @@ function finalize(c) {
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });
     await p.waitForTimeout(800);
   }, 0);
-  step('social', () => nav('Social'), 1);
-  step('results', () => menu('Results & Tracking', 'Results'), 1);
+  step('social', () => menu('Social', 'Social'), 1);
+  step('results', () => nav('Bankroll'), 1);
   // Results > Delete results (components/ResetResults.jsx), at the foot of the results list:
   // closed, then open with the phrase typed so its Delete button is enabled. The content area is
   // scrolled, not the window (see toExpenses below).
   const toReset = async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await p.locator('.rr').first().waitFor({ timeout: 4000 });
     await p.evaluate(() => {
       const ca = document.querySelector('.content-area') || document.scrollingElement;
@@ -1675,12 +1675,12 @@ function finalize(c) {
     await click('.filter-chip-square[title="Calendar view"]', 1500);
     await click('.filter-chip-square:not([title]):visible', 800);
   });
-  step('bankrolls', async () => { await menu('Results & Tracking', 'Results'); await click('.bk-head-btn', 800); });
+  step('bankrolls', async () => { await nav('Bankroll'); await click('.bk-head-btn', 800); });
   // The bankroll dashboard (the bankroll strip's Dashboard button). A tab is found by its label
   // among the strip's radios (.bd-tabs: the strip's page chevrons are buttons too); when the tabs
   // outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
   const dash = async (tab) => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await click('.bk-head-btn:has-text("Dashboard")', 1500);
     if (tab) await click(`.an-sheet .bd-tabs [role="radio"]:has-text("${tab}")`, 600);
   };
@@ -1765,7 +1765,7 @@ function finalize(c) {
     await p.waitForTimeout(500);
   }, 2);
   const cashHalf = async (...steps) => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await click('.results-kind-tabs button:has-text("Cash")', 1500);
     for (const sel of steps) await click(sel, 700);
   };
@@ -1779,7 +1779,7 @@ function finalize(c) {
   step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
   step('cash-bar', async () => { await cashHalf(); await click('.results-kind-tabs button:has-text("Tournaments")', 600); });
   const toExpenses = async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await p.locator('.tx-sec').first().waitFor({ timeout: 8000 });
     // Scroll the content area only (scrollIntoView would nudge the window off the .top-bar origin).
     await p.evaluate(() => {
@@ -1960,19 +1960,19 @@ function finalize(c) {
     await venueMapOpen();
   });
   // Social: search, a buddy, a group (its chat), creating one.
-  step('social-search', async () => { await nav('Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
-  step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);
-  step('social-group', async () => { await nav('Social'); await tap('.social-group-card', 1500); }, 1);
-  step('social-create-group', async () => { await nav('Social'); await tap('.social-new-btn', 900); });
+  step('social-search', async () => { await menu('Social', 'Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
+  step('social-buddy', async () => { await menu('Social', 'Social'); await tap('.social-buddy-card', 1200); }, 1);
+  step('social-group', async () => { await menu('Social', 'Social'); await tap('.social-group-card', 1500); }, 1);
+  step('social-create-group', async () => { await menu('Social', 'Social'); await tap('.social-new-btn', 900); });
   // A group's Members tab (invite, remove, the owner's leaderboard switch, delete); a buddy's
   // Add to Group and Remove Connection confirmations; a search that finds someone to connect to.
   step('social-group-members', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-group-card', 1500);
     await tap('.group-segment-btn:has-text("Members")', 1000);
   }, 2);
   step('social-group-tabs', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-group-card', 1500);
     for (const s of ['Schedule', 'Leaderboard']) {
       if (!(await exists(`.group-segment-btn:has-text("${s}")`))) continue;
@@ -1981,16 +1981,16 @@ function finalize(c) {
     }
   }, 1);
   step('social-buddy-add', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-buddy-card', 1200);
     await tap('.social-action-btn:has-text("Add to Group")', 800);
   }, 1);
   step('social-buddy-remove', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-buddy-card', 1200);
     await tap('.social-action-btn:has-text("Remove Connection")', 800);
   }, 1);
-  step('social-search-connect', async () => { await nav('Social'); await vis('.social-search-input').first().fill('fresh'); await p.waitForTimeout(1500); }, 1);
+  step('social-search-connect', async () => { await menu('Social', 'Social'); await vis('.social-search-input').first().fill('fresh'); await p.waitForTimeout(1500); }, 1);
   // Hands: every game family's picker, hand entry step by step, the replayer on a saved hand
   // (transport, settings, share).
   step('hands-games', async () => {
@@ -2050,17 +2050,17 @@ function finalize(c) {
   // Cash: the location picker.
   step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);
   // Results: the log form, a row in edit, the tax report, the share menu, the analytics sheet.
-  step('results-log', async () => { await menu('Results & Tracking', 'Results'); await tap('button:has-text("+ Log Result")', 900); }, 2);
+  step('results-log', async () => { await nav('Bankroll'); await tap('button:has-text("+ Log Result")', 900); }, 2);
   step('results-edit', async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
     await reveal(sel, 200);
     await tap(sel, 900);
   }, 1);
-  step('results-tax', async () => { await menu('Results & Tracking', 'Results'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
-  step('results-share', async () => { await menu('Results & Tracking', 'Results'); await tap('button[title="Share & Social"]', 900); }, 1);
+  step('results-tax', async () => { await nav('Bankroll'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
+  step('results-share', async () => { await nav('Bankroll'); await tap('button[title="Share & Social"]', 900); }, 1);
   step('results-analytics', async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await reveal('.an-launch', 200);
     await tap('.an-launch', 1500);
     await also('open');
@@ -2129,7 +2129,7 @@ function finalize(c) {
     await tap('.cal-event-row.open .buddy-chip', 1200);
   }, 1);
   step('wrap-up', async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await tap('button[title="Share & Social"]', 900);
     await tap('.share-menu-item:has-text("Series Wrap")', 1500);
   }, 1);
