@@ -309,6 +309,14 @@ Builder's calls the owner may want to see (all small, all reversible):
   fallbacks, every block whole g × whole r and every text baseline on an r line.
 - **Location race.** A view mounting right after a location PUT could GET the old copy, adopt it
   and push it back. `fetchServerLocation` now waits for a push in flight.
+- **B12 (found while testing the second device): a new browser wiped the account's location.**
+  The Schedule's and the Calendar's location persistence pushed the view's starting state on
+  mount — on a new browser, nothing — so the account's copy was cleared before their own sync
+  could read it, and no location ever followed an account to a second device. They now push
+  only a change; the sync still pushes a local value up to an account that has none. (Measured
+  on a scratch server: before, a fresh browser opening the Schedule left
+  `GET /api/user/location` null and showed "All locations"; after, it shows the account's
+  region and the server copy stands.)
 
 ## 11. Known gaps
 

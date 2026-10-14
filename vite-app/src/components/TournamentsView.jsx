@@ -1212,10 +1212,16 @@ export default function TournamentsView({
     }));
   };
   // Persist location selection across sessions
+  const locationMounted = useRef(false);
   useEffect(() => {
     const { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual } = filters;
     const loc = { userLocation, locationRegion, maxDistance, locationLabel, jurisdiction, jurisdictionManual };
     writeLocalLocation(loc);
+    /* Not on mount: what this view starts from is this browser's copy, and a new browser has
+       none, so pushing it then cleared the account's location before the sync below could read
+       it (the next browser to sign in found nothing to follow). A change made here is pushed; the
+       sync below pushes a local value up to an account that has none. */
+    if (!locationMounted.current) { locationMounted.current = true; return; }
     // Follows the user: localStorage is per-browser, so without this a region
     // picked on the desktop does not exist on the phone.
     pushServerLocation(token, loc);

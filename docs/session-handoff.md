@@ -25,7 +25,9 @@ wsop-console side and verified against both live services.
   session (Create Account signs you in).
 - **Fixed on the way (docs/onboarding.md §10):** B1 the state stored as "PENNSYLVANIA" (repaired on
   read), B2 a re-run not reaching a mounted Schedule, B3 Everywhere not clearing the account copy,
-  B4 a re-run wiping siteRules, B10 setup per browser, and a location GET/PUT race.
+  B4 a re-run wiping siteRules, B10 setup per browser, a location GET/PUT race, and B12: a new
+  browser's first Schedule pushed its empty location on mount and wiped the account's copy, so
+  location never followed an account to a second device (the views now push only a change).
 - **Waiting on Ethan:** the wording (docs/onboarding.md §2) and decisions D1–D12 (§9), all built
   with their defaults. Settings gained "Edit name".
 - Screenshots (grid overlay on): the builder's scratch folder `scratchpad/onboarding/shots/`.
