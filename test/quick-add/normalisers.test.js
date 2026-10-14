@@ -269,6 +269,13 @@ test('an ante of unstated type below the big blind is asked; a stated pot settle
   assert.ok(!normalizeDraft(bba).hand.quickAdd);
 });
 
+test('a pot stated before any action settles the ante too ("Pot: 95,000" at 20k/40k, ante 5,000, 7 handed)', () => {
+  const d = anteDraft(null); d.tableSize = 7; d.streets[0].potBefore = 95000;
+  const { hand } = normalizeDraft(d);
+  assert.equal(hand.blinds.ante, 35000);
+  assert.ok(!hand.quickAdd);
+});
+
 test('a free-text "everyone anted" answer makes the ante per player', () => {
   const { hand } = normalizeDraft(anteDraft(null));
   const out = normalizeHand(applyOps(hand, [{ op: 'set', path: 'blinds.anteType', value: 'per_player' }]).hand).hand;

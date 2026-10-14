@@ -782,7 +782,7 @@ function simulate(c, ex0, cat, cfg, heroRef0) {
       order = ['SB', 'BB', ...rest].filter(s => S[s]);
     }
     let ptr = 0;
-    const owes = s => !S[s].folded && !S[s].allIn && (!acted.has(s) || contrib[s] < maxBet);
+    const owes = s => !S[s].folded && !S[s].allIn && (!acted.has(s) || contrib[s] < maxBet - 1e-9);
 
     if (acts.length && live().length < 2) P(`${key}: action after the hand was already over`);
     if (acts.length && si > 0 && canAct().length < 2 && !acts.every(a => a[1] === 'fold')) {
@@ -912,7 +912,7 @@ function simulate(c, ex0, cat, cfg, heroRef0) {
     if (hasLater(si) && live().length > 1) {
       for (const s of order) {
         if (S[s].folded || S[s].allIn) continue;
-        if (contrib[s] < maxBet) {
+        if (contrib[s] < maxBet - 1e-9) {
           if (preflop && !isStud) { S[s].folded = true; out.push([s, 'fold']); }
           else if (orderKnown || isStud) P(`${key}: ${s} never matched the bet of ${maxBet}`);
         } else if (!acted.has(s) && canAct().length > 1 && orderKnown && !isStud) {
@@ -993,12 +993,15 @@ function buildOracleHand(c, v) {
     position: isStud ? 'Seat ' + (i + 1) : (s === 'hero' ? '' : s),
     startingStack: stackFor(s),
   }));
-  const slotOf = i => (heroIdx == null ? i : i < heroIdx ? i : i - 1);
+  // With no hero the replayer (and the server) lay the card slots out as if seat 0
+  // were the hero: seat 0's cards in cards.hero, the others in opponents[i - 1].
+  const slotHero = heroIdx == null ? 0 : heroIdx;
+  const slotOf = i => (i < slotHero ? i : i - 1);
   const names = streetNames(cat);
   const keys = STREET_KEYS[cat];
   const streets = names.map((name, si) => ({
     name,
-    cards: { hero: '', opponents: Array.from({ length: Math.max(0, n - (heroIdx == null ? 0 : 1)) }, () => ''), board: '' },
+    cards: { hero: '', opponents: Array.from({ length: Math.max(0, n - 1) }, () => ''), board: '' },
     actions: [],
     draws: [],
   }));
@@ -1025,7 +1028,10 @@ function buildOracleHand(c, v) {
   } else {
     for (const [ref, v2] of Object.entries(ex.showdown || {})) {
       const i = idxOf(ref);
-      if (i >= 0 && i !== heroIdx) streets[0].cards.opponents[slotOf(i)] = v2;
+      if (i >= 0 && i !== heroIdx) {
+        if (heroIdx == null && i === slotHero) streets[0].cards.hero = v2;
+        else streets[0].cards.opponents[slotOf(i)] = v2;
+      }
     }
   }
   keys.forEach((k, si) => {
@@ -1047,6 +1053,12 @@ function buildOracleHand(c, v) {
   const w = ex.winners;
   const result = w ? { winners: winnerRefs(w).map(r => ({ playerIdx: idxOf(r), split: !Array.isArray(w) && !!w.split })) } : null;
   const quickAdd = {};
+  /* A case that expects the table-size question (a gap on field tableSize) says the
+     text never gives it: a real parse then lists only the players mentioned, unseated,
+     and the oracle hand does the same instead of seating a table nobody described.
+     Older cases with no such gap keep the seated oracle they were scored with. */
+  const asksTable = (c.expectGaps || []).some(g => [].concat(g.field || []).includes('tableSize'));
+  if (!isStud && !ex.players && asksTable) quickAdd.positions = 'narrator';
   if (ex.observer) quickAdd.observer = true;
   if (ex.recordable === false) quickAdd.notRecordable = true;
   if (isNum(ex.anteUnclear)) quickAdd.anteUnclear = ex.anteUnclear;
@@ -1080,9 +1092,12 @@ function handContext(hand, cat) {
   const labels = n ? positionLabels(n) : [];
   const canonical = n > 0 && players.every((p, i) => p && normPos(p.position) === labels[i]);
   const streets = ok && Array.isArray(hand.streets) ? hand.streets : [];
-  const slotOf = i => (heroIdx < 0 ? i : i < heroIdx ? i : i - 1);
+  // No hero: the slots read as if seat 0 were the hero (the replayer's heroIdx ?? 0).
+  const slotHero = heroIdx < 0 ? 0 : heroIdx;
+  const slotOf = i => (i < slotHero ? i : i - 1);
   const oppCards = (si, i) => {
     const st = streets[si];
+    if (heroIdx < 0 && i === 0) return (st && st.cards && st.cards.hero) || '';
     const opps = st && st.cards && Array.isArray(st.cards.opponents) ? st.cards.opponents : [];
     return opps[slotOf(i)] || '';
   };
