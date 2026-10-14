@@ -17,9 +17,10 @@
 
 import {
   computePotAwards, hiLoWinnersAmong, potLayerWinners,
-  bestHighHand, bestOmahaHigh, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
+  bestHighHand, bestOmahaLow, bestLowA5Hand, bestLow27Hand, bestBadugiHand,
 } from '../poker-engine.js';
 import { HandExportError } from './errors.js';
+import { fastBestHigh, fastBestOmahaHigh } from './fast-high.js';
 
 /* Pot layers from each player's contribution (the replayer's allPotLayers):
    every distinct contribution of a live all-in player caps a layer; a layer is
@@ -55,12 +56,13 @@ export function evaluate(evalCfg, cards, board) {
   if (!evalCfg) return null;
   const all = cards.concat(board || []);
   const omaha = evalCfg.method === 'omaha';
+  // The high hand by fast-high.js: poker-engine's scores, held equal by test.
   if (evalCfg.type === 'high') {
-    const hi = omaha ? bestOmahaHigh(cards, board) : bestHighHand(all);
+    const hi = omaha ? fastBestOmahaHigh(cards, board) : fastBestHigh(all);
     return hi ? { hi, lo: null } : null;
   }
   if (evalCfg.type === 'hilo') {
-    const hi = omaha ? bestOmahaHigh(cards, board) : bestHighHand(all);
+    const hi = omaha ? fastBestOmahaHigh(cards, board) : fastBestHigh(all);
     const lo = omaha ? bestOmahaLow(cards, board) : bestLowA5Hand(all, true);
     return hi ? { hi, lo: lo && lo.qualified ? lo : null } : null;
   }

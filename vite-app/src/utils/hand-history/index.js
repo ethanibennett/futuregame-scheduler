@@ -29,6 +29,12 @@ export { prepareHand, HandExportError };
 export { canonicalHand } from './canonical.js';
 
 const DEFAULTS = { site: 'PokerStars', eol: '\r\n', bom: true, showFoldedCards: false };
+/* The options over the defaults; an option passed as undefined keeps its default. */
+const withDefaults = (opts) => {
+  const o = { ...DEFAULTS };
+  for (const [k, v] of Object.entries(opts || {})) if (v !== undefined) o[k] = v;
+  return o;
+};
 
 /* The poker content a hand id is a hash of: what was dealt and done, never what
    it is called (names, title, notes, felt, visuals and quick-add state are left
@@ -125,7 +131,7 @@ function header(prep, hand, o) {
 }
 
 export function writePokerStarsHand(hand, opts = {}) {
-  const o = { ...DEFAULTS, ...opts };
+  const o = withDefaults(opts);
   const prep = prepareHand(hand, o);
   const h = header(prep, hand, o);
   const lines = renderPokerStars(prep, h);
@@ -136,7 +142,7 @@ export function writePokerStarsHand(hand, opts = {}) {
    with a BOM, CRLF line ends, three blank lines after every hand. A hand that
    cannot be written is skipped and listed; the rest are written. */
 export function writePokerStarsFile(entries, opts = {}) {
-  const o = { ...DEFAULTS, ...opts };
+  const o = withDefaults(opts);
   const eol = o.eol;
   const sorted = (entries || []).map((e, index) => ({ ...e, index }))
     .sort((a, b) => (a.playedAt?.getTime?.() ?? 0) - (b.playedAt?.getTime?.() ?? 0) || a.index - b.index);
@@ -160,7 +166,7 @@ export function writePokerStarsFile(entries, opts = {}) {
    code path (prepare + settle) without rendering. */
 export function checkExportable(hand, opts = {}) {
   try {
-    const prep = prepareHand(hand, { ...DEFAULTS, ...opts });
+    const prep = prepareHand(hand, withDefaults(opts));
     const g = prep.meta.stars;
     return { ok: true, pt4: prep.meta.pt4, gameName: g.game + ' ' + g.limit, warnings: prep.warnings };
   } catch (err) {

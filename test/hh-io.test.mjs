@@ -30,6 +30,9 @@ import { parseHandHistory, detectSite, PARSERS, getParser, HandHistoryError } fr
 import { findGaps } from '../vite-app/src/utils/quick-add/gaps.js';
 import { HAND_CONFIG as QA_HAND_CONFIG } from '../vite-app/src/utils/quick-add/game.js';
 import { ruleFor } from './hh-io/ps-grammar.mjs';
+import { fastBestHigh, fastBestOmahaHigh } from '../vite-app/src/utils/hand-history/fast-high.js';
+import { bestHighHand, bestOmahaHigh } from '../vite-app/src/utils/poker-engine.js';
+import { fnv1a64, fnv1a64Reference } from '../vite-app/src/utils/hand-history/ps-format.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.join(here, 'hh-io', 'fixtures');
@@ -181,6 +184,10 @@ test('E. the same input gives the same bytes; the hand id is content-only', () =
     assert.equal(write(f).handId, handHistoryId(load(f).hand), f + ': the writer stamps handHistoryId');
   }
   assert.equal(handHistoryId(load('35-imported-reuse.json').hand), '245893457123', 'an imported hand keeps its own');
+  // The limb arithmetic is FNV-1a 64 itself (published vectors: "a", "foobar").
+  assert.equal(fnv1a64('a').toString(16), 'af63dc4c8601ec8c');
+  assert.equal(fnv1a64('foobar').toString(16), '85944171f73967e8');
+  for (const s of ['', 'é€😀', JSON.stringify(load('07-side-pots.json'))]) assert.equal(fnv1a64(s), fnv1a64Reference(s));
   assert.match(handHistoryId(load('35-imported-reuse.json').hand, { site: 'Other Site' }), /^8\d{15}$/, 'unless written under another site name');
 });
 test('E. tournament ids: one per game per ET day', () => {
@@ -245,11 +252,19 @@ test('G. a file: BOM, CRLF, three blank lines after each hand, in time order', (
   assert.ok(noBom.startsWith('PokerStars') && !noBom.includes('\r'));
   // A thousand hands, synchronously, in well under a second.
   const many = Array.from({ length: 1000 }, (_, i) => ({ hand: load(OK[i % 30]).hand, playedAt: at(i % 24) }));
-  // The fastest of three runs: the box these run on is often busy with other work.
-  let ms = Infinity, r;
-  for (let k = 0; k < 3; k++) { const t0 = performance.now(); r = writePokerStarsFile(many); ms = Math.min(ms, performance.now() - t0); }
+  // The fastest of three runs, timed on this thread's CPU clock where Node has one: the box these
+  // run on is often busy with other work, which stretches the wall clock but not the work.
+  const clock = typeof process.threadCpuUsage === 'function'
+    ? () => { const u = process.threadCpuUsage(); return (u.user + u.system) / 1000; }
+    : () => performance.now();
+  let ms = Infinity, wall = Infinity, r;
+  for (let k = 0; k < 3; k++) {
+    const c0 = clock(), t0 = performance.now();
+    r = writePokerStarsFile(many);
+    ms = Math.min(ms, clock() - c0); wall = Math.min(wall, performance.now() - t0);
+  }
   assert.equal(r.written.length, 1000);
-  assert.ok(ms < 1000, '1000 hands in ' + Math.round(ms) + ' ms');
+  assert.ok(ms < 1000, `1000 hands in ${Math.round(ms)} ms of CPU (${Math.round(wall)} ms wall)`);
 });
 
 // ── H. Registry ─────────────────────────────────────────────────────────────
@@ -476,6 +491,22 @@ test('J. every parsed hand replays in the app: no blocking gap', () => {
     const blocking = findGaps(h).filter(g => g.blocking);
     assert.deepEqual(blocking.map(g => g.id + ': ' + g.question), [], f);
   }
+});
+
+// ── fast-high.js: the same scores as poker-engine.js ────────────────────────
+test('fast-high gives poker-engine\'s exact scores (20,000 random high and Omaha hands)', () => {
+  const deck = []; for (const r of '23456789TJQKA') for (const s of 'hdcs') deck.push({ rank: r, suit: s });
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const draw = (k) => { const d = deck.slice(), out = []; for (let i = 0; i < k; i++) out.push(d.splice(Math.floor(rnd() * d.length), 1)[0]); return out; };
+  let bad = 0;
+  for (let t = 0; t < 10000; t++) { const c = draw(5 + (t % 3)); if (fastBestHigh(c).score !== bestHighHand(c).score) bad++; }
+  for (let t = 0; t < 10000; t++) { const k = 4 + (t % 3), c = draw(k + 5); if (fastBestOmahaHigh(c.slice(0, k), c.slice(k)).score !== bestOmahaHigh(c.slice(0, k), c.slice(k)).score) bad++; }
+  // Every category, by construction: a royal, a wheel straight flush, quads, a boat, a flush, a wheel.
+  const H = (s) => s.match(/../g).map(x => ({ rank: x[0], suit: x[1] }));
+  for (const s of ['AsKsQsJsTs', '5h4h3h2hAh', '9c9d9h9s2c', 'KcKdKh2s2c', 'Ad9d7d4d2d', 'As2d3h4c5s', 'QsQdJh4c4s', '7s7d9hKcAs', 'Ks9d7h4c2s']) {
+    if (fastBestHigh(H(s)).score !== bestHighHand(H(s)).score) bad++;
+  }
+  assert.equal(bad, 0);
 });
 
 // ── PLO5 / PLO6 config ──────────────────────────────────────────────────────

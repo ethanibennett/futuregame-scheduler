@@ -15,6 +15,8 @@ import { exportReplayGif } from '../utils/replay-gif-export.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { parseHandText } from '../utils/hand-text-parser.js';
 import QuickAddView from './QuickAddView.jsx';
+import { checkExportable } from '../utils/hand-history/index.js';
+import { exportHandHistory, playedAtOf, handOfRow, handsFileName } from '../utils/hand-history/save.js';
 
 // ── Street definitions ──────────────────────────────────────
 const STREET_DEFS = {
@@ -4340,6 +4342,7 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   const [games, setGames] = useState([]);
   const [currentHand, setCurrentHand] = useState(initialHand || null);
   const [currentHandId, setCurrentHandId] = useState(null);
+  const [showHhExport, setShowHhExport] = useState(false);
   const [selectedGameType, setSelectedGameType] = useState('NLH');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
@@ -4716,6 +4719,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
           <HandReplayerReplayView
             hand={currentHand}
             token={token}
+            heroName={heroName}
+            playedAt={(() => { const row = currentHandId != null && hands.find(h => h.id === currentHandId); return row ? playedAtOf(row) : null; })()}
             onEdit={() => setMode('entry')}
             onBack={() => { setMode('list'); fetchHands(); }}
             cardSplay={cardSplay}
@@ -5055,8 +5060,20 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
         </div>
       </div>
 
-      {/* Saved hands list */}
-      <div className="replayer-list-heading"><span>Saved Hands</span></div>
+      {/* Saved hands list. The heading carries the hand-history export (all hands,
+          as PokerStars-format text for PokerTracker 4) at its right. */}
+      <div className="replayer-list-heading">
+        <span>Saved Hands</span>
+        {hands.length > 0 && (
+          <button type="button" className="btn btn-ghost btn-sm ctl snap-g replayer-hh-export-btn" onClick={() => setShowHhExport(true)}>
+            <span>Export for PokerTracker</span>
+          </button>
+        )}
+      </div>
+      {showHhExport && createPortal(
+        <HandHistoryExportSheet rows={hands} heroName={heroName} toast={toast} onClose={() => setShowHhExport(false)} />,
+        document.body
+      )}
       {/* 78: a single grey sentence — "Create one above" — pointing at a picker
           the user may well have scrolled past, on the screen whose entire job
           is to get a first hand recorded. */}
@@ -5166,10 +5183,80 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   );
 }
 
+// ── Export for PokerTracker: every saved hand as PokerStars-format text ──
+/* Two choices — the Hold'em and Omaha hands PokerTracker 4 analyses, or every
+   game the format carries — and the hands it cannot write, with why. The counts
+   come from checkExportable over the list already in memory (the list endpoint
+   spreads each hand into its row), worked out once when the sheet opens. */
+function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
+  const sorted = useMemo(() => {
+    const pt4 = [], all = [], bad = [];
+    for (const row of rows || []) {
+      const hand = handOfRow(row);
+      const c = checkExportable(hand, { heroName });
+      const entry = { hand, playedAt: playedAtOf(row) || new Date(0), row };
+      if (c.ok) { all.push(entry); if (c.pt4) pt4.push(entry); }
+      else bad.push({ row, message: c.message });
+    }
+    return { pt4, all, bad };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const hands = (k) => k + (k === 1 ? ' hand' : ' hands');
+  const run = (entries) => {
+    try {
+      exportHandHistory(entries.map(e => ({ hand: e.hand, playedAt: e.playedAt })), { heroName, filename: handsFileName() })
+        .then(r => { if (r.result === 'downloaded') toast('Saved ' + r.filename + ' · ' + hands(r.written.length)); })
+        .catch(() => { if (toast?.info) toast.info("Couldn't export the hands"); });
+    } catch (_) { if (toast?.info) toast.info("Couldn't export the hands"); }
+    onClose();
+  };
+  const { pt4, all, bad } = sorted;
+  return (
+    <>
+      <div className="share-menu-backdrop" onClick={onClose} />
+      <div className="share-menu-panel grid-sheet hh-export-sheet" role="dialog" aria-label="Export for PokerTracker">
+        <h3>Export for PokerTracker</h3>
+        <p className="hh-export-body">PokerStars-format text that PokerTracker 4 and Hold'em Manager import. They read these as PokerStars hands, so import them into a database of their own.</p>
+        <div className="export-options">
+          <button type="button" className="export-option-btn hh-export-option" disabled={!pt4.length} onClick={() => run(pt4)}>
+            <span className="hh-export-option-text">
+              <span className="export-option-label">Hold'em and Omaha</span>
+              <span className="export-option-desc">{hands(pt4.length)} {'·'} for PokerTracker 4</span>
+            </span>
+          </button>
+          {all.length > pt4.length && (
+            <button type="button" className="export-option-btn hh-export-option" onClick={() => run(all)}>
+              <span className="hh-export-option-text">
+                <span className="export-option-label">Every game</span>
+                <span className="export-option-desc">{hands(all.length)} {'·'} PokerTracker 4 skips stud and draw</span>
+              </span>
+            </button>
+          )}
+        </div>
+        {bad.length > 0 && (
+          <div className="hh-export-skipped">
+            <div className="hh-export-skipped-label">Not exported {'·'} {bad.length}</div>
+            {bad.slice(0, 5).map(b => (
+              <div key={b.row.id} className="hh-export-skipped-row">
+                <span className="hh-export-skipped-title">{b.row.title || ((b.row.gameType || 'Untitled') + ' hand')}</span>
+                <span className="hh-export-skipped-why">{b.message}</span>
+              </div>
+            ))}
+            {bad.length > 5 && <div className="hh-export-skipped-more">And {bad.length - 5} more</div>}
+          </div>
+        )}
+        <div className="hh-export-cancel">
+          <button type="button" className="btn btn-ghost btn-sm ctl snap-g snap-g-centred" onClick={onClose}><span>Cancel</span></button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ══════════════════════════════════════════════════════════
 // ── Replay View Sub-component ────────────────────────────
 // ══════════════════════════════════════════════════════════
-function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolveSpot, linkedReplay }) {
+function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolveSpot, linkedReplay, heroName, playedAt }) {
   /* The GIF export's completion toasts referenced `toast` from inside this
      component, where it was never declared - the outer HandReplayerView owns
      the one call to useToast(). Optional chaining does not save an UNDECLARED
@@ -6102,6 +6189,17 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const [exportPreview, setExportPreview] = useState(null);
   const [inspecting, setInspecting] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  // Hand-history export: can this hand be written, and does PokerTracker 4 take it.
+  const hhCheck = useMemo(() => checkExportable(hand, { heroName }), [hand, heroName]);
+  // Written inside the tap, nothing awaited first: iOS keeps the tap as the
+  // activation navigator.share needs. A saved hand is dated by its save time.
+  const exportThisHand = () => {
+    try {
+      exportHandHistory([{ hand, playedAt: playedAt || new Date() }], { heroName })
+        .then(r => { if (r.result === 'downloaded') toast('Saved ' + r.filename); })
+        .catch(() => { if (toast?.info) toast.info("Couldn't export the hand"); });
+    } catch (_) { if (toast?.info) toast.info("Couldn't export the hand"); }
+  };
   /* 94: the overlays described one outcome and the code produced another. Ask
      the platform once, and say what will happen. */
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function';
@@ -8475,6 +8573,17 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
                   <span className="export-preview is-gif" aria-hidden="true" />
                   <span className="share-label">GIF</span>
                   <span className="share-desc">Instagram sticker</span>
+                </div>
+                {/* The hand as PokerStars-format hand-history text, which PokerTracker 4
+                    and Hold'em Manager import (utils/hand-history/, docs/hand-history-io.md).
+                    PT4 analyses Hold'em and Omaha only, so a stud or draw hand is offered as
+                    plain hand-history text; a hand the format cannot carry says why. */}
+                <div className={'share-menu-item' + (hhCheck.ok ? '' : ' disabled')}
+                  aria-disabled={hhCheck.ok ? undefined : 'true'}
+                  onClick={() => { if (hhCheck.ok) { exportThisHand(); setShowExportMenu(false); } }}>
+                  <span className="export-preview is-text" aria-hidden="true" />
+                  <span className="share-label">{hhCheck.ok && hhCheck.pt4 ? 'PokerTracker' : 'Hand history'}</span>
+                  <span className="share-desc">{!hhCheck.ok ? hhCheck.short : hhCheck.pt4 ? 'Hand history text file' : 'PokerStars-format text file'}</span>
                 </div>
               </div>
             </div>

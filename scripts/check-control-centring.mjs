@@ -34,7 +34,8 @@
 // Log menu; a To log row's Undo state; its NUMBERS in trip mode, series mode and the edge state;
 // the signal-or-noise line as progress and about cash; the empty-schedule prompt), Social (search,
 // a buddy, a group, a new group), Hands (each game family, hand entry step by step, PLO entry,
-// Quick add, the replayer on a saved hand with its settings, table settings and share menu, the
+// Quick add, the Export for PokerTracker sheet, the replayer on a saved hand with its settings,
+// table settings and share menu, the
 // admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way / Scanner tools), Cash (Live,
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
@@ -1963,6 +1964,14 @@ function finalize(c) {
     await openHand();
     for (const s of ['button[title*="Share"]', 'button[aria-label*="Share"]', 'button:has-text("Share")']) if (await exists(s)) { await tap(s, 900, true); return; }
     throw new Error('no share button on the replayer');
+  }, 1);
+  // Hands: the Saved Hands heading's Export for PokerTracker sheet (HandHistoryExportSheet).
+  step('hands-export', async () => {
+    await nav('Hands');
+    const sel = 'button:has-text("Export for PokerTracker")';
+    await reveal(sel, 200);
+    await tap(sel, 900);
+    await vis('.hh-export-sheet').first().waitFor({ timeout: 4000 });
   }, 1);
   // Cash: the location picker.
   step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);

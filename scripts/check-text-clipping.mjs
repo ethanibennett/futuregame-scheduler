@@ -9,7 +9,8 @@
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
 // about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
-// Scanner, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
+// Scanner, its Export for PokerTracker sheet and a replay's Share sheet, the backer page (/b/<token>,
+// with CHECK_BACKER_TOKENS: full history paged through, no
 // sessions, one session) (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
 // section open, then closed — every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
@@ -315,6 +316,24 @@ function scan(rootSel) {
     await p.waitForTimeout(800);
     await run('hands scanner', '.hands-scan');
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
+  // Hands: the Export for PokerTracker sheet (its body copy and the not-exported list wrap),
+  // and a replay's Share sheet (the hand-history tile's description is a reason when it is off).
+  try {
+    await openTab('Hands');
+    await p.locator('button:has-text("Export for PokerTracker")').first().click({ timeout: 4000 });
+    await p.locator('.hh-export-sheet').waitFor({ timeout: 3000 });
+    await p.waitForTimeout(500);
+    await run('hands export sheet', '.hh-export-sheet');
+  } catch (e) { console.log(`  (hands export sheet skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Hands');
+    await p.locator('.replayer-hand-card.is-row').first().click({ timeout: 4000 });
+    await p.waitForTimeout(2500);
+    await p.locator('.rab-share').first().click({ timeout: 4000, force: true });
+    await p.locator('.replayer-share-sheet').waitFor({ timeout: 3000 });
+    await p.waitForTimeout(500);
+    await run('replayer share sheet', '.replayer-share-sheet');
+  } catch (e) { console.log(`  (replayer share sheet skipped: ${e.message.split('\n')[0]})`); }
 
   // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {
