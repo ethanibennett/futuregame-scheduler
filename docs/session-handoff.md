@@ -36,10 +36,15 @@ wsop-console side and verified against both live services.
   `feat/backer-page` (worktree `backer-page`, 627fa70) — merge with master, deploy.
 - **Queued (owner, 2026-10-13):** onboarding questions refinement; an s-points calculator on events
   whose structures are available (confirm what "s-points" means with Ethan first); letting the user
-  change and reorder what the home (Dashboard) shows. **Also queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (files the
-  WSOP.com client writes on the player's computer, parsed into the replayer — never account
-  scraping; needs sample files from Ethan); catalogue three (replayer polish, ~25 agents — ask
-  first, it is the biggest spender). Ads are paused (memory `ads-paused`).
+  change and reorder what the home (Dashboard) shows. **Also queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (the
+  WSOP.com client keeps hands on WSOP's servers behind a replay viewer and writes no files, so
+  the import reads that viewer's replay data — never account scraping; `lib/hh-import/wsop-replay.mjs`
+  waits for a sanitised HAR from Ethan, `docs/hand-history-io.md` §9); catalogue three (replayer
+  polish, ~25 agents — ask first, it is the biggest spender). Ads are paused (memory `ads-paused`).
+- **(2026-10-13) Hand-history export built** (branch `feat/hand-history-io`): saved hands as
+  PokerStars-format text for PokerTracker 4 from the replay's Share sheet and Hands → Export for
+  PokerTracker; the writer, a PokerStars parser that round-trips it, and the import registry.
+  `npm run test:hh-io`. `docs/hand-history-io.md`.
 - **Usage:** the weekly limit was hit on 2026-10-13. Default to one builder + one verifier per job,
   two or three jobs at a time, full guard runs once per size.
 
@@ -614,8 +619,14 @@ again. If builds break and no push arrives, check `pm2 list` first.
 
 ## Waiting on Ethan
 
-- **(2026-10-13) Sample WSOP.com hand-history files** — one or two real files the WSOP.com client
-  saved, to build the hand-history import against.
+- **(2026-10-13) A sample of WSOP.com's replay data** — the client keeps hands on WSOP's servers
+  (no files on disk): a HAR of the replay viewer loading 3 hands (one to showdown, one won without
+  one, one multi-way all-in), cookies and auth headers stripped, with the hand ids the client shows
+  (`docs/hand-history-io.md` §9). `lib/hh-import/wsop-replay.mjs` refuses until then.
+- **(2026-10-13) The PokerTracker 4 import check** — import an exported file into an empty PT4
+  database and report what it rejects or misreads; import it twice to confirm PT4 de-duplicates by
+  hand number (`docs/hand-history-io.md` §10). Until then PT4 acceptance is checked only against
+  genuine PokerStars hands, not against PT4 itself.
 - **(2026-10-13) MapKit JS key** — a Maps ID + a key with MapKit JS enabled (.p8) in the Apple
   Developer account; then `MAPKIT_TEAM_ID` / `MAPKIT_KEY_ID` / `MAPKIT_PRIVATE_KEY` on Render and in
   `ecosystem.config.cjs`. Later, for Android: `GOOGLE_MAPS_BROWSER_KEY` (+ optional

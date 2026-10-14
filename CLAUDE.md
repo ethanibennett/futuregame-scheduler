@@ -38,6 +38,12 @@ sessions opened here own scheduler work.
   Note: `spawnSync('npm')` fails on native Windows — run `npm install` / `npm run build`
   inside `vite-app/` directly when building locally.
 - **Deploy**: push to `master` → Render auto-deploys **futurega.me** (fail-loud build).
+- **Hand-history I/O**: saved hands export as PokerStars-format text (PT4 / Hold'em Manager) from
+  the replay's Share sheet and Hands → Export for PokerTracker — writer in
+  `vite-app/src/utils/hand-history/` (pure, Node-testable), import framework in `lib/hh-import/`
+  (a PokerStars-format parser; `wsop-replay` waits for a sample). PT4 analyses Hold'em and Omaha
+  only and files them as PokerStars hands. `npm run test:hh-io`; design, grammar sources and the
+  owner's PT4 check: `docs/hand-history-io.md`.
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting

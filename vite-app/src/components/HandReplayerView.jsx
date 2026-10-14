@@ -5205,9 +5205,9 @@ function HandHistoryExportSheet({ rows, heroName, toast, onClose }) {
   const run = (entries) => {
     try {
       exportHandHistory(entries.map(e => ({ hand: e.hand, playedAt: e.playedAt })), { heroName, filename: handsFileName() })
-        .then(r => { if (r.result === 'downloaded') toast('Saved ' + r.filename + ' · ' + hands(r.written.length)); })
-        .catch(() => { if (toast?.info) toast.info("Couldn't export the hands"); });
-    } catch (_) { if (toast?.info) toast.info("Couldn't export the hands"); }
+        .then(r => { if (r.result === 'downloaded') toast.success('Saved ' + r.filename + ' · ' + hands(r.written.length)); })
+        .catch((e) => { console.error('hand-history export:', e); if (toast?.info) toast.info("Couldn't export the hands"); });
+    } catch (e) { console.error('hand-history export:', e); if (toast?.info) toast.info("Couldn't export the hands"); }
     onClose();
   };
   const { pt4, all, bad } = sorted;
@@ -6196,9 +6196,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
   const exportThisHand = () => {
     try {
       exportHandHistory([{ hand, playedAt: playedAt || new Date() }], { heroName })
-        .then(r => { if (r.result === 'downloaded') toast('Saved ' + r.filename); })
-        .catch(() => { if (toast?.info) toast.info("Couldn't export the hand"); });
-    } catch (_) { if (toast?.info) toast.info("Couldn't export the hand"); }
+        .then(r => { if (r.result === 'downloaded') toast.success('Saved ' + r.filename); })
+        .catch((e) => { console.error('hand-history export:', e); if (toast?.info) toast.info("Couldn't export the hand"); });
+    } catch (e) { console.error('hand-history export:', e); if (toast?.info) toast.info("Couldn't export the hand"); }
   };
   /* 94: the overlays described one outcome and the code produced another. Ask
      the platform once, and say what will happen. */
