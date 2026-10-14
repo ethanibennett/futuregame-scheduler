@@ -144,6 +144,21 @@ worktree `home-custom`. What a later session needs to know:
   (an owner's custom home does not change what the other views measure), and every PUT is echoed
   back, so they write nothing (safe on :3001). New views:
   dashboard-edit, dashboard-edit-reset, dashboard-custom, dashboard-numbers-empty (desktop).
+- **After the independent review (2026-10-14)**, three fixes:
+  (1) *A slow GET undid a saved change*: `useHomeLayout.pull()` now remembers `versionRef` when its
+  GET goes out and drops the answer if the layout changed meanwhile and that change is saved (or
+  came from another tab); an unsaved change still falls through to reconcile and is pushed. Covers
+  the load GET and the 5-minute foreground re-pull. Pinned by
+  `utils/__tests__/home-layout-sync.test.mjs`, which runs the REAL hook under React with a stand-in
+  window/document/localStorage and a fetch the test answers one request at a time (no jsdom needed:
+  copy its header for any other hook that wants a real-run test; it is in `npm run test:home`).
+  (2) *The sheet let Tab leave it*: a capture-phase keydown on document wraps Tab / Shift+Tab
+  between the sheet's first and last visible control, as VenueMapSheet's does. The Analytics and
+  Bankroll dashboard sheets still do not trap focus (the same gap, not touched here).
+  (3) *"All bankrolls" twice in a custom order*: `bankrollAbovePeriod` now reads the column without
+  the sections that render nothing (To log reports whether it has a row through `onShown`; Last
+  result needs `onLog`; the bankroll line needs a line), so Bankroll, To log (empty), This month
+  shows the scope once.
 
 ## 2026-10-12 — Home redesign (the Dashboard tab), decisions worth knowing
 Built to the panel verdict of 2026-10-11 in steps 1–6 (section 7, Trend, is a marked slot in
