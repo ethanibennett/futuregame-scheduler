@@ -1122,13 +1122,15 @@ export function shipStartAfterSweep(set, rate = 1, nWagers = 0) {
  * @param {{seat:number, x:number, y:number}[]} p.dests   landings (seatLanding), client px
  * @param {object[][]} p.holes                    what the chips tuck under, as lists of boxes
  * @param {number} p.chipD                        the flying chip's diameter
+ * @param {number} [p.landD]                      the diameter its landing was chosen for, when smaller
+ *        (a big table's pile chip): it is set down to that size, less shipShrink, on the way
  * @param {number} p.cardW                        a board card's width (the bow is a share of it)
  * @param {number} [p.tStart]                     when the first chip leaves (ms, already at rate)
  * @param {(seat:number, k:number, n:number) => void} p.onArrive   the k-th arrival of n at that seat
  * @param {() => void} [p.onDepart]               the pot leaves the pile (at tStart)
  * @returns {{ end:number, firstArrive:number, lastArrive:Map<number, number> }}
  */
-export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = null, starts = [0], dests, holes, chipD, cardW, tStart = 0, onArrive, onDepart = null }) {
+export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = null, starts = [0], dests, holes, chipD, landD = null, cardW, tStart = 0, onArrive, onDepart = null }) {
   const st = stageOf(set);
   const out = { end: 0, firstArrive: Infinity, lastArrive: new Map() };
   if (!dests.length) return out;
@@ -1184,7 +1186,8 @@ export function shipPot(reg, { set, rate = 1, layer, layerRect, origin, discs = 
       const arm = tierOf(set, st.shipTiers[i % st.shipTiers.length]);
       const d = tStart + (i * st.shipStagger) / rate;
       const arrive = d + timeTo(arm, 0.98) / rate;
-      const lift = st.shipLift, shrink = st.shipShrink;
+      // Set down a little smaller, and at the size its landing was chosen for when that is smaller.
+      const lift = st.shipLift, shrink = st.shipShrink * (landD > 0 && chipD > 0 ? Math.min(1, landD / chipD) : 1);
       const bow = st.shipBows[i % st.shipBows.length] * st.shipBow * cardW;
       const nx = -cy / len, ny = cx / len;
       const prog = (t) => (t <= d ? 0 : t === Infinity ? 1 : arm.at((t - d) * rate));

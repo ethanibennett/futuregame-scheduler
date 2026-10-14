@@ -262,6 +262,11 @@ const cmp = (a, b) => {
     // A shipped chip's box width is its stretch, which an export sizes to the distance between two of
     // ITS frames (42ms or 80ms apart, not 17): compared by position and opacity, stretch reported.
     a[k].forEach((e, i) => {
+      /* A card nobody can see (both unseen) is compared by its opacity alone: live, a new turn or
+         river card waits out the press frame unseen where it lies (the board's springs are made in
+         the frame after it) while an export builds them at once, so at t=0 the two put an invisible
+         card in different places. */
+      if (k === 'cards' && e.op < 0.005 && b[k][i].op < 0.005) return;
       d = Math.max(d, Math.abs(e.x - b[k][i].x), Math.abs(e.y - b[k][i].y), Math.abs(e.op - b[k][i].op) * 100);
       if (k === 'ship') sw = Math.max(sw, Math.abs(e.w - b[k][i].w)); else d = Math.max(d, Math.abs(e.w - b[k][i].w));
     });

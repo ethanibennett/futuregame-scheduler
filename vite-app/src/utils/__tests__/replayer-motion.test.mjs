@@ -602,6 +602,17 @@ test('the ship flies the pile\'s own chips, from where each sits, one per chip',
     // One clip box, not three nested ones.
     assert.equal(layer.children.length, 1);
     assert.equal(layer.children[0].children.length, 3);
+    // A big table's pile chip (24px) whose landing was chosen for the 12px coin is set down at the
+    // coin's size, less the usual shrink.
+    made.length = 0;
+    shipPot(reg, {
+      set: 'B', layer: mk('layer'), layerRect: { left: 0, top: 0, width: 1400, height: 800, right: 1400, bottom: 800 }, origin: { x: 700, y: 300 },
+      discs: [discs[0]], dests: [{ seat: 0, x: 700, y: 700 }], holes: [], chipD: 24, landD: 12, cardW: 60, tStart: 0, onArrive: () => {},
+    });
+    const big = made.find(e => /to-winner/.test(e.className));
+    const last = big.anims[0].frames[big.anims[0].frames.length - 1].transform;
+    const sc = last.match(/scale\(([\d.]+), ([\d.]+)\)/).slice(1).map(Number);
+    near(sc[0], SPRING_SETS.B.stage.shipShrink * 0.5, 0.02, 'set down at the coin\'s size: ' + last);
   } finally {
     delete globalThis.document;
   }

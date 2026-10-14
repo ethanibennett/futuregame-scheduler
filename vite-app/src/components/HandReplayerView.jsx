@@ -7892,8 +7892,16 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
            (no won pill is pushed in front of the seat as well: see the bet chips' render). */
         const plan = planWagers(null);
         const ship = shipPlan && shipPlan.length && sweepLayer ? (() => {
-          const probe = table.querySelector('.replayer-chip-probe');
+          /* Two unseen probes: the pile's chip (what flies) and the coin the pot used to ship as. On a
+             big table the pile's chip is the larger (24px at 1440, 14 the coin), and a landing chosen
+             for it found no room between the hero's button and cards, or took the far end of the
+             plaque with the chips passing under the cards: it lands at the coin's size or its own,
+             whichever is smaller, set down on the way (shipPot's landD). */
+          const probe = table.querySelector('.replayer-chip-probe.is-disc');
+          const coin = table.querySelector('.replayer-chip-probe:not(.is-disc)');
           const chipD = probe ? probe.getBoundingClientRect().width || 12 : 12;
+          const coinD = coin ? coin.getBoundingClientRect().width || chipD : chipD;
+          const landD = Math.min(chipD, coinD);
           const button = table.querySelector('.replayer-dealer-btn');
           const buttonRect = button ? button.getBoundingClientRect() : null;
           const btn = buttonRect && buttonRect.width ? buttonRect : null;
@@ -7942,11 +7950,11 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           const landings = () => seatsRead.map(s => ({
             seat: s.d.seat, award: s.d.award,
             ...seatLanding(pileCentre, s.plaque, {
-              cards: s.cards, button: btn, name: s.name, chipD,
+              cards: s.cards, button: btn, name: s.name, chipD: landD,
               covers: [s.cardsBox, btn, s.handName].filter(Boolean),
             }),
           }));
-          return { seatsRead, landings, discs, chipD, holes: [plaques, cardBoxes, btn ? [btn] : []], layerRect: L };
+          return { seatsRead, landings, discs, chipD, landD, holes: [plaques, cardBoxes, btn ? [btn] : []], layerRect: L };
         })() : null;
         const tShip = ship ? shipStartAfterSweep(set, rate, plan ? plan.length : 0) : 0;
         motion.lastResult = null;
@@ -7976,7 +7984,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
           motion.lastResult = { tShip: tStart, dests: dests.map(d => ({ seat: d.seat, x: d.x, y: d.y, edge: d.edge, contact: d.contact })) };
           shipPot(motion, {
             set, rate, layer: sweepLayer, layerRect: ship.layerRect, origin: pileCentre,
-            discs: ship.discs, dests, holes: ship.holes, chipD: ship.chipD, cardW, tStart,
+            discs: ship.discs, dests, holes: ship.holes, chipD: ship.chipD, landD: ship.landD, cardW, tStart,
             onDepart: () => {
               motion.pileHeld = false;
               if (motion.setPile && !potLayers.length) motion.setPile(potShown(displayPot, motion.pendingPot, motion.pendingPot > 0 ? motion.potFloor : 0), { shipped: true });
@@ -8937,9 +8945,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             the chips shipped to a winner (over everything but the winner's seat). React renders
             the layers and never their children — they are created in the moment's commit and
             remove themselves when they land (utils/replayer-motion.js). Both span the table's
-            padding box, so a ghost keeps its wager's own left/top percentages. The probe is an
-            unseen flying chip the ship sizes its chips by. */}
+            padding box, so a ghost keeps its wager's own left/top percentages. The probes are an
+            unseen pile chip and an unseen coin, which the ship sizes its chips and their landing by. */}
         {springOn && <div className="replayer-flying-chip replayer-chip-probe is-disc" aria-hidden="true"><div className="replayer-pot-chip-disc" /></div>}
+        {springOn && <div className="replayer-flying-chip replayer-chip-probe" aria-hidden="true" />}
         {springOn && <div className="replayer-motion-layer replayer-sweep-layer" ref={sweepLayerRef} aria-hidden="true" />}
 
         {/* Draw discard animations */}
