@@ -248,8 +248,9 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
 
   const b = key === BANKROLL_ALL ? null : bk.bankrolls.find((x) => x.id === key);
   const currency = b ? b.currency : 'USD';
+  // Rules, Risk and Goals format in the chip's currency; the Overview formats in the currency of
+  // the ledger in hand, which lags the chip by a round trip (BankrollOverview, ledgerScope).
   const money = useCallback((v) => formatCurrencyAmount(Math.round(v || 0), currency), [currency]);
-  const signed = useCallback((v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v || 0), currency), [currency]);
 
   useEffect(() => {
     let live = true;
@@ -321,8 +322,8 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
                 <p className="an-p">Not included (a ledger source failed): {d.sources.filter((s) => !s.ok).map((s) => s.name).join(', ')}.</p>
               )}
               {tab === 'balance' && d && (
-                <BankrollOverview d={d} risk={risk} bk={bk} bkKey={key} b={b} currency={currency} money={money}
-                  signed={signed} today={today} fmtDate={fmtDate} onClose={onClose} />
+                <BankrollOverview d={d} risk={risk} bk={bk} bkKey={key} currency={currency}
+                  today={today} fmtDate={fmtDate} onClose={onClose} />
               )}
               {/* One line per further tab, keyed as in TABS above. */}
 

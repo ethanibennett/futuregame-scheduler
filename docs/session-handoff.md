@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-13 (from Windows) — see the 2026-10-13 section first. Earlier note: 2026-09-30. The newest section is 2026-09-30, live
+Last updated: 2026-10-14 (from Windows) — see the 2026-10-14 section first. Earlier notes: 2026-10-13, then 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -13,6 +13,62 @@ Below it the 2026-09-25 Schedule grid sweep, then the dated sections back throug
 wsop-console side and verified against both live services.
 
 ---
+
+## 2026-10-14 — Locations live; date pills, Sessions and Trend in their last rounds
+- **Live:** the bankroll **Locations** tab (52e0895: ITM per entry; a mixed room says "won/ITM" and only
+  plain "won" is toned green/red), the venue map (0b0d08e), and build.js reinstalling vite-app deps on
+  Render when the lockfile changes (aeb710b).
+- **Ready to merge after its guards:** the date-pill fix (branch `fix/date-pill`, worktree `date-pill`).
+  Labels centre their INK, read from canvas pixels by `utils/ink-balance.js` (WebKit clamps
+  measureText's bounds to the advance). The controls guard now waits for the layout to settle, which
+  was the cause of the recurring false "10 Oct" failure.
+- **In their final rounds:** the Sessions tab, the Trend overlays, the parser corpora (100 written + 136 spoken real hands; hardening
+  next), and the queued features (home customization, onboarding, hand-history export). **Ads are
+  PAUSED** (owner, 2026-10-14: "an excellent proof of concept"; memory `ads-paused` has the state of
+  each). Catalogue three's specimens and page are on hold too (it was the biggest spender, 6.4M tokens).
+- **Model policy (owner, 2026-10-14):** where Opus is not needed, delegate to Sonnet or Haiku. Set
+  `model` on every agent; one build plus one check per job (memory `model-delegation`).
+- **Trap: scratch seed tokens expire after 12 h.** `setup.cjs` signs `token.txt` with `expiresIn: '12h'`.
+  A guard run with an expired token silently skips most views and still prints "all N controls on the
+  grid" (21 controls instead of about 600). Check the skipped count and the JWT `exp` before trusting a
+  pass. Every scratchpad token was re-signed for 72 h on 2026-10-14.
+- **Owner answers wanted:** the parser's 47 questions (page in the table below) and the launch plan's
+  7 open questions (its section 16).
+- **Loose end:** `overviewStats().mtt.itm` (bankroll-ledger.js) still counts ITM per event; nothing on
+  screen shows it, but the owner's rule is per entry. Fix after Sessions and Trend merge (same file).
+
+## 2026-10-14 — Replayer springs merged (Set B the default)
+- The flop deal and spread, the turn/river landing, wagers pushed out and swept into the pot, and
+  the pot shipped to the winner run on one spring family, the launch ads' Remotion numbers
+  (`utils/spring.js`, `utils/replayer-motion.js`, `docs/replayer-springs.md`). Web Animations on
+  transform/opacity, computed once per moment; no per-frame JS. Master is merged in (desktop layout,
+  venue map, backer page).
+- **Flag** `localStorage.replayerSprings`: unset is **Set B "snappy", the default** (owner,
+  2026-10-13); '1' Set A "house"; '2'/'snappy' Set B; '0' today's code paths unchanged. Reduced
+  motion turns it all off (same animation set as flag '0' under reduce, no Web Animations).
+- **Round 3 fixes** (the two reviews' "must"s and the lead's "should"s): the pot never dips at the
+  result (each river ghost carries its wager less the showdown's uncalled return, and the figure never
+  reads below the press's: 122K, 157K, 197K); one ship per result press (deferred work is the
+  moment's generation, `MotionRegistry.defer`; `scripts/check-replayer-ship-once.mjs`); the ship is
+  the pile's own chips, not gold coins, landing at the coin's size on a big table; the winner's plaque
+  takes its gold at the hit with a ::after glow (opacity only); the board's springs and the pile's new
+  row are built in the frame after the press (the board held as seen until then); one ship clip box.
+- **Owner rules re-measured**: exports keep the motion except the push-outs, and match the live
+  replayer at every seeked instant (0-0.12px); the pot lands on the winner's plaque edge nearest the
+  centre, never on the name, at all 46 seats; seat geometry 0.00px against flag '0'.
+- **Frame cost**: see `docs/replayer-springs.md` "Frame cost" (round 3 numbers, traced and at 4x).
+- **For the Mac / iPhone** (not checkable here): Safari and the Catalyst app at 1440 with Web
+  Inspector's timeline on the flop, the result and Forward-mashing (Playwright's WebKit on Windows
+  rasterises in software and starves frames, a frame every ~300ms during a moment); an iPhone export
+  (no card face missing in a seeked frame of the flop or the result); the plaque's gold glow and the
+  board appearing on its first frame after the press on a real device.
+- **Merged and deployed 2026-10-14.** The final side-by-side videos (today vs Set B) are in
+  `weekly-graphics/replayer-springs/final/` and were sent to Ethan. It reaches TestFlight with the nightly build.
+- Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate`, and pin at 0 until
+  every animation has its start before running the clock — the page clock does not drive the
+  document timeline, and the registry times an arrival from its animation's real start. And a probe's
+  "settled" must wait for the registry too (`entries`, `ticks`, `deferred`), not just
+  `getAnimations()`: the ship is built a few frames after the press.
 
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
@@ -23,7 +79,7 @@ wsop-console side and verified against both live services.
   HEAD once a night when nothing is in the way. **Merging several branches into master over time? Write
   `.testflight-hold` (with a reason) first and delete it when master is whole.**
 - **In flight at the end of the day:** replayer springs (worktree `wf_47e1730e-7b7-1`; owner chose
-  **Set B** as the default — switch `replayer-motion.js` before merging; exports animate everything
+  **Set B** as the default — done on the branch, see the section above; exports animate everything
   except bet slide-outs; pot chips land on the winner's plaque edge, never across the name); the
   bankroll Locations tab (worktree `wf_f6462427-c7b-1`, based on an older master — needs a merge); the
   venue-strip map popup (worktree `venue-map`, branch `feat/venue-map` off `merge/home-tables`:
@@ -238,6 +294,7 @@ to the account and readable with WebFetch.
 | Graphics backlog | 100 measured graphic upgrades across the whole app, each naming the file and quoting the current value | https://claude.ai/code/artifact/f5f543f9-33b7-44e3-94d6-c9e7779eefcd |
 | Launch plan | Launch on 5 Jan 2027 at the BWPO, free until a 1 Mar paywall, $10,000 in three gates; channels, the twelve ads, policy wording, ASO, tracking, next 10 actions and 7 open questions (2026-10-13) | https://claude.ai/artifact/5k5qVK6Y8cPmzdMXjJEDgW |
 | Variant picker | Ten redesigns of the replayer entry's variant picker (recommended 8+10, fallback 1) (2026-10-13) | https://claude.ai/artifact/Jk96jEaP58rBAsf4eak9ka |
+| Parser questions | 47 questions from the real-hand corpora, tap-to-answer; the answers are in its db collection `answers` (Artifact tool, read_db) (2026-10-14) | https://claude.ai/artifact/9m4sQRQY4JpvcuEZJZR5NR |
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
