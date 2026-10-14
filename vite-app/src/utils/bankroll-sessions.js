@@ -10,12 +10,13 @@
 //   GET /api/bankrolls/reports?bankroll=&currency=   one FACT per tournament result and ENDED cash
 //       session (and expense / income, which are not sessions and are dropped). Facts carry what
 //       the list shows and what the routes below do not: the date already normalised to
-//       YYYY-MM-DD (a tournament stored as "May 28, 2026" too), the ROOM (property / online site /
-//       venue, never the series title), and the result in the dashboard's currency — the ledger's
+//       YYYY-MM-DD (a tournament stored as "May 28, 2026" too), the room's raw material (see
+//       tournamentPlace: an online event's is the site KEY), and the result in the dashboard's currency — the ledger's
 //       own arithmetic, (cashed ? cash : 0) - buy-in x max(1, bullets), and cash_out - buy_in -
 //       tips - expenses, a EUR result converted at the server's rates.
 //   GET /api/tracking?bankroll=            joined on 't' + id: finish place, field size, notes,
-//       the event's own buy-in and venue (its native currency), start time, event number.
+//       the event's own buy-in and venue (its native currency), start time, event number, and the
+//       ROOM (property: "WSOP.com", "GGPoker" for an online event).
 //   GET /api/cash-sessions?bankroll=       joined on 'c' + id: start / end, rebuys, cash-out, tips,
 //       expenses, currency, notes, tags. The live session is not a fact, so it never appears.
 // Without the two joins (a failed request) every row still shows; the detail has fewer fields.
@@ -163,12 +164,27 @@ export function finishLabel(place, field) {
 // a label, not a room, so such a row has no room (or series), and no game of that name.
 export const PERSONAL = 'Personal';
 
-/** A tournament's room ('' when none was recorded) and series (its venue, when not the room). */
-export function tournamentPlace(fact, entry) {
+/**
+ * A tournament's room ('' when none was recorded) and series (its venue, when not the room).
+ *
+ * The reports fact's room is the analytics' room: the feed's `property`; for an ONLINE event the
+ * site key ("wsop_com", "ggpoker"); else the venue, which for a feed row IS the series title. The
+ * list wants the poker room the app itself names, so, in this order:
+ *   1. the tracking join's `property` ("WSOP.com", "GGPoker", "Horseshoe Las Vegas");
+ *   2. a fact room that is an online site key, by the site's name (opts.siteName(key) -> name | '');
+ *   3. when the feed named no room (the fact fell back to the series title), the room the app's
+ *      curated VENUE_MAP names for that series (opts.roomOf(venue) -> longName | ''), the series
+ *      staying the series;
+ *   4. otherwise the fact room, or the venue.
+ * opts come from the component: utils.js cannot load under node --test.
+ */
+export function tournamentPlace(fact, entry, opts = {}) {
   const venue = entry ? String(entry.venue || '').trim() : '';
+  const property = entry ? String(entry.property || '').trim() : '';
   const factRoom = String((fact && fact.room) || '').trim();
   const personal = venue === PERSONAL || (!entry && factRoom === PERSONAL);
-  let room = factRoom || venue;
+  let room = property || (opts.siteName && opts.siteName(factRoom)) || factRoom || venue;
+  if (!personal && !property && venue && factRoom === venue && opts.roomOf) room = opts.roomOf(venue) || room;
   if (personal && room === PERSONAL) room = '';
   const series = venue && !personal && venue !== room ? venue : '';
   return { room, series, personal };
@@ -185,7 +201,8 @@ const localMinutesOf = (iso) => {
  *   tracking  GET /api/tracking rows (joined by id), or []
  *   sessions  GET /api/cash-sessions .sessions (joined by id; a live one is ignored), or []
  *   opts      { currency: the facts' display currency, config: code -> { symbol, pos },
- *               nativeOf: venue -> currency code, localMinutes: ISO -> minutes (tests fix the zone) }
+ *               nativeOf: venue -> currency code, localMinutes: ISO -> minutes (tests fix the zone),
+ *               siteName: online site key -> its name, roomOf: series title -> its curated room }
  * Each row: { key, id, type, date, year, dateLabel, minutes, title, room ('' when none), series
  *             (a tournament's venue when it is not the room, else ''), result, finish, fact,
  *             entry (tracking row | null), session (cash session | null), currency (native) }.
@@ -211,7 +228,7 @@ export function buildSessions(facts, tracking = [], sessions = [], opts = {}) {
       const native = e ? nativeOf(e.venue) : display;
       const cashed = e ? !!Number(e.cashed) : Number(f.cash) > 0;
       const t = e ? clockMinutes(e.time) : null;
-      const place = tournamentPlace(f, e);
+      const place = tournamentPlace(f, e, opts);
       rows.push({
         key: f.id, id, type: 'tournament', date, year: date.slice(0, 4), dateLabel: dayLabel(date),
         minutes: t != null ? t : (f.hour != null ? f.hour * 60 : null),

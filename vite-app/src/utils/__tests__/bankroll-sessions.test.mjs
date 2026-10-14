@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isoDay, dayLabel, clockMinutes, ordinal, compactMoney, shortBuyin, cashTitle, tournamentTitle, finishLabel,
-  buildSessions, filterSessions, groupByYear, countLabel, tournamentFigures, cashFigures, MINUS, CHUNK,
+  buildSessions, filterSessions, groupByYear, countLabel, tournamentFigures, cashFigures, tournamentPlace, MINUS, CHUNK,
 } from '../bankroll-sessions.js';
 
 const CONFIG = { USD: { symbol: '$', pos: 'pre' }, EUR: { symbol: '€', pos: 'pre' }, SEK: { symbol: 'kr', pos: 'suf' } };
@@ -239,6 +239,56 @@ test('buildSessions: a Personal venue (imported, private events) is no room and 
   assert.equal(bare.find((r) => r.key === 't141').room, 'Horseshoe Las Vegas');
   // A cash session's room is free text: one typed "Personal" is the player's own word, kept.
   assert.equal(buildSessions([C(30, '2026-03-03', { room: 'Personal' })], [], [], OPTS)[0].room, 'Personal');
+});
+
+test('tournamentPlace: an online event shows the site name, a propertyless feed row its curated room', () => {
+  // The component's helpers (utils.js and online-sites.js cannot load under node --test).
+  const siteName = (k) => ({ wsop_com: 'WSOP.com', ggpoker: 'GGPoker', acr: 'ACR', clubwpt_gold: 'ClubWPT Gold' }[k] || '');
+  const roomOf = (v) => ({ '2026-27 WSOPC Atlantic City': "WSOPC Harrah's Atlantic City", '2026 Great Lakes Poker Classic - Summer': 'FireKeepers Casino' }[v] || '');
+  const o = { ...OPTS, siteName, roomOf };
+  const facts = [
+    // Online: the fact's room is the site key (lib/analytics.js normaliseRow); the join's property is the name.
+    T(170, '2026-07-04', { label: 'Sunday Million', room: 'wsop_com', online: true, buyin: 215, cost: 215 }),
+    T(171, '2026-07-03', { label: 'Sunday Special', room: 'ggpoker', online: true, buyin: 109, cost: 109 }),
+    T(172, '2026-07-02', { label: 'Mini', room: 'clubwpt_gold', online: true, buyin: 11, cost: 11 }),
+    // A feed row that names no room: the fact fell back to the series title, which is also the venue.
+    T(173, '2026-07-01', { label: 'Event #12', room: '2026-27 WSOPC Atlantic City', buyin: 1200, cost: 1200 }),
+    T(174, '2026-06-30', { label: 'Event #3', room: '2026 Great Lakes Poker Classic - Summer', buyin: 600, cost: 600 }),
+    // The same, but no curated room for the series: the venue stays the room.
+    T(175, '2026-06-29', { label: 'Event #1', room: 'Some Uncurated Series', buyin: 300, cost: 300 }),
+    // A feed row WITH a room: that room, and the series is the venue.
+    T(176, '2026-06-28', { label: 'Event #5', room: 'Horseshoe Las Vegas', buyin: 500, cost: 500 }),
+  ];
+  const tracking = [
+    E(170, { venue: 'WSOP.com Online Series', property: 'WSOP.com' }),
+    E(171, { venue: 'GGPoker Series', property: 'GGPoker' }),
+    E(172, { venue: 'ClubWPT Gold', property: 'ClubWPT Gold' }),
+    E(173, { venue: '2026-27 WSOPC Atlantic City', property: null }),
+    E(174, { venue: '2026 Great Lakes Poker Classic - Summer', property: '' }),
+    E(175, { venue: 'Some Uncurated Series' }),
+    E(176, { venue: 'WSOP Summer 2026', property: 'Horseshoe Las Vegas' }),
+  ];
+  const got = new Map(buildSessions(facts, tracking, [], o).map((r) => [r.key, [r.room, r.series]]));
+  assert.deepEqual([...got], [
+    ['t170', ['WSOP.com', 'WSOP.com Online Series']],
+    ['t171', ['GGPoker', 'GGPoker Series']],
+    ['t172', ['ClubWPT Gold', '']],                                   // venue = room: not repeated
+    ['t173', ["WSOPC Harrah's Atlantic City", '2026-27 WSOPC Atlantic City']],
+    ['t174', ['FireKeepers Casino', '2026 Great Lakes Poker Classic - Summer']],
+    ['t175', ['Some Uncurated Series', '']],
+    ['t176', ['Horseshoe Las Vegas', 'WSOP Summer 2026']],
+  ]);
+  // Without the tracking join an online fact still reads as its site, never the key; a live room is as the fact has it.
+  const bare = new Map(buildSessions(facts, [], [], o).map((r) => [r.key, r.room]));
+  assert.equal(bare.get('t170'), 'WSOP.com');
+  assert.equal(bare.get('t172'), 'ClubWPT Gold');
+  assert.equal(bare.get('t176'), 'Horseshoe Las Vegas');
+  assert.equal(bare.get('t173'), '2026-27 WSOPC Atlantic City');       // the series is all the fact holds
+  // Called bare (no helpers): the fact's room, or the venue.
+  assert.deepEqual(tournamentPlace({ room: 'wsop_com' }, { venue: 'V', property: '' }), { room: 'wsop_com', series: 'V', personal: false });
+  assert.deepEqual(tournamentPlace({ room: '' }, { venue: 'V' }), { room: 'V', series: '', personal: false });
+  // Personal is never given a room by the curated map, even if one is named Personal.
+  assert.equal(tournamentPlace({ room: 'Personal' }, { venue: 'Personal' }, { roomOf: () => 'Nowhere' }).room, '');
 });
 
 test('filterSessions, groupByYear, countLabel', () => {

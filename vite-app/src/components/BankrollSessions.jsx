@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { API_URL } from '../utils/api.js';
-import { CURRENCY_CONFIG, nativeCurrency, formatCurrencyAmount, MINUS } from '../utils/utils.js';
+import { CURRENCY_CONFIG, VENUE_MAP, nativeCurrency, formatCurrencyAmount, MINUS } from '../utils/utils.js';
+import { getSite } from '../utils/online-sites.js';
 import { bankrollQuery } from '../utils/bankrolls.js';
 import {
   CHUNK, SESSION_TYPES, buildSessions, filterSessions, groupByYear, countLabel, compactMoney, finishLabel,
@@ -42,6 +43,11 @@ const loadType = () => { try { const v = localStorage.getItem(STORE); return TYP
 const saveType = (v) => { try { localStorage.setItem(STORE, v); } catch { /* private mode: not remembered */ } };
 
 const cfgOf = (code) => CURRENCY_CONFIG[code] || CURRENCY_CONFIG.USD;
+// The room a tournament row shows (utils/bankroll-sessions.js tournamentPlace): an online event's
+// fact room is the site KEY ("wsop_com"), which the app names "WSOP.com"; a feed row with no room
+// has its series title there, and the curated VENUE_MAP knows that series' room.
+const siteName = (key) => { const s = getSite(key); return s && s.key === key ? s.name : ''; };
+const roomOf = (venue) => (Object.prototype.hasOwnProperty.call(VENUE_MAP, venue) && VENUE_MAP[venue].longName) || '';
 // The Results tab's panel is laid out (App hides every other tab's panel with display: none).
 const resultsOnScreen = () => {
   const el = document.querySelector('.tab-panel[data-tab="tracking"]');
@@ -50,7 +56,13 @@ const resultsOnScreen = () => {
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur);
 const signed = (v, cur) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v || 0), cur);
 const tone = (v) => (v > 0 ? ' an-pos' : v < 0 ? ' an-neg' : '');
-const pct = (x) => (x == null ? '—' : (x > 0 ? '+' : x < 0 ? MINUS : '') + Math.abs(x * 100).toFixed(Math.abs(x) < 0.1 ? 1 : 0) + '%');
+// ROI: whole percent (one decimal under 10%), with thousands separators as Field and Cashed have.
+const pct = (x) => {
+  if (x == null) return '—';
+  const digits = Math.abs(x) < 0.1 ? 1 : 0;
+  const body = Math.abs(x * 100).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return (x > 0 ? '+' : x < 0 ? MINUS : '') + body + '%';
+};
 const clock = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); };
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -285,7 +297,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
       const rows = buildSessions(facts.value.facts || [],
         tracking.status === 'fulfilled' && Array.isArray(tracking.value) ? tracking.value : [],
         cash.status === 'fulfilled' ? cash.value.sessions || [] : [],
-        { currency, config: CURRENCY_CONFIG, nativeOf: nativeCurrency });
+        { currency, config: CURRENCY_CONFIG, nativeOf: nativeCurrency, siteName, roomOf });
       setState({ status: 'ready', rows, partial: tracking.status !== 'fulfilled' || cash.status !== 'fulfilled', ...built });
     });
     return () => { live = false; };
@@ -314,7 +326,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
   // draws no ring but hears Escape. Back or Escape from the keyboard returns it to the row that was
   // opened; a tap on Back to the list itself (no ring on a row the player did not reach by key, and
   // the focus still inside the dialog). Never taken from elsewhere: a bankroll chip keeps it when a
-  // switch closes the detail.
+  // switch closes the detail (WebKit gives a clicked chip none: see the switch effect below).
   const rowEl = (key) => (sectionRef.current ? [...sectionRef.current.querySelectorAll('.bs-row')].find((el) => el.dataset.key === key) : null);
   const focusLost = () => {
     const a = document.activeElement;
@@ -348,6 +360,14 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
       if (el) el.focus({ preventScroll: true });
     }
   }, [openKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A bankroll switch unmounts an open detail in the render it happens in (the rows on hand are
+  // not the new roll's). Where a clicked chip takes the focus (Chromium) nothing moves; in WebKit a
+  // clicked button takes none, the detail's focus falls to the body outside the dialog, and the
+  // list takes it.
+  useLayoutEffect(() => {
+    if (openKey && listRef.current && focusLost()) listRef.current.focus({ preventScroll: true });
+  }, [bankrollKey, currency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Show more" from the keyboard: when the button goes (nothing left), the focus goes on to the
   // first row it added; while rows remain the button stays, and keeps it.
@@ -404,7 +424,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
           </p>
         )}
         {fresh && state.partial && allRows.length > 0 && (
-          <p className="an-p">Some details (finishes, notes, rebuys) could not load; the results are complete.</p>
+          <p className="an-p">Some details (finishes, notes, rebuys, the currency each was played in) could not load; the results are complete.</p>
         )}
 
         {years.map((y) => (
@@ -417,7 +437,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
         ))}
         {rest > 0 && (
           <button type="button" className="bk-btn bs-more" onClick={showMore}>
-            <span>Show {Math.min(CHUNK, rest).toLocaleString('en-US')} more · {rest.toLocaleString('en-US')} left</span>
+            <span>{rest > CHUNK ? `Show ${CHUNK.toLocaleString('en-US')} more · ${rest.toLocaleString('en-US')} left` : rest === 1 ? 'Show the last one' : `Show the last ${rest.toLocaleString('en-US')}`}</span>
           </button>
         )}
       </div>

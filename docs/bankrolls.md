@@ -351,12 +351,13 @@ app's type and grid. No route of its own; three existing reads, joined on the cl
 (`buildSessions`):
 
 - `GET /api/bankrolls/reports?bankroll=&currency=` — one fact per result: the date (already
-  YYYY-MM-DD, a tournament stored as "May 28, 2026" too), the room (property / online site /
-  venue, never the series title) and the result in the dashboard's currency, the ledger's own
-  arithmetic. Expenses and income are facts too, and are dropped; deposits are not facts. A live
+  YYYY-MM-DD, a tournament stored as "May 28, 2026" too), the analytics' room (the feed's property;
+  the site KEY for an online event; else the venue, which for a feed row is the series title — see
+  Titles and rooms) and the result in the dashboard's currency, the ledger's own arithmetic. Expenses and income are facts too, and are dropped; deposits are not facts. A live
   cash session is not a fact, so it never appears.
 - `GET /api/tracking?bankroll=` (joined on `t<id>`) — finish place, field size, notes, the event's
-  own buy-in and venue (its native currency), start time, event number.
+  own buy-in and venue (its native currency), start time, event number, and its `property` (the
+  room as the app names it: "WSOP.com", "GGPoker", "Horseshoe Las Vegas").
 - `GET /api/cash-sessions?bankroll=` (joined on `c<id>`) — start / end, rebuys, cash-out, tips,
   expenses, currency, notes, tags; a session's stack updates (`GET /api/cash-sessions/:id`) when its
   detail opens. Without the two joins every row still shows, with a line saying details are missing.
@@ -389,6 +390,14 @@ whose venue is `Personal` (the app's private events, and every result `POST /api
 writes) has no room and no series: the facts' room falls back to the venue, and "Personal" is a
 label, not a room; nor is it a game. A cash session's room is free text and kept as typed.
 
+A tournament's ROOM (`tournamentPlace`) is, in order: the join's `property`; a fact room that is an
+online site key, by the site's name (`wsop_com` reads "WSOP.com"; the component passes
+`siteName`, from `utils/online-sites.js`); for a feed row that named no room (the fact fell back to
+the series title, about one in seven), the room the curated `VENUE_MAP` names for that series
+(`roomOf`: its `longName`, "WSOPC Harrah's Atlantic City"); else the fact's room or the venue. The
+venue stays the series, shown in the detail when it is not the room. Without the tracking join
+(`partial`) only the site key is mapped; a propertyless feed row then reads its series title.
+
 Ordering: date, then start time (a tournament's scheduled start, a cash session's local start),
 then id, newest first. A cash session's day is its `session_date`, the player's local day it
 started, so a session begun at 23:30 on Dec 31 is in that year.
@@ -401,9 +410,15 @@ screen. It is offered only when the sheet is over the Results tab: the home open
 (HomeNumbers), and from there closing it would leave the player on the home, so the detail says
 where to edit instead.
 
+When the two joins fail, the rows still list, with the currency symbol of the dashboard (the
+buy-in in a title is the converted one) and no finishes, notes or rebuys; the note under the bar
+says so. The "Show more" button reads "Show the last 34" on the final chunk, not the same number
+twice. A bankroll switch over an open detail hands the focus to the list (WebKit gives a clicked
+chip none, so it would fall to the body outside the dialog).
+
 Tests: `vite-app/src/utils/__tests__/bankroll-sessions.test.mjs` (run by `npm run test:bankrolls`):
 dates and labels, compact money and buy-ins, titles (a leading buy-in, a guarantee, a word that
-starts with K or M), Personal rooms, finish, ordering across a year boundary and a
+starts with K or M), Personal rooms, online and propertyless-feed rooms, finish, ordering across a year boundary and a
 past-midnight cash session, the type filter, year groups, the figures of both details, and rows
 built without the joins. The guards walk the tab: `check:controls` views `bankroll-sessions*` (the
 list scrolled past a year, its foot with Show more, the Cash filter, a tournament's and a cash
