@@ -266,6 +266,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   old branches. Recovery: `git -C D:\projects\futuregame-solver checkout -- .`, then
   `New-Item -ItemType Junction -Path D:\projects\scheduler\solver -Target D:\projects\futuregame-solver\solver`.
 - `poker-tournaments.db` is untracked runtime state owned by the pm2 app. Never commit it.
+- ⚠️ **Scratch servers leak.** Every server test and guard run boots its own `server.js -r
+  ./test/stub-solver-preload.js`; an agent cut off mid-run, a shell job killed at its time limit, or a
+  test that dies before its teardown leaves that copy running, each holding a whole DB in memory. On
+  2026-10-14, 53 of them had piled up (RAM at 86%), which made later guards crash and re-run. **After any
+  test or guard work, kill them** (the pm2 app is never started with the stub, so it is untouched):
+
+  **PC (PowerShell):**
+  ```bash
+  Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'stub-solver-preload' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+  ```
 - The MTT-feed mirror reconciles deletions: the push carries `feedVenues` (the series we
   still hold) and the receiver prunes feed rows outside it. Pruning **never** touches a row
   referenced by `user_schedules`, `tracking_entries`, `live_updates`, `schedule_conditions`,
