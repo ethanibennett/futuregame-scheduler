@@ -1,10 +1,12 @@
 'use strict';
 /*
  * Shared plumbing for the backer-surface tests (test/backer-surface.test.js,
- * test/backer-rotation.test.js, test/backer-parity.test.js): boot server.js on a SCRATCH port
- * (4540-4549, never 3001) against a SCRATCH database in a temp dir (never poker-tournaments.db or
- * any copy of it), with every production secret scrubbed from the environment, and ./solver
- * stubbed (test/stub-solver-preload.js).
+ * test/backer-rotation.test.js, test/backer-parity.test.js) and the staking settlement test
+ * (test/staking-settlement.test.js): boot server.js on a SCRATCH port (4540-4549 by default; a
+ * suite can ask for its own range, e.g. 4570-4579, so two suites can run at once; never 3001)
+ * against a SCRATCH database in a temp dir (never poker-tournaments.db or any copy of it), with
+ * every production secret scrubbed from the environment, and ./solver stubbed
+ * (test/stub-solver-preload.js).
  *
  * Scrubbed on purpose: SYNC_TOKEN, DASHBOARD_TOKEN, ROSTER_TOKEN(_PREVIOUS), TESTFLIGHT_WATCHDOG,
  * RENDER, TRUST_PROXY, ANTHROPIC_API_KEY, the mail, push and Twilio settings, and the two backer
@@ -20,8 +22,8 @@ const initSqlJs = require('sql.js');
 const ROOT = path.join(__dirname, '..', '..');
 const PORTS = [4540, 4549];
 
-async function freePort() {
-  for (let p = PORTS[0]; p <= PORTS[1]; p++) {
+async function freePort(range = PORTS) {
+  for (let p = range[0]; p <= range[1]; p++) {
     const ok = await new Promise((res) => {
       const s = net.createServer();
       s.once('error', () => res(false));
@@ -29,7 +31,7 @@ async function freePort() {
     });
     if (ok) return p;
   }
-  throw new Error(`no free port in ${PORTS[0]}-${PORTS[1]}`);
+  throw new Error(`no free port in ${range[0]}-${range[1]}`);
 }
 
 function scrubbedEnv(extra = {}) {
@@ -42,10 +44,10 @@ function scrubbedEnv(extra = {}) {
   return { ...env, JWT_SECRET: 'backer-surface-test-secret-not-for-prod', DISABLE_FEED_INGEST: '1', ...extra };
 }
 
-/** Boots server.js on a free scratch port. -> { port, child, log(), stop() } */
-async function boot(dbPath, extraEnv = {}) {
+/** Boots server.js on a free scratch port. opts.ports = [lo, hi]. -> { port, child, log(), stop() } */
+async function boot(dbPath, extraEnv = {}, opts = {}) {
   if (/poker-tournaments\.db$/i.test(path.basename(dbPath))) throw new Error('refusing the live database');
-  const port = await freePort();
+  const port = await freePort(opts.ports || PORTS);
   if (port === 3001) throw new Error('refusing port 3001');
   const env = scrubbedEnv({ ...extraEnv, PORT: String(port), DB_PATH: dbPath });
   return new Promise((resolve, reject) => {
@@ -94,10 +96,10 @@ async function sqlJs() { SQL = SQL || await initSqlJs(); return SQL; }
  * so every dataMigration has run). Tests open it with open(), write with save(db), and boot again
  * with boot(dbPath, env). cleanup() removes the directory.
  */
-async function createScratch() {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fg-backer-surface-'));
+async function createScratch(opts = {}) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), opts.prefix || 'fg-backer-surface-'));
   const dbPath = path.join(tmp, 'scratch.db');
-  const srv = await boot(dbPath);
+  const srv = await boot(dbPath, opts.env || {}, opts);
   const bootLog = srv.log();
   await srv.stop();
   const S = await sqlJs();
