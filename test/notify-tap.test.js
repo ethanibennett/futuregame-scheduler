@@ -336,9 +336,18 @@ function seed(db, { ham, plain }) {
           assert.strictEqual(no.json.needsConfirm, true);
           assert.deepStrictEqual(await feed(srv, TOK.dan), danBefore, 'nothing sent without the confirm');
           assert.strictEqual(ledgerRows(file).filter((e) => e.ref_id === ids.te2).length, 0);
+          // "Send the others": the flagged backer skipped, the rest sent without a confirm.
+          const others = await commit(srv, owner, 'tracking_entries', ids.te2, { skip: ['r-dan'] });
+          assert.strictEqual(others.status, 200, others.text);
+          assert.strictEqual(others.json.sentNow, 1);
+          assert.deepStrictEqual(others.json.backers.map((x) => [x.name, x.status]), [['Dan Whitcombe', 'new'], ['Sam Okafor', 'sent']]);
+          assert.deepStrictEqual([others.json.state, others.json.pending, others.json.needsConfirm], ['partial', 1, true]);
+          assert.deepStrictEqual(await feed(srv, TOK.dan), danBefore, 'the skipped backer is not sent');
+          assert.strictEqual((await commit(srv, owner, 'tracking_entries', ids.te2)).status, 409, 'and is asked about again');
           const yes = await commit(srv, owner, 'tracking_entries', ids.te2, { confirm: true });
           assert.strictEqual(yes.status, 200, yes.text);
-          assert.strictEqual(yes.json.sentNow, 2);
+          assert.strictEqual(yes.json.sentNow, 1);
+          assert.strictEqual(yes.json.state, 'sent');
           const after = await feed(srv, TOK.dan);
           assert.strictEqual(after.sessions, danBefore.sessions + 1, 'the dashboard\'s share and this one are both on the page');
           assert.strictEqual(after.cumulativeCents, danBefore.cumulativeCents - 25000);

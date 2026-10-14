@@ -122,9 +122,11 @@ const listOf = (names) => {
 export function confirmText(block, { thisYear } = {}) {
   const pending = block.backers.filter((b) => b.status === 'new');
   const warned = pending.filter((b) => b.warnings.length);
-  const what = pending.length === 1 ? 'the share' : `all ${pending.length} shares`;
+  const rest = pending.filter((b) => !b.warnings.length);
+  const what = (pending.length === 1 ? 'the share' : `all ${pending.length} shares`) + ' anyway'
+    + (rest.length === 1 ? `, or only ${rest[0].name || NO_NAME}'s` : rest.length > 1 ? `, or only the ${rest.length} not flagged` : '');
   if (warned.length !== 1) {
-    return `${listOf(warned.map((b) => b.name || NO_NAME))} may already have this night: the lines under each name say why. Send ${what} anyway?`;
+    return `${listOf(warned.map((b) => b.name || NO_NAME))} may already have this night: the lines under each name say why. Send ${what}?`;
   }
   const w = warned[0].warnings;
   const dates = [...new Set(w.filter((x) => x.kind === 'dashboard').map((x) => fmtShort(x.date, thisYear)))];
@@ -132,8 +134,11 @@ export function confirmText(block, { thisYear } = {}) {
     dates.length ? `the dashboard app sent a share on ${dates.join(', ')}` : null,
     w.some((x) => x.kind === 'series') ? 'a series agreement covers this event' : null,
   ].filter(Boolean).join(', and ');
-  return `${warned[0].name || NO_NAME} may already have this night: ${why}. Send ${what} anyway?`;
+  return `${warned[0].name || NO_NAME} may already have this night: ${why}. Send ${what}?`;
 }
+
+/** The keys of the new shares the confirm is about (the confirm's "Send the others" skips them). */
+export const flaggedKeys = (block) => block.backers.filter((b) => b.status === 'new' && b.warnings.length).map((b) => b.key);
 
 /** The line under the block: what a tap does here, or what an edit does once it is sent. */
 export function footNote(block) {
