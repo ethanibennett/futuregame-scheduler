@@ -4,7 +4,7 @@
 //   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874] [--only "bankroll,home"]
 //   (--only runs the passes whose name starts with one of those words: schedule, home, venue-map,
 //   hands, bankroll-dashboard, bankroll-locations, bankroll-backers, cash, bankroll-fab, expenses,
-//   results-reset, backer-page; --verbose names the views a run scanned. A pass that skips itself
+//   results-reset, staking-settlement, backer-page; --verbose names the views a run scanned. A pass that skips itself
 //   says so, and the "scanned N views" line before the verdict counts the ones that ran.)
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
@@ -15,7 +15,8 @@
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
 // Scanner, its Export for PokerTracker sheet (over a staged list with a hand of every kind it sorts) and a
 // replay's Share sheet (and one on a hand that came by a share link), the venue map opened from a
-// Schedule strip and from an Up Next banner, first-run setup's three steps, the backer page
+// Schedule strip and from an Up Next banner, first-run setup's three steps, a staking series'
+// Settlement (open and settled, with series named "Guard Open" / "Guard Settled"), the backer page
 // (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no sessions, one session) (and, for an
 // admin, each tab of the bankroll dashboard — the Overview with every table
 // section open, then closed; Sessions paged to the list's end, filtered to Cash, a cash session's and
@@ -842,6 +843,44 @@ function scan(rootSel) {
     await setupRun('first-run setup name dialog', '.modal-content.ob');
     console.log(`  first-run setup: ${setupViews} views measured`);
   } catch (e) { console.log(`  (first-run setup skipped after ${setupViews} views: ${e.message.split('\n')[0]})`); }
+
+  // Staking > a series > Settlement (docs/bankroll-merge.md §10): an open sheet (its figures, its
+  // inputs, the who-pays line) and a settled one (Paid toggles, the ledger line), paged through.
+  // Nothing in the UI navigates to Staking, so through a component's onNavigate, as the control
+  // guard does. Needs series named "Guard Open" and "Guard Settled" (a scratch seed); skipped and
+  // said otherwise.
+  for (const title of on('staking-settlement') ? ['Guard Open', 'Guard Settled'] : []) {
+    const label = `staking settlement, ${title.toLowerCase()}`;
+    try {
+      await openTab('Dashboard');
+      const reached = await p.evaluate(() => {
+        for (const el of document.querySelectorAll('.tab-panel *, .dk-rail *')) {
+          const k = Object.keys(el).find(k => k.startsWith('__reactFiber'));
+          if (!k) continue;
+          for (let f = el[k]; f; f = f.return) if (f.memoizedProps && typeof f.memoizedProps.onNavigate === 'function') { f.memoizedProps.onNavigate('staking'); return true; }
+        }
+        return false;
+      });
+      if (!reached) throw new Error('no onNavigate to reach staking');
+      await p.waitForTimeout(1800);
+      await p.locator(`.staking-series-card:has-text("${title}")`).first().click({ timeout: 4000 });
+      await p.waitForTimeout(1200);
+      await p.locator('.group-segment-btn:has-text("Settlement")').first().click({ timeout: 4000 });
+      await p.locator('.staking-settlement-card').first().waitFor({ timeout: 6000 });
+      await p.waitForTimeout(800);
+      for (let i = 0; i < 12; i++) {
+        await run(`${label}${i ? ` (scrolled ${i})` : ''}`, '.group-detail-view');
+        const moved = await p.evaluate((h) => {
+          let sc = document.querySelector('.group-detail-view');
+          while (sc && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight + 1)) sc = sc.parentElement;
+          if (!sc) return false;
+          const before = sc.scrollTop; sc.scrollTop += Math.round(h * 0.7); return sc.scrollTop !== before;
+        }, H);
+        if (!moved) break;
+        await p.waitForTimeout(300);
+      }
+    } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
+  }
 
   // The backer page (/b/<token>, no login: components/BackerPage.jsx), paged through: a full
   // history (then its graph on 1M), a backer with no sessions yet, one session. CHECK_BACKER_TOKENS

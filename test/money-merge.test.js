@@ -150,8 +150,14 @@ function snapshot(db, tables, colsOf) {
   return out;
 }
 
-// Removes everything 'money-merge-2026-10' adds, leaving the schema as it was the day before.
+// Removes everything 'money-merge-2026-10' adds, leaving the schema as it was the day before. Phase 3's
+// 'staking-settlement-2026-10' runs after it and indexes two of its columns, so that goes first (the
+// day before Phase 1 had neither; at the next boot both run, in order).
 function unmigrate(db) {
+  db.run('DROP INDEX IF EXISTS idx_backer_settlements_agreement');
+  db.run('DROP INDEX IF EXISTS idx_bankroll_adj_settlement_ref');
+  if (colInfo(db, 'backer_settlements').some((c) => c.name === 'snapshot')) db.run('ALTER TABLE backer_settlements DROP COLUMN snapshot');
+  db.run("DELETE FROM _applied_migrations WHERE name = 'staking-settlement-2026-10'");
   for (const t of Object.keys(EXPECT_TABLES)) db.run(`DROP TABLE IF EXISTS ${t}`);
   for (const i of EXPECT_INDEXES) db.run(`DROP INDEX IF EXISTS ${i}`);
   for (const [t, cols] of Object.entries(EXPECT_COLUMNS)) for (const c of cols) db.run(`ALTER TABLE ${t} DROP COLUMN ${c[0]}`);
@@ -345,8 +351,10 @@ function unmigrate(db) {
     assert.deepStrictEqual(rowsOf(db, 'SELECT settlement_ref FROM bankroll_adjustments').map((r) => r.settlement_ref), [null, null]);
     assert.deepStrictEqual(rowsOf(db, 'SELECT bankroll_id FROM staking_series').map((r) => r.bankroll_id), [null]);
     assert.deepStrictEqual(rowsOf(db, 'SELECT run_id, decision, source_updated_at, source_hash FROM bankroll_import_keys').map((r) => Object.values(r)), [[null, null, null, null]]);
+    // agreement_id: Phase 3's migration (staking-settlement-2026-10, next at the same boot) links an old
+    // row to its agreement when the backer has exactly one in the series, as Dan does here.
     assert.deepStrictEqual(rowsOf(db, 'SELECT agreement_id, computed_owed, adjustment, adjustment_note, prepaid, makeup_opening, makeup_closing, settled_at FROM backer_settlements').map((r) => Object.values(r)),
-      [[null, null, 0, null, 0, null, null, null]]);
+      [[one(db, 'SELECT id FROM backer_agreements'), null, 0, null, 0, null, null, null]]);
     assert.deepStrictEqual(rowsOf(db, 'SELECT makeup_opening, makeup_balance FROM backer_agreements').map((r) => Object.values(r)), [[null, -50]], 'makeup_balance is left in place, unread (§10)');
     // the one existing-row write (§4.2): the dashboard's events are already delivered
     const ev = rowsOf(db, 'SELECT id, source, share_cents, ts, notified_share_cents, notified_at, agreement_id, stake_id, ref_table, ref_id, revised_at FROM backer_events ORDER BY id');

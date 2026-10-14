@@ -4,20 +4,12 @@ import Icon from './Icon.jsx';
 import { FirstRun } from './EmptyState.jsx';
 import { API_URL } from '../utils/api.js';
 import { formatBuyin, parseTournamentTime } from '../utils/utils.js';
+import { BACKER_TYPE_LABELS, fmtSettle, canMarkPaid, showFinalize, typeLine, owedLine, settlementLines, inputsBody, missingPartner, paidLine, totalsLine, isMutual } from '../utils/staking-settlement.js';
 
 // ── Staking Platform ────────────────────────────────────────
 
-export const BACKER_TYPE_LABELS = {
-  pay_per_play: 'Pay Per Play',
-  open_commitment: 'Open Commitment',
-  budget_capped: 'Budget Capped',
-  flat_package: 'Flat Package',
-  profit_share_only: 'Profit Share',
-  makeup: 'Makeup',
-  tiered_markup: 'Tiered Markup',
-  swap: 'Swap',
-  crossbook: 'Crossbook'
-};
+// The type labels live with the settlement's view logic (utils/staking-settlement.js); re-exported here.
+export { BACKER_TYPE_LABELS };
 
 // ── Staking Settings (Sell Params + Markup) ──────────────
 
@@ -767,6 +759,7 @@ function StakingSeriesDetail({ series, token, backers, tournaments, mySchedule, 
         <StakingSettlementView
           seriesId={series.id}
           settlementData={settlementData}
+          setSettlementData={setSettlementData}
           token={token}
           fetchSettlement={fetchSettlement}
           fetchSeries={fetchSeries}
@@ -1158,10 +1151,21 @@ function StakingEventTracking({ seriesId, agreements, eventStatuses, tournaments
 }
 
 // ── Staking Settlement ──────────────────────────────────────
+// The sheet is the server's (lib/staking/settlement.js, docs/bankroll-merge.md §10): every figure
+// is computed there, and a settled series is read back from its stored rows. This panel shows the
+// sheet, collects the three inputs a person supplies while the series is open (what each backer
+// prepaid, an adjustment with its note, the other player's result on a swap or crossbook), asks
+// the server for a preview as they change, and sends them with Finalize. View logic:
+// utils/staking-settlement.js.
 
-function StakingSettlementView({ seriesId, settlementData, token, fetchSettlement, fetchSeries }) {
+function StakingSettlementView({ seriesId, settlementData, token, fetchSettlement, fetchSeries, setSettlementData }) {
   const [settling, setSettling] = useState(false);
   const [backerYtd, setBackerYtd] = useState({}); // backerId -> ytd_winnings
+  const [drafts, setDrafts] = useState({});       // agreementId -> { prepaid, adjustment, note, partner } as typed
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState('');
+  const [amountFor, setAmountFor] = useState(null); // { id, currency } when a payment needs the amount that moved
+  const [amountDraft, setAmountDraft] = useState('');
 
   // Load backer YTD data for 1099 section
   useEffect(() => {
@@ -1180,89 +1184,175 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
     })();
   }, []);
 
+  useEffect(() => { setDrafts({}); setPreview(null); setError(''); }, [seriesId]);
+
+  // Preview: the server recomputes with the drafts (writes nothing).
+  const draftKey = JSON.stringify(drafts);
+  useEffect(() => {
+    if (!settlementData || settlementData.isSettled) { setPreview(null); return; }
+    const { body, errors } = inputsBody(drafts);
+    if (errors.length) { setError('Amounts must be numbers'); return; }
+    if (!Object.keys(body).length) { setPreview(null); setError(''); return; }
+    let live = true;
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/staking/series/${seriesId}/settlement/preview`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const d = await res.json().catch(() => null);
+        if (!live) return;
+        if (res.ok) { setPreview(d); setError(''); } else setError((d && d.error) || 'Could not preview');
+      } catch { if (live) setError('Network error'); }
+    }, 350);
+    return () => { live = false; clearTimeout(t); };
+  }, [draftKey, settlementData, seriesId]);
+
+  const setDraft = (agreementId, field, value) => setDrafts(d => ({ ...d, [agreementId]: { ...(d[agreementId] || {}), [field]: value } }));
+
   const handleFinalize = async () => {
-    if (!confirm('Finalize settlement? This will lock in the P&L calculations.')) return;
+    const { body, errors } = inputsBody(drafts);
+    if (errors.length) { setError('Amounts must be numbers'); return; }
+    if (!confirm('Finalize settlement? The figures are stored as they are now; later edits to events will not change them.')) return;
     setSettling(true);
     try {
       const res = await fetch(`${API_URL}/staking/series/${seriesId}/settle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settlements: settlementData?.settlements || [] })
+        body: JSON.stringify(body)
       });
-      if (res.ok) { fetchSettlement(); fetchSeries(); }
-    } catch {}
+      const d = await res.json().catch(() => null);
+      if (res.ok) {
+        setDrafts({}); setPreview(null); setError('');
+        if (setSettlementData && d) setSettlementData(d); else fetchSettlement();
+        fetchSeries();
+      } else setError((d && d.error) || 'Could not finalize');
+    } catch { setError('Network error'); }
     setSettling(false);
   };
 
-  const handleMarkPaid = async (settlementId, isPaid) => {
+  const handleMarkPaid = async (entry, amount) => {
     try {
-      await fetch(`${API_URL}/staking/settlements/${settlementId}/paid`, {
+      const res = await fetch(`${API_URL}/staking/settlements/${entry.id}/paid`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPaid: !isPaid })
+        body: JSON.stringify(amount != null ? { isPaid: !entry.isPaid, amount } : { isPaid: !entry.isPaid })
       });
+      const d = await res.json().catch(() => null);
+      if (res.status === 409 && d && d.needsAmount) { setAmountFor({ id: entry.id, currency: d.currency }); setAmountDraft(''); setError(d.error); return; }
+      if (!res.ok) { setError((d && d.error) || 'Could not update'); return; }
+      setAmountFor(null); setError('');
       fetchSettlement();
-    } catch {}
+    } catch { setError('Network error'); }
   };
 
   if (!settlementData) {
     return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'calc(var(--subrow) * 3.75) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>Loading settlement data&hellip;</div>;
   }
 
-  const settlements = settlementData.settlements || [];
+  const data = (!settlementData.isSettled && preview) || settlementData;
+  const settlements = data.settlements || [];
+  const currency = data.currency || 'USD';
+  const open = !data.isSettled;
+  const waiting = missingPartner(data, drafts);
 
   if (settlements.length === 0) {
     return <div style={{textAlign:'center',color:'var(--text-muted)',padding:'calc(var(--subrow) * 3.75) var(--space-2xl)',fontSize:'calc(var(--subrow) * 1.625)'}}>No agreements to settle. Add agreements and log events first.</div>;
   }
 
   // Build 1099 rows: backers with positive returns in this settlement
-  const positiveSettlements = settlements.filter(s => {
-    const grossReturn = s.gross_return || s.grossReturn || 0;
-    return grossReturn > 0;
-  });
+  const positiveSettlements = settlements.filter(s => (s.grossReturn || 0) > 0);
   // De-dup by backerId, summing returns if multiple agreements
   const backerReturnMap = {};
   for (const s of positiveSettlements) {
-    const bid = s.backer_id || s.backerId;
-    const name = s.backer_name || s.backerName || 'Backer';
-    const ret = s.gross_return || s.grossReturn || 0;
-    if (!backerReturnMap[bid]) backerReturnMap[bid] = { id: bid, name, thisSettlement: 0 };
-    backerReturnMap[bid].thisSettlement += ret;
+    const bid = s.backerId;
+    if (!backerReturnMap[bid]) backerReturnMap[bid] = { id: bid, name: s.backerName || 'Backer', thisSettlement: 0 };
+    backerReturnMap[bid].thisSettlement += s.grossReturn || 0;
   }
   const backerReturnRows = Object.values(backerReturnMap);
+  const small = {fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)'};
 
   return (
     <div style={{padding:'var(--space-md) 0'}}>
       {settlements.map((s, i) => {
-        const netPl = (s.gross_return || s.grossReturn || 0) - (s.gross_investment || s.grossInvestment || 0);
-        const amtOwed = s.amount_owed || s.amountOwed || 0;
+        const owed = owedLine(s, currency);
+        // While open, the input stands in for its own figure (its placeholder is the default).
+        const lines = settlementLines(s, currency).filter(l => !open || (isMutual(s) ? l.key !== 'theirs' : l.key !== 'prepaid'));
+        const d = drafts[s.agreementId] || {};
+        const paid = paidLine(s, data.bankroll, currency);
         return (
-          <div key={s.backer_id || s.backerId || i} className="staking-settlement-card">
+          <div key={s.id || s.agreementId || i} className="staking-settlement-card">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div>
-                <div style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)'}}>{s.backer_name || s.backerName || 'Backer'}</div>
-                <div style={{fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)',color:'var(--text-muted)'}}>{BACKER_TYPE_LABELS[s.backer_type || s.backerType] || s.backer_type || s.backerType || ''} &middot; {s.percentage || 0}%</div>
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontWeight: 'var(--fw-bold)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)'}}>{s.backerName || 'Backer'}</div>
+                <div style={{...small,color:'var(--text-muted)'}}>{typeLine(s)}</div>
               </div>
-              {s.id && (
-                <label className="toggle-switch" title={s.is_paid ? 'Paid' : 'Unpaid'}>
-                  <input type="checkbox" checked={!!s.is_paid} onChange={() => handleMarkPaid(s.id, s.is_paid)} />
+              {canMarkPaid(s) && (
+                <label className="toggle-switch" title={s.isPaid ? 'Paid' : 'Unpaid'}>
+                  <input type="checkbox" checked={!!s.isPaid} onChange={() => handleMarkPaid(s)} aria-label={s.isPaid ? 'Mark unpaid' : 'Mark paid'} />
                   <span className="toggle-slider" />
                 </label>
               )}
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-xs)',marginTop:'var(--space-md)',fontSize:'calc(var(--subrow) * 1.5)',lineHeight:'calc(var(--subrow) * 2)'}}>
-              <div>Invested: <strong>{formatBuyin(s.gross_investment || s.grossInvestment || 0)}</strong></div>
-              <div>Returned: <strong>{formatBuyin(s.gross_return || s.grossReturn || 0)}</strong></div>
-              {(s.markup_amount || s.markupAmount) > 0 && <div>Markup: <strong>{formatBuyin(s.markup_amount || s.markupAmount || 0)}</strong></div>}
-              <div>Owed: <strong className={amtOwed >= 0 ? 'staking-pnl-pos' : 'staking-pnl-neg'}>{formatBuyin(Math.abs(amtOwed))}</strong></div>
+            {/* 2r lines and no row gap, so the card stays whole r (and the controls under it on the grid). */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',columnGap:'var(--space-xs)',marginTop:'var(--space-md)',...small}}>
+              {lines.map(l => <div key={l.key}>{l.label}: <strong>{l.value}</strong></div>)}
             </div>
-            <div style={{marginTop:'var(--space-md)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)',fontWeight:700}} className={netPl >= 0 ? 'staking-pnl-pos' : 'staking-pnl-neg'}>
-              {netPl >= 0 ? '+' : ''}{formatBuyin(netPl)} net
+            {open && (
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-md)',marginTop:'var(--space-md)'}}>
+                {isMutual(s) ? (
+                  <label className="staking-field" style={{gridColumn:'span 2'}}><span>{s.resultBasis === 'net' ? 'Their net result' : 'Their cashes'} *</span>
+                    <input type="text" inputMode="decimal" value={d.partner ?? ''} onChange={e => setDraft(s.agreementId, 'partner', e.target.value)} placeholder={s.resultBasis === 'net' ? 'e.g. -500' : 'e.g. 0'} />
+                  </label>
+                ) : (
+                  <label className="staking-field" style={{gridColumn:'span 2'}}><span>Prepaid</span>
+                    <input type="text" inputMode="decimal" value={d.prepaid ?? ''} onChange={e => setDraft(s.agreementId, 'prepaid', e.target.value)} placeholder={fmtSettle(s.prepaidDefault, currency)} />
+                  </label>
+                )}
+                <label className="staking-field"><span>Adjustment</span>
+                  <input type="text" inputMode="decimal" value={d.adjustment ?? ''} onChange={e => setDraft(s.agreementId, 'adjustment', e.target.value)} placeholder="+ you pay more" />
+                </label>
+                <label className="staking-field"><span>Why</span>
+                  <input type="text" value={d.note ?? ''} onChange={e => setDraft(s.agreementId, 'note', e.target.value)} placeholder="Optional" maxLength={200} />
+                </label>
+              </div>
+            )}
+            <div style={{marginTop:'var(--space-md)',fontSize:'calc(var(--subrow) * 1.75)',lineHeight:'calc(var(--subrow) * 2)',fontWeight:700}} className={owed.tone === 'in' ? 'staking-pnl-pos' : undefined}>
+              {owed.text}
             </div>
-            {s.is_paid && <div style={{fontSize:'calc(var(--subrow) * 1.375)',color:'#22c55e',marginTop:'var(--space-xs)'}}>{'\u2713'} Paid{s.paid_at ? ` \u00b7 ${new Date(s.paid_at).toLocaleDateString()}` : ''}</div>}
+            {s.unfinishedEvents > 0 && open && (
+              <div style={{...small,color:'var(--text-muted)'}}>{s.unfinishedEvents} event{s.unfinishedEvents !== 1 ? 's' : ''} still marked in progress, counted as played</div>
+            )}
+            {paid && <div style={{...small,color:'#22c55e'}}>{'✓'} {paid.text}</div>}
+            {amountFor && amountFor.id === s.id && (
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-md)',marginTop:'var(--space-md)',alignItems:'end'}}>
+                <label className="staking-field"><span>Paid, in {amountFor.currency}</span>
+                  <input type="text" inputMode="decimal" value={amountDraft} onChange={e => setAmountDraft(e.target.value)} />
+                </label>
+                <button className="create-group-submit" style={{fontSize:'calc(var(--subrow) * 1.5)',height:'calc(var(--subrow) * 5)',marginBottom:'var(--space-md)'}}
+                  onClick={() => { const n = Number(String(amountDraft).replace(/[,\s]/g, '')); if (Number.isFinite(n) && n >= 0) handleMarkPaid(s, n); else setError('Amounts must be numbers'); }}>
+                  Mark paid
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
+
+      <div style={{...small,fontWeight:700,marginTop:'var(--space-md)'}}>{totalsLine(data)}</div>
+      {error && <div style={{...small,color:'#ef4444'}}>{error}</div>}
+      {showFinalize(data) && (
+        <button
+          className="create-group-submit"
+          style={{fontSize:'calc(var(--subrow) * 1.625)',padding:'var(--space-ml) var(--space-2xl)',width:'100%',marginTop:'var(--space-md)'}}
+          onClick={handleFinalize}
+          disabled={settling || waiting.length > 0}
+          title={waiting.length ? 'Enter the other player’s result on each swap and crossbook' : undefined}
+        >
+          {settling ? 'Finalizing…' : 'Finalize Settlement'}
+        </button>
+      )}
 
       {/* 1099 Summary Section */}
       {backerReturnRows.length > 0 && (
@@ -1275,11 +1365,11 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
             // Use ytd as the "total including this settlement" approximation
             let indicator;
             if (ytd >= 600) {
-              indicator = { icon: '\u26d4', label: 'Required ($600+)', color: '#ef4444' };
+              indicator = { icon: '⛔', label: 'Required ($600+)', color: '#ef4444' };
             } else if (ytd >= 400) {
-              indicator = { icon: '\u26a0', label: 'Near threshold ($400+)', color: '#f59e0b' };
+              indicator = { icon: '⚠', label: 'Near threshold ($400+)', color: '#f59e0b' };
             } else {
-              indicator = { icon: '\u2713', label: 'Under threshold', color: '#22c55e' };
+              indicator = { icon: '✓', label: 'Under threshold', color: '#22c55e' };
             }
             return (
               <div key={row.id} style={{
@@ -1290,8 +1380,8 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
                 <div style={{minWidth:0,flex:1}}>
                   <div style={{fontWeight: 'var(--fw-bold)'}}>{row.name}</div>
                   <div style={{color:'var(--text-muted)',marginTop:'var(--space-2xs)'}}>
-                    This settlement: <strong>{formatBuyin(row.thisSettlement)}</strong>
-                    {' \u00b7 '}YTD: <strong style={{color: ytd >= 600 ? '#ef4444' : ytd >= 400 ? '#f59e0b' : 'inherit'}}>
+                    This settlement: <strong>{fmtSettle(row.thisSettlement, currency)}</strong>
+                    {' · '}YTD: <strong style={{color: ytd >= 600 ? '#ef4444' : ytd >= 400 ? '#f59e0b' : 'inherit'}}>
                       {formatBuyin(ytd)}
                     </strong>
                   </div>
@@ -1306,16 +1396,6 @@ function StakingSettlementView({ seriesId, settlementData, token, fetchSettlemen
         </div>
       )}
 
-      {!settlementData.isSettled && (
-        <button
-          className="create-group-submit"
-          style={{fontSize:'calc(var(--subrow) * 1.625)',padding:'var(--space-ml) var(--space-2xl)',width:'100%',marginTop:'var(--space-lg)'}}
-          onClick={handleFinalize}
-          disabled={settling}
-        >
-          {settling ? 'Finalizing\u2026' : 'Finalize Settlement'}
-        </button>
-      )}
     </div>
   );
 }

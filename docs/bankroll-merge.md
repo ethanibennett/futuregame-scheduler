@@ -1,8 +1,9 @@
 # Bankroll merge: futurega.me becomes the one money store
 
 Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (merged), **Phase 2 built**
-on `feat/money-merge-2` (merged), **Phase 4 built** in the dashboard repo on `feat/money-export`, not
-yet merged (see "Phase 1: as built", "Phase 2: as built" and "Phase 4: as built" after the §15 table).
+on `feat/money-merge-2` (merged), **Phase 3 built** on `feat/money-merge-3`, not yet merged, **Phase 4
+built** in the dashboard repo on `feat/money-export`, not yet merged (see "Phase 1: as built" to
+"Phase 4: as built" after the §15 table).
 A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
@@ -1074,95 +1075,176 @@ A second **Fetch** builds a plan against the keys.
 
 ## 10. Staking settlement fixes (this model is being adopted, so they are part of it)
 
-All in `server.js` `:7394-7700` and `vite-app/src/components/StakingView.jsx`.
+**Built in Phase 3** (see "Phase 3: as built" after the §15 table). This section is the arithmetic as
+built, under the owner's Q11 (the backer pays up front). The code: `lib/staking/settlement.js` (the
+calculator, settle, paid, the migration), `lib/staking/settlement-routes.js` (HTTP),
+`vite-app/src/utils/staking-settlement.js` and `StakingView.jsx` (the panel). The old handlers at
+`server.js:7394-7700` are gone.
 
-1. **A pure calculator.** The GET's arithmetic moves into
-   `lib/staking/settlement.js` `computeSettlementSheet(db, seriesId, userId)`.
-   - It returns one entry per **agreement**: `{ agreementId, backerId, …figures, events }`.
-   - GET and settle both call it. The unused `calcRes` (`:7612`) goes.
+**The sign, said once.** Every figure is in the series' currency and from the **player's** side.
+`amountOwed > 0` means **the player pays the backer** (`direction: 'to_backer'`). `amountOwed < 0`
+means **the backer pays the player** (`direction: 'to_player'`). The ledger row is the mirror image:
+paying a backer takes money out of the bankroll (−), being paid by one puts it in (+).
+
+1. **A pure calculator.** `computeEntry(agreement, events, overrides, input, rules)` works out one
+   agreement; `computeSheet(db, seriesId, userId, { inputs, rules })` loads a series and returns one
+   entry per **agreement**: `{ agreementId, backerId, …figures, events }`. GET, the new preview and
+   settle all call it. The unused `calcRes` is gone. An agreement is on the sheet when it is active,
+   or inactive with events logged.
 2. **The sheet carries ids and paid flags.**
-   - For a **settled** series, GET returns the **stored** rows from `backer_settlements`, joined by
-     `agreement_id`: `id`, `is_paid`, `paid_at`, the stored figures, `makeup_opening`,
-     `makeup_closing`, `adjustment`, `prepaid`. It never recomputes them. Recomputing settled series
-     is the root of the double count.
+   - For a **settled** series, GET returns the **stored** rows from `backer_settlements`, one per
+     `agreement_id`: `id`, `isPaid`, `paidAt`, `settledAt`, the stored figures, `makeupOpening`,
+     `makeupClosing`, `adjustment`, `prepaid`, and `ledger` (the paid row, if any). The breakdown
+     (lines, events, the rules used) is the row's `snapshot`, written at settle. It never
+     recomputes. Recomputing settled series was the root of the double count, and an edit to an event
+     after settlement must not move money that has been paid.
    - For an **unsettled** series, GET returns the computed entries with `id: null`.
-   - The Paid toggle (`StakingView.jsx:1246`) renders when `s.id` is set.
-3. **`isSettled` versus `status`.** GET returns `isSettled: series.status === 'settled'` alongside
-   `status`. `StakingView.jsx:1309` already reads `isSettled`.
+   - The Paid toggle renders when `id` is set (`utils/staking-settlement.js` `canMarkPaid`).
+3. **`isSettled` versus `status`.** GET returns `isSettled: status === 'settled'` beside `status`;
+   Finalize shows only when `isSettled` is false (`showFinalize`).
 4. **Settle never trusts client figures.**
-   - The body becomes `{ adjustments?: [{ agreementId, amount, note }], prepaid?: [{ agreementId, amount }] }`.
-   - The server recomputes, stores `computed_owed`, `adjustment` and `prepaid`, and sets
+   - The body is `{ prepaid?: [{ agreementId, amount }], adjustments?: [{ agreementId, amount, note }],
+     partner?: [{ agreementId, amount }] }`: what a backer actually prepaid, a negotiated adjustment,
+     and the other player's result on a swap or crossbook. Anything else (the old client's
+     `settlements` array of figures) is ignored.
+   - The server recomputes and stores `computed_owed`, `adjustment`, `prepaid`, and
      `amount_owed = computed_owed + adjustment`.
-   - It writes **one row per agreement** (`agreement_id`), replacing the `(series_id, backer_id)`
-     upsert at `:7629`.
-   - Re-settling an already settled series is a 409.
-5. **The figures, one convention for every non-swap type** (§17 Q11). Amounts are from the player's
-   side: + means the player pays the backer.
-   - `investment` = buy-in × bullets × rate × pct × markup. This is the existing formula, which
-     includes the markup.
-   - `owed = grossReturn − (investment − prepaid)`. This removes `+ markupAmount` (`:7548`).
-     Example: 10% of $1,000 at 1.2 with no cash gives −$120, so the backer owes $120. The current
-     code says −$100.
-   - `profit_share_only`: investment is 0 and `owed = grossReturn` (positive nets only, as now).
-   - `budget_capped`: the investment is clamped to the cap, then the same formula. This replaces the
-     "refund unused budget" guess at `:7571`.
-   - `swap` and `crossbook`: unchanged. Their "GUESS" notes stay, and they are out of scope.
-   **Q11 in §10 (owner, 2026-10-14: the backer pays up front, before the event).** The formula
-   above does not change; what the figures mean does.
-   - **`prepaid` is the normal case, not an optional credit.** `investment` (which includes the
-     markup) is what the backer pays before the event, so a normal agreement has
-     `prepaid = investment` and `owed = grossReturn`. At settlement the player owes the backer only
-     their share of the return. Phase 3 should default `prepaid` to the computed `investment` for
-     every non-swap agreement and let the owner lower it per agreement when a backer has not yet
-     paid. The unpaid remainder `investment − prepaid` then stays a debt of the backer, and the
-     formula already nets it.
-   - **The markup is in the up-front payment.** The backer pays `pct × buy-in × markup`; the player
-     keeps the `(markup − 1)` part. The sign fix stands: the markup is the backer's cost, never
-     handed back. The example becomes: 10% of $1,000 at 1.2 with no cash. The backer prepaid
-     $120, `owed = 0 − (120 − 120) = 0`, and the backer's loss of $120 is already settled.
-   - **An event not played refunds the prepayment.** `investment = 0` and `prepaid > 0` give
-     `owed = grossReturn + prepaid`, which is positive and is paid back to the backer. The sheet
-     says "Refund".
-   - **`profit_share_only`** has no up-front payment (`investment` is 0), so `prepaid` stays 0.
-     **`budget_capped`** prepays up to the cap.
-   - **Makeup** (item 6) now arises only from an unpaid remainder, because a fully prepaid losing
-     series has `owed = 0`.
-   - **Open for Phase 3:** whether the up-front receipt itself posts to the ledger (an `income`
-     transaction in `staking`, or a `settlement` adjustment). Nothing in this spec books it; item 7
-     books only the final payment.
+   - It writes **one row per agreement** (`agreement_id`, unique), replacing the `(series_id,
+     backer_id)` upsert. Two agreements for one backer are two rows.
+   - Re-settling a settled series is a 409. A swap or crossbook without the other player's result is
+     a 400 that names them; a `prepaid` on one is a 400.
+   - `POST /settlement/preview` takes the same body and returns the sheet without writing, so the
+     panel never does arithmetic.
+5. **The figures** (owner Q11: the backer pays for the piece up front, before the event).
+
+   Per event e of an agreement, in the series' currency: `buyin_e = per-bullet buy-in × bullets ×
+   currency_rate`, `cash_e = cash × rate`, `tip_e = tip × rate`; `p` = the agreement's percentage
+   (an event override wins) ÷ 100; `m` = the markup (an event override wins, then a tier, then the
+   agreement). An event marked `cancelled` was **not played**; an opted-out event is not in the deal
+   at all. Pending, bought-in and playing events count as played and are flagged.
+
+   **The action types** (pay_per_play, open_commitment, budget_capped, flat_package, makeup,
+   tiered_markup):
+
+   ```
+   price_e      = buyin_e × p × m                      the backer's piece of event e, markup included
+   investment   = Σ price_e            over the events PLAYED          (gross_investment)
+   markupAmount = Σ buyin_e × p × (m − 1)  over the events played      (inside investment; the player keeps it)
+   grossReturn  = Σ (cash_e − tip_e) × p  over the events played
+   unplayed     = Σ price_e            over the events NOT played
+   prepaid      = what the backer paid up front; default (rule prepaid.<type>):
+                    'price' = investment + unplayed   (every piece sold, played or not: the normal case)
+                    'cap'   = the budget cap          (budget_capped)
+   owed         = grossReturn − (investment − prepaid)
+   ```
+
+   So a fully prepaid backer is owed exactly their share of the cashes, an event that was not played
+   comes back as a refund (`refund = prepaid − investment` when positive), and a backer who has not
+   paid has the unpaid price netted off (`unpaid = investment − prepaid`). Lowering `prepaid` on the
+   sheet is how the owner says a backer has not paid. **The markup is the backer's cost and is never
+   handed back:** the old `+ markupAmount` is gone.
+
+   | Type | What the backer pays, and what they get back | Formula (on top of the above) |
+   |---|---|---|
+   | `pay_per_play` | Pays `p × m` of every buy-in (every bullet) up front; gets `p` of every cash after tips, and the price of any event not played back. | as above |
+   | `open_commitment` | The same, over whatever the player enters; the backer is assumed to have paid for every bullet (lower `prepaid` if they paid a deposit). | as above |
+   | `tiered_markup` | As pay-per-play, at the markup of the buy-in's tier (`minBuyin ≤ buy-in ≤ maxBuyin`, per bullet, in the event's currency). | `m` = tier markup; an event-level markup override beats the tier |
+   | `flat_package` | Pays `p × m` of the package's buy-ins up front; gets `p` of the package's cashes, and the price of a package event not played back. | as above; rule `flatPackageUnplayed: 'keep'` charges an unplayed event (no refund) |
+   | `budget_capped` | Pays the budget (the cap) up front; gets `p` of the cashes of the events the budget covered, plus whatever of the budget was not used. | events in date and start-time order; each takes `price_e` from what is left; the event that crosses the cap is shared pro rata (`f = left ÷ price_e`, so its price, markup and return are × f); later events are not backed. `prepaid` defaults to the cap, so `owed = grossReturn + (cap − investment)`. Rule `budgetCrossing: 'exclude'` backs only an event that fits whole |
+   | `makeup` | Pays the piece up front like pay-per-play; gets `p` of the cashes, less any loss carried in from earlier series first. A loss not prepaid carries forward instead of being paid. | item 6 |
+   | `profit_share_only` | Pays nothing; gets `p` of the series' net profit, and is never asked to cover a loss. | `investment = 0`, `prepaid` default 0, `grossReturn = max(0, Σ (cash_e − tip_e − buyin_e) × p)`; rule `profitShareBasis: 'event'` = `Σ max(0, …)` per event (the old code) |
+   | `swap` | Pays nothing up front. Each player pays the other their percentage of their own cashes (after tips); the difference changes hands. | `owed = myPct × myResult − theirPct × theirResult`, a result = Σ (cash − tip) (rule `swapBasis: 'net'`: cash − tip − buy-in). `theirResult` is typed at settlement |
+   | `crossbook` | Pays nothing up front. A bet on who does better: the player with the worse net result pays their percentage of the difference to the other. | `D = myResult − theirResult` (net results; rule `crossbookBasis: 'cash'`); `D < 0`: `owed = myPct × (−D)`; else `owed = −theirPct × D`. Rule `crossbookMode: 'swap'` treats it as a swap (the old reading; it reverses who pays) |
+
+   Then, for every type: `amountOwed = computedOwed + adjustment`, where `computedOwed` is `owed`
+   (or item 6's figure for makeup). `netPnl`, the backer's result on the series before makeup and
+   adjustment, is `grossReturn − investment` for the action types and profit share, and `owed` for a
+   swap or crossbook. Figures are rounded to the cent (half away from zero) per agreement, and `owed`
+   is worked from the rounded parts, so the lines on the sheet add up exactly.
+
+   **Worked examples** (each is a case in `test/staking-settlement.test.js`, worked by hand):
+
+   | Case | Working | Result |
+   |---|---|---|
+   | **The headline.** pay_per_play 10% of a $1,000 event at 1.2, one bullet, no cash | price = 1000 × 0.10 × 1.2 = 120 (markup 20); prepaid 120; owed = 0 − (120 − 120) | **0**: the backer's $120 loss was settled up front |
+   | The same, netted (the owner sets prepaid 0) | owed = 0 − (120 − 0) | **−120**: the backer pays the player **$120** (the old code said $100) |
+   | Markup with cash: as above, cash $5,000, tip $100 | return = (5000 − 100) × 0.10 = 490; owed = 490 − (120 − 120) | **+490** to the backer (netted: +370; the old code: +390) |
+   | An unplayed event: 10% at 1.1, $1,500 played no cash, $2,500 not played | price 165 and 275; prepaid 440; owed = 0 − (165 − 440) | **+275**, the refund |
+   | currency_rate: 25% at 1.0 of a €1,100 event fired twice at 1.08, cash €4,000 | buy-in 1100 × 2 × 1.08 = 2,376 → price 594; cash 4,320 → return 1,080 | **+1,080** |
+   | open_commitment 15%, $500 × 2 bullets, cash $2,000 | price 150, return 300 | **+300** |
+   | tiered_markup 10%, 1.1 to $1,500 and 1.25 above: $1,000 bust, $10,000 cash $30,000 | price 110 + 1,250 = 1,360 (markup 260); return 3,000 | **+3,000** |
+   | flat_package 20% at 1.15, $1,500 played no cash, $1,500 not played | price 345 each; prepaid 690; owed = 0 − (345 − 690) | **+345** refund (rule `keep`: 0) |
+   | budget_capped 10% at 1.0, cap $1,000: in date order $5,000 bust, $3,000 cash $9,000, $5,000 cash $20,000, $2,000 cash $6,000 | prices 500, 300, then 200 of 500 (f = 0.4: return 20000 × 0.10 × 0.4 = 800), then nothing; investment 1,000; return 900 + 800; prepaid = cap | **+1,700** |
+   | The same cap, only the first two events | investment 800, return 900, prepaid 1,000; owed = 900 − (800 − 1000) | **+1,100** (900 + the unused 200) |
+   | profit_share 10%: $1,000 bust, $1,000 cash $2,500 tip $100 | nets −1,000 and +1,400; series net 400 × 0.10 | **+40** (per event: 140; a losing series: 0) |
+   | makeup 20%, series 1: opening 0, $5,000 bust, netted (prepaid 0) | owed = −1,000; total = −1,000 + 0 | pays **0**, carries **−1,000** |
+   | makeup, series 2: opening −1,000, $5,000 cash $12,000, prepaid 1,000 | owed = 2,400; total = 2,400 − 1,000 | **+1,400**, closing 0 |
+   | swap 5% / 5%: mine $1,500 cash $10,000 tip $200 and a $3,000 bust; theirs $4,000 | 0.05 × 9,800 − 0.05 × 4,000 = 490 − 200 | **+290** to the other player |
+   | crossbook 10% / 10%: mine $1,000 cash $6,000 and a $1,000 bust (net 4,000); theirs −500 | D = 4,000 − (−500) = 4,500 > 0: they pay 0.10 × 4,500 | **−450**: they pay the player $450 |
+   | The same crossbook, theirs +6,000 | D = −2,000: the player pays 0.10 × 2,000 | **+200** |
+
+   **The rules that are a choice** (the defaults are the standard staking-market meanings; each is an
+   open question for the owner, §17 Q15 to Q21): `STAKING_SETTLEMENT_RULES` on the server, JSON, sets
+   any of them, e.g. `{"crossbookMode":"swap","prepaid":{"makeup":"none"}}`, and every boot logs
+   `[staking] settlement rules: the defaults` or the custom set. A settled series keeps the rules it
+   was settled under in each row's snapshot, so a change never moves settled money.
+
+   | Rule | Default | Other values |
+   |---|---|---|
+   | `prepaid.<type>` | `price` for every action type, `cap` for budget_capped, `none` for profit share (swap and crossbook have no prepayment) | `price`, `used` (only the events played: no refunds), `cap`, `none` (a netted deal) |
+   | `flatPackageUnplayed` | `refund` | `keep` |
+   | `budgetCrossing` | `prorate` | `exclude` |
+   | `profitShareBasis` | `series` | `event` |
+   | `swapBasis` | `cash` | `net` |
+   | `crossbookMode` | `bet` | `swap` |
+   | `crossbookBasis` | `net` | `cash` |
+
+   **Open from §10 before Phase 3, still open:** whether the up-front receipt itself posts to the
+   ledger. Nothing books it; item 7 books only the final payment (§17 Q22).
 6. **Makeup without the double count.**
-   - **Migration.** For an agreement in an unsettled series, `makeup_opening = makeup_balance`. For
-     one in a settled series, `makeup_closing = makeup_balance` goes onto its settlement row, and
-     `makeup_opening = makeup_balance − raw`, where raw is that series' recomputed result without
-     makeup. The migration logs the count of makeup agreements; prod may have none.
-   - **The sheet** reads `makeup_opening` and never `makeup_balance`. It computes
-     `total = owed + makeup_opening`, `amount_owed = max(0, total)` and
-     `makeup_closing = min(0, total)`. A loss carries forward instead of being settled. A later
-     profit first repays it, and only the excess is paid.
+   - **Migration** (`staking-settlement-2026-10`). For an agreement in an unsettled series,
+     `makeup_opening = makeup_balance`. For one in a settled series, `makeup_closing = makeup_balance`
+     goes onto its settlement row, and `makeup_opening = makeup_balance − raw` (onto the row and the
+     agreement), where raw is that series' recomputed result without makeup (`grossReturn −
+     investment`, the old GET's `netPnl`). The boot log gives the counts; prod may have none.
+   - **The sheet** reads `makeup_opening` and never `makeup_balance`:
+     `total = owed + makeupOpening`, `computedOwed = max(0, total)`, `makeupClosing = min(0, total)`.
+     A loss carries forward instead of being settled. A later profit first repays it, and only the
+     excess is paid.
    - **Settle** stores opening and closing on the settlement row and **does not write the
-     agreement**. The next series' new makeup agreement suggests `makeup_opening` = the previous
-     closing.
-   - **Sign.** Negative means the backer owes and the amount is carried, not paid. That is the
-     dashboard's meaning of makeup ("opening: negative if they're in makeup", WC:`BackersUI.tsx`),
-     and its sign: a backer's losses are offset by later wins instead of changing hands.
-     `makeup_balance` is left in place, unread.
-   - **Prepaid.** A fully prepaid losing series has `owed = 0`, so nothing carries. Makeup only
-     arises on netted deals.
+     agreement**. A new makeup agreement opens with the backer's most recent settled closing unless
+     `makeupOpening` (or the older `makeupBalance`) is given; the create answer says which.
+   - **Sign.** Negative means the backer's loss, carried, not paid. That is the dashboard's meaning of
+     makeup ("opening: negative if they're in makeup", WC:`BackersUI.tsx`). `makeup_balance` is still
+     written on create, and never read.
+   - **Prepaid.** A fully prepaid losing series has `owed = 0`, so nothing carries: a makeup
+     agreement that is prepaid settles like pay-per-play. Makeup only arises on netted deals (rule
+     `prepaid.makeup: 'none'` makes that the default, §17 Q20).
 7. **Paid posts to the ledger** (bankrolls.md seam 2).
-   - `PUT /settlements/:id/paid {isPaid:true}` writes a `settlement` adjustment of `−amount_owed`
-     into `staking_series.bankroll_id` (default Main), with `settlement_ref 'bs:<id>'`.
-   - Marking it unpaid deletes that adjustment.
-   - A negative `amount_owed` (the backer pays the player) writes `+|amount|`.
-8. **Tests.** A new `test:staking-settlement` covers:
-   - each backer type's figures against hand-computed examples, including the markup example;
+   - `PUT /settlements/:id/paid {isPaid:true}` writes one `settlement` adjustment of
+     `−round(amountOwed)` (whole units; the note keeps the exact figure when it is not whole) into
+     `staking_series.bankroll_id` (NULL = Main), with `settlement_ref 'bs:<id>'` (unique per user).
+     A negative `amountOwed` (the backer pays the player) writes `+|amount|`. The note reads
+     `<series>: paid to <backer>` or `received from <backer>`. `date` (YYYY-MM-DD) is optional.
+   - Marking it unpaid deletes that adjustment. A request that does not change the state writes
+     nothing, so a double tap cannot book twice.
+   - When the bankroll's currency is not the series', the request must carry `amount`, what moved in
+     the bankroll's currency (409 `needsAmount` without it); the note keeps the series' figure.
+   - `bankrollId` (`'main'`, null or one of the owner's bankrolls) is accepted on `POST` and `PUT
+     /api/staking/series`.
+8. **Tests.** `npm run test:staking-settlement` (39 server cases, then 11 `node --test` cases on the
+   panel's helpers):
+   - each backer type's figures against hand-computed examples (the table above), every rule switch,
+     rounding, opt-outs, overrides and in-progress events;
    - the makeup carry across two series, with settle then GET returning the same figures (no
      double count);
-   - one row per agreement;
-   - the paid toggle's ledger row appearing and disappearing;
-   - settle ignoring client figures;
-   - the 409 on a re-settle;
-   - the client rendering `id` and `isSettled` (a `node --test` on the panel's helpers, extracted
-     from the JSX).
+   - one row per agreement, two for a backer with two agreements;
+   - the paid toggle writing exactly one ledger row, idempotent, appearing and disappearing, into the
+     series' bankroll, and the cross-currency 409;
+   - settle ignoring client figures; the 409 on a re-settle; preview writing nothing;
+   - an unplayed event's refund, currency_rate, a budget cap, swap and crossbook through the server;
+   - the migration on rows the old code wrote;
+   - the client rendering `id` and `isSettled` (`vite-app/src/utils/__tests__/staking-settlement.test.mjs`).
 
 ---
 
@@ -1492,7 +1574,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | **0** | — | Owner: Render snapshots, `LEDGER_TOKEN` on both services, answers to §17 (defaults otherwise) | — | owner |
 | **1** | sched | **Built** (see "Phase 1: as built" below). Migration `money-merge-2026-10` (§4); `lib/staking/standing.js` + `lib/staking/classify.js` with ported tests; `MOVE_KINDS` and labels; `equipment`/`fees` categories (server, client, tax rules); `affects_balance` in the transactions source and Expenses list; `time_known` in reports; account deletion | — | Sonnet |
 | **2** | sched | **Built** (see "Phase 2: as built" below), behind a switch that ships off (`BACKER_PAGE_SOURCE`). Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
-| **3** | sched | Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case ("Q11 in §10") | 1 | **Opus** |
+| **3** | sched | **Built** (see "Phase 3: as built" below). Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case; the formulas for all nine types, swap and crossbook included, in §10 item 5; the open choices are switches (§17.1) | 1 | **Opus** |
 | **4** | WC | **Built** (see "Phase 4: as built" below; dashboard branch `feat/money-export`, not merged). `GET /api/money-export` + `lib/shared-token.js` (`checkSharedToken`, the roster's check generalised) + tests; `LEDGER_TOKEN` declared in `render.yaml`, set by the owner | — | Sonnet |
 | **5** | sched | Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
@@ -1703,6 +1785,121 @@ gives them one), and the parity route lists the pages that would.
   but Phase 7's `GET /:id/events` and the owner API must not return `id`.
 - **Flipping to `sql` changes what the weekly email does** for any backer the parity route lists with
   `digest`, as well as the page. Read `differ` for both.
+
+### Phase 3: as built (2026-10-14, branch `feat/money-merge-3`)
+
+Built to §10 (rewritten as built), the owner's Q11 and the lead's brief, which added `swap` and
+`crossbook` (§10 had left them out of scope). Not merged, not deployed.
+
+**What exists**
+- **`lib/staking/settlement.js`** (new): `computeEntry` (one agreement, pure), `computeSheet` (a
+  series: stored rows once settled, computed otherwise), `parseInputs` and `entriesMeta` (the settle
+  body), `settleSeries`, `reopenSeries`, `lastMakeupClosing`, `setPaid` (paid → the ledger),
+  `resolveRules` and `DEFAULT_RULES` (§10's rule table), and `migrate`.
+- **`lib/staking/settlement-routes.js`** (new): `GET /settlement`, `POST /settlement/preview` (new),
+  `POST /settle`, `PUT /settlements/:id/paid`, mounted from `server.js` where the old handlers were,
+  under the `/api/staking` admin gate.
+- **Migration `staking-settlement-2026-10`** (in `lib/staking/settlement.js`, registered after
+  `backer-tokens-audit-2026-10`): `backer_settlements.snapshot`; `agreement_id` on rows the old code
+  wrote, where that backer has exactly one agreement in the series; makeup moved to
+  opening/closing (§10 item 6); a unique index on `backer_settlements(agreement_id)` and on
+  `bankroll_adjustments(user_id, settlement_ref)`. One savepoint, idempotent, logs counts only:
+  `Staking settlement: N settlement row(s) from before (L linked to their agreement, U left
+  unlinked …); makeup agreements moved to opening/closing: a unsettled, b settled`.
+- **`server.js`**: the rules read once at boot from `STAKING_SETTLEMENT_RULES` and logged
+  (`[staking] settlement rules: …`); `bankrollId` on series create and update; a series cannot be
+  marked settled by a status flip (400: Finalize does it), a settled series keeps its currency (409),
+  and reopening one is refused while a payment is marked and otherwise drops its stored rows; a new
+  makeup agreement writes `makeup_opening` (given, or the backer's last settled closing) and the
+  update route takes `makeupOpening`; the legacy `/api/backer/:token` reads its own agreement's
+  settlement row.
+- **The panel** (`StakingView.jsx` `StakingSettlementView`, view logic in
+  `vite-app/src/utils/staking-settlement.js`): per agreement the type line, the figures (piece,
+  markup in it, prepaid, share of cashes, refund or unpaid piece, budget left, makeup in and out,
+  mine/theirs for a swap or crossbook, the adjustment and its note), and the headline "You pay Sam
+  $490" / "Sam pays you $120" / "Nothing to pay". While open: inputs for Prepaid (placeholder: the
+  default), Adjustment and Why, or the other player's result on a swap or crossbook, previewed by
+  the server as they are typed; Finalize, off until every swap and crossbook has its figure. Once
+  settled: the Paid toggle, the ledger line ("Paid · 2026-07-02 · Main −$300"), and an amount field
+  when the bankroll's currency differs. A totals line; Finalize sits above the 1099 summary.
+- **Tests**: `npm run test:staking-settlement` (`test/staking-settlement.test.js`, 39 cases, 17 pure
+  and 22 through the real server on ports 4570-4579; then
+  `vite-app/src/utils/__tests__/staking-settlement.test.mjs`, 11). `test/helpers/scratch-server.js`
+  takes a port range (`{ ports }`), default unchanged.
+- **Guards**: `check-control-centring.mjs` views `staking-settlement-open` and
+  `staking-settlement-settled`, and a staking settlement pass in `check-text-clipping.mjs`, both
+  finding series named "Guard Open" / "Guard Settled". `scripts/seed-staking-demo.js <scratch.db>`
+  seeds them (every type, a refund, an in-progress event, a settled series with one payment booked);
+  it refuses `poker-tournaments.db`.
+
+**Where it differs from the spec, and why**
+1. **Names and shape.** `computeSheet`/`computeEntry`, not `computeSettlementSheet`. Entries are
+   camelCase (`id`, `isPaid`, `paidAt`, `settledAt`, `ledger`), which the panel reads; the spec said
+   `is_paid`. The raw row is still what the legacy `/api/backer/:token` returns.
+2. **Prepaid's default includes the events not played.** The spec said "default `prepaid` to the
+   computed `investment`". `investment` counts only events played, so that default could never
+   refund an unplayed event, which the spec's own Q11 bullet requires. Built: the price of every
+   piece sold (`investment + unplayed`), and the owner lowers it for a backer who did not pay.
+3. **Budget cap.** The spec clamped the investment and kept the same formula. That would leave the
+   backer the return of events their budget never paid for. Built: the backer's share stops when the
+   cap is spent (events in date and start-time order, the crossing event pro rata), and prepaid
+   defaults to the cap, so the unused budget comes back through the formula.
+4. **Profit share is the series' net**, not "positive nets only, as now" (per event), which pays a
+   profit share on a series that made no profit. The old way is rule `profitShareBasis: 'event'`.
+5. **Swap and crossbook are built** (the brief), with the other player's result typed at
+   settlement and kept in the snapshot. Crossbook is built as a bet (the worse result pays), which is
+   the **opposite direction** to the old code's reading; rule `crossbookMode: 'swap'` restores it.
+6. **The rules are switchable** (`STAKING_SETTLEMENT_RULES`), the brief's "keep it switchable".
+7. **A preview route** (`POST /settlement/preview`), so the panel shows the server's figures for the
+   typed inputs and never computes money itself.
+8. **A second migration and a snapshot column.** `money-merge-2026-10` has already run on production,
+   so Phase 3's backfill is its own migration. The snapshot is what lets a settled sheet be shown
+   exactly as settled (events, lines, rules) without recomputing.
+9. **Paid is idempotent and unique.** A request that does not change the state writes nothing, and the
+   unique index on `(user_id, settlement_ref)` makes a second row impossible. The ledger is whole
+   units: `round(amountOwed)`, the exact figure in the note.
+10. **Another currency needs the amount that moved** (409 `needsAmount`), not a conversion at today's
+    rate: a payment is a fact, not an estimate.
+11. **A new makeup agreement opens with the last closing by default** (the spec: "suggests"). No
+    screen creates a makeup agreement yet (the form offers three types), so a suggestion would never
+    be seen; the create answer returns the figure, and `makeupOpening: 0` overrides it.
+12. **An event-level markup override beats a tier** (the old code ignored it for `tiered_markup`).
+13. **An inactive agreement with no events is left off the sheet**, so a budget backer whose deal was
+    switched off is not refunded a budget they may never have sent.
+14. **Reopening and status.** The spec says nothing about `PUT /series` with a status: a bare flip to
+    `settled` would show an empty settled sheet, and reopening must not orphan a booked payment.
+
+**Not built, on purpose**
+- A bankroll picker on the series form (the API takes `bankrollId`; until then every series posts to
+  Main), and makeup / budget / swap / crossbook in the Add Agreement form (it offers pay-per-play,
+  flat package and profit share, as before).
+- `GET /api/staking/backers/summary` still adds up unsettled series with the old per-event arithmetic
+  for its totals; its settled totals read the new rows.
+- Booking the up-front receipt (§17 Q22).
+- Rewriting rows settled before Phase 3: they keep their stored figures, flagged `legacy` on the
+  sheet (§17 Q23).
+
+**Traps for later phases**
+- **Legacy rows.** A row the old code settled has the old markup sign in `amount_owed`, and a backer
+  with two agreements in one series has one row with `agreement_id` NULL (the migration counts them).
+  It is shown, and paid, as stored.
+- **Changing a rule changes every open sheet**, never a settled one. Say so to the owner before
+  setting `STAKING_SETTLEMENT_RULES`.
+- **Deleting a series** removes its settlement rows and leaves their ledger rows (money that moved).
+- **The Phase 1 label.** The `settlement` kind is labelled "Paid to backers" (`lib/ledger-sources/adjustments.js`,
+  `Bankrolls.jsx`), which reads wrongly on money received from a backer; the note says "received
+  from" (§17 Q24).
+- **Guard failures in the staking views that were there before** (seen now because the seed gives
+  those views data). `check-control-centring.mjs --only staking` on this branch: 15 of 142 at
+  402x874 and 16 of 176 at 1440x900; on `eb51435`'s code with the same seed: 16 and 17, the one
+  more being Finalize. What remains: the ACTIVE/SETTLED badge
+  and the ✎ button in the series header and the list (whole-g width), the backer summary cards (not
+  whole r), Edit/✕ on a backer row, and on desktop the AGREEMENTS segment's label (dx). Phase 3 fixed
+  the one in its own panel (Finalize, off by 0.24r under the 1099 summary's border).
+- **Rebased onto `origin/master` `7d9cfbe`** (the Backers view and first-run setup v2 merged
+  meanwhile): `package.json` keeps both `test:backers-view` and `test:staking-settlement`, and the
+  guards keep the setup passes beside the settlement ones (`--only staking-settlement` selects the
+  clipping pass).
 
 ### Phase 4: as built (2026-10-14, dashboard repo `wsop-console`, branch `feat/money-export`)
 
@@ -1935,7 +2132,7 @@ amount or `.db` copy, ever.
 |---|---|---|
 | 1 | `test:standing` (new: `node --test test/standing.test.js test/classify.test.js`), `test:money-merge` (new: the migration against the real server, then `test:standing`), `test:transactions`, `test:bankroll-reports`, `test:tax-report`, `test:account` | the 14 ported `backers.test.ts` cases; dated stakes; rounding parity sweep (≤ 1 cent over 10,000 pairs); the `formatOf` table row by row (one key per game, Q8), PLO8 before PLO, Big O before PLO8, the mixes first, 2-7 before NLH; the overlap returning both matches with `ask` (Q7); `correction`/`settlement` move balances and never profit (summary `moved` vs `results`); `affects_balance 0` rows absent from the ledger and present in the Expenses list and tax report; `equipment`/`fees` deducted at 100%; `time_known 0` facts have `hour: null`; account deletion clears every new table and leaves `backer_events` |
 | 2 | `test:backers` (new: `test:backer-surface`, `test:backer-rotation` on the real function, `test:backer-parity` over HTTP), `test:backer-page`, `test:gates`, `test:roster` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
-| 3 | `test:staking-settlement` (new) | §10 point 8 |
+| 3 | `test:staking-settlement` (new: 39 server cases on ports 4570-4579, then 11 `node --test` cases on the panel's helpers); the guards' new staking settlement views (`scripts/seed-staking-demo.js`) | §10 point 8 |
 | 4 | WC `server/test/money-export.test.js` (129, unit) and `server/test/money-export-http.test.js` (267, boots the real server eight times), both in `npm test` (1057 in all) | 404 without, with a wrong and with a path or query token (even beside a valid header); previous token accepted; unset, under 32 characters and equal to `DASHBOARD_TOKEN` closed; `DASHBOARD_TOKEN`, `ROSTER_TOKEN`, `SESSION_LOG_TOKEN` and the ham credential refused; deleted rows and the four local keys present; a delta with tombstones and a cursor; hash and count verified; a 20,000-record database; nothing logged but counts |
 | 5 | `test:money-import` (new; a stub dashboard on a second scratch port serves fixtures) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
 | 6 | `check:controls`, `check:clipping` (new steps), `vite-app` helper tests for the card model | every control on the grid with its label centred at 402 and 1440; no clipped glyph in a truncated 16g cell; the skipped count is 0 and the seed token is fresh |
@@ -1973,12 +2170,33 @@ Q8 and Q11.
 | Q13 | Do Trends, Review and Settings stay on the dashboard? | **Yes**; they read the money feed. The tab bar gains Money ↗. | Default stands. |
 | Q14 | Only if `backer_tokens` has rows: keep those legacy links? | **Keep them read-only, stop minting**, and decide per link. | Default stands. |
 
+### 17.1 Open questions from Phase 3 (settlement), for the owner
+
+Phase 3 built each of these to the standard staking-market meaning (the "Built" column), and each is
+a switch (`STAKING_SETTLEMENT_RULES`, §10 item 5) or a per-agreement figure, so an answer is a
+setting, not a rebuild. None changes a series already settled.
+
+| # | Question | Built (the default) | The other answer, and how to get it |
+|---|---|---|---|
+| Q15 | **Crossbook: a bet or a swap?** | **A bet on who does better**, on net results: the worse result pays its percentage of the difference (10% each, me +4,000, them −500: they pay me $450). The old code read it as a swap, which pays **the other way**. | A swap: `crossbookMode: 'swap'`. Cashes instead of net results: `crossbookBasis: 'cash'` |
+| Q16 | **Swap: of winnings or of net results?** | **Winnings** (cashes after tips); no buy-in changes hands. | Net results, buy-ins shared: `swapBasis: 'net'` |
+| Q17 | **Profit share: of the series' net, or of each winning event?** | **The series' net**, never below 0 (a −1,000 and a +1,400 at 10% pay $40). The old code paid each winning event ($140). | `profitShareBasis: 'event'` |
+| Q18 | **Budget cap: is the whole budget sent up front, and how is the event that crosses it shared?** | **The cap is prepaid**, so the unused part is refunded; the crossing event is shared **pro rata** (200 left of a 500 piece = 40% of it). | Only what was used: `prepaid: {"budget_capped": "used"}`. Back an event only if it fits whole: `budgetCrossing: 'exclude'` |
+| Q19 | **Flat package: is an event not played refunded?** And is a package a fixed price? | **Refunded.** The price is the sum of the logged events' pieces; there is no package-price field. | No refund: `flatPackageUnplayed: 'keep'`. A fixed price needs a field (a later phase) |
+| Q20 | **Makeup: do makeup backers pay up front?** | **Yes** (Q11), so a fully prepaid makeup agreement can never carry a loss and settles like pay-per-play; makeup arises only when the owner lowers `prepaid`. | A running account, nothing up front, losses carried (the dashboard's standing backers work this way): `prepaid: {"makeup": "none"}` |
+| Q21 | **Open commitment: paid up front for every bullet?** | **Yes**, the price of every bullet logged. | A deposit topped up at settlement: type the deposit as Prepaid, or `prepaid: {"open_commitment": "none"}` for a netted deal |
+| Q22 | **Book the up-front payment in the ledger?** (open since §10 item 5) | **No.** Only the final payment is booked (item 7). | An `income` transaction (category `staking`) or a `settlement` adjustment when a backer pays; needs a "received" action |
+| Q23 | **Rows settled before Phase 3** keep their stored figures, the old markup sign included. Recompute them? | **Kept as stored**, flagged `legacy` on the sheet; the migration's log line counts them. | Reopen the series (unmark its payments first) and Finalize again |
+| Q24 | **The ledger label.** The `settlement` kind reads "Paid to backers" (Phase 1) even when a backer paid the player. | The note says "paid to" or "received from"; the label is unchanged. | Rename it "Backer settlement" in `lib/ledger-sources/adjustments.js` and `Bankrolls.jsx` (two Phase 1 tests assert the label) |
+| Q25 | **Events still marked pending, bought in or playing at settlement** | **Counted as played** (as before) and named on the card ("1 event still marked in progress"). | Count them as not played (refunded): a code change, not a rule |
+
 ---
 
 ## 18. Left alone, on purpose
 
 - **Not touched:**
-  - the `swap` and `crossbook` settlement guesses;
+  - ~~the `swap` and `crossbook` settlement guesses~~ (built in Phase 3, at the lead's brief: §10
+    item 5, with the open choices in §17.1 Q15 and Q16);
   - `swap_suggestions` not saving (`server.js:10246-10338`);
   - the missing rate limit on `/api/backer/*`;
   - historical FX rates (handoff decision 11);

@@ -56,6 +56,7 @@
     "test:backer-parity": "node test/backer-parity.test.js",
     "test:backers-view": "node test/backers-view.test.js",
     "test:backers": "node test/backer-surface.test.js && node test/backer-rotation.test.js && node test/backer-parity.test.js && node test/backers-view.test.js",
+    "test:staking-settlement": "node test/staking-settlement.test.js && cd vite-app && node --test src/utils/__tests__/staking-settlement.test.mjs",
     "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900",
     "check:controls": "node scripts/check-control-centring.mjs && node scripts/check-control-centring.mjs --width 1440 --height 900",
     "graphics:weekly": "node scripts/weekly-graphics.mjs",
