@@ -21,7 +21,7 @@ const fx = require('./helpers/backer-fixtures');
 
 const PW = 'backers-view-test-password-1';
 const LINK = 'https://futurega.me/b/';
-const KEYS = ['cumulativeCents', 'delivery', 'hours', 'id', 'link', 'name', 'openingCents', 'sessions', 'shares', 'stakes'];
+const KEYS = ['cumulativeCents', 'delivery', 'hours', 'id', 'link', 'name', 'openingCents', 'played', 'sessions', 'shares', 'stakes'];
 const SHARE_KEYS = ['date', 'game', 'hours', 'pct', 'sessionResultCents', 'shareCents', 'venue'];
 const PHONES = { one: '+15555550123', two: '+15555550124' };
 const ADDRESSES = ['sam.okafor@example.test', 'mo.chen@example.test'];
@@ -89,6 +89,9 @@ const ADDRESSES = ['sam.okafor@example.test', 'mo.chen@example.test'];
           date: e.date, game: e.game, venue: e.venue, hours: e.hours, sessionResultCents: e.sessionResultCents, pct: e.pct, shareCents: e.shareCents,
         }));
         assert.deepStrictEqual(b.shares, want, 'the last ten shares, newest first');
+        // bb/hr: the owner's tab works it out over the SAME events the page does (every event the feed
+        // holds, up to its 200), from [game, hours, session result] alone.
+        assert.deepStrictEqual(b.played, feed.events.map((e) => [e.game, e.hours, e.sessionResultCents]), 'played: the same events as the page, newest first');
       }
     };
 
@@ -120,6 +123,8 @@ const ADDRESSES = ['sam.okafor@example.test', 'mo.chen@example.test'];
             assert.strictEqual(typeof b.delivery.email, 'boolean');
             assert.ok(Array.isArray(b.shares) && b.shares.length <= 10);
             for (const sh of b.shares) assert.deepStrictEqual(Object.keys(sh).sort(), SHARE_KEYS);
+            assert.ok(Array.isArray(b.played) && b.played.length <= 200);
+            for (const p of b.played) assert.ok(Array.isArray(p) && p.length === 3 && typeof p[0] === 'string', 'a played row is [game, hours, resultCents]');
             assert.match(b.link, /^https:\/\/futurega\.me\/b\/[A-Za-z0-9]{6,64}$/);
           }
           assert.deepStrictEqual(backers.map(tokenOf).sort(), [...live].sort(), 'one entry per live roster record, each with its own link');

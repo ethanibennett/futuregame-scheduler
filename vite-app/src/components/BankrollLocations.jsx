@@ -3,7 +3,7 @@ import { CURRENCY_CONFIG, getToday } from '../utils/utils.js';
 import { prepareFacts } from '../utils/bankroll-filters.js';
 import { RANGES, RANGE_NOUN, rangeWindow } from '../utils/bankroll-ledger.js';
 import {
-  SORTS, NO_ROOM, FIRST_ROWS, buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, statItems, metaLine,
+  SORTS, NO_ROOM, FIRST_ROWS, buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, statItems, bbItems, metaLine,
   resultWhat, fmtDay, rowsPage,
 } from '../utils/bankroll-locations.js';
 import TabStrip from './BankrollTabStrip.jsx';
@@ -18,8 +18,9 @@ import './bankroll-locations.css';
  * tokens and grid: the room's name, "Live • USD" (live or online, and the currency it was played
  * in), the total result at the right, a hairline, then one line of stats — entries, cash hours,
  * per hour, ROI, won % — with a mark for which kinds of game the room has. Tap a card for its
- * results, newest first. Sorted by result, entries, hours or name; the range and the sort are
- * remembered per device.
+ * results, newest first. A room with cash sessions that name their big blind gets a second stats line:
+ * bb/hr, and BB/hr for limit games (utils/bb-hr.js; docs/bankrolls.md "bb/hr"). Sorted by result,
+ * entries, hours or name; the range and the sort are remembered per device.
  *
  * Data: GET /api/bankrolls/reports for the dashboard's bankroll and display currency — the same
  * facts as the Reports tab, so a room here is a row of its Room report. Tournament results and
@@ -70,6 +71,8 @@ function Clock() {
 function LocationCard({ loc, cur, open, onToggle }) {
   const id = 'bl-res-' + (loc.key || 'none').replace(/[^\w-]+/g, '-');
   const items = statItems(loc, cur);
+  // bb/hr (BB/hr for limit): a second stats line, only for a room with a cash session that has a readable big blind.
+  const bbs = bbItems(loc);
   // Ten rows, then fifty more a tap (the last tap "Show all N"); closing the card starts it over.
   const [shown, setShown] = useState(FIRST_ROWS);
   useEffect(() => { if (!open) setShown(FIRST_ROWS); }, [open]);
@@ -93,7 +96,7 @@ function LocationCard({ loc, cur, open, onToggle }) {
   const fewer = (e) => { note('fewer', e); setShown(FIRST_ROWS); };
   return (
     <li ref={itemRef} className={'bl-item' + (open ? ' is-open' : '')}>
-      <button type="button" className="bl-card" aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
+      <button type="button" className={'bl-card' + (bbs.length ? ' has-bb' : '')} aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}>
         <span className="bl-head">
           <span className={'an-cell bl-name an-clip' + (loc.key === NO_ROOM ? ' is-none' : '')} title={loc.label}>{loc.label}</span>
           <span className="an-cell bl-meta an-clip">{metaLine(loc)}<TypeMark kinds={loc.kinds} /></span>
@@ -109,6 +112,16 @@ function LocationCard({ loc, cur, open, onToggle }) {
             </React.Fragment>
           ))}
         </span>
+        {bbs.length > 0 && (
+          <span className="an-cell bl-stats bl-stats-bb an-clip">
+            {bbs.map((it, i) => (
+              <React.Fragment key={it.key}>
+                {i > 0 && <span className="bl-sep" aria-hidden="true">{' • '}</span>}
+                <span className={'bl-stat' + toneOf(it.tone)} aria-label={it.label}>{it.text}</span>
+              </React.Fragment>
+            ))}
+          </span>
+        )}
       </button>
       {open && (
         <div className="bl-detail" id={id}>

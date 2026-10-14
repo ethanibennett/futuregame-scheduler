@@ -152,6 +152,11 @@
 .bp-total-val.is-pos { color: var(--pos); }
 .bp-total-val.is-neg { color: var(--neg); }
 
+/* The player's bb/hr in the total card's note and on a session card: the note's own face and size,
+   green up and red down by the sign as drawn. */
+.bp-bb.is-pos { color: var(--pos); }
+.bp-bb.is-neg { color: var(--neg); }
+
 /* ── Graph ── */
 .bp-chart-block { margin-top: calc(var(--subrow) * 3); }
 .bp-chart-head, .bp-chart-foot, .bp-section-head {

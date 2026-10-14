@@ -350,3 +350,34 @@ test('buildSessions: rows still build without the tracking and cash joins', () =
   assert.equal(c.title, '$1/2 PLO');                  // the display currency without the session's own
   assert.equal(bare.find((r) => r.key === 'c21').dateLabel, 'Tue, Sep 29, 2026');
 });
+
+test('cashFigures: bb/hr is the session\'s own net over its own big blind, over its length (utils/bb-hr.js)', () => {
+  const bigO = cashFigures(byKey.get('c22'));                   // $5/5 pot-limit Big O: net 4,560 over a 5 BB, 6.25 h
+  assert.equal(bigO.bb.unit, 'bb');
+  assert.ok(Math.abs(bigO.bb.blinds - 912) < 1e-9);
+  assert.ok(Math.abs(bigO.bb.rate - 912 / 6.25) < 1e-9);
+  const eur = cashFigures(byKey.get('c20'));                    // EUR 1/2 PLO: EUR 465 net over a EUR 2 blind: no conversion
+  assert.equal(eur.currency, 'EUR');
+  assert.ok(Math.abs(eur.bb.rate - 232.5 / 5.5) < 1e-9);
+  assert.ok(eur.bb.rate > 0 && eur.net > 0, 'the sign agrees with the net');
+  assert.equal(cashFigures(byKey.get('c24')).bb, null, 'no length: no rate, not 0');
+  assert.equal(cashFigures(byKey.get('c23')).bb, null, 'no stakes: no big blind');
+});
+
+test('cashFigures: a limit game is in big bets', () => {
+  const row = buildSessions([C(90, '2026-09-10', { profit: 80, native_profit: 80, game: 'LHE', stakes: '4/8' })], [],
+    [S(90, { game: 'LHE', stakes: '4/8', buy_in: 100, cash_out: 180, started_at: '2026-09-10T18:00:00.000Z', ended_at: '2026-09-10T22:00:00.000Z' })], OPTS)[0];
+  const b = cashFigures(row).bb;
+  assert.equal(b.unit, 'BB');
+  assert.ok(Math.abs(b.rate - 10 / 4) < 1e-9, '+80 over an 8 big bet = +10 BB in 4 h');
+});
+
+test('cashFigures: without the cash-sessions join the fact\'s native_profit still gives the session\'s bb/hr', () => {
+  const bare = buildSessions([{ ...FACTS[10], native_profit: 4560 }], [], [], OPTS)[0];
+  const p = cashFigures(bare);
+  assert.equal(p.partial, true);
+  assert.equal(p.bb.unit, 'bb');
+  assert.ok(Math.abs(p.bb.rate - 912 / 6.25) < 1e-9);
+  // The converted profit is not the session's own money: without native_profit there is no figure.
+  assert.equal(cashFigures(buildSessions([FACTS[10]], [], [], OPTS)[0]).bb, null);
+});

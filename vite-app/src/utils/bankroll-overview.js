@@ -17,6 +17,7 @@
 // See docs/bankrolls.md "The dashboard".
 
 import { MOVE_KINDS, rangeWindow, within, balanceSeries, drawdowns, peakOf, periodTable } from './bankroll-ledger.js';
+import { bbAccumulator } from './bb-hr.js';
 
 export const DASH = '—';
 const MINUS = '−'; // as utils.js MINUS: plus-width in the app's faces, so signed columns align
@@ -213,16 +214,19 @@ const extreme = (e) => ({ amount: r2(num(e.amount_display)), label: e.label || '
  * tournaments only (a cash buy-in is not a cost — the chips can go home again).
  *   count       sessions / events          bullets   tournament entries (re-entries included)
  *   hours       timed sessions' hours      hourly    their profit / their hours
+ *   bbhr        cash only: { bb, BB } (utils/bb-hr.js), big blinds / big bets won per hour over the
+ *               sessions with a readable big blind and some hours, each unit null when none qualifies
  *   roi         profit / cost              won       cash: winning sessions · tournaments: cashes per entry
  *   avgBuyin    buy-ins / count            avgProfit net / count
  *   avgRebuys   cash: rebuys per session · tournaments: re-entries per event (bullets − events)
  *   best, worst the single best and worst result ({ amount, label, date, source })
  * Total: count, average buy-in, average profit and average rebuys over both columns; best and worst
- * of both; hours, $/h, ROI and won % only when one column has rows (they mean different things).
+ * of both; hours, $/h, bb/hr, ROI and won % only when one column has rows (they mean different things).
  */
 export function sessionsTable(entries) {
   const c = { n: 0, net: 0, hours: 0, timedProfit: 0, wins: 0, buyins: 0, rebuys: 0, priced: 0, best: null, worst: null };
   const t = { n: 0, net: 0, bullets: 0, cost: 0, cashes: 0, best: null, worst: null };
+  const bb = bbAccumulator();
   for (const e of entries) {
     if (isMove(e)) continue;
     const a = num(e.amount_display);
@@ -231,6 +235,8 @@ export function sessionsTable(entries) {
       col = c; c.n++; c.net += a;
       if (a > 0) c.wins++;
       if (num(e.hours) > 0) { c.hours += num(e.hours); c.timedProfit += a; }
+      // bb/hr: the net in the session's OWN money over its own big blind (amount, not amount_display).
+      bb.add({ game: e.game, stakes: e.stakes, net: fin(e.amount) ? Number(e.amount) : null, hours: e.hours });
       if (fin(e.buy_in)) { c.priced++; c.buyins += num(e.buy_in) * fx(e); c.rebuys += num(e.rebuys); }
     } else if (isTourn(e)) {
       col = t; t.n++; t.net += a;
@@ -245,14 +251,14 @@ export function sessionsTable(entries) {
   const cPriced = c.n > 0 && c.priced === c.n;
   const cash = c.n ? {
     count: c.n, bullets: null,
-    hours: c.hours > 0 ? r2(c.hours) : null, hourly: r2n(div(c.timedProfit, c.hours)),
+    hours: c.hours > 0 ? r2(c.hours) : null, hourly: r2n(div(c.timedProfit, c.hours)), bbhr: bb.result(),
     roi: null, won: div(c.wins, c.n),
     avgBuyin: cPriced ? r2(c.buyins / c.n) : null, avgProfit: r2(c.net / c.n),
     avgRebuys: cPriced ? c.rebuys / c.n : null,
     best: c.best, worst: c.worst,
   } : null;
   const tournaments = t.n ? {
-    count: t.n, bullets: t.bullets, hours: null, hourly: null,
+    count: t.n, bullets: t.bullets, hours: null, hourly: null, bbhr: null,
     // ITM per ENTRY, the app's rule (lib/analytics.js, the Analytics tab): a re-entry that cashes
     // once is one cash in its bullets, so the two tabs never show two ITMs for the same results.
     roi: div(t.net, t.cost), won: div(t.cashes, t.bullets),
@@ -265,13 +271,13 @@ export function sessionsTable(entries) {
   const cashMoneyKnown = !c.n || cPriced;
   const total = n ? {
     count: n, bullets: null,
-    hours: only('hours'), hourly: only('hourly'), roi: only('roi'), won: only('won'),
+    hours: only('hours'), hourly: only('hourly'), bbhr: only('bbhr'), roi: only('roi'), won: only('won'),
     avgBuyin: cashMoneyKnown ? r2((c.buyins + t.cost) / n) : null,
     avgProfit: r2((c.net + t.net) / n),
     avgRebuys: cashMoneyKnown ? (c.rebuys + t.bullets - t.n) / n : null,
     best: best(c.best, t.best), worst: worst(c.worst, t.worst),
   } : null;
-  const blank = { count: null, bullets: null, hours: null, hourly: null, roi: null, won: null, avgBuyin: null, avgProfit: null, avgRebuys: null, best: null, worst: null };
+  const blank = { count: null, bullets: null, hours: null, hourly: null, bbhr: null, roi: null, won: null, avgBuyin: null, avgProfit: null, avgRebuys: null, best: null, worst: null };
   return { cash: cash || blank, tournaments: tournaments || blank, total: total || blank, counts: { cash: c.n, tournaments: t.n } };
 }
 
@@ -283,7 +289,7 @@ const inWindow = (date, w) => !!date && (!w || ((!w.from || date >= w.from) && (
  * cash game's rate is per hour, a tournament's is ROI, so a row never mixes them), over the facts
  * of GET /api/bankrolls/reports inside window `w` ({ from, to }, null bounds open).
  *   row: { key, label (null = not recorded), n, hours (cash; tournaments null), rate (cash $/h,
- *          tournament ROI), total }
+ *          tournament ROI), bbhr (cash: { bb, BB }, utils/bb-hr.js), total }
  * Sorted by total, best first; the not-recorded row last. `named` counts the distinct names
  * across both (case-folded), for the collapsed header. Totals per side equal that column's net.
  */
@@ -296,16 +302,19 @@ export function groupTable(facts, dim, w = null) {
     const key = raw.toLowerCase();
     const map = sides[f.type];
     let g = map.get(key);
-    if (!g) { g = { key, label: raw || null, n: 0, hours: 0, timedProfit: 0, cost: 0, total: 0 }; map.set(key, g); }
+    if (!g) { g = { key, label: raw || null, n: 0, hours: 0, timedProfit: 0, cost: 0, total: 0, bb: bbAccumulator() }; map.set(key, g); }
     const p = num(f.profit);
     g.n++; g.total += p;
-    if (f.type === 'cash') { if (num(f.hours) > 0) { g.hours += num(f.hours); g.timedProfit += p; } }
-    else g.cost += num(f.cost);
+    if (f.type === 'cash') {
+      if (num(f.hours) > 0) { g.hours += num(f.hours); g.timedProfit += p; }
+      g.bb.add({ game: f.game, stakes: f.stakes, net: fin(f.native_profit) ? Number(f.native_profit) : null, hours: f.hours });
+    } else g.cost += num(f.cost);
   }
   const rows = (map, type) => [...map.values()].map((g) => ({
     key: g.key, label: g.label, n: g.n,
     hours: type === 'cash' && g.hours > 0 ? r2(g.hours) : null,
     rate: type === 'cash' ? r2n(div(g.timedProfit, g.hours)) : div(g.total, g.cost),
+    bbhr: type === 'cash' ? g.bb.result() : null,
     total: r2(g.total),
   })).sort((a, b) => (a.label == null) - (b.label == null) || b.total - a.total || b.n - a.n || String(a.label).localeCompare(String(b.label)));
   const cash = rows(sides.cash, 'cash'), tournament = rows(sides.tournament, 'tournament');

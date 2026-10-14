@@ -8,6 +8,7 @@ import {
   tournamentFigures, cashFigures,
 } from '../utils/bankroll-sessions.js';
 import { formatHours, swingSeries, swingSummary, chartPath } from '../utils/cash-sessions.js';
+import { fmtBbHr, bbTone } from '../utils/bb-hr.js';
 import { openInResults } from '../hooks/useResultsFocus.js';
 import './bankroll-sessions.css';
 
@@ -205,6 +206,10 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit, rootRef, 
               )}
               <KV label="Net" value={signed(c.partial ? row.result : c.net, c.partial ? currency : cur)} toneOf={c.net} />
               <KV label="Per hour" value={c.hourly == null ? '—' : `${signed(c.hourly, c.partial ? currency : cur)}/h`} toneOf={c.hourly || 0} />
+              {/* bb/hr: this session's net over its own big blind (read from the stakes), over its length; limit games in
+                  big bets (BB/hr). "—" when the stakes name no blind or the session is under a quarter hour. */}
+              <KV label={c.bb && c.bb.unit === 'BB' ? 'Big bets per hour' : 'Big blinds per hour'}
+                value={c.bb ? fmtBbHr(c.bb.rate, c.bb.unit) : '—'} toneOf={c.bb ? bbTone(c.bb.rate) : 0} />
               {converted && !c.partial && <KV label={`Net in ${currency}`} value={signed(row.result, currency)} toneOf={row.result} />}
               {sw && <KV label="High / low" value={`${signed(sw.high, cur)} / ${signed(sw.low, cur)}`} />}
               {c.tags.length > 0 && <KV label="Tags" value={c.tags.join(', ')} />}

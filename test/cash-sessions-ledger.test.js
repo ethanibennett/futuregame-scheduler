@@ -56,6 +56,7 @@ function test(name, fn) {
       date: '2026-10-01', ts: '2026-10-02T04:00:00Z', amount: 1800 - 1000 - 40 - 25, currency: 'USD', bankroll_id: null,
       kind: 'cash_session', label: 'Cash NLH 2/5 · Borgata', ref: { table: 'cash_sessions', id: 1 },
       started_at: '2026-10-01T22:00:00Z', hours: 6,
+      game: 'NLH', stakes: '2/5',
       buy_in: 1000, rebuys: 0, cash_out: 1800, tips: 40, expenses: 25,
     });
     assert.strictEqual(second.amount, -1200);
@@ -112,6 +113,30 @@ function test(name, fn) {
     assert.deepStrictEqual(st.byRoom.map((g) => [g.label, g.hours, g.net]), [['Borgata', 6, 735], ['Live!', 3, -1200]]);
     assert.deepStrictEqual(st.byStakes.map((g) => g.label), ['NLH 2/5']);
     assert.strictEqual(st.mixed, false);
+  });
+  test('bb/hr: the ledger entry carries game and stakes as stored; amount stays the net in its own money', () => {
+    const e = source.entries(db, 1, {});
+    assert.deepStrictEqual(e.map((x) => [x.game, x.stakes, x.currency]), [['NLH', '2/5', 'USD'], ['NLH', '2/5', 'USD'], ['PLO', '1/2', 'EUR']]);
+    // EUR 1/2: EUR 60 net over a EUR 2 blind is +30 bb, whatever the display currency later makes of the EUR.
+    assert.strictEqual(e[2].amount / 2, 30);
+  });
+  test('bb/hr: the Cash stats group keys are the ones the client looks its figures up by (vite-app/src/utils/bb-hr.js cashBbGroups)', async () => {
+    const { cashBbGroups } = await import(require('url').pathToFileURL(path.join(ROOT, 'vite-app', 'src', 'utils', 'bb-hr.js')).href);
+    const rows = [
+      { id: 1, live: false, ended_at: 'x', session_date: '2026-09-30', started_at: '2026-09-30T18:00:00Z', currency: 'USD', hours: 4, result: 100, net: 90, buy_in: 100, cash_out: 200, tips: 10, expenses: 0, game: 'NLH', stakes: '2/5', room: 'Borgata', venue_slug: null },
+      { id: 2, live: false, ended_at: 'x', session_date: '2026-10-02', started_at: '2026-10-02T18:00:00Z', currency: 'USD', hours: 2, result: -300, net: -300, buy_in: 300, cash_out: 0, tips: 0, expenses: 0, game: 'PLO', stakes: '1/2', room: 'Parx Casino', venue_slug: 'parx' },
+      { id: 3, live: false, ended_at: 'x', session_date: '2026-10-01', started_at: '2026-10-01T18:00:00Z', currency: 'USD', hours: 3, result: 50, net: 45, buy_in: 100, cash_out: 150, tips: 0, expenses: 5, game: 'nlh', stakes: '2/5', room: 'BORGATA', venue_slug: null },
+      { id: 4, live: true, ended_at: null, session_date: '2026-10-03', started_at: '2026-10-03T18:00:00Z', currency: 'USD', buy_in: 100, game: 'NLH', stakes: '2/5', room: 'x', venue_slug: null },
+    ];
+    const st = cash.computeStats(rows, { currency: 'USD' });
+    const g = cashBbGroups(rows);
+    for (const [by, dim] of [['byStakes', 'stakes'], ['byGame', 'game'], ['byRoom', 'room']]) {
+      assert.deepStrictEqual([...g[dim].keys()].sort(), st[by].map((x) => x.key).sort(), by + ': the same group keys');
+    }
+    // Two NLH 2/5 sessions at two spellings of one room and game fold together, as the server folds them.
+    assert.strictEqual(g.stakes.get('nlh|2/5').bb.n, 2);
+    assert.strictEqual(g.overall.bb.n, 3);
+    assert.ok(Math.abs(g.overall.bb.rate - ((90 + 45) / 5 + -300 / 2) / 9) < 1e-9, 'each session over its own big blind, over the hours');
   });
   test('computeStats: byMonth (newest first) and the cumulative series (oldest first)', () => {
     const rows = [

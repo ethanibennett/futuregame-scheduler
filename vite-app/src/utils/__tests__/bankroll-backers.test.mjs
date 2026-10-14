@@ -5,14 +5,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalise, displayName, stakesLine, statItems, deliveryText, shareRow, moreLine, listSummary, toneClass, fmtPct,
+  normalise, displayName, stakesLine, statItems, bbItems, deliveryText, shareRow, moreLine, listSummary, toneClass, fmtPct,
   NO_NAME, NO_STAKES,
 } from '../bankroll-backers.js';
+import { bbStats } from '../backer-page.js';
 
 const SHARE = { date: '2026-10-12', game: '5/5/10 PLO', venue: 'Bellagio', hours: 8, sessionResultCents: -120000, pct: 20, shareCents: -24000 };
 const B = (o = {}) => ({
   id: 'demo-full', name: 'Sam Okafor', stakes: '20% PLO · 10% NLH (online)', openingCents: 50000, cumulativeCents: 123456,
-  sessions: 40, hours: 212.5, shares: [SHARE], delivery: { sms: false, email: true }, link: 'https://futurega.me/b/DemoSam7Kq2Vx', ...o,
+  sessions: 40, hours: 212.5, shares: [SHARE], played: [['5/5/10 PLO', 8, -120000]], delivery: { sms: false, email: true }, link: 'https://futurega.me/b/DemoSam7Kq2Vx', ...o,
 });
 
 test('normalise: the server\'s figures pass through untouched, in cents', () => {
@@ -95,4 +96,30 @@ test('moreLine: only when the history is longer than the rows shown', () => {
 test('listSummary: counts and the plain sum of the running totals the server sent (nothing is recomputed)', () => {
   assert.deepEqual(listSummary([]), { count: 0, sessions: 0, totalCents: 0 });
   assert.deepEqual(listSummary([B(), B({ cumulativeCents: -50000, sessions: 2 })]), { count: 2, sessions: 42, totalCents: 73456 });
+});
+
+// ── bb/hr on the card (utils/bb-hr.js, through the page's own bbStats) ────────────────────────
+test('bbItems: the player\'s bb/hr over `played`, the same figures the backer\'s page shows', () => {
+  const b = B({ played: [['2/5 NLH', 4, 50000], ['1/2 PLO', 2, -20000], ['PLO MTT', 6, 450000], ['5/5/10 PLO', 5, 25000]] });
+  const items = bbItems(b);
+  assert.deepEqual(items.map((i) => [i.key, i.text, i.tone]), [['bb-bb', '+4.5 bb/hr', ' an-pos']]);
+  // The page works it out from the feed's events; the tab from the same events as [game, hours, result].
+  const page = bbStats(b.played.map(([game, hours, sessionResultCents]) => ({ game, hours, sessionResultCents })));
+  assert.deepEqual(page.map((s) => s.full), items.map((i) => i.text));
+});
+
+test('bbItems: limit in big bets beside the big blinds; a loss is red; nothing qualifying is no line', () => {
+  const b = B({ played: [['2/5 NLH', 5, -25000], ['4/8 LHE', 4, 8000]] });
+  assert.deepEqual(bbItems(b).map((i) => [i.text, i.tone]), [['−10.0 bb/hr', ' an-neg'], ['+2.5 BB/hr', ' an-pos']]);
+  assert.deepEqual(bbItems(B({ played: [] })), []);
+  assert.deepEqual(bbItems(B({ played: [['NLH MTT', 6, 450000]] })), []);
+  assert.deepEqual(bbItems(B({ played: undefined })), []);
+  assert.deepEqual(bbItems(null), []);
+});
+
+test('normalise: `played` is kept as [game, hours, cents]; junk rows are dropped; absent is empty (an older server)', () => {
+  const [a] = normalise({ backers: [B({ played: [['2/5 NLH', '4', '50000'], null, 'x', [null, undefined, 'y']] })] });
+  assert.deepEqual(a.played, [['2/5 NLH', 4, 50000], ['', 0, 0]]);
+  const [none] = normalise({ backers: [{ name: 'x' }] });
+  assert.deepEqual(none.played, []);
 });
