@@ -44,14 +44,18 @@ function scrubbedEnv(extra = {}) {
   return { ...env, JWT_SECRET: 'backer-surface-test-secret-not-for-prod', DISABLE_FEED_INGEST: '1', ...extra };
 }
 
-/** Boots server.js on a free scratch port. opts.ports = [lo, hi]. -> { port, child, log(), stop() } */
+/**
+ * Boots server.js on a free scratch port. opts.ports = [lo, hi]; opts.preloads = extra `-r` files
+ * after the solver stub (test/stub-delivery-preload.js, say). -> { port, child, log(), stop() }
+ */
 async function boot(dbPath, extraEnv = {}, opts = {}) {
   if (/poker-tournaments\.db$/i.test(path.basename(dbPath))) throw new Error('refusing the live database');
   const port = await freePort(opts.ports || PORTS);
   if (port === 3001) throw new Error('refusing port 3001');
   const env = scrubbedEnv({ ...extraEnv, PORT: String(port), DB_PATH: dbPath });
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['-r', path.join(__dirname, '..', 'stub-solver-preload.js'), 'server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const preloads = [path.join(__dirname, '..', 'stub-solver-preload.js'), ...(opts.preloads || [])].flatMap((f) => ['-r', f]);
+    const child = spawn(process.execPath, [...preloads, 'server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = '';
     const timer = setTimeout(() => { child.kill(); reject(new Error('server did not start in 90s\n' + log.slice(-3000))); }, 90000);
     const onData = (b) => {

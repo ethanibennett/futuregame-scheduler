@@ -54,14 +54,15 @@
     "test:backer-rotation": "node test/backer-rotation.test.js",
     "test:backer-parity": "node test/backer-parity.test.js",
     "test:backers-view": "node test/backers-view.test.js",
-    "test:backers": "node test/backer-surface.test.js && node test/backer-rotation.test.js && node test/backer-parity.test.js && node test/backers-view.test.js",
+    "test:backers": "node test/backer-surface.test.js && node test/backer-rotation.test.js && node test/backer-parity.test.js && node test/backers-view.test.js && node test/notify-tap.test.js",
     "test:staking-settlement": "node test/staking-settlement.test.js && cd vite-app && node --test src/utils/__tests__/staking-settlement.test.mjs",
     "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900",
     "check:controls": "node scripts/check-control-centring.mjs && node scripts/check-control-centring.mjs --width 1440 --height 900",
     "graphics:weekly": "node scripts/weekly-graphics.mjs",
     "test:bankroll-ledger": "node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-ledger.test.mjs src/utils/__tests__/bankroll-overview.test.mjs",
     "test:springs": "cd vite-app && node --test src/utils/__tests__/spring.test.mjs src/utils/__tests__/replayer-motion.test.mjs",
-    "check:fonts": "python scripts/check-font-metrics.py"
+    "check:fonts": "python scripts/check-font-metrics.py",
+    "test:notify-tap": "node test/notify-tap.test.js"
   },
   "keywords": [],
   "author": "",
