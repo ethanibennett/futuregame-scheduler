@@ -1896,7 +1896,10 @@ Built to §10 (rewritten as built), the owner's Q11 and the lead's brief, which 
   and the ✎ button in the series header and the list (whole-g width), the backer summary cards (not
   whole r), Edit/✕ on a backer row, and on desktop the AGREEMENTS segment's label (dx). Phase 3 fixed
   the one in its own panel (Finalize, off by 0.24r under the 1099 summary's border).
-- **Both this branch and `feat/backers-view` edit** `package.json`, both guard scripts and this spec.
+- **Rebased onto `origin/master` `7d9cfbe`** (the Backers view and first-run setup v2 merged
+  meanwhile): `package.json` keeps both `test:backers-view` and `test:staking-settlement`, and the
+  guards keep the setup passes beside the settlement ones (`--only staking-settlement` selects the
+  clipping pass).
 
 ### Phase 4: as built (2026-10-14, dashboard repo `wsop-console`, branch `feat/money-export`)
 
