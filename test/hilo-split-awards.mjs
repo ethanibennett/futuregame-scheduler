@@ -297,7 +297,7 @@ for (const c of CARD_CASES) {
   const flagWinners = new Function('hand',
     'return ' + slice('const flaggedWinners = useMemo(() => ', ', [hand]);'));
   const potAwardsOf = new Function(
-    'showResult', 'flaggedWinners', 'hand', 'allPotLayers', 'pot', 'folded', 'category',
+    'showResult', 'flaggedWinners', 'hand', 'allPotLayers', 'pot', 'settled', 'folded', 'category',
     'boardCards', 'heroCards', 'opponentCards', 'replayHeroIdx', 'gameCfg',
     'GAME_EVAL', 'parseCardNotation', 'bestOmahaHigh', 'bestOmahaLow', 'bestHighHand',
     'bestLowA5Hand', 'hiLoWinnersAmong', 'potLayerWinners', 'computePotAwards',
@@ -311,7 +311,8 @@ for (const c of CARD_CASES) {
       result: { winners },
     };
     const awards = potAwardsOf(
-      true, flagWinners(hand), hand, layers, pot, new Set(), 'community',
+      // settled: the memo reads only its contested total (the pot the layers must add up to).
+      true, flagWinners(hand), hand, layers, pot, { contested: pot }, new Set(), 'community',
       '5h8s4cKd9d', 'AsKsKc2h', [undefined, 'Ad2d3c7h'], 0, { heroCards: 4, isStud: false },
       GAME_EVAL, parseCardNotation, bestOmahaHigh, bestOmahaLow, bestHighHand,
       bestLowA5Hand, hiLoWinnersAmong, potLayerWinners, computePotAwards,
