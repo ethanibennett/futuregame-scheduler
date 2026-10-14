@@ -269,6 +269,8 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
 ## Conventions
 - Event naming: WSOP style — NLH/PLO/HORSE abbreviations, no acronym periods, title case,
   "- Day 1"/"- Flight A" suffixes; include format only when distinctive ("7-Max", "Freezeout").
+  Six-card PLO hi-lo is **"PLO6 8/b"**, never "Big Easy" (owner, 2026-10-14); keep "Big Easy" only as an
+  input alias for old saved hands. "Big Easy Casino" is a venue and keeps its name.
 - "Opponent" not "villain". Card notation `AhKs`, suits h/d/c/s, x = face-down.
 - Dropdowns/panels use portals to document.body to escape stacking contexts.
 - **Pills and buttons** (owner rule, 2026-10-10): the CONTAINER sits on the grid (whole g × whole
@@ -294,6 +296,17 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   get its painted room from padding cancelled by an equal negative margin (or a clip-path that
   reaches below the box), never from `overflow-x: clip; overflow-y: visible`, which WebKit
   clips on both axes. Run it before deploying any change to card or list text.
+- **Replayer motion is springs**: the flop deal and spread, the turn/river landing, wagers
+  pushed out and swept in, and the pot shipped to the winner run on ONE spring family (the
+  launch ads' Remotion numbers): `vite-app/src/utils/spring.js` (pure, `npm run test:springs`)
+  and `replayer-motion.js` (the registry and the moments). They play as Web Animations on
+  transform/opacity, computed once per moment. `localStorage.replayerSprings` unset is Set B
+  "snappy" (the default, owner 2026-10-13); '1' Set A, '2' Set B, '0' the old code paths. Exports
+  seek them frame by frame (the bet push-outs export settled). Work a moment builds after its press
+  belongs to that moment's generation (`MotionRegistry.defer`); `scripts/check-replayer-ship-once.mjs`
+  guards the Back/Forward double ship.
+  Before/after video: `scripts/capture-replayer-motion.mjs` + `compare-replayer-motion.mjs`.
+  See `docs/replayer-springs.md`.
 - **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
   tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
   for the steps and what each replaces. Never write a bare literal for anything a
