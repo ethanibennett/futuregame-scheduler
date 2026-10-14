@@ -13,7 +13,7 @@
 // overwritten here (a wrong one is a gap to ask about, not a thing to fix
 // silently).
 
-import { gameConfig, gameCategory } from './game.js';
+import { gameConfig, gameCategory, streetDef } from './game.js';
 import { seatHand, referencedSeats, hasCards, positionMode, DEFAULT_NAME } from './seats.js';
 import { straddles } from './betting.js';
 
@@ -84,7 +84,11 @@ function actingOrder(hand, si) {
 }
 export function expandGroups(hand, groups) {
   const cfg = gameConfig(hand.gameType);
-  if (cfg && cfg.isStud) return;
+  /* A count that leaves a choice of seats is a guess, so it is asked, as the server's
+     expandGroups asks (group-seats:*): a partial hand is never guessed silently. Returns
+     the questions raised, for hand.quickAdd.questions. */
+  const questions = [];
+  if (cfg && cfg.isStud) return questions;
   const n = hand.players.length;
   const bySt = {};
   for (const g of groups) {
@@ -140,6 +144,14 @@ export function expandGroups(hand, groups) {
         const pick = cands.filter(p => later.has(p) || marked.slice(j + 1).some(x => !x.group && x.player === p)).slice(0, a.count);
         for (const p of cands) if (pick.length < a.count && !pick.includes(p)) pick.push(p);
         chosen = cands.filter(p => pick.includes(p));
+        const names = chosen.map(p => hand.players[p].position || 'a player');
+        const street = String((streetDef(hand.gameType).streets || [])[si] || 'street').toLowerCase();
+        questions.push({
+          id: 'group-seats:' + si + ':' + j, kind: 'ambiguous', field: 'streets.' + si + '.actions',
+          question: a.count + ' player' + (a.count > 1 ? 's' : '') + ' ' + (a.action === 'fold' ? 'folded' : a.action === 'check' ? 'checked' : 'called') + ' on the ' + street + ' without being named; recorded as ' + names.join(', ') + '. Is that right?',
+          options: [{ label: 'Yes', value: { op: 'dismiss' } }],
+          allowFree: true, blocking: false,
+        });
       }
       for (const p of cands) {
         let action = chosen.includes(p) ? a.action : 'fold';
@@ -150,6 +162,7 @@ export function expandGroups(hand, groups) {
     });
     st.actions = out;
   }
+  return questions;
 }
 
 /* Seat the (mutable, already copied) hand at an n-handed table. `remap` is
@@ -202,7 +215,8 @@ export function seatTable(hand, n, remap) {
     delete qa.straddles;
   }
   if (Array.isArray(qa.groups) && qa.groups.length) {
-    expandGroups(out, qa.groups);
+    const asked = expandGroups(out, qa.groups);
+    if (asked.length) qa.questions = (Array.isArray(qa.questions) ? qa.questions : []).concat(asked);
     delete qa.groups;
   }
   if (qa.othersFolded) {

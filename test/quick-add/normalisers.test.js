@@ -87,9 +87,10 @@ test('positions: typed shorthand and recogniser spellings', () => {
     'first to act': 'UTG', 'under the gun one': 'UTG+1', 'the plus one player': 'UTG+1', 'Button (hero)': 'BTN',
     'the cutoff': 'CO', 'under the gone plus one': 'UTG+1', 'eight seat': 'Seat 8', 'seat eight': 'Seat 8', 'Seat #2': 'Seat 2',
     'early position': 'UTG', 'under the gun spot': 'UTG',
+    'Hero (BB)': 'BB', 'Hero (HJ)': 'HJ', 'H (BTN)': 'BTN', 'V1 (CO)': 'CO', 'CO (V1)': 'CO',
   };
   for (const [k, v] of Object.entries(want)) assert.equal(c(k), v, k);
-  for (const k of ['H', 'Hero', 'late position', 'LP']) assert.equal(c(k), null, k);
+  for (const k of ['H', 'Hero', 'late position', 'LP', 'first in', 'Hero (hero)']) assert.equal(c(k), null, k);
 });
 
 /* ── speech.js ────────────────────────────────────────────────────────────── */
@@ -128,6 +129,8 @@ test('spoken amounts and cards for answers', () => {
   assert.equal(S.spokenCards('king 75'), 'K75');
   assert.equal(S.spokenCards('coin jack'), 'QJ');
   assert.equal(S.spokenCards('the nuts'), null);
+  assert.equal(S.spokenCards('AK off'), 'AKo');
+  assert.equal(S.spokenCards('KQ of hearts'), 'KhQh');
 });
 
 test('answers that need no model: spoken stacks and cards', () => {
@@ -622,4 +625,32 @@ test('a repeated card is not a hand: the fast answer path refuses it', () => {
   assert.equal(fastAnswerOps({}, { field: 'streets.0.cards.hero' }, 'ace king with the ace of spades'), null);
   assert.equal(fastAnswerOps({}, { field: 'streets.0.cards.hero' }, 'AhAh'), null);
   assert.deepEqual(fastAnswerOps({}, { field: 'streets.1.cards.board' }, 'Jh3s2h Jh3s2h'), [{ op: 'set', path: 'streets.1.cards.board', value: 'Jh3s2h' }]);
+});
+
+test('Omaha pattern letters are a pattern, not a diamond and a spade', () => {
+  for (const [s, k] of [['AAKKds', 'ds'], ['AJT9ss', 'ss'], ['KQJT ds', 'ds'], ['QJT8SS', 'ss']]) {
+    const r = parseCards(s);
+    assert.equal(r.suitPattern, k, s);
+    assert.ok(r.cards.length === 4 && r.cards.every((c) => c[1] === 'x'), s);
+  }
+  assert.equal(cards('KQJ2dd'), 'KdQdJx2x');      // two diamonds: unchanged
+  const d = D({
+    gameType: 'PLO', gameMode: 'cash', tableSize: 2, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 0, cards: 'AAKKds' }], actions: [{ player: 0, action: 'raise', toAmount: 6 }, { player: 1, action: 'call' }] }],
+  });
+  const hero = normalizeDraft(d).hand.streets[0].cards.hero;
+  const bySuit = {};
+  for (const c of hero.match(/../g)) bySuit[c[1]] = (bySuit[c[1]] || 0) + 1;
+  assert.deepEqual(Object.values(bySuit).sort(), [2, 2], hero);   // double suited
+});
+
+test('two cards of unknown suit that look the same are not one board read twice', () => {
+  const t = D({
+    gameType: 'NLH', gameMode: 'cash', tableSize: 2, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 0, cards: 'AhQs' }], actions: [{ player: 0, action: 'raise', toAmount: 6 }, { player: 1, action: 'call' }] },
+      { name: 'Flop', board: 'KKx', actions: [{ player: 1, action: 'check' }, { player: 0, action: 'check' }] }],
+  });
+  assert.equal(normalizeDraft(t).hand.streets[1].cards.board.length, 4);   // two kings, kept
 });

@@ -183,3 +183,21 @@ test('a typed value never overwrites a structure (a street\'s actions, the blind
   const after = applyAnswer(h, g, 'someone called');
   assert.ok(Array.isArray(after.streets[0].actions) && after.streets[0].actions.length === 6);
 });
+
+test('a counted group that leaves a choice of seats is asked about, not guessed (client seating)', () => {
+  const draft = {
+    notes: [], gameType: 'NLH', gameMode: 'cash', blinds: { sb: 1, bb: 3, ante: 0 },
+    players: [{ position: 'UTG', startingStack: 300 }, { position: 'BB', isHero: true, startingStack: 300 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 1, cards: '6h6d' }], actions: [{ player: 0, action: 'raise', toAmount: 15 }, { player: null, action: 'call', group: 'rest', count: 2 }, { player: 1, action: 'call' }] }],
+  };
+  const { hand } = normalizeDraft(draft);
+  const g = gap(hand, 'table-size');
+  const seated = applyAnswer(hand, g, g.options.find((o) => o.value.n === 6).value);
+  const q = (seated.quickAdd && seated.quickAdd.questions || []).find((x) => /^group-seats:0:/.test(x.id));
+  assert.ok(q, JSON.stringify(seated.quickAdd));
+  assert.match(q.question, /2 players called on the preflop without being named; recorded as/);
+  assert.equal(q.blocking, false);
+  // The same question the server raises when the table size was known up front.
+  const known = normalizeDraft({ ...draft, tableSize: 6 }).hand;
+  assert.ok((known.quickAdd.questions || []).some((x) => /^group-seats:0:/.test(x.id)));
+});

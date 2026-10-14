@@ -505,13 +505,19 @@ function validateCase(c, seenIds) {
   let sim = null;
   if (!errors.length) {
     sim = simulate(c, ex, cat, cfg, heroRef);
-    sim.problems.forEach(p => route('betting', `betting: ${p}`));
+    sim.problems.forEach(p => route(flaws.has('seating') && SEATING_PROBLEM.test(p) ? 'seating' : 'betting', `betting: ${p}`));
   }
   for (const f of flaws) if (!found.has(f) && !errors.length) E(`flaw '${f}' declared but the validator found no such problem`);
   return { errors, warnings, sim, cat, heroRef };
 }
 
-const FLAW_CLASSES = ['duplicate-card', 'card-count', 'draw', 'betting'];
+const FLAW_CLASSES = ['duplicate-card', 'card-count', 'draw', 'betting', 'seating'];
+/* 'seating' is the narrow flaw for a text that leaves out who acted or where players sat
+   (a bomb pot's missing preflop, limpers who were never seated, "everyone calls"):
+   only problems about WHO acts WHEN are tolerated, so stacks, bet sizes and call amounts
+   are still checked. 'betting' stays for a text that breaks a betting rule outright
+   (an illegal raise size, a per-street structure the replayer cannot store). */
+const SEATING_PROBLEM = /acts after folding|acts but the action was not on them|was skipped|never acted|never matched the bet|action after the hand was already over|betting after all but one player is all-in|draws after folding|winner \S+ folded|showdown: \S+ folded|calls with nothing to call/;
 function cardErrorClass(m) {
   if (/appears for both|repeats|twice|appears \d+ times/.test(m)) return 'duplicate-card';
   if (/not in hand|no draw follows/.test(m)) return 'draw';

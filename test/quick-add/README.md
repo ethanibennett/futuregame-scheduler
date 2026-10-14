@@ -204,10 +204,15 @@ Street keys: `preflop flop turn river`; `predraw draw1 draw2 draw3` (triple draw
   `streets.0.actions` matches `streets.0.actions.3`. `id` is one or more prefixes of the gap
   id (`stack` matches `stack:2`). A case with `expectGaps` counts as incomplete.
 - `flaws`: for incomplete cases that break a rule on purpose (`duplicate-card`, `card-count`,
-  `draw`, `betting`). The validator then reports that class of problem as a warning instead of
-  an error, and fails if the declared flaw is not actually there. The collected cases also use
-  `betting` where the text leaves out actions the validator cannot do without: a bomb pot's
-  missing preflop, players who are never seated.
+  `draw`, `betting`, `seating`). The validator then reports that class of problem as a warning
+  instead of an error, and fails if the declared flaw is not actually there. `betting` turns off
+  every betting check for the case, so use it only where the text itself breaks a betting rule
+  (an illegal raise size, a structure the replayer cannot store). `seating` is the narrow one
+  for a text that leaves out WHO acted when or where players sat (a bomb pot's missing preflop,
+  limpers who were never seated): only the problems about whose turn it was are tolerated, and
+  stacks, bet sizes and call amounts are still checked. A blind seat's first preflop amount is
+  `null` when the stakes are not given (the amount is chips added, and the blind it replaces is
+  unknown).
 - An **ambiguous** case (tag `ambiguous`) says in its `expectGaps` which question should fire,
   with an `id` list that also accepts the question the parse raises (`choice:*`, `board-count:1`,
   `pot-mismatch:*`, `group-seats:*`, `texture-conflict:*`). In `--oracle` mode those parse-only
