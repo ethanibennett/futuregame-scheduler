@@ -751,6 +751,8 @@ function scan(rootSel) {
         await p.waitForTimeout(400);
         await run(label, '.bn');
       } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
+      // The Results tab remembers its half per device: back to Tournaments, which the passes after need.
+      if (where === 'cash') await p.locator('.results-kind-tabs button:has-text("Tournaments")').first().click({ timeout: 3000 }).catch(() => {});
     }
   }
 

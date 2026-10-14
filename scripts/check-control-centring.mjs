@@ -1937,6 +1937,42 @@ function finalize(c) {
   step('cash-sessions-stats', () => cashHalf(csBack, '.cs-tabs button:has-text("Stats")'), 1);
   step('cash-sessions-detail', () => cashHalf(csBack, '.cs-row'), 2);
   step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
+  // The Backers block (components/BackerNotify.jsx, the Notify tap; the owner's, so CHECK_TOKEN must
+  // be the owner's: CONSOLE_OWNER_USER_ID on a scratch server) under a tournament result's edit
+  // form, on a cash session's page and on its edit screen: previewed (the server's own answer for
+  // the seed's backers), sent, and with the warning's confirm open (Notify tapped). Sent and warning
+  // are staged by notify-states.mjs, which answers the block's request in the page and never lets a
+  // commit through, so no guard notifies anyone. The block is scrolled to the top of its scroller.
+  // Registered before cash-bar, which puts the Results tab back on its Tournaments half (the half is
+  // remembered per device, and the Results views after it need Tournaments). vis, tap, exists and
+  // reveal are defined further down; the steps only run once everything is.
+  const notifyOpen = async (where, kind) => {
+    const unstage = kind ? await stageNotify(p, kind) : null;
+    try {
+      if (where === 'results') {
+        await nav('Bankroll');
+        if (await exists('.results-kind-tabs button:has-text("Tournaments"):not(.active)')) await tap('.results-kind-tabs button:has-text("Tournaments")', 900);
+        const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
+        await reveal(sel, 200);
+        await tap(sel, 900);
+      } else if (where === 'cash') {
+        await cashHalf(csBack, '.cs-row');
+      } else {
+        await cashHalf(csBack, '.cs-row', '.cs-head button:has-text("Edit")');
+      }
+      await vis('.bn').first().waitFor({ timeout: 8000 });
+      if (kind === 'warning') { await tap('.bn-btn--brand', 500); await vis('.bn-confirm').first().waitFor({ timeout: 3000 }); }
+    } finally { if (unstage) await unstage(); }
+    await reveal('.bn', 40);
+  };
+  step('results-notify', () => notifyOpen('results', null), 1);
+  step('results-notify-sent', () => notifyOpen('results', 'sent'), 0);
+  step('results-notify-warning', () => notifyOpen('results', 'warning'), 0);
+  step('results-notify-none', () => notifyOpen('results', 'none'), 0);
+  step('cash-notify', () => notifyOpen('cash', null), 1);
+  step('cash-notify-sent', () => notifyOpen('cash', 'sent'), 0);
+  step('cash-notify-warning', () => notifyOpen('cash', 'warning'), 0);
+  step('cash-notify-edit', () => notifyOpen('cash-edit', null), 1);
   step('cash-bar', async () => { await cashHalf(); await click('.results-kind-tabs button:has-text("Tournaments")', 600); });
   const toExpenses = async () => {
     await nav('Bankroll');
@@ -2242,39 +2278,6 @@ function finalize(c) {
     await reveal(sel, 200);
     await tap(sel, 900);
   }, 1);
-  // The Backers block (components/BackerNotify.jsx, the Notify tap; the owner's, so CHECK_TOKEN must
-  // be the owner's: CONSOLE_OWNER_USER_ID on a scratch server) under a tournament result's edit
-  // form, on a cash session's page and on its edit screen: previewed (the server's own answer for
-  // the seed's backers), sent, and with the warning's confirm open (Notify tapped). Sent and warning
-  // are staged by notify-states.mjs, which answers the block's request in the page and never lets a
-  // commit through, so no guard notifies anyone. The block is scrolled to the top of its scroller.
-  const notifyOpen = async (where, kind) => {
-    const unstage = kind ? await stageNotify(p, kind) : null;
-    try {
-      if (where === 'results') {
-        await nav('Bankroll');
-        if (await exists('.results-kind-tabs button:has-text("Tournaments"):not(.active)')) await tap('.results-kind-tabs button:has-text("Tournaments")', 900);
-        const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
-        await reveal(sel, 200);
-        await tap(sel, 900);
-      } else if (where === 'cash') {
-        await cashHalf(csBack, '.cs-row');
-      } else {
-        await cashHalf(csBack, '.cs-row', '.cs-head button:has-text("Edit")');
-      }
-      await vis('.bn').first().waitFor({ timeout: 8000 });
-      if (kind === 'warning') { await tap('.bn-btn--brand', 500); await vis('.bn-confirm').first().waitFor({ timeout: 3000 }); }
-    } finally { if (unstage) await unstage(); }
-    await reveal('.bn', 40);
-  };
-  step('results-notify', () => notifyOpen('results', null), 1);
-  step('results-notify-sent', () => notifyOpen('results', 'sent'), 0);
-  step('results-notify-warning', () => notifyOpen('results', 'warning'), 0);
-  step('results-notify-none', () => notifyOpen('results', 'none'), 0);
-  step('cash-notify', () => notifyOpen('cash', null), 1);
-  step('cash-notify-sent', () => notifyOpen('cash', 'sent'), 0);
-  step('cash-notify-warning', () => notifyOpen('cash', 'warning'), 0);
-  step('cash-notify-edit', () => notifyOpen('cash-edit', null), 1);
   step('results-tax', async () => { await nav('Bankroll'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
   step('results-share', async () => { await nav('Bankroll'); await tap('button[title="Share & Social"]', 900); }, 1);
   step('results-analytics', async () => {
