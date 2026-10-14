@@ -112,7 +112,9 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
   const has = { total: view.rows.length > 1, tourn: s.mtt.events > 0, cash: s.cash.sessions > 0 };
   const chartLines = mode === 'profit'
     ? SERIES.map(([key, label]) => ({ key, label, on: shown.includes(key), has: has[key], points: seriesLine(view.rows, key), end: lastRow[key] }))
-    : [{ key: 'balance', label: 'Balance', on: true, has: view.balPts.length > 1, points: view.balPts, end: view.balPts[view.balPts.length - 1].value }];
+    // A range with no entries still has a balance, the one carried in: it draws flat at that and the
+    // pill shows it (the hero on the same screen does). Only an empty, zero bankroll says nothing.
+    : [{ key: 'balance', label: 'Balance', on: true, has: view.balPts.length > 1 || view.balPts[0].value !== 0, points: view.balPts, end: view.balPts[view.balPts.length - 1].value }];
   const chartNote = mode === 'balance' ? 'Balance, deposits and withdrawals included'
     : shown.includes('total') && lastRow.other !== 0 ? `Total includes expenses & income ${signed(lastRow.other)}`
       : 'Cumulative results';

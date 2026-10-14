@@ -178,9 +178,12 @@ export default function BankrollChart({
   // so the two translucent layers never stack. A band under DD_MIN r deep at its deepest is not
   // drawn (nor named in the foot): a coarsened scale can leave a real drawdown thinner than a
   // pixel (a MX$15 expense on a MX$950k–1.05M scale), and the foot would name red nobody can see.
+  // Only lines with entries in the range are drawn: an on line with none says None on its pill, and
+  // a flat line of it would only paint the zero line in its colour. The band follows the one drawn.
+  const drawn = geo.filter((g) => g.l.has);
   let dd = null;
-  if (geo.length === 1 && geo[0].l.has && ax.hi > ax.lo) {
-    const g0 = geo[0];
+  if (drawn.length === 1 && ax.hi > ax.lo) {
+    const g0 = drawn[0];
     const band = drawdownBand(g0.pts, { floor });
     const deepest = band.reduce((m, b) => Math.max(m, b.peak - b.bottom), 0);
     if ((deepest / (ax.hi - ax.lo)) * ROWS >= DD_MIN) {
@@ -194,7 +197,6 @@ export default function BankrollChart({
   // Draw order: Total first, under the others and, with others drawn, a hairline wider (.bd-under in
   // bankroll-dashboard.css), so where it runs along Tournaments or Cash (every day only one of them
   // moves) a thin edge of it shows. Alone, it is drawn at the others' weight.
-  const drawn = geo;
   // The labels' precision comes from the step, so each gridline reads as its own exact value.
   const label = (v) => tick(v, ax.step);
   const aria = `${what}, ${fmtDate(start)} to ${fmtDate(end)}: ` + shown.map((l) => `${l.label} ${l.has ? money(l.end) : 'none'}`).join(', ')
