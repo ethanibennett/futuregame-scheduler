@@ -152,7 +152,7 @@ client to a per-hour spread (`utils/home-noise.js` `cashSpread`: sum of profit o
 an SD per hour with each session's variance growing with its hours).
 
 A 37g sheet (phone and desktop alike). Under the bankroll chips, one tab strip:
-**Overview / Locations / Reports / Rules / Goals / Import**. A new tab is one entry in `TABS` plus one
+**Overview / Sessions / Locations / Reports / Rules / Goals / Import** (seven, so the strip scrolls). A new tab is one entry in `TABS` plus one
 render line (`{tab === 'key' && …}`, marked in the JSX); the guards walk every tab in the strip on
 their own. The strip (`BankrollTabStrip.jsx`, arithmetic in `utils/tab-strip.js`) handles any count:
 
@@ -344,6 +344,89 @@ gridline's value).
 Baselines: hero figures are the display face at `--fs-2xl` (c measured 1.0983r at 402 wide, 1.1238r at
 1440 — the face's ascent rounds to whole px, so `p` splits the difference, ≤ 0.03r off); the latest
 sessions' profits the display face at `--fs-xl`, likewise. Every other cell uses analytics.css's roles.
+
+### Sessions (`BankrollSessions.jsx`, `bankroll-sessions.css`, `utils/bankroll-sessions.js`)
+
+Every tournament result and every finished cash session of the selected bankroll in one list,
+newest first, under a centred year pill: Poker Bankroll Tracker's Bankroll › Session tab, in this
+app's type and grid. No route of its own; three existing reads, joined on the client
+(`buildSessions`):
+
+- `GET /api/bankrolls/reports?bankroll=&currency=` — one fact per result: the date (already
+  YYYY-MM-DD, a tournament stored as "May 28, 2026" too), the analytics' room (the feed's property;
+  the site KEY for an online event; else the venue, which for a feed row is the series title — see
+  Titles and rooms) and the result in the dashboard's currency, the ledger's own arithmetic. Expenses and income are facts too, and are dropped; deposits are not facts. A live
+  cash session is not a fact, so it never appears.
+- `GET /api/tracking?bankroll=` (joined on `t<id>`) — finish place, field size, notes, the event's
+  own buy-in and venue (its native currency), start time, event number, and its `property` (the
+  room as the app names it: "WSOP.com", "GGPoker", "Horseshoe Las Vegas").
+- `GET /api/cash-sessions?bankroll=` (joined on `c<id>`) — start / end, rebuys, cash-out, tips,
+  expenses, currency, notes, tags; a session's stack updates (`GET /api/cash-sessions/:id`) when its
+  detail opens. Without the two joins every row still shows, with a line saying details are missing.
+
+| part | what |
+|---|---|
+| Bar (4r) | All · Tournaments · Cash, one-select chips (6g, 9g, 6g), remembered per device (`bankrollSessionsType` in localStorage), and the count (11g, seated). A one-line note under it: expenses, income and deposits are not sessions. |
+| Year pill | 7g × 3r on 14g, label centred, `--surface2` with the rows' hairline edge (the fill alone is 1.03:1 on the sheet in cloudy); a new pill wherever the year changes. |
+| Row (7r card, 1r apart) | a type icon (3r: a $ coin in `--series-cash`, a stopwatch in `--series-tourn`), the title (cash: stakes + game, "$2/5 NLH"; tournament: compact buy-in + event name, "$1.5k Limit Badugi") over the room (a cashed tournament's finish first, "12th / 845 ·"; "Room not recorded" when there is neither), and the result (display face, green / red, `+` before a win, compact from 10k: "$2,410", "+$12.3k") over the date ("Sat, May 30, 2026", from the date's own parts, no time zone). Title, room and date truncate with their descenders' room. |
+| Show more | past 150 rows (`CHUNK`), 150 at a time; rows are memoised. |
+| Detail (tap a row, in the sheet, read-only) | ‹ Sessions and Edit in Results; the title (wrapping, 4r lines), what and where; the dashboard's hero (result / net in the dashboard's currency, and ROI or per hour); then every field held. Tournament: date, start, series (when the venue is not the room), event #, game, buy-in, bullets, cost, cashed, finish / field, profit, ROI, the figure in the dashboard's currency when the event was in another, bankroll, notes. Cash: date, played (start – end), length, game, stakes, buy-in (with rebuys), cash-out, tips, expenses, net, per hour, high / low and the stack graph when it has stack updates (the Cash view's swing graph from `utils/cash-sessions.js`), tags, bankroll, notes. ROI is not coloured (a percentage, not money). |
+
+**Focus and Escape.** A row opened from the keyboard (Enter / Space) puts the focus on ‹ Sessions,
+so the next Tab reaches Edit in Results; a tapped row puts it on the detail itself (tabindex -1, no
+ring), so it never falls to the body and out of the dialog. Escape in the detail goes back to the
+list and stops there (the dashboard's window listener would otherwise close the whole sheet); Back
+or Escape from the keyboard returns the focus to the row that was opened, after the list's scroll
+is restored, a tapped Back to the list itself. A keyboard Show more that adds the last rows moves
+the focus to the first of them. A bankroll switch clears the list to Loading… until the new
+bankroll's rows arrive: the rows are kept with the bankroll and currency they were built for and
+never shown under another (they were, for the length of the read, in the new currency's symbol).
+
+**Titles and rooms.** An amount the event name leads with is dropped from the title only when it IS
+the entry's buy-in, to the title's own rounding ("$1,500 Mystery Bounty" at 1500 reads "$1.5k
+Mystery Bounty"; a k / M suffix counts only straight after the digits, so the M of Mystery and the
+K of Knockout stay), and never when a guarantee follows ("$20,000 GTD" on a $215 event reads
+"$215 $20,000 GTD"). Any other amount is part of the name: a EUR result imported from a tracker
+file, its buy-in converted to USD on the way in, reads "$1.2k €1,100 Monster Stack". A tournament
+whose venue is `Personal` (the app's private events, and every result `POST /api/bankrolls/import`
+writes) has no room and no series: the facts' room falls back to the venue, and "Personal" is a
+label, not a room; nor is it a game. A cash session's room is free text and kept as typed.
+
+A tournament's ROOM (`tournamentPlace`) is, in order: the join's `property`; a fact room that is an
+online site key, by the site's name (`wsop_com` reads "WSOP.com"; the component passes
+`siteName`, from `utils/online-sites.js`); for a feed row that named no room (the fact fell back to
+the series title, about one in seven), the room the curated `VENUE_MAP` names for that series
+(`roomOf`: its `longName`, "WSOPC Harrah's Atlantic City"); else the fact's room or the venue. The
+venue stays the series, shown in the detail when it is not the room. Without the tracking join
+(`partial`) only the site key is mapped; a propertyless feed row then reads its series title.
+
+Ordering: date, then start time (a tournament's scheduled start, a cash session's local start),
+then id, newest first. A cash session's day is its `session_date`, the player's local day it
+started, so a session begun at 23:30 on Dec 31 is in that year.
+
+**Edit in Results** closes the sheet and opens that entry's edit form on the Results tab:
+`hooks/useResultsFocus.js` carries the entry across the close and switches Results to the right
+half (`setResultsKind`, as the Overview's latest-sessions buttons); TrackingView opens the result's
+edit form and brings it to the top of the tab's scroller, CashSessionsView opens the session's edit
+screen. It is offered only when the sheet is over the Results tab: the home opens this sheet too
+(HomeNumbers), and from there closing it would leave the player on the home, so the detail says
+where to edit instead.
+
+When the two joins fail, the rows still list, with the currency symbol of the dashboard (the
+buy-in in a title is the converted one) and no finishes, notes or rebuys; the note under the bar
+says so. The "Show more" button reads "Show the last 34" on the final chunk, not the same number
+twice. A bankroll switch over an open detail hands the focus to the list (WebKit gives a clicked
+chip none, so it would fall to the body outside the dialog).
+
+Tests: `vite-app/src/utils/__tests__/bankroll-sessions.test.mjs` (run by `npm run test:bankrolls`):
+dates and labels, compact money and buy-ins, titles (a leading buy-in, a guarantee, a word that
+starts with K or M), Personal rooms, online and propertyless-feed rooms, finish, ordering across a year boundary and a
+past-midnight cash session, the type filter, year groups, the figures of both details, and rows
+built without the joins. The guards walk the tab: `check:controls` views `bankroll-sessions*` (the
+list scrolled past a year, its foot with Show more, the Cash filter, a tournament's and a cash
+session's detail; `.bs-row` is in NOT_CONTROLS), `check:clipping` the list paged to its end (the
+first 150 rows and Show more; the sheet pass stops at 11 pages, the Sessions passes do not), the
+Cash filter and both details scrolled through, and the rows Show more adds.
 
 ### Rules, goals, risk (`lib/bankroll-management.js`, table `bankroll_prefs`)
 

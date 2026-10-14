@@ -9,6 +9,7 @@ import BankrollFab from './BankrollFab.jsx';
 import BankrollOverview from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollReports from './BankrollReports.jsx';
+import BankrollSessions from './BankrollSessions.jsx';
 import BankrollLocations from './BankrollLocations.jsx';
 import TabStrip from './BankrollTabStrip.jsx';
 import './analytics.css';
@@ -42,6 +43,7 @@ function fmtDate(iso) {
 // (4 tabs 9+9+9+8g, 5 tabs 5 x 7g), else one row of whole-g pills that scrolls sideways.
 const TABS = [
   ['balance', 'Overview'],
+  ['sessions', 'Sessions'],
   ['locations', 'Locations'],
   ['reports', 'Reports'],
   ['rules', 'Rules'],
@@ -341,6 +343,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
                   today={today} fmtDate={fmtDate} onClose={onClose} />
               )}
               {/* One line per further tab, keyed as in TABS above. */}
+              {tab === 'sessions' && <BankrollSessions bk={bk} bankrollKey={key} currency={currency} onClose={onClose} />}
 
               {tab === 'locations' && <BankrollLocations bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'reports' && <BankrollReports bk={bk} bankrollKey={key} currency={currency} />}

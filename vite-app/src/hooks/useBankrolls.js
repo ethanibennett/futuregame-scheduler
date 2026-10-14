@@ -83,6 +83,7 @@ export default function useBankrolls({ enabled, token, version }) {
     summary,
     rev,
     call,
+    token, // for the dashboard's reads outside /api/bankrolls (the Sessions tab: /api/tracking, /api/cash-sessions)
     visible,
     selected: effective,
     setSelected,
