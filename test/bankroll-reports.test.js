@@ -101,6 +101,9 @@ function addTx(db, o) {
     assert.strictEqual(dub.profit, -625);              // -500 EUR / 0.8
     assert.strictEqual(dub.buyin_usd, 625);
     assert.strictEqual(f.find((x) => x.type === 'income').profit, 125);
+    // The currency each was played or spent in, before conversion (the Locations tab's "Live • EUR").
+    assert.deepStrictEqual(['Dublin', 'Daily'].map((l) => f.find((x) => x.label === l).native_currency), ['EUR', 'USD']);
+    assert.deepStrictEqual([f.find((x) => x.type === 'income').native_currency, f.find((x) => x.type === 'cash').native_currency], ['EUR', 'USD']);
     const e = facts({ currency: 'EUR' });
     assert.strictEqual(e.find((x) => x.label === 'Dublin').profit, -500);
     assert.strictEqual(e.find((x) => x.label === 'Daily').profit, -160);

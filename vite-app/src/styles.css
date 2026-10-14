@@ -1404,6 +1404,58 @@
       --neg-quiet: rgba(178,69,60,0.12);
     }
 
+    /* Chart series: the bankroll dashboard's trend graph (BankrollChart.jsx) draws Total,
+       Tournaments and Cash as three lines, each with a translucent fill under it, and the
+       Overview tables (bankroll-overview-tables.css) key their Cash | Tournaments | Total
+       columns with the same three colours, as TEXT. Total is the text colour, Tournaments the
+       brand aqua, Cash a violet: away from the win green and the loss red, and lighter or deeper
+       than the aqua in every theme, so the lines differ in lightness as well as hue (OKLab L,
+       measured). Because the table heads are text, Cash clears WCAG AA text (4.5:1) on the
+       sheet's --bg, and so 3:1 non-text on --bg and --surface (the pills), in every theme:
+                    ground    total L  tourn L  cash               on --bg  on --surface
+         dark       #111111   .93      .77      #966cf7  L .64     5.20     4.79
+         dusk       #0d1525   .89      .77      #966cf7  L .64     5.03     4.58
+         light      #f5f5f5   .22      .52      #4c1d95  L .38     10.05    10.95
+         cloudy     #cbcbcb   .22      .40      #6419e6  L .48     4.58     5.12
+         HC dark    #000000   1.0      .87      #a78bfa  L .71     7.72     7.27
+         HC dusk    #060c18   .96      .87      #a78bfa  L .71     7.19     6.69
+         HC light   #ffffff   0        .38      #6d28d9  L .49     7.10     7.10
+         HC cloudy  #d8d8d8   0        .38      #5b16d6  L .46     5.82     5.38
+       (A lighter violet than the aqua is out of reach at 4.5:1 on the light grounds, so there
+       it goes deeper; on light, deep enough to sit midway between Total and the aqua, .16 and
+       .14 apart, where #5b21b6 had sat .09 from the aqua and the pair leant on hue alone.)
+       --series-fill-* are the fills' alphas, one per line: one shared alpha left the fills
+       unequal (at 0.12 Cash stood 1.14:1 off the dark sheet, Total 1.33), so each is set for
+       about 1.2:1 against --bg, and three stacked stay see-through, every line clearing 3:1
+       over the other two fills. Two sets, the dark grounds and the light ones (WCAG contrast,
+       sRGB compositing, measured):
+                    fill on --bg (total / tourn / cash)   line over the other two fills (min)
+         dark       1.22 / 1.20 / 1.20                    cash 3.44
+         dusk       1.22 / 1.22 / 1.21                    cash 3.32
+         light      1.20 / 1.18 / 1.22                    tourn 3.40
+         cloudy     1.18 / 1.20 / 1.18                    cash 3.27
+         HC dark    1.17 / 1.18 / 1.18                    cash 5.16
+         HC dusk    1.21 / 1.23 / 1.23                    cash 4.55
+         HC light   1.23 / 1.24 / 1.20                    cash 4.74
+         HC cloudy  1.22 / 1.21 / 1.20                    cash 3.99 */
+    :root {
+      --series-total: var(--text);
+      --series-tourn: var(--brand);
+      --series-cash:  #966cf7;
+      --series-fill-total: 0.09;
+      --series-fill-tourn: 0.11;
+      --series-fill-cash:  0.155;
+    }
+    :is([data-theme="light"], [data-theme="cloudy"]) {
+      --series-fill-tourn: 0.125;
+      --series-fill-cash:  0.11;
+    }
+    [data-theme="light"]  { --series-cash: #4c1d95; }
+    [data-theme="cloudy"] { --series-cash: #6419e6; }
+    [data-contrast="high"] { --series-cash: #a78bfa; }
+    [data-theme="light"][data-contrast="high"]  { --series-cash: #6d28d9; }
+    [data-theme="cloudy"][data-contrast="high"] { --series-cash: #5b16d6; }
+
 
     /* ==================================================================
        Results curve. No chart existed anywhere in the app; the tracking
