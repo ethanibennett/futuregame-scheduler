@@ -1,7 +1,8 @@
 # Bankroll merge: futurega.me becomes the one money store
 
-Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (see "Phase 1: as built"
-after the §15 table), not yet merged. A buildable spec for moving the dashboard's money
+Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (merged), **Phase 2 built**
+on `feat/money-merge-2` (see "Phase 1: as built" and "Phase 2: as built" after the §15 table), not yet
+merged. A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
 
@@ -736,7 +737,9 @@ from a fresh derivation. A feed buy-in change is the usual cause. Each line has 
   from the column default, so a sweep that tests only `notified_share_cents IS NOT share_cents`
   would deliver every relayed share a second time. The sweep must skip `source='dashboard'`, or the
   relay must set `notified_*` when it inserts. (The migration marks the rows that exist today; it
-  cannot mark rows inserted after it.)
+  cannot mark rows inserted after it.) *Built both ways in Phase 2, and the sweep's own test is
+  `notified_at IS NULL`, not the `notified_share_cents` comparison, because that one would re-deliver
+  every correction (§1.1 Q2). See "Phase 2: as built", difference 2.*
 - **First post:** the existing title and body (`server.js:774-777`), plus SMS when
   `backers.notify_sms` (`sendBackerSms`, `:11708`).
 - ~~**Correction:** title "Corrected: `<game>` `<date>`" and body "Your 20% is now +$X (was +$Y).
@@ -852,7 +855,8 @@ gets nothing new.
 
 ### 7.6 Parity route (Phase 2), used before every switch
 
-`GET /api/staking/standing/parity` (owner only):
+`GET /api/staking/standing/parity` (owner only; **built in Phase 2**, with more in the answer than
+this lists, see "Phase 2: as built" difference 7):
 - For every token, it computes the feed both ways: the current `console_records` path and the SQL
   path.
 - It returns `{ tokens: n, identical: n, differ: [{ backerId, fields: ['openingCents', …] }] }`.
@@ -1481,7 +1485,7 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 |---|---|---|---|---|
 | **0** | — | Owner: Render snapshots, `LEDGER_TOKEN` on both services, answers to §17 (defaults otherwise) | — | owner |
 | **1** | sched | **Built** (see "Phase 1: as built" below). Migration `money-merge-2026-10` (§4); `lib/staking/standing.js` + `lib/staking/classify.js` with ported tests; `MOVE_KINDS` and labels; `equipment`/`fees` categories (server, client, tax rules); `affects_balance` in the transactions source and Expenses list; `time_known` in reports; account deletion | — | Sonnet |
-| **2** | sched | Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
+| **2** | sched | **Built** (see "Phase 2: as built" below), behind a switch that ships off (`BACKER_PAGE_SOURCE`). Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
 | **3** | sched | Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case ("Q11 in §10") | 1 | **Opus** |
 | **4** | WC | `GET /api/money-export` + `checkSharedToken` + tests | — | Sonnet |
 | **5** | sched | Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
@@ -1575,12 +1579,124 @@ import, nothing posted to a backer page.
 
 **Traps for later phases**
 - **The sweep and the relay (Phase 2).** `server.js:754` inserts relayed events without
-  `notified_*`; they default to `source='dashboard'`. See the trap in §6.7.
+  `notified_*`; they default to `source='dashboard'`. See the trap in §6.7. *Handled in Phase 2: the
+  relay sets both, and the sweep takes only `source = 'ledger'`.*
 - **Where the Q7 answer lives (Phase 7).** `standing_exclusions` can record "series wins". Nothing
   records "standing wins" or "both", so the owner would be asked again.
 - **Overlapping stake windows.** `matchStake` breaks a tie by larger pct, so two stakes for the same
   game and channel that are both in force on one day give the larger. Phase 7's "from today" edit
   must close the old stake the day before.
+
+### Phase 2: as built (2026-10-14, branch `feat/money-merge-2`)
+
+Built to the spec and to §1.1. **Nothing a live backer sees changes until a switch is turned on,**
+and the switch ships off. Even on, no page changes until a `backers` row owns its token (Phase 5
+gives them one), and the parity route lists the pages that would.
+
+**The switch, and how to turn it on**
+- **`BACKER_PAGE_SOURCE`**, unset by default (= `console`, the dashboard-era path).
+  - `sql` makes `/api/backer/:token/feed` and the weekly digest read the `backers` table and the
+    standing agreements first, with `console_records` as the fallback for a token no
+    `backers.public_token` owns. `console` (or unset) is today's behaviour.
+  - To turn it on: run `GET /api/staking/standing/parity` as the owner; if `differ` is empty or the
+    owner accepts what it lists, set `BACKER_PAGE_SOURCE=sql` on the Render service and restart it
+    (about a minute). To turn it off, unset it or set it to `console` and restart. The boot log says
+    which is live: `[backers] page source: sql|console`.
+- **`BACKER_DELIVERY`**, a gate and not a switch for the page. Push, SMS and the Sunday email go out
+  only where it is on. Unset, it follows `RENDER` (on in production, off on this box); `1` or `0`
+  overrides; an unrecognised value is off. The boot log says `[backers] delivery is ON|OFF (why)`.
+  This **does** change one live behaviour on purpose: the local pm2 instance, which ran the digest
+  cron, now sends nothing.
+
+**What exists**
+- **`lib/backer-surface.js`** (new): the backer surface, out of `server.js` so it is tested against a
+  real database.
+  - `buildFeed(db, token, {source})`: the feed. `console` is the old route's code, moved.
+  - `parity(db)`: the feed and the weekly email's recipient computed both ways for every token.
+  - `weeklyDigests`, `digestRecipients`, `sendWeeklyDigests`: the Sunday email, by either source.
+  - `deliveryDecision`/`deliveryOn`, `pageSource`: the two settings above.
+  - `rotateBackerToken(db, old, new)`: the real function (it used to live in `server.js` and be
+    mirrored in a script). `rotateBackerLink(db, {userId, backerId})`: "New link".
+  - `sweep(db, {...})` and `shareMessages`: the delivery sweep (dormant).
+- **`lib/staking/standing-routes.js`** (new): `GET /api/staking/standing/parity` (owner only) and
+  `POST /api/staking/standing/backers/:backerId/rotate-link`, mounted in `server.js` under the
+  `/api/staking` admin gate.
+- **`server.js`**: the feed route calls `buildFeed`; `sendBackerPush` and `sendBackerSms` check the
+  gate (so no caller can skip it); the notify relay records the delivery columns; `rotateBackerToken`
+  is a one-line call into the library (the roster sync still uses it); a one-minute cron runs the
+  sweep, scheduled only where delivery is on; the digest goes through `sendWeeklyDigests`; a new
+  migration, `backer-tokens-audit-2026-10`, logs the legacy link count.
+- **Tests** (`npm run test:backers` runs all three, booting on ports 4540-4549):
+  - `test/backer-surface.test.js`: the feed against the **oracle** (`test/helpers/legacy-backer-surface.js`,
+    the route and the digest exactly as `origin/master` 4a19a4b had them), byte for byte on a
+    dashboard-era database with the awkward cases; the SQL path for the three kinds of §7.1; name
+    precedence; stake windows; the parity engine; the digest; the gate; the sweep.
+  - `test/backer-rotation.test.js` (replaces `scripts/test-backer-rotation.mjs`): the real function
+    against the real schema.
+  - `test/backer-parity.test.js`: the real server over HTTP, switch off and on, the parity route, the
+    relay, "New link", the boot log.
+  - Also checked by hand, not committed: `origin/master`'s own `server.js` and this branch's booted on
+    two copies of one seeded database returned byte-identical feeds for every token.
+
+**Where it differs from the spec, and why**
+1. **The switch.** The spec has no named switch (§13 step 1: "the feed reads SQL then
+   `console_records`, so it is unchanged"). Shipping that literally would run new code on the live
+   page the day it deploys. `BACKER_PAGE_SOURCE` keeps the old code path the default, so the dormant
+   ship is the old behaviour by construction, and the flip is a deliberate act after parity.
+2. **The sweep's test is `notified_at IS NULL`, not `notified_share_cents IS NOT share_cents`, and
+   it takes only `source = 'ledger'`.** §6.7's test would re-deliver every correction, which §1.1 Q2
+   forbids. A whitelist ('ledger') rather than "not 'dashboard'" so a source added later is not
+   delivered by default. It also requires `money_settings.posting = 'on'`, so it is idle until
+   Phase 7 turns posting on. Corrections after delivery change `share_cents` and nothing else.
+3. **The relay trap is closed twice.** The relay now inserts `source = 'dashboard'` and
+   `notified_share_cents`/`notified_at` = its own share and time (it delivers inline), and the sweep
+   never takes a non-'ledger' row. Without the columns (a database whose migration failed) the relay
+   uses its old insert. A rollback to the old code leaves rows with `notified_*` NULL; the sweep still
+   skips them.
+4. **The `backer_tokens` count is a separate migration** (`backer-tokens-audit-2026-10`), not a line
+   in `money-merge-2026-10`, because that migration has already run on production. The parity route
+   reports the same count as `legacyBackerTokens`.
+5. **"New link" also moves the roster record in `console_records`.** §7.5 lists the tables but the
+   roster record is the fallback the page reads for any token no `backers` row owns; left on the old
+   token it would keep the old link serving a name, stakes and opening after the owner killed it. Its
+   `updated_at` moves forward so the roster seam's last-write-wins guard does not rotate the link back.
+   See the first trap below.
+6. **Rotation uses a savepoint, not `BEGIN`/`COMMIT`**, so it nests inside a caller's transaction
+   and a failure rolls back only itself. `tokenInUse` checks all five tables.
+7. **The parity answer has more than the spec's shape.** `{tokens, identical, differ}` plus
+   `source`, `sqlBacked`, `fallback`, `legacyBackerTokens`, and each `differ` entry carries `name`,
+   `fields` (the feed's fields, and `digest` when the weekly email would go somewhere different) and
+   `detail` (both sides of every scalar). The owner needs to see which side is right. It still holds
+   no token and no address (`sends to a different address` is a phrase, not an address). A throwing
+   feed is a `differ` entry with `fields: ['error']`.
+8. **An ended agreement shows no stakes line** (the literal "stakes in force today"). A §7.1
+   kind-2 backer (deleted in the dashboard, still live on this app's roster) imported as `ended`
+   would lose the stakes line the page shows today. The parity route lists exactly these, so Phase 5
+   can decide whether its default should change. Its opening still counts.
+9. **The weekly email, by source.** `sql` takes a `backers` row only with `notify_email`, an address
+   and an **active** standing agreement (§7.7: an ended agreement sends no digest), and a `backers`
+   row decides for its own token; the rest come from the roster. It sends once per token (the old
+   code emailed twice if two roster records shared a token).
+10. **`sendBackerSms` answers `'off'` and a relayed result carries `delivery: 'off'`** when the gate
+    is closed, so the dashboard's relay client is told rather than shown `unconfigured`.
+
+**Not built, on purpose**
+- Revoke link (§7.7), the standing agreements' own routes, and any write to `standing_*`: Phases 7-8.
+- Anything that **creates** a `source = 'ledger'` event: that is the Notify action (Phase 7). The sweep
+  has no input until then.
+- A UI. Nothing in `vite-app` changed.
+
+**Traps for later phases**
+- **The roster seam can rotate a link back.** Until seam 3 retires, the dashboard owns the roster. If
+  the owner replaces a link with "New link" here, the next time that backer is edited in the dashboard
+  its record arrives with the old token and `syncBackerRoster` rotates the history back to it.
+  Until Phase 7 stands the roster sync down, replace a leaked link in the dashboard; this app follows.
+- **Event ids embed the token** (`<token>:<session>`, `<token>:te:<id>`). A rotation re-keys `token`
+  columns and leaves `backer_events.id` and `backer_event_revisions.event_id` alone, so a retired
+  token stays inside them. Harmless while ids are not shown to anyone (the public feed omits them),
+  but Phase 7's `GET /:id/events` and the owner API must not return `id`.
+- **Flipping to `sql` changes what the weekly email does** for any backer the parity route lists with
+  `digest`, as well as the page. Read `differ` for both.
 
 Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
 parallel after Phase 2.
@@ -1596,7 +1712,7 @@ amount or `.db` copy, ever.
 | Phase | New / changed scripts | What they prove |
 |---|---|---|
 | 1 | `test:standing` (new: `node --test test/standing.test.js test/classify.test.js`), `test:money-merge` (new: the migration against the real server, then `test:standing`), `test:transactions`, `test:bankroll-reports`, `test:tax-report`, `test:account` | the 14 ported `backers.test.ts` cases; dated stakes; rounding parity sweep (≤ 1 cent over 10,000 pairs); the `formatOf` table row by row (one key per game, Q8), PLO8 before PLO, Big O before PLO8, the mixes first, 2-7 before NLH; the overlap returning both matches with `ask` (Q7); `correction`/`settlement` move balances and never profit (summary `moved` vs `results`); `affects_balance 0` rows absent from the ledger and present in the Expenses list and tax report; `equipment`/`fees` deducted at 100%; `time_known 0` facts have `hour: null`; account deletion clears every new table and leaves `backer_events` |
-| 2 | `test:backer-page` (extended), `test:backer-rotation` (new, real function), `test:gates` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
+| 2 | `test:backers` (new: `test:backer-surface`, `test:backer-rotation` on the real function, `test:backer-parity` over HTTP), `test:backer-page`, `test:gates`, `test:roster` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
 | 3 | `test:staking-settlement` (new) | §10 point 8 |
 | 4 | WC `server/test/money-export.test.js` (new) | 404 without, with a wrong and with a path token; previous token accepted; deleted rows and the four local keys present; counts right; nothing logged but counts |
 | 5 | `test:money-import` (new; a stub dashboard on a second scratch port serves fixtures) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
