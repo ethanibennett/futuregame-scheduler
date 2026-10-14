@@ -4,7 +4,8 @@
 //   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874] [--only "bankroll,home"]
 //   (--only runs the passes whose name starts with one of those words: schedule, home, venue-map,
 //   hands, bankroll-dashboard, bankroll-locations, bankroll-backers, cash, bankroll-fab, expenses,
-//   results-reset, backer-page)
+//   results-reset, backer-page; --verbose names the views a run scanned. A pass that skips itself
+//   says so, and the "scanned N views" line before the verdict counts the ones that ran.)
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
@@ -148,7 +149,9 @@ function scan(rootSel) {
   await p.waitForTimeout(5000);
   await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 2000 }).catch(() => {});
   const found = [];
+  const scanned = new Set();   // the views a scan ran on (a pass that skipped itself adds none)
   const run = async (label, sel) => {
+    scanned.add(label.split(' (')[0]);
     const r = await p.evaluate(scan, sel);
     r.forEach(x => found.push({ view: label, ...x }));
   };
@@ -211,7 +214,7 @@ function scan(rootSel) {
   // empty month, an empty Last result), each staged in the page, nothing written.
   // The signal-or-noise line (step 6; admins) loads after the first paint: its states wait for it.
   const READY = { 'noise-progress': '.hm-noise[data-kind="progress"]', 'noise-cash': '.hm-noise[data-kind="window"]' };
-  for (const kind of ['trip', 'series', 'edge', 'empty', 'noise-progress', 'noise-cash']) {
+  for (const kind of on('home') ? ['trip', 'series', 'edge', 'empty', 'noise-progress', 'noise-cash'] : []) {
     try {
       const undo = await stageHome(p, kind);
       try {
@@ -759,6 +762,7 @@ function scan(rootSel) {
   }
 
   const uniq = [...new Map(found.map(f => [f.view.split(' (')[0] + f.text + f.host, f])).values()];
+  console.log(`scanned ${scanned.size} views${args.includes('--verbose') ? ': ' + [...scanned].join(', ') : ''}`);
   if (uniq.length) {
     console.log(`CLIPPED TEXT at ${W}x${H}: ${uniq.length}`);
     for (const f of uniq) console.log(`  [${f.view}] "${f.text}" (${f.host}) cut ${f.cutPx}px at the ${f.edge} by ${f.clipper}`);
