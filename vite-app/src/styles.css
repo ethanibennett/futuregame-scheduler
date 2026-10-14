@@ -2576,7 +2576,19 @@
       line-height: 1;
       text-align: left;
     }
-    .ob .ob-row-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* A label that ends in an ellipsis clips: its glyphs (ascent + descent, more than its 1em line)
+       get their painted room from padding an equal negative margin takes back, so the box the flex
+       centres is still the line. */
+    .ob .ob-row-label,
+    .ob .ob-check-label {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding-block: calc(var(--subrow) * 0.5);
+      margin-block: calc(var(--subrow) * -0.5);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .ob .ob-row-check { --icon-size: calc(var(--subrow) * 2); display: flex; flex-shrink: 0; color: var(--brand); }
     /* Chips: 7g x 4r, 1g apart on a four-cell rhythm (4 x 7 + 3 x 1 = 31g). */
     .ob .ob-chips { display: flex; column-gap: var(--gu); }
@@ -2656,7 +2668,6 @@
       box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted);
     }
     .ob .ob-check.is-on .ob-check-box { background: var(--brand); box-shadow: none; color: var(--on-brand); }
-    .ob .ob-check-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ob .ob-foot {
       display: flex; align-items: flex-start; justify-content: space-between;
       height: calc(var(--subrow) * 4);
