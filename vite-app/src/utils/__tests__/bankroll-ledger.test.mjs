@@ -8,7 +8,7 @@ import {
   periodWindow, periodElapsed, balanceSeries, drawdowns, periodTable, bySource, within, goalProgress,
   ledgerToCsv, fmtRule, sourceLabel,
   RANGES, rangeWindow, profitSeries, peakOf, overviewStats, recentResults,
-  SERIES_KEYS, gameSeries, seriesLine, parseSeriesPref, niceTicks, compactMoney,
+  SERIES_KEYS, gameSeries, seriesLine, parseSeriesPref, niceTicks, compactMoney, chartSpan, drawdownBand,
 } from '../bankroll-ledger.js';
 import { parseCsv, parseNumber, parseDate, detectPreset, applyPreset, guessMapping, applyMapping } from '../bankroll-csv.js';
 import { balancesFromSummary, BANKROLL_ALL, BANKROLL_MAIN } from '../bankrolls.js';
@@ -402,6 +402,52 @@ test('niceTicks: the tightest fit, over a sweep of extents', () => {
       assert.ok(need > 4, `${lo}..${hi}: step ${s} would fit (${need}) under ${t.step}`);
     }
   }
+});
+
+test('chartSpan: the window\'s days; All from the first entry to today, or to an entry dated after today', () => {
+  const today = '2026-10-13';
+  const led = [T('2025-01-07', -150, 150, 0), C('2026-09-20', 120, 4), E('2026-11-15', 'transactions', 'expense', -400, 0)];
+  // All keeps the future-dated expense (as the hero and the tables do), so the axis runs to its day.
+  const all = rangeWindow('all', today);
+  assert.deepEqual(chartSpan(all, within(led, all), today), { start: '2025-01-07', end: '2026-11-15' });
+  // Every entry in the past: All ends today, not at the last entry.
+  assert.deepEqual(chartSpan(all, within(led.slice(0, 2), all), today), { start: '2025-01-07', end: today });
+  // The trailing ranges end today and leave the future entry out, so nothing falls past the end.
+  for (const r of ['1m', '3m', 'ytd', '1y']) {
+    const w = rangeWindow(r, today);
+    const win = within(led, w);
+    const span = chartSpan(w, win, today);
+    assert.deepEqual(span, { start: w.from, end: today }, r);
+    assert.ok(win.every((e) => e.date >= span.start && e.date <= span.end), `${r}: every entry inside the axis`);
+  }
+  // A clock running behind the ledger (today 28 Feb, entries to October): All spreads them to October.
+  assert.deepEqual(chartSpan(all, within(led.slice(0, 2), all), '2026-02-28'), { start: '2025-01-07', end: '2026-09-20' });
+  // Empty: today to today. Only future entries: from the first to the last.
+  assert.deepEqual(chartSpan(all, [], today), { start: today, end: today });
+  assert.deepEqual(chartSpan(all, within(led.slice(2), all), today), { start: '2026-11-15', end: '2026-11-15' });
+});
+
+test('drawdownBand: from the running peak to the line; with a floor, never over the fill', () => {
+  // A profit line: up to 500, down through 0 to -300, back to 100.
+  const pts = [0, 500, 200, -300, 100].map((value, i) => ({ date: `2026-01-0${i + 1}`, value }));
+  const open = drawdownBand(pts);
+  assert.deepEqual(open.map((b) => [b.peak, b.bottom]), [[0, 0], [500, 500], [500, 200], [500, -300], [500, 100]]);
+  // Fill on (to 0): above 0 the band still reaches the line; below 0 it stops at 0, where the fill starts.
+  const clipped = drawdownBand(pts, { floor: 0 });
+  assert.deepEqual(clipped.map((b) => [b.peak, b.bottom]), [[0, 0], [500, 500], [500, 200], [500, 0], [500, 100]]);
+  // The band [bottom, peak] and the fill [min(line, 0), max(line, 0)] share at most one value.
+  const overlap = (b, v, f) => Math.min(b.peak, Math.max(v, f)) - Math.max(b.bottom, Math.min(v, f));
+  for (const [i, b] of clipped.entries()) assert.ok(overlap(b, pts[i].value, 0) <= 0, `point ${i}`);
+  // A line that never rises above its start: the whole loss is the fill's, so the band is empty.
+  const under = drawdownBand([0, -100, -50, -400].map((value, i) => ({ date: `d${i}`, value })), { floor: 0 });
+  assert.ok(under.every((b) => b.peak - b.bottom === 0));
+  // A balance scale that does not reach 0 fills to its bottom gridline: the band is the plain one.
+  const bal = [{ date: 'a', value: 41000 }, { date: 'b', value: 40200 }, { date: 'c', value: 40900 }];
+  assert.deepEqual(drawdownBand(bal, { floor: 40000 }), drawdownBand(bal));
+  // A balance below 0 against a floor of 0: never inverted (bottom <= peak).
+  const red = drawdownBand([{ date: 'a', value: -100 }, { date: 'b', value: -300 }], { floor: 0 });
+  assert.deepEqual(red.map((b) => [b.peak, b.bottom]), [[-100, -100], [-100, -100]]);
+  assert.deepEqual(drawdownBand([]), []);
 });
 
 test('compactMoney: the axis labels, in each currency\'s own form', () => {

@@ -142,7 +142,9 @@
      plot  26r   2r of room for the top gridline's label, then the 35g x 24r grid
      foot   2r   5g under the labels | start date 10g | a note 10g | end date 10g
    The gridlines are 2, 3 or 4 steps of the 24r plot (12r, 8r, 6r), so each sits on an r line, and
-   each label (an-note, baseline on line 2 of its 2r box) sits on its gridline: box top = k r. */
+   each label (an-note, baseline on line 2 of its 2r box) sits level with its gridline: box top =
+   k r. The labels have the 5g at the left to themselves: every line, gridlines included, starts at
+   5g (BankrollChart X0), so none runs under a label's descender. */
 .bd-chart-block { margin-top: calc(var(--subrow) * 2); }
 .bd-chart-head {
   display: grid; grid-template-columns: calc(var(--gu) * 22) calc(var(--gu) * 12); column-gap: var(--gu);
@@ -195,10 +197,10 @@
 .bd-fill-btn { grid-column: 4; }
 .bd-fill-btn.is-on { background: var(--surface); box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted); color: var(--text); }
 
-/* Each line's colour (styles.css --series-*), for its pill, line and fill. */
-.bd-sp-total, .bd-c-total, .bd-sp-balance, .bd-c-balance { --c: var(--series-total); }
-.bd-sp-tourn, .bd-c-tourn { --c: var(--series-tourn); }
-.bd-sp-cash, .bd-c-cash { --c: var(--series-cash); }
+/* Each line's colour and fill alpha (styles.css --series-*), for its pill, line and fill. */
+.bd-sp-total, .bd-c-total, .bd-sp-balance, .bd-c-balance { --c: var(--series-total); --fa: var(--series-fill-total); }
+.bd-sp-tourn, .bd-c-tourn { --c: var(--series-tourn); --fa: var(--series-fill-tourn); }
+.bd-sp-cash, .bd-c-cash { --c: var(--series-cash); --fa: var(--series-fill-cash); }
 
 .bd-chart { position: relative; width: calc(var(--gu) * 35); height: calc(var(--subrow) * 26); }
 .bd-chart svg {
@@ -210,10 +212,33 @@
 .bd-grid { stroke: var(--border); stroke-width: var(--bw-hair); }
 .bd-zero { stroke: var(--text-muted); stroke-width: var(--bw-1); }
 .bd-line { fill: none; stroke: var(--c); stroke-width: var(--bw-2); stroke-linejoin: round; }
-.bd-line.bd-c-total { stroke-width: calc(var(--bw-2) * 1.75); }
-.bd-area { fill: var(--c); fill-opacity: var(--series-fill); stroke: none; }
+/* Total, drawn under the others, runs a hairline wider (.bd-under, only while other lines are on):
+   where it coincides with Tournaments or Cash, half a hairline of it shows either side, a hint
+   rather than a casing, and where it runs apart it is barely heavier than the other two. */
+.bd-line.bd-under { stroke-width: calc(var(--bw-2) + var(--bw-hair)); }
+.bd-area { fill: var(--c); fill-opacity: var(--fa); stroke: none; }
 .bd-peak { fill: none; stroke: var(--text-muted); stroke-width: var(--bw-1); stroke-dasharray: var(--bw-2) var(--bw-2); }
 .bd-dd { fill: var(--neg-quiet); stroke: none; }
+
+/* Busy, as the Overview tables (bankroll-overview-tables.css): while the next bankroll's ledger
+   loads, the hero, the graph and the latest sessions keep the figures in hand (formatted in THEIR
+   currency) and dim after a beat, so a fast reply never flickers. The pills and switches keep full
+   strength, so they never read as disabled; only their figures dim. */
+.bd-hero, .bd-chart, .bd-axis, .bd-chart-head > .an-note, .bd-sp-val, .bd-recent {
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.bd-hero.is-busy,
+.bd-chart-block.is-busy .bd-chart,
+.bd-chart-block.is-busy .bd-axis,
+.bd-chart-block.is-busy .bd-chart-head > .an-note,
+.bd-chart-block.is-busy .bd-sp-val,
+.bd-recent.is-busy {
+  opacity: var(--state-past);
+  transition-delay: var(--dur-fast);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bd-hero, .bd-chart, .bd-axis, .bd-chart-head > .an-note, .bd-sp-val, .bd-recent { transition: none; }
+}
 
 /* Tables: 11 + 8 + 8 + 8 = 35g. */
 .bd-cols-4 { grid-template-columns: calc(var(--gu) * 11) var(--col) var(--col) var(--col); }

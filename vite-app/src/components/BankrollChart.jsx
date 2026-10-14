@@ -1,5 +1,5 @@
 import React from 'react';
-import { niceTicks, drawdowns } from '../utils/bankroll-ledger.js';
+import { niceTicks, drawdownBand } from '../utils/bankroll-ledger.js';
 
 /**
  * The bankroll dashboard's graph (beta, app admins), as a poker tracker's trend chart: in Profit
@@ -8,26 +8,33 @@ import { niceTicks, drawdowns } from '../utils/bankroll-ledger.js';
  *
  *   - The pills under the head are the legend AND the switch: each carries its line's colour and
  *     its end value; any mix of lines can be on, never none (the last one does not turn off).
- *     Fill (the fourth pill, On / Off) shades each line down to 0 in a low alpha of its colour;
- *     the fills overlap translucently. Total is drawn first, wider, under the other two: on a day
- *     only one game type moves, Total runs along it and shows as an edge either side.
+ *     Fill (the fourth pill, On / Off) shades each line down to 0 in a low alpha of its colour
+ *     (one alpha per line, so each fill stands off the sheet as much as the others); the fills
+ *     overlap translucently. Total is drawn first, under the other two and (with them) a hairline
+ *     wider: on a day only one game type moves, Total runs along it and shows as a half-hairline
+ *     edge.
  *   - One y scale over every line that is ON (hidden ones do not stretch it), rounded out to
  *     "nice" gridlines (utils/bankroll-ledger niceTicks): 2, 3 or 4 steps of 1/2/2.5/5 × 10^n, so
  *     with the 24r plot every gridline sits on an r line. Profit always takes in 0, the zero line
- *     a touch stronger. Labels are HTML, not SVG text (the SVG stretches): each sits ON its
- *     gridline at the left, its baseline on that r line, in a 5g column the lines never enter —
- *     every line starts at x = 5g.
+ *     a touch stronger. Labels are HTML, not SVG text (the SVG stretches): each sits level with its
+ *     gridline in a 5g gutter at the left, its baseline on that r line. Nothing is drawn in the
+ *     gutter: the gridlines, the zero line and the data lines all start at x = 5g.
  *   - STEP lines, as ResultsCurve: a total holds until money moves; a diagonal would draw totals
  *     that never existed.
  *   - Drawdown from the peak (the band between the running peak, dashed, and the line) only when
- *     ONE line is drawn, from that line's own points; with several it is clutter.
- *   - x is calendar time across the window (to today).
+ *     ONE line is drawn, from that line's own points; with several it is clutter. With Fill on, the
+ *     band stops where the fill starts (drawdownBand's floor): stacked, the two translucent layers
+ *     mix to a neutral grey and both colours are lost.
+ *   - x is calendar time from start to end (utils/bankroll-ledger chartSpan: today, or for All a
+ *     later-dated entry's day).
  *
  * lines: [{ key, label, on, has, points: [{ date, value }], end }] — every candidate, in legend
  *        order (Total, Tournaments, Cash; or the one Balance). has = it had entries in the range;
  *        an ON line without any is drawn flat at 0 and its pill says None.
  * money: the pills' formatter; tick: the gridlines' (compact, the currency's own form).
  * zero: the scale takes in 0 (Profit). control: the head row's right end (Profit | Balance).
+ * busy: the figures are the previous bankroll's, kept on screen while the next ledger loads —
+ *       dimmed and aria-busy, as the Overview tables do.
  * Layout (bankroll-dashboard.css): a 4r head, a 5r row of pills, the plot (2r of label room over
  * the 35g x 24r grid), a 2r foot with the range's dates.
  */
@@ -43,7 +50,7 @@ const path = (pts) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${f2(a)},${f2(b)}`
 
 export default function BankrollChart({
   lines, onToggle = null, fill = true, onFill, zero = false, start, end, money, tick, fmtDate, note = '', control = null,
-  what = 'Balance',
+  what = 'Balance', busy = false,
 }) {
   const shown = lines.filter((l) => l.on);
   const live = shown.filter((l) => l.has);
@@ -90,7 +97,7 @@ export default function BankrollChart({
     const all = shown.find((l) => l.key === 'total' || l.key === 'balance');
     const msg = `No ${(all ? [NOUN[all.key]] : shown.map((l) => NOUN[l.key])).join(' or ')} in this range`;
     return (
-      <div className="bd-chart-block">
+      <div className={'bd-chart-block' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
         {head}
         {legend}
         <div className="bd-chart is-empty"><span className="an-cell an-note bd-chart-msg">{msg}</span></div>
@@ -108,48 +115,50 @@ export default function BankrollChart({
   const t0 = t(start);
   const t1 = Math.max(t(end), t0 + 864e5);
   const x = (d) => X0 + Math.max(0, Math.min(1, (t(d) - t0) / (t1 - t0))) * (W - X0);
-  // Gridlines by index, so each is exactly on its r line: row k of 24 from the plot's top.
-  const n = ax.ticks.length - 1;
-  const grid = ax.ticks.map((v, j) => ({ v, k: n ? (ROWS * (n - j)) / n : ROWS / 2 }));
-  const base = y(Math.min(Math.max(0, ax.lo), ax.hi)); // fills run to 0 (or the nearer edge)
-
-  const geo = shown.map((l) => {
-    const pts = l.has ? l.points : [{ date: start, value: 0 }];
+  // A step line through pts with vals[i] at pts[i], as viewBox vertices, held to the right edge.
+  const steps = (pts, vals) => {
     const v = [];
     pts.forEach((p, i) => {
       const xi = i === 0 ? X0 : x(p.date);
-      if (i > 0) v.push([xi, y(pts[i - 1].value)]);
-      v.push([xi, y(p.value)]);
+      if (i > 0) v.push([xi, y(vals[i - 1])]);
+      v.push([xi, y(vals[i])]);
     });
-    v.push([W, y(pts[pts.length - 1].value)]);
-    return { l, pts, v };
+    v.push([W, y(vals[vals.length - 1])]);
+    return v;
+  };
+  // Gridlines by index, so each is exactly on its r line: row k of 24 from the plot's top.
+  const n = ax.ticks.length - 1;
+  const grid = ax.ticks.map((v, j) => ({ v, k: n ? (ROWS * (n - j)) / n : ROWS / 2 }));
+  const floor = Math.min(Math.max(0, ax.lo), ax.hi); // fills run to 0 (or the nearer edge)
+  const base = y(floor);
+
+  const geo = shown.map((l) => {
+    const pts = l.has ? l.points : [{ date: start, value: 0 }];
+    return { l, pts, v: steps(pts, pts.map((p) => p.value)) };
   });
 
-  // Drawdown below the running peak: one line only, from its own points.
+  // Drawdown below the running peak: one line only, from its own points. With Fill on the band
+  // stops at the fill's edge, so the two never stack (drawdownBand).
   let dd = null;
   if (geo.length === 1 && geo[0].l.has) {
-    const { pts, v } = geo[0];
-    const d = drawdowns(pts);
-    if (d.per.some((p) => p.dd > 0)) {
-      const peak = [];
-      pts.forEach((p, i) => {
-        const xi = i === 0 ? X0 : x(p.date);
-        if (i > 0) peak.push([xi, y(d.per[i - 1].peak)]);
-        peak.push([xi, y(d.per[i].peak)]);
-      });
-      peak.push([W, y(d.per[d.per.length - 1].peak)]);
-      dd = { peak: path(peak), area: path(peak) + ' ' + [...v].reverse().map(([a, b]) => `L${f2(a)},${f2(b)}`).join(' ') + ' Z' };
+    const { pts } = geo[0];
+    const band = drawdownBand(pts, { floor: fill ? floor : null });
+    if (band.some((b) => b.peak - b.bottom > 0)) {
+      const top = steps(pts, band.map((b) => b.peak));
+      const bottom = steps(pts, band.map((b) => b.bottom));
+      dd = { peak: path(top), area: path(top) + ' ' + bottom.reverse().map(([a, b]) => `L${f2(a)},${f2(b)}`).join(' ') + ' Z' };
     }
   }
 
-  // Draw order: Total first, under the others and wider (bankroll-dashboard.css), so where it runs
-  // along Tournaments or Cash (every day only one of them moves) both stay visible.
+  // Draw order: Total first, under the others and, with others drawn, a hairline wider (.bd-under in
+  // bankroll-dashboard.css), so where it runs along Tournaments or Cash (every day only one of them
+  // moves) a thin edge of it shows. Alone, it is drawn at the others' weight.
   const drawn = geo;
   const aria = `${what}, ${fmtDate(start)} to ${fmtDate(end)}: ` + shown.map((l) => `${l.label} ${l.has ? money(l.end) : 'none'}`).join(', ')
     + (ax.step ? `; gridlines every ${tick(ax.step)} from ${tick(ax.lo)} to ${tick(ax.hi)}` : '');
 
   return (
-    <div className="bd-chart-block">
+    <div className={'bd-chart-block' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
       {head}
       {legend}
       <div className="bd-chart">
@@ -157,7 +166,7 @@ export default function BankrollChart({
           data-lo={ax.lo} data-hi={ax.hi} data-step={ax.step} data-x0={X0} data-start={start}
           data-t1={new Date(t1).toISOString().slice(0, 10)}>
           {grid.map((g) => (
-            <line key={'g' + g.v} x1="0" y1={g.k * (H / ROWS)} x2={W} y2={g.k * (H / ROWS)}
+            <line key={'g' + g.v} x1={X0} y1={g.k * (H / ROWS)} x2={W} y2={g.k * (H / ROWS)}
               className={g.v === 0 ? 'bd-zero' : 'bd-grid'} vectorEffect="non-scaling-stroke" />
           ))}
           {fill && drawn.map(({ l, v }) => (
@@ -166,7 +175,8 @@ export default function BankrollChart({
           {dd && <path d={dd.area} className="bd-dd" />}
           {dd && <path d={dd.peak} className="bd-peak" vectorEffect="non-scaling-stroke" />}
           {drawn.map(({ l, v }) => (
-            <path key={'l' + l.key} d={path(v)} className={`bd-line bd-c-${l.key}`} data-series={l.key} data-end={l.end}
+            <path key={'l' + l.key} d={path(v)} data-series={l.key} data-end={l.end}
+              className={`bd-line bd-c-${l.key}` + (l.key === 'total' && drawn.length > 1 ? ' bd-under' : '')}
               vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
@@ -174,7 +184,7 @@ export default function BankrollChart({
           <span key={'t' + g.v} className="an-cell an-note bd-tick" style={{ '--k': g.k }} aria-hidden="true">{tick(g.v)}</span>
         ))}
       </div>
-      {foot(dd ? 'Shaded: drawdown' : '')}
+      {foot(dd ? 'Red: drawdown' : '')}
     </div>
   );
 }

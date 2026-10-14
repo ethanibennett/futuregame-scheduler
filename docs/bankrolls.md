@@ -173,37 +173,64 @@ The graph (`BankrollChart.jsx`, fed by `BankrollOverview.jsx`):
   ends at the hero's profit and the Summary's Total result), **Tournaments** = the `tournaments`
   source, **Cash** = `cash-sessions`. Expenses & income have no line of their own; while Total is on
   and they moved it, the head note says so ("Total includes expenses & income −$1,630"). Lines are
-  steps (a total holds until money moves). Total is drawn first and wider, so where it runs along
-  Tournaments or Cash (only one of them moves on a given day) both stay visible.
+  steps (a total holds until money moves), all at `--bw-2`. Total is drawn first, under the others,
+  and while others are on it runs a hairline wider (`--bw-2` + `--bw-hair`, class `bd-under`): where
+  it coincides with Tournaments or Cash (only one of them moves on a given day) half a hairline of
+  it shows either side, a hint rather than a casing; alone it is drawn at the others' weight. (It
+  was 1.75 × `--bw-2`, which outlined the Tournaments line in white in dark and in black in the
+  light themes for most of a tournament-heavy range.)
+- **Date axis.** x is calendar time from the range's first day to its last (`chartSpan`): today for
+  1M / 3M / YTD / 1Y, whose windows leave later entries out. All has no last day and keeps every
+  entry (as the hero and the tables do), so when the ledger holds one dated after today (a prepaid
+  hotel, a result logged ahead of the event) All runs to that entry's date and its step lands on its
+  own day instead of piling up at today's edge; the end date under the plot says so.
 - **Pills** (5r; Total 8g, Tournaments 10g, Cash 8g, Fill 6g, 1g apart): each is the line's legend
   (a swatch in its colour, its end value for the range, "None" when the range has no such entries)
   and its switch (`aria-pressed`). Any mix can be on; the last one on cannot be turned off
   (`aria-disabled`, "One line always stays on"). Default: all three on. **Fill** (On / Off, default
-  On) shades each drawn line down to the zero line in `--series-fill` alpha of its colour; the
-  fills overlap translucently. Both are remembered per device: `bankrollSeries`
-  (`'total,tourn,cash'`, known keys only, never empty: `parseSeriesPref`) and `bankrollFill`
-  (`'1'` / `'0'`), read and written in try/catch like the range and mode.
+  On) shades each drawn line down to the zero line in a low alpha of its colour, one alpha per line
+  (`--series-fill-total` / `--series-fill-tourn` / `--series-fill-cash`) so that each fill stands
+  about 1.2:1 off the sheet; the fills overlap translucently. Both are remembered per device:
+  `bankrollSeries` (`'total,tourn,cash'`, known keys only, never empty: `parseSeriesPref`) and
+  `bankrollFill` (`'1'` / `'0'`), read and written in try/catch like the range and mode.
 - **Balance mode** stays one line (deposits do not split by game type): the series pills give way to
   a single, fixed Balance pill; Fill still works on it (down to the bottom gridline when the scale
   does not reach 0).
 - **Drawdown** (the band between the running peak, dashed, and the line, in `--neg-quiet`) only when
-  one line is drawn — one series in Profit, or Balance; with several it is clutter. The foot says
-  "Shaded: drawdown" when it shows.
+  one line is drawn — one series in Profit, or Balance; with several it is clutter. With Fill on,
+  the band stops where the line's fill starts (`drawdownBand`'s floor: from the peak down to
+  max(line, 0)), so the two translucent layers never stack: stacked, the aqua or violet fill and the
+  red mixed to a flat neutral grey and both colours were lost. So a line that peaks above 0 and then
+  falls below it shows red from the peak down to 0 and its own fill from 0 down to the line, and a
+  line that never rose above its start (the whole fall is its fill) shows no band. With Fill off
+  the band runs from the peak to the line. The foot says "Red: drawdown" when it shows.
 - **Axis.** One y scale over the lines that are on (a hidden line does not stretch it), rounded out
   by `niceTicks` to 2, 3 or 4 steps of 1 / 2 / 2.5 / 5 × 10ⁿ — 3 to 5 gridlines; Profit always takes
   in 0 as a gridline, drawn a touch stronger (`--text-muted`, `--bw-1`; the others `--border`,
   hairline). Each count divides the 24r plot, so every gridline is on an r line. The labels are HTML
   (the SVG stretches), `compactMoney` in the display currency's own form ($5k, −$2.5k, 5k kr,
-  ¥1.2M), each in a 5g column at the left with its baseline on its gridline; the lines start at 5g,
-  so a label never meets a line, and gridlines are at least 6r apart, so labels never meet each
-  other (the widest plausible label, −CHF2.5k, measures 3.9g). Under the plot: the range's start
-  date at 5g (where the lines start) and its end date at the right.
+  ¥1.2M), each in a 5g gutter at the left with its baseline level with its gridline. Nothing is
+  drawn in the gutter: the gridlines, the zero line and the data lines all start at 5g, so a label
+  never meets a line (a gridline from x = 0 once ran under its label and through the $'s
+  descender), and gridlines are at least 6r apart, so labels never meet each other (the widest
+  plausible label, −CHF2.5k, measures 3.9g). Under the plot: the range's start date at 5g (where
+  the lines start) and its end date at the right.
+- **Whose figures.** The bankroll chip, and so its currency, changes a round trip before the ledger
+  does, and the previous ledger stays on screen meanwhile. So the whole Overview (hero, pills,
+  gridline labels, head note, latest sessions) formats its money in the currency of the ledger in
+  hand and names its scope from it (`ledgerScope`, as the tables do), and the hero, the graph's
+  figures and the latest sessions dim with `aria-busy` until it is the ledger asked for; the pills
+  and switches keep full strength. Never the old figures in the new currency.
 - **Colours** (`styles.css`, "Chart series"): `--series-total` (the text colour), `--series-tourn`
   (the brand aqua), `--series-cash` (a violet), defined for the dark default and overridden for
   light, cloudy and each high-contrast theme. The same tokens key the tables' column heads, as
   text, so Cash clears 4.5:1 on the sheet (and so 3:1 non-text on the sheet and on the pills) in
   every theme; it sits lighter or deeper than the aqua everywhere, so the lines differ in lightness
-  as well as hue. Measured values are in the comment above the tokens. No orange.
+  as well as hue. The fill alphas come in two sets, the dark grounds (0.09 / 0.11 / 0.155) and the
+  light ones (0.09 / 0.125 / 0.11): one shared 0.12 left Cash's fill at 1.14:1 on the dark sheet
+  against Total's 1.33, nearly invisible; now every fill is 1.17–1.24:1 and every line clears 3:1
+  over the other two fills (lowest: Cash on cloudy, 3.27). Measured values are in the comment above
+  the tokens. No orange.
 
 Table layout: a 3r head (labels on line 2; Cash, Tournaments and Total carry a key bar in
 `--series-cash` / `--series-tourn` / `--series-total`, the graph's line colours), 4r rows with the
@@ -261,9 +288,11 @@ cashed / rows; hourly = the profit of sessions with both ends / their hours; eve
 when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`, and the
 graph's: `gameSeries` (Total / Tournaments / Cash / other on one date axis, summed in integer cents so
 tourn + cash + other == total exactly on every row), `seriesLine`, `parseSeriesPref`, `niceTicks`,
-`compactMoney` — tested in `utils/__tests__/bankroll-ledger.test.mjs` (the series identity, 1M / YTD
-windows restarting at 0, empty, single-entry and negative-only series, flat and junk extents, a 2,000
-extent sweep for the tightest nice step).
+`compactMoney`, `chartSpan` (the date axis) and `drawdownBand` (the band, stopped at the fill) —
+tested in `utils/__tests__/bankroll-ledger.test.mjs` (the series identity, 1M / YTD windows
+restarting at 0, empty, single-entry and negative-only series, flat and junk extents, a 2,000 extent
+sweep for the tightest nice step, a future-dated entry in All and in the trailing ranges, a clock
+behind the ledger, and the band never sharing more than one value with the fill).
 
 Baselines: hero figures are the display face at `--fs-2xl` (c measured 1.0983r at 402 wide, 1.1238r at
 1440 — the face's ascent rounds to whole px, so `p` splits the difference, ≤ 0.03r off); the latest

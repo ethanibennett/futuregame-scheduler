@@ -1422,13 +1422,32 @@
          HC light   #ffffff   0        .38      #6d28d9  L .49     7.10     7.10
          HC cloudy  #d8d8d8   0        .38      #5b16d6  L .46     5.82     5.38
        (A lighter violet than the aqua is out of reach at 4.5:1 on the light grounds, so there
-       it goes deeper.) --series-fill is the fills' alpha: low enough that three overlapping
-       stay see-through. */
+       it goes deeper.)
+       --series-fill-* are the fills' alphas, one per line: one shared alpha left the fills
+       unequal (at 0.12 Cash stood 1.14:1 off the dark sheet, Total 1.33), so each is set for
+       about 1.2:1 against --bg, and three stacked stay see-through, every line clearing 3:1
+       over the other two fills. Two sets, the dark grounds and the light ones (WCAG contrast,
+       sRGB compositing, measured):
+                    fill on --bg (total / tourn / cash)   line over the other two fills (min)
+         dark       1.22 / 1.20 / 1.20                    cash 3.44
+         dusk       1.22 / 1.22 / 1.21                    cash 3.32
+         light      1.20 / 1.18 / 1.21                    tourn 3.43
+         cloudy     1.18 / 1.20 / 1.18                    cash 3.27
+         HC dark    1.17 / 1.18 / 1.18                    cash 5.16
+         HC dusk    1.21 / 1.23 / 1.23                    cash 4.55
+         HC light   1.23 / 1.24 / 1.20                    cash 4.74
+         HC cloudy  1.22 / 1.21 / 1.20                    cash 3.99 */
     :root {
       --series-total: var(--text);
       --series-tourn: var(--brand);
       --series-cash:  #966cf7;
-      --series-fill:  0.12;
+      --series-fill-total: 0.09;
+      --series-fill-tourn: 0.11;
+      --series-fill-cash:  0.155;
+    }
+    :is([data-theme="light"], [data-theme="cloudy"]) {
+      --series-fill-tourn: 0.125;
+      --series-fill-cash:  0.11;
     }
     [data-theme="light"]  { --series-cash: #5b21b6; }
     [data-theme="cloudy"] { --series-cash: #6419e6; }

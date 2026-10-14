@@ -217,6 +217,41 @@ export function seriesLine(rows, key) {
   return pts;
 }
 
+/**
+ * The graph's date axis for a range: { start, end }. `w` is rangeWindow's window and `win` the
+ * entries inside it, sorted. start = the window's first day (All: the first entry's date; today
+ * when there is none). end = the window's last day, today, except for All, which has no last day
+ * and keeps every entry (as the hero and the tables do), so when the ledger holds one dated after
+ * today (a prepaid hotel, a result logged ahead of the event) All runs to that entry's date and its
+ * step lands on its own day, not piled up at today. The other ranges end today and `within`
+ * leaves later entries out, so no point ever falls past the end.
+ */
+export function chartSpan(w, win, today) {
+  const first = win.length ? win[0].date : null;
+  const last = win.length ? win[win.length - 1].date : null;
+  const start = w.from || first || today;
+  const end = w.to || (last && last > today ? last : today);
+  return { start, end: end < start ? start : end };
+}
+
+/**
+ * The drawdown band under the running peak, point by point: [{ date, peak, bottom }], peak the
+ * running peak (drawdowns) and bottom the band's lower edge. Without `floor` the band runs from
+ * the peak down to the line. With `floor` (the value the series fill runs to: 0, or the scale's
+ * nearer edge) it stops where the fill begins, at max(line, floor) and never above the peak, so
+ * the two translucent layers never cover the same ground: stacked, the fill's colour and the
+ * band's red mix to a neutral grey and both are lost. The band and the fill [line, floor] then
+ * meet along at most one value.
+ */
+export function drawdownBand(points, { floor = null } = {}) {
+  const { per } = drawdowns(points);
+  return points.map((p, i) => {
+    const peak = per[i].peak;
+    const bottom = floor == null ? p.value : Math.min(peak, Math.max(p.value, floor));
+    return { date: p.date, peak, bottom };
+  });
+}
+
 /** The stored choice of lines ('total,tourn,cash'): known keys only, in order; never empty. */
 export function parseSeriesPref(v) {
   const got = new Set(String(v == null ? '' : v).split(',').map((s) => s.trim()));
