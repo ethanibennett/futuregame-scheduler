@@ -51,7 +51,7 @@ export default function HomeNumbers({ isAdmin, token, bk, results, schedule, upd
         currency={currency} today={today} scopeAbove={scopeAbove} onOpen={onOpen} onOpenGoals={() => setSheet('goals')}
         onOpenNoise={(game, scope) => (game === 'cash' ? setSheet('balance') : setAnalytics(scope || 'all'))} />
       {admin && sheet && (
-        <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={() => setSheet(null)} />
+        <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={() => setSheet(null)} onLog={onLog} />
       )}
       {admin && analytics && (
         <Suspense fallback={null}>

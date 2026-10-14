@@ -5,7 +5,9 @@ import { haptic } from '../utils/utils.js';
 export default function BottomNav({ current, onChange, scheduleCount, newShareCount, isAdmin }) {
   const tabs = [
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
-    { id: 'social', label: 'Social', icon: Icon.people },
+    // Bankroll took Social's slot (owner, 2026-10-14): it opens Results & Tracking, the bankroll
+    // tracker's home. Social moved to the username menu.
+    { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
     { id: 'dashboard', label: 'Dashboard', icon: Icon.home },
     // Hand Replayer — admin-only entry in the footer until the
     // feature ships to all users.

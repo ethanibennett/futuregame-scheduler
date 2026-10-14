@@ -59,6 +59,15 @@ export default function useLiveCashSession({ enabled, token }) {
   return enabled ? snap : { session: null, stacks: [], skew: 0, loaded: false };
 }
 
+/**
+ * The running session (or null), read-only: no polling, no fetch. For a view that only needs to know
+ * whether one runs and leaves keeping it fresh to the bar over the nav (LiveCashBar, mounted in App
+ * for admins). Empty for everyone else, since nothing fills the store.
+ */
+export function useLiveSessionNow() {
+  return useSyncExternalStore(subscribe, () => state).session;
+}
+
 // ── Results tab half: 'tournaments' | 'cash' ──
 const KIND_KEY = 'resultsKind';
 let kind = (() => { try { return localStorage.getItem(KIND_KEY) === 'cash' ? 'cash' : 'tournaments'; } catch { return 'tournaments'; } })();

@@ -16047,11 +16047,12 @@
 
     /* Floating admin toggles for the grid overlay: 4g x 5r keys on the 1g right margin, stacked
        up from the bottom nav's top (an r line), --dev-up r above it (clear of the 5r Hands tools row),
-       so each sits on the grid. The desktop Schedule list pane is their containing block and keeps
-       the nav band at its foot (.dk-pane-list::after), so there they land where the phone's do. */
+       so each sits on the grid; --dev-lift moves the stack up past the Results tab's floating + (bankroll-fab.css).
+       The desktop Schedule list pane is their containing block and keeps the nav band at its foot
+       (.dk-pane-list::after), so there they land where the phone's do. */
     .grid-dev-toggle {
       position: fixed; right: var(--gu);
-      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * var(--dev-up, 7));
+      bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * (var(--dev-up, 7) + var(--dev-lift, 0)));
       z-index: 9999; width: calc(var(--gu) * 4); height: calc(var(--subrow) * 5); border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center;
       border: var(--bw-hair) solid var(--border); box-shadow: 0 calc(var(--subrow) * 0.25) calc(var(--subrow) * 1.25) rgba(0,0,0,0.3);

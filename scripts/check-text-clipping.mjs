@@ -15,7 +15,8 @@
 // section open, then closed — every Reports table and the
 // Reports filter sheet, a Locations card open a page past its first ten and the Locations sorted by
 // name with every card open, then Results > Cash: the running session and its panels, the session
-// list, Stats, a session, the add form, the live bar), and for every text node inside those
+// list, Stats, a session, the add form, the live bar), the floating + on the bankroll pages and its
+// menu (with and without a running session, and in the dashboard sheet), and for every text node inside those
 // views measures its glyph
 // box (a Range over the text, which spans ascent to descent) against every ancestor that clips
 // (overflow other than visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px
@@ -343,18 +344,15 @@ function scan(rootSel) {
     await run('hands scanner', '.hands-scan');
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
 
-  // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
+  // Results & Tracking (the Bankroll tab), from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
-    if (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'))) {
-      await p.locator('.dk-rail-item:has-text("Results")').first().click({ timeout: 4000 });
-    } else {
-      await p.locator('.username-chip').first().click({ timeout: 4000 });
-      await p.waitForTimeout(400);
-      await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
-    }
+    // Results is the Bankroll tab on both layouts since 2026-10-14 (it took Social's slot).
+    const sel = (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop')))
+      ? '.dk-rail-item:has-text("Bankroll")' : '.bottom-nav .nav-tab:has-text("Bankroll")';
+    await p.locator(sel).first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
   };
   // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.
@@ -531,6 +529,34 @@ function scan(rootSel) {
   } catch (e) {
     console.log(`  (cash bar skipped: ${e.message.split('\n')[0]})`);
   }
+
+  // The floating + on the bankroll pages (components/BankrollFab.jsx) and its menu: the Results tab's
+  // with a session running (the seed's: the + is raised over the cash bar), with none (the live fetch
+  // answered here and never sent: the menu then has Start live session as a fourth row), and the
+  // dashboard sheet's. The + holds an icon only; the menu's rows are text under overflow: hidden.
+  const fabView = async (label, { idle = false, sheet = false } = {}) => {
+    try {
+      if (idle) await p.route('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
+      try {
+        await openResults();
+        if (sheet) {
+          await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+          await p.waitForTimeout(1800);
+        }
+        const fab = p.locator(sheet ? '.bk-fab--sheet' : '.bk-fab--page');
+        await fab.first().waitFor({ timeout: 4000 });
+        await run(`${label} (closed)`, sheet ? '.an-sheet' : '.bk-fab');
+        await fab.first().click({ timeout: 4000 });
+        await p.locator('.bk-fab-menu').waitFor({ timeout: 3000 });
+        const rows = await p.locator('.bk-fab-menu [role="menuitem"]').count();
+        if (rows !== (idle ? 4 : 3)) throw new Error(`the menu has ${rows} rows, expected ${idle ? 4 : 3}`);
+        await run(label, '.bk-fab-menu');
+      } finally { if (idle) await p.unroute('**/api/cash-sessions/live'); }
+    } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
+  };
+  await fabView('bankroll + menu');
+  await fabView('bankroll + menu, no session running', { idle: true });
+  await fabView('bankroll sheet + menu', { sheet: true });
 
   // Results → Expenses & income (admin beta) and its sheets: rows, cells and trip lines truncate
   // with an ellipsis. Skipped quietly where the section is absent (a non-admin token).

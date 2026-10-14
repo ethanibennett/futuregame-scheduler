@@ -38,6 +38,7 @@
     "test:venue-map": "node test/venue-map.test.js && cd vite-app && node --test src/utils/__tests__/venue-map.test.mjs",
     "test:bankrolls": "node test/bankrolls.test.js && node test/bankroll-ledger.test.js && cd vite-app && node --test src/utils/__tests__/bankrolls.test.mjs src/utils/__tests__/bankroll-ledger.test.mjs src/utils/__tests__/bankroll-overview.test.mjs",
     "test:transactions": "node test/ledger-source-transactions.test.js && node test/bankroll-transactions.test.js && cd vite-app && node --test src/utils/__tests__/transactions.test.mjs",
+    "test:bankroll-fab": "cd vite-app && node --test src/utils/__tests__/bankroll-fab.test.mjs",
     "test:bankroll-reports": "node test/bankroll-reports.test.js && cd vite-app && node --test src/utils/__tests__/bankroll-reports.test.mjs src/utils/__tests__/bankroll-locations.test.mjs",
     "test:feed-dedupe": "node test/feed-dedupe.test.js",
     "test:cash-sessions": "node test/cash-sessions-ledger.test.js && node test/cash-sessions.test.js",
