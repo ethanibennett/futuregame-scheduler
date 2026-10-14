@@ -1,10 +1,12 @@
 # First-run setup ("onboarding")
 
-Built 2026-10-13 on branch `feat/onboarding-refine`. Code: `vite-app/src/components/OnboardingWizard.jsx`
+Built 2026-10-13 on branch `feat/onboarding-refine`; master merged in and the launch plan's live-only
+default added 2026-10-14. Code: `vite-app/src/components/OnboardingWizard.jsx`
 (the screens), `vite-app/src/utils/onboarding.js` (everything the answers read and write),
 `vite-app/src/utils/location-prefs.js` (the stores), `server.js` (`users.onboarding`). Tests:
-`npm run test:onboarding`. Guards: the `onboarding` and `real-name-prompt` views of
-`npm run check:controls`, and the "first-run setup" section of `npm run check:clipping`.
+`npm run test:onboarding`. Guards: the `onboarding`, `onboarding-places`, `settings-edit-name` and
+`real-name-prompt` views of `npm run check:controls`, and the "first-run setup" section of
+`npm run check:clipping`.
 
 ## 1. Purpose
 
@@ -96,7 +98,8 @@ Last button: "Show my schedule" (it stays on Home).
 
 **Step 2 — "Do you play online too?"**
 - Lead: "Online tournaments show in your list next to live ones."
-- Tiles:
+- Tiles (a first run starts on "No, live only": online events are off until the player says yes, the
+  launch plan; a re-run starts on what is stored):
   - "Yes, show online events" / "ACR, GGPoker, WSOP.com, Phenom and ClubWPT Gold"
   - "No, live only" / "The Online switch on the Schedule brings them back"
 - With Yes, and a US or unknown location:
@@ -177,14 +180,21 @@ questions would be asked of everyone for a feature only admins can see.
 
 ## 5. Defaults, Skip, Back, Esc, and the live count
 
-- **Defaults:** step 1 Everywhere (or what is saved); step 2 Yes; step 3 no chips. Next is always
-  enabled: Next, Next, Show finishes with the defaults.
-- **"Only sites open in <state>"** on a first run starts on (D3), and only when it is shown (Yes,
-  a state known, in the US) does that default count as an answer. On a re-run it shows what is
-  stored (off when nothing is).
+- **Defaults:** step 1 Everywhere (or what is saved); step 2 **No, live only on a first run** (launch
+  plan, L1 in section 9; a re-run shows what is stored, Yes when nothing is); step 3 no chips. Next is
+  always enabled: Next, Next, Show finishes with the defaults.
+- **A first run always answers step 2**, whether or not it is touched: `showOnline: false` is written
+  when the player finishes on No, when they skip, and when they never reach it. (A re-run writes a
+  row only if it was touched.)
+- **"Only sites open in <state>"** on a first run starts on (D3). Its checkbox shows with Yes and a
+  state known in the US, but the filter is written on a first run wherever a state is known, even
+  with online at No, so the Online switch, flipped later, already hides the sites that are not open
+  there (launch plan: "the state filter on by default"). On a re-run it shows what is stored (off
+  when nothing is).
 - **Skip (D5)** saves the steps already confirmed with Next, as they stood when Next was pressed.
-  The step on screen and any after it keep what is already saved (on a first run, nothing).
-  It sets the local flag and, for an account, records `{skipped: true}`. No navigation.
+  The step on screen and any after it keep what is already saved, except that a first run never
+  leaves online on without a yes: unless Next confirmed step 2, the default (No) is written. It sets
+  the local flag and, for an account, records `{skipped: true, filters}`. No navigation.
 - **Back** returns to the previous step with its answers intact.
 - **Esc** is Skip. A click on the backdrop does nothing.
 - **The count (D7)** runs `countSetup()` over App's `tournaments`: upcoming events (today or
@@ -264,15 +274,24 @@ Each was built with the default shown. Status: **pending** until the owner confi
 | D1 | Create Account signs you in (no second sign-in) | yes | pending |
 | D2 | Guests see setup too (answers stay on the device) | yes | pending |
 | D3 | "Only sites open in <state>" on by default on a first run | on | pending |
+| D4 | Game choices: three chips (NLH / PLO / Mixed), as the Filters sheet's quick buttons | three | pending |
 | D5 | Skip keeps the steps confirmed with Next | yes | pending |
 | D6 | Finishing a first run opens the Schedule | yes | pending |
 | D7 | A live count under every step | yes | pending |
 | D8 | Registration still asks for a name and a username | unchanged | pending |
 | D9 | Settings gets "Edit name" | yes | pending |
 | D10 | A region picked in the location menu also answers the state | yes | pending |
+| D11 | Distance chips 50 / 100 / 250 miles, 100 the default | yes | pending |
 | D12 | No change to iOS / Android permission strings or entitlements; city search is the fallback | yes | pending |
+| D13 | Home's week count and the Calendar keep ignoring the game and buy-in answers | left as is | pending |
+| L1 | Online events are off until the player says yes in setup (launch plan, "Policy guardrails" and next action 3; owner answer 2026-10-14) | a first run starts at No and writes it, finish or skip | taken from the launch plan; confirm the wording |
 
 Builder's calls the owner may want to see (all small, all reversible):
+- L1 is built into setup only. Whoever never meets setup (an account older than it, a browser with
+  storage blocked) keeps today's default, online shown: flipping the Schedule's own default
+  (`DEFAULT_FILTERS.showOnline`, and what "Clear all filters" resets to) would change every existing
+  account's list on its next load, so it is the launch plan's separate "live-only defaults" job, not
+  this one.
 - Location is written on finish only when a location row was touched (the spec said always);
   "Everywhere" on a re-run is a touch, so B3 is still fixed.
 - The distance chips sit under the search, next to the point they apply to, not under the regions.
@@ -318,6 +337,12 @@ Builder's calls the owner may want to see (all small, all reversible):
 
 ## 11. Known gaps
 
+- **L1 covers setup, not the Schedule's global default.** "Clear all filters" on the Schedule still
+  resets Online to shown (it resets to `DEFAULT_FILTERS`), and an account that never met setup still
+  shows online events until the launch plan's live-only defaults job changes that default.
+- **A guest's Schedule still runs its own location sync** (a GET that answers null, a PUT that is
+  refused with 403). That is the Schedule's and the Calendar's existing code for any token, not
+  setup's: setup itself calls neither account endpoint for a guest.
 - **Android** has no location permission in `AndroidManifest.xml`, and the **Mac** (Catalyst) app
   lacks the location sandbox entitlement, so "Use my location" fails on both (the "Location is
   off" line). City search is the fallback (D12); nothing under `android/` or `ios/` changed.

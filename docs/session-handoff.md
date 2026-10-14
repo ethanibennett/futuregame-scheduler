@@ -84,9 +84,23 @@ wsop-console side and verified against both live services.
   B4 a re-run wiping siteRules, B10 setup per browser, a location GET/PUT race, and B12: a new
   browser's first Schedule pushed its empty location on mount and wiped the account's copy, so
   location never followed an account to a second device (the views now push only a change).
-- **Waiting on Ethan:** the wording (docs/onboarding.md §2) and decisions D1–D12 (§9), all built
+- **Waiting on Ethan:** the wording (docs/onboarding.md §2) and decisions D1–D13 (§9), all built
   with their defaults. Settings gained "Edit name".
-- Screenshots (grid overlay on): the builder's scratch folder `scratchpad/onboarding/shots/`.
+- **2026-10-14 update:** master (4a19a4b: Bankroll tab, floating +, Sessions, Trend, venue maps) merged
+  in with three conflicts, all additive. **Launch plan, built in (L1):** online events are off until the
+  player says yes, so a first run starts step 2 at "No, live only" and writes it on finish AND on skip;
+  where a state is known the state filter is written on too. The Schedule's global default
+  (`DEFAULT_FILTERS.showOnline`) is NOT changed: that is the launch plan's separate live-only-defaults job.
+- **Trap: a first-run guard needs an account whose `users.onboarding` is NULL.** The migration marks every
+  account in a seeded DB legacy, so `freshie` (and any seed user) shows no setup until it is NULLed with
+  sql.js while the server is stopped. The grid overlay is admin-only (`ham`, `ham5`, `claude`), so overlay
+  screenshots of a FIRST run need `ham5`'s record NULLed too (and a fresh copy per run, since finishing
+  writes it).
+- Guards: `npm run check:controls -- --only onboarding,real-name-prompt,settings-edit-name,auth-register,
+  location-dropdown` (`onboarding-places` is a prefix match) and `check:clipping`, whose first-run section
+  prints "first-run setup: 8 views measured": anything but 8 means a stage was skipped.
+- Screenshots (grid overlay on, both sizes): the builder's scratch folders `scratchpad/onboarding/shots/`
+  and `scratchpad/onboarding-v2/shots/`.
 
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
