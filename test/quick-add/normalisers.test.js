@@ -36,6 +36,34 @@ test('card notation: emoji selectors, the heavy heart, equal ranks, textures', (
   assert.equal(cards('J83hhx'), 'Jh8h3x');        // unchanged
 });
 
+test('one suit letter after a two-card holding means both cards (owner, 2026-10-14)', () => {
+  assert.equal(cards('AKh'), 'AhKh');
+  assert.equal(cards('A10h'), 'AhTh');
+  assert.equal(cards('J 10d'), 'JdTd');
+  assert.equal(cards('QJc'), 'QcJc');
+  assert.equal(parseCards('AKh').bothSuited, true);
+  // Unchanged: suited-without-a-suit, pairs, longer holdings, interleaved suits.
+  assert.equal(cards('AKs'), 'AxKx');
+  assert.equal(parseCards('AKs').suitedness, 's');
+  assert.equal(cards('KdJ'), 'KdJx');
+  assert.equal(cards('KQJ2dd'), 'KdQdJx2x');
+  assert.equal(cards('AAh'), 'AhAx');          // two aces cannot share a suit
+  assert.equal(cards('AdKdQd'), 'AdKdQd');
+});
+
+test('"1/2/4/800" is a tower of straddles in thousands: the model\'s 100/200 stays', () => {
+  const draft = (blinds) => D({
+    gameType: 'PLO', gameMode: 'cash', tableSize: 2, blinds,
+    players: [{ position: 'BTN', isHero: true, startingStack: 360000 }, { position: 'BB', startingStack: 320000 }],
+    streets: [{ name: 'Preflop', actions: [{ player: 0, action: 'raise', toAmount: 3000 }, { player: 1, action: 'call' }] }],
+  });
+  const kept = normalizeDraft(draft({ sb: 100, bb: 200, ante: 0, stakes: '1/2/4/800' })).hand.blinds;
+  assert.deepEqual([kept.sb, kept.bb], [100, 200]);
+  // Two or three numbers are still read as written.
+  const k = normalizeDraft(draft({ sb: 6, bb: 12000, ante: 0, stakes: '6/12k' })).hand.blinds;
+  assert.deepEqual([k.sb, k.bb], [6000, 12000]);
+});
+
 test('card notation: unknown and face-down cards', () => {
   const q = parseCards('Q 10 x');
   assert.deepEqual([q.cards.join(''), q.unknownCount], ['QxTx', 1]);
