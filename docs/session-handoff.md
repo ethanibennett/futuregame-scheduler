@@ -14,6 +14,34 @@ wsop-console side and verified against both live services.
 
 ---
 
+## 2026-10-14 (evening) — Where things stand; TOKEN BUDGET RULES
+- **Read memory `model-delegation` (the token budget) first.** The owner burned half a 4x week in two days.
+  No background agents by default: do the work directly, run ONE guard `--only` the touched views per
+  size, use short sessions and short replies.
+- **Live since the morning section:**
+  - Bankroll: the Bankroll footer tab (Social is in the username menu), the floating +, Sessions, Trend,
+    Locations, the read-only Backers tab, bb/hr (bb for big-bet games, BB for limit; owner rule), and
+    the Bankroll page title.
+  - Staking: the Staking entry in the username menu and rail.
+  - Backer pages: the header says "your action with Ethan Bennett", plus a theme button.
+  - The admin Notify tap, PER BACKER, on a result's edit form and a cash session.
+  - Replayer: its own games (PLO5, PLO6, PLO6 8/b, Short Deck, NLO8) and the desktop top-seat fix.
+  - The rest: Edit home, onboarding v2, the PT4 hand-history export, the parser hardening.
+  - Bankroll merge phases 1–5 (Phase 5's pull is OFF until LEDGER_TOKEN is set on both Render services,
+    which needs the owner's OK), and the dashboard's money export (deployed CLOSED).
+- **Paused branches (resume only when the owner asks):**
+  - `feat/money-merge-6`: the import review UI, part built.
+  - `fix/replayer-hilo-pills`: the hi-lo pills, plus the sideways-phone top seat. It was waiting on whole-r
+    pills and a single-row landscape layout.
+- **Owner questions open:**
+  - The merge page's Q15–Q25 (settlement meanings; Q15 crossbook is a bet vs a swap, and the two pay
+    opposite ways).
+  - Short Deck: do trips beat a straight?
+  - bb/hr: is the third number in "1/2/5" a straddle?
+  - The launch plan's 7.
+- **Notify caveat:** the dashboard's own Notify does not check futurega.me's shares. Send each night from
+  ONE app.
+
 ## 2026-10-14 — A day of merges: bankroll, replayer, parser, the roster leak; the bankroll merge begins
 - **Live on master (4a19a4b):**
   - Bankroll: Locations (ITM per entry), the Trend graph (Total, Tournaments and Cash lines, Fill,
