@@ -3,7 +3,7 @@ import { API_URL } from '../utils/api.js';
 import { getToday } from '../utils/utils.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import {
-  normalise, rowView, blockTitle, emptyText, notifyLabel, confirmText, footNote, sentToast, flaggedKeys,
+  normalise, rowView, blockTitle, emptyText, footNote, sentToast,
 } from '../utils/backer-notify.js';
 import './backer-notify.css';
 
@@ -35,7 +35,9 @@ export default function BackerNotify({ token, refTable, refId }) {
   const toast = useToast();
   const titleId = 'bn-' + useId().replace(/[^\w-]/g, '');
   const [block, setBlock] = useState(null);
-  const [confirming, setConfirming] = useState(false);
+  // Per backer (owner, 2026-10-14): each unsent backer has its own Notify. A flagged one (a dashboard
+  // share that night, or a series agreement) asks on its own row first: confirmKey is that row.
+  const [confirmKey, setConfirmKey] = useState(null);
   const [busy, setBusy] = useState(false);
   const thisYear = Number(getToday().slice(0, 4));
 
@@ -52,27 +54,29 @@ export default function BackerNotify({ token, refTable, refId }) {
   useEffect(() => {
     let live = true;
     setBlock(null);
-    setConfirming(false);
+    setConfirmKey(null);
     call({ preview: true })
       .then(({ status, data }) => { if (live) setBlock(status === 200 ? normalise(data) : null); })
       .catch(() => { if (live) setBlock(null); });
     return () => { live = false; };
   }, [call]);
 
-  // opts: { confirm } sends the flagged shares too; { skip } leaves those backers unsent this time.
-  const send = async (opts = {}) => {
-    if (busy) return;
+  // Sends ONE backer's share: every other unsent backer goes in skip, so the server's own rules
+  // (idempotency, the flags, delivery) are unchanged. confirm sends it despite its flag.
+  const sendOne = async (key, confirm = false) => {
+    if (busy || !block) return;
+    const skip = block.backers.filter((x) => x.status !== 'sent' && x.key !== key).map((x) => x.key);
     setBusy(true);
     try {
-      const { status, data } = await call({ preview: false, ...(opts.confirm ? { confirm: true } : {}), ...(opts.skip ? { skip: opts.skip } : {}) });
+      const { status, data } = await call({ preview: false, skip, ...(confirm ? { confirm: true } : {}) });
       if (status === 409 && data && data.needsConfirm) {
         setBlock(normalise(data));
-        setConfirming(true);
+        setConfirmKey(key);
         return;
       }
       if (status !== 200) { toast.error((data && data.error) || 'Notify failed. Try again.'); return; }
       setBlock(normalise(data));
-      setConfirming(false);
+      setConfirmKey(null);
       toast.success(sentToast(data));
     } catch (_) {
       toast.error('Notify failed. Check the connection and try again.');
@@ -82,8 +86,6 @@ export default function BackerNotify({ token, refTable, refId }) {
   if (!block) return null;
   if (!block.rosterSize && !block.backers.length) return null; // no backers at all, as on the dashboard
   const note = footNote(block);
-  const flagged = flaggedKeys(block);
-  const others = block.pending - flagged.length;
   return (
     <section className="bn" aria-labelledby={titleId}>
       <h3 className="bn-t bn-title" id={titleId}>{blockTitle(block)}</h3>
@@ -100,35 +102,28 @@ export default function BackerNotify({ token, refTable, refId }) {
                   <span className={'bn-t bn-share' + (r.shareTone ? ' ' + r.shareTone : '')}>{r.share}</span>
                   <span className="bn-t bn-detail" title={r.detail}>{r.detail}</span>
                   {r.warnings.map((w) => <span key={w} className="bn-t bn-warn" title={w}>{w}</span>)}
+                  {b.status !== 'sent' && (confirmKey === r.key ? (
+                    <div className="bn-row-act" role="group" aria-label={`Confirm before sending to ${r.name}`}>
+                      <button type="button" className="bn-btn bn-btn--warn" style={{ '--w': 11 }} disabled={busy} onClick={() => sendOne(r.key, true)}>
+                        <span>{busy ? 'Sending…' : 'Send anyway'}</span>
+                      </button>
+                      <button type="button" className="bn-btn" style={{ '--w': 8 }} disabled={busy} onClick={() => setConfirmKey(null)}>
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bn-row-act">
+                      <button type="button" className="bn-btn bn-btn--brand" style={{ '--w': 9 }} disabled={busy}
+                        aria-label={`Notify ${r.name}`}
+                        onClick={() => (r.warnings.length ? setConfirmKey(r.key) : sendOne(r.key))}>
+                        <span>{busy ? 'Sending…' : 'Notify'}</span>
+                      </button>
+                    </div>
+                  ))}
                 </li>
               );
             })}
           </ul>
-          {confirming && block.pending > 0 ? (
-            <div className="bn-confirm" role="group" aria-label="Confirm before sending">
-              <p className="bn-text bn-text--warn" role="alert">{confirmText(block, { thisYear })}</p>
-              <div className="bn-actions">
-                <button type="button" className="bn-btn bn-btn--warn" style={{ '--w': 11 }} disabled={busy} onClick={() => send({ confirm: true })}>
-                  <span>{busy ? 'Sending…' : 'Send anyway'}</span>
-                </button>
-                {others > 0 && (
-                  <button type="button" className="bn-btn" style={{ '--w': 12 }} disabled={busy} onClick={() => send({ skip: flagged })}>
-                    <span>Send the others</span>
-                  </button>
-                )}
-                <button type="button" className="bn-btn" style={{ '--w': 8 }} disabled={busy} onClick={() => setConfirming(false)}>
-                  <span>Cancel</span>
-                </button>
-              </div>
-            </div>
-          ) : block.pending > 0 ? (
-            <div className="bn-actions">
-              <button type="button" className="bn-btn bn-btn--brand" style={{ '--w': 13 }} disabled={busy}
-                onClick={() => (block.needsConfirm ? setConfirming(true) : send())}>
-                <span>{busy ? 'Sending…' : notifyLabel(block.pending)}</span>
-              </button>
-            </div>
-          ) : null}
           {note && <p className="bn-text bn-note">{note}</p>}
         </>
       )}

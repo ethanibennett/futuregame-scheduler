@@ -1989,7 +1989,7 @@ function finalize(c) {
         await cashHalf(csBack, '.cs-row', '.cs-head button:has-text("Edit")');
       }
       await vis('.bn').first().waitFor({ timeout: 8000 });
-      if (kind === 'warning') { await tap('.bn-btn--brand', 500); await vis('.bn-confirm').first().waitFor({ timeout: 3000 }); }
+      if (kind === 'warning') { await tap('.bn-row.has-warn .bn-btn--brand', 500); await vis('.bn-row-act[role="group"]').first().waitFor({ timeout: 3000 }); }
     } finally { if (unstage) await unstage(); }
     await reveal('.bn', 40);
   };

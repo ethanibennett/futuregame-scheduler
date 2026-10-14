@@ -791,8 +791,8 @@ function scan(rootSel) {
           }
           await p.locator('.bn').filter({ visible: true }).first().waitFor({ timeout: 8000 });
           if (kind === 'warning' || kind === 'long') {
-            await p.locator('.bn-btn--brand').filter({ visible: true }).first().click({ timeout: 4000 });
-            await p.locator('.bn-confirm').first().waitFor({ timeout: 3000 });
+            await p.locator('.bn-row.has-warn .bn-btn--brand').filter({ visible: true }).first().click({ timeout: 4000 });
+            await p.locator('.bn-row-act[role="group"]').first().waitFor({ timeout: 3000 });
           }
         } finally { if (unstage) await unstage(); }
         await p.locator('.bn').filter({ visible: true }).first().scrollIntoViewIfNeeded({ timeout: 4000 });

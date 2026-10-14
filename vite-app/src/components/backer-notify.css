@@ -60,7 +60,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) calc(var(--gu) * 10);
   grid-template-rows: calc(var(--subrow) * 4);
-  grid-auto-rows: calc(var(--subrow) * 3);
+  /* auto, not 3r: every .bn-t line sets its own whole-r height, and a row's own Notify line is 6r */
+  grid-auto-rows: auto;
   column-gap: var(--gu);
   padding-bottom: var(--subrow);
   box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 0 var(--border);
@@ -91,6 +92,15 @@
   color: var(--text-muted);
 }
 .bn-warn { color: var(--warn); }
+/* A backer's own actions (owner, 2026-10-14: Notify is per backer): 1r, then 5r buttons 1g apart */
+.bn-row-act {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--gu);
+  box-sizing: border-box;
+  height: calc(var(--subrow) * 6);
+  padding-top: var(--subrow);
+}
 
 /* ── Sentences that wrap: 3r a line ── */
 .bn-text {
