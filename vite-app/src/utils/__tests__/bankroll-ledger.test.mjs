@@ -386,6 +386,23 @@ test('niceTicks: the balance graph (zero off) keeps 0 out and still lands on who
   assert.deepEqual(b.ticks, [40000, 40500, 41000, 41500]);
 });
 
+test('niceTicks: minStep coarsens a scale (the chart\'s label gutter), still on whole steps', () => {
+  // MX$1,000,000 less a MX$15 expense: in steps of 5 the labels are MX$999,985 … MX$1,000,000.
+  assert.deepEqual(niceTicks(999985, 1000000, { zero: false }).step, 5);
+  const c1 = niceTicks(999985, 1000000, { zero: false, minStep: 50 });
+  checkTicks(999985, 1000000, c1, false);
+  assert.equal(c1.step, 50);
+  assert.deepEqual(c1.ticks, [999950, 1000000, 1000050], "two steps at least: the spare one on top");
+  const c2 = niceTicks(999985, 1000000, { zero: false, minStep: 500 });
+  checkTicks(999985, 1000000, c2, false);
+  assert.ok(c2.step >= 500 && c2.ticks.length >= 3, c2.ticks.join(','));
+  // A minStep finer than the fit changes nothing; one far coarser still returns whole steps.
+  assert.deepEqual(niceTicks(-7930, 1600, { minStep: 1 }), niceTicks(-7930, 1600));
+  const far = niceTicks(-7930, 1600, { minStep: 1e6 });
+  checkTicks(-7930, 1600, far);
+  assert.equal(far.step, 1e6);
+});
+
 test('niceTicks: the tightest fit, over a sweep of extents', () => {
   let seed = 7;
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
@@ -427,32 +444,64 @@ test('chartSpan: the window\'s days; All from the first entry to today, or to an
   assert.deepEqual(chartSpan(all, within(led.slice(2), all), today), { start: '2026-11-15', end: '2026-11-15' });
 });
 
-test('drawdownBand: from the running peak to the line; with a floor, never over the fill', () => {
+// The band [bottom, peak] against the fill [floor, edge]: the length of value they share (<= 0: none).
+const bandOverFill = (b, f) => Math.min(b.peak, Math.max(b.edge, f)) - Math.max(b.bottom, Math.min(b.edge, f));
+
+test('drawdownBand: always the full drawdown, peak to line; the fill gives way under it', () => {
   // A profit line: up to 500, down through 0 to -300, back to 100.
   const pts = [0, 500, 200, -300, 100].map((value, i) => ({ date: `2026-01-0${i + 1}`, value }));
-  const open = drawdownBand(pts);
-  assert.deepEqual(open.map((b) => [b.peak, b.bottom]), [[0, 0], [500, 500], [500, 200], [500, -300], [500, 100]]);
-  // Fill on (to 0): above 0 the band still reaches the line; below 0 it stops at 0, where the fill starts.
-  const clipped = drawdownBand(pts, { floor: 0 });
-  assert.deepEqual(clipped.map((b) => [b.peak, b.bottom]), [[0, 0], [500, 500], [500, 200], [500, 0], [500, 100]]);
-  // The band [bottom, peak] and the fill [min(line, 0), max(line, 0)] share at most one value.
-  const overlap = (b, v, f) => Math.min(b.peak, Math.max(v, f)) - Math.max(b.bottom, Math.min(v, f));
-  for (const [i, b] of clipped.entries()) assert.ok(overlap(b, pts[i].value, 0) <= 0, `point ${i}`);
-  // A line that never rises above its start: the whole loss is the fill's, so the band is empty.
+  const { per } = drawdowns(pts);
+  // Fill on or off, the band runs from the peak to the line: its depth is the drawdown.
+  for (const floor of [null, 0]) {
+    const band = drawdownBand(pts, { floor });
+    assert.deepEqual(band.map((b) => [b.peak, b.bottom]), [[0, 0], [500, 500], [500, 200], [500, -300], [500, 100]]);
+    band.forEach((b, i) => assert.equal(b.peak - b.bottom, per[i].dd, `floor ${floor}, point ${i}`));
+  }
+  // Fill to 0: above 0 it still runs up to the line (the band is above it); at -300 the band takes
+  // the whole ground from the peak to the line, so the fill there is empty (edge at the floor).
+  const filled = drawdownBand(pts, { floor: 0 });
+  assert.deepEqual(filled.map((b) => b.edge), [0, 500, 200, 0, 100]);
+  for (const [i, b] of filled.entries()) assert.ok(bandOverFill(b, 0) <= 0, `point ${i}`);
+  assert.deepEqual(drawdownBand(pts).map((b) => b.edge), [0, 500, 200, -300, 100], 'no floor: the edge is the line');
+  // A line that never rises above its start: the band is the whole loss (it was once cut to
+  // nothing at the fill's edge, so a losing range showed no drawdown at all) and the fill is empty.
   const under = drawdownBand([0, -100, -50, -400].map((value, i) => ({ date: `d${i}`, value })), { floor: 0 });
-  assert.ok(under.every((b) => b.peak - b.bottom === 0));
-  // A balance scale that does not reach 0 fills to its bottom gridline: the band is the plain one.
+  assert.deepEqual(under.map((b) => b.peak - b.bottom), [0, 100, 50, 400]);
+  assert.ok(under.every((b) => b.edge === 0));
+  // A balance scale that does not reach 0 fills to its bottom gridline: band above the line, fill under it.
   const bal = [{ date: 'a', value: 41000 }, { date: 'b', value: 40200 }, { date: 'c', value: 40900 }];
-  assert.deepEqual(drawdownBand(bal, { floor: 40000 }), drawdownBand(bal));
-  // A balance below 0 against a floor of 0: never inverted (bottom <= peak).
+  assert.deepEqual(drawdownBand(bal, { floor: 40000 }).map((b) => [b.peak, b.bottom, b.edge]),
+    [[41000, 41000, 41000], [41000, 40200, 40200], [41000, 40900, 40900]]);
+  // A balance below 0 against a floor of 0: the fill from 0 down to the peak, the band from the peak
+  // down to the line; never inverted.
   const red = drawdownBand([{ date: 'a', value: -100 }, { date: 'b', value: -300 }], { floor: 0 });
-  assert.deepEqual(red.map((b) => [b.peak, b.bottom]), [[-100, -100], [-100, -100]]);
+  assert.deepEqual(red.map((b) => [b.peak, b.bottom, b.edge]), [[-100, -100, -100], [-100, -300, -100]]);
   assert.deepEqual(drawdownBand([]), []);
+  // Random walks against floors above, inside and below them: the band is always the drawdown, and
+  // band and fill never share more than one value.
+  let seed = 11;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let k = 0; k < 300; k++) {
+    let v = Math.round((rnd() - 0.5) * 2000);
+    const walk = Array.from({ length: 2 + Math.floor(rnd() * 30) }, (_, i) => ({ date: `w${i}`, value: (v += Math.round((rnd() - 0.55) * 800)) }));
+    const dd = drawdowns(walk).per;
+    for (const floor of [0, Math.min(...walk.map((p) => p.value)), Math.round((rnd() - 0.5) * 3000)]) {
+      const band = drawdownBand(walk, { floor });
+      band.forEach((b, i) => {
+        assert.equal(b.peak - b.bottom, dd[i].dd);
+        assert.ok(bandOverFill(b, floor) <= 0, `walk ${k}, floor ${floor}, point ${i}`);
+      });
+    }
+  }
 });
 
+// Currencies as utils.js CURRENCY_CONFIG, grouped as en-US groups (the labels follow the locale,
+// as formatCurrencyAmount does; the tests pin it).
+const USD = { symbol: '$', pos: 'pre', locale: 'en-US' }, EUR = { symbol: '€', pos: 'pre', locale: 'en-US' };
+const SEK = { symbol: 'kr', pos: 'suf', locale: 'en-US' }, JPY = { symbol: '¥', pos: 'pre', locale: 'en-US' };
+const CHF = { symbol: 'CHF', pos: 'pre', locale: 'en-US' };
+
 test('compactMoney: the axis labels, in each currency\'s own form', () => {
-  const USD = { symbol: '$', pos: 'pre' }, EUR = { symbol: '€', pos: 'pre' }, SEK = { symbol: 'kr', pos: 'suf' };
-  const JPY = { symbol: '¥', pos: 'pre' }, CHF = { symbol: 'CHF', pos: 'pre' };
   assert.equal(compactMoney(5000, USD), '$5k');
   assert.equal(compactMoney(-2000, USD), '−$2k');
   assert.equal(compactMoney(2500, USD), '$2.5k');
@@ -467,4 +516,71 @@ test('compactMoney: the axis labels, in each currency\'s own form', () => {
   assert.equal(compactMoney(15000, CHF), 'CHF15k');
   assert.equal(compactMoney(0.5, EUR), '€0.5');
   assert.equal(compactMoney(1000), '$1k', 'USD when no currency is given');
+  // A lone value (no step) is written exactly: never rounded into a neighbour's label.
+  assert.equal(compactMoney(9985.37, USD), '$9,985.37');
+  assert.equal(compactMoney(1234, USD), '$1,234');
+});
+
+// A label read back as a number: the symbol, the k / M and the grouping undone, U+2212 a minus.
+const SYM = /^(?:\$|€|¥|CHF|C\$)|\s*kr$/;
+const parseLabel = (s) => {
+  let t = s.replace('−', '-'), neg = t.startsWith('-');
+  if (neg) t = t.slice(1);
+  t = t.replace(SYM, '').replace(/,/g, '');
+  const mult = t.endsWith('M') ? 1e6 : t.endsWith('k') ? 1e3 : 1;
+  const n = Number(mult === 1 ? t : t.slice(0, -1)) * mult;
+  return neg ? -n : n;
+};
+const axisLabels = (lo, hi, cfg, zero = false) => {
+  const t = niceTicks(lo, hi, { zero });
+  return { t, labels: t.ticks.map((v) => compactMoney(v, { ...cfg, step: t.step })) };
+};
+
+test('compactMoney with the step: a balance moving little reads each gridline as its own value', () => {
+  // The cases that once printed $9.98k | $9.99k | $9.99k | $10k (two of them the same, and the
+  // bottom one, 9,985, named after a value 5 away): a fixed two decimals of k or M.
+  assert.deepEqual(axisLabels(9985, 10000, USD).labels, ['$9,985', '$9,990', '$9,995', '$10,000']);
+  assert.deepEqual(axisLabels(40100, 40120, USD).labels, ['$40,100', '$40,105', '$40,110', '$40,115', '$40,120']);
+  assert.deepEqual(axisLabels(1234000, 1236000, JPY).labels, ['¥1,234k', '¥1,234.5k', '¥1,235k', '¥1,235.5k', '¥1,236k']);
+  assert.deepEqual(axisLabels(3230.59, 3240, EUR).labels, ['€3,230', '€3,232.5', '€3,235', '€3,237.5', '€3,240']);
+  assert.deepEqual(axisLabels(40120, 41257, USD).labels, ['$40k', '$40.5k', '$41k', '$41.5k'], 'k when the step allows');
+  assert.deepEqual(axisLabels(19985, 20010, SEK).labels, ['19.98k kr', '19.99k kr', '20k kr', '20.01k kr'], 'two decimals of k at most');
+  assert.deepEqual(axisLabels(-20500, -19980, SEK).labels, ['−20.6k kr', '−20.4k kr', '−20.2k kr', '−20k kr', '−19.8k kr']);
+  // Cents: the step's own decimals.
+  assert.deepEqual(axisLabels(0.01, 0.04, EUR).labels, ['€0.01', '€0.02', '€0.03', '€0.04']);
+  assert.equal(compactMoney(0.025, { ...USD, step: 0.025 }), '$0.025');
+  // The aria-label's step and ends, formatted with the same step.
+  assert.equal(compactMoney(5, { ...USD, step: 5 }), '$5');
+  assert.equal(compactMoney(2500, { ...USD, step: 2500 }), '$2.5k');
+  // One gridline (a flat extent, step 0): the value's own precision.
+  assert.equal(compactMoney(9985, { ...USD, step: 0 }), '$9,985');
+});
+
+test('compactMoney with the step: every gridline label unique and exact, over a sweep of scales', () => {
+  let seed = 3;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const old = (v) => { // the fixed-precision labeller this replaced, for the Profit check below
+    const a = Math.abs(v), tn = (x) => String(Number(x.toFixed(2)));
+    const num = a >= 1e6 ? tn(a / 1e6) + 'M' : a >= 1e3 ? tn(a / 1e3) + 'k' : tn(a);
+    return (v < 0 && num !== '0' ? '−' : '') + '$' + num;
+  };
+  for (let i = 0; i < 3000; i++) {
+    const cfg = [USD, EUR, SEK, JPY, CHF][i % 5];
+    // Balances from cents to hundreds of millions, moving from a cent to the whole balance.
+    const mag = 10 ** (rnd() * 9 - 1);
+    const lo = Math.round((rnd() < 0.15 ? -1 : 1) * mag * (0.5 + rnd()) * 100) / 100;
+    const hi = Math.round((lo + Math.max(0.01, mag * 10 ** (-rnd() * 7))) * 100) / 100;
+    for (const zero of [false, true]) {
+      const { t, labels } = axisLabels(lo, hi, cfg, zero);
+      assert.equal(new Set(labels).size, labels.length, `${lo}..${hi} (zero ${zero}): ${labels.join(' | ')}`);
+      labels.forEach((s, j) => assert.ok(Math.abs(parseLabel(s) - t.ticks[j]) <= 1e-9 * Math.max(1, Math.abs(t.ticks[j])),
+        `${lo}..${hi}: "${s}" reads ${parseLabel(s)}, the gridline is ${t.ticks[j]}`));
+      // Profit (zero in the scale) in steps of a unit or more: the step is at least a quarter of
+      // every label, so the labels are what they always were. (Under a unit they were cut to the
+      // cent, and a step of 0.025 read $0, $0.03, $0.05, $0.07, $0.1.)
+      if (zero && cfg === USD && t.step >= 1 && Math.max(Math.abs(t.lo), Math.abs(t.hi)) < 1e9) {
+        assert.deepEqual(labels, t.ticks.map(old), `${lo}..${hi}`);
+      }
+    }
+  }
 });

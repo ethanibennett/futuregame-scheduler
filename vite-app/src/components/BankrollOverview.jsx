@@ -107,7 +107,7 @@ export default function BankrollOverview({ d, risk, bk, bkKey, currency: asked, 
   // (Total = the hero's profit; Tournaments; Cash); expenses & income sit inside Total with no line
   // of their own, so the note says so whenever they move it. Balance: one line, deposits included.
   const cfg = CURRENCY_CONFIG[currency] || CURRENCY_CONFIG.USD;
-  const tick = (v) => compactMoney(v, cfg);
+  const tick = (v, step) => compactMoney(v, { ...cfg, step });
   const lastRow = view.rows[view.rows.length - 1];
   const has = { total: view.rows.length > 1, tourn: s.mtt.events > 0, cash: s.cash.sessions > 0 };
   const chartLines = mode === 'profit'

@@ -235,20 +235,23 @@ export function chartSpan(w, win, today) {
 }
 
 /**
- * The drawdown band under the running peak, point by point: [{ date, peak, bottom }], peak the
- * running peak (drawdowns) and bottom the band's lower edge. Without `floor` the band runs from
- * the peak down to the line. With `floor` (the value the series fill runs to: 0, or the scale's
- * nearer edge) it stops where the fill begins, at max(line, floor) and never above the peak, so
- * the two translucent layers never cover the same ground: stacked, the fill's colour and the
- * band's red mix to a neutral grey and both are lost. The band and the fill [line, floor] then
- * meet along at most one value.
+ * The drawdown band under the running peak, point by point: [{ date, peak, bottom, edge }]. The band
+ * always runs its full depth, from the running peak (drawdowns) down to the line (bottom = the
+ * line's value), so peak − bottom is the drawdown there, whether or not the line is filled.
+ * `floor` is the value the line's fill runs to (0, or the scale's nearer edge), and `edge` the far
+ * edge that fill keeps so it gives way under the band: the line where the line stands at or above
+ * the floor (the band is above it), else the nearer of the peak and the floor. Fill [floor, edge]
+ * and band [bottom, peak] then share at most one value: stacked, the fill's colour and the band's
+ * red mix to a neutral grey and both are lost. So a profit line below 0 (always in drawdown there,
+ * since its first point, 0, is a peak) is red from the peak to the line and has no fill under 0.
+ * Without a floor, edge is the line.
  */
 export function drawdownBand(points, { floor = null } = {}) {
   const { per } = drawdowns(points);
   return points.map((p, i) => {
     const peak = per[i].peak;
-    const bottom = floor == null ? p.value : Math.min(peak, Math.max(p.value, floor));
-    return { date: p.date, peak, bottom };
+    const edge = floor == null || p.value >= floor ? p.value : Math.min(peak, floor);
+    return { date: p.date, peak, bottom: p.value, edge };
   });
 }
 
@@ -265,9 +268,11 @@ export function parseSeriesPref(v) {
  * divides 24, so every gridline lands on an r line. With `zero` (the profit graph) the extent
  * takes in 0, and 0 is a tick. The smallest step that fits wins (the tightest scale).
  * A flat extent (span 0) has one tick and step 0 — the chart draws it across the middle.
+ * `minStep` skips any step finer than it (the chart coarsens a scale whose labels would not fit
+ * their gutter: a balance of MX$1,000,000 moving by MX$15 would want MX$999,985 … MX$1,000,000).
  * Returns { lo, hi, step, ticks } with ticks from lo to hi.
  */
-export function niceTicks(lo, hi, { counts = [2, 3, 4], zero = true } = {}) {
+export function niceTicks(lo, hi, { counts = [2, 3, 4], zero = true, minStep = 0 } = {}) {
   lo = Number(lo); hi = Number(hi);
   if (!Number.isFinite(lo) && !Number.isFinite(hi)) { lo = 0; hi = 0; }
   else if (!Number.isFinite(lo)) lo = hi;
@@ -278,10 +283,12 @@ export function niceTicks(lo, hi, { counts = [2, 3, 4], zero = true } = {}) {
   const ns = [...counts].sort((a, b) => a - b);
   const maxN = ns[ns.length - 1];
   const tidy = (v) => Number(v.toPrecision(12)) || 0; // and -0 to 0
-  const p0 = Math.floor(Math.log10((hi - lo) / maxN)) - 1;
+  const floorStep = Number(minStep) > 0 ? Number(minStep) : 0;
+  const p0 = Math.max(Math.floor(Math.log10((hi - lo) / maxN)), floorStep ? Math.floor(Math.log10(floorStep)) : -Infinity) - 1;
   for (let p = p0; p < p0 + 40; p++) {
     for (const m of [1, 2, 2.5, 5]) {
       const step = m * 10 ** p;
+      if (step < floorStep * (1 - 1e-9)) continue;
       let a = Math.floor(lo / step + 1e-9), b = Math.ceil(hi / step - 1e-9);
       const n = ns.find((c) => c >= Math.max(1, b - a));
       if (n == null) continue;
@@ -297,16 +304,43 @@ export function niceTicks(lo, hi, { counts = [2, 3, 4], zero = true } = {}) {
 }
 
 const MINUS = '−'; // as utils.js MINUS: plus-width, so signed labels align
-const trimNum = (x) => String(Number(x.toFixed(2)));
+/** The fewest decimals that write x exactly (x a multiple of 1/2/2.5/5 × 10^n), at most 8. */
+function decimalsOf(x) {
+  x = Math.abs(x);
+  if (!x) return 0;
+  for (let d = 0; d < 8; d++) {
+    const s = x * 10 ** d, r = Math.round(s);
+    if (r && Math.abs(s - r) <= 1e-9 * s) return d; // r && : 0.000001 is not 0 to the unit
+  }
+  return 8;
+}
+const UNITS = [[1e6, 'M'], [1e3, 'k'], [1, '']];
 /**
  * An axis label: compact money in a currency's own form — { symbol, pos } as utils.js
- * CURRENCY_CONFIG — "$5k", "−$2.5k", "¥1.2M", "5k kr", "−C$750". Thousands as k, millions as M,
- * up to two decimals and no trailing zeros; the minus sign is U+2212.
+ * CURRENCY_CONFIG — "$5k", "−$2.5k", "¥1.2M", "5k kr", "−C$750". Thousands as k, millions as M, no
+ * trailing zeros, grouped as the locale groups (formatCurrencyAmount's toLocaleString); the minus
+ * sign is U+2212.
+ *
+ * `step` (the gridlines' spacing) sets the precision, so that every gridline reads as its own exact
+ * value: the label takes the largest unit, no larger than itself, in which the step needs at most
+ * two decimals ($1.25k from a step of 250), and writes it with as many as that needs. A finer step
+ * steps down a unit: a balance from 9,985 to 10,000 in steps of 5 reads $9,985 … $10,000, not
+ * $9.98k, $9.99k, $9.99k, $10k (a fixed two decimals of k repeated labels, and named a gridline
+ * after a value 5 away). Below the dollar the step's own decimals are kept ($0.025). With no step
+ * (one gridline, or a lone value) the value itself sets the precision.
  */
-export function compactMoney(v, { symbol = '$', pos = 'pre' } = {}) {
+export function compactMoney(v, { symbol = '$', pos = 'pre', step = null, locale } = {}) {
   const n = Number(v) || 0, a = Math.abs(n);
-  const num = a >= 1e6 ? trimNum(a / 1e6) + 'M' : a >= 1e3 ? trimNum(a / 1e3) + 'k' : trimNum(a);
-  const sign = n < 0 && num !== '0' ? MINUS : '';
+  const q = Number(step) > 0 ? Number(step) : a; // what the label has to tell apart
+  let unit = 1, suffix = '', dec = decimalsOf(q);
+  for (const [u, s] of UNITS) {
+    if (u > 1 && a < u) continue;
+    const d = decimalsOf(q / u);
+    if (d <= 2 || u === 1) { unit = u; suffix = s; dec = d; break; }
+  }
+  const x = Number((a / unit).toFixed(dec));
+  const num = x.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: dec }) + suffix;
+  const sign = n < 0 && x !== 0 ? MINUS : '';
   return pos === 'suf' ? `${sign}${num} ${symbol}` : `${sign}${symbol}${num}`;
 }
 

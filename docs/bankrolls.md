@@ -197,24 +197,41 @@ The graph (`BankrollChart.jsx`, fed by `BankrollOverview.jsx`):
   a single, fixed Balance pill; Fill still works on it (down to the bottom gridline when the scale
   does not reach 0).
 - **Drawdown** (the band between the running peak, dashed, and the line, in `--neg-quiet`) only when
-  one line is drawn — one series in Profit, or Balance; with several it is clutter. With Fill on,
-  the band stops where the line's fill starts (`drawdownBand`'s floor: from the peak down to
-  max(line, 0)), so the two translucent layers never stack: stacked, the aqua or violet fill and the
-  red mixed to a flat neutral grey and both colours were lost. So a line that peaks above 0 and then
-  falls below it shows red from the peak down to 0 and its own fill from 0 down to the line, and a
-  line that never rose above its start (the whole fall is its fill) shows no band. With Fill off
-  the band runs from the peak to the line. The foot says "Red: drawdown" when it shows.
+  one line is drawn — one series in Profit, or Balance; with several it is clutter. The band is
+  always its full depth, peak to line, so the red is the drawdown, Fill on or off. With Fill on the
+  line's fill gives way under it instead (`drawdownBand`'s `edge`: the fill runs from the floor up
+  to the line where the line is at or above the floor, else only to the nearer of the peak and the
+  floor), so the two translucent layers never stack: stacked, the aqua or violet fill and the red
+  mixed to a flat neutral grey and both colours were lost. A profit line is in drawdown wherever it
+  is below 0 (its first point, 0, is a peak), so there it is red from the peak down to the line and
+  has no fill; above 0 it keeps its fill under the line and the red above it. (The band once
+  stopped at the fill's edge instead, which cut a losing range's drawdown short — a YTD Cash line
+  down $3,146.83 from its peak showed $2,574 of red — or hid it: a line that never rose above its
+  start showed none.) The foot says "Red: drawdown" when it shows. A band under a quarter r deep
+  at its deepest is not drawn or named, and the line keeps its plain fill: a scale coarsened for its
+  labels (below) can leave a real drawdown thinner than a pixel — MX$15 on a MX$950k–1.05M scale —
+  and the foot would have named red that nobody could see.
 - **Axis.** One y scale over the lines that are on (a hidden line does not stretch it), rounded out
   by `niceTicks` to 2, 3 or 4 steps of 1 / 2 / 2.5 / 5 × 10ⁿ — 3 to 5 gridlines; Profit always takes
   in 0 as a gridline, drawn a touch stronger (`--text-muted`, `--bw-1`; the others `--border`,
   hairline). Each count divides the 24r plot, so every gridline is on an r line. The labels are HTML
   (the SVG stretches), `compactMoney` in the display currency's own form ($5k, −$2.5k, 5k kr,
-  ¥1.2M), each in a 5g gutter at the left with its baseline level with its gridline. Nothing is
-  drawn in the gutter: the gridlines, the zero line and the data lines all start at 5g, so a label
-  never meets a line (a gridline from x = 0 once ran under its label and through the $'s
-  descender), and gridlines are at least 6r apart, so labels never meet each other (the widest
-  plausible label, −CHF2.5k, measures 3.9g). Under the plot: the range's start date at 5g (where
-  the lines start) and its end date at the right.
+  ¥1.2M), each in a 5g gutter at the left with its baseline level with its gridline. Each label is
+  its gridline's exact value: the step sets the precision (`compactMoney(v, { step })`: the largest
+  unit, k or M, no larger than the value, in which the step needs at most two decimals, written with
+  as many as it needs; else whole units, grouped as the locale groups). So a balance from 9,985 to
+  10,000 in steps of 5 reads $9,985 … $10,000 — a fixed two decimals of k once read $9.98k, $9.99k,
+  $9.99k, $10k (a repeat, and the bottom gridline named after a value 5 away) — and ¥1,234,000 to
+  ¥1,236,000 in steps of 500 reads ¥1,234k, ¥1,234.5k … ¥1,236k. Profit is unchanged by this: 0 is
+  a gridline, so the step is at least a quarter of every label. Nothing is drawn in the gutter: the
+  gridlines, the zero line and the data lines all start at 5g, so a label never meets a line (a
+  gridline from x = 0 once ran under its label and through the $'s descender), and gridlines are
+  at least 6r apart, so labels never meet each other. An exact label can be long (a MX$1,000,000
+  balance down MX$15 would want MX$999,985 … MX$1,000,000, about 5.5g): the chart measures the
+  labels after layout and, while any one's ink comes within 0.5g of the lines, coarsens the scale a
+  power of ten at a time (`niceTicks`' `minStep`), before paint. The widest labels the seeded
+  bankrolls draw measure 4.2g ($1,000,000). Under the plot: the range's start date at 5g (where the
+  lines start) and its end date at the right.
 - **Whose figures.** The bankroll chip, and so its currency, changes a round trip before the ledger
   does, and the previous ledger stays on screen meanwhile. So the whole Overview (hero, pills,
   gridline labels, head note, latest sessions) formats its money in the currency of the ledger in
@@ -226,7 +243,9 @@ The graph (`BankrollChart.jsx`, fed by `BankrollOverview.jsx`):
   light, cloudy and each high-contrast theme. The same tokens key the tables' column heads, as
   text, so Cash clears 4.5:1 on the sheet (and so 3:1 non-text on the sheet and on the pills) in
   every theme; it sits lighter or deeper than the aqua everywhere, so the lines differ in lightness
-  as well as hue. The fill alphas come in two sets, the dark grounds (0.09 / 0.11 / 0.155) and the
+  as well as hue (on light, `#4c1d95`, midway between Total and the aqua: OKLab L .38 against .22
+  and .52; `#5b21b6` had sat .09 from the aqua, and under protan and deutan simulation the pair
+  drew closer still). The fill alphas come in two sets, the dark grounds (0.09 / 0.11 / 0.155) and the
   light ones (0.09 / 0.125 / 0.11): one shared 0.12 left Cash's fill at 1.14:1 on the dark sheet
   against Total's 1.33, nearly invisible; now every fill is 1.17–1.24:1 and every line clears 3:1
   over the other two fills (lowest: Cash on cloudy, 3.27). Measured values are in the comment above
@@ -288,11 +307,14 @@ cashed / rows; hourly = the profit of sessions with both ends / their hours; eve
 when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`, and the
 graph's: `gameSeries` (Total / Tournaments / Cash / other on one date axis, summed in integer cents so
 tourn + cash + other == total exactly on every row), `seriesLine`, `parseSeriesPref`, `niceTicks`,
-`compactMoney`, `chartSpan` (the date axis) and `drawdownBand` (the band, stopped at the fill) —
-tested in `utils/__tests__/bankroll-ledger.test.mjs` (the series identity, 1M / YTD windows
-restarting at 0, empty, single-entry and negative-only series, flat and junk extents, a 2,000 extent
-sweep for the tightest nice step, a future-dated entry in All and in the trailing ranges, a clock
-behind the ledger, and the band never sharing more than one value with the fill).
+`compactMoney`, `chartSpan` (the date axis) and `drawdownBand` (the band at full depth, and the
+edge the fill keeps under it) — tested in `utils/__tests__/bankroll-ledger.test.mjs` (the series
+identity, 1M / YTD windows restarting at 0, empty, single-entry and negative-only series, flat and
+junk extents, a 2,000 extent sweep for the tightest nice step, `minStep`, a future-dated entry in
+All and in the trailing ranges, a clock behind the ledger, the band's depth equal to the drawdown
+and never sharing more than one value with the fill over 300 random walks, and a 3,000-scale sweep
+from cents to hundreds of millions in which every gridline label is unique and reads back as its
+gridline's value).
 
 Baselines: hero figures are the display face at `--fs-2xl` (c measured 1.0983r at 402 wide, 1.1238r at
 1440 — the face's ascent rounds to whole px, so `p` splits the difference, ≤ 0.03r off); the latest
