@@ -1,7 +1,10 @@
 // Finds text whose glyphs are cut off by a clipping ancestor — descenders (g, p, y, j, q) sliced at
 // a grid line, the bug that kept coming back on schedule event names.
 //
-//   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874]
+//   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874] [--only "bankroll,home"]
+//   (--only runs the passes whose name starts with one of those words: schedule, home, venue-map,
+//   hands, bankroll-dashboard, bankroll-locations, bankroll-backers, cash, bankroll-fab, expenses,
+//   results-reset, backer-page)
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
 // Signs in as the local admin test user, opens the Schedule list, an expanded card and My
@@ -17,7 +20,8 @@
 // section open, then closed; Sessions paged to the list's end, filtered to Cash, a cash session's and
 // a tournament's detail, and the rows Show more adds; every Reports table and the
 // Reports filter sheet, a Locations card open a page past its first ten and the Locations sorted by
-// name with every card open, then Results > Cash: the running session and its panels, the session
+// name with every card open, the Backers tab (the list, every card open on its last ten shares, and
+// its empty and refused states), then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), the floating + on the bankroll pages and its
 // menu (with and without a running session, and in the dashboard sheet), and for every text node inside those
 // views measures its glyph
@@ -39,6 +43,11 @@ const args = process.argv.slice(2);
 const base = (args.find(a => /^https?:/.test(a)) || process.env.CHECK_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
 const num = (flag, d) => { const i = args.indexOf(flag); return i >= 0 ? Number(args[i + 1]) : d; };
 const W = num('--width', 402), H = num('--height', 874);
+// --only "bankroll,home" runs just the passes whose name starts with one of those words (the
+// names are the on('...') guards below); without it every pass runs. Each guarded pass signs in and
+// opens its own view from a fresh load, so a subset behaves as it does in the full run.
+const onlyArg = (() => { const i = args.indexOf('--only'); return i >= 0 ? args[i + 1] : null; })();
+const on = (name) => !onlyArg || onlyArg.split(',').some(o => name.startsWith(o.trim()));
 
 function token() {
   if (process.env.CHECK_TOKEN) return process.env.CHECK_TOKEN;
@@ -143,20 +152,22 @@ function scan(rootSel) {
     const r = await p.evaluate(scan, sel);
     r.forEach(x => found.push({ view: label, ...x }));
   };
-  await p.getByRole('button', { name: 'Schedule', exact: true }).first().click().catch(() => {});
-  await p.waitForTimeout(2500);
-  await run('schedule list', '.cal-event-row');
-  // Open the first few cards (the expanded layout has its own lines).
-  for (let i = 0; i < 3; i++) {
-    await p.locator('.cal-event-row:not(.open) .cal-event-bar').first().click().catch(() => {});
-    await p.waitForTimeout(600);
-  }
-  await run('expanded card', '.cal-event-row.open');
-  // Scroll through the list so names further down are checked too.
-  for (let i = 0; i < 6; i++) {
-    await p.mouse.wheel(0, H * 0.8);
-    await p.waitForTimeout(500);
-    await run('schedule list (scrolled)', '.cal-event-row');
+  if (on('schedule')) {
+    await p.getByRole('button', { name: 'Schedule', exact: true }).first().click().catch(() => {});
+    await p.waitForTimeout(2500);
+    await run('schedule list', '.cal-event-row');
+    // Open the first few cards (the expanded layout has its own lines).
+    for (let i = 0; i < 3; i++) {
+      await p.locator('.cal-event-row:not(.open) .cal-event-bar').first().click().catch(() => {});
+      await p.waitForTimeout(600);
+    }
+    await run('expanded card', '.cal-event-row.open');
+    // Scroll through the list so names further down are checked too.
+    for (let i = 0; i < 6; i++) {
+      await p.mouse.wheel(0, H * 0.8);
+      await p.waitForTimeout(500);
+      await run('schedule list (scrolled)', '.cal-event-row');
+    }
   }
   // The home (Dashboard), which scrolls since 2026-10-12: from a fresh load, paged to its foot (on
   // desktop both of its panes, the main one and .dk-home-right), then the Playing card's Scan sheet
@@ -191,7 +202,7 @@ function scan(rootSel) {
       await run(`${label} (scrolled ${i})`, HOME);
     }
   };
-  try {
+  if (on('home')) try {
     await openTab('Dashboard');
     await pageHome('home');
   } catch (e) { console.log(`  (home skipped: ${e.message.split('\n')[0]})`); }
@@ -210,7 +221,7 @@ function scan(rootSel) {
       } finally { await undo(); }
     } catch (e) { console.log(`  (home ${kind} skipped: ${e.message.split('\n')[0]})`); }
   }
-  try {
+  if (on('home-scan')) try {
     await openTab('Dashboard');
     await p.locator('.dash-scan-input').setInputFiles({
       name: 'table.png', mimeType: 'image/png',
@@ -254,7 +265,7 @@ function scan(rootSel) {
       if (t) for (const a of t.getAnimations()) a.finish();
     });
   };
-  try {
+  if (on('home-cards')) try {
     await openTab('Dashboard');
     const n = await p.evaluate(() => document.querySelectorAll('.dashboard-view.home .dash-carousel-slide').length);
     if (n < 2) throw new Error('fewer than two cards');
@@ -267,7 +278,7 @@ function scan(rootSel) {
       await run(`home cards (card ${i + 1} of ${n})`, HOME);
     }
   } catch (e) { console.log(`  (home cards skipped: ${e.message.split('\n')[0]})`); }
-  try {
+  if (on('home-cards-held')) try {
     await openTab('Dashboard');
     const hs = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')].map((s) => s.getBoundingClientRect().height));
     const i = hs.findIndex((h, k) => k + 1 < hs.length && hs[k + 1] > h + 4);
@@ -281,7 +292,7 @@ function scan(rootSel) {
     await settle();
     await run(`home cards (pager held, card ${i + 2})`, HOME);
   } catch (e) { console.log(`  (home cards, pager held, skipped: ${e.message.split('\n')[0]})`); }
-  try {
+  if (on('home-cash-entry')) try {
     await openTab('Dashboard');
     if (!(await p.locator('.hm-cash-card').count())) throw new Error('no cash session running (the first Up Next card of an admin)');
     await p.locator('.hm-cash-card .hm-cash-btn').first().click({ timeout: 4000 });
@@ -290,14 +301,14 @@ function scan(rootSel) {
   } catch (e) { console.log(`  (home cash entry skipped: ${e.message.split('\n')[0]})`); }
   // The home's Log menu (admins), and a To log row turned into its Undo row by Didn't play — that
   // write answered here and never sent, so the guard changes nothing on the server it checks.
-  try {
+  if (on('home-log-menu')) try {
     await openTab('Dashboard');
     if (!(await p.locator('.hm-head-pill--log[aria-haspopup]').count())) throw new Error('no Log menu (not an admin: the pill opens the form)');
     await p.locator('.hm-head-pill--log').first().click({ timeout: 4000 });
     await p.locator('.hm-logmenu').waitFor({ timeout: 3000 });
     await run('home log menu', '.hm-logmenu');
   } catch (e) { console.log(`  (home log menu skipped: ${e.message.split('\n')[0]})`); }
-  try {
+  if (on('home-to-log-undo')) try {
     await openTab('Dashboard');
     await p.route('**/api/schedule/*/played', (r) => r.fulfill({ json: { notPlayed: true } }));
     try {
@@ -308,7 +319,7 @@ function scan(rootSel) {
   } catch (e) { console.log(`  (home to-log undo skipped: ${e.message.split('\n')[0]})`); }
   // To log's "+N more" opened: every event waiting for a result, in place (the whole home is
   // measured, scrolled or not).
-  try {
+  if (on('home-to-log-more')) try {
     await openTab('Dashboard');
     const more = p.locator('.hm-tolog .hm-head-pill');
     if (!(await more.count())) throw new Error('two or fewer events to log (no +N more)');
@@ -327,12 +338,12 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run(label, '.vm-sheet');
   };
-  try {
+  if (on('venue-map-strip')) try {
     await openTab('Schedule');
     await p.locator('.cal-event-row:not(.past) .cal-venue-strip[aria-haspopup="dialog"]').filter({ visible: true }).first().click({ timeout: 4000 });
     await venueMap('venue map (schedule strip)');
   } catch (e) { console.log(`  (venue map from a Schedule strip skipped: ${e.message.split('\n')[0]})`); }
-  try {
+  if (on('venue-map-upnext')) try {
     await openTab('Dashboard');
     const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
       .findIndex((sl) => sl.querySelector('.dash-venue-strip.has-map')));
@@ -341,7 +352,7 @@ function scan(rootSel) {
     await p.locator('.dashboard-view.home .dash-venue-strip.has-map').filter({ visible: true }).first().click({ timeout: 4000 });
     await venueMap('venue map (up next)');
   } catch (e) { console.log(`  (venue map from Up Next skipped: ${e.message.split('\n')[0]})`); }
-  try {
+  if (on('hands-scanner')) try {
     await openTab('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });
     await p.waitForTimeout(800);
@@ -350,7 +361,7 @@ function scan(rootSel) {
   // Hands: the Export for PokerTracker sheet (its body copy and the not-exported list wrap),
   // and a replay's Share sheet (the hand-history tile's description is a reason when it is off).
   // (staged: the account's hands plus one of every kind the sheet sorts, scripts/hands-states.mjs)
-  try {
+  if (on('hands-export')) try {
     const undoHands = await stageHands(p);
     try {
       await openTab('Hands');
@@ -360,7 +371,7 @@ function scan(rootSel) {
       await run('hands export sheet', '.hh-export-sheet');
     } finally { await undoHands(); }
   } catch (e) { console.log(`  (hands export sheet skipped: ${e.message.split('\n')[0]})`); }
-  try {
+  if (on('hands-replayer-share')) try {
     await openTab('Hands');
     await p.locator('.replayer-hand-card.is-row').first().click({ timeout: 4000 });
     await p.waitForTimeout(2500);
@@ -370,7 +381,7 @@ function scan(rootSel) {
     await run('replayer share sheet', '.replayer-share-sheet');
   } catch (e) { console.log(`  (replayer share sheet skipped: ${e.message.split('\n')[0]})`); }
   // The same sheet on a hand that came by a share link: its hand-history tile is off, with its reason.
-  try {
+  if (on('hands-replayer-share-shared')) try {
     await p.goto(base + '/#h/' + encodeURIComponent(SHARED_HAND_CODE), { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(4500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
@@ -393,7 +404,7 @@ function scan(rootSel) {
   };
   // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.
   // Skipped quietly when the account has no bankroll strip (not an admin).
-  try {
+  if (on('bankroll-dashboard')) try {
     await openResults();
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
@@ -519,7 +530,7 @@ function scan(rootSel) {
   // Locations (the bankroll dashboard): a card open on its results (the first room with more than
   // ten, a page shown past them), then the cards sorted by name with every one open — an open card's
   // name wraps, so a long one is checked whole. Long event names truncate.
-  try {
+  if (on('bankroll-locations')) try {
     await openResults();
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1500);
@@ -562,6 +573,48 @@ function scan(rootSel) {
     await p.waitForTimeout(400);
     await pageThrough('bankroll locations by name, every card open');
   } catch (e) { console.log(`  (bankroll locations skipped: ${e.message.split('\n')[0]})`); }
+  // Backers (the bankroll dashboard, read-only): the list, then every card open on its last ten shares
+  // (a long name, stakes line, game or venue truncates; the "Last 10 of N sessions" line), then the
+  // empty state and the state an account that is not the owner gets, each staged by answering the
+  // route here and never sending it.
+  if (on('bankroll-backers')) {
+    const backersView = async (label, { status = 200, body = null, openAll = false } = {}) => {
+      try {
+        if (body) await p.route('**/api/staking/standing/backers', (r) => r.fulfill({ status, json: body }));
+        try {
+          await openResults();
+          await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+          await p.waitForTimeout(1500);
+          await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Backers")').first().click({ timeout: 4000 });
+          await p.locator('.bb-backers .bl-item, .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
+          await p.waitForTimeout(600);
+        } finally { if (body) await p.unroute('**/api/staking/standing/backers'); }
+        if (openAll) {
+          const shut = p.locator('.bb-item .bl-card[aria-expanded="false"]');
+          for (let k = await shut.count(); k > 0; k--) {
+            await shut.first().click({ timeout: 4000 });
+            await p.waitForTimeout(150);
+          }
+          await p.waitForTimeout(400);
+        }
+        await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+        await run(label, '.an-sheet');
+        for (let i = 1; i < 30; i++) {
+          const moved = await p.evaluate((h) => {
+            const s = document.querySelector('.an-sheet .an-body');
+            const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
+          }, H);
+          if (!moved) break;
+          await p.waitForTimeout(250);
+          await run(`${label} (scrolled ${i})`, '.an-sheet');
+        }
+      } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
+    };
+    await backersView('bankroll backers');
+    await backersView('bankroll backers, every card open', { openAll: true });
+    await backersView('bankroll backers, none yet', { body: { backers: [] } });
+    await backersView('bankroll backers, refused', { status: 403, body: { error: 'Forbidden' } });
+  }
   // Results > Cash (cash sessions beta), each screen: the running session (it opens by itself while
   // one runs) and its rebuy and cash-out panels; the list (chip graph, month headers, rows with
   // notes); Stats; a session's page; the add form with More open; and the live-session bar over the
@@ -586,14 +639,14 @@ function scan(rootSel) {
     }
   };
   const back = '.cs-head button:has-text("Sessions")';
-  await cashScreen('cash live', []);
-  await cashScreen('cash live rebuy', ['.cs-livescreen button:has-text("Rebuy")']);
-  await cashScreen('cash live cash-out', ['.cs-livescreen button:has-text("Cash out")']);
-  await cashScreen('cash list', [back]);
-  await cashScreen('cash stats', [back, '.cs-tabs button:has-text("Stats")']);
-  await cashScreen('cash session', [back, '.cs-row']);
-  await cashScreen('cash add', [back, '.cs-head button:has-text("Add")', '.cs-form-foot button']);
-  try {
+  if (on('cash')) await cashScreen('cash live', []);
+  if (on('cash')) await cashScreen('cash live rebuy', ['.cs-livescreen button:has-text("Rebuy")']);
+  if (on('cash')) await cashScreen('cash live cash-out', ['.cs-livescreen button:has-text("Cash out")']);
+  if (on('cash')) await cashScreen('cash list', [back]);
+  if (on('cash')) await cashScreen('cash stats', [back, '.cs-tabs button:has-text("Stats")']);
+  if (on('cash')) await cashScreen('cash session', [back, '.cs-row']);
+  if (on('cash')) await cashScreen('cash add', [back, '.cs-head button:has-text("Add")', '.cs-form-foot button']);
+  if (on('cash-bar')) try {
     await openResults();
     await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1200);
@@ -628,13 +681,13 @@ function scan(rootSel) {
       } finally { if (idle) await p.unroute('**/api/cash-sessions/live'); }
     } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
   };
-  await fabView('bankroll + menu');
-  await fabView('bankroll + menu, no session running', { idle: true });
-  await fabView('bankroll sheet + menu', { sheet: true });
+  if (on('bankroll-fab')) await fabView('bankroll + menu');
+  if (on('bankroll-fab')) await fabView('bankroll + menu, no session running', { idle: true });
+  if (on('bankroll-fab')) await fabView('bankroll sheet + menu', { sheet: true });
 
   // Results → Expenses & income (admin beta) and its sheets: rows, cells and trip lines truncate
   // with an ellipsis. Skipped quietly where the section is absent (a non-admin token).
-  try {
+  if (on('expenses')) try {
     await openResults();
     await p.locator('.tx-sec').first().waitFor({ timeout: 4000 });
     await p.evaluate(() => document.querySelector('.tx-sec').scrollIntoView({ block: 'center' }));
@@ -659,7 +712,7 @@ function scan(rootSel) {
 
   // Results > Delete results (components/ResetResults.jsx) at the foot of the list: its sentence
   // wraps over 2r lines; closed, then open with the phrase typed.
-  try {
+  if (on('results-reset')) try {
     await openResults();
     await p.locator('.rr').first().waitFor({ timeout: 4000 });
     await p.evaluate(() => document.querySelector('.rr').scrollIntoView({ block: 'center' }));
@@ -676,7 +729,7 @@ function scan(rootSel) {
   // history (then its graph on 1M), a backer with no sessions yet, one session. CHECK_BACKER_TOKENS
   // (full,empty,one) names made-up backers on a scratch server (scripts/seed-backer-demo.js prints
   // the line); without it these are skipped and say so.
-  {
+  if (on('backer-page')) {
     const toks = (process.env.CHECK_BACKER_TOKENS || '').split(',').map(s => s.trim());
     const names = ['full history', 'no sessions', 'one session'];
     if (!toks[0]) console.log('  (backer page skipped: needs CHECK_BACKER_TOKENS, from scripts/seed-backer-demo.js)');
