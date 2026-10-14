@@ -351,7 +351,9 @@ export default function OnboardingWizard({ token, isGuest = false, tournaments, 
         </div>
         <h3 id="ob-title" className="ob-title" tabIndex={-1} ref={titleRef}>{STEP_TITLES[step]}</h3>
         <p className="ob-lead">{STEP_LEADS[step]}</p>
-        {step === 0 ? step1 : step === 1 ? step2 : step3}
+        {/* Keyed by step: each step mounts its own controls, so a tile is never one step's
+            control re-dressed as the next one's (a ring animating from its old state). */}
+        <React.Fragment key={step}>{step === 0 ? step1 : step === 1 ? step2 : step3}</React.Fragment>
         <p className={'ob-status' + (status ? '' : ' ob-hide')} role="status" aria-live="polite">{status || ' '}</p>
         <div className="ob-foot">
           <button type="button" className={'btn btn-ghost btn-sm snap-g' + (step === 0 ? ' ob-hide' : '')} onClick={back} disabled={step === 0}>Back</button>
