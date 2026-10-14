@@ -41,8 +41,11 @@ sessions opened here own scheduler work.
 - **Hand-history I/O**: saved hands export as PokerStars-format text (PT4 / Hold'em Manager) from
   the replay's Share sheet and Hands → Export for PokerTracker — writer in
   `vite-app/src/utils/hand-history/` (pure, Node-testable), import framework in `lib/hh-import/`
-  (a PokerStars-format parser; `wsop-replay` waits for a sample). PT4 analyses Hold'em and Omaha
-  only and files them as PokerStars hands. `npm run test:hh-io`; design, grammar sources and the
+  (a PokerStars-format parser; `wsop-replay` waits for a sample). PT4 analyses Hold'em and four-card
+  Omaha only (not stud, draw or 5/6-card Omaha) and files them as PokerStars hands; only a hand the
+  user saved or entered exports, never one that arrived by a share link. It is a second reader of the
+  text quick add's fast path (`lib/quick-add/hh.js`) already reads; why they stay two, and the test
+  that holds them together, are in the doc (§8). `npm run test:hh-io`; design, grammar sources and the
   owner's PT4 check: `docs/hand-history-io.md`.
 
 ## Runs 24/7 on this box (don't duplicate)

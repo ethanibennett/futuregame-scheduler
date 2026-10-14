@@ -100,7 +100,11 @@ wsop-console side and verified against both live services.
 - **(2026-10-13) Hand-history export built** (branch `feat/hand-history-io`): saved hands as
   PokerStars-format text for PokerTracker 4 from the replay's Share sheet and Hands → Export for
   PokerTracker; the writer, a PokerStars parser that round-trips it, and the import registry.
-  `npm run test:hh-io`. `docs/hand-history-io.md`.
+  `npm run test:hh-io`. `docs/hand-history-io.md`. **Reviewed and finished 2026-10-14:** a shared
+  hand no longer exports as the viewer's; PT4 takes four-card Omaha only (5/6-card Omaha is written
+  but marked "PT4 skips it"); PLO6 8/b (never Big Easy), NLO8 and Short Deck (refused by name) mapped;
+  a short big blind posts its blind first; and `lib/quick-add/hh.js` (the fast path) and
+  `lib/hh-import` are held to agree on the same text (doc §8).
 - **Usage:** the weekly limit was hit on 2026-10-13. Default to one builder + one verifier per job,
   two or three jobs at a time, full guard runs once per size.
 
