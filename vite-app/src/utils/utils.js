@@ -1097,34 +1097,34 @@ export const VENUE_COORDS = {
   // standard as PROPERTY_COORDS below: town centre, within a few miles, fine for the 100-mile
   // default radius. (Rooms whose property has EVER appeared as a curated longName resolve via
   // ABBR_BY_PROPERTY instead and don't need a row.)
-  'Ameristar Casino St. Charles':   { lat: 38.7687, lng: -90.4796, region: 'MO' },  // city-level
+  'Ameristar Casino St. Charles':   { lat: 38.7687, lng: -90.4796, region: 'MO', approx: true },  // city-level
   'Aria Casino':                    { lat: 36.1073, lng: -115.1765, region: 'NV' },
-  "Bally's Black Hawk Casino":      { lat: 39.7972, lng: -105.4917, region: 'CO' }, // city-level
-  'Bay 101 Casino':                 { lat: 37.3697, lng: -121.9223, region: 'CA' }, // city-level
+  "Bally's Black Hawk Casino":      { lat: 39.7972, lng: -105.4917, region: 'CO', approx: true }, // city-level
+  'Bay 101 Casino':                 { lat: 37.3697, lng: -121.9223, region: 'CA', approx: true }, // city-level
   'Caesars New Orleans':            { lat: 29.9490, lng: -90.0765, region: 'LA' },
   'Casino Gran Via Madrid':         { lat: 40.4203, lng: -3.7058, region: 'ES' },
-  'Casino Middelkerke betFirst':    { lat: 51.1856, lng: 2.8203, region: 'BE' },    // city-level
-  'Celebrity Card Club Odessa':     { lat: 31.8457, lng: -102.3676, region: 'TX' }, // city-level
-  'Chamada Prestige Hotel & Spa':   { lat: 35.3417, lng: 33.3186, region: 'CY' },   // city-level (Kyrenia)
-  'Chances Casino Kelowna':         { lat: 49.8880, lng: -119.4960, region: 'BC' }, // city-level
-  'Chinook Winds Casino':           { lat: 44.9713, lng: -124.0179, region: 'OR' }, // city-level
+  'Casino Middelkerke betFirst':    { lat: 51.1856, lng: 2.8203, region: 'BE', approx: true },    // city-level
+  'Celebrity Card Club Odessa':     { lat: 31.8457, lng: -102.3676, region: 'TX', approx: true }, // city-level
+  'Chamada Prestige Hotel & Spa':   { lat: 35.3417, lng: 33.3186, region: 'CY', approx: true },   // city-level (Kyrenia)
+  'Chances Casino Kelowna':         { lat: 49.8880, lng: -119.4960, region: 'BC', approx: true }, // city-level
+  'Chinook Winds Casino':           { lat: 44.9713, lng: -124.0179, region: 'OR', approx: true }, // city-level
   'Commerce Casino':                { lat: 33.9963, lng: -118.1537, region: 'CA' },
-  'Elite Poker Lounge Brownsville': { lat: 25.9017, lng: -97.4975, region: 'TX' },  // city-level
+  'Elite Poker Lounge Brownsville': { lat: 25.9017, lng: -97.4975, region: 'TX', approx: true },  // city-level
   'Foxwoods Casino':                { lat: 41.4719, lng: -71.9699, region: 'CT' },
-  'Grand Victoria Casino':          { lat: 42.0354, lng: -88.2826, region: 'IL' },  // city-level (Elgin)
-  'Hard Rock Hotel & Casino Bristol': { lat: 36.5951, lng: -82.1887, region: 'VA' }, // city-level
-  "Harrah's Pompano Beach":         { lat: 26.2379, lng: -80.1248, region: 'FL' },  // city-level
-  'Horseshoe Casino Council Bluffs':{ lat: 41.2619, lng: -95.8608, region: 'IA' },  // city-level
-  'Inspire Entertainment Resort':   { lat: 37.4438, lng: 126.4494, region: 'KR' },  // city-level (Incheon)
-  'MGM Cotai':                      { lat: 22.1470, lng: 113.5590, region: 'MACAU' }, // city-level
+  'Grand Victoria Casino':          { lat: 42.0354, lng: -88.2826, region: 'IL', approx: true },  // city-level (Elgin)
+  'Hard Rock Hotel & Casino Bristol': { lat: 36.5951, lng: -82.1887, region: 'VA', approx: true }, // city-level
+  "Harrah's Pompano Beach":         { lat: 26.2379, lng: -80.1248, region: 'FL', approx: true },  // city-level
+  'Horseshoe Casino Council Bluffs':{ lat: 41.2619, lng: -95.8608, region: 'IA', approx: true },  // city-level
+  'Inspire Entertainment Resort':   { lat: 37.4438, lng: 126.4494, region: 'KR', approx: true },  // city-level (Incheon)
+  'MGM Cotai':                      { lat: 22.1470, lng: 113.5590, region: 'MACAU', approx: true }, // city-level
   'Potawatomi Hotel & Casino':      { lat: 43.0192, lng: -87.9370, region: 'WI' },
-  'Pure Casino Yellowhead':         { lat: 53.5726, lng: -113.4938, region: 'AB' },  // city-level (Edmonton)
+  'Pure Casino Yellowhead':         { lat: 53.5726, lng: -113.4938, region: 'AB', approx: true },  // city-level (Edmonton)
   'Rivers Casino Philadelphia':     { lat: 39.9606, lng: -75.1417, region: 'PA' },
   'Rivers Casino Schenectady':      { lat: 42.8266, lng: -73.9276, region: 'NY' },
-  'Spades Poker House Baytown':     { lat: 29.7355, lng: -94.9774, region: 'TX' },   // city-level
-  'Sycuan Casino':                  { lat: 32.7357, lng: -116.8697, region: 'CA' },  // city-level (El Cajon)
-  'Texas Card House Houston':       { lat: 29.7604, lng: -95.3698, region: 'TX' },   // city-level
-  'Texline Card House':             { lat: 36.3790, lng: -103.0197, region: 'TX' },  // city-level
+  'Spades Poker House Baytown':     { lat: 29.7355, lng: -94.9774, region: 'TX', approx: true },   // city-level
+  'Sycuan Casino':                  { lat: 32.7357, lng: -116.8697, region: 'CA', approx: true },  // city-level (El Cajon)
+  'Texas Card House Houston':       { lat: 29.7604, lng: -95.3698, region: 'TX', approx: true },   // city-level
+  'Texline Card House':             { lat: 36.3790, lng: -103.0197, region: 'TX', approx: true },  // city-level
 };
 
 // ── Property GPS coordinates (keyed by venue abbreviation) ──
@@ -1140,23 +1140,25 @@ export const VENUE_COORDS = {
 // city_state, then sanity-checked against the expected state. Entries marked city-level
 // are small card rooms OSM has no record for by name; they resolve to the town centre,
 // which is within a few miles and fine for the 100-mile default radius. Replace any of
-// them with exact coordinates when it matters.
+// them with exact coordinates when it matters. Each carries `approx: true` (here and in
+// VENUE_COORDS) so the venue map says "Approximate location" instead of pinning the room
+// on a town square; drop the flag with the comment when an exact coordinate replaces it.
 export const PROPERTY_COORDS = {
   'AMERISTAR':        { lat: 41.65264, lng: -87.43455, region: 'IN' },  
   'BESTBET':          { lat: 30.3568, lng: -81.6085, region: 'FL' },   
-  'BIG BOLA':         { lat: 19.37721, lng: -99.25453, region: 'MX' },     // city-level
+  'BIG BOLA':         { lat: 19.37721, lng: -99.25453, region: 'MX', approx: true },     // city-level
   'BORGATA':          { lat: 39.37853, lng: -74.43493, region: 'NJ' },  
   'BOSSIER CITY':     { lat: 32.5153, lng: -93.73822, region: 'LA' },  
-  'BRATISLAVA':       { lat: 48.1517, lng: 17.10931, region: 'SK' },      // city-level
+  'BRATISLAVA':       { lat: 48.1517, lng: 17.10931, region: 'SK', approx: true },      // city-level
   'CAESARS SO IN':    { lat: 38.17941, lng: -85.90355, region: 'IN' },  
   'CAESARS VA':       { lat: 36.57095, lng: -79.42819, region: 'VA' },  
   'CANTERBURY':       { lat: 44.78731, lng: -93.48137, region: 'MN' },  
-  'CASINO MALTA':     { lat: 35.92069, lng: 14.49359, region: 'MT' },      // city-level
+  'CASINO MALTA':     { lat: 35.92069, lng: 14.49359, region: 'MT', approx: true },      // city-level
   'CHAMPIONS':        { lat: 29.98425, lng: -95.53042, region: 'TX' },  
   'CHEROKEE':         { lat: 35.46987, lng: -83.30399, region: 'NC' },  
-  'CHICAGO CHAR':     { lat: 41.85003, lng: -88.31257, region: 'IL' },     // city-level
+  'CHICAGO CHAR':     { lat: 41.85003, lng: -88.31257, region: 'IL', approx: true },     // city-level
   'DANIA BEACH':      { lat: 26.05338, lng: -80.13719, region: 'FL' },  
-  'DAYTONA':          { lat: 29.21081, lng: -81.02283, region: 'FL' },     // city-level
+  'DAYTONA':          { lat: 29.21081, lng: -81.02283, region: 'FL', approx: true },     // city-level
   'DOWNSTREAM':       { lat: 36.99676, lng: -94.62685, region: 'OK' },  
   'ELITE MCALLEN':    { lat: 26.19347, lng: -98.26734, region: 'TX' },  
   'FIREKEEPERS':      { lat: 42.29724, lng: -85.07504, region: 'MI' },  
@@ -1171,28 +1173,28 @@ export const PROPERTY_COORDS = {
   'LIECHTENSTEIN':    { lat: 47.20517, lng: 9.50263, region: 'LI' },    
   'LIVE! PHILLY':     { lat: 39.9098, lng: -75.16483, region: 'PA' },  
   'LODGE':            { lat: 30.6023, lng: -97.8603, region: 'TX' },   
-  'MD LIVE!':         { lat: 39.19289, lng: -76.72414, region: 'MD' },     // city-level
+  'MD LIVE!':         { lat: 39.19289, lng: -76.72414, region: 'MD', approx: true },     // city-level
   'MGM NH':           { lat: 38.79506, lng: -77.00916, region: 'MD' },  
   'MOHEGAN SUN':      { lat: 41.49236, lng: -72.08971, region: 'CT' },  
-  'OCALABETS':        { lat: 29.1872, lng: -82.14009, region: 'FL' },     // city-level
-  'ONE-EYED JACKS':   { lat: 27.33658, lng: -82.53085, region: 'FL' },     // city-level
-  'ORANGE CITY':      { lat: 28.94888, lng: -81.29867, region: 'FL' },     // city-level
-  'OXFORD DOWNS':     { lat: 29.00859, lng: -82.03481, region: 'FL' },     // city-level
-  'PALACE POKER':     { lat: 32.74596, lng: -96.99778, region: 'TX' },     // city-level
+  'OCALABETS':        { lat: 29.1872, lng: -82.14009, region: 'FL', approx: true },     // city-level
+  'ONE-EYED JACKS':   { lat: 27.33658, lng: -82.53085, region: 'FL', approx: true },     // city-level
+  'ORANGE CITY':      { lat: 28.94888, lng: -81.29867, region: 'FL', approx: true },     // city-level
+  'OXFORD DOWNS':     { lat: 29.00859, lng: -82.03481, region: 'FL', approx: true },     // city-level
+  'PALACE POKER':     { lat: 32.74596, lng: -96.99778, region: 'TX', approx: true },     // city-level
   'PARX':             { lat: 40.11853, lng: -74.95271, region: 'PA' },  
   'PLAYGROUND':       { lat: 45.37676, lng: -73.70632, region: 'CA-QC' },  
   'PORTLAND':         { lat: 45.56237, lng: -122.5792, region: 'OR' },  
-  'SILVERADO':        { lat: 44.37438, lng: -103.72907, region: 'SD' },    // city-level
+  'SILVERADO':        { lat: 44.37438, lng: -103.72907, region: 'SD', approx: true },    // city-level
   'STAR SYDNEY':      { lat: -33.86792, lng: 151.19505, region: 'AU' },  
   'TALKING STICK':    { lat: 33.54081, lng: -111.86967, region: 'AZ' }, 
   'TCH AUSTIN':       { lat: 30.44562, lng: -97.79045, region: 'TX' },  
-  'TCH DALLAS':       { lat: 32.77627, lng: -96.79686, region: 'TX' },     // city-level
+  'TCH DALLAS':       { lat: 32.77627, lng: -96.79686, region: 'TX', approx: true },     // city-level
   'THE BARREL':       { lat: 36.74653, lng: -86.56505, region: 'KY' },  
-  'THE BIKE':         { lat: 33.96946, lng: -118.1504, region: 'CA' },     // city-level
+  'THE BIKE':         { lat: 33.96946, lng: -118.1504, region: 'CA', approx: true },     // city-level
   'TUNICA':           { lat: 34.84728, lng: -90.33075, region: 'MS' },  
   'TURNING STONE':    { lat: 43.11505, lng: -75.58879, region: 'NY' },  
   'VENETIAN':         { lat: 36.12171, lng: -115.16934, region: 'NV' }, 
-  'WAR ROOM':         { lat: 31.84571, lng: -102.36769, region: 'TX' },    // city-level
+  'WAR ROOM':         { lat: 31.84571, lng: -102.36769, region: 'TX', approx: true },    // city-level
   'WILDHORSE':        { lat: 45.64762, lng: -118.6796, region: 'OR' },  
   'WOLINAK':          { lat: 46.32897, lng: -72.42083, region: 'CA-QC' },  
   'WYNN':             { lat: 36.12662, lng: -115.1654, region: 'NV' },
@@ -1274,7 +1276,10 @@ export function registerVenueCoords(map) {
   for (const [venue, c] of Object.entries(map)) {
     const lat = Number(c && c.lat), lng = Number(c && c.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    RESOLVED_COORDS.set(venue, { lat, lng, region: (c.region && String(c.region)) || null });
+    const e = { lat, lng, region: (c.region && String(c.region)) || null };
+    // A town-centre placement (nominatim-city): the venue map says so.
+    if (c.approx) e.approx = true;
+    RESOLVED_COORDS.set(venue, e);
   }
 }
 

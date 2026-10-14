@@ -1,0 +1,215 @@
+/* ==================================================================
+   Bankroll Locations (BETA, app admins) — BankrollLocations.jsx, the
+   dashboard's Locations tab. bl- prefixed.
+
+   Built on analytics.css (the sheet; an-cell type roles: a whole-r
+   box whose one line is pushed down by --p so its baseline lands on
+   an r line, p = 2(k - h/2 - c), c measured per face and size in
+   WebKit) and the dashboard's strips. Every measurement is g or r.
+   Truncating cells take the dashboard's descender room (.bd-sheet
+   .an-clip: 1r of padding below, cancelled by the margin).
+
+   Content is 35g:
+     range       35g x 4r strip, 5 x 7g (the Overview's ranges)
+     summary     an-p, 1r below
+     sort        a 3r caps label (baseline on its line 2), then a 35g x 4r strip, 9 + 9 + 9 + 8g
+     cards       35g, 1r apart, 2r below the sort. A card is 11r:
+                   3r      name (Univers Condensed md, bold), baseline on its line 3   | total: display
+                   2r      "Live • USD" and the type mark, baseline on its line 2     |   face xl, its
+                   1r                                                                 |   baseline on
+                   4r      hairline, then the stats line (Univers Condensed sm, the     |   the meta's line
+                           tables' size), baseline on its line 3                       |
+                   1r      bottom padding
+                 so the name's caps start about 1.6r down, and the stats' baseline sits on line 9:
+                 3r under the hairline, 2r above the card's foot.
+                 Columns inside 1g a side: name (the rest) | 1g | total (its own width rounded up
+                 to whole g by snap-g, utils/grid-snap.js), so a short total leaves the name more
+                 room and a long one (−CHF12,345) takes it rather than overflowing; the stats 33g.
+                 An OPEN card's name wraps, 3r a line (first baseline still on line 3), so the
+                 card grows by 3r a line and a long name is read whole on a touch screen too.
+     results     an open card's rows, 4r each: date 7g | what 17g | result 9g (33g),
+                 baselines on line 3; then the pager, 1r above, 1r below: "Show 50 more" /
+                 "Show all N" and "Show fewer", 11g x 4r each, 1g apart, and for a big room
+                 "60 of 1,030" at the right, Univers Condensed xs on line 3 of 4
+     note        an-p, 2r below the cards
+   The cards are list rows, not pills: their text is seated, not
+   centred (scripts/check-control-centring.mjs NOT_CONTROLS lists
+   .bl-card). The pager buttons are controls: box on the grid, label
+   centred both ways.
+   ================================================================== */
+
+/* Series colours (--series-tourn aqua, the brand; --series-cash violet): the Overview's graph work
+   defines them in styles.css. Until it lands they have ONE fallback, in bankroll-overview-tables.css
+   (zero specificity, so styles.css wins whenever it carries them) — always loaded with this sheet,
+   since the dashboard that renders Locations imports the Overview and its tables. */
+
+.bl-range, .bl-sort { height: calc(var(--subrow) * 4); }
+.bl-gap { margin-top: var(--subrow); }
+.bl-sum { font-weight: var(--fw-bold); color: var(--text); }
+.an-p .bl-sum.an-pos { color: var(--pos); }
+.an-p .bl-sum.an-neg { color: var(--neg); }
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+.bl-list { list-style: none; margin: calc(var(--subrow) * 2) 0 0; padding: 0; }
+.bl-item {
+  position: relative;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  scroll-margin-block: var(--subrow);   /* Show fewer brings the card back 1r clear of the sheet's head */
+}
+.bl-item + .bl-item { margin-top: var(--subrow); }
+/* The card's edge, drawn over its contents so a hovered head cannot cover it. */
+.bl-item::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  pointer-events: none;
+}
+.bl-item.is-open::after { box-shadow: inset 0 0 0 var(--bw-1) var(--brand-line); }
+
+.bl-card {
+  -webkit-appearance: none; appearance: none;
+  display: block;
+  width: 100%; height: calc(var(--subrow) * 11); min-height: 0;
+  box-sizing: border-box;
+  margin: 0; padding: 0 var(--gu) var(--subrow); border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit; text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.bl-item.is-open .bl-card { height: auto; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bl-card:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) {
+  .bl-card:hover { background: var(--surface2); }
+}
+
+.bl-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(calc(var(--subrow) * 3), auto) calc(var(--subrow) * 2);
+  column-gap: var(--gu);
+  align-items: start;
+  padding-bottom: var(--subrow);       /* 3r + 2r + 1r = 6r closed; 3r more a wrapped line open */
+}
+.bl-name {
+  grid-column: 1; grid-row: 1;
+  /* Univers Condensed md, baseline on line 3 of 3. Measured in WebKit (a probe on the baseline):
+     p 1.5 sat 0.040r high at 402 wide and 0.025r high at 1440, so p = 1.565 — 0.008r either side. */
+  --h: 3; --p: 1.565;
+  font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--text);
+}
+.bl-name.is-none { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* Open: the whole name, 3r a line. With a 3r line box the line's own leading supplies all but p/2
+   of the push (c = 3/2 - p/2 for this face and size, so the baseline lands on 3 when the padding is
+   p/2), and an equal negative margin below keeps the row 3r a line. Not clipped, so no ellipsis
+   and no descender room needed. */
+.bl-item.is-open .bl-name {
+  height: auto;
+  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere;
+  line-height: calc(var(--subrow) * 3);
+  padding-top: calc(var(--subrow) * var(--p) / 2);
+  padding-bottom: 0;
+  margin-bottom: calc(var(--subrow) * var(--p) / -2);
+}
+.bl-meta {
+  grid-column: 1; grid-row: 2;
+  --h: 2; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 2 of 2 (as an-note) */
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+}
+.bl-total {
+  grid-column: 2; grid-row: 1 / 3;
+  align-self: end;                     /* level with the meta line however many lines the name takes */
+  /* Display face xl, baseline on line 5 of 5 — level with the meta line. The Overview's latest
+     sessions measured this face and size (bd-recent-amt, p 1.1314 on line 3 of 3); the same c on
+     line 5 of 5 is p = 2(5 - 2.5 - c) = 3.1314. */
+  --h: 5; --p: 3.1314;
+  font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text);
+  text-align: right; font-variant-numeric: var(--num-tabular);
+}
+.bl-total.an-pos { color: var(--pos); }
+.bl-total.an-neg { color: var(--neg); }
+
+/* The stats line at the tables' size (Univers Condensed sm, as an-td), baseline on line 3 of 4:
+   measured in WebKit (a probe on the baseline) -0.008r at 402 wide, +0.011r at 1440. The longest
+   plausible line ("1,234 entries • 1,234 h • −$1,234/h • ROI −100% • 100% won/ITM") is 30.6g of
+   its 33g, so it does not truncate. */
+.bl-stats {
+  --h: 4; --p: 0.6978;
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+  font-family: var(--font-condensed); font-size: var(--fs-sm); color: var(--text);
+  font-variant-numeric: var(--num-tabular);
+}
+.bl-sep { color: var(--text-muted); }
+.bl-stat.an-pos { color: var(--pos); }
+.bl-stat.an-neg { color: var(--neg); }
+
+/* Marks. Inline SVG sized in r, its bottom on the baseline (vertical-align: baseline). The type
+   mark follows "Live • USD", so that line starts on the name's g line on every card. */
+.bl-mark { display: inline-block; margin-left: calc(var(--gu) * 0.5); }
+.bl-dot {
+  display: inline-block; vertical-align: baseline;
+  width: var(--subrow); height: var(--subrow);
+  margin-right: calc(var(--gu) * 0.25);
+}
+.bl-mark .bl-dot:last-child { margin-right: 0; }
+.bl-dot circle { fill: currentColor; }
+.bl-dot.is-tourn { color: var(--series-tourn); }
+.bl-dot.is-cash { color: var(--series-cash); }
+.bl-clock {
+  display: inline-block; vertical-align: baseline;
+  width: var(--subrow); height: var(--subrow);
+  margin-right: calc(var(--gu) * 0.25);
+  color: var(--text-muted);
+  fill: none; stroke: currentColor; stroke-width: var(--bw-1); stroke-linecap: round; stroke-linejoin: round;
+}
+.bl-clock * { vector-effect: non-scaling-stroke; }
+
+/* ── An open card's results ────────────────────────────────────── */
+.bl-detail {
+  padding: 0 var(--gu) var(--subrow);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.bl-results { list-style: none; margin: 0; padding: 0; }
+.bl-res {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 17) calc(var(--gu) * 9);
+  align-items: start;
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.bl-res:last-child { box-shadow: none; }
+.bl-res-date {
+  --h: 4; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 3 of 4 */
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+  font-variant-numeric: var(--num-tabular);
+}
+.bl-res-what .bl-dot { margin-right: calc(var(--gu) * 0.5); }
+/* Bold an-td: the bold face's metrics round to whole px unlike the regular's, so an-td's p seats
+   it high at 1440 (measured in WebKit: -0.008r at 402, -0.049r at 1440). The Overview tables'
+   correction for the same face and size (bankroll-overview-tables.css: p raised by 2 x 0.0304r). */
+.bl-res-amt { font-weight: var(--fw-bold); --p: 0.7586; }
+.bl-res-amt.an-pos { color: var(--pos); }
+.bl-res-amt.an-neg { color: var(--neg); }
+.bl-pager {
+  display: flex; align-items: flex-start; column-gap: var(--gu);
+  margin-top: var(--subrow);
+}
+.bl-more { flex: 0 0 auto; width: calc(var(--gu) * 11); height: calc(var(--subrow) * 4); }
+.bl-count {
+  flex: 1 1 0; min-width: 0;
+  --h: 4; --p: 0.9574;                 /* Univers Condensed xs, baseline on line 3 of 4 */
+  font-family: var(--font-condensed); font-size: var(--fs-xs); color: var(--text-muted);
+  font-variant-numeric: var(--num-tabular); text-align: right;
+}
+
+.bl-note { margin-top: calc(var(--subrow) * 2); }
+.bl-note .bl-dot { margin-right: calc(var(--gu) * 0.25); }
+.bl-note .bl-dot ~ .bl-dot { margin-left: calc(var(--gu) * 0.5); }   /* the legend's second entry */
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-card { transition: none; }
+}

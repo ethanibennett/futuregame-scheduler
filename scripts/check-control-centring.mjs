@@ -39,13 +39,17 @@
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
 // foot, closed and open), the
-// bankroll sheet and dashboard (every tab, report filters, CSV import), cash sessions, expenses and
+// bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
+// with its page chevrons — report filters, Locations with a card open, its pager (Show 50 more /
+// Show all, Show fewer) and a sort on, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
-// buddy chip's swap sheet, the public shared-schedule page (and a card open on it), the backer
+// buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
+// shared-schedule page (and a card open on it), the backer
 // page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), first-run setup
-// stage by stage (step 1 refused, located and searching; step 2 with Yes; step 3), the signed-out login / register / forgot / password-reset screens, and the
+// stage by stage (step 1 refused, located and searching; step 2 with Yes; step 3), the signed-out
+// login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
 // backdrop hides what is under it: a control 90% covered by something that paints is not measured.
 //
@@ -193,9 +197,10 @@ const INTERACTIVE = [
   '[role="menuitemradio"]', '[role="menuitemcheckbox"]', '[role="option"]', 'summary',
   '[tabindex="0"]', 'label', 'select', 'input[type="reset"]',
 ];
-// Areas left alone entirely: the grid overlay itself, and the replayer's table (another change
-// owns it — its dealer button, seats, chips).
-const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
+// Areas left alone entirely: the grid overlay itself, the replayer's table (another change
+// owns it — its dealer button, seats, chips), and the venue map's canvas, which a map library
+// draws (tiles, its pin and label, the attribution; its own controls are switched off).
+const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot', '.vm-map-canvas'];
 // Not pills or buttons, though a rule above catches them: event cards and list rows, which are
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
@@ -215,6 +220,9 @@ const NOT_CONTROLS = [
   // Next's empty-schedule prompt, and the signal-or-noise line (a sentence that opens Analytics,
   // its lines seated on 3r).
   '.hm-receipt', '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty', '.hm-noise',
+  // The bankroll dashboard's Locations cards: a room's name, meta, total and stats seated on r
+  // lines (bankroll-locations.css); the pager buttons in an open card are controls.
+  '.bl-card',
 ];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
@@ -728,6 +736,15 @@ function scan(cfg) {
       const allCaps = !/\p{Ll}/u.test(text) && /\p{Lu}/u.test(text);
       const ls = parseFloat(hs.letterSpacing) || 0;
       const inkAsc = allCaps ? m.cap : m.asc;
+      // Truncated text paints no further than what clips it: the control's own box, and any
+      // element between the text and the control that clips sideways (a name span that ellipsizes
+      // beside a count — its Range still spans the whole string, past the span's edge).
+      let clipL = b.left, clipR = b.right;
+      for (let a = host; a && a !== el; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === 'visible') continue;
+        const q = a.getBoundingClientRect();
+        clipL = Math.max(clipL, q.left); clipR = Math.min(clipR, q.right);
+      }
       for (const q of rects) {
         const lo = { x: q.left, y: q.top }, hi = { x: q.right, y: q.bottom };
         const box = { x: [q.left, q.right], y: [q.top, q.bottom] };
@@ -744,8 +761,8 @@ function scan(cfg) {
             else { const st = hi[L]; box[L] = [st - m.right - extra, st + m.left]; }
           }
         }
-        // Truncated text paints no further than the control's own box.
-        const bx = [Math.max(box.x[0], b.left), Math.min(box.x[1], b.right)];
+        // Truncated text paints no further than what clips it (above).
+        const bx = [Math.max(box.x[0], clipL), Math.min(box.x[1], clipR)];
         const by = [Math.max(box.y[0], b.top), Math.min(box.y[1], b.bottom)];
         textBoxes.push([bx[0], by[0], bx[1], by[1]]);
         textHost.push([[bx[0], by[0], bx[1], by[1]], host, symbol]);
@@ -1662,10 +1679,13 @@ function finalize(c) {
     await click('.filter-chip-square:not([title]):visible', 800);
   });
   step('bankrolls', async () => { await menu('Results & Tracking', 'Results'); await click('.bk-head-btn', 800); });
+  // The bankroll dashboard (the bankroll strip's Dashboard button). A tab is found by its label
+  // among the strip's radios (.bd-tabs: the strip's page chevrons are buttons too); when the tabs
+  // outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
   const dash = async (tab) => {
     await menu('Results & Tracking', 'Results');
     await click('.bk-head-btn:has-text("Dashboard")', 1500);
-    if (tab) await click(`.an-sheet .bk-seg-btn:has-text("${tab}")`, 600);
+    if (tab) await click(`.an-sheet .bd-tabs [role="radio"]:has-text("${tab}")`, 600);
   };
   // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,
   // Bankroll, By month) and the latest sessions. First with every section opened by its header
@@ -1691,6 +1711,45 @@ function finalize(c) {
   step('bankroll-dashboard-closed', async () => { await dash(null); await sections(false); }, 3);
   step('bankroll-rules', () => dash('Rules'), 2);
   step('bankroll-goals', () => dash('Goals'), 1);
+  // The tab strip with its last tab selected: scrolled to its end when it scrolls, so the start's
+  // page chevron is up (the Overview's step has the end's).
+  step('bankroll-tabs-end', async () => {
+    await dash(null);
+    await click('.an-sheet .bd-tabs button[role="radio"]:last-of-type', 900);
+  }, 0);
+  // Locations: the range and sort strips and the cards; a card open on its results (the first room
+  // with a pager: more than ten results, the biggest first by default sort), its pager scrolled into
+  // view before and after a page (Show 50 more or Show all, then Show fewer beside it), then the
+  // cards sorted by name.
+  step('bankroll-locations', () => dash('Locations'), 3);
+  const openPaged = async () => {
+    await dash('Locations');
+    const cards = p.locator('.an-sheet .bl-card');
+    const n = await cards.count();
+    for (let i = 0; i < n; i++) {
+      await cards.nth(i).click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(300);
+      if (await p.locator('.bl-pager').count()) return;
+      await cards.nth(i).click({ timeout: 4000, force: overlay });
+    }
+    throw new Error('no room with more than ten results');
+  };
+  const pagerInView = async () => {
+    await p.evaluate(() => document.querySelector('.bl-pager').scrollIntoView({ block: 'center' }));
+    await p.waitForTimeout(400);
+  };
+  step('bankroll-location-open', openPaged, 2);
+  step('bankroll-location-pager', async () => { await openPaged(); await pagerInView(); }, 0);
+  step('bankroll-location-paged', async () => {
+    await openPaged();
+    await pagerInView();
+    await click('.bl-pager .bl-more', 500);
+    await pagerInView();
+  }, 0);
+  step('bankroll-location-sort', async () => {
+    await dash('Locations');
+    await click('.bl-sort [role="radio"]:has-text("Name")', 400);
+  }, 2);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);
@@ -1878,6 +1937,31 @@ function finalize(c) {
   step('dashboard-bust-menu', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
   step('dashboard-update', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-update-btn', 1000); }, 1);
   step('dashboard-bag', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bag-btn', 1000); }, 1);
+  // The venue map (VenueMapSheet.jsx, docs/venue-map.md): what a venue strip opens — a Schedule
+  // card's strip, and an Up Next card's banner (the first card that has one, paged to). Measured
+  // once its map has drawn, or the popup has said why not.
+  const venueMapOpen = async () => {
+    await p.locator('.vm-sheet').waitFor({ timeout: 8000 });
+    await p.waitForFunction(() => {
+      const c = document.querySelector('.vm-map-canvas'), n = document.querySelector('.vm-map-note');
+      return (c && c.dataset.provider) || (n && !/Finding|Loading/.test(n.textContent));
+    }, null, { timeout: 20000, polling: 200 }).catch(() => {});
+    await p.waitForTimeout(500);
+  };
+  step('venue-map', async () => {
+    await nav('Schedule');
+    await tap('.cal-event-row:not(.past) .cal-venue-strip[aria-haspopup="dialog"]', 300);
+    await venueMapOpen();
+  });
+  step('venue-map-upnext', async () => {
+    await nav('Dashboard');
+    const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
+      .findIndex((sl) => sl.querySelector('.dash-venue-strip.has-map')));
+    if (i < 0) throw new Error('no Up Next card with a venue map');
+    if (i > 0) await pageCarousel(i);
+    await tap('.dashboard-view.home .dash-venue-strip.has-map', 300);
+    await venueMapOpen();
+  });
   // Social: search, a buddy, a group (its chat), creating one.
   step('social-search', async () => { await nav('Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
   step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);
