@@ -1,0 +1,282 @@
+/* ── The venue map popup (VenueMapSheet.jsx, docs/venue-map.md) ──────────────────────────────────
+   Loaded with the popup's own chunk, on the first open. Every length is g or r.
+
+   37g wide, 1g sides, so its content is the phone canvas's 35g. Rows, top to bottom:
+     2r   padding
+     5r   head: the room's name (--fs-lg, baseline +3r) | Close 4g x 5r
+          (8r when the name takes two lines: baselines +3r and +6r)
+     3r   town ("Atlantic City, NJ", baseline +2r)
+     3r   distance ("48 mi from Philadelphia"), when a location is saved
+     3r   "Approximate location — town centre", for a city-level coordinate
+     2r   gap
+     30r  the map, 35g wide
+     2r   gap
+     5r   Open in Apple Maps 17g | 1g | Google Maps 17g
+     3r   padding (+ the home indicator's inset on the phone)
+   Phone: a bottom sheet. Desktop (>= 1024): a dialog centred on the window. Either way snap-place
+   (utils/grid-snap.js) moves the box by under half an r so its top is on an r line from the bar,
+   and with it every row inside. */
+
+.vm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--scrim);
+  animation: vm-fade var(--dur-snap) var(--ease-out);
+}
+.vm-sheet {
+  position: fixed;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -100%);
+  width: calc(var(--gu) * 37);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  padding: 0 var(--gu) env(safe-area-inset-bottom, 0);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  /* The sheet's own colour runs 1r on below it: snap-place may lift it by up to half an r, and
+     the window's foot must not show through. */
+  box-shadow: 0 var(--subrow) 0 0 var(--bg), var(--elev-3);
+  animation: vm-rise var(--dur-base) var(--ease-out);
+}
+html[data-layout="desktop"] .vm-sheet {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding-bottom: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-3);
+  animation-name: vm-pop;
+}
+@keyframes vm-fade { from { opacity: 0; } }
+@keyframes vm-rise { from { transform: translate(-50%, 0); } }
+@keyframes vm-pop { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .vm-scrim, .vm-sheet { animation: none; }
+}
+
+.vm-body {
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--subrow) * 2) 0 calc(var(--subrow) * 3);
+}
+
+/* Head: the name seated on its 3r line (trimmed to cap..baseline under 3r - 1cap of padding, as
+   .bk-sheet-title), the Close button beside it. */
+.vm-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gu);
+  height: calc(var(--subrow) * 5);
+}
+.vm-head.is-wrap { height: calc(var(--subrow) * 8); }
+.vm-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0;
+  padding-top: calc(var(--subrow) * 3 - 1cap);
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
+  line-height: calc(var(--subrow) * 3);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+.vm-title.is-wrap {
+  height: calc(var(--subrow) * 8);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.vm-close {
+  flex: 0 0 calc(var(--gu) * 4);
+  width: calc(var(--gu) * 4);
+  height: calc(var(--subrow) * 5);
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.vm-close svg {
+  width: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 2);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke, 2);
+  stroke-linecap: round;
+}
+.vm-close:focus-visible,
+.vm-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* A 3r line, its baseline on its 2r line. */
+.vm-line {
+  display: block;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  margin: 0;
+  padding-top: calc(var(--subrow) * 2 - 1cap);
+  font-size: var(--fs-sm);
+  line-height: calc(var(--subrow) * 3);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+.vm-place { color: var(--text); }
+.vm-approx { color: var(--warn); }
+
+/* The map: 35g x 30r, the provider drawing into .vm-map-canvas (its own stacking context, so a
+   map library's z-indexes stay inside it), a hairline drawn over its edge. */
+.vm-map {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(var(--gu) * 35);
+  height: calc(var(--subrow) * 30);
+  margin-top: calc(var(--subrow) * 2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface2);
+}
+.vm-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  pointer-events: none;
+}
+.vm-map-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+/* A note in place of the map (loading, no coordinate, failed): a 3r line seated on the map's 15r. */
+.vm-map-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--subrow) * 13);
+  z-index: 1;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  margin: 0;
+  padding: calc(var(--subrow) * 2 - 1cap) var(--gu) 0;
+  font-size: var(--fs-sm);
+  line-height: calc(var(--subrow) * 3);
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+/* The two hand-offs: 17g x 5r each, 1g apart, labels centred (Univers Condensed, line-height 1:
+   the middle of its line box is the middle of its capitals — styles.css .ctl). */
+.vm-actions {
+  display: flex;
+  gap: var(--gu);
+  margin-top: calc(var(--subrow) * 2);
+}
+.vm-btn {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(var(--gu) * 17);
+  width: calc(var(--gu) * 17);
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.vm-btn > span { display: block; line-height: 1; }
+.vm-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+@media (hover: hover) and (pointer: fine) {
+  .vm-btn:hover { background: var(--hover-overlay); }
+  .vm-btn--brand:hover { background: var(--brand-hover); }
+  .vm-close:hover { background: var(--hover-overlay); }
+}
+
+/* ── Inside the map: the pin, its label and the attribution, on the app's tokens ── */
+.vm-map .leaflet-container {
+  background: var(--surface2);
+  font-family: var(--font-sans);
+}
+/* OpenStreetMap's tiles are drawn for a light ground; on the dark themes they are inverted and
+   turned back to their hues (water stays blue, parks green), dimmed so the map is not the
+   brightest thing on the screen. Labels stay light-on-dark and legible. */
+.vm-osm-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.7);
+}
+/* The pin: 2g x 4r, its tip on the point (Leaflet sets no size: iconSize null). */
+.vm-map .vm-pin {
+  width: calc(var(--gu) * 2);
+  height: calc(var(--subrow) * 4);
+  margin-left: calc(var(--gu) * -1);
+  margin-top: calc(var(--subrow) * -4);
+  background: none;
+  border: 0;
+}
+.vm-pin svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.vm-pin-body { fill: var(--brand); stroke: var(--bg); stroke-width: 1.5; }
+.vm-pin-dot { fill: var(--on-brand); }
+/* Its label: a 3r chip standing 1r clear of the pin's head. */
+.vm-map .leaflet-tooltip.vm-pin-label {
+  margin-top: calc(var(--subrow) * -5);
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+  box-shadow: var(--elev-2);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  line-height: calc(var(--subrow) * 3);
+  white-space: nowrap;
+}
+.vm-map .leaflet-tooltip.vm-pin-label::before { display: none; }
+/* "© OpenStreetMap contributors": required by the tile policy, kept small in the corner. */
+.vm-map .leaflet-container .leaflet-control-attribution {
+  margin: 0;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-xs) 0 0 0;
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: calc(var(--subrow) * 2);
+}
+.vm-map .leaflet-control-attribution a { color: var(--text-muted); text-decoration: underline; }

@@ -4,9 +4,11 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
-import BankrollOverview, { Segmented } from './BankrollOverview.jsx';
+import BankrollOverview from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollReports from './BankrollReports.jsx';
+import BankrollLocations from './BankrollLocations.jsx';
+import TabStrip from './BankrollTabStrip.jsx';
 import './analytics.css';
 import './bankroll-dashboard.css';
 
@@ -33,11 +35,12 @@ function fmtDate(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
-// The sheet's tabs, in order. The strip is one 35g segmented control whose segments share the
-// width in whole g (bankroll-dashboard.css .bd-seg[data-n]): add a tab here and render it below,
-// and the strip re-divides itself (4 tabs 9+9+9+8g, 5 tabs 5 x 7g, 6 tabs 5 x 6g + 5g).
+// The sheet's tabs, in order. Add a tab here and render it below; the strip (BankrollTabStrip.jsx)
+// handles any count: one 35g segmented control dividing itself in whole g while every label fits
+// (4 tabs 9+9+9+8g, 5 tabs 5 x 7g), else one row of whole-g pills that scrolls sideways.
 const TABS = [
   ['balance', 'Overview'],
+  ['locations', 'Locations'],
   ['reports', 'Reports'],
   ['rules', 'Rules'],
   ['goals', 'Goals'],
@@ -312,7 +315,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
           ) : (
             <>
               <Seg cols="bd-seg4" label="Bankroll" options={chips} value={key} onChange={setKey} />
-              <Segmented className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />
+              <TabStrip className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />
               {ledger.status === 'error' && <p className="an-p">The ledger could not load. Close and try again.</p>}
               {d && d.sources.some((s) => !s.ok) && (
                 <p className="an-p">Not included (a ledger source failed): {d.sources.filter((s) => !s.ok).map((s) => s.name).join(', ')}.</p>
@@ -323,6 +326,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
               )}
               {/* One line per further tab, keyed as in TABS above. */}
 
+              {tab === 'locations' && <BankrollLocations bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'reports' && <BankrollReports bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'rules' && <Rules guide={guide} prefs={prefs} money={money} onSave={savePrefs} saving={saving} />}
               {tab === 'rules' && <Risk risk={risk} money={money} />}

@@ -11163,7 +11163,10 @@ app.get('/api/venue-coords', (req, res) => {
     const out = {};
     for (const [venue, r] of readVenueCoordsRows(null)) {
       if (r.lat == null) continue;
-      out[venue] = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+      const c = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+      // A town-centre placement: the venue map says "Approximate location" for it.
+      if (r.source === 'nominatim-city') c.approx = 1;
+      out[venue] = c;
     }
     res.json(out);
   } catch (err) {
@@ -11171,6 +11174,77 @@ app.get('/api/venue-coords', (req, res) => {
     res.json({});
   }
 });
+
+// Public: the venue map's place line ("Atlantic City, NJ") and the server's own placement, for the
+// popup a venue strip opens (docs/venue-map.md). Called only when the popup opens. The town comes
+// from the source that placed the room (lib/venue-coords.js describePlace); when none named one,
+// the coordinates the popup shows are reverse-geocoded once (Nominatim, the same 1/s queue as
+// resolveVenueCoords) and the answer is kept for the process's life.
+// Keyed by VENUE, and only for a venue the schedule holds: the coordinate comes from the caller,
+// and a key per coordinate would let anyone queue unbounded Nominatim lookups (and hold up the
+// resolver behind them). At most one lookup per venue per 6 h on a miss, and a few in flight.
+const venueTownByVenue = new Map(); // venue → { town, at }
+let venueTownPending = 0;
+async function townAt(venue, lat, lng) {
+  const hit = venueTownByVenue.get(venue);
+  if (hit && (hit.town || Date.now() - hit.at < 6 * 3600e3)) return hit.town;
+  if (venueTownPending >= 4) return null;
+  venueTownPending++;
+  let town;
+  try {
+    town = await Promise.race([
+      venueGeocoder.reverseTown(lat, lng).catch(() => null),
+      new Promise((r) => setTimeout(() => r(undefined), 5000)),
+    ]);
+  } finally { venueTownPending--; }
+  if (town !== undefined) venueTownByVenue.set(venue, { town: town || null, at: Date.now() });
+  return town || null;
+}
+app.get('/api/venue-place', async (req, res) => {
+  const venue = String(req.query.venue || '').trim().slice(0, 300);
+  let property = String(req.query.property || '').trim().slice(0, 300) || null;
+  if (!venue && !property) return res.status(400).json({ error: 'venue or property required' });
+  try {
+    let row = null, known = false;
+    if (venue) {
+      const k = db.prepare('SELECT 1 FROM tournaments WHERE venue = ? LIMIT 1');
+      k.bind([venue]);
+      known = k.step();
+      k.free();
+      const stmt = db.prepare('SELECT * FROM venue_coords WHERE venue = ?');
+      stmt.bind([venue]);
+      if (stmt.step()) row = stmt.getAsObject();
+      stmt.free();
+      if (!property) {
+        const p = db.prepare(`SELECT property FROM tournaments WHERE venue = ? AND property IS NOT NULL AND property != ''
+                               GROUP BY property ORDER BY COUNT(*) DESC LIMIT 1`);
+        p.bind([venue]);
+        if (p.step()) property = p.getAsObject().property || null;
+        p.free();
+      }
+    }
+    const place = venueCoordsLib.describePlace({ venue, property, row, hint: feedVenueHints.get(venue) || null, directory: getVenueDirectory() });
+    if (!place.town && known) {
+      const lat = Number(req.query.lat), lng = Number(req.query.lng);
+      const at = place.lat != null ? [place.lat, place.lng] : (venueCoordsLib.validLatLng(lat, lng) ? [lat, lng] : null);
+      if (at) place.town = await townAt(venue, at[0], at[1]);
+    }
+    res.set('Cache-Control', place.town ? 'public, max-age=3600' : 'no-store');
+    res.json(place);
+  } catch (err) {
+    console.error('[VenueCoords] place lookup failed:', err.message);
+    res.set('Cache-Control', 'no-store');
+    res.json({ town: null, name: null, region: null, lat: null, lng: null, approx: false, source: null });
+  }
+});
+
+// The venue map's providers (lib/map-providers.js): GET /api/mapkit-token (Apple Maps, signed
+// here) and GET /api/google-maps-config (the Android app's Google Maps). Each answers 404
+// { configured: false } until its env is set; the popup then falls back to OpenStreetMap.
+{
+  const maps = require('./lib/map-providers').mountMapRoutes(app, process.env);
+  console.log(`[VenueMap] providers: MapKit JS ${maps.mapkit ? 'configured' : 'not configured'}, Google Maps ${maps.google ? 'configured' : 'not configured'}, OpenStreetMap always`);
+}
 
 async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT feed', 'MTT'); }
 // Online tournaments arrive the same way the live ones do, from a sibling watcher, but under

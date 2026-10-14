@@ -12435,6 +12435,21 @@
        box; the trailing letter-space is balanced by an equal indent (home.css: one tracking,
        --track-caps-lg, and the same text-indent on .dash-t). */
     .dash-event-card .dash-venue-strip > .dash-t { text-box-trim: none; }
+    /* At a real room the band is a <button> that opens the venue map (DashboardView.jsx,
+       docs/venue-map.md): the button's own chrome off, so it is the same band. Its width is set,
+       because an absolutely placed <button> does not stretch between left and right as a div
+       does; the card clips it, so its focus ring is drawn inside. */
+    button.dash-venue-strip {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .dash-event-card.collapsed button.dash-venue-strip { width: calc(100% + var(--subrow) * 0.25); }
+    button.dash-venue-strip:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
 
     .dash-event-card.playing,
     .dash-event-card.next-up,

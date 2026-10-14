@@ -89,6 +89,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Never a bare room name or a series title. Non-US regions whose ISO code is also a US state
   code use the country name (`PANAMA`, `MALTA`), or they land in "Northeast US". The watcher
   side (per-row coordinates) is `docs/venue-coords-watcher.diff`; see `docs/venue-coords.md`.
+- **Venue map**: an event card's venue strip (not online or Personal) opens `VenueMapSheet.jsx`, a
+  map of the room. The provider is chosen per platform in `utils/venue-map/providers.js`: Google on
+  Android, else MapKit JS, else OpenStreetMap. Each key's env is unset until the owner sets it up;
+  see `docs/venue-map.md`.
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).
