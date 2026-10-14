@@ -125,13 +125,11 @@ format has no {game}". **Short Deck** gets its own line ("Short Deck isn't expor
 spread it (`6+ Hold'em`, button blind or all-in antes) but it ranks a flush over a full house and the
 scorer here (`fast-high.js`, `settle.js`) is the 52-card one, so writing it as hold'em would pay the
 wrong hands. It is one table row (`NOT_WRITTEN`) to lift once the writer scores `SHORT_DECK_RULES`
-(the replayer-games branch's `poker-engine.js`). A `PLO` hand dealt five or six hole cards is written as
-5 or 6 Card Omaha, because the replayer's game picker stores PLO5 and PLO6 as `PLO` until it plays them
-natively; once it does (`PLO5`, `PLO6`, `PLO6 8/b`, `NLO8` as games of their own), those names are in the
-table already. Games are looked up through `gameConfig` (HAND_CONFIG, then quick add's own games), so
-nothing here needs `HAND_CONFIG` entries of its own, and `ENGINE_GAME_NAMES` scores `PLO6 8/b` and `NLO8`
-as the engine's `Big Easy` and `PLO8` until the engine names them itself. The share-link codec already
-had `P5`/`P6`.
+(`poker-engine.js`, which the replayer's own Short Deck uses). A `PLO` hand dealt five or six hole cards
+is written as 5 or 6 Card Omaha: hands saved before the replayer played PLO5 and PLO6 natively (they are
+games of their own now, with `PLO6 8/b` and `NLO8`) are stored as `PLO`. Games are looked up through
+`gameConfig` and scored through the engine's `GAME_EVAL`, so a new replayer game needs only its row in
+`GAME_TABLE`. The share-link codec has `P5`/`P6`.
 
 ## 4. The line grammar, and where each construct was seen
 
@@ -385,7 +383,7 @@ hand-history files. `wsop-replay` refuses with "needs a sample" until the format
 1. Played time: the save time. 2. Tournament header: freeroll, one id per game per ET day. 3. Hero
 name: realName || username. 4. Opponent names: as stored. 5. Folded opponents' cards: dropped.
 6. Edited hands: a content-hash id, so a new hand in PT4. 7. PLO5/PLO6: written as 5 and 6 Card Omaha
-(a `PLO` hand dealt five or six cards too); their `HAND_CONFIG` entries come from the replayer-games branch. 8. Per-player antes on import: a big-blind ante. 9. Straddles: `posts straddle`.
+(a `PLO` hand dealt five or six cards too, as older saves are). 8. Per-player antes on import: a big-blind ante. 9. Straddles: `posts straddle`.
 10. Export scope: Hold'em and Omaha (the games PT4 takes), or Every game. 11. The PT4 import of the golden file (§10).
 12. Open Hand History: not now — but note PT4 4.17.13 (2024-01-21) added generic OHH import, "imported
 as the generic OHH site", which would avoid hands landing under PokerStars.

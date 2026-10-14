@@ -31,7 +31,6 @@ import {
 } from '../vite-app/src/utils/hand-history/index.js';
 import { parseHandHistory, detectSite, PARSERS, getParser, HandHistoryError } from '../lib/hh-import/index.mjs';
 import { findGaps } from '../vite-app/src/utils/quick-add/gaps.js';
-import { HAND_CONFIG as QA_HAND_CONFIG } from '../vite-app/src/utils/quick-add/game.js';
 import { ruleFor } from './hh-io/ps-grammar.mjs';
 import { fastBestHigh, fastBestOmahaHigh } from '../vite-app/src/utils/hand-history/fast-high.js';
 import { bestHighHand, bestOmahaHigh } from '../vite-app/src/utils/poker-engine.js';

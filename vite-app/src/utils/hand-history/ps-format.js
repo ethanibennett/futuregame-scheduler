@@ -60,20 +60,15 @@ export function canonicalGameName(name) {
    why. The hand is refused as 'unsupported-game' with this reason, so a Short
    Deck hand says so instead of being written as hold'em with the wrong
    rankings. Short Deck is a PokerStars game ("6+ Hold'em"), but it posts a
-   button blind or an ante from everyone and ranks a flush over a full house,
-   and the scorer here (fast-high.js, settle.js) is the 52-card one. */
+   button blind or an ante from everyone and ranks a flush over a full house
+   (poker-engine.js SHORT_DECK_RULES), and the scorer here (fast-high.js,
+   settle.js) is the 52-card one. */
 export const NOT_WRITTEN = {
   'Short Deck': {
     short: "Short Deck isn't exported yet",
     why: "Short Deck isn't exported yet: it ranks hands differently and PokerStars posts its blinds another way",
   },
 };
-
-/* The engine's (poker-engine.js GAME_EVAL) name for the scoring rules of a game
-   it may not list under that name. Until the engine names PLO6 8/b and NLO8
-   itself, they score as the games they are: six-card and four-card Omaha
-   hi-lo with an 8-or-better low. Only consulted when GAME_EVAL has no entry. */
-export const ENGINE_GAME_NAMES = { 'PLO6 8/b': 'Big Easy', 'NLO8': 'PLO8' };
 
 /* Header words -> the replayer's game (the first name in GAME_TABLE wins, so
    '7 Card Stud Hi/Lo Limit' reads as 'Stud 8' and the triple draw as '2-7 TD'). */

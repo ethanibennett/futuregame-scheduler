@@ -27,7 +27,7 @@ import { seatIndexFor } from '../quick-add/seats.js';
 import { remapSeats } from '../quick-add/edit.js';
 import { GAME_EVAL, seatOrderFromButton, parseCardNotation } from '../poker-engine.js';
 import {
-  GAME_TABLE, CURRENCIES, NOT_WRITTEN, ENGINE_GAME_NAMES, canonicalGameName, toCents, starsGameType, isPt4Game, sanitizeName,
+  GAME_TABLE, CURRENCIES, NOT_WRITTEN, canonicalGameName, toCents, starsGameType, isPt4Game, sanitizeName,
   truncateChars, cardText,
 } from './ps-format.js';
 import { HandExportError } from './errors.js';
@@ -251,7 +251,7 @@ export function prepareHand(input, opts = {}) {
   const stars = GAME_TABLE[gameType];
   if (!stars) throw new HandExportError('unsupported-game', { game: raw.gameType });
   if (stars.unverified) warnings.add('description-unverified');
-  const evalCfg = GAME_EVAL[gameType] || GAME_EVAL[raw.gameType] || GAME_EVAL[ENGINE_GAME_NAMES[gameType]] || null;
+  const evalCfg = GAME_EVAL[gameType] || GAME_EVAL[raw.gameType] || null;
   const holeCount = isStud ? 7 : cfg.heroCards;
 
   // ── Seats, names ──
