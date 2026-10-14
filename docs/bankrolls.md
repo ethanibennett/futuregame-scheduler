@@ -21,7 +21,7 @@ Tests: `npm run test:bankrolls`.
 | table | columns |
 |---|---|
 | `bankrolls` | id, user_id, name, starting_balance INTEGER, currency TEXT (default USD), archived, sort_order, created_at, updated_at |
-| `bankroll_adjustments` | id, user_id, bankroll_id (NULL = Main), kind (`deposit` `withdrawal` `transfer_in` `transfer_out`), amount INTEGER **signed** (+ in, − out, in the bankroll's currency), transfer_id (pairs the two legs), occurred_on YYYY-MM-DD, note, created_at |
+| `bankroll_adjustments` | id, user_id, bankroll_id (NULL = Main), kind (`deposit` `withdrawal` `transfer_in` `transfer_out`, and from the bankroll merge `correction` `settlement`, which no route writes yet), amount INTEGER **signed** (+ in, − out, in the bankroll's currency), transfer_id (pairs the two legs), occurred_on YYYY-MM-DD, note, created_at |
 | `tracking_entries.bankroll_id` | nullable; NULL = Main |
 
 - **Main is virtual** — no row. NULL means Main everywhere, which is why every existing
@@ -118,8 +118,10 @@ REAL to the cent. A source that stores cents must divide before returning.
   `from = null` because a running balance needs everything before the window.
 - A malformed entry is dropped and counted (`invalid`); a source that throws is reported
   (`ok: false` in `sources`) and the rest of the ledger still loads.
-- Kinds `deposit`, `withdrawal`, `transfer_in`, `transfer_out` are **money moved**; every other kind
-  is a **result** (won/lost). Summaries, goals and the dashboard split on that.
+- Kinds `deposit`, `withdrawal`, `transfer_in`, `transfer_out`, `correction` and `settlement` are
+  **money moved**; every other kind is a **result** (won/lost). Summaries, goals and the dashboard
+  split on that. (`correction` and `settlement` arrive with the bankroll merge,
+  `docs/bankroll-merge.md` §4.3.)
 - Built-in: `tournaments.js` (net = (cashed ? cash : 0) − buy-in × max(1, entries), in the venue's
   currency — exactly the Results tab and `lib/analytics.js`; extra fields `units`, `cost`, `cash`,
   `buyin_per_entry`) and `adjustments.js` (the ledger above). `cash-sessions.js` (extra fields
@@ -494,7 +496,8 @@ scratch port with cross-user isolation, the client helpers).
 | `bankroll_transactions` | id, user_id, bankroll_id (NULL = Main), occurred_on YYYY-MM-DD, kind (`expense` \| `income`), category, amount REAL **positive** (to the cent; the sign is the kind), currency, note, tournament_id (no FK), series (free text, ≤ 80), trip_id, created_at, updated_at |
 | `bankroll_trips` | id, user_id, name, start_date, end_date (inclusive, ≤ 366 days), bankroll_all (1 = results from every bankroll), bankroll_id (when not all; NULL = Main), note, created_at, updated_at |
 
-Categories — expense: `travel lodging food entry_fees coaching software tips other`;
+Categories — expense: `travel lodging food entry_fees coaching software tips equipment fees other`
+(`equipment` and `fees` arrive with the bankroll merge, both deducted at 100% in the tax report);
 income: `rakeback bonus staking sponsorship coaching other`. The client list must match
 (`transactions.test.mjs` checks).
 

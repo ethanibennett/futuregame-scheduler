@@ -1,8 +1,13 @@
 # Bankroll merge: futurega.me becomes the one money store
 
-Status: **design, not built** (2026-10-14). A buildable spec for moving the dashboard's money
+Status: **design** (2026-10-14); **Phase 1 built** on `feat/money-merge` (see "Phase 1: as built"
+after the §15 table), not yet merged. A buildable spec for moving the dashboard's money
 (dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
 `futuregame-scheduler`), cut into phases small enough for one builder each.
+
+**The owner answered the open questions on 2026-10-14 (§1.1). Five answers differ from the
+defaults this document was written to, and they override any older sentence below.** Passages they
+change carry a "Superseded by §1.1" note.
 
 Path shorthand: bare paths are this repo at `origin/master` `2ad9c91`. **WC:** is
 `D:\projects\wsop-console` at `0968eb9`. Every `file:line` below was read for this spec. The two
@@ -29,8 +34,9 @@ are made up.
    exact text, so a night told to Claude before and after the move is still one row.
 7. A new **standing agreement** (one per backer, not per series) holds dated stakes by format and
    channel plus a signed opening balance. The dashboard's `matchPct` math is ported with its tests.
-8. A share is computed and posted when a result is saved. Its percentage is the stake in force on
-   the result's date. Editing a result re-derives its share and tells the backer.
+8. A share is computed from a result, and posted when the owner taps Notify for it (**§1.1 Q1:
+   not on save**). Its percentage is the stake in force on the result's date. Editing a posted
+   result re-derives its share and the backer's page just updates (**§1.1 Q2: no push, no SMS**).
 9. History from the dashboard (`backer_events`) is kept byte for byte. Every token moves verbatim
    onto `backers.public_token`, so every `/b/` link keeps working.
 10. The staking settlement sheet is fixed: it returns its ids and paid flags and recomputes figures
@@ -57,11 +63,36 @@ are made up.
 | 3 | The dashboard's money screens retire and become links. Today, Health, Train and Plan stay. The roll card, iOS widget, watch, screensaver Cockpit and MCP `log_session`/`get_bankroll` read from and log to futurega.me. | §11, §12 |
 | 4 | Nights logged in both apps go to the owner as a review list to confirm or reject before anything is written. | §9 |
 
-This spec decides four things the decisions left open. Each is in §17 with its default.
-- **Posting:** a share is posted on save, not on a tap.
-- **Edits:** a share follows its result.
-- **The roll:** the roll is every bankroll except the fund.
-- **Imported expenses:** they do not move the roll, as in the dashboard.
+This spec decided four things the decisions left open. Each is in §17 with its default.
+- **Posting:** a share is posted on save, not on a tap. *(Superseded by §1.1 Q1: a manual Notify tap.)*
+- **Edits:** a share follows its result. *(Stands. §1.1 Q2: and nobody is told.)*
+- **The roll:** the roll is every bankroll except the fund. *(Stands, Q4.)*
+- **Imported expenses:** they do not move the roll, as in the dashboard. *(Stands, Q6.)*
+
+### 1.1 Owner answers to the open questions (2026-10-14, final)
+
+The owner answered every question in §17. Nine match the default the spec was built on. **Five
+differ, and these override any other sentence in this document.** A later phase builds to this
+table, not to the older text. Phase 1 (the schema, `lib/staking/classify.js`,
+`lib/staking/standing.js`) is already built to it.
+
+| Q | Spec default | Owner's answer | What it changes |
+|---|---|---|---|
+| **Q1** Posting shares | Post when a result is saved | **Keep a manual Notify tap.** Shares do not post on save. A share posts only when the owner taps Notify for a result. | The engines stay pure, and the posting trigger is a later phase. `syncSharesFor` (§6.5) no longer **creates** events from every write path. It is split in two. *Create:* only the Notify action, for one result, after the owner has seen the cut. *Follow:* every write path to a result that already has a posted event re-derives or voids that event (Q2). The "Posts to backers" line on the form (§6.5 Preview) stays as the preview in front of the tap. A night nobody taps stays unposted, which is how the dashboard behaves today (§2.2 point 2); the owner has chosen that. `money_settings.posting` and the cutover state (§11.4, §13 step 6) still gate the Notify action. Phases 7 and 8 and the §16 row for Phase 7 read "post on save" as "post on Notify". |
+| **Q2** Correcting a past result | Push "Corrected: …", mark it on the page and the digest | **Nothing.** | When a past result is edited, a posted share follows it (§6.6) and **the backer's page just updates**. No push, no SMS, no "corrected" mark on the page or in the digest. The delivery sweep (§6.7) has no correction branch and the `correctionsPush` setting goes. `backer_event_revisions` rows are still written, for the owner's own audit. The `backer_events.revised_at` and `notified_*` columns stay in the schema because they are additive; a phase may use them or leave them. |
+| **Q7** A standing stake and a series agreement on the same tournament | The series agreement wins; no standing share | **Ask the owner each time.** | `resultCuts` (`lib/staking/standing.js`) returns **both** matches, with `ask: true` on the standing cut, and does not choose the series agreement. The Notify sheet shows both and the owner picks series, standing or both. Where that answer is stored is left to Phase 7 (the schema has `standing_exclusions` for "series wins" and nothing for "standing wins" or "both", so the owner would be asked again). §6.2's overlap rule and §6.9 read this way. |
+| **Q8** Which games count as a backer's "PLO", "PLO8", "Mixed" | The §6.3 families (5- and 6-card PLO as PLO, PLO hi-lo of any size as PLO8, HORSE and the N-game mixes as Mixed) | **Every game on its own.** The family table is dropped. | A stake's format matches **only that exact game, or `all`**. PLO5 is not PLO, and PLO6 8/b is not PLO8. `formatOf` returns one key per game (§6.3, rewritten). `standing_stakes.format` holds any key in `classify.js` `GAMES`, so the editor lists those. A game the table does not name is `other`. |
+| **Q11** When a backer pays for their piece of a series | At settlement, netted, with an optional "prepaid" figure | **Up front, before the event.** | Changes settlement, which is Phase 3 (§10). See "Q11 in §10" there. In short: `prepaid` stops being an optional credit and becomes the normal case. |
+
+The nine answers that match the spec's defaults: **Q3** a computed opening deposit, editable in the
+review. **Q4** the roll is every bankroll except the WSOP fund. **Q5** a fund target of $65,000 by
+2027-05-03. **Q6** imported expenses do not lower the roll but count for tax. **Q9** keep a deleted
+backer's page and end the agreement. **Q10** record standing payouts (Phase 14). **Q12** the cash
+share is the net after tips and session expenses. **Q13** Trends, Review and Settings stay on the
+dashboard. **Q14** keep legacy `backer_tokens` read-only and stop minting.
+
+The owner also chose to close the roster leak (§2.2 point 10) now instead of at retirement. That is
+handled outside this build and is not part of any phase here.
 
 ---
 
@@ -179,7 +210,7 @@ CREATE UNIQUE INDEX idx_standing_active ON standing_agreements(user_id, backer_i
 CREATE TABLE standing_stakes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   agreement_id INTEGER NOT NULL,
-  format TEXT NOT NULL,                  -- 'all' | PLO | PLO8 | NLH | mixed | stud8 | razz | 2-7 | BigO | other
+  format TEXT NOT NULL,                  -- 'all' | an exact game key from lib/staking/classify.js GAMES (§6.3, Q8: one key per game)
   channel TEXT NOT NULL,                 -- 'any' | 'live' | 'online'
   pct REAL NOT NULL,                     -- 0 < pct <= 100
   valid_from TEXT NOT NULL, valid_to TEXT,
@@ -224,7 +255,7 @@ CREATE TABLE money_locations (
   sort_order INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
 
 -- Owner-level money settings (JSON): { posting: 'off'|'on', cutover: 'none'|'imported'|'live',
---   postingSince, defaultBankroll: 'main'|id, taxSetAsidePct, correctionsPush: true }
+--   postingSince, defaultBankroll: 'main'|id, taxSetAsidePct }   (correctionsPush dropped, §1.1 Q2)
 CREATE TABLE money_settings (user_id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
 
 -- Staged pulls. payload holds PII (tokens, phones, emails): cleared 7 days after commit or on discard.
@@ -470,41 +501,73 @@ The import writes `kind 'expense'`, `amount` REAL rounded to the cent, `currency
   series agreements and a standing agreement at once.
 - **Token.** The `/b/` page is per backer, keyed by `backers.public_token`, and shows standing
   shares only (§17 Q7 covers the overlap). Series agreements keep their settlement sheet.
-- **Overlap rule (default).** A tournament result is **excluded** from a backer's standing share when
-  that same backer has a `backer_event_status` row for that tournament under an active agreement of
-  any series. The series deal is the more specific one, and "most specific wins" is the dashboard's
-  own rule. Cash sessions are never in a series.
+- **Overlap rule (owner Q7, §1.1: ask each time).** When the same backer has a standing stake that
+  matches a tournament result **and** a `backer_event_status` row for that tournament under an
+  active agreement of any series, the engine returns **both** and flags the standing cut `ask`. It
+  does not choose. The owner decides on the Notify sheet. *(Superseded: the original default
+  excluded the standing share and let the series agreement win.)* Cash sessions are never in a
+  series, so they never ask.
 - **Routes.** All live under the existing `/api/staking` admin gate (`server.js:479`):
   `/api/staking/standing/*` (§6.10).
 
 ### 6.3 Classifying a result: `lib/staking/classify.js`
 
-- **The dashboard's keys.** Stakes use the dashboard's format keys. A result's `format` and
-  `channel` come from, in order:
-  1. `session_extras.format` / `.channel` (imported, chat-logged, or set by the owner);
+- **One key per game (owner Q8, §1.1).** A stake names a game and a channel, and a result's `format`
+  is the exact game. A stake matches **only that game, or `all`**. The families the first draft of
+  this section built (5- and 6-card PLO as PLO, PLO hi-lo of any size as PLO8, HORSE and the
+  N-game mixes as Mixed) are gone. Different spellings of the **same** game still share a key
+  ("NL" and "No-Limit Hold'em"; "Big O" and "5-card PLO8"). A result's `format` and `channel` come
+  from, in order:
+  1. `session_extras.format` / `.channel` (imported, chat-logged, or set by the owner). Only a valid
+     key counts; anything else is ignored;
   2. derivation.
 - **Deriving a tournament.**
   - channel = `tournaments.is_online`;
   - format = `formatOf(game_variant)`.
 - **Deriving a cash session.**
-  - channel = `ONLINE_ROOM.test(room)`. `ONLINE_ROOM` moves from `lib/bankroll-reports.js:47` into
-    this module and gains `betrivers`, `borgata online`, `phenom` and the online venues the import
-    finds;
+  - channel = `ONLINE_ROOM.test(room)`. `ONLINE_ROOM` moved from `lib/bankroll-reports.js` into
+    this module (the reports re-export it) and gained `bet ?rivers`, `borgata online` and
+    `phenom`. "The online venues the import finds" join it when the import is built (Phase 5);
   - format = `formatOf(game)`.
-- **`formatOf`.** It is a pure ordered table, tested case by case (§17 Q8). The order matters,
-  because "PLO8" contains "PLO".
+- **`formatOf`.** A pure, **ordered** table: the first row that hits wins. Patterns are
+  case-insensitive whole tokens (a letter or digit glued to a pattern is not a hit), after
+  straightening quotes and dashes and closing up `H.O.R.S.E.`. The order matters and is tested row
+  by row. The rows below are in evaluation order. The dashboard's nine keys are `PLO`, `PLO8`,
+  `NLH`, `mixed`, `stud8`, `razz`, `2-7`, `BigO` and `other`; they keep their meaning for imported
+  stakes. The other keys are games the dashboard folded into those.
 
-| Pattern (case-insensitive, after trimming) | Key |
-|---|---|
-| `big o`, `5-card plo8`, `5 card plo hi-lo` | `BigO` |
-| `plo8`, `plo 8`, `o8`, `plo hi-lo`, `omaha hi-lo`, `plo6 8/b`, any PLO with `8/b`, `hi-lo` or `h/l` | `PLO8` |
-| `plo`, `plo5`, `plo6`, `pot-limit omaha`, `omaha` | `PLO` |
-| `nlh`, `nl`, `no-limit hold'em`, `holdem` | `NLH` |
-| `stud 8`, `stud8`, `stud hi-lo`, `seven card stud hi-lo` | `stud8` |
-| `razz` | `razz` |
-| `2-7`, `deuce`, `triple draw`, `single draw` | `2-7` |
-| `horse`, `8-game`, `9-game`, `mixed`, `mix`, `dealer's choice`, `rotation`, `plo/nlh` | `mixed` |
-| anything else, or empty | `other` |
+| Key | Game | Patterns (any one) |
+|---|---|---|
+| `plo-nlh` | PLO/NLH mix | `plo/nlh`, `nlh/plo` (also `&`, `+`) |
+| `HORSE` | HORSE | `horse` |
+| `8-game` · `9-game` · `10-game` | N-game mixes | `8-game` (also `8 game`, `8 games`) and likewise 9 and 10 |
+| `dealers-choice` | Dealer's choice | `dealer's choice`, `dealers choice` |
+| `mixed` | a mix this table does not name | `mix`, `mixed`, `rotation`, any other `N-game` |
+| `BigO` | Big O | `big o`, `5-card plo8`, `5 card plo hi-lo`, `plo5 8`, `plo5 hi-lo` |
+| `PLO6_8` | 6-card PLO hi-lo | `plo6 8/b`, `plo6 hi-lo`, `6-card plo8`, `6 card plo hi-lo` |
+| `PLO8` | 4-card PLO hi-lo | `plo8`, `plo 8`, `o8`, `plo hi-lo`, `plo 8/b`, `plo h/l`, `omaha hi-lo`, `omaha 8` |
+| `PLO5` | 5-card PLO | `plo5`, `5-card plo`, `5-card pot-limit omaha` |
+| `PLO6` | 6-card PLO | `plo6`, `6-card plo` |
+| `PLO` | 4-card PLO | `plo`, `plo4`, `4-card plo`, `pot-limit omaha`, `omaha` |
+| `stud8` | Stud hi-lo | `stud 8`, `stud8`, `stud hi-lo`, `seven card stud hi-lo` |
+| `razz` | Razz | `razz` (also `2-7 razz`) |
+| `2-7sd` | 2-7 single draw | `single draw`, `2-7 single draw`, `2-7 sd`, `nl 2-7` |
+| `2-7` | 2-7 triple draw | `2-7`, `2-7 td`, `deuce`, `triple draw` |
+| `NLH` | No-limit hold'em | `nlh`, `nlhe`, `nl`, `no-limit hold'em`, `holdem` (not limit or pot-limit hold'em) |
+| `other` | anything else, or empty | |
+
+  Why the order is what it is:
+  - **The mixes lead.** "PLO/NLH Mix", "Mixed PLO" and "Mixed Triple Draw" are mixes, not PLO, NLH
+    or 2-7. (The first draft listed Mixed last, which made its own `plo/nlh` pattern unreachable:
+    `plo` always hit first.)
+  - **Big O, then the 6-card hi-lo game, then PLO8, then the sized PLO games, then PLO.** "PLO8"
+    contains "PLO", and `5-card plo8` contains both.
+  - **A bare `8` is the hi-lo marker only when it is not the front of a stake.** "PLO 8/16" and
+    "PLO6 8/16" are PLO and PLO6.
+  - **The 2-7 games come before NLH.** "NL 2-7 Single Draw" carries the token `nl`.
+  - **Limit and pot-limit hold'em, LHE, Badugi, 7-card stud and TORSE are `other`.** They are not
+    in the table. A backer with an `all` stake is still staked in them.
+  - `o8` is `PLO8`, as in the first draft, although Omaha 8 is a limit game.
 
 - **Override.** A result sheet shows the classification and lets the owner override it, which
   writes `session_extras`.
@@ -512,9 +575,14 @@ The import writes `kind 'expense'`, `amount` REAL rounded to the cent, `currency
 ### 6.4 Share math: `lib/staking/standing.js`
 
 This is a port of WC:`app/src/db/backers.ts:96-132` with the same behaviour.
-- **`matchPct(stakes, {format, channel})`.** It considers the stakes in force on the result's date.
-  Exact format scores 2 and exact channel scores 1. The highest score wins. A tie goes to the larger
-  pct. No match returns null.
+- **`matchPct(stakes, {date, format, channel})`.** It considers the stakes in force on the result's
+  date. A stake's `valid_from` and `valid_to` are **both inclusive**, like
+  `standing_agreements.effective_to`, so an edit "from today" closes the old row the day before. A
+  stake with a window needs a dated result; an undated result cannot be placed on the calendar, so
+  a windowed stake is not in force for it. Exact format scores 2 and exact channel scores 1
+  (`all` and `any` score 0). The highest score wins. A tie goes to the larger pct. No match
+  returns null. A stake matches only its exact game (§1.1 Q8). `matchStake` returns the winning
+  stake itself, whose id a posted share records.
 - **`backerShare`** and **`cutsForSession`** port the dashboard's functions, sorted by |share|
   descending.
 - **Money in integer cents.** `result_cents` is the result's net in USD cents. For a tournament the
@@ -525,23 +593,41 @@ This is a port of WC:`app/src/db/backers.ts:96-132` with the same behaviour.
   same magnitude as the equal win. The dashboard's float `Math.round(result × pct / 100 × 100)`
   rounds −0.5 toward zero instead. The port documents the difference, and a parity test shows it
   never moves more than one cent.
+- **What else the 14 cases need.** Six of the 14 cases test `matchPct`, three `backerShare`, one
+  `cutsForSession`; the other four test `sessionGameLabel`, `deliveryChannels` and `newToken`. So
+  those three are ported too (`deliveryChannels` reads this app's `notify_sms`/`notify_email` flags
+  and needs the address as well; `newToken` draws by rejection sampling so no character is
+  likelier than another).
+- **`resultCuts({agreements, result, exclusions, seriesBackerIds})`** is the decision list of §6.5
+  as a pure function: it skips an ended agreement, a result outside the window, a live cash
+  session, an excluded pair and a game the backer is not staked in, and returns the rest as cuts,
+  with `ask: true` on a standing cut whose backer also holds a series agreement on that tournament
+  (§1.1 Q7). It posts nothing. Three SELECT-only readers feed it: `loadAgreements`,
+  `loadExclusions` and `seriesBackerIds`.
 - **Tests.** Every case of WC:`app/src/db/backers.test.ts` (14) is ported to
   `test/standing.test.js` and run under `node --test`. To those go:
   - stake validity windows;
-  - the overlap rule;
+  - the overlap rule (Q7: both returned, flagged);
   - exclusions;
-  - classification;
+  - classification (`test/classify.test.js`, every row of the §6.3 table);
   - the rounding parity sweep: 10,000 random result × pct pairs against the dashboard formula,
     \|Δ\| ≤ 1 cent.
 
 ### 6.5 When a share is posted
 
+> **Superseded by §1.1 Q1.** Shares are **not** posted on save. The owner taps Notify for a result
+> and the engine below runs for that one result. Read "every write to an owner result runs
+> `syncSharesFor`" as: every write to a result that **already has** a posted event re-derives or
+> voids that event; nothing creates one except the Notify action. The decision list, the "what never
+> posts" rules and the preview are unchanged. Per Q7 the overlap rule below is "ask", not "exclude".
+
 - **When posting is on** (`money_settings.posting = 'on'`), every write to an owner result runs
   `syncSharesFor(db, userId, {table, id})` after its commit. "Owner result" means a
   `tracking_entries` or ended `cash_sessions` row, or a Personal tournament under them. For each
   active standing agreement of that player:
-  - If the result's date is in the agreement window, the result is not excluded, no overlap rule
-    applies and `matchPct` returns a pct, it ensures a `backer_events` row:
+  - If the result's date is in the agreement window, the result is not excluded, the owner has not
+    chosen "series wins" on an overlap (Q7) and `matchPct` returns a pct, it ensures a
+    `backer_events` row:
     - `id = '<token>:<te|cs>:<id>'`, `session_id = 'te:<id>' | 'cs:<id>'`;
     - `source = 'ledger'`, plus the agreement id, the stake id and the ref;
     - date, game label, room, hours, `session_result_cents`, `pct`, `share_cents`;
@@ -574,6 +660,10 @@ This is a port of WC:`app/src/db/backers.ts:96-132` with the same behaviour.
 
 **The share follows the result. The pct in force on the result's date is used.**
 
+> **Superseded in one respect by §1.1 Q2: the backer is told nothing.** Wherever this section says
+> "push", read "nothing": no push, no SMS, no "corrected" mark. The page shows the new figure. The
+> revision row is still written.
+
 | Case | What happens |
 |---|---|
 | amounts, date, room or bankroll edited | re-derived: new `session_result_cents` and `share_cents`; `revised_at`; a `revise` revision row with before and after; push "Corrected" (§6.7) |
@@ -604,28 +694,40 @@ from a fresh derivation. A feed buy-in change is the usual cause. Each line has 
 
 ### 6.7 Delivery (push, SMS, digest)
 
+> **Superseded by §1.1 Q1 and Q2.** A share is created by the owner's Notify tap, so the "first
+> post" delivery happens when that tap creates the event (the sweep, or the tap itself, may send
+> it). **A correction sends nothing**: drop the "Correction" bullet, the "corrected" mark in the
+> digest and the page, and `revised: true` in the feed. A void ("Removed") is also silent: the
+> event simply leaves the page. Everything else here (prod only, SMS opt-in, digest recipients,
+> name precedence) stands.
+
 - **Prod only.** Delivery runs only where `BACKER_DELIVERY` is on: the default is on when `RENDER`
   is set, and an explicit `BACKER_DELIVERY=0|1` overrides it. This keeps the local pm2 instance
   silent (§2.2 point 9).
 - **A sweep, not inline.** Every minute, the sweep delivers each event where
   `notified_share_cents IS NOT share_cents` and the last change is at least 2 minutes old. The delay
   coalesces an edit storm into one push, and the sweep survives restarts. It then sets
-  `notified_share_cents` and `notified_at`.
+  `notified_share_cents` and `notified_at`. **Trap for Phase 2:** the live notify relay
+  (`server.js:754`) inserts `backer_events` rows without `notified_*`. They take `source='dashboard'`
+  from the column default, so a sweep that tests only `notified_share_cents IS NOT share_cents`
+  would deliver every relayed share a second time. The sweep must skip `source='dashboard'`, or the
+  relay must set `notified_*` when it inserts. (The migration marks the rows that exist today; it
+  cannot mark rows inserted after it.)
 - **First post:** the existing title and body (`server.js:774-777`), plus SMS when
   `backers.notify_sms` (`sendBackerSms`, `:11708`).
-- **Correction:** title "Corrected: `<game>` `<date>`" and body "Your 20% is now +$X (was +$Y).
-  Running: +$Z." Push only, no SMS (§17 Q2). A void sends "Removed: …".
+- ~~**Correction:** title "Corrected: `<game>` `<date>`" and body "Your 20% is now +$X (was +$Y).
+  Running: +$Z." Push only, no SMS (§17 Q2). A void sends "Removed: …".~~ *(Dropped, §1.1 Q2.)*
 - **Weekly digest** (`sendBackerWeeklyDigests`, `:11738`):
   - recipients come from `backers.notify_email` and `public_token`;
   - the running total is `Σ share_cents + Σ opening_cents`;
-  - rows with `revised_at` in the week are marked "corrected".
+  - ~~rows with `revised_at` in the week are marked "corrected".~~ *(Dropped, §1.1 Q2.)*
 - **Feed** (`/api/backer/:token/feed`, `:575`):
   - the shape is unchanged;
   - `name` comes from `backers.name` first and `backer_public` second, which fixes the rename that
     the last notify could shadow (`:580-588`);
   - `stakes` is the summary of the stakes in force today;
   - `openingCents` is `Σ opening_cents`;
-  - each event gains an optional `revised: true`.
+  - ~~each event gains an optional `revised: true`.~~ *(Dropped, §1.1 Q2.)*
 
 ### 6.8 Existing `backer_events`
 
@@ -971,6 +1073,29 @@ All in `server.js` `:7394-7700` and `vite-app/src/components/StakingView.jsx`.
    - `budget_capped`: the investment is clamped to the cap, then the same formula. This replaces the
      "refund unused budget" guess at `:7571`.
    - `swap` and `crossbook`: unchanged. Their "GUESS" notes stay, and they are out of scope.
+   **Q11 in §10 (owner, 2026-10-14: the backer pays up front, before the event).** The formula
+   above does not change; what the figures mean does.
+   - **`prepaid` is the normal case, not an optional credit.** `investment` (which includes the
+     markup) is what the backer pays before the event, so a normal agreement has
+     `prepaid = investment` and `owed = grossReturn`. At settlement the player owes the backer only
+     their share of the return. Phase 3 should default `prepaid` to the computed `investment` for
+     every non-swap agreement and let the owner lower it per agreement when a backer has not yet
+     paid. The unpaid remainder `investment − prepaid` then stays a debt of the backer, and the
+     formula already nets it.
+   - **The markup is in the up-front payment.** The backer pays `pct × buy-in × markup`; the player
+     keeps the `(markup − 1)` part. The sign fix stands: the markup is the backer's cost, never
+     handed back. The example becomes: 10% of $1,000 at 1.2 with no cash. The backer prepaid
+     $120, `owed = 0 − (120 − 120) = 0`, and the backer's loss of $120 is already settled.
+   - **An event not played refunds the prepayment.** `investment = 0` and `prepaid > 0` give
+     `owed = grossReturn + prepaid`, which is positive and is paid back to the backer. The sheet
+     says "Refund".
+   - **`profit_share_only`** has no up-front payment (`investment` is 0), so `prepaid` stays 0.
+     **`budget_capped`** prepays up to the cap.
+   - **Makeup** (item 6) now arises only from an unpaid remainder, because a fully prepaid losing
+     series has `owed = 0`.
+   - **Open for Phase 3:** whether the up-front receipt itself posts to the ledger (an `income`
+     transaction in `staking`, or a `settlement` adjustment). Nothing in this spec books it; item 7
+     books only the final payment.
 6. **Makeup without the double count.**
    - **Migration.** For an agreement in an unsettled series, `makeup_opening = makeup_balance`. For
      one in a settled series, `makeup_closing = makeup_balance` goes onto its settlement row, and
@@ -1246,7 +1371,7 @@ backer is told anything twice.
 | 3 | **Soak the copy** (a few days, the owner keeps using the dashboard). Nights logged here as well are what the delta's review catches. | nothing to do | as step 2 |
 | 4 | **Freeze dashboard money writes:** `MONEY_WRITES=frozen` on the dashboard (restart, about 1 minute). | a PWA save shows the banner; MCP commit refuses; notify returns 410 | `MONEY_WRITES=open` |
 | 5 | **Delta pull** on futurega.me: fetch → review the new nights, changes and deletions → commit. | the reconciliation against the frozen dashboard: fund within its rounding remainder, roll explained | Undo the delta run (only its rows); then step 4's rollback |
-| 6 | **Posting on:** `PUT /api/bankrolls/money/cutover { posting:'on', postingSince: today, cutover:'live' }`. Roster sync stands down (`cutover = live`). Standing agreements' `effective_from` = today. | log a test result in the app, see the cut preview, save, see the event on a backer page, then delete it and see "Removed"; the sweep delivered both (check the log, not a backer's phone: use a demo backer created for the test and ended after) | `{ posting:'off', cutover:'imported' }`; every event posted since is listed by `GET /api/staking/standing/:id/events?source=ledger&since=<date>` (per agreement) for review |
+| 6 | **Posting on:** `PUT /api/bankrolls/money/cutover { posting:'on', postingSince: today, cutover:'live' }`. Roster sync stands down (`cutover = live`). Standing agreements' `effective_from` = today. *(§1.1 Q1: this enables the Notify action; it does not post on save.)* | log a test result in the app, see the cut preview, save (**nothing posts**), tap Notify, see the event on a backer page, then edit the result and see the page update with no push, then delete it and see it leave the page (check the log, not a backer's phone: use a demo backer created for the test and ended after) | `{ posting:'off', cutover:'imported' }`; every event posted since is listed by `GET /api/staking/standing/:id/events?source=ledger&since=<date>` (per agreement) for review |
 | 7 | **Switch the dashboard's reads:** `MONEY_SOURCE=scheduler` (restart). | `/api/dashboard/:token/summary` roll and fund equal `/api/owner/money`; widget and Cockpit show them; MCP `get_bankroll` matches; MCP `log_session` preview (no commit) shows the cut | `MONEY_SOURCE=dashboard` and `MONEY_WRITES=open`; nights logged on futurega.me since step 6 are listed by `/api/owner/money` (`since`) for re-entry in the dashboard, and their shares stay posted (they are true); do not re-notify those nights from the dashboard |
 | 8 | **Soak** (two weeks). Seams 1 and 3 exist but are idle: notify returns 410, roster sync no-ops. | weekly digest goes out from SQL; no `[roster]` writes in the logs; `freshness.money.ok` stays true | as step 7 |
 | 9 | **Retire** (Phase 13): seams 1 and 3, the export endpoint, the dashboard's money code, this app's `console_records`, the legacy backer-token routes. | both test suites; the native contract test; a backer page from each source of §7.1 | redeploy the tagged pre-retire commits of both repos (tag them `pre-money-retire` before merging Phase 13) |
@@ -1292,7 +1417,8 @@ Nothing is double-counted at any step:
   > "Money lives here; the dashboard's health, training and plan features do not. Owner money
   > routes are `/api/owner/*` (ledger token) and the bankroll/staking trees (admin JWT). Do not
   > re-add `/console/*` routes, the dashboard's sync protocol or a second copy of the share math."
-  > Add: "Standing shares post on save; a result write path that skips `syncSharesFor` leaves a
+  > Add: "A standing share is created only by the owner's Notify tap (owner, 2026-10-14). Every
+  > result write path must follow a posted share (`syncSharesFor`); one that skips it leaves a
   > backer's page wrong."
 
 ### 14.2 wsop-console
@@ -1329,20 +1455,107 @@ judgment about money, posting or layout. The model policy (handoff, 2026-10-14) 
 | Phase | Repo | Scope | Depends | Tier |
 |---|---|---|---|---|
 | **0** | — | Owner: Render snapshots, `LEDGER_TOKEN` on both services, answers to §17 (defaults otherwise) | — | owner |
-| **1** | sched | Migration `money-merge-2026-10` (§4); `lib/staking/standing.js` + `lib/staking/classify.js` with ported tests; `MOVE_KINDS` and labels; `equipment`/`fees` categories (server, client, tax rules); `affects_balance` in the transactions source and Expenses list; `time_known` in reports; account deletion | — | Sonnet |
+| **1** | sched | **Built** (see "Phase 1: as built" below). Migration `money-merge-2026-10` (§4); `lib/staking/standing.js` + `lib/staking/classify.js` with ported tests; `MOVE_KINDS` and labels; `equipment`/`fees` categories (server, client, tax rules); `affects_balance` in the transactions source and Expenses list; `time_known` in reports; account deletion | — | Sonnet |
 | **2** | sched | Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
-| **3** | sched | Settlement fixes (§10) + StakingView fields | 1 | **Opus** |
+| **3** | sched | Settlement fixes (§10) + StakingView fields. Owner Q11: the backer pays up front, so `prepaid` is the normal case ("Q11 in §10") | 1 | **Opus** |
 | **4** | WC | `GET /api/money-export` + `checkSharedToken` + tests | — | Sonnet |
 | **5** | sched | Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
 | **6** | sched | Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
-| **7** | sched | Standing shares live: `syncSharesFor` in every write path (§6.5), exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
-| **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" line on the result and cash forms; guard steps | 7 | Sonnet |
+| **7** | sched | Standing shares live, to §1.1: the **Notify action** creates a share (Q1: not on save); `syncSharesFor` in every write path only **follows or voids** a posted share (§6.5), silently (Q2); the overlap `ask` (Q7) and where its answer is stored; exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
+| **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview; the game list is `classify.js` `GAMES`, Q8), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" preview line on the result and cash forms and the Notify sheet (with the Q7 ask); guard steps | 7 | Sonnet |
 | **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
 | **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
 | **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
 | **12** | both | Cutover (§13 steps 2-8), run by the lead with the owner | 1-11 | **Opus** + owner |
 | **13** | both | Retire (§12.2, §7.3, §7.4) and CLAUDE.md / docs (§14), after a two-week soak; tag `pre-money-retire` first | 12 | Sonnet |
 | **14** | sched | *(optional, §17 Q10)* Standing payouts: `standing_payments` (id, agreement_id, amount_cents signed, paid_on, note), each writing a `settlement` adjustment (`settlement_ref 'sp:<id>'`); feed `paidCents`, running total = shares + opening − payouts | 7, 8 | Sonnet |
+
+### Phase 1: as built (2026-10-14, branch `feat/money-merge`)
+
+Built to the spec and to the owner's answers in §1.1. No route, no UI beyond two text changes, no
+import, nothing posted to a backer page.
+
+**What exists**
+- **The migration.** `lib/money-merge.js` (`TABLES`, `COLUMNS`, `INDEXES`, `migrate`), registered in
+  `server.js` `dataMigrations` as `money-merge-2026-10` after `bankroll-transactions-2026-10`.
+  - Eight tables and 32 columns, as §4.1 and §4.2 draw them.
+  - Additive and idempotent: `CREATE … IF NOT EXISTS`, and a column is added only when
+    `PRAGMA table_info` does not list it.
+  - **All or nothing**: one `SAVEPOINT`. The `dataMigrations` runner swallows a throw and retries at
+    the next boot, and the next migration's `saveDatabase()` would otherwise save a half-applied
+    schema.
+  - The one existing-row write is the one §4.2 names: `backer_events` rows that exist when the
+    columns arrive get `notified_share_cents = share_cents` and `notified_at = ts`. That runs only
+    in the run that adds the columns.
+- **Classify.** `lib/staking/classify.js`: `formatOf`, `GAMES` (§6.3, rewritten for Q8),
+  `ONLINE_ROOM`, `classifyTournament`, `classifyCash`, and `classifyResult(db, userId, ref)`, which
+  reads the row and its `session_extras`.
+- **Standing share math.** `lib/staking/standing.js`: `matchPct`, `matchStake`, `backerShare`,
+  `cutsForSession`, `shareCents` (exact), the two net formulas, `usdCents`, `resultCuts` (windows,
+  exclusions, the Q7 `ask`), the readers `loadAgreements`, `loadExclusions`, `seriesBackerIds`, and
+  the ported helpers `sessionGameLabel`, `deliveryChannels`, `newToken`.
+- **The constants of §4.3.**
+  - `MOVE_KINDS` and the adjustment labels gain `correction` and `settlement`, on the server and in
+    the client mirror (`vite-app/src/utils/bankroll-ledger.js`, `Bankrolls.jsx`).
+  - `equipment` and `fees`: the server list, the client list, the tax rules (100%, `Sch. C`) and the
+    labels in the ledger source, the reports and the tax report.
+  - `lib/ledger-sources/transactions.js` skips `affects_balance = 0`. `GET /api/bankrolls/transactions`
+    returns `affects_balance`, and the Expenses list prefixes such a row "Paid outside the roll".
+    The tax report reads that list, so it still counts the row.
+  - `lib/bankroll-reports.js` leaves `started_at` out of a cash fact when `time_known = 0`.
+  - Account deletion removes the standing tree (exclusions, stakes, agreements) before the
+    backers, and `session_extras`, `money_locations`, `money_settings`, `money_import_runs`. It
+    leaves `backer_events` and `backer_event_revisions` alone.
+- **Tests.** `npm run test:standing` (58 cases: the 14 ported ones, windows, the overlap ask,
+  exclusions, rounding, the 10,000-pair sweep, `formatOf` row by row) and `npm run test:money-merge`
+  (the migration against the real server on a live-like database, then `test:standing`). The
+  existing suites gained cases in `test/account-delete.test.js`, `test/bankroll-ledger.test.js`,
+  `test/bankroll-reports.test.js`, `test/ledger-source-transactions.test.js` and three
+  `vite-app` test files.
+- **Checked against a real older database.** Besides the live-like database `test:money-merge`
+  builds, the migration was run by hand on a file written by `origin/master`'s own server (not
+  committed). Booting master's code and booting the new code on copies of that one file left 39
+  of 40 tables identical in every pre-existing column. The 40th, `_applied_migrations`, gained one
+  row, `money-merge-2026-10`. A second boot applied nothing.
+
+**Where it differs from the spec, and why**
+1. **`formatOf`.** Rewritten for Q8 (one key per game). Also: the mixes are evaluated first,
+   because the spec's `plo/nlh` pattern could not be reached with Mixed last; the 2-7 games come
+   before NLH, because "NL 2-7 Single Draw" carries `nl`; the hi-lo marker `8` does not match the
+   front of a stake ("PLO 8/16"); limit hold'em is `other`.
+2. **`time_known` in reports.** The spec says the fact's `hour` is set to null. For a cash fact
+   `hour` is already always null: the client derives the hour from `started_at`
+   (`bankroll-filters.js` `prepareFacts`). So the fact's `started_at` is what is nulled. `hours`
+   (the length) is unchanged.
+3. **More of `backers.ts` ported than §6.4 names.** The 14 cases include four for
+   `sessionGameLabel`, `deliveryChannels` and `newToken`, so those are ported. `deliveryChannels`
+   follows §4.2 (an opt-in flag and an address). `newToken` draws without modulo bias.
+4. **Readers and `resultCuts`.** §6.4's test list names "the overlap rule" and "exclusions", which
+   need something to test, so the decision list of §6.5 exists as a pure function with three
+   SELECT-only readers. They post nothing and have no caller yet.
+5. **`valid_to` is inclusive**, like `effective_to` (§4.1 left it unsaid). A windowed stake needs a
+   dated result.
+6. **`betrivers`** is `bet ?rivers`, so "BetRivers" and "Bet Rivers" both match.
+7. **Missing columns are tolerated** in the ledger source, the transactions list and the reports
+   (`PRAGMA table_info`), so a database that has not run the migration still works. A failed
+   migration does not take the Expenses list down.
+8. **`notified_at`** is backfilled with the event's own `ts`; the spec says only "set".
+
+**Not built, on purpose**
+- A "Paid outside the roll" switch on `POST`/`PUT /api/bankrolls/transactions` (§17 Q6). Phase 5
+  writes the flag directly; the switch for new expenses is a later phase. An edit keeps the flag.
+- `bankroll-import.js` `refExists` learning the new tables (Phase 5), and any write to
+  `session_extras`, `standing_*` or `backer_event_revisions`.
+- A unique index for one fund per user (§5.8 says "enforced in code").
+
+**Traps for later phases**
+- **The sweep and the relay (Phase 2).** `server.js:754` inserts relayed events without
+  `notified_*`; they default to `source='dashboard'`. See the trap in §6.7.
+- **Where the Q7 answer lives (Phase 7).** `standing_exclusions` can record "series wins". Nothing
+  records "standing wins" or "both", so the owner would be asked again.
+- **Overlapping stake windows.** `matchStake` breaks a tie by larger pct, so two stakes for the same
+  game and channel that are both in force on one day give the larger. Phase 7's "from today" edit
+  must close the old stake the day before.
 
 Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
 parallel after Phase 2.
@@ -1357,13 +1570,13 @@ amount or `.db` copy, ever.
 
 | Phase | New / changed scripts | What they prove |
 |---|---|---|
-| 1 | `test:standing` (new: `node --test test/standing.test.js test/classify.test.js`), `test:transactions`, `test:bankroll-reports`, `test:tax-report`, `test:account` | the 14 ported `backers.test.ts` cases; dated stakes; rounding parity sweep (≤ 1 cent over 10,000 pairs); the `formatOf` table row by row, PLO8 before PLO, Big O before PLO8; `correction`/`settlement` move balances and never profit (summary `moved` vs `results`); `affects_balance 0` rows absent from the ledger and present in the Expenses list and tax report; `equipment`/`fees` deducted at 100%; `time_known 0` facts have `hour: null`; account deletion clears every new table and leaves `backer_events` |
+| 1 | `test:standing` (new: `node --test test/standing.test.js test/classify.test.js`), `test:money-merge` (new: the migration against the real server, then `test:standing`), `test:transactions`, `test:bankroll-reports`, `test:tax-report`, `test:account` | the 14 ported `backers.test.ts` cases; dated stakes; rounding parity sweep (≤ 1 cent over 10,000 pairs); the `formatOf` table row by row (one key per game, Q8), PLO8 before PLO, Big O before PLO8, the mixes first, 2-7 before NLH; the overlap returning both matches with `ask` (Q7); `correction`/`settlement` move balances and never profit (summary `moved` vs `results`); `affects_balance 0` rows absent from the ledger and present in the Expenses list and tax report; `equipment`/`fees` deducted at 100%; `time_known 0` facts have `hour: null`; account deletion clears every new table and leaves `backer_events` |
 | 2 | `test:backer-page` (extended), `test:backer-rotation` (new, real function), `test:gates` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
 | 3 | `test:staking-settlement` (new) | §10 point 8 |
 | 4 | WC `server/test/money-export.test.js` (new) | 404 without, with a wrong and with a path token; previous token accepted; deleted rows and the four local keys present; counts right; nothing logged but counts |
 | 5 | `test:money-import` (new; a stub dashboard on a second scratch port serves fixtures) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
 | 6 | `check:controls`, `check:clipping` (new steps), `vite-app` helper tests for the card model | every control on the grid with its label centred at 402 and 1440; no clipped glyph in a truncated 16g cell; the skipped count is 0 and the seed token is fresh |
-| 7 | `test:standing-live` (new) | each write path in §6.5 posts, revises or voids; live sessions never post; pre-`effective_from` never posts; overlap rule; exclusions; stake correction re-derives with preview; recalc of a dashboard event; drift lists a feed buy-in change and applies on request; posting off writes nothing; the sweep coalesces three edits into one delivery and survives a restart; a void deletes the event and keeps a revision |
+| 7 | `test:standing-live` (new) | Notify posts one result (§1.1 Q1: nothing posts on save); each write path in §6.5 revises or voids a posted share and tells nobody (Q2); the overlap `ask` (Q7); live sessions never post; pre-`effective_from` never posts; overlap rule; exclusions; stake correction re-derives with preview; recalc of a dashboard event; drift lists a feed buy-in change and applies on request; posting off writes nothing; the sweep coalesces three edits into one delivery and survives a restart; a void deletes the event and keeps a revision |
 | 8 | `check:controls`, `check:clipping` (Standing steps), helper tests | as Phase 6, for the Staking section and the form line |
 | 9 | `test:owner-api` (new; ported `session-log` cases) | auth (404/503/previous token/rate limit); `/money` totals equal the ledger summary, `isWsopFund` by bankroll, extras present, live sessions absent; log preview writes nothing; commit writes once; same facts twice update one row; an imported `chat-` row is updated, not duplicated; kind change 409; backer cuts in the preview; deep-link routes open the right view (`vite-app` helper test) |
 | 10 | `test:bankrolls` (extended), guards | target and progress from the fund bankroll; locations total and drift; set-aside line |
@@ -1374,24 +1587,28 @@ amount or `.db` copy, ever.
 
 ---
 
-## 17. Owner questions, each with the default building proceeds on
+## 17. Owner questions: the defaults, and the owner's answers (2026-10-14)
 
-| # | Question | Default (and why) |
-|---|---|---|
-| Q1 | Post a backer's share **when a result is saved**, or keep a "Notify" tap? | **On save**, with the cut shown on the form before saving and a per-result "not staked" switch. The tap is how the MCP path and any forgotten tap left nights unposted (§2.2 point 2). |
-| Q2 | When a result is corrected, tell the backer? | **Push only** ("Corrected: …, was +$Y"), mark it on the page and in the digest; no SMS (cost, noise). |
-| Q3 | Opening balance: one computed deposit so the roll at the start of the dashboard's first day equals its starting roll? | **Yes**, shown and editable in the review (§5.8). |
-| Q4 | What is "the roll" on the widget and Today? | **Every non-archived bankroll except the WSOP fund** (the dashboard's meaning); a bankroll can be marked "not in the roll". |
-| Q5 | WSOP fund target? | **$65,000 by 2027-05-03**, the figure the PWA shows; the 50,000 server default was the drift. |
-| Q6 | Imported dashboard expenses: do they lower the roll? | **No**, as in the dashboard (they were never in its roll); they still count in the tax report. New expenses logged here keep today's behaviour (they do lower the balance), with a "Paid outside the roll" switch. |
-| Q7 | A backer with a standing stake and a series agreement on the same tournament: both shares? | **No: the series agreement wins** for that tournament (most specific wins). |
-| Q8 | Which games count as a backer's "PLO", "PLO8", "Mixed"…? | **The §6.3 table**: 5- and 6-card PLO count as PLO; PLO hi-lo (incl. PLO6 8/b) as PLO8; Big O on its own; HORSE / 8-game / dealer's choice as Mixed. Any result can be overridden. |
-| Q9 | Backers deleted in the dashboard whose pages still work: keep the pages? | **Keep the page and its history; end the agreement** (no new shares, no digest). |
-| Q10 | Record payouts to standing backers (so their page's running total drops when paid)? | **Yes, as Phase 14** after cutover; nothing before it depends on it. |
-| Q11 | Series settlements: does a backer pay for their piece up front or at settlement? | **At settlement** (netted), with an optional "prepaid" figure per agreement; the markup is paid by the backer (fixes the sign bug, §10). |
-| Q12 | A cash session's share: of the net after tips and session expenses, or cash-out minus buy-in? | **After tips and expenses**: the result the bankroll records. Imported sessions have neither, so history is unaffected. |
-| Q13 | Do Trends, Review and Settings stay on the dashboard? | **Yes**; they read the money feed. The tab bar gains Money ↗. |
-| Q14 | Only if `backer_tokens` has rows: keep those legacy links? | **Keep them read-only, stop minting**, and decide per link. |
+The owner has answered all fourteen (§1.1). **The last column is final.** The middle column is what
+the spec was first written to, kept so a reader can see what changed. Five rows differ: Q1, Q2, Q7,
+Q8 and Q11.
+
+| # | Question | Default the spec was written to | Owner's answer (final) |
+|---|---|---|---|
+| Q1 | Post a backer's share **when a result is saved**, or keep a "Notify" tap? | On save, with the cut shown on the form before saving and a per-result "not staked" switch. | **Differs. Keep a manual Notify tap.** Shares do not post on save; a share posts only when the owner taps Notify for a result. The engines stay pure; the trigger is a later phase. |
+| Q2 | When a result is corrected, tell the backer? | Push only ("Corrected: …, was +$Y"), mark it on the page and in the digest; no SMS. | **Differs. Nothing.** The backer's page just updates: no push, no SMS, no mark. |
+| Q3 | Opening balance: one computed deposit so the roll at the start of the dashboard's first day equals its starting roll? | **Yes**, shown and editable in the review (§5.8). | Default stands. |
+| Q4 | What is "the roll" on the widget and Today? | **Every non-archived bankroll except the WSOP fund** (the dashboard's meaning); a bankroll can be marked "not in the roll". | Default stands. |
+| Q5 | WSOP fund target? | **$65,000 by 2027-05-03**, the figure the PWA shows; the 50,000 server default was the drift. | Default stands. |
+| Q6 | Imported dashboard expenses: do they lower the roll? | **No**, as in the dashboard (they were never in its roll); they still count in the tax report. New expenses logged here keep today's behaviour (they do lower the balance), with a "Paid outside the roll" switch. | Default stands. |
+| Q7 | A backer with a standing stake and a series agreement on the same tournament: both shares? | No: the series agreement wins for that tournament (most specific wins). | **Differs. Ask the owner each time.** The engine returns both matches with an `ask` flag and does not choose. |
+| Q8 | Which games count as a backer's "PLO", "PLO8", "Mixed"…? | The §6.3 families: 5- and 6-card PLO as PLO; PLO hi-lo (incl. PLO6 8/b) as PLO8; Big O on its own; HORSE / 8-game / dealer's choice as Mixed. | **Differs. Every game on its own.** The family table is dropped: a stake matches only that exact game, or `all`. PLO5 is not PLO; PLO6 8/b is not PLO8. |
+| Q9 | Backers deleted in the dashboard whose pages still work: keep the pages? | **Keep the page and its history; end the agreement** (no new shares, no digest). | Default stands. |
+| Q10 | Record payouts to standing backers (so their page's running total drops when paid)? | **Yes, as Phase 14** after cutover; nothing before it depends on it. | Default stands. |
+| Q11 | Series settlements: does a backer pay for their piece up front or at settlement? | At settlement (netted), with an optional "prepaid" figure per agreement; the markup is paid by the backer (fixes the sign bug, §10). | **Differs. Up front, before the event.** Settlement is Phase 3; see "Q11 in §10": `prepaid` becomes the normal case and includes the markup. |
+| Q12 | A cash session's share: of the net after tips and session expenses, or cash-out minus buy-in? | **After tips and expenses**: the result the bankroll records. Imported sessions have neither, so history is unaffected. | Default stands. |
+| Q13 | Do Trends, Review and Settings stay on the dashboard? | **Yes**; they read the money feed. The tab bar gains Money ↗. | Default stands. |
+| Q14 | Only if `backer_tokens` has rows: keep those legacy links? | **Keep them read-only, stop minting**, and decide per link. | Default stands. |
 
 ---
 
