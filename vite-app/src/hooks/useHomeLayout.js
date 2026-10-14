@@ -11,7 +11,9 @@
 // dirty. A failed PUT stays dirty and is retried on 'online', on the next load and on the next
 // change. flush() sends a pending PUT now; on pagehide it goes with keepalive. Back in the
 // foreground after 5 minutes with nothing dirty, it asks the server again; another tab's change
-// arrives by the storage event. Every localStorage access is guarded (private mode: memory and the
+// arrives by the storage event. An answer is never allowed to undo a change made after its request
+// went out (pull() compares versionRef): a slow load GET that comes back after the user edited and
+// saved is dropped. Every localStorage access is guarded (private mode: memory and the
 // server only). Guests: the default layout, no storage, no requests. The key is per user, so a
 // sign-out needs nothing and one account never sees another's layout.
 //
@@ -107,6 +109,7 @@ export default function useHomeLayout({ token, isGuest, userId }) {
     const k = keyRef.current, t = tokenRef.current;
     if (!k || !t) return;
     lastGetRef.current = Date.now();
+    const ver = versionRef.current;
     let server;
     try {
       const r = await fetch(API_URL + ENDPOINT, { headers: { Authorization: `Bearer ${t}` } });
@@ -115,6 +118,11 @@ export default function useHomeLayout({ token, isGuest, userId }) {
       server = j && j.layout !== undefined ? j.layout : null;
     } catch { server = undefined; }
     if (keyRef.current !== k) return;
+    // The layout changed while this GET was on its way and that change is already saved (or came
+    // from another tab): the answer was read before it, so it is older than what this device holds
+    // and would put the home, the sheet and the cache back. A change still unsaved falls through:
+    // reconcile keeps it and pushes it.
+    if (versionRef.current !== ver && !dirtyRef.current) return;
     const { doc, push: mustPush } = reconcile({ local: { layout: layoutRef.current, dirty: dirtyRef.current }, server });
     if (server === undefined) return; // offline or failed: the local copy stands
     if (mustPush) { push(); return; }
