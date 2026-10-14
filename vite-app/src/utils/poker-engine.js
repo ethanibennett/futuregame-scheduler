@@ -49,7 +49,7 @@ export function combinations(arr, k) {
    - three of a kind versus a straight is the one rule rooms disagree on. The setting here is the
      brief's: only the flush moves, so a straight still beats three of a kind, which is also what
      the odds say (6,120 straights against 16,128 sets). A room that ranks three of a kind higher
-     (some Asian and Triton games do) is one flag: SHORT_DECK_TRIPS_BEAT_STRAIGHT.
+     is one flag away: SHORT_DECK_TRIPS_BEAT_STRAIGHT (the owner's call, not settled here).
    evalHigh5, bestHighHand and friends take these as an optional `rules` argument, so the
    52-card game is untouched when it is left out. */
 export const SHORT_DECK_TRIPS_BEAT_STRAIGHT = false;
@@ -210,7 +210,7 @@ export function bestHighHand(cards, rules) {
 }
 
 /* Omaha plays EXACTLY two hole cards and three board cards, whatever the hole count: four in
-   PLO and Courchevel-less games, five in PLO5 and Big O, six in PLO6 and PLO6 8/b. The hole is
+   PLO and PLO8, five in PLO5 and Big O, six in PLO6 and PLO6 8/b. The hole is
    searched two at a time (6 cards = 15 pairs against 10 board triples, 150 hands), never as a
    seven- or eleven-card pool. In the hi-lo games the high and the low are searched separately, so
    they may use different pairs. */
