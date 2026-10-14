@@ -501,11 +501,13 @@ function scan(rootSel) {
   // First-run setup (components/OnboardingWizard.jsx), re-opened as the location menu's "Run setup
   // again" does: step 1 (and with city results, where the scratch server reaches Nominatim), step
   // 2 with Yes, step 3. Its tiles truncate their two lines with an ellipsis. Nothing is finished.
+  // Generous waits: a busy box draws a 1440 x 3 WebKit page at 2-3 frames a second, and a click
+  // waits for the button to be stable across frames.
   try {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
-    await p.locator('.modal-content.ob').waitFor({ timeout: 4000 });
+    await p.locator('.modal-content.ob').waitFor({ timeout: 15000 });
     await p.waitForTimeout(600);
     const SETUP = '.modal-content.ob';
     await run('first-run setup step 1', SETUP);
@@ -514,12 +516,12 @@ function scan(rootSel) {
     for (let i = 0; i < 10 && !(await p.locator('.ob-results .ob-row').count()); i++) await p.waitForTimeout(300);
     if (await p.locator('.ob-results .ob-row').count()) await run('first-run setup step 1 (search)', SETUP);
     else console.log('  (first-run setup search results skipped: no results from the geocoder)');
-    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 4000 });
+    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 15000 });
     await p.waitForTimeout(600);
-    await p.locator('.ob-tile:has-text("Yes")').click({ timeout: 4000 });
+    await p.locator('.ob-tile:has-text("Yes")').click({ timeout: 15000 });
     await p.waitForTimeout(400);
     await run('first-run setup step 2', SETUP);
-    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 4000 });
+    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 15000 });
     await p.waitForTimeout(600);
     await run('first-run setup step 3', SETUP);
   } catch (e) { console.log(`  (first-run setup skipped: ${e.message.split('\n')[0]})`); }
