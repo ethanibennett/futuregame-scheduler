@@ -41,14 +41,35 @@ export function combinations(arr, k) {
   return res;
 }
 
+/* Short Deck (6+ Hold'em) plays a 36-card deck, the twos to fives taken out, and that moves
+   three things in the ranking of a five-card hand:
+   - a flush beats a full house (it is the rarer hand with nine ranks to a suit: 480 flushes
+     against 1,728 full houses);
+   - the ace plays low in A-6-7-8-9, the lowest straight (there is no A-2-3-4-5 without the twos);
+   - three of a kind versus a straight is the one rule rooms disagree on. The setting here is the
+     brief's: only the flush moves, so a straight still beats three of a kind, which is also what
+     the odds say (6,120 straights against 16,128 sets). A room that ranks three of a kind higher
+     (some Asian and Triton games do) is one flag: SHORT_DECK_TRIPS_BEAT_STRAIGHT.
+   evalHigh5, bestHighHand and friends take these as an optional `rules` argument, so the
+   52-card game is untouched when it is left out. */
+export const SHORT_DECK_TRIPS_BEAT_STRAIGHT = false;
+export const SHORT_DECK_RULES = Object.freeze({
+  lowStraight: true,
+  flushBeatsFullHouse: true,
+  tripsBeatStraight: SHORT_DECK_TRIPS_BEAT_STRAIGHT,
+});
+
 // Score a 5-card high hand. Returns { cat, score, name }
-export function evalHigh5(cards) {
+export function evalHigh5(cards, rules) {
   const vals = cards.map(c => RANK_VAL[c.rank]).sort((a, b) => b - a);
   const suits = cards.map(c => c.suit);
   const isFlush = suits.every(s => s === suits[0]);
   let isStraight = false, straightHigh = 0;
   if (vals[0] - vals[4] === 4 && new Set(vals).size === 5) { isStraight = true; straightHigh = vals[0]; }
-  if (!isStraight && vals[0] === 14 && vals[1] === 5 && vals[2] === 4 && vals[3] === 3 && vals[4] === 2) {
+  // The ace plays low in the lowest straight: A-5-4-3-2 in a 52-card deck, A-9-8-7-6 in a short one.
+  if (!isStraight && rules && rules.lowStraight) {
+    if (vals[0] === 14 && vals[1] === 9 && vals[2] === 8 && vals[3] === 7 && vals[4] === 6) { isStraight = true; straightHigh = 9; }
+  } else if (!isStraight && vals[0] === 14 && vals[1] === 5 && vals[2] === 4 && vals[3] === 3 && vals[4] === 2) {
     isStraight = true; straightHigh = 5;
   }
   const freq = {};
@@ -102,6 +123,12 @@ export function evalHigh5(cards) {
     cat = 1; kickers = vals;
     name = RANK_WORD[vals[0]] + '-high';
     shortName = RANK_SHORT[vals[0]] + '-high';
+  }
+  // A rule set that reorders the categories renumbers them here, after the hand is named, so the
+  // names above stay the plain ones and only the score (and `cat`) change place.
+  if (rules) {
+    if (rules.flushBeatsFullHouse) { if (cat === 6) cat = 7; else if (cat === 7) cat = 6; }
+    if (rules.tripsBeatStraight) { if (cat === 5) cat = 4; else if (cat === 4) cat = 5; }
   }
   const score = cat * Math.pow(P, 5) + kickers[0] * Math.pow(P, 4) + kickers[1] * Math.pow(P, 3) + kickers[2] * Math.pow(P, 2) + kickers[3] * P + (kickers[4] || 0);
   return { cat, score, name, shortName };
@@ -174,14 +201,19 @@ export function evalBadugi(cards) {
 }
 
 // Best-hand selectors
-export function bestHighHand(cards) {
-  if (cards.length === 5) return evalHigh5(cards);
+export function bestHighHand(cards, rules) {
+  if (cards.length === 5) return evalHigh5(cards, rules);
   if (cards.length < 5) return null;
   let best = null;
-  for (const c of combinations(cards, 5)) { const ev = evalHigh5(c); if (!best || ev.score > best.score) best = ev; }
+  for (const c of combinations(cards, 5)) { const ev = evalHigh5(c, rules); if (!best || ev.score > best.score) best = ev; }
   return best;
 }
 
+/* Omaha plays EXACTLY two hole cards and three board cards, whatever the hole count: four in
+   PLO and Courchevel-less games, five in PLO5 and Big O, six in PLO6 and PLO6 8/b. The hole is
+   searched two at a time (6 cards = 15 pairs against 10 board triples, 150 hands), never as a
+   seven- or eleven-card pool. In the hi-lo games the high and the low are searched separately, so
+   they may use different pairs. */
 export function bestOmahaHigh(hole, board) {
   if (hole.length < 2 || board.length < 3) return null;
   let best = null;
@@ -200,6 +232,23 @@ export function bestOmahaLow(hole, board) {
     if (ev.qualified && (!best || ev.score < best.score)) best = ev;
   }
   return best;
+}
+
+/* The high hand for a game's eval config (GAME_EVAL): Omaha plays exactly two hole cards, Short
+   Deck its own rankings, everything else the best five of every card. `board` may be empty. */
+export function bestHighFor(cfg, hole, board) {
+  if (cfg.method === 'omaha') return bestOmahaHigh(hole, board || []);
+  const all = board && board.length ? hole.concat(board) : hole;
+  return bestHighHand(all, cfg.method === 'short' ? SHORT_DECK_RULES : undefined);
+}
+
+/* The 8-or-better low of a hi-lo game: Omaha again plays exactly two hole cards. Returns null, or
+   a low with `qualified` true (a low that does not qualify is never returned by the Omaha search
+   and is { qualified: false } from the standard one). */
+export function bestLow8For(cfg, hole, board) {
+  if (cfg.method === 'omaha') return bestOmahaLow(hole, board || []);
+  const all = board && board.length ? hole.concat(board) : hole;
+  return bestLowA5Hand(all, true);
 }
 
 export function bestLowA5Hand(cards, eightOrBetter) {
@@ -240,8 +289,11 @@ export const GAME_EVAL = {
   // Omaha variants (omaha method works for any N >= 2 hole cards)
   'PLO5':{type:'high',method:'omaha'},
   'PLO6':{type:'high',method:'omaha'},
-  'Big Easy':{type:'hilo',method:'omaha'},
+  'PLO6 8/b':{type:'hilo',method:'omaha'},   // six hole cards, hi-lo with the 8-or-better low
+  'NLO8':{type:'hilo',method:'omaha'},       // four hole cards, hi-lo, no-limit betting
   'Ultimate Big O':{type:'hilo',method:'omaha'},
+  // 36-card deck: a flush beats a full house, A-6-7-8-9 is the lowest straight (SHORT_DECK_RULES)
+  'Short Deck':{type:'high',method:'short'},
   // Community-card Hi games (standard 5-best from all cards)
   'Crazy Pineapple':{type:'high',method:'standard'},
   'Very Crazy Pineapple':{type:'high',method:'standard'},
@@ -266,10 +318,10 @@ export function evaluateShowdown(gameType, playerHands, boardCards) {
     var all = boardCards.length ? cards.concat(boardCards) : cards;
     var hi = null, lo = null, bad = null;
     if (cfg.type === 'high' || cfg.type === 'hilo') {
-      hi = cfg.method === 'omaha' ? bestOmahaHigh(cards, boardCards) : bestHighHand(all);
+      hi = bestHighFor(cfg, cards, boardCards);
     }
     if (cfg.type === 'hilo') {
-      lo = cfg.method === 'omaha' ? bestOmahaLow(cards, boardCards) : bestLowA5Hand(all, true);
+      lo = bestLow8For(cfg, cards, boardCards);
     }
     if (cfg.type === 'low') {
       lo = cfg.lowType === 'a5' ? bestLowA5Hand(all, false) : bestLow27Hand(all);
@@ -495,22 +547,12 @@ export function evaluateHand(game, heroCards, opponentCards, boardCards) {
   let hHi = null, oHi = null, hLo = null, oLo = null, hBad = null, oBad = null;
 
   if (cfg.type === 'high' || cfg.type === 'hilo') {
-    if (cfg.method === 'omaha') {
-      hHi = bestOmahaHigh(heroCards, boardCards);
-      oHi = bestOmahaHigh(opponentCards, boardCards);
-    } else {
-      hHi = bestHighHand(heroAll);
-      oHi = bestHighHand(oppAll);
-    }
+    hHi = bestHighFor(cfg, heroCards, boardCards);
+    oHi = bestHighFor(cfg, opponentCards, boardCards);
   }
   if (cfg.type === 'hilo') {
-    if (cfg.method === 'omaha') {
-      hLo = bestOmahaLow(heroCards, boardCards);
-      oLo = bestOmahaLow(opponentCards, boardCards);
-    } else {
-      hLo = bestLowA5Hand(heroAll, true);
-      oLo = bestLowA5Hand(oppAll, true);
-    }
+    hLo = bestLow8For(cfg, heroCards, boardCards);
+    oLo = bestLow8For(cfg, opponentCards, boardCards);
   }
   if (cfg.type === 'low') {
     if (cfg.lowType === 'a5') { hLo = bestLowA5Hand(heroAll, false); oLo = bestLowA5Hand(oppAll, false); }
