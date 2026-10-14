@@ -189,6 +189,11 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
   `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
   into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
+  The page shows the player's **bb/hr** (BB/hr for limit games; owner, 2026-10-14) in the total card and
+  on each session line, worked out in the browser from the feed's events with `utils/bb-hr.js` — the feed
+  itself gained nothing, and the parity tests still compare it byte for byte. The owner's Backers tab
+  shows the same figure from `played` on `GET /api/staking/standing/backers`. Definition, units and
+  owner questions: `docs/bankrolls.md` "bb/hr".
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
     (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has

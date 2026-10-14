@@ -26,6 +26,8 @@
 // though its UTC start is Jan 1). Day labels are built from the Y-M-D parts, never from
 // new Date('YYYY-MM-DD'), which is UTC midnight and the previous day west of Greenwich.
 
+import { sessionBbHr } from './bb-hr.js';
+
 export const CHUNK = 150;                       // rows rendered before "Show more"
 export const SESSION_TYPES = [['all', 'All'], ['tournament', 'Tournaments'], ['cash', 'Cash']];
 export const MINUS = '−';                  // the app's minus sign (utils.js MINUS)
@@ -310,14 +312,18 @@ export function tournamentFigures(row) {
 /**
  * A cash session's figures for the detail, in the SESSION's currency: buy-in (total, rebuys
  * included) and their count, cash-out, tips, expenses, net, hours (end - start; 0 for a session
- * logged with no length) and per hour (null under a quarter hour, as the Cash view).
+ * logged with no length), per hour (null under a quarter hour, as the Cash view) and bb (its
+ * bb/hr, or BB/hr for a limit game, in blinds: the net over the big blind in the stakes).
  */
 export function cashFigures(row) {
   const f = row.fact || {};
   const s = row.session;
   if (!s) {
+    // No session in hand (its route failed): the fact's net in the session's OWN money is
+    // native_profit; `profit` is converted and cannot be divided by a blind written in the session's.
+    const bb = sessionBbHr({ game: f.game, stakes: f.stakes, net: f.native_profit, hours: f.hours });
     return { currency: row.currency, partial: true, hours: Number(f.hours) || 0, net: Number(f.profit) || 0,
-      hourly: Number(f.hours) >= 0.25 ? (Number(f.profit) || 0) / Number(f.hours) : null, display: Number(f.profit) || 0,
+      hourly: Number(f.hours) >= 0.25 ? (Number(f.profit) || 0) / Number(f.hours) : null, bb, display: Number(f.profit) || 0,
       startedAt: f.started_at || null, endedAt: null, notes: '', tags: [], stakes: f.stakes || '', game: f.game || '', room: f.room || '' };
   }
   const ms = Date.parse(s.ended_at) - Date.parse(s.started_at);
@@ -328,6 +334,9 @@ export function cashFigures(row) {
   return {
     currency: row.currency, partial: false, buyIn, rebuys: Number(s.rebuys) || 0, cashOut, tips, expenses,
     result: cashOut - buyIn, net, hours, hourly: hours >= 0.25 ? net / hours : null,
+    // bb/hr of this one session (utils/bb-hr.js): { unit, rate, blinds, hours } or null (no readable
+    // big blind in the stakes, under a quarter hour, or no length).
+    bb: sessionBbHr({ game: s.game, stakes: s.stakes, net, hours }),
     startedAt: s.started_at, endedAt: s.ended_at, notes: s.notes || '', tags: Array.isArray(s.tags) ? s.tags : [],
     stakes: s.stakes || '', game: s.game || '', room: s.room || '',
     display: Number(f.profit) || 0,

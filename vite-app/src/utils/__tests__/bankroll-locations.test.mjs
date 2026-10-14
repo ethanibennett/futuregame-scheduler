@@ -8,7 +8,7 @@ import { prepareFacts } from '../bankroll-filters.js';
 import { buildReport } from '../bankroll-reports.js';
 import {
   buildLocations, sortLocations, locationsSummary, normaliseSort, compactMoney, fmtHours, fmtPct, fmtSignedPct, statItems,
-  metaLine, resultWhat, fmtDay, rowsPage, NO_ROOM, NO_ROOM_LABEL, MINUS, SORTS, FIRST_ROWS, PAGE_ROWS, WON_WORDS,
+  metaLine, resultWhat, fmtDay, rowsPage, bbItems, NO_ROOM, NO_ROOM_LABEL, MINUS, SORTS, FIRST_ROWS, PAGE_ROWS, WON_WORDS,
 } from '../bankroll-locations.js';
 import { sessionsTable } from '../bankroll-overview.js';
 import { segmentWidths, fitsDivided, revealScroll, keyStep, pageScroll, wheelToStrip } from '../tab-strip.js';
@@ -337,4 +337,53 @@ test('tab strip: a vertical wheel scrolls the strip sideways while it can move, 
   assert.equal(wheelToStrip({ deltaX: 40, deltaY: 10 }, at(0)), 0, 'a sideways swipe scrolls natively');
   assert.equal(wheelToStrip({ deltaY: 100, ctrlKey: true }, at(0)), 0, 'a pinch is not a scroll');
   assert.equal(wheelToStrip({ deltaY: 100 }, { scrollLeft: 0, viewWidth: 350, contentWidth: 350 }), 0, 'nothing to scroll');
+});
+
+// ── bb/hr on the cards (utils/bb-hr.js) ───────────────────────────────────────────────────────
+test('bb/hr: a cash room divides each session by its OWN big blind, the net in its own money', () => {
+  const facts = prepareFacts([
+    C(1, '2026-10-01', { room: 'Parx', profit: 500, native_profit: 500, hours: 4, stakes: '2/5', game: 'NLH' }),   // +100 bb
+    C(2, '2026-10-02', { room: 'Parx', profit: -200, native_profit: -200, hours: 2, stakes: '1/2', game: 'NLH' }), // -100 bb
+    C(3, '2026-10-03', { room: 'Parx', profit: 100, native_profit: 100, hours: 3, stakes: '', game: 'NLH' }),       // no blind: out of bb/hr, in $/h
+  ], { localHour });
+  const [loc] = buildLocations(facts);
+  assert.equal(loc.bbhr.BB, null);
+  assert.equal(loc.bbhr.bb.n, 2);
+  assert.ok(Math.abs(loc.bbhr.bb.rate - 0) < 1e-9, '(+100 - 100) bb over 6 h');
+  assert.equal(loc.hourly, 400 / 9, '$/h still counts all three');
+  assert.deepEqual(bbItems(loc).map((i) => [i.key, i.text, i.tone]), [['bb-bb', '0.0 bb/hr', 0]]);
+});
+
+test('bb/hr: a EUR room uses the native net, not the converted profit', () => {
+  const facts = prepareFacts([
+    // EUR 1/2, +EUR 200 in 4 h = +100 bb = 25 bb/hr. The display profit (USD, converted) would give another answer.
+    C(1, '2026-10-01', { room: 'Dublin', profit: 216, native_profit: 200, native_currency: 'EUR', hours: 4, stakes: '€1/€2', game: 'NLH' }),
+  ], { localHour });
+  const [loc] = buildLocations(facts);
+  assert.ok(Math.abs(loc.bbhr.bb.rate - 25) < 1e-9);
+  assert.deepEqual(bbItems(loc).map((i) => i.text), ['+25.0 bb/hr']);
+});
+
+test('bb/hr: limit games are in big bets and sit beside, never inside, the big blinds', () => {
+  const facts = prepareFacts([
+    C(1, '2026-10-01', { room: 'Parx', native_profit: 250, profit: 250, hours: 5, stakes: '2/5', game: 'NLH' }),  // +50 bb / 5 h
+    C(2, '2026-10-02', { room: 'Parx', native_profit: 160, profit: 160, hours: 4, stakes: '4/8', game: 'LHE' }),  // +20 BB / 4 h
+  ], { localHour });
+  const [loc] = buildLocations(facts);
+  assert.deepEqual(bbItems(loc).map((i) => [i.text, i.tone]), [['+10.0 bb/hr', 1], ['+5.0 BB/hr', 1]]);
+});
+
+test('bb/hr: tournaments never get one; a tournament-only room has no bbhr and no line; unreadable stakes draw no line', () => {
+  const [t] = buildLocations(prepareFacts([T(1, '2026-10-01', { room: 'Borgata', profit: 100 })], { localHour }));
+  assert.equal(t.bbhr, null);
+  assert.deepEqual(bbItems(t), []);
+  const [c] = buildLocations(prepareFacts([C(1, '2026-10-01', { room: 'Parx', profit: 100, native_profit: 100, stakes: 'NL200' })], { localHour }));
+  assert.deepEqual(c.bbhr, { bb: null, BB: null });
+  assert.deepEqual(bbItems(c), [], 'nothing qualifies: no line, and never a 0');
+  // A mixed room: the cash part only.
+  const [m] = buildLocations(prepareFacts([
+    T(1, '2026-10-01', { room: 'Borgata', profit: 100 }),
+    C(1, '2026-10-02', { room: 'Borgata', profit: 100, native_profit: 100, hours: 2, stakes: '1/2' }),
+  ], { localHour }));
+  assert.deepEqual(bbItems(m).map((i) => i.text), ['+25.0 bb/hr']);
 });

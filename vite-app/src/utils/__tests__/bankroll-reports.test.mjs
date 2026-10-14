@@ -232,3 +232,53 @@ test('bars: whole g, a zero line, proportional, at least 1g, never past an edge'
   const w20 = barLayout([7, -3, 2, -9, 11], 20);
   assert.ok(w20.bars.every((b) => b.start >= 0 && b.start + b.width <= 20));
 });
+
+// ── bb/hr beside $/h (utils/bb-hr.js) ─────────────────────────────────────────────────────────
+test('reports: a per-hour table carries bb/hr per row and in the total, each session over its own big blind', () => {
+  const facts = prepareFacts([
+    C(1, '2026-10-01', { room: 'Parx', game: 'NLH', stakes: '2/5', hours: 4, profit: 500, native_profit: 500 }),    // +100 bb
+    C(2, '2026-10-02', { room: 'Parx', game: 'NLH', stakes: '1/2', hours: 2, profit: -200, native_profit: -200 }),  // -100 bb
+    C(3, '2026-10-03', { room: 'Borgata', game: 'NLH', stakes: '2/5', hours: 5, profit: 250, native_profit: 250 }), // +50 bb
+  ], { localHour });
+  const room = buildReport(facts, 'room');
+  assert.equal(room.rateKind, 'hourly');
+  const parx = room.rows.find((r) => r.label === 'Parx'), borg = room.rows.find((r) => r.label === 'Borgata');
+  assert.ok(Math.abs(parx.bbhr.bb.rate - 0) < 1e-9 && parx.bbhr.bb.n === 2);
+  assert.ok(Math.abs(borg.bbhr.bb.rate - 10) < 1e-9);
+  assert.ok(Math.abs(room.total.bbhr.bb.rate - 50 / 11) < 1e-9, 'total: (+100 -100 +50) bb over 11 h');
+  assert.equal(room.total.bbhr.BB, null);
+  // By stakes the same hours: 2/5 is two sessions, 1/2 one.
+  const st = buildReport(facts, 'stakes');
+  assert.deepEqual(st.rows.map((r) => [r.label, r.bbhr.bb.n]), [['1/2', 1], ['2/5', 2]]);
+  assert.ok(Math.abs(st.rows[0].bbhr.bb.rate - -50) < 1e-9, '1/2: -100 bb in 2 h');
+  assert.ok(Math.abs(st.rows[1].bbhr.bb.rate - 150 / 9) < 1e-9, '2/5: +150 bb in 9 h');
+});
+
+test('reports: a row with no readable big blind has none (null, never 0); a limit row is in big bets, apart', () => {
+  const facts = prepareFacts([
+    C(1, '2026-10-01', { room: 'Parx', game: 'NLH', stakes: '', hours: 4, profit: 100, native_profit: 100 }),
+    C(2, '2026-10-02', { room: 'Borgata', game: 'LHE', stakes: '4/8', hours: 4, profit: 80, native_profit: 80 }),
+    C(3, '2026-10-03', { room: 'Borgata', game: 'NLH', stakes: '2/5', hours: 5, profit: 250, native_profit: 250 }),
+  ], { localHour });
+  const room = buildReport(facts, 'room');
+  const parx = room.rows.find((r) => r.label === 'Parx'), borg = room.rows.find((r) => r.label === 'Borgata');
+  assert.deepEqual(parx.bbhr, { bb: null, BB: null });
+  assert.ok(Math.abs(borg.bbhr.bb.rate - 10) < 1e-9, '+50 bb in 5 h');
+  assert.ok(Math.abs(borg.bbhr.BB.rate - 2.5) < 1e-9, '+10 BB in 4 h, apart from the bb');
+  assert.equal(buildReport(facts, 'game').rows.find((r) => r.label === 'LHE').bbhr.bb, null);
+});
+
+test('summaryStats: cash bb/hr over the filtered facts; null without cash', () => {
+  const facts = prepareFacts([
+    C(1, '2026-10-01', { game: 'NLH', stakes: '2/5', hours: 4, profit: 500, native_profit: 500 }),
+    T(1, '2026-10-02', { profit: 100 }),
+  ], { localHour });
+  const s = summaryStats(facts);
+  assert.ok(Math.abs(s.cash.bbhr.bb.rate - 25) < 1e-9);
+  assert.equal(summaryStats(prepareFacts([T(1, '2026-10-02', { profit: 100 })], { localHour })).cash.bbhr, null);
+});
+
+test('reports: the old shape (no native_profit) simply has no bb/hr', () => {
+  const facts = prepareFacts([C(1, '2026-10-01', { game: 'NLH', stakes: '2/5', hours: 4, profit: 500 })], { localHour });
+  assert.deepEqual(buildReport(facts, 'room').rows[0].bbhr, { bb: null, BB: null });
+});

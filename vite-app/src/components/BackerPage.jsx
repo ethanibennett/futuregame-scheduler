@@ -9,7 +9,7 @@ import { API_URL } from '../utils/api.js';
 import { VENUE_MAP, getVenueBrandColor } from '../utils/utils.js';
 import {
   summarize, groupByMonth, shareSeries, rangeOptions, stripFor, monthLabel, RANGE_NOUN,
-  fmtSignedCents, fmtHours, fmtDay, plural, tone,
+  fmtSignedCents, fmtHours, fmtDay, plural, tone, bbStats, eventBb,
 } from '../utils/backer-page.js';
 import './backer-page.css';
 
@@ -25,10 +25,11 @@ import './backer-page.css';
  *
  *   top bar     the wordmark, "your action with Ethan Bennett", the notifications pill (8r)
  *   hero        the name (display face) and the stakes summary
- *   total       running total, signed and toned, over sessions · hours · opening (a 12r card)
+ *   total       running total, signed and toned, over sessions · hours · the player's bb/hr (BB/hr for
+ *               limit games; computed here from the feed's events, utils/bb-hr.js) · opening (a 12r card)
  *   graph       the share over time (BackerChart), with 1M / 3M / YTD / All when history allows
  *   sessions    month breaks in the Schedule's date-break language, sticky, each session an event
- *               card: the room's strip, the game, the date and hours, the result and the share
+ *               card: the room's strip, the game, the date, hours and bb/hr, the result and the share
  *
  * Themes: there are no settings here, so the page follows the device (prefers-color-scheme,
  * prefers-contrast), set before first paint by index.html's head script and kept in step below.
@@ -140,6 +141,8 @@ function SessionCard({ e }) {
   const result = Number(e.sessionResultCents) || 0;
   const pct = Number(e.pct) || 0;
   const pctText = (Math.round(pct * 100) / 100).toString();
+  // The player's bb/hr for this session, when its game names a big blind (utils/bb-hr.js).
+  const bb = eventBb(e);
   return (
     <li className="bp-card">
       <div className={'bp-strip' + (strip.abbr ? '' : ' is-neutral')}
@@ -152,7 +155,10 @@ function SessionCard({ e }) {
           <span className={'an-cell bp-share ' + tone(share)}>{fmtSignedCents(share)}</span>
         </div>
         <div className="bp-card-row">
-          <span className="an-cell an-note an-clip">{fmtDay(e.date)} · {fmtHours(e.hours)}</span>
+          <span className="an-cell an-note an-clip">
+            {fmtDay(e.date)} · {fmtHours(e.hours)}
+            {bb && <>{' · '}<span className={'bp-bb ' + bb.tone}>{bb.text}</span></>}
+          </span>
           <span className="an-cell an-note an-num">{pctText}% of {fmtSignedCents(result)}</span>
         </div>
       </div>
@@ -242,7 +248,8 @@ export default function BackerPage({ token }) {
     const options = rangeOptions(events, today);
     const r = options.some(([k]) => k === range) ? range : 'all';
     const series = shareSeries(events, { base: sum.base, range: r, today });
-    return { events, sum, options, range: r, series, months: groupByMonth(events) };
+    // The player's bb/hr over the sessions the page holds (the newest 200), from the feed as it is.
+    return { events, sum, options, range: r, series, months: groupByMonth(events), bbs: bbStats(events) };
   }, [feed, range, today]);
 
   useEffect(() => {
@@ -262,7 +269,7 @@ export default function BackerPage({ token }) {
   } else if (!view) {
     body = <Skeleton />;
   } else {
-    const { events, sum, options, series, months } = view;
+    const { events, sum, options, series, months, bbs } = view;
     const name = feed.name || 'Your action';
     const baseNote = view.range !== 'all' ? 'start' : !sum.complete ? 'carried in' : sum.opening ? 'opening' : 'start';
     const label = view.range === 'all' ? 'Your share' : `Your share, ${RANGE_NOUN[view.range]}`;
@@ -278,9 +285,20 @@ export default function BackerPage({ token }) {
             <div className="an-cell an-lbl an-lbl-3">Running total</div>
             <div className={'an-cell bp-total-val ' + tone(sum.total)}>{fmtSignedCents(sum.total)}</div>
             <div className="an-cell an-note an-clip">
-              {events.length > 0
-                ? `${plural(sum.sessions, 'session')} · ${fmtHours(sum.hours)}${sum.opening ? ` · opening ${fmtSignedCents(sum.opening)}` : ''}`
-                : `Opening balance · no sessions yet`}
+              {events.length > 0 ? (
+                <>
+                  {`${plural(sum.sessions, 'session')} · ${fmtHours(sum.hours)}`}
+                  {/* The player's bb/hr (BB/hr for limit games), over the cash sessions that name a big blind. */}
+                  {bbs.map((f) => (
+                    <React.Fragment key={f.unit}>
+                      {' · '}
+                      <span className={'bp-bb ' + f.tone}
+                        title={`${plural(f.n, 'session')}, ${fmtHours(f.hours)}${sum.sessions > events.length ? `; the newest ${events.length} of ${sum.sessions}` : ''}`}>{f.full}</span>
+                    </React.Fragment>
+                  ))}
+                  {sum.opening ? ` · opening ${fmtSignedCents(sum.opening)}` : ''}
+                </>
+              ) : `Opening balance · no sessions yet`}
             </div>
           </section>
         )}

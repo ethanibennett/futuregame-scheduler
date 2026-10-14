@@ -295,3 +295,60 @@ test('scope: the figures name, format and fetch by the ledger in hand, stale unt
   assert.equal(sameScope({ bankroll: 7, currency: 'USD' }, sc), false);
   for (const bad of [null, undefined, {}, { currency: 'EUR' }]) assert.equal(sameScope(bad, sc), false);
 });
+
+// ── bb/hr (utils/bb-hr.js) ────────────────────────────────────────────────────────────────────
+test('Sessions: cash bb/hr is each session\'s own-money net over its own big blind, over the timed hours; the Total follows only when cash is alone', () => {
+  const rows = ledger([
+    cashRow('2026-02-01', 1000, 1500, { hours: 4 }),                                    // +500
+    cashRow('2026-02-08', 1000, 800, { hours: 2 }),                                     // -200
+    cashRow('2026-02-09', 100, 400, { hours: 0 }),                                      // +300, untimed: out
+    cashRow('2026-02-10', 100, 400, { hours: 3 }),                                      // +300, but no stakes: out of bb/hr
+  ]);
+  rows[0].game = 'NLH'; rows[0].stakes = '2/5';
+  rows[1].game = 'NLH'; rows[1].stakes = '1/2';
+  rows[2].game = 'NLH'; rows[2].stakes = '2/5';
+  rows[3].game = 'NLH'; rows[3].stakes = '';
+  const t = sessionsTable(rows);
+  const r = t.cash.bbhr;
+  assert.equal(r.BB, null);
+  assert.equal(r.bb.n, 2);
+  assert.ok(Math.abs(r.bb.rate - 0) < 1e-9, '(+100 - 100) bb over 6 h');
+  assert.equal(t.cash.hourly, Math.round(((500 - 200 + 300) / 9) * 100) / 100, '$/h keeps its own basis: every timed session');
+  assert.equal(t.total.bbhr, r, 'cash alone: the Total is the cash figure');
+  assert.equal(t.tournaments.bbhr, null);
+  // With a tournament in the range the Total refuses it, as it refuses $/h.
+  const mixed = sessionsTable([...rows, ...ledger([tournRow('2026-03-01', 100, 1, 0)])]);
+  assert.equal(mixed.total.bbhr, null);
+  assert.equal(mixed.total.hourly, null);
+});
+
+test('Sessions: bb/hr uses the net in the session\'s OWN currency (amount), not the converted amount_display', () => {
+  const [row] = ledger([cashRow('2026-02-01', 1000, 1400, { hours: 4 })]);
+  Object.assign(row, { game: 'NLH', stakes: '€1/€2', currency: 'EUR', amount: 400, amount_display: 432, fx_display: 1.08 });
+  const r = sessionsTable([row]).cash.bbhr;
+  assert.ok(Math.abs(r.bb.rate - 50) < 1e-9, '+EUR 400 over EUR 2 = +200 bb in 4 h');
+});
+
+test('Sessions: limit sessions are a second unit, never added to the big blinds; none qualifying is null, not 0', () => {
+  const rows = ledger([cashRow('2026-02-01', 1000, 1500, { hours: 5 }), cashRow('2026-02-02', 1000, 1080, { hours: 4 })]);
+  rows[0].game = 'NLH'; rows[0].stakes = '2/5';
+  rows[1].game = 'LHE'; rows[1].stakes = '4/8';
+  const r = sessionsTable(rows).cash.bbhr;
+  assert.ok(Math.abs(r.bb.rate - 20) < 1e-9, '+100 bb in 5 h');
+  assert.ok(Math.abs(r.BB.rate - 2.5) < 1e-9, '+10 BB in 4 h');
+  const none = ledger([cashRow('2026-02-01', 1000, 1500, { hours: 5 })]);   // no game, no stakes on the row (an older server)
+  assert.deepEqual(sessionsTable(none).cash.bbhr, { bb: null, BB: null });
+});
+
+test('Games and rooms: a cash row carries bb/hr; a tournament row none', () => {
+  const facts = [
+    { type: 'cash', date: '2026-02-01', game: 'NLH', room: 'Borgata', stakes: '2/5', profit: 600, native_profit: 500, hours: 5 },
+    { type: 'cash', date: '2026-02-08', game: 'nlh', room: 'Parx', stakes: '2/5', profit: -700, native_profit: -700, hours: 3 },
+    { type: 'tournament', date: '2026-01-10', game: 'NLH', room: 'Borgata', profit: -600, cost: 600, bullets: 2 },
+  ];
+  const g = groupTable(facts, 'game', { from: '2026-01-01', to: '2026-03-20' });
+  assert.equal(g.cash.length, 1);
+  assert.equal(g.cash[0].bbhr.bb.n, 2);
+  assert.ok(Math.abs(g.cash[0].bbhr.bb.rate - (100 - 140) / 8) < 1e-9, 'native_profit (500), not the converted profit (600)');
+  assert.equal(g.tournament[0].bbhr, null);
+});

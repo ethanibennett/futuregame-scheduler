@@ -127,7 +127,8 @@ REAL to the cent. A source that stores cents must divide before returning.
   `buyin_per_entry`) and `adjustments.js` (the ledger above). `cash-sessions.js` (extra fields
   `started_at`, `hours` = ended − started to the hundredth, null without both ends, and the money
   behind the net in the session's currency: `buy_in` (rebuys included), `rebuys` (a count),
-  `cash_out`, `tips`, `expenses` — `amount = cash_out − buy_in − tips − expenses`) and
+  `cash_out`, `tips`, `expenses` — `amount = cash_out − buy_in − tips − expenses` — and `game` and
+  `stakes` as stored, which bb/hr reads its big blind from) and
   `transactions.js` belong to the cash-session and expense features.
 
 Balance of a bankroll = starting balance + Σ its entries, in ITS currency (entries in another
@@ -188,7 +189,7 @@ screen, in this app's own type, tokens and grid:
 | Hero (2 × 17g, 9r) | balance now · profit over the range, coloured by sign, with the event / session count | the headline profit over the graph |
 | Graph (`BankrollChart.jsx`: 4r head, 5r pills, 2r label room over the 35g × 24r plot, 2r foot) | **Profit**: up to three cumulative lines from 0 at the range start — **Total** (every result, the hero's profit), **Tournaments**, **Cash** — toggled by pills that are also the legend (colour swatch, end value), with a **Fill** pill shading each line down to 0; or **Balance** (one line, deposits included). Nice gridlines labelled at the left; drawdown from the peak shaded when one line is drawn | Poker Bankroll Tracker's Trend chart (Cash / Tourney / Total overlays, area fills) and the cumulative "chip graph" |
 | Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage, with the graph's `bankrollSeries` and `bankrollFill`) | the time filter on the graph |
-| Tables (`BankrollOverviewTables.jsx`, `bankroll-overview-tables.css`) | six collapsible sections, each headed by a 35g × 5r disclosure row: the name, the range and bankroll it covers, a chevron, and while closed its headline figure on the right. **Summary** (Cash \| Tournaments \| Total): buy-ins (cash: buy-in incl. rebuys; tournaments: buy-in × bullets), cash-outs, tips & costs (cash, when any), net profit, expenses & income (Total), **total result** (= the hero's profit), deposits & withdrawals (Total), balance change (Total: result + money moved). **Sessions**: sessions / events, bullets, hours and $/h (cash), ROI (tournaments), won % / ITM (tournaments: cashes per entry, the Analytics rule), average buy-in, profit and rebuys / re-entries, biggest win and loss. **Games** and **Rooms** (from the report facts): one row per game / room, cash and tournaments in separate blocks (count, hours, $/h or ROI, total, best first). **Bankroll**: balance, all-time peak, below it, deepest drawdown in the range, money moved, risk of ruin. **By month** (By year for All): results, moved, net. Summary and Sessions start open; open / closed is per device (`bankrollOverviewOpen` in localStorage). The scope line, the currency and the reports query come from the ledger in hand (`d.bankroll`, `d.currency`), not the bankroll chip, which runs one round trip ahead of it; until the ledger (for Games and Rooms, also the report facts) is the one asked for, a section keeps its figures on screen, dimmed, with `aria-busy` | Poker Bankroll Tracker's Bankroll › Overview: tables with a column per game type and a total, zebra rows, right-aligned tabular figures, compact money ($403.2k from $10k) |
+| Tables (`BankrollOverviewTables.jsx`, `bankroll-overview-tables.css`) | six collapsible sections, each headed by a 35g × 5r disclosure row: the name, the range and bankroll it covers, a chevron, and while closed its headline figure on the right. **Summary** (Cash \| Tournaments \| Total): buy-ins (cash: buy-in incl. rebuys; tournaments: buy-in × bullets), cash-outs, tips & costs (cash, when any), net profit, expenses & income (Total), **total result** (= the hero's profit), deposits & withdrawals (Total), balance change (Total: result + money moved). **Sessions**: sessions / events, bullets, hours, $/h and bb/hr (cash; a BB/hr row too when limit sessions qualify), ROI (tournaments), won % / ITM (tournaments: cashes per entry, the Analytics rule), average buy-in, profit and rebuys / re-entries, biggest win and loss. **Games** and **Rooms** (from the report facts): one row per game / room, cash and tournaments in separate blocks (count, hours, $/h and bb/hr, or ROI, total, best first). **Bankroll**: balance, all-time peak, below it, deepest drawdown in the range, money moved, risk of ruin. **By month** (By year for All): results, moved, net. Summary and Sessions start open; open / closed is per device (`bankrollOverviewOpen` in localStorage). The scope line, the currency and the reports query come from the ledger in hand (`d.bankroll`, `d.currency`), not the bankroll chip, which runs one round trip ahead of it; until the ledger (for Games and Rooms, also the report facts) is the one asked for, a section keeps its figures on screen, dimmed, with `aria-busy` | Poker Bankroll Tracker's Bankroll › Overview: tables with a column per game type and a total, zebra rows, right-aligned tabular figures, compact money ($403.2k from $10k) |
 | Latest sessions (6r rows, 14g \| 21g) | the six newest tournament / cash results in the range, each led by its signed profit in the display face, with date, event or game, and hours / bullets; buttons to Results' Tournaments and Cash halves (they also select the dashboard's bankroll on the Results tab) | the session list led by a big green / red profit |
 
 The graph (`BankrollChart.jsx`, fed by `BankrollOverview.jsx`):
@@ -531,7 +532,7 @@ structure and density, in this app's own type, colours and grid). One screen at 
 | screen | what it is | the pattern it borrows |
 |---|---|---|
 | list › Sessions | net and per hour over a cumulative graph (x = session, from `stats.series`); then every session grouped by month, the header carrying the month's net, hours and count (`stats.byMonth`, already converted to one currency); each 9r row LEADS with the big signed, coloured result, then game · room, date · start · length, per hour, and a line of the notes (12r) | the chip graph front and centre; a session list scanned by its profit |
-| list › Stats | label-left / value-right rows in two 17g columns (net, per hour, hours, sessions, won-lost with %, average length, per session, best, worst, bought in, cashed out, tips and costs), then the stakes / game / room table | stats as plain rows |
+| list › Stats | label-left / value-right rows in two 17g columns (net, per hour, **bb/hr** (and BB/hr when limit sessions qualify), hours, sessions, won-lost with %, average length, per session, best, worst, bought in, cashed out, tips and costs), then the stakes / game / room table (Hours, Net, Per hour, **bb/hr**) | stats as plain rows |
 | a session | result and per hour, what and when, the in-session stack graph (when it had updates), every field as a row, the notes in full; Edit and Delete in the head | session notes, the detail behind a row |
 | add / edit | buy-in and cash-out as big 6r inputs; date, start, and the length by end time OR hours (typing either fills the other); room; game and stakes; notes. The LAST session's room, game, stakes, start/end and buy-in are filled in. Rebuys, bankroll, tips, expenses, currency and tags sit behind one button (open by default when editing a session that uses them). A running net and length under the fields | "no unnecessary fields" |
 | start | buy-in and stakes big, room, game, bankroll, the last session's values filled in | |
@@ -650,7 +651,8 @@ dimensions the ledger does not carry (a tournament's room, game and online flag 
 
 `{ id ('t12' | 'c3' | 'x5'), type ('tournament' | 'cash' | 'expense' | 'income'), bankroll ('main' | id), date,
 label, profit, room, game, online, hour (tournament start, 0-23 or null), started_at + hours (cash),
-stakes (cash), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income),
+stakes (cash), native_profit (cash: the net in the session's OWN currency, whole units — bb/hr's
+numerator), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income),
 native_currency (what it was played or spent in, before conversion: a tournament's venue currency, a
 session's or a row's own) }`
 
@@ -722,6 +724,10 @@ locations (its Bankroll › Locations screen), in this app's type, tokens and gr
   - **hours** with a clock — cash hours only; omitted, not "0", for a tournament-only room;
   - **per hour** — cash profit / cash hours, when there are hours;
   - **ROI** — tournament profit / buy-ins, when the room has tournaments;
+  - **bb/hr** — not in this line but under it, on a second 4r line of its own (the card is then 15r,
+    not 11r): the cash part's bb/hr, and BB/hr for limit games, when a cash session of the room names
+    its big blind (see "bb/hr" below). Omitted, not "—", for a room whose sessions name none, as the
+    $/h is omitted for a room with no hours;
   - **won % / ITM** — per ENTRY, over the same entries the card counts (owner, 2026-10-13: the app
     has one ITM, cashes per entry, as `lib/analytics.js`, the Analytics tab and the Overview's
     Sessions table count it). A cash room: winning sessions / sessions ("60% won"); a tournament
@@ -769,3 +775,138 @@ locations (its Bankroll › Locations screen), in this app's type, tokens and gr
   can be an alias or a series title, so one physical room can show as two cards ("Wynn" and "Wynn
   Las Vegas"). The fix belongs in one canonical room-alias step shared by Reports and Locations
   (e.g. folding `VENUE_MAP` aliases that share a strip, or the venue directory), not here alone.
+
+## bb/hr (big blinds per hour)
+
+Asked for 2026-10-14: a bb/hr stat on the bankroll pages and the backer pages. Cash games only; a
+tournament has no fixed big blind (its blinds climb), so it never gets one. Code: **one pure module**,
+`vite-app/src/utils/bb-hr.js`, used by every surface below; tests `src/utils/__tests__/bb-hr.test.mjs`
+(it runs with every `node --test` over `src/**/*.test.mjs`), plus each surface's own test file.
+
+### The definition
+
+```
+bb/hr = Σ( session net ÷ that session's big blind ) ÷ Σ( hours )
+```
+
+over the cash sessions that have **a readable big blind and some hours**.
+
+- **Each session is divided by its OWN big blind**, so stakes combine fairly (a +$500 night at 2/5 is
+  +100 bb; a −$200 night at 1/2 is −100 bb; together 0 bb, not the +85.7 bb over an average blind of 3.5
+  that a shortcut would give). Never an average blind.
+- **The net is the cash net the app already shows** — `cash_out − buy_in − tips − expenses`, in the
+  session's **own currency** — because the blind is written in that currency too. A count of blinds has
+  no currency, so a EUR session needs no conversion and EUR and USD sessions add up in blinds. This is
+  why the ledger entry's `amount` (own money), not `amount_display` (converted), and the Reports fact's
+  `native_profit` (new, cash only), not `profit`, feed it. The sign always agrees with the session's net
+  and with the $/h of a single session.
+- **Hours** are the hours the surface's $/h already uses (`hours` on the ledger entry, the fact, the
+  session). A session with none (zero, or no end) has no bb/hr and is left out of the numerator **and**
+  the denominator. A single session's own figure needs a quarter hour, as its $/h does
+  (`MIN_SESSION_HOURS`); an aggregate takes any positive length, as the Overview's does.
+- **A session with no readable big blind** (no stakes, `NL200`, a lone number) is left out of bb/hr but
+  still counts toward $/h. So the two figures can cover different sessions; the hover title of a figure
+  says how many sessions and hours stand behind it.
+- **Never 0 for unknown.** No qualifying session shows "—" in a fixed table cell, and a card or line that
+  omits an unknown $/h omits the bb/hr too (Locations, the backer tab's card, the backer page's note). A
+  break-even result is "0.0", unsigned and uncoloured, as a figure that reads $0 is.
+- **Shown** to one decimal with a sign and a true minus (U+2212): "+3.4 bb/hr", "−1.2 bb/hr", green or
+  red by the sign **as drawn** (a rate that rounds to "0.0" is neither).
+
+### Reading the big blind: `bigBlindOf(stakes)`
+
+The second number in the first group of two or three numbers joined by `/` or a dash:
+
+| text | big blind | |
+|---|---|---|
+| `1/2` `2/5` `5/10` `25/50` `100/200` | 2, 5, 10, 50, 200 | |
+| `$2/$5` `2-5` `2 / 5` `5/10 NLH` `1/2 PLO` `NL 2/5` `6-max 1/2` | 5, 5, 5, 10, 2, 5, 2 | currency marks, spaces, en and em dashes and words around the numbers are ignored |
+| `1/2/5` `1/3/5` `5/5/10` `5/5/10 PLO` | 2, 3, 5, 5 | a third number does not change the answer — **owner question 1** |
+| `€2/€5` `£1/£2` `C$1/C$2` `EUR 1/2` `¥100/¥200` | 5, 2, 2, 2, 200 | the blind in the session's own currency; no conversion |
+| `4/8 LHE` `10/20 Limit` `FL 3/6` | 8, 20, 6 | limit: the second number is the **big bet** (below) |
+| `0.25/0.50` `.50/1` `0,5/1` `1,000/2,000` `5k/10k` | 0.5, 1, 1, 2000, 10000 | decimals, a decimal comma (a comma before exactly three digits is thousands), `k` stuck to a number |
+| `NL200` `5` `high stakes` `5/2` `0/0` `PLO5/10` `Oct-14` | null | one number, a small blind above the big, a zero, a number glued to a word, no stakes, or not text |
+
+Only the first group is read (`1/2 NL $300 max` is 2). A game written with a cap (`2/5 cap`) is no-limit
+with a cap and reads as 5.
+
+### Two units, never summed (owner, 2026-10-14)
+
+> "Big bets for limit, big blinds for big bet games."
+
+| unit | games | label | divides by |
+|---|---|---|---|
+| `bb`, big blinds | no-limit and pot-limit (NLH, PLO, PLO5/6/8, Big O, cap games, anything that says NL or PL) | **bb/hr** | the second number |
+| `BB`, big bets | limit (LHE, FL, Limit, Stud, Razz, O8 / Omaha 8 / hi-lo, HORSE, 8-game, triple draw, badugi, **Mixed**) | **BB/hr** (capital: poker convention tells them apart) | the second number, the big bet (`4/8 LHE` is 8) |
+
+- The unit is judged **per session**, on that session's own game and stakes text (`unitOf(game,
+  stakes)`), so a mixed room holds both kinds. Text that says tournament (`MTT`, `tournament`, `sng`,
+  `satellite`, `freezeout`, `bounty`, `main event`) has no unit and no bb/hr.
+- **The two units are never added.** An aggregate that covers both shows each unit that has qualifying
+  sessions — "+3.4 bb/hr · +0.8 BB/hr" — and only the one that applies when there is just one kind. In a
+  row-style table (the Overview's Sessions) that is one row per unit ("bb/hr", then "BB/hr" only when
+  limit sessions qualify); on a card or line, two items; in a column-style table (`bbColumn()`), one
+  bb/hr column, headed "BB/hr" if every figure in it is in big bets and otherwise "bb/hr" with a
+  big-bet figure carrying its unit ("+0.8 BB"); a row holding both runs onto a second 4r line (rare).
+- **No structure named** (`2/5` alone) is a big-blind game, since the app's default game is NLH.
+  **"Mixed"** with no NL/PL in its text is a limit game (HORSE, 8-game: limit). Both are owner questions
+  (2 and 3 below); a wrong guess changes the label (bb vs BB) and which total the session joins, never
+  the number.
+
+### Where it shows
+
+| surface | what | data |
+|---|---|---|
+| Overview › Sessions (cash column, Total when cash is alone) | a **bb/hr** row under `$/h`; a **BB/hr** row when limit sessions qualify; "—" when none does | ledger entries: `amount`, `hours`, `game`, `stakes` (the cash ledger source gained `game` and `stakes`) |
+| Overview › Games, Rooms (cash blocks) | a **bb/hr** column beside `$/h` (label 8g, played 4g, hours 4g, $/h 6g, bb/hr 5g, total 8g); a row holding both units gets a second 4r line | report facts: `native_profit`, `game`, `stakes`, `hours` |
+| Bankroll › Sessions (cash detail) | a "Big blinds per hour" ("Big bets per hour") row under "Per hour": this session alone, "—" without a blind or under a quarter hour | the session (or, if its join failed, the fact's `native_profit`) |
+| Locations (cash and mixed rooms) | a second stats line on the card, bb/hr • BB/hr, for the cash part only; the card is 15r instead of 11r | facts, as above |
+| Reports (every per-hour table, i.e. every row cash) | a bb/hr column beside Per hour (label 12g, played 3g, profit 7g, per hour 7g, bb/hr 6g; By stakes is the natural one), and a "Cash bb/hr" tile beside "Cash per hour" | facts |
+| Results › Cash › Stats | a bb/hr row beside Per hour, and a bb/hr column in the stakes / game / room table | the cash sessions list (`cashBbGroups`, using the server's own group keys; `test/cash-sessions-ledger.test.js` holds the two sets of keys together) |
+| Backer page `/b/<token>` | the **player's** bb/hr in the running-total card's stats line ("40 sessions · 258.5 h · +3.4 bb/hr · opening +$500") and on each session line that names a blind ("Sat, Oct 11 · 4.5 h · +12.3 bb/hr") | the feed's `events`, as it is |
+| Bankroll › Backers (owner) | the same figure on each backer's card, a second line under the stats line, mirroring the page | `played` (below) |
+
+The Overview's Summary table has no `$/h` and so no bb/hr.
+
+### The backer page
+
+The page is public, so the stat is worked out **in the browser from what the feed already sends**; the
+feed is untouched (the Phase 2 parity tests compare it byte for byte, and `backer-page.test.mjs` checks
+that computing the figure leaves it unchanged). An event's `game` is the whole text ("2/5 NLH", "5/5/10
+PLO", "4/8 LHE", "PLO MTT"): the big blind and the unit are read from it, the net is
+`sessionResultCents / 100` — the **player's** session result, not the backer's share — and the length is
+`hours`. A tournament line ("NLH MTT") or any game text with no blind in it is left out.
+
+- The feed holds the newest **200** events and totals over all of them; the bb/hr covers the events the
+  page holds. A longer history says so in the figure's hover title ("the newest 200 of 1,030").
+- Backer events carry no currency; the page is all dollars. A session logged in another currency, with
+  its stakes in that currency and its result converted to dollars, would be off by the rate.
+- **The owner's Backers tab** gets its events through `GET /api/staking/standing/backers`, which carries
+  only the last ten `shares`. To show the page's own figure, each backer in that answer gained
+  `played: [[game, hours, sessionResultCents], ...]` — every event the page holds, the same ones — and the
+  tab runs the page's own `bbStats` over it. This is the owner-only route, not the public feed, and it
+  adds no token, venue, share or date. `test/backers-view.test.js` holds `played` equal to the feed's
+  events.
+
+### Owner questions
+
+1. **A third number** (`1/2/5`, `5/5/10`): taken as a straddle or an ante, so the blind is the second
+   number. If it means something else (a bring-in, a second blind), say what it should divide by.
+2. **A bare `2/5` with no game**: read as no-limit (unit bb). Say if bare stakes should instead leave the
+   session out until a game is named.
+3. **"Mixed" with no NL/PL named**: read as limit (BB). Mixed games at big-bet stakes would need NL or PL
+   written in the game or stakes to be counted in big blinds.
+4. **Online `NL200`-style stakes** (`NLxx` conventionally means a big blind of xx/100 dollars): left
+   unreadable (null), not guessed. Say if they should be read.
+5. The existing **$/h** in Locations, Reports and Cash stats divides *every* cash session's net by the
+   *timed* hours only (a session with no length adds its net and no hours), where the Overview's leaves
+   an untimed session out of both. bb/hr always leaves it out of both, as asked, so on a ledger with
+   untimed cash sessions the two can differ in size, rarely in sign. Not changed here.
+
+### Layout notes
+
+Every measurement is g or r, nothing else. The Overview's group tables, the Reports table and the Cash
+stats table each lose a little label room to the bb/hr column; the widths are in the CSS headers
+(`bankroll-overview-tables.css`, `bankroll-reports.css`, `CashSessions.css`). A figure's colour is
+`--pos` / `--neg` by the sign as drawn. Checked with `check:controls` and `check:clipping` at 402 and
+1440 (the bankroll, Results, Cash and backer-page views).

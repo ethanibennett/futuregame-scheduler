@@ -30,6 +30,7 @@ import {
   sessionHourly, sessionDefaults, hoursBetweenTimes, endTimeAfter, instantsFromHours, parseHours, hoursInput,
   swingSeries, swingSummary, chartPath,
 } from '../utils/cash-sessions.js';
+import { cashBbGroups, bbColumn, bbFigures, bbBasis, unitLabel } from '../utils/bb-hr.js';
 import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 import { useTick } from './CashLive.jsx';
@@ -318,14 +319,19 @@ function LiveScreen({ session, stacks, skew, busy, onStack, onUnstack, onRebuy, 
 
 // ── Stats: label-left, value-right ──────────────────────────────────────────
 const BREAKDOWNS = [['byStakes', 'Stakes'], ['byGame', 'Game'], ['byRoom', 'Room']];
-function Stats({ stats }) {
+function Stats({ stats, sessions }) {
   const [by, setBy] = useState('byStakes');
+  // bb/hr (utils/bb-hr.js) from the sessions themselves: each session's net over its own big blind.
+  const bb = useMemo(() => cashBbGroups(sessions), [sessions]);
   if (!stats || !stats.sessions) return <p className="cs-t cs-note">No finished sessions yet.</p>;
   const o = stats.overall, cur = stats.currency;
   const winPct = stats.sessions ? Math.round((o.wins / stats.sessions) * 100) : 0;
+  const bbFigs = bbFigures(bb.overall);
   const rows = [
     ['Net', signed(o.net, cur), o.net],
     ['Per hour', perHour(o.hourly, cur), o.hourly],
+    // One row per unit that qualifies (bb first; BB only when limit sessions do), else one dash.
+    ...(bbFigs.length ? bbFigs : [null]).map((f) => (f ? [f.label, f.text, f.tone] : [unitLabel('bb'), '—', 0])),
     ['Hours', formatHours(o.hours)],
     ['Sessions', String(stats.sessions)],
     ['Won · lost', `${o.wins} · ${o.losses} (${winPct}%)`],
@@ -338,6 +344,9 @@ function Stats({ stats }) {
     ['Tips, costs', money(o.tips + o.expenses, cur)],
   ];
   const groups = stats[by] || [];
+  const bbBy = bb[{ byStakes: 'stakes', byGame: 'game', byRoom: 'room' }[by]];
+  const none = { bb: null, BB: null };
+  const col = bbColumn(groups.map((g) => bbBy.get(g.key) || none));
   return (
     <section className="cs-stats" aria-label="Cash stats">
       <div className="cs-kv2">
@@ -359,15 +368,23 @@ function Stats({ stats }) {
         <span className="cs-t">Hours</span>
         <span className="cs-t">Net</span>
         <span className="cs-t">Per hour</span>
+        <span className="cs-t">{col.label}</span>
       </div>
-      {groups.map((g) => (
-        <div key={g.key} className="cs-brow">
-          <span className="cs-t">{g.label}</span>
-          <span className="cs-t">{formatHours(g.hours)}</span>
-          <span className={'cs-t' + tone(g.net)}>{signed(g.net, cur)}</span>
-          <span className={'cs-t' + tone(g.hourly || 0)}>{g.hourly == null ? '—' : signed(g.hourly, cur)}</span>
-        </div>
-      ))}
+      {groups.map((g) => {
+        const res = bbBy.get(g.key) || none;
+        const lines = col.lines(res);
+        return (
+          <div key={g.key} className={'cs-brow' + (lines.length > 1 ? ' is-2' : '')}>
+            <span className="cs-t">{g.label}</span>
+            <span className="cs-t">{formatHours(g.hours)}</span>
+            <span className={'cs-t' + tone(g.net)}>{signed(g.net, cur)}</span>
+            <span className={'cs-t' + tone(g.hourly || 0)}>{g.hourly == null ? '—' : signed(g.hourly, cur)}</span>
+            {lines.map((l, i) => (
+              <span key={i} className={'cs-t' + (i ? ' cs-bb2' : '') + tone(l.tone)} title={l.unit ? bbBasis(res[l.unit]) : undefined}>{l.text}</span>
+            ))}
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -681,7 +698,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
           ))}
         </div>
         {live && <LiveRow session={live} skew={skew} onOpen={() => go('live')} />}
-        {tab === 'stats' ? <Stats stats={stats} /> : (
+        {tab === 'stats' ? <Stats stats={stats} sessions={sessions} /> : (
           <>
             <Summary stats={stats} />
             {loaded && !ended.length && (
