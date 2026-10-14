@@ -8,7 +8,7 @@ import {
   periodWindow, periodElapsed, balanceSeries, drawdowns, periodTable, bySource, within, goalProgress,
   ledgerToCsv, fmtRule, sourceLabel,
   RANGES, rangeWindow, profitSeries, peakOf, overviewStats, recentResults,
-  SERIES_KEYS, gameSeries, seriesLine, parseSeriesPref, niceTicks, compactMoney, chartSpan, drawdownBand,
+  SERIES_KEYS, gameSeries, seriesLine, parseSeriesPref, niceTicks, compactMoney, chartSpan, drawdownBand, MOVE_KINDS,
 } from '../bankroll-ledger.js';
 import { parseCsv, parseNumber, parseDate, detectPreset, applyPreset, guessMapping, applyMapping } from '../bankroll-csv.js';
 import { balancesFromSummary, BANKROLL_ALL, BANKROLL_MAIN } from '../bankrolls.js';
@@ -64,6 +64,24 @@ test('periodTable and bySource: results vs moved', () => {
   assert.deepEqual(src.map((s) => [s.source, s.net]), [['cash-sessions', 400], ['adjustments', 200], ['tournaments', 100]]);
   assert.equal(sourceLabel('cash-sessions'), 'Cash games');
   assert.equal(sourceLabel('some_new-source'), 'Some new source');
+});
+
+test('the bankroll merge: correction and settlement are money moved, as on the server', async () => {
+  for (const k of ['deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'correction', 'settlement']) assert.ok(MOVE_KINDS.has(k), k);
+  for (const k of ['tournament', 'cash_session', 'expense', 'income']) assert.ok(!MOVE_KINDS.has(k), k);
+  const { createRequire } = await import('node:module');
+  const server = createRequire(import.meta.url)('../../../../lib/bankroll-ledger.js');
+  assert.deepEqual([...MOVE_KINDS].sort(), [...server.MOVE_KINDS].sort(), 'the two lists are one list');
+  const rows2 = [
+    E('2026-04-01', 'adjustments', 'deposit', 1000, 2000),
+    E('2026-04-02', 'adjustments', 'correction', -3, 1997),
+    E('2026-04-03', 'adjustments', 'settlement', -250, 1747),
+    E('2026-04-05', 'tournaments', 'tournament', 500, 2247, { units: 1 }),
+  ];
+  const [apr] = periodTable(rows2, 'month');
+  assert.deepEqual([apr.results, apr.moved, apr.net], [500, 747, 1247]);
+  assert.deepEqual(profitSeries(rows2, { from: '2026-04-01' }).map((p) => p.value), [0, 500], 'neither kind is profit');
+  assert.equal(goalProgress({ period: 'month', metric: 'profit', target: 1000 }, rows2, '2026-04-20').done, 500);
 });
 
 test('goalProgress: profit excludes money moved; volume counts bullets and sessions', () => {

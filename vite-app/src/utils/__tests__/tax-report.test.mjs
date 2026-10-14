@@ -231,6 +231,20 @@ test('expenses: per-category pro rules — meals 50%, other not counted', () => 
   assert.equal(s.count, 4);
 });
 
+test('expenses: equipment and fees are deducted at 100% (both are dashboard categories; under "other" they would be dropped)', () => {
+  assert.deepEqual(PRO_EXPENSE_RULES.equipment, { rate: 1, line: 'Sch. C' });
+  assert.deepEqual(PRO_EXPENSE_RULES.fees, { rate: 1, line: 'Sch. C' });
+  const s = summarizeTransactions([
+    tx({ category: 'equipment', amount: 61, affects_balance: 0 }), // an imported row paid outside the roll still counts for tax
+    tx({ category: 'fees', amount: 12.25 }),
+    tx({ category: 'other', amount: 50 }),
+  ], { year: 2026 });
+  assert.equal(s.expenseTotal, 123.25);
+  assert.equal(s.proDeductible, 73.25);
+  assert.equal(s.notCounted, 50);
+  assert.deepEqual(s.expenses.map((e) => [e.key, e.label, e.proRate]).sort(), [['equipment', 'Equipment', 1], ['fees', 'Fees', 1], ['other', 'Other', 0]]);
+});
+
 test('expenses: year read as a string (no zone shift), bankroll filter, currency conversion', () => {
   const rows = [
     tx({ occurred_on: '2026-01-01', amount: 10 }),

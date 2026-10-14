@@ -80,8 +80,9 @@ async function loadVite() {
 test('game table matches the replayer\'s HAND_CONFIG', async () => {
   const { HAND_CONFIG } = await loadVite();
   for (const [name, g] of Object.entries(G.GAMES)) {
-    if (g.own) continue; // quick add's own games (PLO5, PLO6, Short Deck, NLO8): no replayer config yet
-    const cfg = HAND_CONFIG[g.replayer || name]; // PLO6 8/b is the replayer's "Big Easy"
+    // Every game quick add knows is a replayer game by the same name: PLO5, PLO6, PLO6 8/b, Short Deck
+    // and NLO8 have configs of their own (the replayer follow-up), and "Big Easy" is gone.
+    const cfg = HAND_CONFIG[name];
     assert.ok(cfg, `${name} is in HAND_CONFIG`);
     eq(g.cards, cfg.heroCards, `${name} card count`);
     eq(g.betting, cfg.betting, `${name} betting`);
@@ -89,23 +90,21 @@ test('game table matches the replayer\'s HAND_CONFIG', async () => {
     eq(g.category === 'community', !!cfg.hasBoard, `${name} board`);
   }
   // Everything the replayer plays is here, except OFC (no betting, its own shape).
-  const known = new Set(Object.entries(G.GAMES).map(([n, g]) => g.replayer || n));
+  const known = new Set(Object.keys(G.GAMES));
   const missing = Object.keys(HAND_CONFIG).filter((k) => !known.has(k) && !/^OFC/.test(k));
   eq(missing, []);
-  // Every own game has a stand-in the replayer can play, and no replayer name is shadowed.
-  for (const [name, g] of Object.entries(G.GAMES)) {
-    if (!g.own && !g.replayer) continue;
-    assert.ok(HAND_CONFIG[G.replayerGame(name)], `${name} opens in the replayer as ${G.replayerGame(name)}`);
-  }
-  assert.ok(!G.GAMES['Big Easy'], '"Big Easy" is an input alias only');
+  // No fallback table is left: a hand opens in the replayer under the name the parse gave it.
+  assert.ok(!('REPLAYER_FALLBACK' in G) && !('replayerGame' in G), 'REPLAYER_FALLBACK is gone');
+  for (const [name, g] of Object.entries(G.GAMES)) assert.ok(!('own' in g) && !('replayer' in g), `${name} carries no fallback flags`);
+  for (const n of ['PLO5', 'PLO6', 'PLO6 8/b', 'Short Deck', 'NLO8']) assert.ok(HAND_CONFIG[n], `${n} has its own HAND_CONFIG entry`);
+  assert.ok(!G.GAMES['Big Easy'] && !HAND_CONFIG['Big Easy'], '"Big Easy" is an input alias only');
   eq(G.canonicalGameName('Big Easy'), 'PLO6 8/b');
 });
 
 test('street names and seat labels match the replayer (via decodeHand)', async () => {
   const { decodeHand, GAME_CODES } = await loadVite();
   for (const name of G.GAME_NAMES) {
-    if (G.GAMES[name].own) continue;
-    const code = GAME_CODES[G.GAMES[name].replayer || name];
+    const code = GAME_CODES[name];
     assert.ok(code, `${name} has a link code`);
     const h = decodeHand(code + '60.100-200.-.-.');
     eq(h.streets.map((s) => s.name), G.gameInfo(name).streets, `${name} streets`);

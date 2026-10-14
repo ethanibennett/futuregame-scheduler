@@ -202,7 +202,10 @@ function MoveMoney({ bk, toast, onMoved }) {
   );
 }
 
-const KIND_LABEL = { deposit: 'Deposit', withdrawal: 'Withdrawal', transfer_in: 'Transfer in', transfer_out: 'Transfer out' };
+const KIND_LABEL = {
+  deposit: 'Deposit', withdrawal: 'Withdrawal', transfer_in: 'Transfer in', transfer_out: 'Transfer out',
+  correction: 'Correction', settlement: 'Paid to backers',
+};
 
 function Ledger({ bk, rows, toast, onChanged }) {
   const nameOf = (id) => (bk.bankrolls.find((b) => b.id === entryBankrollKey({ bankroll_id: id })) || { name: '?' }).name;
