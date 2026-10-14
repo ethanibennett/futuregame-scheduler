@@ -90,16 +90,45 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).
-  - #3 roster: `syncBackerRoster()` pulls `dashboard.futurega.me/api/roster/:token`
-    hourly at :35 + at boot (self-disables without `DASHBOARD_TOKEN`).
-    ⚠ **The local pm2 instance DOES have a token and DOES sync.** This file used
-    to say the opposite — "no token, so local roster sync is off by design" — and
-    that was wrong, measurably: the local DB mirrors the live backer roster,
-    including each backer's TOKEN, which is the whole of the authentication on
-    their `/b/:token` page. So `poker-tournaments.db` on this box holds live
-    credentials, and any copy of it does too. A scratch copy was committed to
-    this PUBLIC repo on 2026-09-14 for exactly that reason. Treat the local DB
-    and every copy as production-sensitive.
+  - #3 roster: `syncBackerRoster()` pulls `GET dashboard.futurega.me/api/roster` hourly at
+    :35 + at boot, with a **server-only `ROSTER_TOKEN`** as `Authorization: Bearer <token>`.
+    Never in the URL, and never `DASHBOARD_TOKEN`: that is compiled into the iOS builds
+    (`DashboardSecret.swift`) and used to guard this seam, so anyone who extracted it from an
+    app could have pulled every backer's `/b/` token, phone and email (closed 2026-10-14).
+    **Without `ROSTER_TOKEN` it sends nothing and logs once per boot**
+    (`[roster] ROSTER_TOKEN is not set — … OFF`); a good first pull logs
+    `[roster] pull from the dashboard ok`. Each pull is abandoned after 30 s
+    (`ROSTER_FETCH_TIMEOUT_MS` overrides it, for tests). `ROSTER_TOKEN` is set on **exactly two
+    Render services — this one (futurega.me) and the dashboard's — and deliberately NOT in the
+    local `ecosystem.config.cjs`**, so this box no longer syncs. `ROSTER_TOKEN_PREVIOUS` exists
+    on the dashboard only (inbound, for rotation); this side always sends the current value.
+    Test: `npm run test:roster`. Spec and the dashboard half: `docs/bankroll-merge.md` §2.2
+    point 10 and the dashboard's `CLAUDE.md` (seam 3).
+    **Rollout order** (each step safe to stop after): generate the secret, never in chat or a
+    repo; set `ROSTER_TOKEN` on both Render services (inert on the old code); deploy the
+    dashboard FIRST (the leak closes the moment it is live; until the next step this side's
+    pull logs `HTTP 404` and backer pages keep the roster they last synced); deploy this
+    repo (its boot pull resumes the sync); then update this checkout and restart the pm2 app,
+    which loads the new code and logs the sync as off, because no `ROSTER_TOKEN` is added to
+    the ecosystem file.
+
+    Generate the secret (**Mac or PC**, identical; prints 64 hex characters and nothing else):
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    ```
+    Restart the local app after pulling (**PC (PowerShell)**, this box only):
+    ```bash
+    pm2 restart futuregame-scheduler
+    pm2 logs futuregame-scheduler --lines 30 --nostream
+    ```
+    ⚠ **The local DB holds live credentials.** Until 2026-10-14 the local pm2 instance DID
+    have a token and DID sync (an older version of this file said the opposite — "no token, so
+    local roster sync is off by design" — and that was wrong, measurably): the local DB
+    mirrors the live backer roster, including each backer's TOKEN, which is the whole of the
+    authentication on their `/b/:token` page. So `poker-tournaments.db` on this box holds live
+    credentials, and any copy of it does too. A scratch copy was committed to this PUBLIC repo
+    on 2026-09-14 for exactly that reason. Nothing refreshes those rows now, but what was
+    mirrored is still there: treat the local DB and every copy as production-sensitive.
     A rotation done in the dashboard propagates through this seam and re-keys the
     backer's data automatically — see `rotateBackerToken()`.
 - **TestFlight watchdog (out)**: `scripts/testflight-watchdog.js`, scheduled in-process at
@@ -269,6 +298,8 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
 ## Conventions
 - Event naming: WSOP style — NLH/PLO/HORSE abbreviations, no acronym periods, title case,
   "- Day 1"/"- Flight A" suffixes; include format only when distinctive ("7-Max", "Freezeout").
+  Six-card PLO hi-lo is **"PLO6 8/b"**, never "Big Easy" (owner, 2026-10-14); keep "Big Easy" only as an
+  input alias for old saved hands. "Big Easy Casino" is a venue and keeps its name.
 - "Opponent" not "villain". Card notation `AhKs`, suits h/d/c/s, x = face-down.
 - Dropdowns/panels use portals to document.body to escape stacking contexts.
 - **Pills and buttons** (owner rule, 2026-10-10): the CONTAINER sits on the grid (whole g × whole
@@ -294,6 +325,17 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
   get its painted room from padding cancelled by an equal negative margin (or a clip-path that
   reaches below the box), never from `overflow-x: clip; overflow-y: visible`, which WebKit
   clips on both axes. Run it before deploying any change to card or list text.
+- **Replayer motion is springs**: the flop deal and spread, the turn/river landing, wagers
+  pushed out and swept in, and the pot shipped to the winner run on ONE spring family (the
+  launch ads' Remotion numbers): `vite-app/src/utils/spring.js` (pure, `npm run test:springs`)
+  and `replayer-motion.js` (the registry and the moments). They play as Web Animations on
+  transform/opacity, computed once per moment. `localStorage.replayerSprings` unset is Set B
+  "snappy" (the default, owner 2026-10-13); '1' Set A, '2' Set B, '0' the old code paths. Exports
+  seek them frame by frame (the bet push-outs export settled). Work a moment builds after its press
+  belongs to that moment's generation (`MotionRegistry.defer`); `scripts/check-replayer-ship-once.mjs`
+  guards the Back/Forward double ship.
+  Before/after video: `scripts/capture-replayer-motion.mjs` + `compare-replayer-motion.mjs`.
+  See `docs/replayer-springs.md`.
 - **Design tokens**: type, spacing, radius, elevation, brand, motion and focus
   tokens live at the top of `vite-app/src/styles.css` — see `docs/design-tokens.md`
   for the steps and what each replaces. Never write a bare literal for anything a

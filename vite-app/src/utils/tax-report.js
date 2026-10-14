@@ -117,11 +117,15 @@ export const PRO_EXPENSE_RULES = {
   coaching: { rate: 1, line: 'Sch. C' },
   software: { rate: 1, line: 'Sch. C' },
   tips: { rate: 1, line: 'Sch. C' },
+  // equipment and fees come from the dashboard (bankroll merge); under 'other' they would be dropped
+  equipment: { rate: 1, line: 'Sch. C' },
+  fees: { rate: 1, line: 'Sch. C' },
   other: { rate: 0, line: 'not counted' },
 };
 const EXPENSE_LABELS = {
   travel: 'Travel', lodging: 'Lodging', food: 'Food (meals)', entry_fees: 'Entry / registration fees',
-  coaching: 'Coaching', software: 'Software / subscriptions', tips: 'Dealer tips', other: 'Other',
+  coaching: 'Coaching', software: 'Software / subscriptions', tips: 'Dealer tips',
+  equipment: 'Equipment', fees: 'Fees', other: 'Other',
 };
 // Non-game income: shown on its own line and added to NEITHER column. Income is generally taxable
 // ("Gambling winnings are taxable income", "Prizes or awards you receive are generally included in

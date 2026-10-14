@@ -10,13 +10,27 @@
 //
 // One preparation, used by both, so a fix lands in one place.
 
+import { motionFor } from './replayer-motion.js';
+import { rateFor } from './spring.js';
+
 /**
  * Put the table into capture condition and return a function that undoes it.
  *
+ * The spring moments (utils/replayer-motion.js) are Web Animations, which the [data-capturing]
+ * freeze does not touch: under capture they are created paused at their start, their arrivals
+ * (the pot and stack ticks) wait for a seek, and captureStepFrames() below either seeks them frame
+ * by frame or finishes them before the still — never a frame frozen at a 0% keyframe.
+ *
  * @param {HTMLElement} tableEl - the .replayer-table element
+ * @param {object} [opts]
+ * @param {number} [opts.speed] - the export's ms per step: the springs run at the autoplay rate for it
+ * @param {number} [opts.fps] - the frame rate its moments are seeked at (a fast flight's stretch is
+ *                              sized to the distance between two of its frames)
  * @returns {() => void} restore
  */
-export function beginCapture(tableEl) {
+export function beginCapture(tableEl, { speed, fps = 0 } = {}) {
+  const motion = motionFor(tableEl);
+  if (motion) motion.setCapture(true, { rate: rateFor(speed), fps });
   const prev = {
     padTop: tableEl.style.paddingTop,
     marginTop: tableEl.style.marginTop,
@@ -33,7 +47,107 @@ export function beginCapture(tableEl) {
     tableEl.style.paddingTop = prev.padTop;
     tableEl.style.marginTop = prev.marginTop;
     tableEl.removeAttribute('data-capturing');
+    if (motion) motion.setCapture(false);
   };
+}
+
+/**
+ * Capture one step: the spring moment it starts, seeked frame by frame at `fps`, then the settled
+ * state held for the rest of the step. When the moment does not fit the step's frames (a fast
+ * export speed, or a GIF whose budget is spent) the springs are finished instead and the step is
+ * one settled still, as before. Without springs (flag '0') it is exactly one still.
+ *
+ * While it seeks, the table carries [data-capture-motion]: the closing bookend, which covers the
+ * whole table at the result, waits for the settled still, so the pot is seen going to the winner.
+ * The result's last seeked frame (the pot landed, the stack counted up) is held a little before
+ * the bookend takes over.
+ *
+ * @param {HTMLElement} tableEl
+ * @param {object} opts
+ * @param {number} opts.fps
+ * @param {number} opts.maxFrames         the step's length in output frames
+ * @param {number} [opts.minMotionFrames] below this a moment is not worth its frames (a GIF)
+ * @param {string[]} [opts.skipKinds]      moments finished rather than seeked: both exporters skip
+ *                                         the push-outs ('action'; owner, 2026-10-12), four frames on
+ *                                         every bet and call of a hand for 150ms of motion
+ * @param {(hold:number, settled:boolean) => Promise<void>} opts.grab  capture one frame, held `hold` frames
+ * @returns {Promise<number>} how many motion frames were captured (a GIF's or a video's budget)
+ */
+export async function captureStepFrames(tableEl, { fps, maxFrames, minMotionFrames = 2, skipKinds = [], grab }) {
+  const motion = motionFor(tableEl);
+  let used = 0, captures = 0;
+  if (motion && fps > 0 && maxFrames > 1 && motion.momentKind && !skipKinds.includes(motion.momentKind)) {
+    const ext = motion.extentMs();
+    const need = Math.ceil((ext * fps) / 1000);
+    // The result's landed pot, held for a beat (0.4s) before the bookend, when the step has room.
+    const tail = motion.momentKind === 'result' ? Math.max(1, Math.min(Math.round(fps * 0.4), maxFrames - need - 1)) : 1;
+    if (ext > 0 && need >= minMotionFrames && need < maxFrames) {
+      tableEl.setAttribute('data-capture-motion', '1');
+      try {
+        for (let f = 0; f < need; f++) {
+          motion.seek((f * 1000) / fps);
+          const hold = f === need - 1 ? tail : 1;
+          await grab(hold, false);
+          used += hold;
+          captures++;
+        }
+      } finally {
+        tableEl.removeAttribute('data-capture-motion');
+      }
+    }
+  }
+  if (motion) motion.finishAll();
+  await grab(Math.max(1, maxFrames - used), true);
+  return captures;
+}
+
+/* At least this many redraws for a motion frame (the first at 100ms, the fourth at 403ms). */
+const MOTION_MIN_REDRAWS = 4;
+
+/* What in the table can need decoding in the captured SVG: images and CSS url() images. Gradients
+   cannot; they paint with the SVG. */
+function decodableImages(el) {
+  let n = el.querySelectorAll('img, image').length;
+  const props = ['background-image', 'border-image-source', '-webkit-mask-image', 'mask-image', 'list-style-image'];
+  for (const e of el.querySelectorAll('*')) {
+    const cs = getComputedStyle(e);
+    for (const p of props) { const v = cs.getPropertyValue(p); if (v && v.indexOf('url(') >= 0) n++; }
+  }
+  return n;
+}
+
+/**
+ * Capture one MOTION frame of a spring moment (a seeked frame, never a settled still).
+ *
+ * modern-screenshot works around a Safari/Firefox decoding bug by redrawing the captured SVG once
+ * per embedded image, 100ms + i apart, so the nested svg+xml images (the card faces) have decoded
+ * by the last draw. It counts every non-'none' CSS background as an image, gradients included, and
+ * the table has 19-23 of them: a capture scheduled 27-30 redraws and slept about 3s for 4-11 images
+ * (Playwright WebKit, the 8-max hand: 4.1-4.7s a capture, 0.6-0.9s with no redraws at all, the same
+ * pixels). A motion frame keeps one redraw per image that can need decoding, at the library's own
+ * interval, and never fewer than four; it drops the redraws counted for gradients. The settled
+ * stills, which every step is held on, keep the library's behaviour untouched. Elsewhere (Chromium)
+ * the library schedules no redraws and this changes nothing.
+ *
+ * @param {object} ms       the modern-screenshot module
+ * @param {HTMLElement} el
+ * @param {object} options  domToCanvas options
+ * @returns {Promise<HTMLCanvasElement>}
+ */
+export async function captureMotionCanvas(ms, el, options) {
+  if (!ms.createContext || !ms.destroyContext) return ms.domToCanvas(el, options);
+  const keep = Math.max(MOTION_MIN_REDRAWS, decodableImages(el));
+  let context = null;
+  context = await ms.createContext(el, {
+    ...options,
+    // After every image has been embedded (and counted), before the SVG is drawn.
+    onCreateForeignObjectSvg: () => { if (context) context.drawImageCount = Math.min(context.drawImageCount, keep); },
+  });
+  try {
+    return await ms.domToCanvas(context);
+  } finally {
+    try { ms.destroyContext(context); } catch { /* already gone */ }
+  }
 }
 
 /**

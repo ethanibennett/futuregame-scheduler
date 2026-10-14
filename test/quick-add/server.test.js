@@ -80,6 +80,8 @@ async function loadVite() {
 test('game table matches the replayer\'s HAND_CONFIG', async () => {
   const { HAND_CONFIG } = await loadVite();
   for (const [name, g] of Object.entries(G.GAMES)) {
+    // Every game quick add knows is a replayer game by the same name: PLO5, PLO6, PLO6 8/b, Short Deck
+    // and NLO8 have configs of their own (the replayer follow-up), and "Big Easy" is gone.
     const cfg = HAND_CONFIG[name];
     assert.ok(cfg, `${name} is in HAND_CONFIG`);
     eq(g.cards, cfg.heroCards, `${name} card count`);
@@ -88,8 +90,15 @@ test('game table matches the replayer\'s HAND_CONFIG', async () => {
     eq(g.category === 'community', !!cfg.hasBoard, `${name} board`);
   }
   // Everything the replayer plays is here, except OFC (no betting, its own shape).
-  const missing = Object.keys(HAND_CONFIG).filter((k) => !G.GAMES[k] && !/^OFC/.test(k));
+  const known = new Set(Object.keys(G.GAMES));
+  const missing = Object.keys(HAND_CONFIG).filter((k) => !known.has(k) && !/^OFC/.test(k));
   eq(missing, []);
+  // No fallback table is left: a hand opens in the replayer under the name the parse gave it.
+  assert.ok(!('REPLAYER_FALLBACK' in G) && !('replayerGame' in G), 'REPLAYER_FALLBACK is gone');
+  for (const [name, g] of Object.entries(G.GAMES)) assert.ok(!('own' in g) && !('replayer' in g), `${name} carries no fallback flags`);
+  for (const n of ['PLO5', 'PLO6', 'PLO6 8/b', 'Short Deck', 'NLO8']) assert.ok(HAND_CONFIG[n], `${n} has its own HAND_CONFIG entry`);
+  assert.ok(!G.GAMES['Big Easy'] && !HAND_CONFIG['Big Easy'], '"Big Easy" is an input alias only');
+  eq(G.canonicalGameName('Big Easy'), 'PLO6 8/b');
 });
 
 test('street names and seat labels match the replayer (via decodeHand)', async () => {
@@ -184,7 +193,8 @@ test('game names: the replayer\'s, and the loose ones', () => {
   eq(G.canonicalGameName('stud8'), 'Stud 8');
   eq(G.canonicalGameName('badugi'), 'Badugi');
   eq(G.canonicalGameName('OFC'), null);
-  eq(G.canonicalGameName('Short Deck'), null);
+  eq(G.canonicalGameName('Pineapple'), null);   // not a game quick add knows
+  eq(G.canonicalGameName('Short Deck'), 'Short Deck');   // owner decision E: its own game now
 });
 
 /* ── Draft → hand ──────────────────────────────────────────────────────────── */
@@ -880,7 +890,7 @@ test('routes: auth, admin gate, validation, 503 without a key', async () => {
     eq((await call('/parse', { source: 'text' }, ham)).status, 400);
     eq((await call('/parse', { text: '   ' }, ham)).status, 400);
     eq((await call('/parse', { text: 'x', source: 'video' }, ham)).status, 400);
-    eq((await call('/parse', { text: 'x', hints: { gameType: 'Short Deck' } }, ham)).status, 400);
+    eq((await call('/parse', { text: 'x', hints: { gameType: 'Pineapple' } }, ham)).status, 400);
     eq((await call('/parse', { text: 'x'.repeat(6001) }, ham)).status, 413);
     const noKey = await call('/parse', { text: 'UTG opens, I 3-bet' }, ham);
     eq(noKey.status, 503);
@@ -939,6 +949,82 @@ test('routes: model failures come back as JSON errors', async () => {
     eq(r.status, 500);
     eq(r.body, { error: 'Quick add failed.' });
   });
+});
+
+/* ── The hand-history fast path (owner decision H) ───────────────────────────── */
+
+const PS_HAND = [
+  "PokerStars Hand #100000001: Hold'em No Limit ($0.50/$1.00 USD) - 2026/10/01 20:15:00 ET",
+  "Table 'Zeta III' 6-max Seat #3 is the button",
+  'Seat 1: quokka77 ($100.00 in chips)', 'Seat 2: marsupial ($98.50 in chips)', 'Seat 3: tallulah ($250.00 in chips)',
+  'marsupial: posts small blind $0.50', 'tallulah: posts big blind $1.00', 'quokka77: posts big blind $1.00',
+  '*** HOLE CARDS ***', 'Dealt to tallulah [Ah Qd]',
+  'quokka77: raises $2.00 to $3.00', 'marsupial: folds', 'tallulah: calls $2.00',
+  '*** FLOP *** [Kd 7c 2s]', 'tallulah: checks', 'quokka77: bets $4.00', 'tallulah: folds',
+  'quokka77 collected $6.50 from pot',
+].join('\n');
+
+test('routes: a pasted hand history is read in code, with no model call and no screen names', async () => {
+  const ham = sign({ id: 1, username: 'ham5' });
+  const client = stubClient(toolReply('record_hand', EXAMPLE_DRAFT()));
+  await withServer({ getClient: () => client }, async (call) => {
+    const r = await call('/parse', { text: PS_HAND }, ham);
+    eq(r.status, 200);
+    eq(client.calls.length, 0);
+    eq(r.body.hand.gameType, 'NLH');
+    eq(r.body.hand.players.length, 3);
+    eq(r.body.hand.players.map((p) => p.position), ['BTN', 'SB', 'BB']);
+    assert.ok(!JSON.stringify(r.body).match(/quokka77|marsupial|tallulah/), 'no screen name in the response');
+    assert.ok(r.body.notes.some((n) => /hand history/.test(n)));
+  });
+});
+
+test('routes: a line the code cannot read goes to the model alone, names replaced', async () => {
+  const ham = sign({ id: 1, username: 'ham5' });
+  const text = PS_HAND.replace('marsupial: folds', 'marsupial: cartwheels $2.00');
+  const client = stubClient(toolReply('read_lines', { lines: [{ index: 0, player: 'Player 2', action: 'fold' }] }));
+  await withServer({ getClient: () => client }, async (call) => {
+    const r = await call('/parse', { text }, ham);
+    eq(r.status, 200);
+    eq(client.calls.length, 1);
+    eq(client.calls[0].tools[0].name, 'read_lines');
+    const sent = JSON.stringify(client.calls[0]);
+    assert.ok(!/quokka77|marsupial|tallulah|Zeta/.test(sent), 'the request carries no screen name');
+    assert.ok(sent.includes('Player 2: cartwheels'));
+    eq(r.body.hand.streets[0].actions.filter((a) => a.action === 'fold').length, 1);
+  });
+  // With no model to ask, the unread line is dropped and the player is told.
+  const out = await QA.parseHand({ client: null, text });
+  assert.ok(out.notes.some((n) => /1 line of the hand history could not be read/.test(n)), out.notes.join('|'));
+  eq(out.hand.streets[0].actions.filter((a) => a.action === 'fold').length, 0);
+});
+
+test('parseHand: a history of a game the code does not read goes to the model with names replaced', async () => {
+  const stud = ["PokerStars Hand #1: 7 Card Stud Limit ($1/$2 USD) - 2026/10/01", "Table 'S' 8-max", 'Seat 1: zorro ($50 in chips)', 'Seat 2: bandit ($50 in chips)', 'zorro: posts the ante $0.25', '*** 3rd STREET ***', 'Dealt to zorro [2c 3d 4h]'].join('\n');
+  const client = stubClient(toolReply('record_hand', EXAMPLE_DRAFT()));
+  const out = await QA.parseHand({ client, text: stud });
+  eq(client.calls.length, 1);
+  assert.ok(!/zorro|bandit/.test(JSON.stringify(client.calls[0])));
+  assert.ok(out.hand);
+});
+
+test('parseHand: speech number words are logged, and the request carries the rewritten transcript', async () => {
+  const client = stubClient(toolReply('record_hand', EXAMPLE_DRAFT()));
+  const lines = [];
+  await QA.parseHand({ client, text: 'he bets twelve hundred and I call with jack ten', source: 'speech', log: { log: (m) => lines.push(m) } });
+  const content = client.calls[0].messages[0].content;
+  assert.match(content, /he bets 1200 and I call with jack ten/);
+  assert.match(content, /rewritten as digits by code/);
+  assert.ok(lines.some((m) => /number words: "twelve hundred"=1200/.test(m)), lines.join('|'));
+});
+
+test('validation: hints.handIndex is a whole number from 1 to 8', () => {
+  eq(QA.validateParseBody({ text: 'x', hints: { handIndex: 2 } }).hints.handIndex, 2);
+  for (const bad of [0, 9, 1.5, 'two']) {
+    assert.throws(() => QA.validateParseBody({ text: 'x', hints: { handIndex: bad } }), /handIndex/);
+  }
+  const req = require('../../lib/quick-add/prompt').buildParseRequest({ text: 'two hands', source: 'text', hints: { handIndex: 2 }, model: 'm' });
+  assert.match(req.messages[0].content, /record hand number 2/);
 });
 
 test('rate limiter: sliding window', () => {

@@ -13,12 +13,13 @@
 // (avatars, staking proofs), which is not acceptable for receipts, so photos are left out.
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
 import { CURRENCY_CONFIG, convertAmount, nativeCurrency, getToday, normaliseDate, MINUS } from '../utils/utils.js';
 import { BANKROLL_ALL, BANKROLL_MAIN, bankrollQuery, entryBankrollKey } from '../utils/bankrolls.js';
 import {
-  EXPENSE_CATEGORIES, INCOME_CATEGORIES, categoryLabel, totalsByCategory, inYear, tripPnl,
+  EXPENSE_CATEGORIES, INCOME_CATEGORIES, categoryLabel, totalsByCategory, inYear, tripPnl, isOutsideRoll, OUTSIDE_ROLL_LABEL,
   transactionsToCsv, parseAmount, shortDay, tripRange, signedAmount,
 } from '../utils/transactions.js';
 
@@ -91,7 +92,7 @@ function Sheet({ title, label, onClose, closeText = 'Done', children }) {
 
 // One transaction as a row: date | category · note | amount. A button when it can be edited.
 function TxRow({ t, onOpen }) {
-  const what = [categoryLabel(t.kind, t.category), t.note || t.series || t.tournament_name || t.trip_name].filter(Boolean).join(' · ');
+  const what = [categoryLabel(t.kind, t.category), isOutsideRoll(t) && OUTSIDE_ROLL_LABEL, t.note || t.series || t.tournament_name || t.trip_name].filter(Boolean).join(' · ');
   const inner = (
     <>
       <span className="tx-row-date">{shortDay(t.occurred_on)}</span>
@@ -448,6 +449,9 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
   // One sheet at a time: { type: 'add', tx?, preset?, back? } | { type: 'all' } | { type: 'trips', tripId? }
   const [sheet, setSheet] = useState(null);
   const [version, setVersion] = useState(0);
+  // The floating + (BankrollFab) steps aside while one of this section's sheets (the add form, the
+  // list, trips) is open.
+  useHideBankrollFab(!!sheet);
   useEffect(() => {
     if (!intent) return;
     if (intent.kind === 'expense') setSheet({ type: 'add', preset: { kind: 'expense', bankroll: bankroll === BANKROLL_ALL ? BANKROLL_MAIN : bankroll } });

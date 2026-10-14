@@ -2,7 +2,7 @@
 // Compact URL-safe text format for sharing poker hands via URL
 // Converted from public/js/hand-shorthand.js
 
-import { HAND_CONFIG, HAND_CONFIG_DEFAULT } from './utils.js';
+import { HAND_CONFIG, HAND_CONFIG_DEFAULT, LEGACY_GAME_NAMES, canonicalGameType } from './utils.js';
 
 export const GAME_CODES = {
   'NLH':'N', 'LHE':'L', 'PLO':'P', 'PLO8':'P8', 'O8':'O8', 'Big O':'BO',
@@ -10,7 +10,11 @@ export const GAME_CODES = {
   'Stud Hi-Lo':'SL', '2-7 Razz':'2R', '2-7 TD':'TD', 'NL 2-7 SD':'SD',
   'PL 2-7 TD':'PT', 'L 2-7 TD':'LT', 'A-5 TD':'A5', 'Badugi':'BG',
   'Badeucy':'BC', 'Badacy':'BA', 'PL 5CD Hi':'PD', 'OFC':'OF',
-  'PLO5':'P5', 'PLO6':'P6', 'Big Easy':'BE', 'Ultimate Big O':'UB',
+  /* 'BE' is the code every link to a six-card PLO hi-lo hand has carried since it was called "Big
+     Easy" (renamed PLO6 8/b, 2026-10-14). A code is a wire id, not a name anyone reads, and keeping
+     it means a link made now still opens in an app build from before the rename. decodeHand maps it
+     to 'PLO6 8/b' like any other code, and also reads a header that spells the old name out. */
+  'PLO5':'P5', 'PLO6':'P6', 'PLO6 8/b':'BE', 'NLO8':'NO', 'Short Deck':'SK', 'Ultimate Big O':'UB',
   'Crazy Pineapple':'CP', 'Very Crazy Pineapple':'VP', 'Hideaway':'HW',
   'NL Stud Hi':'NS', 'PL Stud Hi':'PS', 'NL Stud 8':'N8', 'PL Stud 8':'G8',
   'NL Razz':'NZ', 'PL Razz':'PZ'
@@ -64,7 +68,7 @@ export function encodeHand(hand) {
   if (!hand || !hand.gameType) return '';
   var parts = [];
 
-  var gameCode = GAME_CODES[hand.gameType] || hand.gameType;
+  var gameCode = GAME_CODES[canonicalGameType(hand.gameType)] || hand.gameType;
   var n = hand.players.length;
   var numChar = n === 10 ? 'T' : String(n);
   var heroChar = hand.heroIdx != null ? hand.heroIdx.toString(16).toUpperCase() : '0';
@@ -251,14 +255,27 @@ export function decodeHand(str) {
   for (var cj = 0; cj < candidates.length; cj++) {
     if (headerStr.length === candidates[cj].length + 2) { chosen = candidates[cj]; break; }
   }
+  /* A header that spells a game's retired name out ("Big Easy60", from the encoder's fall-back to
+     the full name for a game with no code) opens as the game it became. */
+  if (!chosen) {
+    var legacyNames = Object.keys(LEGACY_GAME_NAMES);
+    for (var li = 0; li < legacyNames.length; li++) {
+      if (headerStr.indexOf(legacyNames[li]) === 0 && headerStr.length === legacyNames[li].length + 2) {
+        gameType = LEGACY_GAME_NAMES[legacyNames[li]];
+        codeLen = legacyNames[li].length;
+        break;
+      }
+    }
+  }
   /* No candidate leaves exactly two characters — a malformed or future header.
      Fall back to the longest match, which is what this always did. */
-  if (!chosen && candidates.length) chosen = candidates[0];
+  if (!gameType && !chosen && candidates.length) chosen = candidates[0];
   if (chosen) {
     gameType = GAME_CODES_REV[chosen];
     codeLen = chosen.length;
   }
   if (!gameType) return null;
+  gameType = canonicalGameType(gameType);
 
   var numPlayersChar = headerStr.charAt(codeLen);
   var numPlayers = numPlayersChar === 'T' ? 10 : parseInt(numPlayersChar, 10);

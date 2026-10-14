@@ -211,6 +211,32 @@ function addEvent(db, { user = 1, name, date, time = '12:00 PM', buyin, venue = 
     near(s.all.results, -30 + 2000 / 0.8, 0.01);
   });
 
+  await test('money merge: correction and settlement are signed, labelled, move the balance and never count as results', () => {
+    assert.ok(ledger.MOVE_KINDS.has('correction') && ledger.MOVE_KINDS.has('settlement'));
+    for (const k of ['deposit', 'withdrawal', 'transfer_in', 'transfer_out']) assert.ok(ledger.MOVE_KINDS.has(k), k);
+    const d2 = scratchDb(SQL);
+    d2.run("INSERT INTO bankroll_adjustments (user_id, bankroll_id, kind, amount, occurred_on, note, created_at) VALUES (1, NULL, 'deposit', 1000, '2026-04-01', NULL, 'x')");
+    d2.run("INSERT INTO bankroll_adjustments (user_id, bankroll_id, kind, amount, occurred_on, note, created_at) VALUES (1, NULL, 'correction', -3, '2026-04-02', 'rounding', 'x')");
+    d2.run("INSERT INTO bankroll_adjustments (user_id, bankroll_id, kind, amount, occurred_on, note, created_at) VALUES (1, NULL, 'settlement', -250, '2026-04-03', 'WSOP: backers', 'x')");
+    d2.run("INSERT INTO bankroll_adjustments (user_id, bankroll_id, kind, amount, occurred_on, note, created_at) VALUES (1, NULL, 'settlement', 40, '2026-04-04', NULL, 'x')"); // a backer paid in
+    addEvent(d2, { name: 'MM Event', date: '2026-04-05', buyin: 100, cashed: 1, cash: 600 }); // +500
+    const L = { sources: [{ name: 'adjustments', entries: aSrc.entries }, { name: 'tournaments', entries: tSrc.entries }], errors: [] };
+    const got = aSrc.entries(d2, 1, {});
+    assert.deepStrictEqual(got.map((e) => [e.kind, e.amount, e.label]).sort(), [
+      ['correction', -3, 'Correction · rounding'], ['deposit', 1000, 'Deposit'],
+      ['settlement', -250, 'Paid to backers · WSOP: backers'], ['settlement', 40, 'Paid to backers']].sort());
+    const lst = bankrolls.listBankrolls(d2, 1);
+    const { entries } = ledger.collect(d2, 1, { bankroll: 'all' }, L);
+    const led = ledger.runningBalances(entries, { bankrollList: lst, scope: 'all', currency: 'USD', rates: RATES });
+    const sum = ledger.summarise(led, { bankrollList: lst, scope: 'all', currency: 'USD', rates: RATES });
+    const main = sum.bankrolls.find((b) => b.id === 'main');
+    assert.deepStrictEqual([main.moved, main.results, main.balance], [1000 - 3 - 250 + 40, 500, 1000 - 3 - 250 + 40 + 500], 'moved, never profit');
+    assert.deepStrictEqual([main.by_kind.correction, main.by_kind.settlement], [-3, -210]);
+    assert.deepStrictEqual([sum.all.moved, sum.all.results], [787, 500]);
+    assert.strictEqual(led.closing.per.main.balance, 1287);
+    d2.close();
+  });
+
   // ── the rules guide ─────────────────────────────────────────────────────────────────────
   await test('guide: cap = roll / N; over the cap is "down", covering the next tier is "up", too few entries is null', () => {
     const recent = (v, n = 10) => Array(n).fill(v);

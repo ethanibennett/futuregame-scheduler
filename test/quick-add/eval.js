@@ -333,8 +333,18 @@ const EXPECT_KEYS = new Set([
   'gameType', 'gameMode', 'currency', 'blinds', 'players', 'heroPosition', 'heroCards',
   'heroStreetCards', 'stacks', 'stacksAll', 'effectiveStack', 'board', 'actions', 'draws',
   'studUp', 'showdown', 'winners',
+  // A winner per pot (owner decision G, 2026-10-14): [{ name: 'main', winners: ['UTG'] },
+  // { name: 'side 1', winners: ['BTN'] }]; winners may be refs or { refs, split }.
+  'pots',
+  // What only the parse can tell (hand.quickAdd and hand.heroless, 2026-10-14): the narrator was
+  // not in the hand (the hand is stored hero-less, owner decision C); the text is not one
+  // recordable hand; an ante of unstated type; a format the replayer cannot store; other hands
+  // told alongside.
+  'observer', 'recordable', 'anteUnclear', 'unsupported', 'otherHands',
 ]);
-const CASE_KEYS = new Set(['id', 'source', 'game', 'text', 'expect', 'expectGaps', 'flaws', 'tags', 'notes', '_file', '_index']);
+/* sourceUrl: where a paraphrased case came from (the corpus never carries the raw
+   text of a forum post or a video; `source` is already text|speech). */
+const CASE_KEYS = new Set(['id', 'source', 'sourceUrl', 'game', 'text', 'expect', 'expectGaps', 'flaws', 'tags', 'notes', '_file', '_index']);
 const BLIND_KEYS = new Set(['sb', 'bb', 'ante', 'bringIn', 'bigBet', 'straddle']);
 const ACTIONS = new Set(['fold', 'check', 'call', 'bet', 'raise', 'all-in', 'bring-in']);
 const GAP_KINDS = new Set(['missing', 'ambiguous', 'impossible']);
@@ -371,6 +381,7 @@ function collectRefs(ex) {
   for (const k of Object.keys(ex.stacks || {})) refs.add(k);
   for (const k of Object.keys(ex.studUp || {})) refs.add(k);
   for (const r of winnerRefs(ex.winners)) refs.add(r);
+  for (const pot of ex.pots || []) for (const r of winnerRefs(pot.winners)) refs.add(r);
   return refs;
 }
 function winnerRefs(w) {
@@ -413,6 +424,14 @@ function validateCase(c, seenIds) {
     }
   }
   if (ex.players != null && (!Number.isInteger(ex.players) || ex.players < 2 || ex.players > 10)) E('players must be 2..10');
+  if (c.sourceUrl != null && !(typeof c.sourceUrl === 'string' && /^https?:\/\/\S+$/.test(c.sourceUrl))) E('sourceUrl must be an http(s) URL');
+  if (ex.observer != null && ex.observer !== true) E('observer, when given, is true');
+  if (ex.observer && (ex.heroPosition || ex.heroCards)) E('an observer hand has no hero position or hero cards');
+  if (ex.recordable != null && ex.recordable !== false) E('recordable, when given, is false');
+  if (ex.anteUnclear != null && !(isNum(ex.anteUnclear) && ex.anteUnclear > 0)) E('anteUnclear must be the ante as said (a positive number)');
+  if (ex.anteUnclear != null && ex.blinds && ex.blinds.ante != null) E('anteUnclear is for an ante whose type is not known: leave blinds.ante out');
+  if (ex.unsupported != null && ex.unsupported !== true) E('unsupported, when given, is true');
+  if (ex.otherHands != null && !(Number.isInteger(ex.otherHands) && ex.otherHands >= 1)) E('otherHands is the number of other hands told');
   if (c.expectGaps != null) {
     if (!Array.isArray(c.expectGaps)) E('expectGaps must be an array');
     else c.expectGaps.forEach((g, i) => {
@@ -491,13 +510,19 @@ function validateCase(c, seenIds) {
   let sim = null;
   if (!errors.length) {
     sim = simulate(c, ex, cat, cfg, heroRef);
-    sim.problems.forEach(p => route('betting', `betting: ${p}`));
+    sim.problems.forEach(p => route(flaws.has('seating') && SEATING_PROBLEM.test(p) ? 'seating' : 'betting', `betting: ${p}`));
   }
   for (const f of flaws) if (!found.has(f) && !errors.length) E(`flaw '${f}' declared but the validator found no such problem`);
   return { errors, warnings, sim, cat, heroRef };
 }
 
-const FLAW_CLASSES = ['duplicate-card', 'card-count', 'draw', 'betting'];
+const FLAW_CLASSES = ['duplicate-card', 'card-count', 'draw', 'betting', 'seating'];
+/* 'seating' is the narrow flaw for a text that leaves out who acted or where players sat
+   (a bomb pot's missing preflop, limpers who were never seated, "everyone calls"):
+   only problems about WHO acts WHEN are tolerated, so stacks, bet sizes and call amounts
+   are still checked. 'betting' stays for a text that breaks a betting rule outright
+   (an illegal raise size, a per-street structure the replayer cannot store). */
+const SEATING_PROBLEM = /acts after folding|acts but the action was not on them|was skipped|never acted|never matched the bet|action after the hand was already over|betting after all but one player is all-in|draws after folding|winner \S+ folded|showdown: \S+ folded|calls with nothing to call/;
 function cardErrorClass(m) {
   if (/appears for both|repeats|twice|appears \d+ times/.test(m)) return 'duplicate-card';
   if (/not in hand|no draw follows/.test(m)) return 'draw';
@@ -656,6 +681,7 @@ function canonicalizeRefs(ex, n) {
       showdown: mapKeys(ex.showdown),
       stacks: mapKeys(ex.stacks),
       winners: !w ? w : Array.isArray(w) ? w.map(m) : { ...w, refs: (w.refs || []).map(m) },
+      pots: ex.pots ? ex.pots.map(p => ({ ...p, winners: Array.isArray(p.winners) ? p.winners.map(m) : { ...p.winners, refs: (p.winners.refs || []).map(m) } })) : ex.pots,
     },
   };
 }
@@ -768,7 +794,7 @@ function simulate(c, ex0, cat, cfg, heroRef0) {
       order = ['SB', 'BB', ...rest].filter(s => S[s]);
     }
     let ptr = 0;
-    const owes = s => !S[s].folded && !S[s].allIn && (!acted.has(s) || contrib[s] < maxBet);
+    const owes = s => !S[s].folded && !S[s].allIn && (!acted.has(s) || contrib[s] < maxBet - 1e-9);
 
     if (acts.length && live().length < 2) P(`${key}: action after the hand was already over`);
     if (acts.length && si > 0 && canAct().length < 2 && !acts.every(a => a[1] === 'fold')) {
@@ -898,7 +924,7 @@ function simulate(c, ex0, cat, cfg, heroRef0) {
     if (hasLater(si) && live().length > 1) {
       for (const s of order) {
         if (S[s].folded || S[s].allIn) continue;
-        if (contrib[s] < maxBet) {
+        if (contrib[s] < maxBet - 1e-9) {
           if (preflop && !isStud) { S[s].folded = true; out.push([s, 'fold']); }
           else if (orderKnown || isStud) P(`${key}: ${s} never matched the bet of ${maxBet}`);
         } else if (!acted.has(s) && canAct().length > 1 && orderKnown && !isStud) {
@@ -979,12 +1005,15 @@ function buildOracleHand(c, v) {
     position: isStud ? 'Seat ' + (i + 1) : (s === 'hero' ? '' : s),
     startingStack: stackFor(s),
   }));
-  const slotOf = i => (heroIdx == null ? i : i < heroIdx ? i : i - 1);
+  // With no hero the replayer (and the server) lay the card slots out as if seat 0
+  // were the hero: seat 0's cards in cards.hero, the others in opponents[i - 1].
+  const slotHero = heroIdx == null ? 0 : heroIdx;
+  const slotOf = i => (i < slotHero ? i : i - 1);
   const names = streetNames(cat);
   const keys = STREET_KEYS[cat];
   const streets = names.map((name, si) => ({
     name,
-    cards: { hero: '', opponents: Array.from({ length: Math.max(0, n - (heroIdx == null ? 0 : 1)) }, () => ''), board: '' },
+    cards: { hero: '', opponents: Array.from({ length: Math.max(0, n - 1) }, () => ''), board: '' },
     actions: [],
     draws: [],
   }));
@@ -1011,7 +1040,10 @@ function buildOracleHand(c, v) {
   } else {
     for (const [ref, v2] of Object.entries(ex.showdown || {})) {
       const i = idxOf(ref);
-      if (i >= 0 && i !== heroIdx) streets[0].cards.opponents[slotOf(i)] = v2;
+      if (i >= 0 && i !== heroIdx) {
+        if (heroIdx == null && i === slotHero) streets[0].cards.hero = v2;
+        else streets[0].cards.opponents[slotOf(i)] = v2;
+      }
     }
   }
   keys.forEach((k, si) => {
@@ -1032,6 +1064,22 @@ function buildOracleHand(c, v) {
   }
   const w = ex.winners;
   const result = w ? { winners: winnerRefs(w).map(r => ({ playerIdx: idxOf(r), split: !Array.isArray(w) && !!w.split })) } : null;
+  if (result && Array.isArray(ex.pots) && ex.pots.length) {
+    result.pots = ex.pots.map(p => ({ name: p.name, winners: winnerRefs(p.winners).map(r => ({ playerIdx: idxOf(r), split: !Array.isArray(p.winners) && !!p.winners.split })) }));
+  }
+  const quickAdd = {};
+  /* A case that expects the table-size question (a gap on field tableSize) says the
+     text never gives it: a real parse then lists only the players mentioned, unseated,
+     and the oracle hand does the same instead of seating a table nobody described.
+     Older cases with no such gap keep the seated oracle they were scored with. */
+  const asksTable = (c.expectGaps || []).some(g => [].concat(g.field || []).includes('tableSize'));
+  if (!isStud && !ex.players && asksTable) quickAdd.positions = 'narrator';
+  // Owner decision C: an observer hand is hero-less (hand.heroless, no hero question).
+  if (ex.recordable === false) quickAdd.notRecordable = true;
+  if (isNum(ex.anteUnclear)) quickAdd.anteUnclear = ex.anteUnclear;
+  if (ex.unsupported) quickAdd.unsupported = ['a format the replayer cannot store'];
+  if (ex.otherHands) quickAdd.otherHands = Array.from({ length: ex.otherHands }, (_, i) => 'another hand ' + (i + 1));
+  if (b && isNum(ex.anteUnclear)) b.ante = ex.anteUnclear;
   return {
     gameType: ex.gameType || null,
     gameMode: ex.gameMode || null,
@@ -1041,6 +1089,8 @@ function buildOracleHand(c, v) {
     heroIdx,
     streets,
     result,
+    ...(ex.observer ? { heroless: true } : {}),
+    ...(Object.keys(quickAdd).length ? { quickAdd } : {}),
   };
 }
 
@@ -1058,9 +1108,12 @@ function handContext(hand, cat) {
   const labels = n ? positionLabels(n) : [];
   const canonical = n > 0 && players.every((p, i) => p && normPos(p.position) === labels[i]);
   const streets = ok && Array.isArray(hand.streets) ? hand.streets : [];
-  const slotOf = i => (heroIdx < 0 ? i : i < heroIdx ? i : i - 1);
+  // No hero: the slots read as if seat 0 were the hero (the replayer's heroIdx ?? 0).
+  const slotHero = heroIdx < 0 ? 0 : heroIdx;
+  const slotOf = i => (i < slotHero ? i : i - 1);
   const oppCards = (si, i) => {
     const st = streets[si];
+    if (heroIdx < 0 && i === 0) return (st && st.cards && st.cards.hero) || '';
     const opps = st && st.cards && Array.isArray(st.cards.opponents) ? st.cards.opponents : [];
     return opps[slotOf(i)] || '';
   };
@@ -1153,6 +1206,15 @@ function scoreCase(c, v, hand) {
     }
   }
   if (ex.players != null) F('players', 'table', ex.players, ctx.n || null, ctx.n === ex.players);
+  const hq = H.quickAdd && typeof H.quickAdd === 'object' ? H.quickAdd : {};
+  if (ex.observer) F('observer', 'hero', true, H.heroless === true ? true : null, H.heroless === true);
+  if (ex.recordable === false) F('recordable', 'table', false, hq.notRecordable ? false : null, !!hq.notRecordable);
+  if (isNum(ex.anteUnclear)) F('anteUnclear', 'stakes', ex.anteUnclear, isNum(hq.anteUnclear) ? hq.anteUnclear : null, numEq(hq.anteUnclear, ex.anteUnclear));
+  if (ex.unsupported) F('unsupported', 'table', true, Array.isArray(hq.unsupported) && hq.unsupported.length ? true : null, Array.isArray(hq.unsupported) && hq.unsupported.length > 0);
+  if (ex.otherHands) {
+    const got = Array.isArray(hq.otherHands) ? hq.otherHands.length : 0;
+    F('otherHands', 'table', ex.otherHands, got || null, got >= 1);
+  }
   if (ex.heroPosition != null) {
     const got = ctx.heroIdx >= 0 ? (ctx.players[ctx.heroIdx] || {}).position || ctx.labels[ctx.heroIdx] : null;
     F('heroPosition', 'hero', ex.heroPosition, got, ctx.heroIdx >= 0 && ctx.resolve(ex.heroPosition) === ctx.heroIdx);
@@ -1273,6 +1335,17 @@ function scoreCase(c, v, hand) {
     let ok = want.length === gotW.length && want.every(i => i >= 0 && gotW.includes(i));
     if (ok && !Array.isArray(ex.winners) && ex.winners.split) ok = H.result.winners.every(w => w.split);
     F('winners', 'result', winnerRefs(ex.winners).join(','), gotW.length ? gotW.map(i => (ctx.players[i] || {}).position || i).join(',') : null, ok);
+  }
+
+  if (Array.isArray(ex.pots)) {
+    const gotPots = H.result && Array.isArray(H.result.pots) ? H.result.pots : [];
+    for (const pot of ex.pots) {
+      const want = winnerRefs(pot.winners).map(r => ctx.resolve(r));
+      const g = gotPots.find(x => String(x.name || '').toLowerCase() === String(pot.name).toLowerCase());
+      const gotIdx = g ? g.winners.map(w => w.playerIdx) : [];
+      const ok = !!g && want.length === gotIdx.length && want.every(i => i >= 0 && gotIdx.includes(i));
+      F('pots.' + pot.name, 'result', winnerRefs(pot.winners).join(','), gotIdx.length ? gotIdx.map(i => (ctx.players[i] || {}).position || i).join(',') : null, ok);
+    }
   }
 
   // Hallucinations: cards and stacks the text never stated.

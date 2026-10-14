@@ -80,7 +80,11 @@ const VARIANT_STRIPS = {
   'PLO8':               { abbr: 'PLO8',   fam: 'flop',  shade: 1.28 },
   'O8':                 { abbr: 'O8',     fam: 'flop',  shade: 0.79 },
   'Big O':              { abbr: 'BIG O',  fam: 'flop',  shade: 1.21 },
-  'Big Easy':           { abbr: 'BIG E',  fam: 'flop',  shade: 0.93 },
+  'PLO5':               { abbr: 'PLO5',   fam: 'flop',  shade: 1.07 },
+  'PLO6':               { abbr: 'PLO6',   fam: 'flop',  shade: 1.35 },
+  'PLO6 8/b':           { abbr: 'PLO6 8/B', fam: 'flop', shade: 0.93 },
+  'NLO8':               { abbr: 'NLO8',   fam: 'flop',  shade: 1.42 },
+  'Short Deck':         { abbr: 'SHORT',  fam: 'flop',  shade: 0.65 },
   'Stud Hi':            { abbr: 'STUD',   fam: 'stud',  shade: 1.00 },
   'Stud 8':             { abbr: 'STUD 8', fam: 'stud',  shade: 1.16 },
   'Stud Hi-Lo':         { abbr: 'STUD 8', fam: 'stud',  shade: 1.16 },
@@ -112,7 +116,25 @@ function shadeHex(hex, k) {
   });
   return '#' + ch.join('');
 }
+/* "Big Easy" was this app's name for six-card PLO hi-lo until 2026-10-14; the owner's name is
+   "PLO6 8/b" (also what a room's board says). Hands saved before then, shared links and the
+   favourites list still say the old one, so every place a game name comes IN canonicalises it
+   (saved hand load, the hands list, decodeHand, the picker's history) and the old name appears
+   nowhere else. Keys are exact; the code 'BE' in an encoded hand is handled in hand-shorthand.js. */
+export const LEGACY_GAME_NAMES = { 'Big Easy': 'PLO6 8/b' };
+export function canonicalGameType(gameType) {
+  return typeof gameType === 'string' && Object.prototype.hasOwnProperty.call(LEGACY_GAME_NAMES, gameType)
+    ? LEGACY_GAME_NAMES[gameType] : gameType;
+}
+/* The same hand with its game name canonical; the hand itself when nothing changes. */
+export function canonicalHand(hand) {
+  if (!hand || typeof hand !== 'object') return hand;
+  const g = canonicalGameType(hand.gameType);
+  return g === hand.gameType ? hand : { ...hand, gameType: g };
+}
+
 export function getVariantStrip(gameType) {
+  gameType = canonicalGameType(gameType);
   const v = VARIANT_STRIPS[gameType];
   if (!v) return { abbr: String(gameType || '').toUpperCase().slice(0, 7), color: '#6B7280', family: 'other' };
   return { abbr: v.abbr, color: shadeHex(VARIANT_FAMILIES[v.fam].hue, v.shade), family: v.fam };
@@ -233,7 +255,16 @@ export const HAND_CONFIG = {
   'PLO8':     { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
   'O8':       { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
   'Big O':    { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
-  'Big Easy': { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q98hdcsdd', boardPlaceholder: 'J72hds' },
+  // Five- and six-card Omaha. All Omaha games play exactly two hole cards (poker-engine.js).
+  'PLO5':     { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
+  'PLO6':     { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ987hdcsdd', boardPlaceholder: 'J72hds' },
+  // Six-card PLO hi-lo, 8-or-better low (the replayer's "Big Easy" until 2026-10-14).
+  'PLO6 8/b': { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A2KQ98hdcsdd', boardPlaceholder: 'J72hds' },
+  // No-limit Omaha hi-lo, 8-or-better low.
+  'NLO8':     { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
+  // 6+ Hold'em: 36 cards (the twos to fives out), a flush beats a full house, A-6-7-8-9 is the
+  // lowest straight (poker-engine.js SHORT_DECK_RULES). `shortDeck` is what the card pickers read.
+  'Short Deck': { heroCards: 2, hasBoard: true, boardMax: 5, betting: 'nl', shortDeck: true, heroPlaceholder: 'AKhd', boardPlaceholder: 'J76hds' },
   'Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
   'Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A234567hdcshds' },

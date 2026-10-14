@@ -20,13 +20,13 @@ import Icon from './Icon.jsx';
 export default function DesktopRail({ current, onChange, isAdmin }) {
   const primary = [
     { id: 'tournaments', label: 'Schedule', icon: Icon.calendar },
-    { id: 'social', label: 'Social', icon: Icon.people },
+    { id: 'tracking', label: 'Bankroll', icon: Icon.tracking },
     { id: 'dashboard', label: 'Dashboard', icon: Icon.home },
     ...(isAdmin ? [{ id: 'hands', label: 'Hands', icon: Icon.cards }] : []),
     ...(isAdmin ? [{ id: 'cash', label: 'Cash', icon: Icon.dollarSign }] : []),
   ];
   const secondary = [
-    { id: 'tracking', label: 'Results', icon: Icon.tracking },
+    { id: 'social', label: 'Social', icon: Icon.people },
     { id: 'settings', label: 'Settings', icon: Icon.gear },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Icon.lock }] : []),
     // The admin alerts' "what this batch added" lists (AdminBatchesView); App opens the newest.

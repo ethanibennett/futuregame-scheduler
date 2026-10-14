@@ -21,7 +21,16 @@ export const HAND_CONFIG = {
   'PLO8':     { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
   'O8':       { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
   'Big O':    { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
-  'Big Easy': { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q98hdcsdd', boardPlaceholder: 'J72hds' },
+  // Five- and six-card Omaha. All Omaha games play exactly two hole cards (poker-engine.js).
+  'PLO5':     { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ98hdcsd', boardPlaceholder: 'J72hds' },
+  'PLO6':     { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AKQ987hdcsdd', boardPlaceholder: 'J72hds' },
+  // Six-card PLO hi-lo, 8-or-better low (the replayer's "Big Easy" until 2026-10-14).
+  'PLO6 8/b': { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'A2KQ98hdcsdd', boardPlaceholder: 'J72hds' },
+  // No-limit Omaha hi-lo, 8-or-better low.
+  'NLO8':     { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
+  // 6+ Hold'em: 36 cards (the twos to fives out), a flush beats a full house, A-6-7-8-9 is the
+  // lowest straight (poker-engine.js SHORT_DECK_RULES). `shortDeck` is what the card pickers read.
+  'Short Deck': { heroCards: 2, hasBoard: true, boardMax: 5, betting: 'nl', shortDeck: true, heroPlaceholder: 'AKhd', boardPlaceholder: 'J76hds' },
   'Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
   'Stud Hi':  { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A9xxAKQJThdcsx' },
   'Stud 8':   { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'fl', flSmallStreets: [0, 1], raiseCap: 4, isStud: true, heroPlaceholder: 'A234567hdcshds' },
@@ -121,7 +130,14 @@ const GAME_ALIASES = {
   o8: 'O8', omaha8: 'O8', omahahilo: 'O8', limitomahahilo: 'O8', omaha8orbetter: 'O8', lo8: 'O8',
   lhe: 'LHE', lh: 'LHE', limitholdem: 'LHE', fixedlimitholdem: 'LHE', flhe: 'LHE', limit: 'LHE',
   plh: 'PLH', potlimitholdem: 'PLH',
-  bigo: 'Big O', bigeasy: 'Big Easy',
+  bigo: 'Big O',
+  // Owner decisions E and E2: each is its own game, with its own HAND_CONFIG entry in the replayer;
+  // "Big Easy" (the replayer's old name for PLO6 8/b) is an input alias only.
+  plo5: 'PLO5', '5cardplo': 'PLO5', fivecardplo: 'PLO5', plo5card: 'PLO5',
+  plo6: 'PLO6', '6cardplo': 'PLO6', sixcardplo: 'PLO6', plo6card: 'PLO6',
+  plo68b: 'PLO6 8/b', plo68: 'PLO6 8/b', plo6hilo: 'PLO6 8/b', bigeasy: 'PLO6 8/b', '6cardplohilo': 'PLO6 8/b',
+  nlo8: 'NLO8', nolimitomaha8: 'NLO8', nolimitomahahilo: 'NLO8', nlomahahilo: 'NLO8',
+  shortdeck: 'Short Deck', '6holdem': 'Short Deck', '6plus': 'Short Deck', '6plusholdem': 'Short Deck',
   stud: 'Stud Hi', studhi: 'Stud Hi', sevencardstud: 'Stud Hi', '7cardstud': 'Stud Hi', '7stud': 'Stud Hi', studhigh: 'Stud Hi',
   stud8: 'Stud 8', studhilo: 'Stud 8', stud8orbetter: 'Stud 8', sevencardstudhilo: 'Stud 8', '7cardstudhilo': 'Stud 8', studeight: 'Stud 8',
   razz: 'Razz', '27razz': '2-7 Razz', deucetosevenrazz: '2-7 Razz',

@@ -10,7 +10,13 @@ encodes (`vite-app/src/utils/hand-shorthand.js` is the canonical serialisation; 
 form in `HandReplayerView.jsx` for field meanings). Key facts:
 
 - `gameType` — one of the replayer's game names (`HAND_CONFIG` in `vite-app/src/utils/utils.js`:
-  NLH, PLO, LHE, O8, Stud Hi, Stud 8, Razz, 2-7 TD, A-5 TD, Badugi, NL 2-7 SD, …).
+  NLH, PLO, LHE, O8, Stud Hi, Stud 8, Razz, 2-7 TD, A-5 TD, Badugi, NL 2-7 SD, …), which includes
+  the five games owner decision E (2026-10-14) made their own: `PLO5`, `PLO6`, `PLO6 8/b`,
+  `Short Deck`, `NLO8`. They are recognised and output under their own names and are never
+  collapsed into PLO or NLH in the parse, and the replayer plays each natively (its own
+  `HAND_CONFIG` entry, evaluator and picker row), so QuickAddView opens a hand under the name it
+  has. `PLO6 8/b` is the replayer's name too (it was "Big Easy" until the 2026-10-14 rename;
+  "Big Easy" is only an input alias, and an old saved hand or link that says it opens as PLO6 8/b).
 - `gameMode` `'mtt'|'cash'`, `currency` (cash only).
 - `blinds` `{ sb, bb, ante, … }` (+ straddles, bring-in / big bet for stud and limit).
 - `players[]` `{ name, position, startingStack }`; `heroIdx` is the hero's index.
@@ -19,10 +25,44 @@ form in `HandReplayerView.jsx` for field meanings). Key facts:
   - draws: a draw is recorded on the betting round BEFORE it (first draw on street 0);
     `{ player, discarded, discardedCards, newCards }`; unknown drawn cards may be omitted.
   - an opponent's stored cards are their showdown hand; stud opponents' strings are up cards.
-- `result` `{ winners: [{ playerIdx, split }] }` (optional).
+- `result` `{ winners: [{ playerIdx, split }], pots?: [{ name, winners: [{ playerIdx, split }] }] }`
+  (optional). `pots` (owner decision G) is a winner PER POT — side pots, a hand run twice — the
+  main pot first; `winners` is the main pot's.
+- `heroless?: true` (owner decision C): the narrator was not in the hand. `heroIdx` is null, every
+  known card is kept with its player, and `cards.hero` is SEAT 0's cards (the slot layout of a hand
+  with no hero). The replayer does not show such a hand yet — see "Follow-ups for the replayer" in
+  `docs/quick-add-hands.md`.
 - Card notation `AhKs`, suits h/d/c/s, ranks 2-9 T J Q K A; `x` = face-down/unknown.
 
 A PARTIAL hand is the same object with fields missing (null/absent), never guessed.
+
+### `hand.quickAdd` — what the parse leaves for the engine (2026-10-14)
+
+A partial hand may also carry one extra key, `quickAdd`, written by the server's normaliser
+(`lib/quick-add/normalize.js`) and read by the gaps engine. It is the flow's own state, not the
+replayer's: `toReplayable` (QuickAddView) deletes it before the hand is opened or saved.
+
+```ts
+quickAdd?: {
+  // Waiting for the table to be seated or the blinds to be known:
+  positions?: 'narrator';      // only the players mentioned are listed; the table size is not known
+  tableSize?: number;          // said, not yet applied
+  othersFolded?: boolean;      // "folds to me": unnamed seats fold preflop once the table is seated
+  antePerPlayer?: number;      // an ante said as every player's; becomes the big blind ante when seated
+  straddles?: { type, player? }[];
+  groups?: { street, at, action, count? }[];   // "whole table calls", "4 callers", "all others fold"
+  // What only the parse could tell (rules over the hand cannot see these):
+  notRecordable?: true | string;   // not one recordable hand (a rules question, a story, a montage)
+  otherHands?: string[];       // hands the post also told, not recorded
+  otherHandIndexes?: number[]; // the number of each, in the order told (hints.handIndex asks for one)
+  otherHandsBlocking?: boolean;    // the player must say which one (owner decision F)
+  unsupported?: string[];      // a format the replayer cannot store (bomb pot, double board, PLO5 …)
+  anteUnclear?: number;        // an ante said with no type and no pot to settle it
+  questions?: Gap[];           // ready-made questions: a card or size said two ways, a four-card
+                               // flop in a transcript, a stated pot the actions miss, a texture
+                               // the cards break, seats a group action was given to
+};
+```
 
 ## Gaps — `vite-app/src/utils/quick-add/gaps.js` (part A)
 
@@ -47,6 +87,15 @@ Rules, not model judgement, decide what a gap is: missing game/blinds/hero/posit
 missing or zero stacks, cards that collide or have the wrong count for the game, an action out of
 turn, a bet/call/raise that does not add up (pot, stack, limit sizes), a betting round that never
 closes, a draw count with no matching street, a showdown with no winner, etc.
+
+One exception, added 2026-10-14: a few gaps come from the PARSE, because only the text says them.
+They arrive in `hand.quickAdd` (above) and the engine turns them into gaps without judging them:
+`scope` (blocking: not one hand that can be recorded), `hand-choice` (the post told other hands),
+`unsupported` (a format the replayer cannot store), `hero`'s "I wasn't in this hand" option
+(sets `hand.heroless`), and every entry of `quickAdd.questions` under its own id (`choice:*`,
+`board-count:1`, `pot-mismatch:*`, `texture-conflict:*`, `group-seats:*`). A question's options
+carry `{ op: 'answerQuestion', id, sets: [{ path, value }] }` (apply the reading, drop the
+question) or `{ op: 'dismiss' }`. The rules still decide everything about the hand itself.
 
 ## Server — part B
 

@@ -22,6 +22,8 @@ import AnalyticsLauncher from './AnalyticsLauncher.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
+import { useResultsFocus, clearResultsFocus } from '../hooks/useResultsFocus.js';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 // BETA cash sessions, admins only: lazy like the tax report.
 const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
@@ -290,7 +292,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -323,6 +325,23 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
   const bankrollBalances = useMemo(() => balancesFromSummary(bk.summary), [bk.summary]);
   const formBankrolls = bk.enabled && bk.bankrolls.length ? bk.bankrolls : null;
   const resultsKind = useResultsKind();
+  // "Edit in Results" from the bankroll dashboard's Sessions tab: open that result's edit form and
+  // bring it into view (hooks/useResultsFocus.js).
+  const focusId = useResultsFocus('tournaments');
+  useEffect(() => {
+    if (focusId == null || resultsKind !== 'tournaments') return undefined;
+    if (!allTrackingData.some((e) => e.id === focusId)) return undefined;   // not loaded yet
+    clearResultsFocus();
+    setShowAddForm(false);
+    setPendingFormId(null);
+    setIntentForm(null);
+    setEditingId(focusId);
+    // Once the form has rendered and the sheet has gone: its top to the top of the tab's scroller
+    // (bringIntoView, as the home's intents). No cleanup: clearing the focus above re-runs this
+    // effect at once, and cancelling there would cancel the scroll.
+    setTimeout(() => bringIntoView(document.querySelector(`.tab-panel[data-tab="tracking"] [data-entry-id="${focusId}"]`), false), 50);
+    return undefined;
+  }, [focusId, resultsKind, allTrackingData]); // eslint-disable-line react-hooks/exhaustive-deps
   const newEntryBankroll = { bankrollId: defaultBankrollFor(bk.selected, bk.bankrolls) };
 
   const onCurrencyChange = useCallback((c) => {
@@ -475,6 +494,13 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     return () => { clearTimeout(t0); clearTimeout(t1); };
   }, [focusEntry]);
 
+  // The floating + (BankrollFab, mounted by App) steps aside while a form it would open is open here
+  // (the Log Result form, however it was opened, or a row in edit; not while the Cash half has the
+  // tab, which keeps the form's state but not its screen) and for the tax report, which is the whole
+  // tab. Cash sessions and expenses hold it from their own views.
+  const tournamentsHalf = !(isAdmin && resultsKind === 'cash');
+  useHideBankrollFab((tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
+
   if (showTaxReport && isAdmin) {
     return (
       <Suspense fallback={null}>
@@ -492,6 +518,9 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       {showBankrolls && (
         <BankrollManager bk={bk} balances={bankrollBalances} onClose={() => setShowBankrolls(false)} />
       )}
+      {/* The bankroll dashboard (beta): mounted beside the strip whose button opens it, so it opens
+          from either half of the tab (it sat in the Tournaments half, and Dashboard did nothing on Cash). */}
+      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} onLog={onLog} />}
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
       {isAdmin && resultsKind === 'cash' ? (
@@ -580,7 +609,6 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
 
       {/* Analytics BETA: app admins only (staged rollout); everyone else sees no change. */}
-      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} />}
       {isAdmin && trackingData.length > 0 && <AnalyticsLauncher bankroll={bk.selected} />}
 
       {/* Expenses & income BETA: app admins only; follows the bankroll switcher's selection. */}
@@ -674,8 +702,8 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         />
       ) : (
         trackingData.map(entry => (
+          <div key={entry.id} data-entry-id={entry.id}>
           <TrackingEntryRow
-            key={entry.id}
             entry={entry}
             onEdit={() => setEditingId(entry.id)}
             onDelete={() => onDelete(entry.id)}
@@ -686,6 +714,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             exchangeRates={exchangeRates}
             bankrolls={formBankrolls}
           />
+          </div>
         ))
       )}
 

@@ -32,16 +32,8 @@
    load the section keeps the ones in hand, dimmed (is-busy).
    ================================================================== */
 
-/* Column identity, shared with the graph (BankrollChart): the graph work defines the same three
-   tokens in styles.css (with measured per-theme values). These are only a fallback until it lands:
-   :where() gives them zero specificity, so styles.css's :root / [data-theme] definitions win
-   whatever order the sheets load in, and the lead can delete this block at merge. */
-:where(:root) {
-  --series-total: var(--text);
-  --series-tourn: var(--brand);
-  --series-cash: #a78bfa;
-}
-:where([data-theme="light"], [data-theme="cloudy"]) { --series-cash: #6d28d9; }
+/* Column identity, shared with the graph (BankrollChart): --series-total / --series-tourn /
+   --series-cash are styles.css's, measured per theme (AA as text, since these heads are text). */
 
 /* The zebra stripe. --surface against the sheet's --bg in the standard themes (1.085 to 1.116:1,
    measured in WebKit); high contrast sets --surface on or next to --bg (light-high #fff on #fff,

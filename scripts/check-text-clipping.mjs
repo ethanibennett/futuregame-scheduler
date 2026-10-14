@@ -12,10 +12,12 @@
 // Scanner, the venue map opened from a Schedule strip and from an Up Next banner, first-run setup's
 // three steps, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
 // sessions, one session) (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
-// section open, then closed — every Reports table and the
+// section open, then closed; Sessions paged to the list's end, filtered to Cash, a cash session's and
+// a tournament's detail, and the rows Show more adds; every Reports table and the
 // Reports filter sheet, a Locations card open a page past its first ten and the Locations sorted by
 // name with every card open, then Results > Cash: the running session and its panels, the session
-// list, Stats, a session, the add form, the live bar), and for every text node inside those
+// list, Stats, a session, the add form, the live bar), the floating + on the bankroll pages and its
+// menu (with and without a running session, and in the dashboard sheet), and for every text node inside those
 // views measures its glyph
 // box (a Range over the text, which spans ascent to descent) against every ancestor that clips
 // (overflow other than visible, or overflow-y clip). A glyph box that ends more than 0.5 CSS px
@@ -343,18 +345,15 @@ function scan(rootSel) {
     await run('hands scanner', '.hands-scan');
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
 
-  // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
+  // Results & Tracking (the Bankroll tab), from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {
     await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(3500);
     await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
-    if (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop'))) {
-      await p.locator('.dk-rail-item:has-text("Results")').first().click({ timeout: 4000 });
-    } else {
-      await p.locator('.username-chip').first().click({ timeout: 4000 });
-      await p.waitForTimeout(400);
-      await p.getByRole('button', { name: 'Results & Tracking', exact: true }).first().click({ timeout: 4000 });
-    }
+    // Results is the Bankroll tab on both layouts since 2026-10-14 (it took Social's slot).
+    const sel = (await p.evaluate(() => !!document.querySelector('.app-shell.is-desktop')))
+      ? '.dk-rail-item:has-text("Bankroll")' : '.bottom-nav .nav-tab:has-text("Bankroll")';
+    await p.locator(sel).first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
   };
   // The bankroll dashboard (app-admin beta), every tab: its tables and stats truncate long text.
@@ -364,11 +363,13 @@ function scan(rootSel) {
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
     // The sheet scrolls, and only text on screen is measured: run at the top, then page down
-    // through the sheet's body to its end.
-    const runSheet = async (label) => {
-      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    // through the sheet's body, 11 pages at most. { toEnd } pages on until the body stops moving
+    // (the Sessions list: 150 rows, ~10,000 px, then Show more); { from: 'here' } starts where the
+    // body already is (the rows Show more just added) instead of at the top.
+    const runSheet = async (label, { toEnd = false, from = 0 } = {}) => {
+      if (from !== 'here') await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
       await run(label, '.an-sheet');
-      for (let i = 1; i < 12; i++) {
+      for (let i = 1; i < (toEnd ? 80 : 12); i++) {
         const moved = await p.evaluate((h) => {
           const s = document.querySelector('.an-sheet .an-body');
           if (!s) return false;
@@ -407,7 +408,43 @@ function scan(rootSel) {
       const tab = (await tabs.nth(i).innerText()).trim();
       await tabs.nth(i).click({ timeout: 4000 });
       await p.waitForTimeout(800);
-      await runSheet(`bankroll dashboard ${tab}`);
+      // Sessions to the list's end: its last rows and the Show more button.
+      await runSheet(`bankroll dashboard ${tab}`, { toEnd: tab === 'Sessions' });
+    }
+    // Sessions (the loop above ran its list on the remembered filter): the Cash filter, then a cash
+    // session's detail and a tournament's (the longest title on show, which wraps), scrolled
+    // through, and the filter back on All, where Show more adds the rows past the first 150 (when
+    // the account has that many), measured from the button to the list's new end.
+    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Sessions")').click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
+    await p.locator('.an-sheet .bs-chip:has-text("Cash")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await runSheet('bankroll sessions (cash)');
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.locator('.an-sheet .bs-row').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(800);
+    await runSheet('bankroll sessions (a cash session)');
+    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-chip:has-text("Tournaments")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.an-sheet .bs-row')];
+      const long = rows.reduce((a, r) => (r.querySelector('.bs-title').textContent.length > a.querySelector('.bs-title').textContent.length ? r : a), rows[0]);
+      long.click();
+    });
+    await p.locator('.an-sheet .bs-detail').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(500);
+    await runSheet('bankroll sessions (a tournament)');
+    await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
+    await p.locator('.an-sheet .bs-chip:has-text("All")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    if (await p.locator('.an-sheet .bs-more').count()) {
+      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
+      await p.waitForTimeout(300);
+      await p.locator('.an-sheet .bs-more').click({ timeout: 4000 });
+      await p.waitForTimeout(500);
+      await runSheet('bankroll sessions (shown more)', { toEnd: true, from: 'here' });
     }
     await tabs.first().click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
@@ -531,6 +568,34 @@ function scan(rootSel) {
   } catch (e) {
     console.log(`  (cash bar skipped: ${e.message.split('\n')[0]})`);
   }
+
+  // The floating + on the bankroll pages (components/BankrollFab.jsx) and its menu: the Results tab's
+  // with a session running (the seed's: the + is raised over the cash bar), with none (the live fetch
+  // answered here and never sent: the menu then has Start live session as a fourth row), and the
+  // dashboard sheet's. The + holds an icon only; the menu's rows are text under overflow: hidden.
+  const fabView = async (label, { idle = false, sheet = false } = {}) => {
+    try {
+      if (idle) await p.route('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
+      try {
+        await openResults();
+        if (sheet) {
+          await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+          await p.waitForTimeout(1800);
+        }
+        const fab = p.locator(sheet ? '.bk-fab--sheet' : '.bk-fab--page');
+        await fab.first().waitFor({ timeout: 4000 });
+        await run(`${label} (closed)`, sheet ? '.an-sheet' : '.bk-fab');
+        await fab.first().click({ timeout: 4000 });
+        await p.locator('.bk-fab-menu').waitFor({ timeout: 3000 });
+        const rows = await p.locator('.bk-fab-menu [role="menuitem"]').count();
+        if (rows !== (idle ? 4 : 3)) throw new Error(`the menu has ${rows} rows, expected ${idle ? 4 : 3}`);
+        await run(label, '.bk-fab-menu');
+      } finally { if (idle) await p.unroute('**/api/cash-sessions/live'); }
+    } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
+  };
+  await fabView('bankroll + menu');
+  await fabView('bankroll + menu, no session running', { idle: true });
+  await fabView('bankroll sheet + menu', { sheet: true });
 
   // Results → Expenses & income (admin beta) and its sheets: rows, cells and trip lines truncate
   // with an ellipsis. Skipped quietly where the section is absent (a non-admin token).
