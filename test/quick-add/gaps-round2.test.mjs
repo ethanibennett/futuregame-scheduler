@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { findGaps, applyAnswer } from '../../vite-app/src/utils/quick-add/gaps.js';
 import { smallBlindOptions } from '../../vite-app/src/utils/quick-add/rules-setup.js';
-import { guessGameType, replayerGame } from '../../vite-app/src/utils/quick-add/game.js';
+import * as GameModule from '../../vite-app/src/utils/quick-add/game.js';
+const { guessGameType } = GameModule;
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -123,9 +124,10 @@ test('PLO5, PLO6, PLO6 8/b, NLO8 and Short Deck are games of their own, and "Big
   assert.equal(guessGameType('Big Easy'), 'PLO6 8/b');
   assert.equal(guessGameType('big easy'), 'PLO6 8/b');
   assert.equal(guessGameType('plo6'), 'PLO6');
-  assert.equal(replayerGame('PLO6 8/b'), 'Big Easy');
-  assert.equal(replayerGame('PLO5'), 'PLO');
-  assert.equal(replayerGame('NLH'), 'NLH');
+  // The replayer plays each natively now: there is no fallback table to map them to a nearer game.
+  assert.ok(!('replayerGame' in GameModule) && !('REPLAYER_FALLBACK' in GameModule), 'the replayer fallback is gone');
+  for (const game of ['PLO5', 'PLO6', 'PLO6 8/b', 'NLO8', 'Short Deck']) assert.ok(GameModule.HAND_CONFIG[game], game + ' is a HAND_CONFIG game');
+  assert.ok(!GameModule.HAND_CONFIG['Big Easy'], 'the replayer has no "Big Easy" any more');
   // Six hole cards in a hand with no game named are PLO6, never "Big Easy".
   const six = { ...base, gameType: null, streets: base.streets.map((s, i) => (i === 0 ? { ...s, cards: { ...s.cards, hero: 'AhKd2c3s9hTd' } } : s)) };
   assert.ok(!JSON.stringify(findGaps(six)).includes('Big Easy'), 'the guess never says Big Easy');
