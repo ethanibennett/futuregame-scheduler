@@ -507,12 +507,19 @@ function scan(cfg) {
     if (Number(s.opacity) === 0 || s.visibility === 'hidden') return false;
     return hasBox(s) || /^(img|svg|canvas|video)$/i.test(h.tagName);
   };
+  // The bankroll tab strip's edge fades (.bt-fade: 3g of the sheet's ground fading to clear, shown
+  // only where more tabs lie beyond) paint over the pills under them, yet are pointer-events: none,
+  // so elementsFromPoint never lists them. Their area covers like anything else that paints: the
+  // pill that peeks out under one (a seventh tab, "Rules" at x32g) has its glyphs washed, and a
+  // pixel read of its ink centre is off by the wash, not by the label.
+  const fades = [...document.querySelectorAll('.bt-fade')].filter(visible).map((f) => f.getBoundingClientRect());
   const coverage = (el, b) => {
     let n = 0, covered = 0, out = 0;
     for (const fy of FS) for (const fx of FS) {
       n++;
       const x = b.left + b.width * fx, y = b.top + b.height * fy;
       if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) { out++; continue; }
+      if (!el.closest('.bt-fade') && fades.some((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) { covered++; continue; }
       for (const h of document.elementsFromPoint(x, y)) {
         if (h === el || el.contains(h) || h.contains(el)) break;
         if (h.closest('svg') && h.tagName.toLowerCase() !== 'svg') continue;
