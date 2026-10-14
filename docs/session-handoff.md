@@ -65,7 +65,8 @@ worktree `home-custom`. What a later session needs to know:
   line and the period block can be apart.
 - **Deviations from the spec, on purpose**: the row's switch sits 30..34g of the card (1g in from
   its edge, Settings' switch exactly), not 31..35g, which put it flush on the card's hairline;
-  the name column is 3..22g. The name is a 4r cell on +3r, not 3r on +3r (the note's own 1em line
+  the arrows moved 1g left with it (Move up 23..26g, Move down 26..29g, a 1g gap before the
+  switch) and the name column is 3..22g. The name is a 4r cell on +3r, not 3r on +3r (the note's own 1em line
   overflowed the 1.25r line box and moved the baseline 0.06r at 1440). A drag's slot changes when
   the card's LEADING edge crosses a neighbour's midpoint, not its centre: This month is 15r among
   5r cards and its centre could never pass the card above it before the list clamp stopped it. The
@@ -82,8 +83,10 @@ worktree `home-custom`. What a later session needs to know:
 - **New device**: the default paints first and the account's layout lands once (one re-order).
   Accepted.
 - Guards: `scripts/home-states.mjs` stages `layout-custom` and `layout-numbers-empty` by answering
-  GET /api/user/home-layout and clears the cached copy around them; both guards answer every PUT
-  in the page (`routeHomeLayoutPut`), so they write nothing (safe on :3001). New views:
+  GET /api/user/home-layout and clears the cached copy around them. Both guards answer the route
+  in the page (`routeHomeLayout`): every other GET is the default home whatever the account saved
+  (an owner's custom home does not change what the other views measure), and every PUT is echoed
+  back, so they write nothing (safe on :3001). New views:
   dashboard-edit, dashboard-edit-reset, dashboard-custom, dashboard-numbers-empty (desktop).
 
 ## 2026-10-12 — Home redesign (the Dashboard tab), decisions worth knowing

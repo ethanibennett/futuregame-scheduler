@@ -23,7 +23,7 @@
 // ancestor's bottom (or starts above its top) is reported. Exits 1 when anything is clipped, so it
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';
-import { stageHome, routeHomeLayoutPut } from './home-states.mjs';
+import { stageHome, routeHomeLayout } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -129,8 +129,9 @@ function scan(rootSel) {
     // 10 sections while still printing a passing line.
     localStorage.setItem('onboarded', '1');
   }, { t });
-  // Edit home: the sheet's changes are answered here and never written (scripts/home-states.mjs).
-  await routeHomeLayoutPut(ctx);
+  // Edit home: every view sees the default home whatever the account saved, and the sheet's
+  // changes are answered here and never written (scripts/home-states.mjs).
+  await routeHomeLayout(ctx);
   const p = await ctx.newPage();
   await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(5000);

@@ -26,9 +26,11 @@
 //   layout-numbers-empty  Bankroll and This month switched off: on desktop the NUMBERS pane is its
 //           3r header and the EDIT prompt
 // The layout states answer GET /api/user/home-layout and clear the cached copy (localStorage
-// homeLayout:u<id>) on the way in and out, so the next view loads the server's own layout.
-// HOME_LAYOUT_PUT: the guards' context-wide answer to PUT /api/user/home-layout (the sheet's
-// changes, Reset), echoing the layout back: the guards never write a layout to the server.
+// homeLayout:u<id>) on the way in and out, so the next view loads the default again.
+// routeHomeLayout: the guards' context-wide answer to /api/user/home-layout. GET is the default
+// home (null) whatever the account saved, so every other view measures the same home on a scratch
+// server and on :3001; PUT (the sheet's changes, Reset) echoes the layout back: the guards never
+// write one.
 
 const day = (off) => {
   const d = new Date();
@@ -51,9 +53,11 @@ export const LAYOUT_KINDS = Object.keys(LAYOUTS);
 const clearLayoutCache = (p) => p.evaluate(() => {
   for (const k of Object.keys(localStorage)) if (k.startsWith('homeLayout:')) localStorage.removeItem(k);
 }).catch(() => {});
-// For a context: PUT /api/user/home-layout answered in the page, the layout echoed back.
-export async function routeHomeLayoutPut(ctx) {
+// For a context: GET /api/user/home-layout is the default home; a PUT is echoed back, never
+// written. A page route (stageHome's layout states) wins over this one.
+export async function routeHomeLayout(ctx) {
   await ctx.route('**/api/user/home-layout', (r) => {
+    if (r.request().method() === 'GET') return r.fulfill({ json: { layout: null } });
     if (r.request().method() !== 'PUT') return r.fallback();
     let layout = null;
     try { layout = JSON.parse(r.request().postData() || '{}').layout ?? null; } catch { layout = null; }

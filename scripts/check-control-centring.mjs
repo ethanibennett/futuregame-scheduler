@@ -146,7 +146,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { stageHome, routeHomeLayoutPut } from './home-states.mjs';
+import { stageHome, routeHomeLayout } from './home-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -1253,9 +1253,10 @@ function finalize(c) {
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
   }, { t, u: USER });
-  // Edit home: the sheet's changes (and Reset) are answered here and never written, so the guard
-  // leaves the account's home layout as it found it (scripts/home-states.mjs).
-  if (!listOnly) await routeHomeLayoutPut(ctx);
+  // Edit home: every view sees the default home whatever the account saved, and the sheet's
+  // changes (and Reset) are answered here and never written, so the guard leaves the account's
+  // home layout as it found it (scripts/home-states.mjs).
+  if (!listOnly) await routeHomeLayout(ctx);
   // A WebKit page can crash under a long run (a 3x capture of a desktop viewport, view after view);
   // the view loop opens a new one and tries that view again.
   let p = await ctx.newPage();
