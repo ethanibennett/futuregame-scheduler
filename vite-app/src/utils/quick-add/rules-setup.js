@@ -272,36 +272,22 @@ export function playerRules(hand, env, out) {
 export function heroRules(hand, out) {
   const n = hand.players.length;
   if (isIdx(hand.heroIdx, n)) return true;
+  if (hand.heroless === true) return true; // decision C: a hand with no hero asks nothing about one
   const named = hand.players.findIndex(p => p && typeof p.name === 'string' && /^(hero|me|i|myself|you)$/i.test(p.name.trim()));
   const orderIdx = [];
   if (named >= 0) orderIdx.push(named);
   for (let i = 0; i < n; i++) if (i !== named) orderIdx.push(i);
   const label = (i) => playerName(hand, i) + (hand.players[i] && hand.players[i].position && hand.players[i].position !== playerName(hand, i) ? ' (' + hand.players[i].position + ')' : '');
   /* A hand the narrator watched has no true answer to "which player were
-     you?" (2026-10-14: 22 of the collected stories). The replayer still
-     shows the hand from one seat, so the question becomes whose seat to
-     follow; the hand keeps quickAdd.observer so it is not asked again. */
-  const observer = !!(hand.quickAdd && hand.quickAdd.observer);
-  if (observer) {
-    // Follow the player who went furthest: a winner, else whoever acted last.
-    const winners = (hand.result && Array.isArray(hand.result.winners)) ? hand.result.winners.map(w => w && w.playerIdx).filter(i => isIdx(i, n)) : [];
-    let lastActor = -1;
-    for (const st of hand.streets || []) for (const a of (st.actions || [])) if (a && isIdx(a.player, n) && a.action !== 'fold') lastActor = a.player;
-    const first = winners.length ? winners[0] : lastActor;
-    const order = (first >= 0 ? [first] : []).concat(orderIdx.filter(i => i !== first));
-    out.push(makeGap({
-      id: 'hero', kind: 'missing', field: 'heroIdx',
-      question: 'You weren\u2019t in this hand. Whose seat should the replay follow?',
-      options: order.map(i => ({ label: label(i), value: { op: 'setHero', heroIdx: i } })),
-      allowFree: true, blocking: true,
-    }, [STAGE.hero]));
-    return false;
-  }
+     you?" (2026-10-14: 22 of the collected stories). The owner's answer (decision C) is to
+     store such a hand with no hero: "I wasn't in this hand" sets hand.heroless, and nothing
+     more is asked about a hero. TODO(replayer follow-up): the replayer must learn to show a
+     hero-less hand (see lib/quick-add/decisions.js, OBSERVER_HANDS). */
   out.push(makeGap({
     id: 'hero', kind: 'missing', field: 'heroIdx',
     question: 'Which player were you?',
     options: orderIdx.map(i => ({ label: label(i), value: { op: 'setHero', heroIdx: i } }))
-      .concat([{ label: 'I wasn\u2019t in this hand', value: { op: 'set', path: 'quickAdd.observer', value: true } }]),
+      .concat([{ label: 'I wasn\u2019t in this hand', value: { op: 'set', path: 'heroless', value: true } }]),
     allowFree: true, blocking: true,
   }, [STAGE.hero]));
   return false;
@@ -454,7 +440,7 @@ export function stackRules(hand, env, out) {
   const unitWord = env.isStud ? 'big bets' : 'BB';
   const depthLabel = (k) => (env.isStud ? (k * 3 / 10) + ' ' + unitWord : k + ' ' + unitWord);
   const acts = (i) => hand.streets.some(st => (st.actions || []).some(a => a && a.player === i && a.action !== 'fold'));
-  const hero = hand.heroIdx;
+  const hero = hand.heroless ? -1 : hand.heroIdx; // a hero-less hand has no "you"
 
   // A stack the forced bets use up cannot then bet, call or bring it in.
   for (let i = 0; i < n; i++) {

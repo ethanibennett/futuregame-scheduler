@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { findGaps, applyAnswer } from '../../vite-app/src/utils/quick-add/gaps.js';
 import { smallBlindOptions } from '../../vite-app/src/utils/quick-add/rules-setup.js';
+import { guessGameType, replayerGame } from '../../vite-app/src/utils/quick-add/game.js';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -83,19 +84,51 @@ test('an ante of unstated type: per player first when small, and answered both w
   assert.match(gap(h, 'ante-type').options[0].label, /^One big blind ante/);
 });
 
-test('the hero question has an "I wasn\'t in this hand" answer, then asks whose seat to follow', () => {
+test('the hero question has an "I wasn\'t in this hand" answer, which stores the hand hero-less and asks nothing more', () => {
   const h = cash6(); delete h.heroIdx;
   h.streets.forEach((s) => { s.cards.hero = ''; });
   const g = gap(h, 'hero');
   const out = g.options[g.options.length - 1];
   assert.equal(out.label, 'I wasn’t in this hand');
   const obs = applyAnswer(h, g, out.value);
-  const g2 = gap(obs, 'hero');
-  assert.match(g2.question, /Whose seat should the replay follow/);
-  assert.equal(g2.options[0].value.heroIdx, 3, 'the winner first');
-  const followed = applyAnswer(obs, g2, g2.options[0].value);
-  assert.equal(followed.heroIdx, 3);
-  assert.equal(followed.quickAdd.observer, true);
+  assert.equal(obs.heroless, true);
+  assert.ok(obs.heroIdx == null, 'no hero');
+  assert.ok(!ids(obs).includes('hero'), 'no hero question');
+  assert.ok(!ids(obs).some((id) => /^cards:hero/.test(id)), 'no question about "your" cards');
+});
+
+test('a hero-less hand from the parse (hand.heroless) asks nothing about a hero or its cards', () => {
+  const { hand } = normalizeDraft({
+    notes: [], gameType: 'NLH', gameMode: 'cash', tableSize: 2, observer: true, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 0, cards: 'JhTh' }, { player: 1, cards: 'AsKd' }], actions: [{ player: 0, action: 'raise', toAmount: 6 }, { player: 1, action: 'call' }] }],
+  });
+  assert.equal(hand.heroless, true);
+  assert.ok(hand.heroIdx == null);
+  // Seat 0 is the card slot's "hero" as the server lays it out; every shown card is kept.
+  assert.equal(hand.streets[0].cards.hero, 'JhTh');
+  assert.deepEqual(hand.streets[0].cards.opponents, ['AsKd']);
+  const g = ids(hand);
+  assert.ok(!g.includes('hero') && !g.some((id) => /^cards:hero/.test(id)), g.join(','));
+});
+
+test('PLO5, PLO6, PLO6 8/b, NLO8 and Short Deck are games of their own, and "Big Easy" is only an alias', () => {
+  const base = cash6();
+  for (const [game, cards] of [['PLO5', 'AhKd2c3s9h'], ['PLO6', 'AhKd2c3s9hTd'], ['PLO6 8/b', 'AhKd2c3s9hTd'], ['NLO8', 'AhKd2c3s'], ['Short Deck', 'AhKd']]) {
+    const h = { ...base, gameType: game, streets: base.streets.map((s, i) => (i === 0 ? { ...s, cards: { ...s.cards, hero: cards } } : s)) };
+    const g = findGaps(h);
+    assert.ok(!g.some((x) => x.id === 'game'), game + ' is a known game: ' + g.map((x) => x.id).join(','));
+    assert.ok(!g.some((x) => x.id === 'cards:hero'), game + ' takes ' + cards.length / 2 + ' hole cards');
+  }
+  assert.equal(guessGameType('Big Easy'), 'PLO6 8/b');
+  assert.equal(guessGameType('big easy'), 'PLO6 8/b');
+  assert.equal(guessGameType('plo6'), 'PLO6');
+  assert.equal(replayerGame('PLO6 8/b'), 'Big Easy');
+  assert.equal(replayerGame('PLO5'), 'PLO');
+  assert.equal(replayerGame('NLH'), 'NLH');
+  // Six hole cards in a hand with no game named are PLO6, never "Big Easy".
+  const six = { ...base, gameType: null, streets: base.streets.map((s, i) => (i === 0 ? { ...s, cards: { ...s.cards, hero: 'AhKd2c3s9hTd' } } : s)) };
+  assert.ok(!JSON.stringify(findGaps(six)).includes('Big Easy'), 'the guess never says Big Easy');
 });
 
 test('not a hand: one blocking question, and "record it anyway" clears it', () => {

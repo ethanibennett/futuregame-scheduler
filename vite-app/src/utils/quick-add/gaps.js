@@ -174,8 +174,10 @@ function provisionalGame(hand) {
   if (/street/.test(names) || (hand.blinds && hand.blinds.bringIn != null)) return 'Stud Hi';
   if (/draw/.test(names)) return hand.streets.length <= 2 ? 'NL 2-7 SD' : (count === 4 ? 'Badugi' : '2-7 TD');
   if (count === 4) return 'PLO';
-  if (count === 5) return 'Big O';
-  if (count === 6) return 'Big Easy';
+  // Owner decisions E and E2: five hole cards are PLO5 and six are PLO6 unless hi-lo is indicated
+  // (Big O, PLO6 8/b); a preview guess has no hi-lo evidence, so it never says "Big Easy".
+  if (count === 5) return 'PLO5';
+  if (count === 6) return 'PLO6';
   return 'NLH';
 }
 
@@ -194,7 +196,14 @@ function asPreview(g) {
 }
 
 export function findGaps(input) {
-  const { hand, changed } = normalizeStructure(input);
+  const { hand: real, changed } = normalizeStructure(input);
+  /* Owner decision C (2026-10-14): a hand the narrator watched is stored hero-less
+     (hand.heroless, heroIdx null) and asks nothing about a hero. The rules read it as if seat 0
+     were the hero, which is how the server lays out the card slots of a hand with no hero; the
+     questions about that seat's missing "own" cards are dropped at the end, since an observer
+     only knows the cards that were shown. */
+  const heroless = real.heroless === true && !isIdx(real.heroIdx, real.players.length);
+  const hand = heroless ? { ...real, heroIdx: 0 } : real;
   const dismissed = new Set(Array.isArray(hand[DISMISSED_KEY]) ? hand[DISMISSED_KEY] : []);
   const res = collect(hand, changed, dismissed, input);
   let out = res.out;
@@ -221,6 +230,7 @@ export function findGaps(input) {
     }
   }
 
+  if (heroless) out = out.filter(g => !(g.kind === 'missing' && /^cards:hero(:\d+)?$/.test(g.id)));
   const kept = out.filter(g => g.blocking || !dismissed.has(g.id));
   // Stable sort by key (Array.prototype.sort is stable).
   const sorted = kept.map((g, i) => ({ g, i })).sort((a, b) => compareKeys(a.g._key, b.g._key) || a.i - b.i).map(x => x.g);

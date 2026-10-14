@@ -437,16 +437,21 @@ test('a pasted history: seat numbers and the button seat make the positions', ()
 test('observer, not a hand, other hands and formats are carried for the client', () => {
   const base = flopDraft('Kd8c3h');
   base.players.forEach((p) => { p.isHero = false; });
-  const { hand, notes } = normalizeDraft({ ...base, observer: true, otherHands: [{ summary: 'AK vs QQ preflop' }], format: { bombPot: true }, variant: 'PLO5' });
-  assert.equal(hand.quickAdd.observer, true);
+  const { hand, notes } = normalizeDraft({ ...base, observer: true, otherHands: [{ summary: 'AK vs QQ preflop', index: 2 }], format: { bombPot: true }, variant: 'Courchevel' });
+  assert.equal(hand.heroless, true);                 // owner decision C: stored hero-less
+  assert.equal(hand.heroIdx, null);
+  assert.ok(!hand.quickAdd.observer);
   assert.deepEqual(hand.quickAdd.otherHands, ['AK vs QQ preflop']);
-  assert.equal(hand.quickAdd.unsupported.length, 2);
+  assert.deepEqual(hand.quickAdd.otherHandIndexes, [2]);
+  assert.equal(hand.quickAdd.otherHandsBlocking, true);   // owner decision F: always ask which hand
+  assert.equal(hand.quickAdd.unsupported.length, 2);      // the bomb pot, and Courchevel (no game of its own)
   assert.ok(!notes.some((n) => /No hero was identified/.test(n)));
   const nh = normalizeDraft({ ...base, recordable: false, whyNot: 'a rules question' }).hand;
   assert.equal(nh.quickAdd.notRecordable, 'a rules question');
   // They survive the server's own re-normalising (the /answer path).
   const again = normalizeHand(hand).hand;
   assert.deepEqual(again.quickAdd, hand.quickAdd);
+  assert.equal(again.heroless, true);
 });
 
 /* ── prompt.js ────────────────────────────────────────────────────────────── */
@@ -472,12 +477,15 @@ test('the second worked example is valid tool input and normalises as described'
   assert.ok(!hand.quickAdd);
 });
 
-test('a transcript gets its number words as a reading aid, not a rewrite', () => {
-  const r = buildParseRequest({ text: 'he bets twelve hundred i call', source: 'speech', hints: {}, model: 'm' });
-  assert.ok(r.messages[0].content.includes('he bets twelve hundred i call'));
-  assert.ok(r.messages[0].content.includes('"twelve hundred" = 1200'));
+test('a transcript gets its number words rewritten as digits by a pre-pass that lists them and spares rank words', () => {
+  const r = buildParseRequest({ text: 'he bets twelve hundred with jack ten nine i call', source: 'speech', hints: {}, model: 'm' });
+  const c = r.messages[0].content;
+  assert.ok(c.includes('he bets 1200 with jack ten nine i call'), c);   // owner decision I: rewritten, rank words untouched
+  assert.ok(c.includes('"twelve hundred" = 1200') && /rewritten as digits by code/.test(c));
   const t = buildParseRequest({ text: 'he bets twelve hundred', source: 'text', hints: {}, model: 'm' });
-  assert.ok(!t.messages[0].content.includes('reading aid') && !t.messages[0].content.includes('= 1200'));
+  assert.ok(!t.messages[0].content.includes('rewritten') && !t.messages[0].content.includes('= 1200'));
+  const none = buildParseRequest({ text: 'jack ten nine on the flop', source: 'speech', hints: {}, model: 'm' });
+  assert.ok(none.messages[0].content.includes('jack ten nine on the flop') && !/rewritten/.test(none.messages[0].content));
 });
 
 test('a holding pattern the given cards break is asked about on its card slot', () => {
@@ -657,14 +665,16 @@ test('two cards of unknown suit that look the same are not one board read twice'
 
 /* ── the owner's decisions (lib/quick-add/decisions.js) ───────────────────── */
 
-test("the owner's decisions: each default, and each switch that exists", () => {
+test("the owner's decisions: each answer, and each switch that exists", () => {
   const DEC = require('../../lib/quick-add/decisions');
   const was = JSON.parse(JSON.stringify(DEC));
   assert.deepEqual(was, {
-    UTG_WITH_STRADDLE: 'both-act', HEDGED_VALUES: 'note', OBSERVER_HANDS: 'follow-seat', UNSUPPORTED_FORMATS: 'approximate',
-    VARIANT_GAMES: { PLO5: 'PLO', PLO6: 'PLO', 'short deck': 'NLH', NLO8: 'PLO8' },
-    SEVERAL_HANDS: 'most-detailed', PER_POT_WINNERS: false, HAND_HISTORY_FAST_PATH: false, NUMBER_WORDS: 'aid',
+    UTG_WITH_STRADDLE: 'next-seat', HEDGED_VALUES: 'note', OBSERVER_HANDS: 'heroless', UNSUPPORTED_FORMATS: 'approximate',
+    OWN_GAMES: ['PLO5', 'PLO6', 'PLO6 8/b', 'Short Deck', 'NLO8'], VARIANT_GAMES: { Pineapple: 'NLH', Courchevel: 'PLO' },
+    SEVERAL_HANDS: 'ask', PER_POT_WINNERS: true, HAND_HISTORY_FAST_PATH: true, NUMBER_WORDS: 'rewrite',
   });
+  // E: every own game is a game of its own in G.GAMES, never collapsed.
+  for (const g of was.OWN_GAMES) assert.ok(G.GAMES[g], g + ' is a game');
   const draft = (extra = {}) => D({
     gameMode: 'cash', tableSize: 2, blinds: { sb: 1, bb: 2, ante: 0 },
     players: [{ position: 'BTN', isHero: true, startingStack: 200 }, { position: 'BB', startingStack: 200 }],
@@ -673,57 +683,128 @@ test("the owner's decisions: each default, and each switch that exists", () => {
   });
   const run = (extra) => normalizeDraft(draft(extra));
   try {
-    // E: a variant with no game named is recorded as the nearest game.
-    assert.equal(run({ variant: 'PLO5' }).hand.gameType, 'PLO');
-    assert.equal(run({ variant: 'short deck' }).hand.gameType, 'NLH');
+    // E: a named own game stays itself; a variant with no game of its own takes the nearest.
+    assert.equal(run({ variant: 'PLO5' }).hand.gameType, 'PLO5');
+    assert.equal(run({ gameType: 'PLO6 8/b' }).hand.gameType, 'PLO6 8/b');
+    assert.equal(run({ gameType: 'Big Easy' }).hand.gameType, 'PLO6 8/b');
+    assert.ok(!run({ variant: 'PLO5' }).hand.quickAdd, 'PLO5 is no longer an unsupported variant');
+    assert.equal(run({ variant: 'Courchevel' }).hand.gameType, 'PLO');
+    assert.ok(run({ variant: 'Courchevel' }).hand.quickAdd.unsupported);
     DEC.VARIANT_GAMES = {};
-    assert.equal(run({ variant: 'PLO5' }).hand.gameType, null);
+    assert.equal(run({ variant: 'Courchevel' }).hand.gameType, null);
     DEC.VARIANT_GAMES = was.VARIANT_GAMES;
     // B: an estimate is a note; with 'ask' it is also a question.
     assert.ok(!run({ gameType: 'NLH' }).hand.quickAdd, 'note only');
     DEC.HEDGED_VALUES = 'ask';
     assert.ok(run({ gameType: 'NLH' }).hand.quickAdd.questions.some((q) => /^approx:/.test(q.id)));
     DEC.HEDGED_VALUES = was.HEDGED_VALUES;
-    // C: an observer hand follows a seat; 'refuse' makes it not recordable.
+    // C: an observer hand is stored hero-less; 'refuse' makes it not recordable.
     const obs = { gameType: 'NLH', observer: true, players: [{ position: 'BTN', startingStack: 200 }, { position: 'BB', startingStack: 200 }] };
-    assert.equal(run(obs).hand.quickAdd.observer, true);
+    assert.equal(run(obs).hand.heroless, true);
+    assert.equal(run(obs).hand.heroIdx, null);
     DEC.OBSERVER_HANDS = 'refuse';
-    assert.ok(run(obs).hand.quickAdd.notRecordable);
+    assert.ok(run(obs).hand.quickAdd.notRecordable && !run(obs).hand.heroless);
     DEC.OBSERVER_HANDS = was.OBSERVER_HANDS;
-    // D: a bomb pot is approximated with a note; 'refuse' makes it not recordable.
+    // D (deferred): a bomb pot is approximated with a note; 'refuse' would make it not recordable.
     const bomb = { gameType: 'NLH', format: { bombPot: true } };
     assert.ok(run(bomb).hand.quickAdd.unsupported);
     DEC.UNSUPPORTED_FORMATS = 'refuse';
     assert.ok(run(bomb).hand.quickAdd.notRecordable && !run(bomb).hand.quickAdd.unsupported);
     DEC.UNSUPPORTED_FORMATS = was.UNSUPPORTED_FORMATS;
-    // F: other hands are a non-blocking gap; 'ask' makes the server flag it blocking.
+    // F: always ask which hand; the other settings make the gap a note.
     const many = { gameType: 'NLH', otherHands: [{ summary: 'a second hand' }] };
-    assert.ok(run(many).hand.quickAdd.otherHands && !run(many).hand.quickAdd.otherHandsBlocking);
-    DEC.SEVERAL_HANDS = 'ask';
     assert.equal(run(many).hand.quickAdd.otherHandsBlocking, true);
+    DEC.SEVERAL_HANDS = 'most-detailed';
+    assert.ok(run(many).hand.quickAdd.otherHands && !run(many).hand.quickAdd.otherHandsBlocking);
     DEC.SEVERAL_HANDS = was.SEVERAL_HANDS;
+    // G: a winner per pot beside the main pot's; off, only the winners.
+    const pots = { gameType: 'NLH', result: { winners: [{ playerIdx: 0 }], pots: [{ name: 'main', winners: [{ playerIdx: 0 }] }, { name: 'side 1', winners: [{ playerIdx: 1 }] }] } };
+    assert.deepEqual(run(pots).hand.result.pots.map((p) => [p.name, p.winners.map((w) => w.playerIdx)]), [['main', [0]], ['side 1', [1]]]);
+    assert.deepEqual(run(pots).hand.result.winners, [{ playerIdx: 0, split: false }]);
+    DEC.PER_POT_WINNERS = false;
+    assert.ok(!run(pots).hand.result.pots);
+    DEC.PER_POT_WINNERS = was.PER_POT_WINNERS;
   } finally {
     Object.assign(DEC, was);
   }
-  // A, E, F (prompt text) and I (request) are read when prompt.js loads: load it fresh.
+  // A, E and I shape the prompt and the request (read when prompt.js loads): load it fresh.
   const loadPrompt = () => { delete require.cache[require.resolve('../../lib/quick-add/prompt')]; return require('../../lib/quick-add/prompt'); };
   try {
-    assert.match(loadPrompt().PARSE_SYSTEM, /the straddler is UTG and that opener UTG\+1/);
-    assert.match(loadPrompt().PARSE_SYSTEM, /the one told in most detail/);
-    DEC.UTG_WITH_STRADDLE = 'ask';
-    DEC.SEVERAL_HANDS = 'last-asked';
-    DEC.NUMBER_WORDS = 'rewrite';
-    DEC.VARIANT_GAMES = { PLO5: 'PLO8' };
+    const p0 = loadPrompt();
+    assert.match(p0.PARSE_SYSTEM, /the seat AFTER the straddler/);        // A: the opener is the seat after the straddler
+    assert.match(p0.PARSE_SYSTEM, /PLO6 8\/b six-card PLO hi-lo/);        // E / E2
+    assert.doesNotMatch(p0.PARSE_SYSTEM, /Big Easy six-card/);
+    assert.match(p0.PARSE_SYSTEM, /six hole cards → PLO6, or PLO6 8\/b when hi-lo is indicated/);
+    DEC.UTG_WITH_STRADDLE = 'both-act';
+    DEC.NUMBER_WORDS = 'aid';
+    DEC.VARIANT_GAMES = { Pineapple: 'PLH' };
     const p = loadPrompt();
-    assert.match(p.PARSE_SYSTEM, /never UTG\+1 on your own/);
-    assert.doesNotMatch(p.PARSE_SYSTEM, /the straddler is UTG and that opener UTG\+1/);
-    assert.match(p.PARSE_SYSTEM, /Record ONE hand: the last one the player asks about/);
-    assert.match(JSON.stringify(p.HAND_TOOL), /nearest game \(PLO5 → PLO8\)/);
+    assert.match(p.PARSE_SYSTEM, /the straddler is UTG and that opener UTG\+1/);
+    assert.doesNotMatch(p.PARSE_SYSTEM, /the seat AFTER the straddler/);
+    assert.match(JSON.stringify(p.HAND_TOOL), /nearest game \(Pineapple → PLH\)/);
     const r = p.buildParseRequest({ text: 'he bets twelve hundred i call', source: 'speech', hints: {}, model: 'm' });
-    assert.match(r.messages[0].content, /he bets 1200 i call/);
-    assert.doesNotMatch(r.messages[0].content, /worked out by code/);
+    assert.match(r.messages[0].content, /he bets twelve hundred i call/);
+    assert.match(r.messages[0].content, /worked out by code/);
+    DEC.UTG_WITH_STRADDLE = 'ask';
+    assert.match(loadPrompt().PARSE_SYSTEM, /never UTG\+1 on your own/);
   } finally {
     Object.assign(DEC, was);
     loadPrompt();
   }
+});
+
+test('a UTG straddle: a second player called UTG is the seat after the straddler', () => {
+  const d = D({
+    gameType: 'NLH', gameMode: 'cash', tableSize: 6, blinds: { sb: 1, bb: 2, ante: 0, straddles: [{ type: 'utg', player: 0 }] },
+    players: [{ position: 'UTG', startingStack: 400 }, { position: 'UTG', startingStack: 400 }, { position: 'BTN', isHero: true, startingStack: 400 }],
+    streets: [{ name: 'Preflop', actions: [{ player: 1, action: 'raise', toAmount: 12 }, { player: 2, action: 'call' }, { player: 0, action: 'fold' }] }],
+  });
+  const { hand, notes } = normalizeDraft(d);
+  // Six-handed the app calls the first two seats LJ and HJ: the straddler first, the opener after.
+  assert.deepEqual(hand.players.map((p) => p.position), ['LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']);
+  assert.ok(notes.some((n) => /UTG straddle on/.test(n)), notes.join(' | '));
+  // With no straddle on, two players at one seat are left for the rules to ask about.
+  const plain = normalizeDraft({ ...d, blinds: { sb: 1, bb: 2, ante: 0 } });
+  assert.ok(!plain.notes.some((n) => /UTG straddle on/.test(n)));
+});
+
+test('owner decision G: per-pot winners survive the /answer round trip and a result answer', () => {
+  const pots = [{ name: 'main', winners: [{ playerIdx: 0, split: false }] }, { name: 'side 1', winners: [{ playerIdx: 1, split: false }] }];
+  const base = normalizeDraft(flopDraft('Kd8c3h', {}), {}).hand;
+  const withPots = { ...base, result: { winners: pots[0].winners, pots } };
+  assert.deepEqual(normalizeHand(withPots).hand.result.pots.length, 2);
+  const out = applyOps(withPots, [{ op: 'set', path: 'result', value: { winners: [{ playerIdx: 1 }], pots } }]).hand;
+  assert.equal(out.result.pots.length, 2);
+  assert.deepEqual(out.result.winners, [{ playerIdx: 1, split: false }]);
+});
+
+test('owner decision C: a hero-less hand keeps every known card, with seat 0 as the first slot', () => {
+  const { hand } = normalizeDraft(D({
+    gameType: 'NLH', gameMode: 'cash', tableSize: 2, observer: true, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 0, cards: 'JhTh' }, { player: 1, cards: 'AsKd' }], actions: [{ player: 0, action: 'raise', toAmount: 6 }, { player: 1, action: 'call' }] }],
+  }));
+  assert.equal(hand.heroless, true);
+  assert.equal(hand.streets[0].cards.hero, 'JhTh');
+  assert.deepEqual(hand.streets[0].cards.opponents, ['AsKd']);
+  // The answer path can set it too ("I wasn't in this hand").
+  const out = applyOps({ ...hand, heroless: undefined, heroIdx: 0 }, [{ op: 'set', path: 'heroless', value: true }]).hand;
+  assert.equal(out.heroless, true);
+  assert.equal(out.heroIdx, null);
+});
+
+test('PLO5, PLO6, PLO6 8/b, NLO8 and Short Deck: recognised, own names, own card counts', () => {
+  const c = G.canonicalGameName;
+  for (const [said, game] of [['PLO5', 'PLO5'], ['5 card PLO', 'PLO5'], ['plo6', 'PLO6'], ['PLO6 hi-lo', 'PLO6 8/b'], ['PLO6 8/b', 'PLO6 8/b'], ['Big Easy', 'PLO6 8/b'],
+    ['NLO8', 'NLO8'], ['no limit omaha hi-lo', 'NLO8'], ['short deck', 'Short Deck'], ['6+ hold\'em', 'Short Deck'], ['Big O', 'Big O']]) assert.equal(c(said), game, said);
+  assert.deepEqual([G.GAMES.PLO5.cards, G.GAMES.PLO6.cards, G.GAMES['PLO6 8/b'].cards, G.GAMES.NLO8.cards, G.GAMES['Short Deck'].cards], [5, 6, 6, 4, 2]);
+  assert.equal(G.GAMES.NLO8.betting, 'nl');
+  // A six-card hand told as a drafted game keeps its own name through the normaliser.
+  const six = normalizeDraft(D({
+    gameType: 'PLO6', gameMode: 'cash', tableSize: 2, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 0, cards: 'AhKd2c3s9hTd' }], actions: [{ player: 0, action: 'raise', toAmount: 6 }, { player: 1, action: 'call' }] }],
+  })).hand;
+  assert.equal(six.gameType, 'PLO6');
+  assert.equal(six.streets[0].cards.hero, 'AhKd2c3s9hTd');
 });

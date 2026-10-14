@@ -333,9 +333,13 @@ const EXPECT_KEYS = new Set([
   'gameType', 'gameMode', 'currency', 'blinds', 'players', 'heroPosition', 'heroCards',
   'heroStreetCards', 'stacks', 'stacksAll', 'effectiveStack', 'board', 'actions', 'draws',
   'studUp', 'showdown', 'winners',
-  // What only the parse can tell (hand.quickAdd, 2026-10-14): the narrator was not in the
-  // hand; the text is not one recordable hand; an ante of unstated type; a format the
-  // replayer cannot store; other hands told alongside.
+  // A winner per pot (owner decision G, 2026-10-14): [{ name: 'main', winners: ['UTG'] },
+  // { name: 'side 1', winners: ['BTN'] }]; winners may be refs or { refs, split }.
+  'pots',
+  // What only the parse can tell (hand.quickAdd and hand.heroless, 2026-10-14): the narrator was
+  // not in the hand (the hand is stored hero-less, owner decision C); the text is not one
+  // recordable hand; an ante of unstated type; a format the replayer cannot store; other hands
+  // told alongside.
   'observer', 'recordable', 'anteUnclear', 'unsupported', 'otherHands',
 ]);
 /* sourceUrl: where a paraphrased case came from (the corpus never carries the raw
@@ -377,6 +381,7 @@ function collectRefs(ex) {
   for (const k of Object.keys(ex.stacks || {})) refs.add(k);
   for (const k of Object.keys(ex.studUp || {})) refs.add(k);
   for (const r of winnerRefs(ex.winners)) refs.add(r);
+  for (const pot of ex.pots || []) for (const r of winnerRefs(pot.winners)) refs.add(r);
   return refs;
 }
 function winnerRefs(w) {
@@ -676,6 +681,7 @@ function canonicalizeRefs(ex, n) {
       showdown: mapKeys(ex.showdown),
       stacks: mapKeys(ex.stacks),
       winners: !w ? w : Array.isArray(w) ? w.map(m) : { ...w, refs: (w.refs || []).map(m) },
+      pots: ex.pots ? ex.pots.map(p => ({ ...p, winners: Array.isArray(p.winners) ? p.winners.map(m) : { ...p.winners, refs: (p.winners.refs || []).map(m) } })) : ex.pots,
     },
   };
 }
@@ -1058,6 +1064,9 @@ function buildOracleHand(c, v) {
   }
   const w = ex.winners;
   const result = w ? { winners: winnerRefs(w).map(r => ({ playerIdx: idxOf(r), split: !Array.isArray(w) && !!w.split })) } : null;
+  if (result && Array.isArray(ex.pots) && ex.pots.length) {
+    result.pots = ex.pots.map(p => ({ name: p.name, winners: winnerRefs(p.winners).map(r => ({ playerIdx: idxOf(r), split: !Array.isArray(p.winners) && !!p.winners.split })) }));
+  }
   const quickAdd = {};
   /* A case that expects the table-size question (a gap on field tableSize) says the
      text never gives it: a real parse then lists only the players mentioned, unseated,
@@ -1065,7 +1074,7 @@ function buildOracleHand(c, v) {
      Older cases with no such gap keep the seated oracle they were scored with. */
   const asksTable = (c.expectGaps || []).some(g => [].concat(g.field || []).includes('tableSize'));
   if (!isStud && !ex.players && asksTable) quickAdd.positions = 'narrator';
-  if (ex.observer) quickAdd.observer = true;
+  // Owner decision C: an observer hand is hero-less (hand.heroless, no hero question).
   if (ex.recordable === false) quickAdd.notRecordable = true;
   if (isNum(ex.anteUnclear)) quickAdd.anteUnclear = ex.anteUnclear;
   if (ex.unsupported) quickAdd.unsupported = ['a format the replayer cannot store'];
@@ -1080,6 +1089,7 @@ function buildOracleHand(c, v) {
     heroIdx,
     streets,
     result,
+    ...(ex.observer ? { heroless: true } : {}),
     ...(Object.keys(quickAdd).length ? { quickAdd } : {}),
   };
 }
@@ -1197,7 +1207,7 @@ function scoreCase(c, v, hand) {
   }
   if (ex.players != null) F('players', 'table', ex.players, ctx.n || null, ctx.n === ex.players);
   const hq = H.quickAdd && typeof H.quickAdd === 'object' ? H.quickAdd : {};
-  if (ex.observer) F('observer', 'hero', true, hq.observer === true ? true : null, hq.observer === true);
+  if (ex.observer) F('observer', 'hero', true, H.heroless === true ? true : null, H.heroless === true);
   if (ex.recordable === false) F('recordable', 'table', false, hq.notRecordable ? false : null, !!hq.notRecordable);
   if (isNum(ex.anteUnclear)) F('anteUnclear', 'stakes', ex.anteUnclear, isNum(hq.anteUnclear) ? hq.anteUnclear : null, numEq(hq.anteUnclear, ex.anteUnclear));
   if (ex.unsupported) F('unsupported', 'table', true, Array.isArray(hq.unsupported) && hq.unsupported.length ? true : null, Array.isArray(hq.unsupported) && hq.unsupported.length > 0);
@@ -1325,6 +1335,17 @@ function scoreCase(c, v, hand) {
     let ok = want.length === gotW.length && want.every(i => i >= 0 && gotW.includes(i));
     if (ok && !Array.isArray(ex.winners) && ex.winners.split) ok = H.result.winners.every(w => w.split);
     F('winners', 'result', winnerRefs(ex.winners).join(','), gotW.length ? gotW.map(i => (ctx.players[i] || {}).position || i).join(',') : null, ok);
+  }
+
+  if (Array.isArray(ex.pots)) {
+    const gotPots = H.result && Array.isArray(H.result.pots) ? H.result.pots : [];
+    for (const pot of ex.pots) {
+      const want = winnerRefs(pot.winners).map(r => ctx.resolve(r));
+      const g = gotPots.find(x => String(x.name || '').toLowerCase() === String(pot.name).toLowerCase());
+      const gotIdx = g ? g.winners.map(w => w.playerIdx) : [];
+      const ok = !!g && want.length === gotIdx.length && want.every(i => i >= 0 && gotIdx.includes(i));
+      F('pots.' + pot.name, 'result', winnerRefs(pot.winners).join(','), gotIdx.length ? gotIdx.map(i => (ctx.players[i] || {}).position || i).join(',') : null, ok);
+    }
   }
 
   // Hallucinations: cards and stacks the text never stated.

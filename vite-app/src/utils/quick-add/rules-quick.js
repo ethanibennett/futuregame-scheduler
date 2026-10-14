@@ -6,6 +6,7 @@
 // hand.quickAdd (2026-10-14):
 //   notRecordable  true | "why"      — not one recordable hand
 //   otherHands     ["summary", …]    — hands the post also told, not recorded
+//   otherHandIndexes [2, 3, …]       — the number of each other hand, in the order told
 //   otherHandsBlocking true          — the player must say which (decision F, lib/quick-add/decisions.js)
 //   unsupported    ["what", …]       — bomb pot, double board, PLO5 …
 //   questions      [gap-like, …]     — ready-made questions: a card or size said
@@ -48,8 +49,13 @@ export function quickRules(hand, out, dismissed) {
     const n = qa.otherHands.length + 1;
     out.push(makeGap({
       id: 'hand-choice', kind: 'ambiguous', field: 'quickAdd.otherHands',
-      question: 'This tells ' + n + ' hands; the one in most detail is recorded. The others: ' + qa.otherHands.join('; ') + '.',
-      options: [{ label: 'Record this one', value: { op: 'dismiss' } }],
+      question: 'This tells ' + n + ' hands; the one in most detail is recorded. Which should it be? The others: ' + qa.otherHands.join('; ') + '.',
+      // Owner decision F: always ask. Another hand is a new parse of the same text with
+      // hints.handIndex (QuickAddView runs it when it sees { op: 'reparse' }).
+      options: [{ label: 'Record this one', value: { op: 'dismiss' } }].concat(
+        Array.isArray(qa.otherHandIndexes) && qa.otherHandIndexes.length === qa.otherHands.length
+          ? qa.otherHands.map((s, i) => ({ label: 'Hand ' + qa.otherHandIndexes[i] + ' instead: ' + s, value: { op: 'reparse', handIndex: qa.otherHandIndexes[i] } }))
+          : []),
       allowFree: true, blocking: !!qa.otherHandsBlocking,
     }, [STAGE.structure, 5]));
   }
