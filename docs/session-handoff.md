@@ -5,7 +5,7 @@ Rolling handoff for a fresh Claude Code session on this repo. CLAUDE.md is the
 handoff — what just changed, what is waiting, and the traps worth knowing before
 touching any of it.
 
-Last updated: 2026-10-13 (from Windows) — see the 2026-10-13 section first. Earlier note: 2026-09-30. The newest section is 2026-09-30, live
+Last updated: 2026-10-13 (from Windows) — see the 2026-10-13 sections first. Earlier note: 2026-09-30. The newest section is 2026-09-30, live
 tournament clocks + the event audit fixes (below). Before it, 2026-09-28, the
 Dashboard grid pass + Schedule header-peek fix (`df32787`, pushed to master).
 Below it the 2026-09-25 Schedule grid sweep, then the dated sections back through
@@ -14,50 +14,38 @@ wsop-console side and verified against both live services.
 
 ---
 
-## 2026-10-12 — Replayer springs (branch `worktree-wf_47e1730e-7b7-1`, not merged)
+## 2026-10-13 — Replayer springs, final round (branch `worktree-wf_47e1730e-7b7-1`, not merged)
 - The flop deal and spread, the turn/river landing, wagers pushed out and swept into the pot, and
   the pot shipped to the winner run on one spring family, the launch ads' Remotion numbers
   (`utils/spring.js`, `utils/replayer-motion.js`, `docs/replayer-springs.md`). Web Animations on
-  transform/opacity, computed once per moment; no per-frame JS.
-- **Flag** `localStorage.replayerSprings`: unset/'1' Set A "house" (default on the branch), '2' or
-  'snappy' Set B, '0' today's code paths unchanged. Reduced motion turns it all off.
-- **Exports carry the motion** (owner, 2026-10-12): the flop, the turn and river, the wagers into
-  the pot and the pot shipped are seeked frame by frame (video 24 fps, GIF 12.5 fps); a push-out
-  exports as its settled frame. The closing bookend waits for the settled still, so the ship is seen
-  over the table. Checked frame for frame against the live replayer at the turn, the river and the
-  result (`scripts/check-replay-export-motion.mjs`). Cost in WebKit, 8-max hand: video 170s
-  against 91-92s with the springs off (1.9x; the owner's target was about 3x), GIF 156-160s
-  against 99s (1.6x).
-- **Why exports were slow**: modern-screenshot's Safari decode workaround counts every CSS gradient as
-  an image and sleeps 100ms+ per "image", so a capture of the table slept ~3s for 4-11 real images.
-  Motion frames now keep one redraw per real image (`captureMotionCanvas` in `replay-capture.js`);
-  the settled stills are untouched. **Check on an iPhone before merging**: export a hand and look
-  for a missing card face in any frame of the flop or the result.
-- **Frame cost at 4x CPU throttle** (`docs/replayer-springs.md`, "Frame cost"): the press frame is
-  ~40ms (flop) and ~25ms (result) dearer than today's, because the moment is built in it; after the
-  press, one long frame in 9 at the flop and at the result (was 6 in 9 at the result). The showdown
-  reveal no longer re-renders the replayer in the result's press task; the ship is built in two
-  frames after the press. The plaque-gold delay lives on the winning seat, not the table root.
-- **The pot lands on the plaque** (owner, 2026-10-12): never across the winner's name, on the edge of
-  the name plaque nearest the pile, the stack counting up as it lands; measured at all 46 seats
-  (6/8/9-max, phone and desktop): name overlap 0px², half a chip of room from the cards and the
-  button wherever the plaque allows it. The result collects the river's wagers first, then ships a
-  handful (5 chips leaving 6ms apart); the pile empties as it goes. No won pill on the spring path:
-  the pot goes into the plaque (flag '0' keeps the pill).
-- **The pile changes once per sweep** (round 2, the critic's one "must"): the row becomes the final
-  row as the chips leave the seats, the heights change at the first landing, new stacks fade in under
-  the ghost that brings them (a colour-up when no ghost's own colour does). Never the compositions in
-  between (38,000 is three stacks, 50,000 one, 62,000 three again).
-- **For the Mac**: check the flop, the result and Forward-mashing at 1440 in Safari and the Catalyst
-  app with Web Inspector's timeline. Playwright's WebKit on Windows rasterises in software and gets
-  about one frame a second during any springs moment at 1440 @2x (36 frames in 3s with the springs
-  off, which stalls too); the springs' extra drawing area there is now 0% at the flop and +17% at
-  the result (was +16% and +62%).
-- **Waiting on Ethan**: A or B (side-by-side MP4s in `weekly-graphics/replayer-springs/compare/`,
-  Set B in `compare/set-b/`), then merge. Not deployed, no TestFlight.
+  transform/opacity, computed once per moment; no per-frame JS. Master is merged in (desktop layout,
+  venue map, backer page).
+- **Flag** `localStorage.replayerSprings`: unset is **Set B "snappy", the default** (owner,
+  2026-10-13); '1' Set A "house"; '2'/'snappy' Set B; '0' today's code paths unchanged. Reduced
+  motion turns it all off (same animation set as flag '0' under reduce, no Web Animations).
+- **Round 3 fixes** (the two reviews' "must"s and the lead's "should"s): the pot never dips at the
+  result (each river ghost carries its wager less the showdown's uncalled return, and the figure never
+  reads below the press's: 122K, 157K, 197K); one ship per result press (deferred work is the
+  moment's generation, `MotionRegistry.defer`; `scripts/check-replayer-ship-once.mjs`); the ship is
+  the pile's own chips, not gold coins, landing at the coin's size on a big table; the winner's plaque
+  takes its gold at the hit with a ::after glow (opacity only); the board's springs and the pile's new
+  row are built in the frame after the press (the board held as seen until then); one ship clip box.
+- **Owner rules re-measured**: exports keep the motion except the push-outs, and match the live
+  replayer at every seeked instant (0-0.12px); the pot lands on the winner's plaque edge nearest the
+  centre, never on the name, at all 46 seats; seat geometry 0.00px against flag '0'.
+- **Frame cost**: see `docs/replayer-springs.md` "Frame cost" (round 3 numbers, traced and at 4x).
+- **For the Mac / iPhone** (not checkable here): Safari and the Catalyst app at 1440 with Web
+  Inspector's timeline on the flop, the result and Forward-mashing (Playwright's WebKit on Windows
+  rasterises in software and starves frames, a frame every ~300ms during a moment); an iPhone export
+  (no card face missing in a seeked frame of the flop or the result); the plaque's gold glow and the
+  board appearing on its first frame after the press on a real device.
+- **Waiting on Ethan**: the final side-by-side videos (today vs Set B) in
+  `weekly-graphics/replayer-springs/final/`, then merge. Not deployed, no TestFlight.
 - Trap: in a Playwright capture, press and pin animations in ONE `page.evaluate`, and pin at 0 until
   every animation has its start before running the clock — the page clock does not drive the
-  document timeline, and the registry times an arrival from its animation's real start.
+  document timeline, and the registry times an arrival from its animation's real start. And a probe's
+  "settled" must wait for the registry too (`entries`, `ticks`, `deferred`), not just
+  `getAnimations()`: the ship is built a few frames after the press.
 
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
@@ -68,7 +56,7 @@ wsop-console side and verified against both live services.
   HEAD once a night when nothing is in the way. **Merging several branches into master over time? Write
   `.testflight-hold` (with a reason) first and delete it when master is whole.**
 - **In flight at the end of the day:** replayer springs (worktree `wf_47e1730e-7b7-1`; owner chose
-  **Set B** as the default — switch `replayer-motion.js` before merging; exports animate everything
+  **Set B** as the default — done on the branch, see the section above; exports animate everything
   except bet slide-outs; pot chips land on the winner's plaque edge, never across the name); the
   bankroll Locations tab (worktree `wf_f6462427-c7b-1`, based on an older master — needs a merge); the
   venue-strip map popup (worktree `venue-map`, branch `feat/venue-map` off `merge/home-tables`:
