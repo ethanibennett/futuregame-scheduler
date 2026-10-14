@@ -1,0 +1,1410 @@
+# Bankroll merge: futurega.me becomes the one money store
+
+Status: **design, not built** (2026-10-14). A buildable spec for moving the dashboard's money
+(dashboard.futurega.me, repo `wsop-console`) into this app (futurega.me, repo
+`futuregame-scheduler`), cut into phases small enough for one builder each.
+
+Path shorthand: bare paths are this repo at `origin/master` `2ad9c91`. **WC:** is
+`D:\projects\wsop-console` at `0968eb9`. Every `file:line` below was read for this spec. The two
+read-only maps made the same morning were the starting point; where this spec disagrees with them,
+the code won and §2.2 says so.
+
+This repo is public. Nothing here names a backer, quotes a token or uses a real amount. Examples
+are made up.
+
+---
+
+## 0. The plan in fifteen lines
+
+1. futurega.me owns every dollar: results, deposits, transfers, expenses, staking and backer pages.
+2. The dashboard's data comes in once through a token-gated **server-to-server pull** into a
+   staging area. It is pulled again at cutover to pick up the last nights.
+3. Nothing is written until the owner has answered a **review list** in Bankroll › Import. The list
+   holds the likely duplicate pairs, the backer matches and the reconciliation.
+4. Cash nights become `cash_sessions`. Tournament nights become Personal tournaments plus
+   `tracking_entries`, as the CSV importer does. Fund nights land in a new **WSOP fund** bankroll.
+5. Fund transfers become paired transfer legs. Corrections and backer settlements become two new
+   adjustment kinds that count as money moved.
+6. Each dashboard id becomes a fingerprint in `bankroll_import_keys`. A `chat-<sha1>` id keeps its
+   exact text, so a night told to Claude before and after the move is still one row.
+7. A new **standing agreement** (one per backer, not per series) holds dated stakes by format and
+   channel plus a signed opening balance. The dashboard's `matchPct` math is ported with its tests.
+8. A share is computed and posted when a result is saved. Its percentage is the stake in force on
+   the result's date. Editing a result re-derives its share and tells the backer.
+9. History from the dashboard (`backer_events`) is kept byte for byte. Every token moves verbatim
+   onto `backers.public_token`, so every `/b/` link keeps working.
+10. The staking settlement sheet is fixed: it returns its ids and paid flags and recomputes figures
+    on the server. Makeup is stored as opening and closing balances, and the markup sign is
+    corrected.
+11. A new owner API (`/api/owner/money`, `/api/owner/sessions/log`) is gated by a new
+    `LEDGER_TOKEN`. It feeds the dashboard's roll card, widget, watch, Cockpit and both MCP tools.
+12. The dashboard server becomes an adapter. The native apps keep calling the same summary URL, so
+    no app build is needed.
+13. The dashboard's Sessions, Bankroll and Admin tabs retire and are replaced by links into
+    futurega.me.
+14. The fund target lives in one place, the fund bankroll. The 65k versus 50k drift goes away.
+15. Cutover order: freeze dashboard writes, pull the delta, turn posting on, switch the dashboard's
+    reads. Each step has a rollback. Seams 1 (notify) and 3 (roster) retire only after a soak.
+
+---
+
+## 1. Owner decisions (2026-10-14, final) and what this spec adds
+
+| # | Decision | Where it is built |
+|---|---|---|
+| 1 | futurega.me is the one source of truth for bankroll and staking money. The dashboard's `sessions`, `adjustments`, `expenses`, `backers` and the synced blobs `wsop-staking`, `wsop-balances` and `wsop-notified-sessions` are imported for the owner's user. | §4, §5, §8 |
+| 2 | Keep the scheduler's staking model and add the dashboard's standing % as a new agreement type. `/b/` pages, push, SMS and the digest are computed here from this app's results. Every token and link keeps working, with `backer_events` intact. | §6, §7 |
+| 3 | The dashboard's money screens retire and become links. Today, Health, Train and Plan stay. The roll card, iOS widget, watch, screensaver Cockpit and MCP `log_session`/`get_bankroll` read from and log to futurega.me. | §11, §12 |
+| 4 | Nights logged in both apps go to the owner as a review list to confirm or reject before anything is written. | §9 |
+
+This spec decides four things the decisions left open. Each is in §17 with its default.
+- **Posting:** a share is posted on save, not on a tap.
+- **Edits:** a share follows its result.
+- **The roll:** the roll is every bankroll except the fund.
+- **Imported expenses:** they do not move the roll, as in the dashboard.
+
+---
+
+## 2. What is there today (verified)
+
+### 2.1 The two systems in one table
+
+| | Dashboard (WC) | futurega.me (this repo) |
+|---|---|---|
+| Store | `console_records(store,id,data,updated_at,deleted)` JSON blobs, last-write-wins sync from each device's IndexedDB (WC:`server/server.js:535`) | relational, per user, sql.js |
+| Money | floats in dollars, no user, no currency | whole units (INTEGER) for results, adjustments and cash sessions; REAL to the cent for expenses and income; currency per bankroll |
+| Roll | derived: `startingRoll + non-fund results + adjustments (not transfers, not settlements) − transfers` (WC:`app/src/engine/bankroll.ts:221-259`; server copy WC:`server/lib/dashboard.js:142-157`) | ledger: `starting_balance + Σ entries` per bankroll (`lib/bankroll-ledger.js`) |
+| Fund | `transfers + fund results + backer settlements`, target **65,000** in the PWA (WC:`bankroll.ts:205`) and **50,000** on the server (WC:`dashboard.js:275`) | none |
+| Backers | `{id, token, name, stakes[{format,channel,pct}], delivery{sms,email}, opening}` (WC:`app/src/db/backers.ts:13-35`); share math client-only (`:96-132`) | staking tree: `staking_series`, `backers` (int ids), `backer_agreements` (per series; `series_id NOT NULL`, `server.js:2041`), overrides, event status, settlements, `backer_tokens` |
+| `/b/` pages | none; the definitions are pushed through seams 1 and 3 | page, feed, push, SMS, digest (`server.js:553-702`, `:11650-11782`), keyed by the dashboard's tokens |
+
+### 2.2 Facts this spec relies on, including where the maps were incomplete
+
+1. **The Settings JSON backup leaves out the synced blobs.** `exportAll` (WC:`app/src/db/idb.ts:252`)
+   walks only the IndexedDB object stores. `wsop-staking`, `wsop-balances` and `wsop-notified-sessions`
+   live in localStorage and sync as the `local` pseudo-store (WC:`app/src/db/syncLocal.ts:17-29`).
+   A backup file would therefore miss three of the inputs decision 1 names. This decides §8.
+2. **Notify is a tap, not automatic.** `BackerNotify` (WC:`app/src/screens/BackersUI.tsx:404-436`)
+   shows the cuts and sends them only when the owner presses the button. It records the session id
+   in `wsop-notified-sessions`. MCP-logged sessions are never notified (WC:`server/server.js:345-349`).
+   So `backer_events` holds exactly the nights the owner chose to send. It is not every matching
+   night.
+3. **An adjustment's sign is whatever was typed.** The form saves `amount: n` as entered
+   (WC:`app/src/screens/BankrollScreen.tsx:383`). The roll adds it regardless of type. The form's
+   hint for a withdrawal is "Use a negative amount". A positive "withdrawal" therefore *added* to the
+   dashboard's roll. The import follows the sign, not the label (§5.3).
+4. **Settled slate deals already moved money.** "Settle" writes one `backer-settlement` adjustment of
+   `−round(prize × pctSold)` into the fund. Its note is `"<event>: backers' <pct>% of <prize> → <backer>"`
+   (WC:`app/src/screens/AdminView.tsx:251-264`). A deal's `settled` flag carries no money of its own.
+5. **`other` expenses are not deducted by this app's tax report.** `PRO_EXPENSE_RULES.other` has
+   rate 0 (`vite-app/src/utils/tax-report.js:112-121`). Mapping the dashboard's `equipment` and
+   `fees` to `other` would silently drop them from the deduction. §5.4 adds two categories instead.
+6. **Dashboard expenses never touched the roll.** `computeBankroll` reads sessions and adjustments
+   only. Here, every `bankroll_transactions` row moves its bankroll's balance
+   (`lib/ledger-sources/transactions.js`). §5.4 handles the difference.
+7. **The settlement sheet has two more defects than the map listed.**
+   - `amountOwed = grossReturn − grossInvestment + markupAmount` (`server.js:7548`) hands the markup
+     back to the backer. Take 10% of a $1,000 event at 1.2 markup with no cash: the backer should owe
+     $120, but the sheet says $100.
+   - Settle upserts by `(series_id, backer_id)` (`server.js:7629`). A backer with two agreements in
+     one series gets one row, and the last write wins.
+8. **A standing agreement cannot live in `backer_agreements`.** Its `series_id` is `NOT NULL`
+   (`server.js:2041`), and SQLite cannot drop that constraint without rebuilding the table.
+9. **The local pm2 instance runs the backer crons too.** It runs the digest cron
+   (`server.js:14042`) and the roster pull (`:14049`) on this box. It holds a `DASHBOARD_TOKEN`
+   (CLAUDE.md, dashboard seams). It is quiet today only because notify writes to prod's
+   `backer_events`, so its own copy never gains a new row for the digest to send. Once shares are
+   posted wherever a result is saved, deliveries must be gated to prod (§6.7).
+10. **The roster seam is a live credential leak path.** `GET /api/roster/:token` returns every
+    backer's token, phone and email under `DASHBOARD_TOKEN` (WC:`server/server.js:220-237`). That
+    token is compiled into the iOS builds (`DashboardSecret.swift`, per WC:`lib/dashboard-token.js`).
+    Retiring seam 3 closes the path. The new token must never ship in an app.
+11. **No prod DB backup exists in this repo's code.** The dashboard's device copies were an informal
+    backup. Once futurega.me is the only copy, the owner confirms the Render disk snapshots
+    (Phase 0).
+12. **Both cookies are host-only.** The scheduler's (`server.js:260-268`, no `domain`) and the dashboard's
+    (WC:`server/lib/auth.js:41-45`) do not cross hosts. The dashboard's browser code cannot call
+    futurega.me as the owner, so all dashboard-to-futurega.me traffic goes server to server (§11).
+
+---
+
+## 3. Target architecture
+
+```
+                         futurega.me (Render)                                dashboard.futurega.me (Render)
+  ┌───────────────────────────────────────────────────────┐        ┌──────────────────────────────────────────┐
+  │ results: tracking_entries + Personal tournaments,     │        │ Today · Health · Train · Plan            │
+  │          cash_sessions, session_extras                │        │ (+ Trends, Review, Settings)             │
+  │ bankrolls: Main (virtual), WSOP fund, others          │        │                                          │
+  │ ledger: adjustments (+correction, +settlement),       │  GET   │ lib/money-source.js  ── cache 60 s,      │
+  │         transactions, transfers                       │◄───────│   last-good persisted in console_flags   │
+  │ staking: series tree (fixed) + standing agreements    │ /api/  │ computeDashboardSummary ← money feed     │
+  │ backer surface: backers.public_token, backer_events,  │ owner/ │ /api/dashboard/:token/summary (unchanged │
+  │   push subs, revisions, delivery sweep (prod only)    │ money  │   contract) → widget, watch, Cockpit     │
+  │ owner API: /api/owner/money, /api/owner/sessions/log  │◄───────│ MCP log_session/get_bankroll → forward   │
+  │   (Bearer LEDGER_TOKEN, acts as HAM_OWNER_ID)         │  POST  │ Today live-session end → forward         │
+  │ seam #2 departures (unchanged)                        │───────►│ departures board                         │
+  └───────────────────────────────────────────────────────┘        └──────────────────────────────────────────┘
+        ▲ one-time + delta pull (Phase 5, removed in Phase 13): GET WC /api/money-export (Bearer LEDGER_TOKEN)
+```
+
+Retired after the soak: seam #1 (notify relay and the `/console/api/backers/*` routes), seam #3
+(roster endpoint and `syncBackerRoster`), the dashboard's money stores and screens, and this app's
+`console_records` table.
+
+---
+
+## 4. Schema (one migration, `money-merge-2026-10`, in `dataMigrations` after `bankroll-transactions-2026-10`)
+
+Everything is additive. No existing column changes meaning except as §10 says for settlements.
+
+### 4.1 New tables
+
+```sql
+-- Standing % agreements (the dashboard's model). One ACTIVE per (player, backer).
+CREATE TABLE standing_agreements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,              -- the player
+  backer_id INTEGER NOT NULL,            -- backers.id
+  effective_from TEXT NOT NULL,          -- YYYY-MM-DD: results dated before never derive
+  effective_to TEXT,                     -- inclusive last day; NULL = open
+  status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'ended'
+  opening_cents INTEGER NOT NULL DEFAULT 0, -- signed, + = player owes backer (dashboard `opening`)
+  opening_note TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id), FOREIGN KEY (backer_id) REFERENCES backers(id));
+CREATE UNIQUE INDEX idx_standing_active ON standing_agreements(user_id, backer_id) WHERE status = 'active';
+
+-- Dated stakes. An edit "from today" closes a row and opens a new one; a "correction" edits in place.
+CREATE TABLE standing_stakes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agreement_id INTEGER NOT NULL,
+  format TEXT NOT NULL,                  -- 'all' | PLO | PLO8 | NLH | mixed | stud8 | razz | 2-7 | BigO | other
+  channel TEXT NOT NULL,                 -- 'any' | 'live' | 'online'
+  pct REAL NOT NULL,                     -- 0 < pct <= 100
+  valid_from TEXT NOT NULL, valid_to TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (agreement_id) REFERENCES standing_agreements(id));
+
+-- Per (backer agreement, result) opt-out: "not staked" / "exclude from backers".
+CREATE TABLE standing_exclusions (
+  agreement_id INTEGER NOT NULL, ref_table TEXT NOT NULL, ref_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL, PRIMARY KEY (agreement_id, ref_table, ref_id));
+
+-- What a result knows beyond money: the dashboard's session fields that have no column here.
+CREATE TABLE session_extras (
+  user_id INTEGER NOT NULL,
+  ref_table TEXT NOT NULL,               -- 'tracking_entries' | 'cash_sessions'
+  ref_id INTEGER NOT NULL,
+  format TEXT, channel TEXT,             -- explicit classification; NULL = derive (§6.3)
+  hours REAL,                            -- tournaments only (cash hours come from started/ended)
+  hands INTEGER, mood_rating INTEGER, tilt_note TEXT, journal TEXT,
+  tags TEXT,                             -- JSON, tournaments only (cash_sessions has its own)
+  origin TEXT, origin_id TEXT,           -- 'dashboard' | 'chat' | 'app', and the source id
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (ref_table, ref_id));
+CREATE INDEX idx_session_extras_user ON session_extras(user_id);
+
+-- Audit trail for every change to a posted share.
+CREATE TABLE backer_event_revisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT NOT NULL, token TEXT NOT NULL, at INTEGER NOT NULL,
+  action TEXT NOT NULL,                  -- 'post' | 'revise' | 'void' | 'recalc' | 'link'
+  share_before INTEGER, share_after INTEGER,
+  result_before INTEGER, result_after INTEGER,
+  pct_before REAL, pct_after REAL,
+  cause TEXT,                            -- 'owner-edit' | 'import' | 'recalc' | 'drift' | 'exclude' | 'stake-correction'
+  note TEXT);
+CREATE INDEX idx_ber_token ON backer_event_revisions(token, at);
+
+-- "Where's the money" (the dashboard's wsop-balances).
+CREATE TABLE money_locations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+  name TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'USD',
+  sort_order INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
+
+-- Owner-level money settings (JSON): { posting: 'off'|'on', cutover: 'none'|'imported'|'live',
+--   postingSince, defaultBankroll: 'main'|id, taxSetAsidePct, correctionsPush: true }
+CREATE TABLE money_settings (user_id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+
+-- Staged pulls. payload holds PII (tokens, phones, emails): cleared 7 days after commit or on discard.
+CREATE TABLE money_import_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+  source TEXT NOT NULL,                  -- 'dashboard'
+  fetched_at TEXT NOT NULL, payload TEXT, plan TEXT, decisions TEXT,
+  status TEXT NOT NULL,                  -- 'staged' | 'committed' | 'discarded' | 'undone'
+  committed_at TEXT, summary TEXT);
+```
+
+### 4.2 New columns
+
+| Table | Column | Why |
+|---|---|---|
+| `backers` | `public_token TEXT` + `CREATE UNIQUE INDEX … WHERE public_token IS NOT NULL` | the `/b/` token, verbatim (§7) |
+| `backers` | `notify_sms INTEGER NOT NULL DEFAULT 0`, `notify_email INTEGER NOT NULL DEFAULT 0` | delivery is opt-in; a staking backer whose email is on file is not emailed |
+| `backer_events` | `agreement_id INTEGER`, `stake_id INTEGER`, `ref_table TEXT`, `ref_id INTEGER`, `source TEXT NOT NULL DEFAULT 'dashboard'`, `revised_at INTEGER`, `notified_share_cents INTEGER`, `notified_at INTEGER` + index `(ref_table, ref_id)` | link a share to its result; delivery sweep. Existing rows become `source='dashboard'`, and their `notified_*` columns are set to their own share (already delivered) |
+| `bankroll_import_keys` | `run_id INTEGER`, `decision TEXT` (`imported` \| `same` \| `skipped`), `source_updated_at INTEGER`, `source_hash TEXT` | delta pulls and undo |
+| `bankrolls` | `role TEXT` (`'fund'` or NULL), `in_roll INTEGER NOT NULL DEFAULT 1`, `target_amount INTEGER`, `target_date TEXT` | the fund, and what "the roll" sums |
+| `bankroll_adjustments` | `settlement_ref TEXT` (`'bs:<id>'` \| `'sp:<id>'`) | a payout linked to its settlement |
+| `bankroll_transactions` | `affects_balance INTEGER NOT NULL DEFAULT 1` | expenses paid from outside the roll (§5.4) |
+| `cash_sessions` | `time_known INTEGER NOT NULL DEFAULT 1` | imported and chat-logged sessions have a day and hours but no start time |
+| `staking_series` | `bankroll_id INTEGER` (NULL = Main) | where a paid settlement posts (bankrolls.md seam 1) |
+| `backer_settlements` | `agreement_id INTEGER`, `computed_owed REAL`, `adjustment REAL NOT NULL DEFAULT 0`, `adjustment_note TEXT`, `prepaid REAL NOT NULL DEFAULT 0`, `makeup_opening REAL`, `makeup_closing REAL`, `settled_at TEXT` | §10 |
+| `backer_agreements` | `makeup_opening REAL` | §10 (replaces reading `makeup_balance`) |
+
+### 4.3 Constants that change
+
+- **Ledger money-moved kinds.** `lib/bankroll-ledger.js:53` `MOVE_KINDS` gains `correction` and
+  `settlement`. `lib/ledger-sources/adjustments.js` `KIND_LABEL` gains `Correction` and
+  `Paid to backers`. Both kinds move balances and never count as profit, which matches the
+  dashboard: there, corrections and settlements were never session P&L.
+- **Expense categories.** They gain `equipment` and `fees` in three places:
+  - the server list, `lib/bankroll-transactions.js:31-34`;
+  - the client list, `vite-app/src/utils/transactions.js` (the test checks the two match);
+  - the tax rules, `tax-report.js` `PRO_EXPENSE_RULES`, at `rate: 1, line: 'Sch. C'`, plus their
+    labels.
+- **Rows the ledger and reports skip.**
+  - `lib/ledger-sources/transactions.js` skips `affects_balance = 0` rows. The Expenses list and the
+    tax report still read them, and the list marks them "Paid outside the roll".
+  - `lib/bankroll-reports.js` sets a cash fact's `hour` to null when `time_known = 0`, so the start
+    time and daypart reports never see a made-up noon.
+- **Account deletion.** `server.js:4054-4059` adds `standing_exclusions` (through the agreements),
+  `standing_stakes`, `standing_agreements`, `session_extras`, `money_locations`, `money_settings`
+  and `money_import_runs`. `backer_event_revisions` stays with `backer_events`, which are left alone
+  on purpose (`server.js:3972-3974`).
+
+---
+
+## 5. Data mapping
+
+### 5.1 Ids, fingerprints and idempotency
+
+Every imported row writes one `bankroll_import_keys` row, `(user_id, fingerprint, ref_table, ref_id,
+run_id, decision, source_updated_at, source_hash)`.
+`refExists` (`lib/bankroll-import.js:117`) learns `cash_sessions`, `bankroll_transactions`,
+`backers`, `standing_agreements`, `backer_agreements` and `money_locations`.
+
+| Source | Fingerprint | ref_table |
+|---|---|---|
+| a session whose id starts `chat-` | the id **verbatim** (`chat-` + 12 hex, WC:`server/lib/session-log.js:56-59`) | `tracking_entries` \| `cash_sessions` |
+| any other session | `dash:sessions:<id>` | same |
+| adjustment | `dash:adjustments:<id>` (a transfer points at its `transfer_out` leg; deleting either leg deletes both, `lib/bankrolls.js`) | `bankroll_adjustments` |
+| expense | `dash:expenses:<id>` | `bankroll_transactions` |
+| backer | `dash:backers:<id>` | `backers` (its agreement via `dash:standing:<id>`) |
+| slate deal | `dash:wsop-staking:<id>` | `backer_agreements` |
+| balance entry | `dash:wsop-balances:<id>` | `money_locations` |
+| opening deposit | `dash:opening` | `bankroll_adjustments` |
+| rounding correction | `dash:rounding:<main\|fund>` | `bankroll_adjustments` |
+| confirmed duplicate | the source's fingerprint, pointing at the **existing** row, `decision='same'` | the existing row's table |
+
+A second pull finds every fingerprint and imports nothing new. A key whose row was deleted is stale
+and imports again, which is the CSV importer's rule.
+
+Because a chat id is kept verbatim, the owner API's `log_session` (§11.3) derives the same
+`chat-<sha1>` from the same facts and lands on the same row. A night told to Claude before the
+move and told again after it stays one night.
+
+Ids exposed to the dashboard are strings, `te:<id>` and `cs:<id>`, so its `Session.id: string`
+type holds.
+
+### 5.2 Sessions
+
+**Cash** (`isMTT` false) → `cash_sessions`, plus `session_extras`.
+
+| Dashboard field | futurega.me | Conversion / rule |
+|---|---|---|
+| `date` (YYYY-MM-DD) | `session_date`; `started_at` = 12:00 America/New_York that day, as a UTC ISO instant; `time_known = 0` | the day is exact; the time is a placeholder the reports ignore |
+| `hours` | `ended_at = started_at + hours` (to the minute) | the ledger's `hours` reads it back to the hundredth |
+| `venue` | `room` | trimmed to the column's cap |
+| `format` | `game` = the variant label (table below); `session_extras.format` = the dashboard key | exact, never re-guessed |
+| `channel` | `session_extras.channel` | exact |
+| `stakeLevel`, `gameLabel` | `stakes` = `stakeLevel`, else the stakes token of `gameLabel` through `cleanStakes` (`lib/cash-sessions.js:162`); when `gameLabel` says more than stakes plus format ("40/80 mix"), it goes into `notes` | |
+| `buyInTotal` | `buy_in` | rounded to whole dollars; residue to §5.7 |
+| `cashOut` | `cash_out` | same |
+| `result` | not stored (net = `cash_out − buy_in − tips − expenses`) | checked: if \|`result − (cashOut − buyInTotal)`\| > 0.01, the row goes to the review as an error |
+| `isWsopFund` | `bankroll_id` = the fund bankroll, else the import target (Main by default) | |
+| `hands`, `moodRating`, `tiltNote`, `journal` | `session_extras` | |
+| `tags` | `tags` (JSON, ≤ 10) | |
+| `entries`, `place`, `fieldSize` | ignored on a cash row | listed in the review if present |
+| — | `rebuys 0, tips 0, expenses 0, currency 'USD', venue_slug NULL` | |
+
+**Tournament** (`isMTT` true) → a Personal `tournaments` row, a `tracking_entries` row and
+`session_extras`, following `lib/bankroll-import.js:186-196`.
+
+| Dashboard field | futurega.me | Conversion / rule |
+|---|---|---|
+| — | `tournaments`: `venue 'Personal'`, `stable_id PERSONAL-<uid>-dash-<first 12 hex of sha1(session id)>`, `source_pdf 'dashboard-import'`, `uploaded_by uid`, `time ''`, `event_number ''` | deterministic, so undo and re-import are exact; not added to `user_schedules` (as the CSV importer does) |
+| `date` | `tournaments.date` (YYYY-MM-DD) | |
+| `gameLabel` | `event_name` (≤ 120; empty becomes "`<variant>` tournament") | |
+| `format` | `game_variant` = variant label; `session_extras.format` | |
+| `channel` | `is_online` (online = 1); `session_extras.channel` | |
+| `venue` | `property` (and `site` too when online) | so Reports and Locations group by the real room, never "Personal" |
+| `buyInTotal`, `entries` | `tournaments.buyin` = `buyInTotal / entries` when that is whole dollars, else rounded with the residue to §5.7; `num_entries` = `entries` (default 1) | net = cash − buyin × entries, the ledger's formula |
+| `cashOut` | `cash_amount = round(cashOut)`, `cashed = cashOut > 0` | |
+| `place` / `fieldSize` | `finish_place` / `tournaments.total_entries` | |
+| `hours`, `hands`, `moodRating`, `tiltNote`, `journal`, `tags` | `session_extras` | `tracking_entries` has no hours column, and the backer feed reads hours from here |
+| `isWsopFund` | `tracking_entries.bankroll_id` | |
+| — | `tracking_entries.notes = 'Imported from the dashboard'` | |
+
+Variant labels (this app's naming, CLAUDE.md conventions):
+
+| Dashboard key | Label | Dashboard key | Label |
+|---|---|---|---|
+| `PLO` | `PLO` | `stud8` | `Stud 8` |
+| `PLO8` | `PLO8` | `razz` | `Razz` |
+| `NLH` | `NLH` | `2-7` | `2-7` |
+| `mixed` | `Mixed` | `BigO` | `Big O` |
+| `other` | `Other` | | |
+
+**Why fund sessions are results filed in the fund and not transfers.** In the dashboard a fund
+night's result goes straight into the fund (WC:`bankroll.ts:248`). Filing the result under the fund
+bankroll reproduces that balance exactly and keeps it a result. Modelling it as a transfer would give
+the same balances but take the night out of profit, ROI, the Reports and the tax report, and a
+fund night is still a night played.
+
+### 5.3 Adjustments → `bankroll_adjustments`
+
+| Dashboard row | Lands as | Bankroll |
+|---|---|---|
+| any type except the three below, `amount > 0` | `deposit`, `+round(amount)` | Main |
+| any type except the three below, `amount < 0` | `withdrawal`, `−round(\|amount\|)` | Main |
+| `correction` | `correction`, signed (new kind, money moved) | Main |
+| `wsop-fund-transfer`, `amount > 0` | `transfer_out −a` in Main + `transfer_in +a` in the fund, `transfer_id 'dash:<id>'` | both |
+| `wsop-fund-transfer`, `amount < 0` | `transfer_out −\|a\|` in the fund + `transfer_in +\|a\|` in Main | both |
+| `backer-settlement` | `settlement`, signed (new kind, money moved), `settlement_ref` set when §5.6 links it to a slate deal | fund |
+| `amount == 0` | skipped, listed | — |
+
+- `date` becomes `occurred_on`.
+- The note becomes `"<dashboard type> · <note>"`, so the original label survives.
+- A row whose sign disagrees with its label (§2.2 point 3) imports as it **counted**. It is flagged
+  in the review: "A withdrawal of +$500 — the dashboard added this to the roll."
+
+### 5.4 Expenses → `bankroll_transactions`
+
+The import writes `kind 'expense'`, `amount` REAL rounded to the cent, `currency 'USD'`,
+`occurred_on = date`, `note`, `bankroll_id` Main and `affects_balance = 0` (§17 Q6).
+
+| Dashboard category | Category here | Tax treatment here |
+|---|---|---|
+| `travel` | `travel` | 100% |
+| `lodging` | `lodging` | 100% |
+| `meals` | `food` | 50% (`tax-report.js:115`) |
+| `coaching` | `coaching` | 100% |
+| `equipment` | `equipment` (new) | 100% |
+| `fees` | `fees` (new) | 100% |
+| `other` | `other` | **not deducted** (rate 0); the review lists these with their total so the owner can recategorise |
+
+### 5.5 Settings
+
+- **`startingRoll`** becomes the computed opening deposit (§5.8). It is not stored as a starting
+  balance, because Main is virtual and has none (`docs/bankrolls.md:27-29`).
+- **The other `Settings` fields** (wake time, cut-offs, phase override, and so on) are not money.
+  They stay on the dashboard.
+
+### 5.6 The synced blobs
+
+| Key | Shape | Lands as |
+|---|---|---|
+| `wsop-balances` | `{ entries: [{id,name,amount}], updatedAt }` (WC:`BankrollScreen.tsx:438-447`) | `money_locations` rows; the "Where's the money" block (Phase 10) |
+| `wsop-staking` | `StakeDeal[] {id,event,buyIn,pctSold,markup,backer?,settled?}` (WC:`AdminView.tsx:33-41`) | one `staking_series` per distinct event (named after it, USD, status `settled` when all its deals are), one `backers` row per distinct backer name (matched to the roster backers by name in the review, else staking-only with no token), one `backer_agreements` row `pay_per_play`, `percentage = pctSold`, `markup`, notes `"Slate buy-in $X (imported)"`. A **settled** deal also gets a `backer_settlements` row (`is_paid 1`) linked to the imported `settlement` adjustment whose note starts `"<event>:"`. Unmatched ones stay unlinked and are listed. Linking a deal to a real tournament is left to the owner in the Staking tab |
+| `wsop-notified-sessions` | `string[]` of session ids | **not stored.** Cross-checked against `backer_events` (§9.2); the events are the record |
+| `wsop-admin-taxrate` | number (default 30) | `money_settings.taxSetAsidePct` |
+| `wsop-session-presets`, `wsop-admin-checklist`, the home lists, `wsop-intention`, `wsop-nut-shop` | | not money; not imported |
+
+### 5.7 Units and rounding
+
+- The dashboard is USD floats. Results, adjustments and cash sessions here are whole dollars.
+- **Per row:** each money field is rounded to whole dollars.
+- **Per bankroll:** the import sums `Σ (dashboard effect − rounded effect)` over the results,
+  adjustments and transfer legs it imports. A residue of $0.50 or more becomes one
+  `correction` of `round(residue)`, fingerprint `dash:rounding:<main|fund>`. Its note gives the
+  count and exact total.
+- **What is left:** under $0.50 per bankroll, shown in the review.
+- **Expenses** keep their cents (REAL).
+- **Backer amounts** are already integer cents in `backer_events`. `opening` becomes
+  `Math.round(opening × 100)`, as the feed does today (`server.js:590`).
+
+### 5.8 Which bankroll, the fund and the opening balance
+
+- **The fund.** The import creates a **WSOP fund** bankroll: USD, `starting_balance 0`,
+  `role 'fund'`, `in_roll 0`, `target_amount` = §17 Q5 (default 65,000), `target_date '2027-05-03'`
+  (WC:`dashboard.js:31`). There is one per user (`role 'fund'`, enforced in code). The owner can
+  rename it.
+- **The import target.** Playing-roll rows land in Main unless the review picks another bankroll.
+- **The roll** is the sum of every non-archived bankroll with `in_roll = 1`, converted to USD
+  (§17 Q4). Main is always in. This is the dashboard's meaning, "all money not in the fund".
+- **The opening deposit** is one computed `deposit` (or `withdrawal`) in Main, dated on the
+  earliest dashboard session or adjustment:
+  `opening = startingRoll − Σ over roll bankrolls of their balance strictly before that date`.
+  That balance counts their starting balances, earlier deposits and earlier results.
+  - The effect is that the roll at the start of the dashboard's first day equals its starting roll exactly.
+  - Any opening the owner had already recorded here is absorbed, not doubled.
+  - Results logged here before that day are not counted twice, because the starting roll already
+    included them.
+  - The review shows the figure and its parts, and the owner can override amount and date.
+- **The reconciliation** is shown before commit and checked after it.
+  - It shows the dashboard roll (a port of `computeBankroll` run on the payload), this app's roll
+    before the import and its roll after.
+  - The difference after is explained line by line: the results logged only here after the opening
+    date (listed), plus the rounding remainder.
+  - The fund must match to within its rounding remainder (under $0.50).
+
+---
+
+## 6. Standing-% agreements
+
+### 6.1 Model
+
+- **Ownership.** A standing agreement belongs to the player (`user_id`) and one backer (`backers.id`).
+- **Scope.** It is not tied to a staking series, so a share applies to every result of that player
+  dated in `[effective_from, effective_to]` that matches a stake.
+- **Stakes** are `(format | 'all', channel | 'any', pct)` rows with validity dates.
+- **Running total.** `opening_cents` seeds the backer's running total exactly as `opening` did.
+- **One active agreement per backer.** Ending one and starting another carries the running total
+  through the token. The page sums every share for the token plus every agreement's opening, and a
+  new agreement starts at opening 0 unless the owner says otherwise.
+
+### 6.2 How it attaches to the backer and series model
+
+- **Backer.** It hangs off `backers` (the same rows the series agreements use). A person can hold
+  series agreements and a standing agreement at once.
+- **Token.** The `/b/` page is per backer, keyed by `backers.public_token`, and shows standing
+  shares only (§17 Q7 covers the overlap). Series agreements keep their settlement sheet.
+- **Overlap rule (default).** A tournament result is **excluded** from a backer's standing share when
+  that same backer has a `backer_event_status` row for that tournament under an active agreement of
+  any series. The series deal is the more specific one, and "most specific wins" is the dashboard's
+  own rule. Cash sessions are never in a series.
+- **Routes.** All live under the existing `/api/staking` admin gate (`server.js:479`):
+  `/api/staking/standing/*` (§6.10).
+
+### 6.3 Classifying a result: `lib/staking/classify.js`
+
+- **The dashboard's keys.** Stakes use the dashboard's format keys. A result's `format` and
+  `channel` come from, in order:
+  1. `session_extras.format` / `.channel` (imported, chat-logged, or set by the owner);
+  2. derivation.
+- **Deriving a tournament.**
+  - channel = `tournaments.is_online`;
+  - format = `formatOf(game_variant)`.
+- **Deriving a cash session.**
+  - channel = `ONLINE_ROOM.test(room)`. `ONLINE_ROOM` moves from `lib/bankroll-reports.js:47` into
+    this module and gains `betrivers`, `borgata online`, `phenom` and the online venues the import
+    finds;
+  - format = `formatOf(game)`.
+- **`formatOf`.** It is a pure ordered table, tested case by case (§17 Q8). The order matters,
+  because "PLO8" contains "PLO".
+
+| Pattern (case-insensitive, after trimming) | Key |
+|---|---|
+| `big o`, `5-card plo8`, `5 card plo hi-lo` | `BigO` |
+| `plo8`, `plo 8`, `o8`, `plo hi-lo`, `omaha hi-lo`, `plo6 8/b`, any PLO with `8/b`, `hi-lo` or `h/l` | `PLO8` |
+| `plo`, `plo5`, `plo6`, `pot-limit omaha`, `omaha` | `PLO` |
+| `nlh`, `nl`, `no-limit hold'em`, `holdem` | `NLH` |
+| `stud 8`, `stud8`, `stud hi-lo`, `seven card stud hi-lo` | `stud8` |
+| `razz` | `razz` |
+| `2-7`, `deuce`, `triple draw`, `single draw` | `2-7` |
+| `horse`, `8-game`, `9-game`, `mixed`, `mix`, `dealer's choice`, `rotation`, `plo/nlh` | `mixed` |
+| anything else, or empty | `other` |
+
+- **Override.** A result sheet shows the classification and lets the owner override it, which
+  writes `session_extras`.
+
+### 6.4 Share math: `lib/staking/standing.js`
+
+This is a port of WC:`app/src/db/backers.ts:96-132` with the same behaviour.
+- **`matchPct(stakes, {format, channel})`.** It considers the stakes in force on the result's date.
+  Exact format scores 2 and exact channel scores 1. The highest score wins. A tie goes to the larger
+  pct. No match returns null.
+- **`backerShare`** and **`cutsForSession`** port the dashboard's functions, sorted by |share|
+  descending.
+- **Money in integer cents.** `result_cents` is the result's net in USD cents. For a tournament the
+  net is `cash − buyin × max(1, entries)`, the ledger's formula. For a cash session it is
+  `cash_out − buy_in − tips − expenses` (§17 Q12). A non-USD result is converted at the ledger's
+  rates when posted.
+- **Rounding.** `share_cents = sign(r) × round_half_up(|r| × pct / 100)`, so a loss rounds to the
+  same magnitude as the equal win. The dashboard's float `Math.round(result × pct / 100 × 100)`
+  rounds −0.5 toward zero instead. The port documents the difference, and a parity test shows it
+  never moves more than one cent.
+- **Tests.** Every case of WC:`app/src/db/backers.test.ts` (14) is ported to
+  `test/standing.test.js` and run under `node --test`. To those go:
+  - stake validity windows;
+  - the overlap rule;
+  - exclusions;
+  - classification;
+  - the rounding parity sweep: 10,000 random result × pct pairs against the dashboard formula,
+    \|Δ\| ≤ 1 cent.
+
+### 6.5 When a share is posted
+
+- **When posting is on** (`money_settings.posting = 'on'`), every write to an owner result runs
+  `syncSharesFor(db, userId, {table, id})` after its commit. "Owner result" means a
+  `tracking_entries` or ended `cash_sessions` row, or a Personal tournament under them. For each
+  active standing agreement of that player:
+  - If the result's date is in the agreement window, the result is not excluded, no overlap rule
+    applies and `matchPct` returns a pct, it ensures a `backer_events` row:
+    - `id = '<token>:<te|cs>:<id>'`, `session_id = 'te:<id>' | 'cs:<id>'`;
+    - `source = 'ledger'`, plus the agreement id, the stake id and the ref;
+    - date, game label, room, hours, `session_result_cents`, `pct`, `share_cents`;
+    - `ts = now` on first post.
+  - Otherwise it ensures no ledger event exists for that pair, and voids one if there is.
+- **What never posts.**
+  - A live cash session never posts.
+  - The import's commit never calls `syncSharesFor`, and imported rows are dated before
+    `effective_from`, so a later edit of one does not post either.
+  - A result that already carries a `source='dashboard'` event for a backer is skipped for that
+    backer. The dashboard's event is the record until the owner presses **Recalculate** (§6.6). This
+    covers a night played on the cutover day itself, notified from the dashboard before the freeze
+    and imported in the delta.
+- **Write paths** that call it, verified:
+  - `server.js` `POST /api/tracking` (`:6066`), `PUT` (`:6115`), `DELETE` one (`:6140`) and the bulk
+    `DELETE` (`:6164`);
+  - the Personal-event edit and delete (`:4660-4705`, a buy-in change moves the net);
+  - `lib/cash-sessions.js` log (`:440`), end (`:547`), edit (`:610`) and delete (`:653-665`);
+  - the CSV import commit (`lib/bankroll-import.js:190`);
+  - the owner API (§11.3);
+  - the money import's undo.
+  - Account deletion does not call it, because the backer tables are left alone on purpose.
+- **Preview.** Before save, the result form for admins shows a line "Posts to backers: +$248 (20%),
+  +$124 (10%)" from `GET /api/staking/standing/preview` with the unsaved values. The owner sees the
+  cut before it goes out, which is what the dashboard's tap gave him.
+- **Feed edits are not owner writes.** A feed re-ingest that changes a feed tournament's buy-in does
+  not re-derive. The drift report (§6.6) lists the difference.
+
+### 6.6 Editing a past result (the decision)
+
+**The share follows the result. The pct in force on the result's date is used.**
+
+| Case | What happens |
+|---|---|
+| amounts, date, room or bankroll edited | re-derived: new `session_result_cents` and `share_cents`; `revised_at`; a `revise` revision row with before and after; push "Corrected" (§6.7) |
+| format or channel corrected | re-matched against the stakes in force on the date, so the pct can change; revision as above |
+| result deleted | event deleted (`void` revision kept); push "Removed" |
+| result excluded for a backer | event deleted (`void`, cause `exclude`) |
+| a stake changed "from today" | old row closed, new row opened; no past share changes |
+| a stake **corrected** (typo) | edited in place. The UI first lists every share it changes ("12 results, −$40 in total for this backer") and needs a confirm; then all are re-derived (cause `stake-correction`) |
+| an imported `source='dashboard'` event | **never re-derived automatically.** The result sheet says "Posted before the merge: +$248, not recalculated", with a **Recalculate** action that turns it into a ledger event at its own recorded pct (cause `recalc`). The owner can also **Remove** it |
+
+**Why not freeze the share, as the dashboard did.**
+- *The dashboard's freeze was not a policy. It was the absence of one.* The only correction path
+  was un-notify, and that UI has been dead since the cutover: `fetchBackerEvents` hits a route the
+  dashboard never proxied, gets the SPA's HTML and shows "No shares recorded" (dashboard map, §8a).
+  Re-sending after an edit is `INSERT OR IGNORE` (`server.js:754`), so a corrected night kept its
+  wrong share.
+- *A backer's running total is money owed.* A typo in a result should not become a permanent debt
+  error. A share that follows the result keeps the page equal to "pct × what actually happened".
+- *Agreement changes still never rewrite history.* The stakes are dated, so the pct for a night is
+  the one in force on that night. That is what the freeze protected, and dated stakes keep it.
+- *Every change is visible and recorded.* There is a revision row, a push, and a "corrected" mark
+  on the page. That is the trust the freeze was standing in for.
+- *History posted by the dashboard stays exactly as the backer saw it,* unless the owner acts on it.
+
+**Drift report.** `GET /api/staking/standing/drift` lists ledger events whose stored share differs
+from a fresh derivation. A feed buy-in change is the usual cause. Each line has an "Apply" action
+(cause `drift`). Nothing is applied automatically.
+
+### 6.7 Delivery (push, SMS, digest)
+
+- **Prod only.** Delivery runs only where `BACKER_DELIVERY` is on: the default is on when `RENDER`
+  is set, and an explicit `BACKER_DELIVERY=0|1` overrides it. This keeps the local pm2 instance
+  silent (§2.2 point 9).
+- **A sweep, not inline.** Every minute, the sweep delivers each event where
+  `notified_share_cents IS NOT share_cents` and the last change is at least 2 minutes old. The delay
+  coalesces an edit storm into one push, and the sweep survives restarts. It then sets
+  `notified_share_cents` and `notified_at`.
+- **First post:** the existing title and body (`server.js:774-777`), plus SMS when
+  `backers.notify_sms` (`sendBackerSms`, `:11708`).
+- **Correction:** title "Corrected: `<game>` `<date>`" and body "Your 20% is now +$X (was +$Y).
+  Running: +$Z." Push only, no SMS (§17 Q2). A void sends "Removed: …".
+- **Weekly digest** (`sendBackerWeeklyDigests`, `:11738`):
+  - recipients come from `backers.notify_email` and `public_token`;
+  - the running total is `Σ share_cents + Σ opening_cents`;
+  - rows with `revised_at` in the week are marked "corrected".
+- **Feed** (`/api/backer/:token/feed`, `:575`):
+  - the shape is unchanged;
+  - `name` comes from `backers.name` first and `backer_public` second, which fixes the rename that
+    the last notify could shadow (`:580-588`);
+  - `stakes` is the summary of the stakes in force today;
+  - `openingCents` is `Σ opening_cents`;
+  - each event gains an optional `revised: true`.
+
+### 6.8 Existing `backer_events`
+
+- **Kept untouched.** Every row keeps its id, token, session id, figures and `ts`.
+- **What the import adds** (all additive):
+  - `source='dashboard'`;
+  - `notified_share_cents = share_cents`;
+  - when its `session_id` is an imported dashboard session, `ref_table`/`ref_id` pointing at the
+    imported result (a `link` revision row).
+- **The page** reads the same table, so before and after are byte-identical. The parity route
+  (§7.6) proves it per token before the switch.
+
+### 6.9 Overlap and double-posting safeguards
+
+- **Duplicate events.** `UNIQUE(token, session_id)` holds. Ledger events use `te:`/`cs:` ids and
+  dashboard events use dashboard ids, so the two cannot collide, and they cannot both exist for one
+  night unless both apps post it. The cutover (§13) makes sure only one app posts at a time.
+- **One active agreement per backer:** a partial unique index.
+- **`syncSharesFor`** is idempotent: the same result in, the same event out.
+
+### 6.10 Routes (`/api/staking/standing`, admin gate, scoped to `req.user.id`)
+
+| Method | Path | Body / result |
+|---|---|---|
+| GET | `/` | the player's standing agreements with backer, stakes in force, opening, running total, delivery flags, masked token |
+| POST | `/` | `{ backerId \| newBacker{name,email,phone}, effectiveFrom, openingCents, stakes:[{format,channel,pct}] }` (a new link is minted with the dashboard's `newToken` shape: 8 base62, crypto random) |
+| PUT | `/:id` | `{ effectiveTo?, status?, openingCents?, openingNote? }` |
+| POST | `/:id/stakes` | `{ stakes:[…], mode:'from-today' \| 'correct', confirm? }`: `correct` without `confirm` returns the affected-share preview |
+| PUT | `/backers/:backerId/delivery` | `{ sms?: phone\|null, email?: address\|null }` sets `notify_*` |
+| POST | `/backers/:backerId/rotate-link` | §7.5 |
+| GET | `/:id/events` | the recorded shares with ref, source and revisions; `?source=` (`dashboard` or `ledger`) and `?since=YYYY-MM-DD` filters (replaces the dead dashboard list) |
+| POST | `/exclusions` | `{ agreementId \| 'all', ref: 'te:12' }`; DELETE to undo |
+| POST | `/events/:eventId/recalc` · DELETE `/events/:eventId` | §6.6 |
+| GET | `/preview?…` | cuts for an unsaved result |
+| GET | `/drift` · POST `/drift/:eventId/apply` | §6.6 |
+
+---
+
+## 7. Roster, tokens and the two `backers`
+
+### 7.1 Which backers are imported (the union)
+
+1. **The dashboard's live roster:** `store='backers'`, `deleted=0` in the pull.
+2. **This app's own `console_records` `store='backers'`.** It can hold backers deleted in the
+   dashboard, because roster deletes never propagate (scheduler map, §7 item 1). Their pages work today.
+3. **Tokens that have `backer_events` or `backer_public` rows but no record anywhere.** These get a
+   `backers` row (name from `backer_public`) with an **ended** agreement and opening 0. Opening 0 is
+   what their page shows today.
+
+Sources 2 and 3 import as **ended** agreements by default (§17 Q9). The page keeps its history and
+gets nothing new.
+
+### 7.2 Tokens move verbatim
+
+- **Verbatim.** `backers.public_token` = the dashboard token, character for character. That covers
+  the 8-char base62 tokens and the legacy 32-hex ones. `BACKER_TOKEN_RE` (`server.js:553`) already
+  accepts both.
+- **Untouched tables.** `backer_public`, `backer_events` and `backer_push_subs` are not re-keyed.
+  Push subscriptions keep working with no action from any backer.
+- **Never rotated during the merge.** One exposed token is deliberately not rotated (owner,
+  2026-09-14, `docs/session-handoff.md`); a rotation needs the owner again.
+
+### 7.3 The two token systems
+
+- **`backers.public_token` is the one token**, the `/b/` link.
+- **The legacy per-agreement 32-hex `backer_tokens`** (`server.js:2114`) has no client caller.
+  `StakingView.jsx` and `App.jsx` only use `/b/`. Phase 2 makes the migration log
+  `SELECT COUNT(*) FROM backer_tokens` (a count, never the rows).
+  - **Zero (expected):** Phase 13 removes `POST /api/staking/agreements/:id/token` (`:7707`),
+    `GET /api/backer/:token` (`:7745`, which also returns proof images) and `/backer/:token`
+    (`:8321`). The empty table is left in place.
+  - **Not zero:** minting returns 410, the read route stays, and the owner is asked (§17 Q14).
+
+### 7.4 The `backers` name collision
+
+- **The two meanings.** "backers" is both the SQL staking table and the `console_records` JSON
+  store `store='backers'`.
+- **After the import, the SQL table is the only roster.** The JSON store is read only as a fallback
+  for tokens with no `public_token` match, from Phase 2 until Phase 13.
+- **Retirement.** `syncBackerRoster` stops writing the store at cutover. Phase 13 deletes the
+  fallback code and drops this app's `console_records` table after logging its row counts by store.
+  The pre-cutover `sessions`/`adjustments` rows the map suspected are in there are **never
+  imported**, because they are stale copies. Money comes only from the pull.
+
+### 7.5 Rotation ("New link") moves here
+
+- **The route.** `POST /api/staking/standing/backers/:id/rotate-link` mints a new token and calls
+  `rotateBackerToken(old, new)` (`server.js:11441`).
+- **What the rotation re-keys, in one transaction:**
+  - `backers.public_token`;
+  - `backer_event_revisions.token`;
+  - the three tables it already re-keys.
+- **The in-use check.** `inUse` also checks `backers.public_token`.
+- **Effect.** The old link stops at once, which fixes the hour-long gap the dashboard's "New link"
+  had (scheduler map, §7 item 3).
+- **Tests.** `scripts/test-backer-rotation.mjs` becomes `test/backer-rotation.test.js` and imports
+  the real function. Its header admits it currently mirrors the SQL.
+
+### 7.6 Parity route (Phase 2), used before every switch
+
+`GET /api/staking/standing/parity` (owner only):
+- For every token, it computes the feed both ways: the current `console_records` path and the SQL
+  path.
+- It returns `{ tokens: n, identical: n, differ: [{ backerId, fields: ['openingCents', …] }] }`.
+- No token ever leaves the server.
+
+### 7.7 Ending and deleting
+
+- **End** sets `effective_to` and `status 'ended'`. The page stays with its history, and no new
+  shares or digests go out.
+- **Revoke link** rotates to a token nobody is given.
+- **Hard delete** of a backer with events is refused (409).
+
+---
+
+## 8. Import source: a server-to-server pull (chosen)
+
+**The choice.** The scheduler pulls once, and again at cutover, from a token-gated endpoint on the
+dashboard. The owner does not export a file.
+
+**Why.**
+1. **Complete.** The server's `console_records` holds every store, the `local` blobs and the
+   tombstones. The Settings backup leaves out three of the decision's inputs (§2.2 point 1) and
+   would need a new exporter anyway.
+2. **Current.** It is the merged state of every device. A file is one device's IndexedDB, which can
+   be behind its own last sync.
+3. **Repeatable.** The cutover needs a **delta** pull at freeze time (§13). That is one tap, rather
+   than an export, a download and an upload on a phone.
+4. **Private.** Backer tokens, phones and emails never land in a Downloads folder, iCloud or a chat
+   attachment.
+
+**The cost.** One small read-only endpoint on the dashboard (removed in Phase 13), and one new
+secret set on both Render services.
+
+### 8.1 Dashboard endpoint (Phase 4, WC)
+
+`GET /api/money-export`, with `Authorization: Bearer <LEDGER_TOKEN>`. The token goes in a header and
+never in the path, so it is not written to access logs.
+- **Auth.** Constant-time check through a generalised `checkSharedToken(token, 'LEDGER_TOKEN')`
+  (WC:`lib/dashboard-token.js`'s logic, with `_PREVIOUS` accepted). 404 on mismatch or when unset.
+- **Before the ham gate.** It is mounted before the `/console` ham gate, like the other seams.
+- **Response** (`Cache-Control: no-store`):
+
+```json
+{ "app": "wsop-console", "version": 1, "exportedAt": "2026-10-20T15:00:00.000Z",
+  "records": [ { "store": "sessions", "id": "…", "data": "{…}", "updatedAt": 1760000000000, "deleted": false } ],
+  "local":   { "wsop-staking": { "value": [], "updatedAt": 0 }, "wsop-balances": { "value": {}, "updatedAt": 0 },
+               "wsop-notified-sessions": { "value": [], "updatedAt": 0 }, "wsop-admin-taxrate": { "value": 30, "updatedAt": 0 } },
+  "counts": { "sessions": 0, "adjustments": 0, "expenses": 0, "backers": 0, "settings": 1 } }
+```
+
+- **Which records.** `records` covers stores `sessions`, `adjustments`, `expenses`, `backers` and
+  `settings` with **deleted rows included**, so a delta can see a deletion.
+- **The blobs.** `local` is read from `store='local'` (the shape `SYNCED_LOCAL_KEYS` writes).
+- **Logging.** Every call logs `[money-export] served N records` with counts, never contents.
+
+### 8.2 Scheduler routes (Phase 5)
+
+All live under `/api/bankrolls/import/dashboard`. The admin gate applies, and `req.user.id` must
+equal `HAM_OWNER_ID`, so no other admin can pull the owner's data into their account.
+
+| Method | Path | |
+|---|---|---|
+| POST | `/fetch` | pulls into a new `money_import_runs` row (`staged`) and returns `{ runId }` + the plan |
+| GET | `/:runId` | the plan: mapped rows, pairs, backers, divergences, reconciliation, errors |
+| PUT | `/:runId/decisions` | `{ pairs: {pairId: 'same-keep'\|'same-take'\|'different'}, backers: {dashId: 'new'\|<backerId>}, slate: {...}, opening: {amount, date}, target: 'main'\|id }` |
+| POST | `/:runId/commit` | 409 while any pair is unanswered; one transaction; returns the summary and the post-commit reconciliation |
+| POST | `/:runId/undo` | `{ expect: n }` (the count the typed confirmation showed; 409 on mismatch); deletes every row this run created (fingerprints with this `run_id` and `decision='imported'`: both transfer legs, the Personal tournaments, extras, agreements, stakes, backers it created, locations), clears the `ref_*` it set on `backer_events`, and leaves `decision='same'` targets alone |
+| DELETE | `/:runId` | discard a staged run |
+
+The fetch uses `DASHBOARD_BASE_URL` (default `https://dashboard.futurega.me`, `server.js:11422`), a
+15 s timeout and the outbound current `LEDGER_TOKEN`. A non-JSON answer is an error, never an empty
+success (the 2026-09-11 lesson).
+
+---
+
+## 9. The duplicate review
+
+### 9.1 Finding candidates
+
+**Scope.** Each dashboard row is compared with **every** owner row here, in any bankroll, that is
+not already linked by a fingerprint. Each row ends in at most one pair: the best candidates are
+taken first, one to one.
+
+**Room match.** `roomKey(s)`:
+1. Lowercase the name and strip punctuation and the words `casino`, `poker room`, `resort`,
+   `hotel`, `& spa` and `the`.
+2. Fold aliases taken from `VENUE_MAP` and the property names (`vite-app/src/utils/utils.js`), with
+   a server copy of the alias list. "parx" equals "parx casino".
+3. Score 3 for an exact key, 2 when one key contains the other or the token Jaccard is at least
+   0.5, 0 when either side is unknown, and −3 for a mismatch.
+
+| Pair kind | Date | Room | Amounts | Other |
+|---|---|---|---|---|
+| dashboard cash ↔ `cash_sessions` (ended) | same day 3, ±1 day 2 (late nights cross midnight) | as above | net within $1 → 3; buy-in and cash-out both within $1 → +1; net off by more than $1 → −2 | hours within 0.5 → +1 |
+| dashboard MTT ↔ `tracking_entries` | tournament date (normalised, `lib/analytics.js` `normaliseDate`) same day 3, ±1 day 2 | room vs `property`/`site`/`venue` | net within $1 → 3; same buy-in per entry → +1 | event-name token overlap ≥ 0.5 → +1 |
+| deposit/withdrawal ↔ `bankroll_adjustments` same kind | ±3 days 2 | — | amount equal → 4 | |
+| expense ↔ `bankroll_transactions` expense | same day 3 | — | equal to the cent → 4 | compatible category → +1 |
+
+- **Classes.** A pair is shown when its score is ≥ 5 and its dates are within the window. It is
+  **Likely** at ≥ 7 and **Possible** at 5-6.
+- **A cash row never pairs with a tournament row.** A dashboard "MTT" logged here as cash, or the
+  other way round, shows up as two rows in the reconciliation's "results only here" list. That list
+  is where the owner catches it.
+- **Inside the dashboard.** Pairs of dashboard rows that look like the same night are listed for
+  information. The default imports both, because the dashboard's roll counted both.
+
+### 9.2 Other review items
+
+- **Backers.**
+  - One card per §7.1 backer: name, masked token (first 2 characters and `••••••`), stakes summary,
+    opening, delivery, source (live roster, deleted in the dashboard, or history only).
+  - The choice is **New backer** or **Same as `<existing staking backer>`**, offered when the names
+    match case-insensitively. Default New.
+  - Two dashboard backers with the same token are impossible (the store is keyed by token in
+    practice). If it happens, the run refuses to commit.
+- **Slate deals.** One row per deal, with the series or backer match and the settlement link it
+  found or didn't.
+- **Recorded shares that disagree.** These are `backer_events` whose share is not pct × the
+  session's *current* result, because the session was edited after notify. This is information.
+  The default keeps what the backer was told. Each line offers "Recalculate after import".
+- **Notify consistency.** A session in `wsop-notified-sessions` with no event, or an event whose
+  session is not in the list. Information only.
+- **Errors.** Rows that fail validation (§5.2 result mismatch, a bad date, a negative amount where
+  none is allowed). They are skipped, and listed.
+- **Sign flags** (§5.3), **`other` expenses** (§5.4), **rounding** (§5.7).
+- **Reconciliation** (§5.8), with the opening deposit editable.
+
+### 9.3 UI: Bankroll › Import, a new section above "Import CSV"
+
+**Placement and rules.**
+- The section is `BankrollImportDashboard.jsx` with its own `bankroll-import-dashboard.css`. The
+  CSS header lists every row, as the other bankroll CSS files do.
+- It shows only when `req.user.id === HAM_OWNER_ID`. The server says so in `GET /api/bankrolls`
+  (`can_import_dashboard`).
+- Content is the sheet's 35g column. Every box is whole g × whole r. Every baseline sits on an r line.
+- Pills and buttons follow the owner's rule: the container sits on the grid and the label is centred
+  (`.ctl`, `.ctl-cap` for the display face, `snap-g` for content-sized tags).
+- Tokens only. No px (memory "Never px"). No orange.
+
+| State | Rows |
+|---|---|
+| idle | `h3.an-sec` "From the dashboard" · `an-p` "Brings in the dashboard's sessions, adjustments, expenses, backers and slate. Nothing is written until you have reviewed it." · brand pill **Fetch** 8g × 5r (`bk-btn bk-btn--brand bk-w8`) |
+| staged · totals | the dashboard's 2 × 17g figure cells: **Dashboard roll** / **Roll after import**, **Dashboard fund** / **Fund after import**; one `an-p` naming the difference ("+$1,350: 3 results only here, listed below; $0.38 rounding") |
+| staged · counts | rows 4r (text on line 3): label 21g · New 7g · To review 7g, for sessions, tournaments, adjustments, expenses, backers, slate deals, balances |
+| staged · opening | 35g × 4r rows: date and amount (editable fields as the CSV importer's `bk-field`), the formula as a footnote |
+| staged · pairs | a **Pair card**, below; then a 17g × 5r pill **"Same night" for all N likely pairs** (it only fills unanswered Likely pairs; Possible ones always need their own answer) |
+| staged · backers, slate, divergences, consistency, errors | cards and 4r rows in the same type |
+| staged · commit | "N pairs still to answer" (seated on an r line; gone at 0) · brand pill **Import** 17g × 5r (disabled while N > 0, `aria-disabled` with that sentence as its description) · **Discard** 8g × 5r |
+| committed | the summary rows, the after-import reconciliation, and **Undo this import** 11g × 5r (danger) behind a typed-count confirmation (the `ResetResults.jsx` pattern) |
+
+**Pair card** (35g; 1g inside each side):
+
+| Row | Height | Content |
+|---|---|---|
+| head | 4r | the date on line 3 at 1g (Univers Condensed md); at the right a `snap-g` 3r tag **Likely** / **Possible** |
+| column heads | 3r | 16g "Dashboard" · 1g · 16g "futurega.me" (`an-th`) |
+| fields | 5 × 3r | Room, Game, In → out, Result (display face; coloured by `moneySign`; a word as well as a colour), Hours. A field equal on both sides carries a "same" mark after the value (text, not colour alone) |
+| decision | 5r | `bd-seg2` radio group 33g: **Same night** · **Different nights** |
+| figures | 5r, only when the nets differ | `bd-seg2`: **Keep futurega.me's** · **Use the dashboard's** (shown after "Same night") |
+
+Cards sit 1r apart. Text in a 16g cell truncates by the clipping rule: padding cancelled by an equal
+negative margin, never `overflow-y: visible` (CLAUDE.md). The full value goes in a `title` and an
+expanded state on tap.
+
+**Guards.** `scripts/seed-money-import-demo.js` writes a staged run of made-up data into a SCRATCH
+DB. It covers every card kind: pairs with equal and unequal nets, three backer sources, a slate
+deal, divergences and errors.
+- `check:controls` (`scripts/check-control-centring.mjs`) gains a step `bankroll-import-dashboard`
+  that opens Bankroll › Import and walks every pill, segment and tag at 402 and 1440.
+- `check:clipping` gains the same walk.
+- Both are run before deploy. Check the skipped count and the seed token's `exp` (handoff trap,
+  2026-10-14).
+
+### 9.4 The write after confirmation (commit)
+
+The commit is one `BEGIN … COMMIT` in this order:
+1. Create the fund bankroll if it is missing.
+2. Write the backers and their standing agreements and stakes. `effective_from` is the import day
+   for now. The cutover call (§11.4, §13 step 6) moves it to `postingSince` on every agreement an
+   import created, and posting is off until then, so nothing posts in between.
+3. Write the results (tournaments, entries, cash sessions, extras) for the `new` and `different`
+   rows.
+4. For `same-keep` pairs: write a `decision='same'` key pointing at the existing row, fill
+   `session_extras` from the dashboard row where the existing row has none, and write no money.
+5. For `same-take` pairs: the same as `same-keep`, plus an update of the existing row's money to the
+   dashboard's figures, recorded in the summary.
+6. Write the adjustments, transfers, settlements, opening and rounding.
+7. Write the expenses.
+8. Write the slate series, agreements and settlements.
+9. Write the money locations and settings.
+10. Link `backer_events` to imported or `same` results.
+11. Write the keys.
+
+After it, `saveDatabase()` runs once, the run is set to `committed` and the summary is stored.
+`money_settings.cutover` becomes `imported`. Posting stays off.
+
+### 9.5 Delta pulls
+
+A second **Fetch** builds a plan against the keys.
+- **New rows** go through §9.1 as before.
+- **Rows whose source `updatedAt` moved** are listed as **Changed in the dashboard**. The default is
+  to apply the change. If the row here was also edited after the import, the item is a conflict, and
+  the default keeps futurega.me's.
+- **Rows now deleted in the dashboard** are listed as **Deleted in the dashboard**. The default is to
+  remove them here.
+- **Backers** are compared the same way.
+
+---
+
+## 10. Staking settlement fixes (this model is being adopted, so they are part of it)
+
+All in `server.js` `:7394-7700` and `vite-app/src/components/StakingView.jsx`.
+
+1. **A pure calculator.** The GET's arithmetic moves into
+   `lib/staking/settlement.js` `computeSettlementSheet(db, seriesId, userId)`.
+   - It returns one entry per **agreement**: `{ agreementId, backerId, …figures, events }`.
+   - GET and settle both call it. The unused `calcRes` (`:7612`) goes.
+2. **The sheet carries ids and paid flags.**
+   - For a **settled** series, GET returns the **stored** rows from `backer_settlements`, joined by
+     `agreement_id`: `id`, `is_paid`, `paid_at`, the stored figures, `makeup_opening`,
+     `makeup_closing`, `adjustment`, `prepaid`. It never recomputes them. Recomputing settled series
+     is the root of the double count.
+   - For an **unsettled** series, GET returns the computed entries with `id: null`.
+   - The Paid toggle (`StakingView.jsx:1246`) renders when `s.id` is set.
+3. **`isSettled` versus `status`.** GET returns `isSettled: series.status === 'settled'` alongside
+   `status`. `StakingView.jsx:1309` already reads `isSettled`.
+4. **Settle never trusts client figures.**
+   - The body becomes `{ adjustments?: [{ agreementId, amount, note }], prepaid?: [{ agreementId, amount }] }`.
+   - The server recomputes, stores `computed_owed`, `adjustment` and `prepaid`, and sets
+     `amount_owed = computed_owed + adjustment`.
+   - It writes **one row per agreement** (`agreement_id`), replacing the `(series_id, backer_id)`
+     upsert at `:7629`.
+   - Re-settling an already settled series is a 409.
+5. **The figures, one convention for every non-swap type** (§17 Q11). Amounts are from the player's
+   side: + means the player pays the backer.
+   - `investment` = buy-in × bullets × rate × pct × markup. This is the existing formula, which
+     includes the markup.
+   - `owed = grossReturn − (investment − prepaid)`. This removes `+ markupAmount` (`:7548`).
+     Example: 10% of $1,000 at 1.2 with no cash gives −$120, so the backer owes $120. The current
+     code says −$100.
+   - `profit_share_only`: investment is 0 and `owed = grossReturn` (positive nets only, as now).
+   - `budget_capped`: the investment is clamped to the cap, then the same formula. This replaces the
+     "refund unused budget" guess at `:7571`.
+   - `swap` and `crossbook`: unchanged. Their "GUESS" notes stay, and they are out of scope.
+6. **Makeup without the double count.**
+   - **Migration.** For an agreement in an unsettled series, `makeup_opening = makeup_balance`. For
+     one in a settled series, `makeup_closing = makeup_balance` goes onto its settlement row, and
+     `makeup_opening = makeup_balance − raw`, where raw is that series' recomputed result without
+     makeup. The migration logs the count of makeup agreements; prod may have none.
+   - **The sheet** reads `makeup_opening` and never `makeup_balance`. It computes
+     `total = owed + makeup_opening`, `amount_owed = max(0, total)` and
+     `makeup_closing = min(0, total)`. A loss carries forward instead of being settled. A later
+     profit first repays it, and only the excess is paid.
+   - **Settle** stores opening and closing on the settlement row and **does not write the
+     agreement**. The next series' new makeup agreement suggests `makeup_opening` = the previous
+     closing.
+   - **Sign.** Negative means the backer owes and the amount is carried, not paid. That is the
+     dashboard's meaning of makeup ("opening: negative if they're in makeup", WC:`BackersUI.tsx`),
+     and its sign: a backer's losses are offset by later wins instead of changing hands.
+     `makeup_balance` is left in place, unread.
+   - **Prepaid.** A fully prepaid losing series has `owed = 0`, so nothing carries. Makeup only
+     arises on netted deals.
+7. **Paid posts to the ledger** (bankrolls.md seam 2).
+   - `PUT /settlements/:id/paid {isPaid:true}` writes a `settlement` adjustment of `−amount_owed`
+     into `staking_series.bankroll_id` (default Main), with `settlement_ref 'bs:<id>'`.
+   - Marking it unpaid deletes that adjustment.
+   - A negative `amount_owed` (the backer pays the player) writes `+|amount|`.
+8. **Tests.** A new `test:staking-settlement` covers:
+   - each backer type's figures against hand-computed examples, including the markup example;
+   - the makeup carry across two series, with settle then GET returning the same figures (no
+     double count);
+   - one row per agreement;
+   - the paid toggle's ledger row appearing and disappearing;
+   - settle ignoring client figures;
+   - the 409 on a re-settle;
+   - the client rendering `id` and `isSettled` (a `node --test` on the panel's helpers, extracted
+     from the JSX).
+
+---
+
+## 11. The owner API (futurega.me)
+
+### 11.1 Auth
+
+- **Header token.** Every `/api/owner/*` route takes `Authorization: Bearer <LEDGER_TOKEN>`, with
+  `LEDGER_TOKEN_PREVIOUS` accepted inbound. It uses the same constant-time `checkSharedToken`, now
+  in `lib/shared-token.js` (`lib/dashboard-token.js` becomes a thin wrapper).
+  - 404 on mismatch or when unset.
+  - 503 when `HAM_OWNER_ID` is unresolved.
+  - Limited to 60 requests a minute per IP.
+  - `Cache-Control: no-store`.
+- **Who it acts as.** It acts as `HAM_OWNER_ID` (`server.js:286-311`).
+- **Why not `DASHBOARD_TOKEN`.** That token is in the iOS binaries (§2.2 point 10) and only ever
+  reads and buzzes. This API writes money and must be revocable on its own. It is the same
+  reasoning as the dashboard's `SESSION_LOG_TOKEN` (WC:`server/server.js:244-260`).
+- **Who holds it.** Only the two Render services hold `LEDGER_TOKEN`. It is never put in an app,
+  the local pm2 config, a repo or a chat.
+- **Why not cookies.** Both are host-only (§2.2 point 12), so a browser on dashboard.futurega.me
+  cannot act as the owner here. Everything goes server to server.
+
+Generate the token once (**Mac or PC**, the command is identical; it prints nothing else):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+The 64 hex characters match `TOKEN_SHAPE` (`lib/dashboard-token.js`, `[A-Za-z0-9]{6,64}`). Paste the
+value into both Render services' environment and nowhere else.
+
+### 11.2 `GET /api/owner/money`
+
+This is everything the dashboard's summary, series, verdict, insight, Today, Review, Cockpit,
+widget, watch and `get_bankroll` read today, in their own shapes.
+
+```json
+{
+  "generatedAt": "2026-10-20T15:00:00.000Z",
+  "lastChangeAt": "2026-10-20T03:12:44.000Z",
+  "currency": "USD",
+  "roll": 61234.5,
+  "wsopFund": 18000,
+  "rollPeak": 64010,
+  "fund": { "bankrollId": 7, "saved": 18000, "target": 65000, "targetDate": "2027-05-03", "firstActivityDate": "2026-05-01" },
+  "bankrolls": [ { "id": "main", "name": "Main", "balance": 59000.5, "inRoll": true, "isFund": false } ],
+  "sessions": [
+    { "id": "cs:41", "date": "2026-10-19", "channel": "live", "isMTT": false, "format": "PLO",
+      "gameLabel": "5/5/10 PLO", "venue": "Parx", "stakeLevel": "5/5/10",
+      "buyInTotal": 1000, "cashOut": 2240, "hours": 5.2, "result": 1240, "isWsopFund": false,
+      "hands": null, "entries": null, "place": null, "fieldSize": null,
+      "moodRating": 4, "tiltNote": null, "journal": null, "tags": [] }
+  ]
+}
+```
+
+- **`roll`** is the sum of `in_roll` bankroll balances in USD (§5.8). **`wsopFund`** is the fund
+  bankroll's balance. Both come from `bankrollLedger` (`lib/bankroll-ledger.js`), never re-summed.
+- **`rollPeak`** is the highest running total of the roll bankrolls over the whole ledger. It
+  replaces WC:`dashboard.js:261-271`.
+- **`fund.firstActivityDate`** is the earliest fund ledger entry, which drives WC's pace math
+  (`dashboard.js:276-290`).
+- **`sessions`** holds every ended cash session and every tournament result of the owner, newest
+  first.
+  - A tournament's `buyInTotal` is buyin × entries and its `cashOut` is the cash if cashed.
+  - `format` and `channel` come from §6.3.
+  - `isWsopFund` is true when the row is in the fund bankroll.
+  - The `session_extras` fields are included.
+  - Non-USD rows are converted at the ledger's rates.
+- **Not included.** Live cash sessions are left out, as WC's own data never had them.
+- **`?since=YYYY-MM-DD`** limits `sessions` to rows dated or created on or after that day (§13
+  step 7's rollback list). The totals are always whole-ledger.
+
+### 11.3 `POST /api/owner/sessions/log`
+
+The body is `{ session: {…log_session fields…}, commit: false|true }`, or the flat form, as
+WC:`server/server.js:312-319` accepts.
+- **Validation.** It ports `normalizeSession` (WC:`server/lib/session-log.js:63-170`) verbatim:
+  - the format keys, `MAX_MONEY`, `MAX_HOURS` and the ET-day default;
+  - the refusal of a `result` that disagrees with `cashOut − buyInTotal`;
+  - the derived `chat-<sha1>` id.
+  The ported tests are WC's `session-log.test.js` (46) and the HTTP half of
+  `session-log-http.test.js` (31).
+- **Idempotency.** The fingerprint is the id (`chat-…` or a caller-supplied id) in
+  `bankroll_import_keys`. When it exists and its row is alive, the call **updates that row**
+  (`replacesExisting: true`). A changed kind (cash ↔ MTT) is a 409: "delete it in the app first".
+- **Where it writes.** An MTT goes to a Personal tournament + entry + extras, as §5.2. A cash
+  session goes to an ended cash session with `time_known 0`, started at 12:00 ET on its day, plus
+  extras. `isWsopFund` goes to the fund, else `money_settings.defaultBankroll`. `origin` is `'chat'`.
+- **The preview** (`commit:false`, the default) writes nothing. It returns:
+  - `{ ok, dryRun: true, session, summary, notes, replacesExisting, rollBefore, rollAfter }`;
+  - `ref` when it would update an existing row;
+  - `backerCuts: [{ name, pct, shareCents }]` from the standing engine.
+- **The commit** writes, runs `syncSharesFor` (when posting is on), saves, and returns the same
+  fields plus `committed: true`, `ref` and the ledger's real `rollAfter`.
+- **Backers.** The MCP path finally reaches them. That fixes "Backers are NOT notified by this
+  path" (WC:`server/server.js:345-349`).
+
+### 11.4 `PUT /api/bankrolls/money/cutover` (the owner's admin JWT, not the ledger token; `req.user.id` must be `HAM_OWNER_ID`)
+
+The body is `{ posting: 'on'|'off', postingSince?: 'YYYY-MM-DD', cutover: 'imported'|'live' }`. It
+is the one switch §13's steps flip, so a rollback is one call and needs no deploy.
+- **Turning posting on.** It moves `effective_from` to `postingSince` on every standing agreement an
+  import created. Agreements the owner made by hand keep their own date.
+- **`cutover: 'live'`.** `syncBackerRoster` returns at once with one log line, and the feed stops
+  falling back to `console_records`.
+- **Turning posting off** posts nothing further. Events already posted stay; they are true.
+
+### 11.5 Deep links into the app (Phase 9)
+
+`App.jsx` gains hash routes, beside the existing `#h/` handling (`App.jsx:79`, `:523`).
+
+| Link | Opens |
+|---|---|
+| `#bankroll/overview` (and the other tabs) | the bankroll dashboard on that tab |
+| `#results/tournaments` · `#results/cash` | the Results tab halves |
+| `#staking` · `#staking/standing` | the Staking tab, the Standing section |
+| `#expenses` | Results › Expenses & Income |
+| `#tax` | the tax report |
+
+- **Admins only.** For an admin the route opens after login if needed. Anyone else lands on the
+  home.
+- **Cleared once used.** `replaceState` clears the hash after use.
+
+---
+
+## 12. wsop-console (dashboard) changes
+
+### 12.1 Changes (Phase 11)
+
+- **`server/lib/money-source.js` (new).**
+  - It fetches `SCHEDULER_BASE_URL/api/owner/money` with the current `LEDGER_TOKEN`, a 5 s timeout
+    and a 60 s cache (stale-while-revalidate, plus a 5-minute cron).
+  - It persists the last good payload in `console_flags` (`money-cache`), so a cold boot has
+    numbers.
+  - A non-JSON or non-2xx answer keeps the last good copy and records the error. It is never a
+    success.
+- **Two env flags.** `MONEY_SOURCE=dashboard|scheduler` (default `dashboard`) and
+  `MONEY_WRITES=open|frozen` (default `open`). They are what §13 flips.
+- **`computeDashboardSummary` and `buildDashboardSeries`**
+  (WC:`server/lib/dashboard.js:121-352`) take their money from `money-source` when
+  `MONEY_SOURCE=scheduler`. The changes are:
+  - `S` becomes `feed.sessions`, and `roll`, `wsopFund`, `rollStats.peak`, `fund.target`, the fund's
+    first date and `updatedAt` come from the feed;
+  - `startingRoll` is no longer read;
+  - `stale` becomes "no money data has ever been fetched";
+  - a new **additive** `freshness.money: { fetchedAt, ageMinutes, ok }` is added. Swift's decoder
+    ignores unknown keys, and every `CONTRACT` path (WC:`server/test/native-contract.test.js:37-82`)
+    keeps its type;
+  - `computeInsight`, `dashVerdict`, `downswingState` and `rateConfidence` are unchanged: they get
+    the same `Session` shape.
+- **MCP and `/api/sessions/log`.** `get_bankroll` reads the money source after a forced refresh.
+  `log_session` and `/api/sessions/log` forward to `/api/owner/sessions/log` with the same preview
+  and commit semantics.
+  - The tool text gains the backer cuts.
+  - The line "Backers are NOT notified by this path" goes.
+  - `MONEY_WRITES=frozen` turns a commit into the refusal "Logging is paused for the move to
+    futurega.me — try again in a few minutes".
+  - The OAuth pairing stays where it is, so the Claude app needs no re-pairing.
+- **New PWA routes (ham-gated, relative).** `GET /console/api/money` (the cached feed plus its
+  freshness) and `POST /console/api/money/sessions/log` (forward). They get tests in the style of
+  WC:`server/test/backer-proxy.test.js`, including a non-JSON upstream becoming a 502.
+- **The PWA store** (WC:`app/src/store.tsx:79-91`) loads `sessions` read-only from
+  `/console/api/money` when the server says `MONEY_SOURCE=scheduler`. The last copy is cached in
+  localStorage for offline.
+  - Today's roll (WC:`TodayScreen.tsx:65`) shows `feed.roll`/`feed.wsopFund` and never recomputes
+    them.
+  - Review, Health's downswing card and Trends read the same `sessions`.
+  - `computeBankroll` is no longer called anywhere.
+- **Ending a live session.** The Today screen's live-session end (WC:`TodayScreen.tsx:451`,
+  `SessionForm`) becomes a **Log to futurega.me** sheet. It previews through the proxy, shows the
+  summary, roll delta and backer cuts, and commits on confirm. The live clock, stop-loss and
+  circuit breaker are unchanged.
+- **Sync when frozen.** With `MONEY_WRITES=frozen`, `POST /console/api/sync` (WC:`server.js:535`)
+  stores nothing for stores `sessions`, `adjustments`, `expenses` and `backers`, or for the local
+  keys `wsop-staking`, `wsop-balances`, `wsop-notified-sessions` and `wsop-admin-taxrate`.
+  - It answers 200 with `rejected: [{store, id, reason: 'moved'}]`, so an old cached bundle cannot
+    loop.
+  - The new client shows a one-line banner when anything was rejected.
+- **The relay when frozen.** `POST /console/api/backers/notify` and `/unnotify` return JSON 410
+  `{ error: 'moved to futurega.me' }`.
+
+### 12.2 Retires (Phase 13, after the soak)
+
+| Retires | Where |
+|---|---|
+| Sessions, Bankroll (Roll / Admin / Risk), Admin (staking calculator, backers manager, expenses, tax read, setup checklist) screens | WC:`app/src/screens/SessionsScreen.tsx`, `BankrollScreen.tsx`, `RiskView.tsx`, `AdminView.tsx`, `BackersUI.tsx`, `components/SessionForm.tsx` (except what the Today log sheet reuses) |
+| Client money model and math | WC:`app/src/db/backers.ts`, `backerClient.ts`, `engine/bankroll.ts` (the stake ladder `recommendStake` and floors STAY: Today's stake call uses them), the money parts of `engine/analytics.ts` and `engine/csv.ts` |
+| Synced money blobs | the money keys leave `SYNCED_LOCAL_KEYS` (WC:`syncLocal.ts:17-29`); the IndexedDB money stores stop syncing (`idb.ts:160-164`) and are dropped in a later `DB_VERSION` |
+| Notify relay | WC:`server/server.js:478-521` and `test/backer-proxy.test.js` |
+| Roster seam | WC:`server/server.js:220-237` |
+| Money export | the Phase 4 endpoint |
+| Server money math | WC:`dashboard.js` roll / fund / peak code, the `wsopFundTarget` default (`:275`) |
+| `console_records` money rows | **kept** read-only as an archive; no code reads them (§17 has no question here: deleting money history gains nothing) |
+
+### 12.3 Links into futurega.me
+
+- **The tab bar.** It becomes Today, Trends, Train, Health, Plan, Review, Settings and **Money ↗**
+  (WC:`app/src/components/BottomNav.tsx:12-22`). Trends, Review and Settings are not money screens
+  and stay (§17 Q13).
+- **The Money tab** opens a small link sheet. It does not embed futurega.me.
+
+| Link | Target |
+|---|---|
+| Bankroll | `https://futurega.me/#bankroll/overview` |
+| Sessions | `https://futurega.me/#results/cash` and `#results/tournaments` |
+| Backers & staking | `https://futurega.me/#staking/standing` |
+| Expenses | `https://futurega.me/#expenses` |
+| Tax | `https://futurega.me/#tax` |
+
+- **On the iPhone** they open in the browser. If the futurega.me app later registers universal
+  links, they open there instead.
+- **Elsewhere.** The roll card on Today links to the Overview. The fund card links to the fund
+  bankroll's Overview.
+
+### 12.4 Fund-target drift
+
+The target lives in `bankrolls.target_amount` on the fund bankroll. The PWA constant
+`WSOP_FUND_TARGET` (WC:`bankroll.ts:205`) and the server's `|| 50000` (WC:`dashboard.js:275`) are
+deleted. Both read `feed.fund.target`. One number, set in one place, editable in the bankroll manager.
+
+### 12.5 Native apps and screensaver
+
+No code change and no TestFlight build. The widget, watch and Cockpit keep calling
+`/api/dashboard/:token/summary` and `/d/:token` on the dashboard, whose contract is unchanged.
+
+---
+
+## 13. Cutover order, with a rollback at each step
+
+The owner picks an evening with no session in progress. Posting stays off until step 6, so no
+backer is told anything twice.
+
+| # | Step | Verify | Rollback |
+|---|---|---|---|
+| 0 | **Prep.** The owner confirms Render disk snapshots for the futurega.me service; generates `LEDGER_TOKEN` (§11.1) and sets it on both Render services. No app build is involved, so no `.testflight-hold` is needed. | both services healthy | unset the token (every new route 404s) |
+| 1 | **Ship dormant code** (Phases 1-3 and 5-10 on futurega.me; Phases 4 and 11 on the dashboard, its flags at their defaults). New tables are empty; the feed reads SQL then `console_records`, so it is unchanged; posting is off; `MONEY_SOURCE=dashboard`. | `test:*` suites; parity route `differ: []`; the backer page guard | revert the deploys (the new tables are inert) |
+| 2 | **Rehearsal import.** Fetch → review → commit. The dashboard still owns money and notify. | the reconciliation: fund within its rounding remainder, roll explained to the line; parity route still `differ: []` (pages now read SQL); 3 backer pages opened by hand | **Undo this import** (§8.2): every created row goes, links clear, pages fall back to `console_records` |
+| 3 | **Soak the copy** (a few days, the owner keeps using the dashboard). Nights logged here as well are what the delta's review catches. | nothing to do | as step 2 |
+| 4 | **Freeze dashboard money writes:** `MONEY_WRITES=frozen` on the dashboard (restart, about 1 minute). | a PWA save shows the banner; MCP commit refuses; notify returns 410 | `MONEY_WRITES=open` |
+| 5 | **Delta pull** on futurega.me: fetch → review the new nights, changes and deletions → commit. | the reconciliation against the frozen dashboard: fund within its rounding remainder, roll explained | Undo the delta run (only its rows); then step 4's rollback |
+| 6 | **Posting on:** `PUT /api/bankrolls/money/cutover { posting:'on', postingSince: today, cutover:'live' }`. Roster sync stands down (`cutover = live`). Standing agreements' `effective_from` = today. | log a test result in the app, see the cut preview, save, see the event on a backer page, then delete it and see "Removed"; the sweep delivered both (check the log, not a backer's phone: use a demo backer created for the test and ended after) | `{ posting:'off', cutover:'imported' }`; every event posted since is listed by `GET /api/staking/standing/:id/events?source=ledger&since=<date>` (per agreement) for review |
+| 7 | **Switch the dashboard's reads:** `MONEY_SOURCE=scheduler` (restart). | `/api/dashboard/:token/summary` roll and fund equal `/api/owner/money`; widget and Cockpit show them; MCP `get_bankroll` matches; MCP `log_session` preview (no commit) shows the cut | `MONEY_SOURCE=dashboard` and `MONEY_WRITES=open`; nights logged on futurega.me since step 6 are listed by `/api/owner/money` (`since`) for re-entry in the dashboard, and their shares stay posted (they are true); do not re-notify those nights from the dashboard |
+| 8 | **Soak** (two weeks). Seams 1 and 3 exist but are idle: notify returns 410, roster sync no-ops. | weekly digest goes out from SQL; no `[roster]` writes in the logs; `freshness.money.ok` stays true | as step 7 |
+| 9 | **Retire** (Phase 13): seams 1 and 3, the export endpoint, the dashboard's money code, this app's `console_records`, the legacy backer-token routes. | both test suites; the native contract test; a backer page from each source of §7.1 | redeploy the tagged pre-retire commits of both repos (tag them `pre-money-retire` before merging Phase 13) |
+
+Nothing is double-counted at any step:
+- **Money.** Every dashboard row is written once, through a fingerprint, or skipped as a confirmed
+  duplicate.
+- **Backer events.**
+  - Before step 6 only the dashboard notifies, and only imported history exists here.
+  - From step 4 the dashboard cannot notify.
+  - From step 6 only futurega.me posts, and only for results dated from step 6 on.
+- **Backer pages** are computed here from step 2. They read the same `backer_events` throughout, and
+  the parity route checks the openings and stakes.
+
+---
+
+## 14. What the CLAUDE.md files must say afterwards (Phase 13 writes these)
+
+### 14.1 This repo
+
+- **Architecture.**
+  - Add a bullet: "**Money of record**: futurega.me is the only bankroll and staking store (owner,
+    2026-10-14). Results, ledger, staking (series + standing agreements) and the backer surface all
+    live here; the dashboard reads and logs through `/api/owner/*` (`LEDGER_TOKEN`, server to
+    server). Spec: `docs/bankroll-merge.md`."
+  - In the Backend bullet, add `LEDGER_TOKEN` (+ `_PREVIOUS`) and `BACKER_DELIVERY` to the env notes.
+- **Dashboard seams.** Replace the list with:
+  - **#1 notify: retired** `<date>`. Shares are posted here from results (`lib/staking/standing.js`).
+  - **#2 departures:** unchanged.
+  - **#3 roster: retired** `<date>`. The roster is the `backers` table, and tokens are
+    `backers.public_token`.
+  - **#4 money (out):** `GET /api/owner/money` and `POST /api/owner/sessions/log`. The dashboard's
+    roll card, widget, watch, Cockpit and MCP depend on it, so a breaking change here needs the
+    native contract test on the WC side run against it.
+  - The paragraph "⚠ The local pm2 instance DOES have a token and DOES sync" becomes: the local DB
+    *holds* whatever backer tokens it synced before `<date>` and must still be treated as
+    production-sensitive. Nothing refreshes them now.
+- **Backer surface.** The `/b/:token` page's data now comes from standing agreements and results
+  here. "New link" is `POST /api/staking/standing/backers/:id/rotate-link`. Deliveries run only where
+  `BACKER_DELIVERY` is on (Render).
+- **Hazards.** Replace "Console/dashboard code was stripped (PR #44) — don't re-add console routes
+  here; that's the wsop-console repo's job." with:
+  > "Money lives here; the dashboard's health, training and plan features do not. Owner money
+  > routes are `/api/owner/*` (ledger token) and the bankroll/staking trees (admin JWT). Do not
+  > re-add `/console/*` routes, the dashboard's sync protocol or a second copy of the share math."
+  > Add: "Standing shares post on save; a result write path that skips `syncSharesFor` leaves a
+  > backer's page wrong."
+
+### 14.2 wsop-console
+
+- **Architecture.** Add: "**No money here** (since `<date>`). futurega.me owns sessions, the roll,
+  the WSOP fund, expenses, staking and backers. This server is an adapter: `lib/money-source.js`
+  pulls `/api/owner/money` (`LEDGER_TOKEN`), the summary/series/verdict read it, and MCP
+  `log_session` plus the Today log sheet forward to `/api/owner/sessions/log`. The native apps and
+  the Cockpit are unchanged because the summary contract is."
+- **Seams.** Remove 1 (notify) and 3 (roster). Add "money (in) from futurega.me". The new-series
+  alert, geofences, MCP and OAuth stay.
+- **Env.** Add `LEDGER_TOKEN`. Note that `HAM_PASS` no longer has to equal the scheduler owner's
+  password, because the relay that needed it is gone. Drop `SESSION_LOG_TOKEN` if it was never set,
+  or keep it for scripts; it forwards now.
+- **Rules.** "Never re-add money stores or money math. `console_records` rows in stores `sessions`,
+  `adjustments`, `expenses`, `backers` and `local` money keys are a frozen archive."
+- **Tests.** Update the counts.
+
+### 14.3 Docs
+
+- **`docs/bankrolls.md`.** "Staking, and how they could connect" becomes "how they connect". Seam 2
+  is built: paid settlements post to the ledger. The Shares sold row stays an owner question.
+- **`docs/session-handoff.md`.** Add a dated section.
+- **Wherever money is mentioned.** Add a one-line pointer to this spec.
+
+---
+
+## 15. Phases
+
+Each phase is one builder, one branch and one PR. "Sonnet" is routine and spec-complete. "Opus" needs
+judgment about money, posting or layout. The model policy (handoff, 2026-10-14) applies: set
+`model` on every agent, and run one check per build.
+
+| Phase | Repo | Scope | Depends | Tier |
+|---|---|---|---|---|
+| **0** | — | Owner: Render snapshots, `LEDGER_TOKEN` on both services, answers to §17 (defaults otherwise) | — | owner |
+| **1** | sched | Migration `money-merge-2026-10` (§4); `lib/staking/standing.js` + `lib/staking/classify.js` with ported tests; `MOVE_KINDS` and labels; `equipment`/`fees` categories (server, client, tax rules); `affects_balance` in the transactions source and Expenses list; `time_known` in reports; account deletion | — | Sonnet |
+| **2** | sched | Backer surface on SQL with `console_records` fallback (feed, digest, recipients); name precedence; rotation covers `public_token` + revisions, real-function test; `BACKER_DELIVERY` gate; delivery sweep (dormant: posting off); `backer_tokens` count log; parity route | 1 | Sonnet |
+| **3** | sched | Settlement fixes (§10) + StakingView fields | 1 | **Opus** |
+| **4** | WC | `GET /api/money-export` + `checkSharedToken` + tests | — | Sonnet |
+| **5** | sched | Import engine: fetch, stage, plan (§5 mapping, §9.1 scoring, §7.1 union, §5.8 opening and reconciliation with a `computeBankroll` port), decisions, commit, undo, delta; owner-only routes | 1, 2 | **Opus** |
+| **6** | sched | Import review UI (§9.3) + seed script + guard steps | 5 | **Opus** (grid seating and guard work has needed judgment on every bankroll tab) |
+| **7** | sched | Standing shares live: `syncSharesFor` in every write path (§6.5), exclusions, revisions, recalc, drift, preview, cutover state and `PUT /api/bankrolls/money/cutover`, roster sync standing down | 1, 2 | **Opus** |
+| **8** | sched | Standing UI in the Staking tab: backers with stakes editor (from today / correct with preview), opening, delivery, copy and rotate link, recorded shares with exclude / recalc / remove; the "Posts to backers" line on the result and cash forms; guard steps | 7 | Sonnet |
+| **9** | sched | Owner API (§11.2-11.3, ported `normalizeSession` + tests) and deep links (§11.5) | 1, 7 | Sonnet |
+| **10** | sched | Money homes: fund bankroll target and progress (bankroll manager field + an Overview line), "Where's the money" (a seventh Overview section: locations, total, drift against the roll), tax set-aside line in the tax report | 1 | Sonnet |
+| **11** | WC | Dashboard adapter (§12.1): `money-source`, flags, summary/series/MCP/PWA store, Today log sheet, frozen sync and relay, Money tab links, fund target from the feed; contract and adapter tests | 9, 4 | Sonnet build, **Opus** review of the summary adapter |
+| **12** | both | Cutover (§13 steps 2-8), run by the lead with the owner | 1-11 | **Opus** + owner |
+| **13** | both | Retire (§12.2, §7.3, §7.4) and CLAUDE.md / docs (§14), after a two-week soak; tag `pre-money-retire` first | 12 | Sonnet |
+| **14** | sched | *(optional, §17 Q10)* Standing payouts: `standing_payments` (id, agreement_id, amount_cents signed, paid_on, note), each writing a `settlement` adjustment (`settlement_ref 'sp:<id>'`); feed `paidCents`, running total = shares + opening − payouts | 7, 8 | Sonnet |
+
+Phases 3, 4 and 10 can run in parallel with anything after Phase 1. Phases 5 and 7 can run in
+parallel after Phase 2.
+
+---
+
+## 16. Test plan per phase
+
+All server tests boot `server.js` on a scratch port with a scratch `DB_PATH` and a stubbed
+`./solver` (`npm run test:auth-limit` is the pattern). Fixtures are made up: no real backer, token,
+amount or `.db` copy, ever.
+
+| Phase | New / changed scripts | What they prove |
+|---|---|---|
+| 1 | `test:standing` (new: `node --test test/standing.test.js test/classify.test.js`), `test:transactions`, `test:bankroll-reports`, `test:tax-report`, `test:account` | the 14 ported `backers.test.ts` cases; dated stakes; rounding parity sweep (≤ 1 cent over 10,000 pairs); the `formatOf` table row by row, PLO8 before PLO, Big O before PLO8; `correction`/`settlement` move balances and never profit (summary `moved` vs `results`); `affects_balance 0` rows absent from the ledger and present in the Expenses list and tax report; `equipment`/`fees` deducted at 100%; `time_known 0` facts have `hour: null`; account deletion clears every new table and leaves `backer_events` |
+| 2 | `test:backer-page` (extended), `test:backer-rotation` (new, real function), `test:gates` | feed identical from SQL and from `console_records` for seeded backers of all three §7.1 kinds; rename shows the SQL name; rotation moves all five places or none and refuses a token in use; deliveries skipped without `BACKER_DELIVERY`/`RENDER`; parity route `differ: []` and leaks no token; digest recipients from `notify_email` |
+| 3 | `test:staking-settlement` (new) | §10 point 8 |
+| 4 | WC `server/test/money-export.test.js` (new) | 404 without, with a wrong and with a path token; previous token accepted; deleted rows and the four local keys present; counts right; nothing logged but counts |
+| 5 | `test:money-import` (new; a stub dashboard on a second scratch port serves fixtures) | every §5 mapping row; sign-follows-amount; transfer legs and `transfer_id`; fund results in the fund; chat ids verbatim; Personal `stable_id` deterministic; rounding correction and remainder; opening formula with prior deposits and pre-opening results; reconciliation equals a `computeBankroll` port on the fixture; scoring classes on crafted pairs (late-night ±1 day, alias rooms, unequal nets); one-to-one pairing; commit 409 with unanswered pairs; `same-keep`/`same-take`; re-fetch imports nothing; delta changed/deleted/conflict; undo removes exactly the run's rows; another admin gets 403; a non-JSON upstream is an error |
+| 6 | `check:controls`, `check:clipping` (new steps), `vite-app` helper tests for the card model | every control on the grid with its label centred at 402 and 1440; no clipped glyph in a truncated 16g cell; the skipped count is 0 and the seed token is fresh |
+| 7 | `test:standing-live` (new) | each write path in §6.5 posts, revises or voids; live sessions never post; pre-`effective_from` never posts; overlap rule; exclusions; stake correction re-derives with preview; recalc of a dashboard event; drift lists a feed buy-in change and applies on request; posting off writes nothing; the sweep coalesces three edits into one delivery and survives a restart; a void deletes the event and keeps a revision |
+| 8 | `check:controls`, `check:clipping` (Standing steps), helper tests | as Phase 6, for the Staking section and the form line |
+| 9 | `test:owner-api` (new; ported `session-log` cases) | auth (404/503/previous token/rate limit); `/money` totals equal the ledger summary, `isWsopFund` by bankroll, extras present, live sessions absent; log preview writes nothing; commit writes once; same facts twice update one row; an imported `chat-` row is updated, not duplicated; kind change 409; backer cuts in the preview; deep-link routes open the right view (`vite-app` helper test) |
+| 10 | `test:bankrolls` (extended), guards | target and progress from the fund bankroll; locations total and drift; set-aside line |
+| 11 | WC `npm test` incl. `native-contract.test.js` run twice more against a stubbed money source (empty and populated), `money-source.test.js`, `money-proxy.test.js`; `app` vitest for the store loader | contract holds with `MONEY_SOURCE=scheduler`; summary roll/fund equal the feed's; cold boot uses the persisted copy; upstream down keeps last good and `freshness.money.ok=false`; frozen sync returns `rejected` and stores nothing; relay 410; MCP forwards preview and commit and refuses when frozen |
+| 12 | the runbook's Verify column | — |
+| 13 | both full suites; a backer page from each §7.1 source; `/api/backer/:token` (legacy) 404 when `backer_tokens` was empty | nothing still reads `console_records` (grep in the PR) |
+| 14 | `test:standing` (payouts) | payout lowers the running total and the bankroll by the same amount; feed `paidCents` |
+
+---
+
+## 17. Owner questions, each with the default building proceeds on
+
+| # | Question | Default (and why) |
+|---|---|---|
+| Q1 | Post a backer's share **when a result is saved**, or keep a "Notify" tap? | **On save**, with the cut shown on the form before saving and a per-result "not staked" switch. The tap is how the MCP path and any forgotten tap left nights unposted (§2.2 point 2). |
+| Q2 | When a result is corrected, tell the backer? | **Push only** ("Corrected: …, was +$Y"), mark it on the page and in the digest; no SMS (cost, noise). |
+| Q3 | Opening balance: one computed deposit so the roll at the start of the dashboard's first day equals its starting roll? | **Yes**, shown and editable in the review (§5.8). |
+| Q4 | What is "the roll" on the widget and Today? | **Every non-archived bankroll except the WSOP fund** (the dashboard's meaning); a bankroll can be marked "not in the roll". |
+| Q5 | WSOP fund target? | **$65,000 by 2027-05-03**, the figure the PWA shows; the 50,000 server default was the drift. |
+| Q6 | Imported dashboard expenses: do they lower the roll? | **No**, as in the dashboard (they were never in its roll); they still count in the tax report. New expenses logged here keep today's behaviour (they do lower the balance), with a "Paid outside the roll" switch. |
+| Q7 | A backer with a standing stake and a series agreement on the same tournament: both shares? | **No: the series agreement wins** for that tournament (most specific wins). |
+| Q8 | Which games count as a backer's "PLO", "PLO8", "Mixed"…? | **The §6.3 table**: 5- and 6-card PLO count as PLO; PLO hi-lo (incl. PLO6 8/b) as PLO8; Big O on its own; HORSE / 8-game / dealer's choice as Mixed. Any result can be overridden. |
+| Q9 | Backers deleted in the dashboard whose pages still work: keep the pages? | **Keep the page and its history; end the agreement** (no new shares, no digest). |
+| Q10 | Record payouts to standing backers (so their page's running total drops when paid)? | **Yes, as Phase 14** after cutover; nothing before it depends on it. |
+| Q11 | Series settlements: does a backer pay for their piece up front or at settlement? | **At settlement** (netted), with an optional "prepaid" figure per agreement; the markup is paid by the backer (fixes the sign bug, §10). |
+| Q12 | A cash session's share: of the net after tips and session expenses, or cash-out minus buy-in? | **After tips and expenses**: the result the bankroll records. Imported sessions have neither, so history is unaffected. |
+| Q13 | Do Trends, Review and Settings stay on the dashboard? | **Yes**; they read the money feed. The tab bar gains Money ↗. |
+| Q14 | Only if `backer_tokens` has rows: keep those legacy links? | **Keep them read-only, stop minting**, and decide per link. |
+
+---
+
+## 18. Left alone, on purpose
+
+- **Not touched:**
+  - the `swap` and `crossbook` settlement guesses;
+  - `swap_suggestions` not saving (`server.js:10246-10338`);
+  - the missing rate limit on `/api/backer/*`;
+  - historical FX rates (handoff decision 11);
+  - the Shares sold row (handoff, 2026-10-13).
+  Each is its own question or job.
+- **Not built:** a second live-session system. The dashboard's live mode stays for its clock and
+  stop-loss and logs here at the end. This app's live cash sessions stay as they are.
+- **Not covered by the import:** receipts, which neither side has.
+- **Not built: an undo past Phase 13.** Rollback after retire is the tagged redeploy.
