@@ -1,0 +1,36 @@
+PokerStars Hand #8766875642435839:  Omaha Limit (£2/£4 GBP) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #1 is the button
+Seat 1: Hero (£150 in chips)
+Seat 2: Kat (£150 in chips)
+Seat 3: Leo (£150 in chips)
+Kat: posts small blind £1
+Leo: posts big blind £2
+*** HOLE CARDS ***
+Dealt to Hero [Kh Kc Qh Jc]
+Hero: raises £2 to £4
+Kat: folds
+Leo: calls £2
+*** FLOP *** [Kd 7c 2h]
+Leo: checks
+Hero: bets £2
+Leo: raises £2 to £4
+Hero: raises £2 to £6
+Leo: calls £2
+*** TURN *** [Kd 7c 2h] [5s]
+Leo: bets £4
+Hero: raises £4 to £8
+Leo: calls £4
+*** RIVER *** [Kd 7c 2h 5s] [3c]
+Leo: checks
+Hero: bets £4
+Leo: calls £4
+*** SHOW DOWN ***
+Hero: shows [Kh Kc Qh Jc] (three of a kind, Kings)
+Leo: shows [9s 8s 7d 6d] (a pair of Sevens)
+Hero collected £45 from pot
+*** SUMMARY ***
+Total pot £45 | Rake £0
+Board [Kd 7c 2h 5s 3c]
+Seat 1: Hero (button) showed [Kh Kc Qh Jc] and won (£45) with three of a kind, Kings
+Seat 2: Kat (small blind) folded before Flop
+Seat 3: Leo (big blind) showed [9s 8s 7d 6d] and lost with a pair of Sevens

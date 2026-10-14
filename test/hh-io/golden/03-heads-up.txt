@@ -1,0 +1,22 @@
+PokerStars Hand #8889801315616914:  Hold'em No Limit ($0.50/$1 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 2-max Seat #1 is the button
+Seat 1: Ethan ($100 in chips)
+Seat 2: Vik ($87.25 in chips)
+Ethan: posts small blind $0.50
+Vik: posts big blind $1
+*** HOLE CARDS ***
+Dealt to Ethan [Td 9d]
+Ethan: raises $2 to $3
+Vik: calls $2
+*** FLOP *** [Ah 6c 2s]
+Vik: checks
+Ethan: bets $3
+Vik: folds
+Uncalled bet ($3) returned to Ethan
+Ethan collected $6 from pot
+Ethan: doesn't show hand
+*** SUMMARY ***
+Total pot $6 | Rake $0
+Board [Ah 6c 2s]
+Seat 1: Ethan (button) (small blind) collected ($6)
+Seat 2: Vik (big blind) folded on the Flop

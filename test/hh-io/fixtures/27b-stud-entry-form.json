@@ -1,0 +1,156 @@
+{
+  "hand": {
+    "gameType": "Stud Hi",
+    "gameMode": "mtt",
+    "blinds": {
+      "sb": 100,
+      "bb": 200,
+      "ante": 25,
+      "bigBet": 400,
+      "bringIn": 50,
+      "betCap": 5,
+      "uncapHeadsUp": true
+    },
+    "players": [
+      {
+        "name": "ham5",
+        "position": "BTN/SB",
+        "startingStack": 12000
+      },
+      {
+        "name": "Jason Blodgett",
+        "position": "BB",
+        "startingStack": 12000
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "3rd Street",
+        "cards": {
+          "hero": "2c3dKh",
+          "opponents": [
+            "7d8sQs"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 1,
+            "action": "bring-in",
+            "amount": 50
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 50
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "4th Street",
+        "cards": {
+          "hero": "4h",
+          "opponents": [
+            "Js"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "5th Street",
+        "cards": {
+          "hero": "5h",
+          "opponents": [
+            "Ts"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "6th Street",
+        "cards": {
+          "hero": "6h",
+          "opponents": [
+            "9s"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "7th Street",
+        "cards": {
+          "hero": "Ah",
+          "opponents": [
+            "2s"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 1,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

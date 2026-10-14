@@ -1,0 +1,33 @@
+PokerStars Hand #8561012250828845:  5 Card Omaha Hi/Lo Pot Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #1 is the button
+Seat 1: Hero ($250 in chips)
+Seat 2: Gil ($250 in chips)
+Seat 3: Hux ($250 in chips)
+Gil: posts small blind $1
+Hux: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Hero [Ah 2h 3d Ks Qs]
+Hero: raises $4 to $6
+Gil: folds
+Hux: calls $4
+*** FLOP *** [4h 5h 9c]
+Hux: checks
+Hero: bets $13
+Hux: calls $13
+*** TURN *** [4h 5h 9c] [Jh]
+Hux: bets $20
+Hero: raises $60 to $80
+Hux: calls $60
+*** RIVER *** [4h 5h 9c Jh] [2c]
+Hux: checks
+Hero: bets $100
+Hux: folds
+Uncalled bet ($100) returned to Hero
+Hero collected $199 from pot
+Hero: doesn't show hand
+*** SUMMARY ***
+Total pot $199 | Rake $0
+Board [4h 5h 9c Jh 2c]
+Seat 1: Hero (button) collected ($199)
+Seat 2: Gil (small blind) folded before Flop
+Seat 3: Hux (big blind) folded on the River

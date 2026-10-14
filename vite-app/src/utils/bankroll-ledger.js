@@ -361,7 +361,7 @@ const fx = (e) => (e.fx_display != null && Number.isFinite(Number(e.fx_display))
  *   bySource     results per group: tournaments, cash, other
  *   mtt          tournaments: profit, cost and cashes on the display scale (fx_display), roi
  *                (profit / cost), events (rows), bullets (units), cashes (rows that cashed), itm
- *                (cashes / events), avgBuyin (cost / bullets)
+ *                (cashes / bullets: per entry), avgBuyin (cost / bullets)
  *   cash         cash sessions: profit, sessions, hours (sessions with both ends), hourly (the
  *                timed sessions' profit / their hours), wins, winRate, avgHours
  *   biggestWin / biggestLoss   the single best and worst game entry (tournament or cash session)
@@ -402,7 +402,9 @@ export function overviewStats(entries) {
   }
   const { mtt: m, cash: c } = out;
   if (m.cost > 0) m.roi = m.profit / m.cost;
-  if (m.events > 0) m.itm = m.cashes / m.events;
+  // ITM per ENTRY, the owner's rule (2026-10-13): a cash over the bullets fired, as Locations and
+  // the Overview tables count it, so a re-entered event that cashed once is 1 of its bullets.
+  if (m.bullets > 0) m.itm = m.cashes / m.bullets;
   if (m.bullets > 0 && m.cost > 0) m.avgBuyin = m.cost / m.bullets;
   if (c.hours > 0) c.hourly = timedProfit / c.hours;
   if (c.sessions > 0) c.winRate = c.wins / c.sessions;

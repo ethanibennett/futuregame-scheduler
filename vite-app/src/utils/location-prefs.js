@@ -1,4 +1,5 @@
 import { API_URL } from './api.js';
+import { stateCodeFrom } from './online-sites.js';
 
 /* Where the chosen location lives.
  *
@@ -18,10 +19,22 @@ import { API_URL } from './api.js';
  */
 const KEY = 'savedLocation';
 
+/* `jurisdiction` is a postal code ("PA"). Until 2026-10 the first-run wizard's "Use my location"
+   stored the reverse lookup's state NAME in capitals ("PENNSYLVANIA", or "ÎLE-DE-FRANCE" abroad)
+   and marked it as picked by hand, so availability never matched and no later lookup could
+   correct it. Repaired wherever a stored location is read: a value that is already a code is
+   left alone; one that needed repair came from a lookup, not a pick, so it is not manual. */
+export function repairJurisdiction(loc) {
+  if (!loc || typeof loc !== 'object' || !loc.jurisdiction) return loc;
+  const code = stateCodeFrom(loc.jurisdiction);
+  if (code === loc.jurisdiction) return loc;
+  return { ...loc, jurisdiction: code, jurisdictionManual: false };
+}
+
 export function readLocalLocation() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : null;
+    return raw ? repairJurisdiction(JSON.parse(raw)) : null;
   } catch (e) {
     return null;
   }
@@ -48,29 +61,37 @@ export function writeLocalLocation(loc) {
  */
 export async function fetchServerLocation(token) {
   if (!token) return undefined;
+  // A push still in flight is newer than what the server holds: a view that mounts right after
+  // first-run setup saved a location would otherwise GET the old copy, adopt it, and push it back.
+  if (inflight) await inflight;
   try {
     const res = await fetch(`${API_URL}/user/location`, {
       headers: { Authorization: 'Bearer ' + token },
     });
     if (!res.ok) return undefined;
     const data = await res.json();
-    return data && Object.prototype.hasOwnProperty.call(data, 'location') ? data.location : undefined;
+    return data && Object.prototype.hasOwnProperty.call(data, 'location') ? repairJurisdiction(data.location) : undefined;
   } catch (e) {
     return undefined;
   }
 }
 
 /* Fire and forget: the local copy has already been written, so a failed push
- * costs the user nothing this session and is retried by the next change.
+ * costs the user nothing this session and is retried by the next change. The
+ * last push is kept (errors swallowed) so fetchServerLocation can wait for it.
  */
+let inflight = null;
 export function pushServerLocation(token, loc) {
   if (!token) return;
   const body = (loc && (loc.userLocation || loc.locationRegion || loc.jurisdiction)) ? loc : null;
-  fetch(`${API_URL}/user/location`, {
+  const p = fetch(`${API_URL}/user/location`, {
     method: 'PUT',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ location: body }),
-  }).catch(() => {});
+  }).then(() => {}, () => {});
+  inflight = p;
+  p.then(() => { if (inflight === p) inflight = null; });
+  return p;
 }
 
 export function sameLocation(a, b) {
@@ -111,11 +132,17 @@ export function writeLocalFilters(f) {
   } catch (e) { /* private window: session-only, fine */ }
 }
 
-/* One flag, set the first time the wizard is finished or skipped, so it never
- * auto-opens again. The user can still reopen it by hand. */
+/* One flag, set the first time setup is finished or skipped, so it never
+ * auto-opens again. The user can still reopen it by hand. Since 2026-10 this is
+ * only a per-browser CACHE of the account's own answer (users.onboarding, see
+ * utils/onboarding.js): a sign-in to an account that has never finished setup
+ * clears it, so a shared browser does not hand one user's "done" to the next. */
 export function hasOnboarded() {
   try { return localStorage.getItem('onboarded') === '1'; } catch (e) { return true; }
 }
 export function markOnboarded() {
   try { localStorage.setItem('onboarded', '1'); } catch (e) { /* ignore */ }
+}
+export function clearOnboarded() {
+  try { localStorage.removeItem('onboarded'); } catch (e) { /* ignore */ }
 }

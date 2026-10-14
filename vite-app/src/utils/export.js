@@ -73,16 +73,20 @@ function drawWatermark(ctx, w, h, pos) {
 
 // Share via Web Share API (mobile native sheet) or fall back to a download
 // anchor (desktop). Works for any blob: PNG, PDF, etc.
-export async function shareOrDownloadBlob(blob, filename, mimeType) {
+// options.mode: 'share' (the default, as every caller had it) tries the share
+// sheet first; 'download' goes straight to the download — desktop web, where a
+// Web Share on Windows Chrome is a dialog nobody wants for a .txt. Resolves to
+// what happened: 'shared' | 'downloaded' | 'cancelled'.
+export async function shareOrDownloadBlob(blob, filename, mimeType, { mode = 'share' } = {}) {
   try {
-    if (navigator.canShare) {
+    if (mode !== 'download' && navigator.canShare) {
       const file = new File([blob], filename, { type: mimeType });
       if (navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file] });
-          return;
+          return 'shared';
         } catch (e) {
-          if (e.name === 'AbortError') return;
+          if (e.name === 'AbortError') return 'cancelled';
         }
       }
     }
@@ -96,6 +100,7 @@ export async function shareOrDownloadBlob(blob, filename, mimeType) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'downloaded';
 }
 
 // Share or download a canvas

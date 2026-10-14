@@ -1,0 +1,125 @@
+{
+  "hand": {
+    "gameType": "NL 2-7 SD",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 0.25,
+      "bb": 0.5
+    },
+    "players": [
+      {
+        "name": "Yan",
+        "position": "CO",
+        "startingStack": 50
+      },
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 50
+      },
+      {
+        "name": "Zia",
+        "position": "SB",
+        "startingStack": 50
+      },
+      {
+        "name": "Ada",
+        "position": "BB",
+        "startingStack": 50
+      }
+    ],
+    "heroIdx": 1,
+    "streets": [
+      {
+        "name": "Pre-Draw",
+        "cards": {
+          "hero": "2s4d6h7cKd",
+          "opponents": [
+            "",
+            "",
+            "3h5c8d9sTc"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "raise",
+            "amount": 1.5
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 1
+          }
+        ],
+        "draws": [
+          {
+            "player": 3,
+            "discarded": 1,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 1,
+            "discarded": 1,
+            "discardedCards": "Kd",
+            "newCards": "3d"
+          }
+        ]
+      },
+      {
+        "name": "Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 2.5
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 2.5
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 1,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

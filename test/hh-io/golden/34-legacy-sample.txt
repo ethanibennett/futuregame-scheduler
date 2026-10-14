@@ -1,0 +1,44 @@
+PokerStars Hand #8687489112958169: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #4 is the button
+Seat 1: Alex Charron (45000 in chips)
+Seat 2: Kevin DiPasquale (55000 in chips)
+Seat 3: Cristian Gutierrez (47000 in chips)
+Seat 4: Hero (50000 in chips)
+Seat 5: Jason Blodgett (48000 in chips)
+Seat 6: Keith McCormack (52000 in chips)
+Keith McCormack: posts the ante 25
+Jason Blodgett: posts small blind 100
+Keith McCormack: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kh]
+Alex Charron: folds
+Kevin DiPasquale: raises 300 to 500
+Cristian Gutierrez: folds
+Hero: calls 500
+Jason Blodgett: folds
+Keith McCormack: calls 300
+*** FLOP *** [Qh 7h 2d]
+Keith McCormack: checks
+Kevin DiPasquale: bets 900
+Hero: calls 900
+Keith McCormack: folds
+*** TURN *** [Qh 7h 2d] [5c]
+Kevin DiPasquale: bets 2200
+Hero: calls 2200
+*** RIVER *** [Qh 7h 2d 5c] [3h]
+Kevin DiPasquale: bets 5000
+Hero: raises 10000 to 15000
+Kevin DiPasquale: calls 10000
+*** SHOW DOWN ***
+Hero: shows [Ah Kh] (a flush, Ace high)
+Kevin DiPasquale: mucks hand
+Hero collected 37825 from pot
+*** SUMMARY ***
+Total pot 37825 | Rake 0
+Board [Qh 7h 2d 5c 3h]
+Seat 1: Alex Charron folded before Flop (didn't bet)
+Seat 2: Kevin DiPasquale mucked
+Seat 3: Cristian Gutierrez folded before Flop (didn't bet)
+Seat 4: Hero (button) showed [Ah Kh] and won (37825) with a flush, Ace high
+Seat 5: Jason Blodgett (small blind) folded before Flop
+Seat 6: Keith McCormack (big blind) folded on the Flop

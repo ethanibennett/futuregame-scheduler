@@ -1,0 +1,167 @@
+{
+  "hand": {
+    "gameType": "PLO6",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 0.25,
+      "bb": 0.5
+    },
+    "players": [
+      {
+        "name": "Hero",
+        "position": "CO",
+        "startingStack": 60
+      },
+      {
+        "name": "Uli",
+        "position": "BTN",
+        "startingStack": 60
+      },
+      {
+        "name": "Vee",
+        "position": "SB",
+        "startingStack": 60
+      },
+      {
+        "name": "Wim",
+        "position": "BB",
+        "startingStack": 60
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "AhAdKcQs3h2h",
+          "opponents": [
+            "",
+            "",
+            "JcTc9c8s7d2d"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 1.75
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 1.25
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "Ac7c6s"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 2.75
+          },
+          {
+            "player": 3,
+            "action": "raise",
+            "amount": 11
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 8.25
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "5d"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "bet",
+            "amount": 20
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 20
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "Kd"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "bet",
+            "amount": 25.25
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 25.25
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 3,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

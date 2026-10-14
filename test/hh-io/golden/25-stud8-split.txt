@@ -1,0 +1,44 @@
+PokerStars Hand #8042283324641276: Tournament #7282969982, Freeroll  7 Card Stud Hi/Lo Limit - Level I (200/400) - 2026/10/13 14:30:05 ET
+Table '7282969982 1' 8-max
+Seat 1: Ora (8000 in chips)
+Seat 2: Hero (8000 in chips)
+Seat 3: Pip (8000 in chips)
+Ora: posts the ante 25
+Hero: posts the ante 25
+Pip: posts the ante 25
+*** 3rd STREET ***
+Dealt to Ora [9c]
+Dealt to Hero [Ac 2d 3h]
+Dealt to Pip [Qd]
+Hero: bets 200
+Pip: folds
+Ora: calls 200
+*** 4th STREET ***
+Dealt to Ora [9c] [9h]
+Dealt to Hero [Ac 2d 3h] [5c]
+Ora: bets 200
+Hero: calls 200
+*** 5th STREET ***
+Dealt to Ora [9c 9h] [4s]
+Dealt to Hero [Ac 2d 3h 5c] [Tc]
+Ora: bets 400
+Hero: calls 400
+*** 6th STREET ***
+Dealt to Ora [9c 9h 4s] [Jd]
+Dealt to Hero [Ac 2d 3h 5c Tc] [7h]
+Ora: bets 400
+Hero: calls 400
+*** RIVER ***
+Dealt to Hero [Ac 2d 3h 5c Tc 7h] [Qh]
+Ora: bets 400
+Hero: calls 400
+*** SHOW DOWN ***
+Ora: shows [Kd Ks 9c 9h 4s Jd Qc] (HI: two pair, Kings and Nines)
+Hero: shows [Ac 2d 3h 5c Tc 7h Qh] (HI: high card Ace; LO: 7,5,3,2,A)
+Ora collected 1638 from pot
+Hero collected 1637 from pot
+*** SUMMARY ***
+Total pot 3275 | Rake 0
+Seat 1: Ora showed [Kd Ks 9c 9h 4s Jd Qc] and won (1638) with HI: two pair, Kings and Nines
+Seat 2: Hero showed [Ac 2d 3h 5c Tc 7h Qh] and won (1637) with HI: high card Ace; LO: 7,5,3,2,A
+Seat 3: Pip folded on the 3rd Street (didn't bet)

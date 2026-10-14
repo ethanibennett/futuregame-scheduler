@@ -38,6 +38,15 @@ sessions opened here own scheduler work.
   Note: `spawnSync('npm')` fails on native Windows — run `npm install` / `npm run build`
   inside `vite-app/` directly when building locally.
 - **Deploy**: push to `master` → Render auto-deploys **futurega.me** (fail-loud build).
+- **Hand-history I/O**: saved hands export as PokerStars-format text (PT4 / Hold'em Manager) from
+  the replay's Share sheet and Hands → Export for PokerTracker — writer in
+  `vite-app/src/utils/hand-history/` (pure, Node-testable), import framework in `lib/hh-import/`
+  (a PokerStars-format parser; `wsop-replay` waits for a sample). PT4 analyses Hold'em and four-card
+  Omaha only (not stud, draw or 5/6-card Omaha) and files them as PokerStars hands; only a hand the
+  user saved or entered exports, never one that arrived by a share link. It is a second reader of the
+  text quick add's fast path (`lib/quick-add/hh.js`) already reads; why they stay two, and the test
+  that holds them together, are in the doc (§8). `npm run test:hh-io`; design, grammar sources and the
+  owner's PT4 check: `docs/hand-history-io.md`.
 
 ## Runs 24/7 on this box (don't duplicate)
 pm2 app **futuregame-scheduler** serves this checkout on **port 3001**, restarting
@@ -180,6 +189,19 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
   `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
   into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
+  **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
+  - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
+    (default: on when `RENDER` is set; `BACKER_DELIVERY=1|0` overrides; a typo is off). This box has
+    neither, so it can never message a backer. Every boot logs `[backers] delivery is ON|OFF`.
+  - **The page's source is a switch, off by default.** `BACKER_PAGE_SOURCE=sql` makes the feed read
+    the `backers` table and standing agreements first, with `console_records` as the fallback for a
+    token no `backers.public_token` owns. Unset, it is the dashboard-era path, byte for byte. Run
+    `GET /api/staking/standing/parity` (owner only) before flipping it: `differ` lists the pages it
+    would change, by backer id, never by token.
+  - **"New link"** is `POST /api/staking/standing/backers/:id/rotate-link`. Until the roster seam
+    retires, a leaked link is best replaced in the dashboard: a later dashboard edit of that backer
+    would send the old token back and the roster sync would rotate it back.
+  - Tests: `npm run test:backers` (surface, rotation, parity), booting on ports 4540-4549.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

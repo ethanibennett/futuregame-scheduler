@@ -1,0 +1,169 @@
+{
+  "hand": {
+    "gameType": "LO Hi",
+    "gameMode": "cash",
+    "currency": "GBP",
+    "blinds": {
+      "sb": 1,
+      "bb": 2,
+      "bigBet": 4
+    },
+    "players": [
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 150
+      },
+      {
+        "name": "Kat",
+        "position": "SB",
+        "startingStack": 150
+      },
+      {
+        "name": "Leo",
+        "position": "BB",
+        "startingStack": 150
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "KhKcQhJc",
+          "opponents": [
+            "",
+            "9s8s7d6d"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 4
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": "Kd7c2h"
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 2
+          },
+          {
+            "player": 2,
+            "action": "raise",
+            "amount": 4
+          },
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": "5s"
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 8
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": "3c"
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 0,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

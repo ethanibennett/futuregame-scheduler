@@ -1,0 +1,25 @@
+PokerStars Hand #8532552078792386: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #1 is the button
+Seat 1: Ana (9000 in chips)
+Seat 2: Ben (12000 in chips)
+Seat 3: Hero (15000 in chips)
+Ben: posts small blind 100
+Hero: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Jc 9c]
+Ana: folds
+Ben: raises 400 to 600
+Hero: calls 400
+*** FLOP *** [Tc 8d 2h]
+Ben: bets 700
+Hero: raises 1400 to 2100
+Ben: folds
+Uncalled bet (1400) returned to Hero
+Hero collected 2600 from pot
+Hero: doesn't show hand
+*** SUMMARY ***
+Total pot 2600 | Rake 0
+Board [Tc 8d 2h]
+Seat 1: Ana (button) folded before Flop (didn't bet)
+Seat 2: Ben (small blind) folded on the Flop
+Seat 3: Hero (big blind) collected (2600)

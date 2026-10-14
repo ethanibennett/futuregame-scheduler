@@ -34,7 +34,8 @@
 // Log menu; a To log row's Undo state; its NUMBERS in trip mode, series mode and the edge state;
 // the signal-or-noise line as progress and about cash; the empty-schedule prompt; the Edit home sheet as opened and after Reset, the home in a custom layout, and on desktop its empty NUMBERS pane), Social (search,
 // a buddy, a group, a new group), Hands (each game family, hand entry step by step, PLO entry,
-// Quick add, the replayer on a saved hand with its settings, table settings and share menu, the
+// Quick add, the Export for PokerTracker sheet, the replayer on a saved hand with its settings,
+// table settings and share menu, the
 // admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way / Scanner tools), Cash (Live,
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
@@ -43,15 +44,19 @@
 // menu open, with and without a running cash session), the
 // bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
 // with its page chevrons — report filters, Locations with a card open, its pager (Show 50 more /
-// Show all, Show fewer) and a sort on, the Sessions list filtered and a tournament's and a cash
+// Show all, Show fewer) and a sort on, Backers (the list, every card open on its last ten shares,
+// none yet, refused), the Sessions list filtered and a tournament's and a cash
 // session's detail, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
 // buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
 // shared-schedule page (and a card open on it), the backer
-// page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), the first-run
-// wizard step by step, the signed-out login / register / forgot / password-reset screens, and the
+// page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), first-run setup
+// stage by stage (step 1 refused, located and searching; step 2 with Yes; step 3; the places a
+// region, Europe and Everywhere answer and the zero-count line: onboarding-places; a new account's
+// own first run, which starts at "No, live only": real-name-prompt), Settings' "Edit name" dialog,
+// the signed-out login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
 // backdrop hides what is under it: a control 90% covered by something that paints is not measured.
 //
@@ -146,6 +151,7 @@
 //
 // Exits 1 when any control fails, 2 when nothing could be measured (a view that did not open is
 // reported and skipped). WebKit, because the app ships in WKWebView.
+import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -224,7 +230,8 @@ const NOT_CONTROLS = [
   // its lines seated on 3r).
   '.hm-receipt', '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty', '.hm-noise',
   // The bankroll dashboard's Locations cards: a room's name, meta, total and stats seated on r
-  // lines (bankroll-locations.css); the pager buttons in an open card are controls.
+  // lines (bankroll-locations.css); the pager buttons in an open card are controls. The Backers
+  // tab's cards are the same card (bankroll-backers.css): its Copy link and Open page are controls.
   '.bl-card',
 ];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
@@ -1321,12 +1328,14 @@ function finalize(c) {
   const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR });
   const t = listOnly ? '' : token();
   // Signed in as the admin, past the first-run wizard (the onboarding view clears the flag).
-  await ctx.addInitScript(({ t, u }) => {
+  await ctx.addInitScript(({ t, u, overlay }) => {
+    // --overlay screenshots show the grid lines without the cyan numeric readout over them.
+    if (overlay) localStorage.setItem('gridReadout', 'off');
     if (sessionStorage.getItem('guard-signed-out')) return;
     localStorage.setItem('token', t); localStorage.setItem('username', u);
     localStorage.setItem('onboardComplete', '1'); localStorage.setItem('hasOnboarded', 'true');
     if (!sessionStorage.getItem('guard-onboarding')) localStorage.setItem('onboarded', '1');
-  }, { t, u: USER });
+  }, { t, u: USER, overlay });
   // Edit home: every view sees the default home whatever the account saved, and the sheet's
   // changes (and Reset) are answered here and never written, so the guard leaves the account's
   // home layout as it found it (scripts/home-states.mjs).
@@ -1869,6 +1878,31 @@ function finalize(c) {
     await dash('Locations');
     await click('.bl-sort [role="radio"]:has-text("Name")', 400);
   }, 2);
+  // Backers (read-only, the owner's backers as their pages show them): the list (a card is the
+  // Locations card with an actions row, Copy link and Open page, under it), every card open on its
+  // last ten shares (a history of none, one, two and more than ten, with its count line), and the
+  // empty and refused states. The last two are staged: the route is answered here and never sent.
+  // A card is a list row, so its text is seated (NOT_CONTROLS lists .bl-card); the two buttons in
+  // each card are controls.
+  const backersTab = async (answer) => {
+    if (answer) await p.route('**/api/staking/standing/backers', (r) => r.fulfill(answer));
+    try {
+      await dash('Backers');
+      await p.locator('.an-sheet .bb-backers .bl-item, .an-sheet .bb-backers .an-p.bl-gap').first().waitFor({ timeout: 8000 });
+    } finally { if (answer) await p.unroute('**/api/staking/standing/backers'); }
+  };
+  step('bankroll-backers', () => backersTab(), 2);
+  step('bankroll-backers-open', async () => {
+    await backersTab();
+    const shut = p.locator('.an-sheet .bb-item .bl-card[aria-expanded="false"]');
+    for (let k = await shut.count(); k > 0; k--) {
+      await shut.first().click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(250);
+    }
+    if (await p.locator('.an-sheet .bb-item .bl-card[aria-expanded="false"]').count()) throw new Error('a card did not open');
+  }, 4);
+  step('bankroll-backers-empty', () => backersTab({ status: 200, json: { backers: [] } }), 0);
+  step('bankroll-backers-refused', () => backersTab({ status: 403, json: { error: 'Forbidden' } }), 0);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);
@@ -2200,6 +2234,28 @@ function finalize(c) {
     for (const s of ['button[title*="Share"]', 'button[aria-label*="Share"]', 'button:has-text("Share")']) if (await exists(s)) { await tap(s, 900, true); return; }
     throw new Error('no share button on the replayer');
   }, 1);
+  // Hands: the Saved Hands heading's Export for PokerTracker sheet (HandHistoryExportSheet), over the
+  // account's own hands plus one of every kind it sorts (scripts/hands-states.mjs: both options and
+  // the Not exported list), staged by answering the list's request; and a replay's Share sheet on a
+  // hand that came by a share link, whose hand-history tile is off with its reason.
+  step('hands-export', async () => {
+    const undo = await stageHands(p);
+    try {
+      await fresh(); await nav('Hands');
+      const sel = 'button:has-text("Export for PokerTracker")';
+      await reveal(sel, 200);
+      await tap(sel, 900);
+      await vis('.hh-export-sheet').first().waitFor({ timeout: 4000 });
+      await run('hands-export');
+    } finally { await undo(); }
+  }, 0, { selfRun: true });
+  step('replayer-share-shared', async () => {
+    await p.goto(base + '/#h/' + encodeURIComponent(SHARED_HAND_CODE), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(4500);
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    await tap('.rab-share', 900, true);
+    await vis('.replayer-share-sheet').first().waitFor({ timeout: 4000 });
+  }, 1);
   // Cash: the location picker.
   step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);
   // Results: the log form, a row in edit, the tax report, the share menu, the analytics sheet.
@@ -2296,24 +2352,100 @@ function finalize(c) {
   for (const [name, sel] of [['summary', 'button:has-text("Summary")'], ['backers', 'button:has-text("Backers")'], ['series', 'button:has-text("+ Series")'], ['settings', 'button:has-text("⚙")']]) {
     step('staking-' + name, async () => { await goView('staking'); await tap('.tab-panel[data-tab="staking"] ' + sel, 1200); }, 1);
   }
-  // The first-run wizard, step by step (re-opened the way the location menu does).
+  // First-run setup, stage by stage (re-opened the way the location menu's "Run setup again"
+  // does; docs/onboarding.md): step 1 as it opens, with "Use my location" refused (no permission:
+  // the error line), located (permission granted at a fixed point: the place named, the distance
+  // chips), and with city results (Nominatim, so only where the scratch server reaches the
+  // internet); step 2, then with Yes (the state select and, once a state is known, the sites
+  // checkbox); step 3 with a game and a buy-in chip on. Nothing is finished or skipped, so nothing
+  // is written. Every option carries .onboarding-option.
   step('onboarding', async () => {
+    const open = async () => {
+      await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
+      await p.waitForTimeout(1000);
+      if (!(await exists('.ob-progress'))) throw new Error('setup did not open');
+    };
+    try {
+      await open();
+      await also('step 1');
+      await tap('.ob-tile', 1500);
+      if (!(await exists('.ob-error'))) throw new Error('no error line after a refused "Use my location"');
+      await also('step 1 denied');
+      // WebKit keeps a page's refusal for the life of the page: grant, then a fresh page.
+      await ctx.grantPermissions(['geolocation'], { origin: base });
+      await ctx.setGeolocation({ latitude: 39.9526, longitude: -75.1652 });
+      await p.goto(home, { waitUntil: 'domcontentloaded' });
+      await p.waitForTimeout(3500);
+      await open();
+      // Already allowed: setup locates by itself; tap only if it has not.
+      for (let i = 0; i < 10 && !(await exists('.ob-chip')); i++) await p.waitForTimeout(300);
+      if (!(await exists('.ob-chip'))) await tap('.ob-tile', 3500);
+      if (!(await exists('.ob-chip'))) throw new Error('no distance chips once located');
+      await also('step 1 located');
+      await vis('.ob-search').first().fill('Austin');
+      await p.waitForTimeout(1500);
+      for (let i = 0; i < 10 && !(await exists('.ob-results .ob-row')); i++) await p.waitForTimeout(300);
+      if (await exists('.ob-results .ob-row')) await also('step 1 search');
+      else notes.push({ view: 'onboarding', note: 'no city results (the scratch server could not reach Nominatim): step 1 search not measured' });
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await also('step 2');
+      await tap('.ob-tile:has-text("Yes")', 600);
+      await also('step 2 online');
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await tap('.ob-chip:has-text("NLH")', 300);
+      await tap('.ob-chip:has-text("$500–1.5K")', 600);
+      await also('step 3');
+    } finally { await ctx.clearPermissions(); }
+  }, 0, { noSkip: true });
+  // First-run setup's other answers (re-opened, nothing finished): a region that implies a state
+  // (Las Vegas -> Nevada, with the sites checkbox, ticked), Europe (no state, the non-US line),
+  // Everywhere (the state select at "Not set"), and the zero-count line, where a combination of
+  // chips on Texas matches nothing in the scratch data. docs/onboarding.md.
+  step('onboarding-places', async () => {
     await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
     await p.waitForTimeout(1000);
-    if (!(await exists('button:has-text("Skip")'))) throw new Error('the wizard did not open');
-    await also('step 1');
-    for (let i = 2; i <= 6; i++) {
-      // pick something on the step so Next is live
-      const opt = vis('.onboarding-option, [role="radio"], [role="checkbox"], button:has-text("Las Vegas")').first();
-      if (await opt.count()) await opt.click({ timeout: 2000 }).catch(() => {});
-      const next = vis('button:has-text("Next"), button:has-text("Done"), button:has-text("Finish"), button:has-text("Get started")').first();
-      if (!(await next.count())) break;
-      await next.click({ timeout: 3000 }).catch(() => {});
-      await p.waitForTimeout(800);
-      if (!(await exists('button:has-text("Skip")'))) break;
-      await also('step ' + i);
+    if (!(await exists('.ob-progress'))) throw new Error('setup did not open');
+    const next = () => tap('.ob-foot button:has-text("Next")', 800);
+    const back = () => tap('.ob-foot button:has-text("Back")', 600);
+    await tap('.ob-cell:has-text("Las Vegas")', 500);
+    await also('region picked');
+    await next();
+    if (!(await exists('.ob-tile[aria-checked="true"]:has-text("Yes")'))) await tap('.ob-tile:has-text("Yes")', 500);
+    if ((await vis('#ob-state').first().inputValue()) !== 'NV') throw new Error('Las Vegas did not answer the state (Nevada); savedLocation is ' + await p.evaluate(() => localStorage.getItem('savedLocation')));
+    await tap('.ob-check', 400);
+    await also('state from the region');
+    await back();
+    await tap('.ob-cell:has-text("Europe")', 500);
+    await next();
+    if (!(await exists('.ob-help:has-text("US states only")'))) throw new Error('no non-US line for Europe');
+    await also('Europe');
+    await back();
+    await tap('.ob-cell:has-text("Everywhere")', 500);
+    await next();
+    if ((await vis('#ob-state').first().inputValue()) !== '') throw new Error('Everywhere left a state set');
+    await also('no state');
+    // The longest state name in the checkbox (a label that must not clip).
+    await vis('#ob-state').first().selectOption('DC');
+    await p.waitForTimeout(400);
+    await also('longest state name');
+    await back();
+    await tap('.ob-cell:has-text("Texas")', 500);
+    await next(); await next();
+    const zero = async () => (await vis('.ob-status').first().innerText()).startsWith('Nothing upcoming');
+    for (const chip of ['$5K+', 'Mixed', 'PLO']) {
+      if (await zero()) break;
+      await tap('.ob-chip:has-text("' + chip + '")', 500);
     }
+    if (await zero()) await also('zero count');
+    else notes.push({ view: 'onboarding-places', note: 'no chip combination on Texas matched nothing in this data: the zero-count line was not measured' });
   }, 0, { noSkip: true });
+  // Settings' "Edit name": the name dialog opened on the current name, titled "Your name".
+  step('settings-edit-name', async () => {
+    await menu('Settings', 'Settings');
+    await tap('button:has-text("Edit name")', 900);
+    if (!(await exists('.ob-name'))) throw new Error('the name dialog did not open');
+    if (!(await exists('.ob-name .ob-title:has-text("Your name")'))) throw new Error('the dialog is not titled "Your name"');
+  }, 0);
   // Signed out: the login, register and forgot-password screens; with CHECK_FRESH_USER, a
   // password login to an account with no real name (the real-name prompt), then its wizard.
   const signedOut = async () => {
@@ -2350,10 +2482,35 @@ function finalize(c) {
     if (!(await p.getByText(/what's your name|your real name/i).filter({ visible: true }).count())
       && !(await p.locator('input[placeholder="Your real name"]').filter({ visible: true }).count())) throw new Error('the real-name prompt did not show');
     await also('prompt');
-    // The first-run wizard follows it for a new account.
+    // First-run setup follows it for a new account (users.onboarding is NULL): it must open.
     await p.getByRole('button', { name: /later|skip|not now/i }).first().click({ timeout: 2000 }).catch(() => {});
-    await p.waitForTimeout(1200);
+    await p.waitForTimeout(1500);
+    // Unless the account has a setup record (an account older than users.onboarding is backfilled
+    // legacy and is never asked): then setup is not expected, and that is noted.
+    const rec = await p.evaluate(async () => {
+      try {
+        const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const r = await fetch('/api/user/onboarding', { headers: { Authorization: 'Bearer ' + t } });
+        return r.ok ? (await r.json()).onboarding : undefined;
+      } catch { return undefined; }
+    });
+    if (!(await exists('.ob-progress'))) {
+      if (rec === null) throw new Error('a new account did not reach first-run setup after "Later"');
+      notes.push({ view: 'real-name-prompt', note: `CHECK_FRESH_USER has a setup record (${JSON.stringify(rec)}): setup not expected after "Later"` });
+    }
     await also('after');
+    // The first run's own defaults (nothing is finished): step 2 starts at "No, live only" (online
+    // events are off until the player says yes), then Yes brings the state question.
+    if (await exists('.ob-progress')) {
+      await tap('.ob-foot button:has-text("Next")', 800);
+      const on = await p.evaluate(() => [...document.querySelectorAll('.ob-tile[aria-checked="true"] .ob-tile-title')].map(e => e.textContent).join('|'));
+      if (on !== 'No, live only') throw new Error("a first run's step 2 should start at 'No, live only'; it has: " + (on || 'nothing selected'));
+      await also('first run step 2');
+      await tap('.ob-tile:has-text("Yes")', 600);
+      await also('first run step 2 online');
+      await tap('.ob-foot button:has-text("Next")', 800);
+      await also('first run step 3');
+    }
   }, 0, { signedOut: true, noSkip: true });
 
   if (listOnly) { console.log(views.map(v => v.view).join('\n')); await b.close(); return; }

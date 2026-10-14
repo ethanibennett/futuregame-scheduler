@@ -1,0 +1,36 @@
+PokerStars Hand #8882276776812122: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (500/1000) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #4 is the button
+Seat 1: Pia (30000 in chips)
+Seat 2: Quinn (22000 in chips)
+Seat 3: Hero (40000 in chips)
+Seat 4: Rex (15000 in chips)
+Seat 5: Sam (26000 in chips)
+Seat 6: Tia (31000 in chips)
+Tia: posts the ante 1000
+Sam: posts small blind 500
+Tia: posts big blind 1000
+*** HOLE CARDS ***
+Dealt to Hero [Ac Qc]
+Pia: folds
+Quinn: folds
+Hero: raises 1200 to 2200
+Rex: raises 12800 to 15000 and is all-in
+Sam: folds
+Tia: folds
+Hero: calls 12800
+*** FLOP *** [Qd 7s 2h]
+*** TURN *** [Qd 7s 2h] [9c]
+*** RIVER *** [Qd 7s 2h 9c] [3d]
+*** SHOW DOWN ***
+Rex: shows [Js 9s] (a pair of Nines)
+Hero: shows [Ac Qc] (a pair of Queens)
+Hero collected 32500 from pot
+*** SUMMARY ***
+Total pot 32500 | Rake 0
+Board [Qd 7s 2h 9c 3d]
+Seat 1: Pia folded before Flop (didn't bet)
+Seat 2: Quinn folded before Flop (didn't bet)
+Seat 3: Hero showed [Ac Qc] and won (32500) with a pair of Queens
+Seat 4: Rex (button) showed [Js 9s] and lost with a pair of Nines
+Seat 5: Sam (small blind) folded before Flop
+Seat 6: Tia (big blind) folded before Flop

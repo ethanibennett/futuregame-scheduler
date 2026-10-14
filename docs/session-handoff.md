@@ -14,28 +14,61 @@ wsop-console side and verified against both live services.
 
 ---
 
-## 2026-10-14 — Locations live; date pills, Sessions and Trend in their last rounds
-- **Live:** the bankroll **Locations** tab (52e0895: ITM per entry; a mixed room says "won/ITM" and only
-  plain "won" is toned green/red), the venue map (0b0d08e), and build.js reinstalling vite-app deps on
-  Render when the lockfile changes (aeb710b).
-- **Ready to merge after its guards:** the date-pill fix (branch `fix/date-pill`, worktree `date-pill`).
-  Labels centre their INK, read from canvas pixels by `utils/ink-balance.js` (WebKit clamps
-  measureText's bounds to the advance). The controls guard now waits for the layout to settle, which
-  was the cause of the recurring false "10 Oct" failure.
-- **In their final rounds:** the Sessions tab, the Trend overlays, the parser corpora (100 written + 136 spoken real hands; hardening
-  next), and the queued features (home customization, onboarding, hand-history export). **Ads are
-  PAUSED** (owner, 2026-10-14: "an excellent proof of concept"; memory `ads-paused` has the state of
-  each). Catalogue three's specimens and page are on hold too (it was the biggest spender, 6.4M tokens).
-- **Model policy (owner, 2026-10-14):** where Opus is not needed, delegate to Sonnet or Haiku. Set
-  `model` on every agent; one build plus one check per job (memory `model-delegation`).
-- **Trap: scratch seed tokens expire after 12 h.** `setup.cjs` signs `token.txt` with `expiresIn: '12h'`.
-  A guard run with an expired token silently skips most views and still prints "all N controls on the
-  grid" (21 controls instead of about 600). Check the skipped count and the JWT `exp` before trusting a
-  pass. Every scratchpad token was re-signed for 72 h on 2026-10-14.
-- **Owner answers wanted:** the parser's 47 questions (page in the table below) and the launch plan's
-  7 open questions (its section 16).
-- **Loose end:** `overviewStats().mtt.itm` (bankroll-ledger.js) still counts ITM per event; nothing on
-  screen shows it, but the owner's rule is per entry. Fix after Sessions and Trend merge (same file).
+## 2026-10-14 — A day of merges: bankroll, replayer, parser, the roster leak; the bankroll merge begins
+- **Live on master (4a19a4b):**
+  - Bankroll: Locations (ITM per entry), the Trend graph (Total, Tournaments and Cash lines, Fill,
+    gridlines), the Sessions tab, a **Bankroll** footer tab in Social's old slot (it opens Results &
+    Tracking; Social moved to the username menu and the rail's lower group), and a floating **+** on
+    Results and in the dashboard sheet (Tournament result, Cash session, Start live session, Expense or
+    income; a non-admin goes straight to the Log Result form).
+  - Replayer: springs with Set B as the default; PLO5, PLO6, PLO6 8/b, Short Deck and NLO8 as their own
+    games, with "Big Easy" renamed PLO6 8/b everywhere a user sees it and kept as an input alias (the
+    shorthand code BE still decodes).
+  - Quick add: hardened against 100 written and 136 spoken real hands, with the owner's 47 answers
+    (decisions A–I are switches in `lib/quick-add/decisions.js`). **Not run against the live model:**
+    agents have no API key, so a live eval needs the owner.
+  - Date pills centre their ink (`utils/ink-balance.js`), and the controls guard waits for layout to settle.
+  - The bankroll merge's Phase 1 (`money-merge-2026-10` migration, applied on prod 09:44Z; classify and
+    standing engines). It is schema and engines only, and changes nothing users see.
+- **Roster leak closed (owner-approved):**
+  - The dashboard's roster endpoint used to serve every backer's token, phone and email under
+    DASHBOARD_TOKEN, which is compiled into iOS. It now needs ROSTER_TOKEN, a Bearer header set on both
+    Render services only (wsop-console 10716e9, scheduler 38fd609).
+  - Prod sync was verified: "pull from the dashboard ok — 3 record(s) offered".
+  - This box has NO ROSTER_TOKEN, so it no longer mirrors backer credentials. The rows already in
+    poker-tournaments.db remain.
+  - Recommended, not done: rotate DASHBOARD_TOKEN (it sat in Render's request logs for as long as the old
+    sync ran) and decide whether backer links need rotating.
+- **The bankroll merge** (owner, 2026-10-14; memory `bankroll-merge`; spec `docs/bankroll-merge.md`):
+  - futurega.me owns the money, and the dashboard's money screens retire.
+  - The owner answered all 16 questions on the page below. They differ from the defaults on: a manual
+    Notify tap, silent corrections, asking on a standing/series overlap, every game on its own, and
+    backers paying up front.
+  - Render disks keep 7 daily snapshots on all three services.
+  - Phase 2 (backer pages on the new tables, behind a switch) is being built on Sonnet.
+- **TestFlight:** the 04:00 nightly (de93d30) sat queued with no runner because the Mac was asleep. It was
+  cancelled for a manual build of da5afa2 (Bankroll tab + the + button) at the owner's ask, which is queued
+  until the Mac wakes. `.testflight-nightly.json` records it under `manual`.
+- **In flight (Sonnet):**
+  - Edit home: fixing a slow GET that undoes a saved change.
+  - Hand-history export: fixing a shared hand being credited to the viewer, and reusing
+    `lib/quick-add/hh.js`.
+  - Onboarding v2: rebuilding from its spec.
+  - Money merge Phase 2.
+- **Owner questions open:**
+  - Short Deck: does trips beat a straight? The branch has the straight winning; Triton and GG rules
+    rank trips higher; `SHORT_DECK_TRIPS_BEAT_STRAIGHT` plus its tests.
+  - The launch plan's 7 questions (its section 16).
+- **Bugs found, not fixed:**
+  - On desktop at 8/9-max, the replayer's top seat's cards are cut off 8–16px by the window top. This is
+    pre-existing, for every game.
+  - Hi-lo equity pills overlap the board's top edge.
+  - `test/hilo-split-awards.mjs` throws `settled is not defined`, on master too.
+  - `overviewStats().mtt.itm` still counts ITM per event.
+- **Ads PAUSED; catalogue three on hold** (memories `ads-paused`, `model-delegation`).
+- **Trap: scratch seed tokens expire after 12 h** (`setup.cjs`, `expiresIn: '12h'`). An expired token makes
+  a guard skip most views and still print "all N controls on the grid". Check the skipped count. A fresh
+  72 h seed is in `scratchpad/date-pill-merge/seed/`.
 
 ## 2026-10-14 — Replayer springs merged (Set B the default)
 - The flop deal and spread, the turn/river landing, wagers pushed out and swept into the pot, and
@@ -70,6 +103,44 @@ wsop-console side and verified against both live services.
   "settled" must wait for the registry too (`entries`, `ticks`, `deferred`), not just
   `getAnimations()`: the ship is built a few frames after the press.
 
+## 2026-10-13 — First-run setup v2 ("onboarding questions refinement"), branch `feat/onboarding-refine`
+- **Built, not merged** (worktree `.claude/worktrees/onboarding`). Spec, the before/after question
+  list word for word, storage and endpoints: `docs/onboarding.md`. Three optional questions
+  (where you play live, online too, what you play) instead of four required ones; a live count;
+  "Use my location" / city search / regions with the state worked out; Skip keeps confirmed steps.
+- **Per account now:** `users.onboarding` (migration `users-onboarding-2026-10` backfills every
+  existing account with `{"v":1,"legacy":true}`, so no old user is asked again);
+  `GET/PUT /api/user/onboarding`; `/api/login` returns `onboarding`; `/api/register` returns a
+  session (Create Account signs you in).
+- **Fixed on the way (docs/onboarding.md §10):** B1 the state stored as "PENNSYLVANIA" (repaired on
+  read), B2 a re-run not reaching a mounted Schedule, B3 Everywhere not clearing the account copy,
+  B4 a re-run wiping siteRules, B10 setup per browser, a location GET/PUT race, and B12: a new
+  browser's first Schedule pushed its empty location on mount and wiped the account's copy, so
+  location never followed an account to a second device (the views now push only a change).
+- **Waiting on Ethan:** the wording (docs/onboarding.md §2) and decisions D1–D13 (§9), all built
+  with their defaults. Settings gained "Edit name".
+- **2026-10-14 update:** master (4a19a4b: Bankroll tab, floating +, Sessions, Trend, venue maps) merged
+  in with three conflicts, all additive. **Launch plan, built in (L1):** online events are off until the
+  player says yes, so a first run starts step 2 at "No, live only" and writes it on finish AND on skip;
+  where a state is known the state filter is written on too. The Schedule's global default
+  (`DEFAULT_FILTERS.showOnline`) is NOT changed: that is the launch plan's separate live-only-defaults job.
+- **Trap: a first-run guard needs an account whose `users.onboarding` is NULL.** The migration marks every
+  account in a seeded DB legacy, so `freshie` (and any seed user) shows no setup until it is NULLed with
+  sql.js while the server is stopped. The grid overlay is admin-only (`ham`, `ham5`, `claude`), so overlay
+  screenshots of a FIRST run need `ham5`'s record NULLed too (and a fresh copy per run, since finishing
+  writes it).
+- **Trap: never close setup with Esc or Skip in a guard.** Both SAVE the steps already confirmed with Next
+  (that is D5), so a guard that pressed Esc after picking Texas and a state wrote that location to the
+  account it signed in as (PUT /api/user/location, a v2 skipped record) and poisoned every later run
+  (`onboarding-places` then failed: a manual state beats a region's). The clipping guard now leaves setup
+  open and reloads. `scripts/check-text-clipping.mjs` signs in as `ham5` on whatever server it is pointed
+  at, so this would have written to the owner's account on :3001.
+- Guards: `npm run check:controls -- --only onboarding,real-name-prompt,settings-edit-name,auth-register,
+  location-dropdown` (`onboarding-places` is a prefix match) and `check:clipping`, whose first-run section
+  prints "first-run setup: 8 views measured": anything but 8 means a stage was skipped.
+- Screenshots (grid overlay on, both sizes): the builder's scratch folders `scratchpad/onboarding/shots/`
+  and `scratchpad/onboarding-v2/shots/`.
+
 ## 2026-10-13 — Shipped: home, Overview tables, centring sweep, scroll parity; nightly TestFlight
 - **Live on master:** desktop Schedule scrolls like the phone (79a82c3); the mirrored detail-panel motion
   (`utils/detail-motion.js`); the centring sweep (490 controls + venue strips, 9b142b5; the guard now
@@ -92,10 +163,19 @@ wsop-console side and verified against both live services.
   `feat/backer-page` (worktree `backer-page`, 627fa70) — merge with master, deploy.
 - **Queued (owner, 2026-10-13):** onboarding questions refinement; an s-points calculator on events
   whose structures are available (confirm what "s-points" means with Ethan first); letting the user
-  change and reorder what the home (Dashboard) shows. **Also queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (files the
-  WSOP.com client writes on the player's computer, parsed into the replayer — never account
-  scraping; needs sample files from Ethan); catalogue three (replayer polish, ~25 agents — ask
-  first, it is the biggest spender). Ads are paused (memory `ads-paused`).
+  change and reorder what the home (Dashboard) shows. **Also queued:** Sessions list and Trend chart (bankroll); WSOP.com hand-history IMPORT (the
+  WSOP.com client keeps hands on WSOP's servers behind a replay viewer and writes no files, so
+  the import reads that viewer's replay data — never account scraping; `lib/hh-import/wsop-replay.mjs`
+  waits for a sanitised HAR from Ethan, `docs/hand-history-io.md` §9); catalogue three (replayer
+  polish, ~25 agents — ask first, it is the biggest spender). Ads are paused (memory `ads-paused`).
+- **(2026-10-13) Hand-history export built** (branch `feat/hand-history-io`): saved hands as
+  PokerStars-format text for PokerTracker 4 from the replay's Share sheet and Hands → Export for
+  PokerTracker; the writer, a PokerStars parser that round-trips it, and the import registry.
+  `npm run test:hh-io`. `docs/hand-history-io.md`. **Reviewed and finished 2026-10-14:** a shared
+  hand no longer exports as the viewer's; PT4 takes four-card Omaha only (5/6-card Omaha is written
+  but marked "PT4 skips it"); PLO6 8/b (never Big Easy), NLO8 and Short Deck (refused by name) mapped;
+  a short big blind posts its blind first; and `lib/quick-add/hh.js` (the fast path) and
+  `lib/hh-import` are held to agree on the same text (doc §8).
 - **Usage:** the weekly limit was hit on 2026-10-13. Default to one builder + one verifier per job,
   two or three jobs at a time, full guard runs once per size.
 
@@ -356,6 +436,7 @@ to the account and readable with WebFetch.
 | Launch plan | Launch on 5 Jan 2027 at the BWPO, free until a 1 Mar paywall, $10,000 in three gates; channels, the twelve ads, policy wording, ASO, tracking, next 10 actions and 7 open questions (2026-10-13) | https://claude.ai/artifact/5k5qVK6Y8cPmzdMXjJEDgW |
 | Variant picker | Ten redesigns of the replayer entry's variant picker (recommended 8+10, fallback 1) (2026-10-13) | https://claude.ai/artifact/Jk96jEaP58rBAsf4eak9ka |
 | Parser questions | 47 questions from the real-hand corpora, tap-to-answer; the answers are in its db collection `answers` (Artifact tool, read_db) (2026-10-14) | https://claude.ai/artifact/9m4sQRQY4JpvcuEZJZR5NR |
+| Merge questions | The 16 bankroll-merge calls; answers in its db collection `answers` (2026-10-14) | https://claude.ai/artifact/K7iAcVUaV7ZjQ21U9EyynU |
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
@@ -747,8 +828,14 @@ again. If builds break and no push arrives, check `pm2 list` first.
 
 ## Waiting on Ethan
 
-- **(2026-10-13) Sample WSOP.com hand-history files** — one or two real files the WSOP.com client
-  saved, to build the hand-history import against.
+- **(2026-10-13) A sample of WSOP.com's replay data** — the client keeps hands on WSOP's servers
+  (no files on disk): a HAR of the replay viewer loading 3 hands (one to showdown, one won without
+  one, one multi-way all-in), cookies and auth headers stripped, with the hand ids the client shows
+  (`docs/hand-history-io.md` §9). `lib/hh-import/wsop-replay.mjs` refuses until then.
+- **(2026-10-13) The PokerTracker 4 import check** — import an exported file into an empty PT4
+  database and report what it rejects or misreads; import it twice to confirm PT4 de-duplicates by
+  hand number (`docs/hand-history-io.md` §10). Until then PT4 acceptance is checked only against
+  genuine PokerStars hands, not against PT4 itself.
 - **(2026-10-13) MapKit JS key** — a Maps ID + a key with MapKit JS enabled (.p8) in the Apple
   Developer account; then `MAPKIT_TEAM_ID` / `MAPKIT_KEY_ID` / `MAPKIT_PRIVATE_KEY` on Render and in
   `ecosystem.config.cjs`. Later, for Android: `GOOGLE_MAPS_BROWSER_KEY` (+ optional
@@ -798,6 +885,14 @@ again. If builds break and no push arrives, check `pm2 list` first.
 ---
 
 ## Traps worth knowing
+
+**Setup state is per account (`users.onboarding`); `localStorage.onboarded` is only a cache.**
+Clearing the flag does not re-run setup for an account that has a record: the next launch asks
+`GET /api/user/onboarding`, adopts the record and sets the flag again. To see setup as a new user,
+use a NEW account (registered after the migration ran, so its column is NULL), or "Run setup
+again" in the location menu. Both guards keep it shut with `onboarded = '1'`; a scratch DB seeded
+by registering accounts on a fresh boot leaves them all NULL (the migration ran before they
+existed), which is why `freshie` reaches setup.
 
 **A PR description can be stale relative to its own branch.** #62's body says
 the runner-persistence question is "still open" — but the second commit on that

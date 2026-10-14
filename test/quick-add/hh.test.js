@@ -276,3 +276,29 @@ Dealt to alpha [2c 3d 4h]
   assert.equal(hh.unsupported, true);
   assert.ok(!hh.anonymised.includes('alpha'));
 });
+
+test('a blind posted all-in for less than the blind does not become the stakes', () => {
+  const short = `PokerStars Hand #100000009: Tournament #5550001, $1+$0.10 USD Hold'em No Limit - Level II (500/1000) - 2026/10/01 20:15:00 ET
+Table '5550001 1' 6-max Seat #2 is the button
+Seat 1: kestrel (20000 in chips)
+Seat 2: osprey (20000 in chips)
+Seat 3: plover (15000 in chips)
+Seat 4: wren (800 in chips)
+plover: posts small blind 500
+wren: posts big blind 800 and is all-in
+*** HOLE CARDS ***
+Dealt to osprey [Ah Kh]
+kestrel: folds
+osprey: raises 1500 to 2500
+plover: folds
+Uncalled bet (1700) returned to osprey
+*** SUMMARY ***
+Total pot 2100 | Rake 0
+`;
+  const { draft } = parseHandHistory(short).build();
+  assert.equal(draft.blinds.bb, 1000, 'the big blind is the header\'s 1000, not the 800 posted');
+  assert.equal(draft.blinds.sb, 500);
+  // A limit header reads big blind / big bet, so the post stays what it is.
+  const limit = short.replace("Hold'em No Limit - Level II (500/1000)", "Hold'em Limit - Level II (1000/2000)");
+  assert.equal(parseHandHistory(limit).build().draft.blinds.bb, 800);
+});

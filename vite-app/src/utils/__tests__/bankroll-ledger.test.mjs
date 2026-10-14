@@ -242,7 +242,7 @@ test('overviewStats: results split by source, tournament ROI / ITM on the displa
   assert.deepEqual(s.bySource, { tournaments: 975, cash: 300, other: -80 });
   assert.deepEqual([s.mtt.events, s.mtt.bullets, s.mtt.cashes, s.mtt.cost, s.mtt.cashed], [3, 4, 1, 625, 1600]);
   assert.equal(s.mtt.roi, 975 / 625);
-  assert.equal(s.mtt.itm, 1 / 3);
+  assert.equal(s.mtt.itm, 1 / 4, 'ITM per entry: 1 cash over 4 bullets (the owner\'s rule), not per event');
   assert.equal(s.mtt.avgBuyin, 625 / 4);
   assert.deepEqual([s.cash.sessions, s.cash.hours, s.cash.wins], [3, 6, 2]);
   assert.equal(s.cash.hourly, (400 - 150) / 6, 'the timed sessions only');

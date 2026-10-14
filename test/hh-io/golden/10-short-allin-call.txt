@@ -1,0 +1,38 @@
+PokerStars Hand #8822839191227890: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (200/400) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #4 is the button
+Seat 1: Uri (30000 in chips)
+Seat 2: Val (30000 in chips)
+Seat 3: Hero (25000 in chips)
+Seat 4: Wes (2400 in chips)
+Seat 5: Xan (30000 in chips)
+Seat 6: Yul (30000 in chips)
+Yul: posts the ante 400
+Xan: posts small blind 200
+Yul: posts big blind 400
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kh]
+Uri: folds
+Val: folds
+Hero: raises 600 to 1000
+Wes: calls 1000
+Xan: folds
+Yul: folds
+*** FLOP *** [Kc 7c 2d]
+Hero: bets 3000
+Wes: calls 1400 and is all-in
+Uncalled bet (1600) returned to Hero
+*** TURN *** [Kc 7c 2d] [5s]
+*** RIVER *** [Kc 7c 2d 5s] [Jd]
+*** SHOW DOWN ***
+Hero: shows [Ah Kh] (a pair of Kings)
+Wes: shows [9s 9c] (a pair of Nines)
+Hero collected 5800 from pot
+*** SUMMARY ***
+Total pot 5800 | Rake 0
+Board [Kc 7c 2d 5s Jd]
+Seat 1: Uri folded before Flop (didn't bet)
+Seat 2: Val folded before Flop (didn't bet)
+Seat 3: Hero showed [Ah Kh] and won (5800) with a pair of Kings
+Seat 4: Wes (button) showed [9s 9c] and lost with a pair of Nines
+Seat 5: Xan (small blind) folded before Flop
+Seat 6: Yul (big blind) folded before Flop

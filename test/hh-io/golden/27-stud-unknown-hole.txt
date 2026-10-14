@@ -1,0 +1,39 @@
+PokerStars Hand #8245832325174352: Tournament #7081318631, Freeroll  7 Card Stud Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7081318631 1' 8-max
+Seat 1: Sal (5000 in chips)
+Seat 2: Hero (5000 in chips)
+Sal: posts the ante 20
+Hero: posts the ante 20
+*** 3rd STREET ***
+Dealt to Sal [2c]
+Dealt to Hero [Qh Qd 9s]
+Sal: brings in for 25
+Hero: raises 75 to 100
+Sal: calls 75
+*** 4th STREET ***
+Dealt to Sal [2c] [6d]
+Dealt to Hero [Qh Qd 9s] [9h]
+Hero: bets 100
+Sal: calls 100
+*** 5th STREET ***
+Dealt to Sal [2c 6d] [7d]
+Dealt to Hero [Qh Qd 9s 9h] [3c]
+Hero: bets 200
+Sal: calls 200
+*** 6th STREET ***
+Dealt to Sal [2c 6d 7d] [8d]
+Dealt to Hero [Qh Qd 9s 9h 3c] [Ks]
+Hero: bets 200
+Sal: calls 200
+*** RIVER ***
+Dealt to Hero [Qh Qd 9s 9h 3c Ks] [4h]
+Hero: bets 200
+Sal: calls 200
+*** SHOW DOWN ***
+Hero: shows [Qh Qd 9s 9h 3c Ks 4h] (two pair, Queens and Nines)
+Sal: mucks hand
+Hero collected 1640 from pot
+*** SUMMARY ***
+Total pot 1640 | Rake 0
+Seat 1: Sal mucked
+Seat 2: Hero showed [Qh Qd 9s 9h 3c Ks 4h] and won (1640) with two pair, Queens and Nines

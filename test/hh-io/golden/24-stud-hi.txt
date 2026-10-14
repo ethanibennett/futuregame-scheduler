@@ -1,0 +1,49 @@
+PokerStars Hand #8238080973204749:  7 Card Stud Limit ($0.50/$1 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 8-max
+Seat 1: Hero ($40 in chips)
+Seat 2: Mags ($40 in chips)
+Seat 3: Nell ($40 in chips)
+Hero: posts the ante $0.10
+Mags: posts the ante $0.10
+Nell: posts the ante $0.10
+*** 3rd STREET ***
+Dealt to Hero [As Ad 8c]
+Dealt to Mags [3d]
+Dealt to Nell [Qs]
+Mags: brings in for $0.25
+Nell: raises $0.25 to $0.50
+Hero: calls $0.50
+Mags: calls $0.25
+*** 4th STREET ***
+Dealt to Hero [As Ad 8c] [Kh]
+Dealt to Mags [3d] [5h]
+Dealt to Nell [Qs] [Jh]
+Hero: bets $0.50
+Mags: calls $0.50
+Nell: calls $0.50
+*** 5th STREET ***
+Dealt to Hero [As Ad 8c Kh] [7d]
+Dealt to Mags [3d 5h] [6s]
+Dealt to Nell [Qs Jh] [9d]
+Hero: bets $1
+Mags: calls $1
+Nell: folds
+*** 6th STREET ***
+Dealt to Hero [As Ad 8c Kh 7d] [2c]
+Dealt to Mags [3d 5h 6s] [Jc]
+Hero: checks
+Mags: bets $1
+Hero: calls $1
+*** RIVER ***
+Dealt to Hero [As Ad 8c Kh 7d 2c] [9s]
+Hero: checks
+Mags: checks
+*** SHOW DOWN ***
+Hero: shows [As Ad 8c Kh 7d 2c 9s] (a pair of Aces)
+Mags: shows [4c Tc 3d 5h 6s Jc Th] (a pair of Tens)
+Hero collected $7.30 from pot
+*** SUMMARY ***
+Total pot $7.30 | Rake $0
+Seat 1: Hero showed [As Ad 8c Kh 7d 2c 9s] and won ($7.30) with a pair of Aces
+Seat 2: Mags showed [4c Tc 3d 5h 6s Jc Th] and lost with a pair of Tens
+Seat 3: Nell folded on the 5th Street

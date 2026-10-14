@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { LOCATION_REGIONS } from '../utils/utils.js';
+import { LOCATION_REGIONS, REGION_JURISDICTION } from '../utils/utils.js';
 import { US_STATES, stateCodeFrom } from '../utils/online-sites.js';
 import { API_URL } from '../utils/api.js';
 import Icon from './Icon.jsx';
@@ -171,7 +171,13 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
       <div style={DIVIDER} />
       {!pointOnly && Object.entries(LOCATION_REGIONS).map(([key, { label }]) => (
         <button key={key} onClick={() => {
-          setFilters(f => ({...f, locationRegion: f.locationRegion === key ? null : key, userLocation: null, maxDistance: '', locationLabel: null}));
+          // A region also answers the state where it implies one (Las Vegas: Nevada), as a place
+          // looked up does; a state picked by hand stays.
+          setFilters(f => {
+            const picking = f.locationRegion !== key;
+            const next = {...f, locationRegion: picking ? key : null, userLocation: null, maxDistance: '', locationLabel: null};
+            return picking ? learnJurisdiction(next, REGION_JURISDICTION[key] || null) : next;
+          });
           onClose();
         }} style={{
           ...ROW,gap:'calc(var(--subrow) * 1)',
@@ -245,7 +251,7 @@ export default function LocationDropdown({ rect, filters, setFilters, onClose, t
         background:'none',border:'none',color:'var(--text-muted)',
         fontSize:'calc(var(--gu) * 1.178)',cursor:'pointer',textAlign:'left',
       }}>
-        Re-run filter setup
+        Run setup again
       </button>}
     </div>
   );

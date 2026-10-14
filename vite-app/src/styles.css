@@ -2447,6 +2447,291 @@
     .modal-content h3 { margin: 0 0 var(--subrow); line-height: calc(var(--subrow) * 3); }
     .modal-content p { margin: 0 0 calc(var(--subrow) * 2); line-height: calc(var(--subrow) * 2); }
 
+    /* ── First-run setup (OnboardingWizard.jsx, docs/onboarding.md) ──
+       Inside the 35g modal's 31g content box, every block whole r and whole g. From the content
+       top: the 4r head (step caption on +3r, a 4r Skip), 1r, the 1r progress bar (three 9g
+       segments, 2g apart: 9+2+9+2+9 = 31g), 2r, the 3r title (baseline on its bottom line), 1r,
+       the lead (2r lines, 2r after), the step's body, the count line (2r above, 2r lines) and the
+       4r foot (2r above). Text outside a control is a trimmed block whose padding-top is its
+       first baseline less 1cap, so each baseline sits on an r line (the Settings / Social seat);
+       a control's label is centred in it (.ctl), a tile's two lines seated on its +3r and +5r.
+       Rings are inset shadows. The modal scrolls on a short screen with its scrollbar hidden, so
+       a classic scrollbar can never take width from the 31g. */
+    .modal-content.ob { scrollbar-width: none; }
+    .modal-content.ob::-webkit-scrollbar { display: none; }
+    .ob .ob-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      height: calc(var(--subrow) * 4);
+    }
+    .ob .ob-step,
+    .ob .ob-label,
+    .ob .ob-title,
+    .ob .ob-lead,
+    .ob .ob-help,
+    .ob .ob-error,
+    .ob .ob-status,
+    .ob .ob-tile-title,
+    .ob .ob-tile-sub {
+      display: block;
+      box-sizing: border-box;
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .ob .ob-step {
+      height: calc(var(--subrow) * 4);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+    .ob .ob-progress {
+      display: grid;
+      grid-template-columns: repeat(3, calc(var(--gu) * 9));
+      column-gap: calc(var(--gu) * 2);
+      height: var(--subrow);
+      margin-top: var(--subrow);
+    }
+    .ob .ob-seg { border-radius: var(--radius-xs); background: var(--border); }
+    .ob .ob-seg.is-on { background: var(--brand); }
+    .modal-content.ob .ob-title {
+      height: calc(var(--subrow) * 3);
+      margin: calc(var(--subrow) * 2) 0 var(--subrow);
+      padding-top: calc(var(--subrow) * 3 - 1cap);
+      font-size: var(--fs-xl);
+      font-weight: var(--fw-bold);
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    /* The title takes focus on each step (tabindex -1) so a screen reader announces the step. It
+       is not a control and is never reached by Tab, so it draws no ring. */
+    .modal-content.ob .ob-title:focus { outline: none; }
+    /* Wrapping text: 2r lines, the first baseline on the block's +2r, so n lines are n x 2r. */
+    .modal-content.ob .ob-lead,
+    .ob .ob-help,
+    .ob .ob-error,
+    .modal-content.ob .ob-status {
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      line-height: calc(var(--subrow) * 2);
+    }
+    .modal-content.ob .ob-lead { margin: 0 0 calc(var(--subrow) * 2); font-size: var(--fs-md); color: var(--text-muted); }
+    .ob .ob-help { margin: var(--subrow) 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
+    .ob .ob-help--gap { margin-top: calc(var(--subrow) * 2); }
+    .ob .ob-error { margin: var(--subrow) 0 0; font-size: var(--fs-sm); color: var(--danger); }
+    .modal-content.ob .ob-status { margin: calc(var(--subrow) * 2) 0 0; font-size: var(--fs-sm); color: var(--text); }
+    .ob .ob-hide { visibility: hidden; }
+    /* A caption: one 2r line (baseline on its bottom), 2r above, 1r below. */
+    .ob .ob-label {
+      height: calc(var(--subrow) * 2);
+      margin: calc(var(--subrow) * 2) 0 var(--subrow);
+      padding-top: calc(var(--subrow) * 2 - 1cap);
+      font-size: var(--fs-2xs);
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+    .ob .ob-label--first { margin-top: 0; }
+    .ob .ob-label-note { font-weight: var(--fw-regular); letter-spacing: 0; text-transform: none; }
+
+    /* Options: a ring when off; a tile or row takes a heavier brand ring on the brand tint when on,
+       a chip or region cell the brand fill. */
+    .ob .onboarding-option {
+      box-sizing: border-box;
+      margin: 0;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      cursor: pointer;
+      transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    }
+    .ob .ob-tile.is-on,
+    .ob .ob-row.is-on { background: var(--brand-quiet); box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+    .ob .ob-chip.is-on,
+    .ob .ob-cell.is-on { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+    .ob .ob-group { display: block; }
+    .ob .ob-stack { display: flex; flex-direction: column; row-gap: var(--subrow); }
+    /* A tile: 31g x 6r, two seated lines (title on +3r, sub on +5r) centred as a 4r pair, set at the
+       start. The location tile leads with a 2r pin and 1g before the text. A long line ends in an
+       ellipsis, its painted room below the baseline from padding an equal negative margin takes back. */
+    .ob .ob-tile {
+      display: flex;
+      align-items: center;
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 6);
+      padding: 0 var(--gu);
+      text-align: left;
+    }
+    .ob .ob-tile-icon {
+      --icon-size: calc(var(--subrow) * 2);
+      display: flex;
+      width: calc(var(--subrow) * 2);
+      height: calc(var(--subrow) * 2);
+      flex-shrink: 0;
+      color: var(--brand);
+    }
+    .ob .ob-tile-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+    .ob .ob-tile-title,
+    .ob .ob-tile-sub {
+      height: calc(var(--subrow) * 2.5);
+      margin-bottom: calc(var(--subrow) * -0.5);
+      padding: calc(var(--subrow) * 2 - 1cap) 0 calc(var(--subrow) * 0.5);
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ob .ob-tile-title { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+    .ob .ob-tile-sub { font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--text-muted); }
+    /* City search: a 5r field, its text on +3r (the Social search recipe: Univers Condensed A - D
+       = 0.7333em). */
+    .ob .ob-search {
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: var(--subrow) 0 0;
+      padding: calc(var(--subrow) * 2 - 0.7333em) var(--gu) var(--subrow);
+      line-height: calc(var(--subrow) * 2 + 0.7333em);
+      border: none;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-md);
+      outline: none;
+    }
+    .ob .ob-search::placeholder { color: var(--text-muted); }
+    .ob .ob-search:focus-visible { box-shadow: inset 0 0 0 var(--bw-1) var(--brand); }
+    /* Results: up to four 31g x 4r rows, the place name set at the start, a tick on the chosen one. */
+    .ob .ob-results { display: flex; flex-direction: column; margin-top: var(--subrow); }
+    .ob .ob-row {
+      display: flex;
+      align-items: center;
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 4);
+      padding: 0 var(--gu);
+      background: none;
+      box-shadow: none;
+      font-size: var(--fs-md);
+      line-height: 1;
+      text-align: left;
+    }
+    /* A label that ends in an ellipsis clips: its glyphs (ascent + descent, more than its 1em line)
+       get their painted room from padding an equal negative margin takes back, so the box the flex
+       centres is still the line. */
+    .ob .ob-row-label,
+    .ob .ob-check-label {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding-block: calc(var(--subrow) * 0.5);
+      margin-block: calc(var(--subrow) * -0.5);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ob .ob-row-check { --icon-size: calc(var(--subrow) * 2); display: flex; flex-shrink: 0; color: var(--brand); }
+    /* Chips: 7g x 4r, 1g apart on a four-cell rhythm (4 x 7 + 3 x 1 = 31g). */
+    .ob .ob-chips { display: flex; column-gap: var(--gu); }
+    .ob .ob-chip {
+      width: calc(var(--gu) * 7);
+      height: calc(var(--subrow) * 4);
+      padding: 0;
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-bold);
+    }
+    /* Regions: two 15g columns 1g apart, 5r cells 1r apart (3 rows, 17r). */
+    .ob .ob-grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, calc(var(--gu) * 15));
+      column-gap: var(--gu);
+      row-gap: var(--subrow);
+    }
+    .ob .ob-cell {
+      width: calc(var(--gu) * 15);
+      height: calc(var(--subrow) * 5);
+      padding: 0;
+      font-size: var(--fs-md);
+      font-weight: var(--fw-bold);
+    }
+    /* The state: a 31g x 5r field, its value centred vertically, a chevron in the last 3g. */
+    .ob .ob-select-wrap { position: relative; display: block; }
+    .ob .ob-select {
+      display: block;
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0 calc(var(--gu) * 3) 0 var(--gu);
+      border: none;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-condensed);
+      font-size: var(--fs-md);
+      line-height: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .ob .ob-select-chev {
+      --icon-size: calc(var(--subrow) * 2);
+      position: absolute;
+      top: calc(var(--subrow) * 1.5);
+      right: var(--gu);
+      display: flex;
+      pointer-events: none;
+      color: var(--text-muted);
+    }
+    /* "Only sites open in <state>": a 31g x 5r row, a 2r box, 1g, the label. */
+    .ob .ob-check {
+      display: flex;
+      align-items: center;
+      column-gap: var(--gu);
+      width: 100%;
+      height: calc(var(--subrow) * 5);
+      margin-top: calc(var(--subrow) * 2);
+      padding: 0 var(--gu);
+      font-size: var(--fs-md);
+      line-height: 1;
+      text-align: left;
+    }
+    .ob .ob-check-box {
+      --icon-size: calc(var(--subrow) * 1.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: calc(var(--subrow) * 2);
+      height: calc(var(--subrow) * 2);
+      flex-shrink: 0;
+      border-radius: var(--radius-xs);
+      box-shadow: inset 0 0 0 var(--bw-1) var(--text-muted);
+    }
+    .ob .ob-check.is-on .ob-check-box { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+    .ob .ob-foot {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      height: calc(var(--subrow) * 4);
+      margin-top: calc(var(--subrow) * 2);
+    }
+    /* The name prompt (RealNamePrompt.jsx) in the same parts: 33g (29g inside), the title first,
+       the lead, a 5r field and the 4r foot with its two buttons at the end, 1g apart. */
+    .modal-content.ob-name { width: calc(var(--gu) * 33); }
+    .modal-content.ob-name .ob-title { margin-top: 0; }
+    .ob .ob-input { margin-top: 0; }
+    .ob .ob-foot--end { justify-content: flex-end; column-gap: var(--gu); }
+
     .live-update-panel {
       position: fixed;
       width: calc(var(--subrow) * 37.5);
@@ -3023,8 +3308,10 @@
          20-22r GAMES                   (2r, baseline r22)
          23-53r picker (Hold'em)        tabs 3r, rows 4r
          54-59r Create … Hand           (5r, baseline r57)        1..36g
-         61-63r Saved Hands             (2r, baseline r63)
-         64r+   6r cards, 1r apart; strip 1..3g, cards 3..10g, text 12..27g, Delete 28..34g */
+         61-65r Saved Hands | Export for PokerTracker
+                                        (4r: the label's 2r line, baseline r65; the 4r button
+                                        right-aligned, its right edge on 36g)
+         66r+   6r cards, 1r apart; strip 1..3g, cards 3..10g, text 12..27g, Delete 28..34g */
     .replayer-view.is-list .replayer-list-new { padding-top: var(--subrow); margin-bottom: calc(var(--subrow) * 2); }
     .replayer-view.is-list .replayer-list-head {
       display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gu);
@@ -3036,7 +3323,20 @@
       min-width:0; text-align:right; font-family: var(--font-condensed); font-size: var(--fs-xs);
       font-weight: var(--fw-bold); color: var(--accent2);
     }
-    .replayer-view.is-list .replayer-list-heading { display:grid; align-items:end; height: calc(var(--subrow) * 2); margin-bottom: var(--subrow); }
+    .replayer-view.is-list .replayer-list-heading {
+      display:grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gu);
+      align-items:end; height: calc(var(--subrow) * 4); margin-bottom: var(--subrow);
+    }
+    /* Export for PokerTracker: 4r, whole g wide (snap-g), its label centred; the row Delete's
+       inset ring. Right edge on the heading's right edge, which is the content's 36g line. */
+    .replayer-view.is-list .replayer-list-heading .replayer-hh-export-btn {
+      justify-self: end; align-self: end; height: calc(var(--subrow) * 4);
+      box-sizing: border-box; padding: 0 var(--gu); border: none;
+      box-shadow: inset 0 0 0 var(--bw-1) var(--border);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .replayer-view.is-list .replayer-list-heading .replayer-hh-export-btn:hover { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); }
+    }
     /* Create: full width (35g) — a variant name can run to "Pot Limit Stud Hi/Lo
        Regular", which no narrower whole-g box holds. 5r, the label centred. */
     .replayer-view.is-list .replayer-list-create { height: calc(var(--subrow) * 5); }
@@ -3253,6 +3553,14 @@
       background: repeating-conic-gradient(#3a3450 0 25%, #2b2740 0 50%) 0 0 / calc(var(--subrow) * 1) calc(var(--subrow) * 1);
     }
     .export-preview.is-green { background: #00b140; }
+    /* A page of text: three hairline rules on the card surface (the last one short). */
+    .export-preview.is-text {
+      background:
+        linear-gradient(var(--border), var(--border)) var(--gu) var(--subrow) / calc(var(--gu) * 3) var(--bw-hair) no-repeat,
+        linear-gradient(var(--border), var(--border)) var(--gu) calc(var(--subrow) * 2) / calc(var(--gu) * 3) var(--bw-hair) no-repeat,
+        linear-gradient(var(--border), var(--border)) var(--gu) calc(var(--subrow) * 3) / calc(var(--gu) * 2) var(--bw-hair) no-repeat,
+        var(--surface2);
+    }
     .export-preview.is-gif { background: radial-gradient(ellipse at 50% 40%, #9478b4, #2c2e50); border-radius: var(--radius); }
     .export-preview.is-story {
       width: calc(var(--subrow) * 2.5); height: calc(var(--subrow) * 4.25);
@@ -4766,6 +5074,43 @@
          measures as one: its straight top run is 553px and w - h is
          1295 - 742 = 553 exactly, which only holds for a stadium. */
       --rail-w: 6.1cqmin;
+    }
+    /* The desktop table, placed by what is DRAWN rather than by the plaques (owner bug found
+       2026-10-14: the top seat's hole-card fan was cut off by the window's top, 8 to 17px, at 8 and
+       9-max, at 1280x800, 1440x900 and 1920x1080, for every game).
+
+       The cause is the -6.5% above. It was measured on 2026-09-15 as "the seats 74px from the top and
+       138 from the bottom; lift it until both are 106": the PLAQUES. The ink reaches past them, and
+       not the same distance each way. A top seat's fan stands 0.084 of the table's height above its
+       plaque; the hero's hand name hangs 0.057 below its plaque at the result. Centring the plaques
+       therefore left the table 23px too high at 8-max, 1440x900: the fan 8px over the window's top
+       and 38px of pane spare under the hero's label. The 96cqh height did not reserve the fan's room
+       either.
+
+       Measured in WebKit, at every step of a 6, 8 and 9-max hand, at 1280x800, 1440x900 and 1920x1080
+       (cards, plaques, hand names, button, wagers), as a share of the table's own height down from
+       the box's top:
+         highest ink  0.0258  the top seat's fan (0.0266 at 1920);
+         lowest ink   1.0459  the hero's hand name at the result, 8 and 9-max;
+                      1.0774  the same at 6-max, whose hero sits half a row lower (LANDSCAPE_6).
+       (Not every part of the ink is a share of the table, so the extremes drift by a thousandth or
+       so between sizes.) What is drawn is 1.0518 table heights tall at most, and the slot has to hold
+       THAT. The table is sized to it, leaving about 1r above the fan and 1r under the hero's label at
+       6-max (more under it at 8 and 9-max, whose hero is higher), and lifted by the amount that
+       centres it, -5.2%. Everything on the table is a share of its height, so nothing moves ON the
+       table: its seats, fans, plaques and the springs' landings are the same arithmetic on a table
+       1 to 3.5% smaller. Where the width binds (a window that is not wide for its height, 1024x768
+       or 1100x900) the table is the size it was and only the lift changes.
+
+       Desktop windows only: a phone held sideways keeps the numbers above, being pixel-identical.
+       Keyed on html[data-layout="desktop"] (App sets it from the same hook as .is-desktop) rather
+       than on .app-shell.is-desktop, because a shared replay opened signed out is a bare
+       .app-shell and has the same table. */
+    :root[data-layout="desktop"] .replayer-landscape .replayer-table {
+      --ink-top: 0.0266;
+      --ink-bottom: 1.0775;
+      height: min(calc((100cqh - var(--subrow) * 2) / (var(--ink-bottom) - var(--ink-top))), calc(96cqw / 1.75));
+      transform: translateY(calc((0.5 - (var(--ink-top) + var(--ink-bottom)) / 2) * 100%));
     }
     /* The hero's fan sits higher up a shorter box in landscape; the block
        steps up two rows to stay out of it. */
@@ -7270,7 +7615,8 @@
       background: linear-gradient(180deg, #3a2f5c, #171226) center / calc(var(--subrow) * 2.25) 100% no-repeat;
       box-shadow: none;
     }
-    .replayer-share-sheet .export-preview.is-link { border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
+    .replayer-share-sheet .export-preview.is-link,
+    .replayer-share-sheet .export-preview.is-text { border: 0; box-shadow: inset 0 0 0 var(--bw-hair) var(--border); }
     .share-menu-panel.replayer-share-sheet .share-label,
     .share-menu-panel.replayer-share-sheet .share-desc {
       display: block; width: 100%;
@@ -15039,6 +15385,41 @@
     @media (hover: hover) and (pointer: fine) {
       .export-option-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 var(--bw-hair) var(--accent); }
     }
+
+    /* ── Export for PokerTracker (Hands, HandReplayerView.jsx HandHistoryExportSheet) ──
+       A grid-sheet: the 3r title line and 2r under it; the body in 2r lines, its first
+       baseline 2r into its box (trimmed to cap..baseline, so the box is whole lines) and 2r
+       under it; the 9r option tiles 1r apart; the not-exported list 2r below them, each line
+       2r with its baseline on its box's bottom line, each hand 1r below the last; Cancel (4r,
+       whole g, centred) 2r below everything. */
+    .hh-export-sheet .hh-export-body,
+    .hh-export-sheet .hh-export-skipped-label,
+    .hh-export-sheet .hh-export-skipped-title,
+    .hh-export-sheet .hh-export-skipped-why,
+    .hh-export-sheet .hh-export-skipped-more {
+      display: block; margin: 0;
+      line-height: calc(var(--subrow) * 2); padding-top: calc(var(--subrow) * 2 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    /* The title's baseline on its 3r line's bottom r line (the grid-sheet h3 leaves it where the
+       font puts it). */
+    .share-menu-panel.grid-sheet.hh-export-sheet h3 {
+      line-height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap);
+      text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    }
+    .hh-export-sheet:focus { outline: none; }   /* focus is moved to the dialog itself, on open */
+    .hh-export-sheet .hh-export-body { margin-bottom: calc(var(--subrow) * 2); font-size: var(--fs-sm); color: var(--text-muted); }
+    .hh-export-sheet .hh-export-option { justify-content: flex-start; }
+    .hh-export-sheet .hh-export-option:disabled { cursor: default; }
+    .hh-export-sheet .hh-export-option-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+    .hh-export-sheet .hh-export-skipped { margin-top: calc(var(--subrow) * 2); }
+    .hh-export-sheet .hh-export-skipped-label { font-size: var(--fs-xs); color: var(--text-muted); }
+    .hh-export-sheet .hh-export-skipped-row { display: block; margin-top: var(--subrow); }
+    .hh-export-sheet .hh-export-skipped-title { font-size: var(--fs-sm); color: var(--text); }
+    .hh-export-sheet .hh-export-skipped-why,
+    .hh-export-sheet .hh-export-skipped-more { font-size: var(--fs-xs); color: var(--text-muted); }
+    .hh-export-sheet .hh-export-skipped-more { margin-top: var(--subrow); }
+    .hh-export-sheet .hh-export-cancel { display: flex; justify-content: center; margin-top: calc(var(--subrow) * 2); }
 
     /* ── Notifications ── */
     .notif-btn {

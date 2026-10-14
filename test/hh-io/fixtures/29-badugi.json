@@ -1,0 +1,206 @@
+{
+  "hand": {
+    "gameType": "Badugi",
+    "gameMode": "mtt",
+    "blinds": {
+      "sb": 50,
+      "bb": 100,
+      "bigBet": 200
+    },
+    "players": [
+      {
+        "name": "Vic",
+        "position": "CO",
+        "startingStack": 6000
+      },
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 6000
+      },
+      {
+        "name": "Wyn",
+        "position": "SB",
+        "startingStack": 6000
+      },
+      {
+        "name": "Xer",
+        "position": "BB",
+        "startingStack": 6000
+      }
+    ],
+    "heroIdx": 1,
+    "streets": [
+      {
+        "name": "Pre-Draw",
+        "cards": {
+          "hero": "Ac4d7hKh",
+          "opponents": [
+            "",
+            "",
+            "2s3hQc5d"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "raise",
+            "amount": 200
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 100
+          }
+        ],
+        "draws": [
+          {
+            "player": 3,
+            "discarded": 1,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 1,
+            "discarded": 1,
+            "discardedCards": "Kh",
+            "newCards": "9s"
+          }
+        ]
+      },
+      {
+        "name": "First Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 100
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 100
+          }
+        ],
+        "draws": [
+          {
+            "player": 3,
+            "discarded": 1,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 1,
+            "discarded": 0,
+            "discardedCards": "",
+            "newCards": ""
+          }
+        ]
+      },
+      {
+        "name": "Second Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "bet",
+            "amount": 200
+          },
+          {
+            "player": 1,
+            "action": "call",
+            "amount": 200
+          }
+        ],
+        "draws": [
+          {
+            "player": 3,
+            "discarded": 0,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 1,
+            "discarded": 0,
+            "discardedCards": "",
+            "newCards": ""
+          }
+        ]
+      },
+      {
+        "name": "Third Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 200
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 200
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 1,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

@@ -1,0 +1,46 @@
+PokerStars Hand #8249705438267711:  Razz Limit ($2/$4 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 8-max
+Seat 1: Hero ($100 in chips)
+Seat 2: Quil ($100 in chips)
+Seat 3: Ros ($100 in chips)
+Hero: posts the ante $0.25
+Quil: posts the ante $0.25
+Ros: posts the ante $0.25
+*** 3rd STREET ***
+Dealt to Hero [As 3d 2c]
+Dealt to Quil [Kh]
+Dealt to Ros [6s]
+Quil: brings in for $0.50
+Ros: raises $1.50 to $2
+Hero: raises $2 to $4
+Quil: folds
+Ros: calls $2
+*** 4th STREET ***
+Dealt to Hero [As 3d 2c] [7s]
+Dealt to Ros [6s] [9c]
+Hero: bets $2
+Ros: calls $2
+*** 5th STREET ***
+Dealt to Hero [As 3d 2c 7s] [4h]
+Dealt to Ros [6s 9c] [4c]
+Hero: bets $4
+Ros: calls $4
+*** 6th STREET ***
+Dealt to Hero [As 3d 2c 7s 4h] [Qs]
+Dealt to Ros [6s 9c 4c] [2s]
+Ros: bets $4
+Hero: calls $4
+*** RIVER ***
+Dealt to Hero [As 3d 2c 7s 4h Qs] [8h]
+Ros: checks
+Hero: bets $4
+Ros: calls $4
+*** SHOW DOWN ***
+Hero: shows [As 3d 2c 7s 4h Qs 8h] (Lo: 7,4,3,2,A)
+Ros: mucks hand
+Hero collected $37.25 from pot
+*** SUMMARY ***
+Total pot $37.25 | Rake $0
+Seat 1: Hero showed [As 3d 2c 7s 4h Qs 8h] and won ($37.25) with Lo: 7,4,3,2,A
+Seat 2: Quil folded on the 3rd Street
+Seat 3: Ros mucked

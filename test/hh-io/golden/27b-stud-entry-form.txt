@@ -1,0 +1,38 @@
+PokerStars Hand #8696312947388631: Tournament #7081318631, Freeroll  7 Card Stud Limit - Level I (200/400) - 2026/10/13 14:30:05 ET
+Table '7081318631 1' 8-max
+Seat 1: ham5 (12000 in chips)
+Seat 2: Jason Blodgett (12000 in chips)
+ham5: posts the ante 25
+Jason Blodgett: posts the ante 25
+*** 3rd STREET ***
+Dealt to ham5 [2c 3d Kh]
+Dealt to Jason Blodgett [Qs]
+Jason Blodgett: brings in for 50
+ham5: calls 50
+*** 4th STREET ***
+Dealt to ham5 [2c 3d Kh] [4h]
+Dealt to Jason Blodgett [Qs] [Js]
+ham5: checks
+Jason Blodgett: checks
+*** 5th STREET ***
+Dealt to ham5 [2c 3d Kh 4h] [5h]
+Dealt to Jason Blodgett [Qs Js] [Ts]
+ham5: checks
+Jason Blodgett: checks
+*** 6th STREET ***
+Dealt to ham5 [2c 3d Kh 4h 5h] [6h]
+Dealt to Jason Blodgett [Qs Js Ts] [9s]
+ham5: checks
+Jason Blodgett: checks
+*** RIVER ***
+Dealt to ham5 [2c 3d Kh 4h 5h 6h] [Ah]
+ham5: checks
+Jason Blodgett: checks
+*** SHOW DOWN ***
+ham5: shows [2c 3d Kh 4h 5h 6h Ah] (a flush, Ace high)
+Jason Blodgett: shows [8s 7d Qs Js Ts 9s 2s] (a straight flush, Eight to Queen)
+Jason Blodgett collected 150 from pot
+*** SUMMARY ***
+Total pot 150 | Rake 0
+Seat 1: ham5 showed [2c 3d Kh 4h 5h 6h Ah] and lost with a flush, Ace high
+Seat 2: Jason Blodgett showed [8s 7d Qs Js Ts 9s 2s] and won (150) with a straight flush, Eight to Queen

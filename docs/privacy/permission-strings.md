@@ -16,7 +16,11 @@ below names the feature and says where the data goes.
 **Still used: yes.** WKWebView routes `navigator.geolocation` through CoreLocation:
 
 - *Current Location* in the location picker: `vite-app/src/components/LocationDropdown.jsx:128-131`
-- Onboarding "Use my location": `vite-app/src/components/OnboardingWizard.jsx:47-57`
+- First-run setup's "Use my location": `vite-app/src/components/OnboardingWizard.jsx:54-77`. Since
+  2026-10 setup also locates by itself when it opens with nothing saved and the permission is
+  ALREADY granted (`OnboardingWizard.jsx:79-93`, `navigator.permissions.query`); it never raises
+  the system prompt without a tap, so the proposed strings' "when you tap" still holds for the
+  prompt itself (docs/onboarding.md).
 
 The coordinates drive the distance filter. A reverse lookup turns them into a US state, which
 decides which online sites are shown as available (`server.js:9860-9888`). For signed-in users

@@ -11,6 +11,7 @@ import BankrollImport from './BankrollImport.jsx';
 import BankrollReports from './BankrollReports.jsx';
 import BankrollSessions from './BankrollSessions.jsx';
 import BankrollLocations from './BankrollLocations.jsx';
+import BankrollBackers from './BankrollBackers.jsx';
 import TabStrip from './BankrollTabStrip.jsx';
 import './analytics.css';
 import './bankroll-dashboard.css';
@@ -22,6 +23,7 @@ import './bankroll-dashboard.css';
  *   Overview (BankrollOverview.jsx): balance and profit, the cumulative graph over a range, grouped
  *     statistics for tournaments, cash and the roll, and the latest sessions;
  *   Rules: the bankroll-management rule, its move up / move down signal, and risk of ruin;
+ *   Backers (BankrollBackers.jsx): the owner's backers as their pages show them, read-only;
  *   Goals; Import: CSV export / import.
  * Currency: a bankroll is shown in its own currency; All is shown in USD (as the switcher).
  * Wording is descriptive: what the player's own numbers and own rule say.
@@ -45,6 +47,7 @@ const TABS = [
   ['balance', 'Overview'],
   ['sessions', 'Sessions'],
   ['locations', 'Locations'],
+  ['backers', 'Backers'],
   ['reports', 'Reports'],
   ['rules', 'Rules'],
   ['goals', 'Goals'],
@@ -346,6 +349,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
               {tab === 'sessions' && <BankrollSessions bk={bk} bankrollKey={key} currency={currency} onClose={onClose} />}
 
               {tab === 'locations' && <BankrollLocations bk={bk} bankrollKey={key} currency={currency} />}
+              {tab === 'backers' && <BankrollBackers bk={bk} />}
               {tab === 'reports' && <BankrollReports bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'rules' && <Rules guide={guide} prefs={prefs} money={money} onSave={savePrefs} saving={saving} />}
               {tab === 'rules' && <Risk risk={risk} money={money} />}

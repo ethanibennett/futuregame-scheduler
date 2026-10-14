@@ -2,3 +2,7 @@
 # each line makes bash fail with errors that point nowhere near the real cause,
 # so pin them to LF regardless of the committer's core.autocrlf setting.
 *.sh text eol=lf
+
+# Hand-history goldens are compared byte for byte (test/hh-io.test.mjs): no line-ending
+# conversion in either direction.
+test/hh-io/golden/*.txt -text

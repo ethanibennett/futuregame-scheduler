@@ -1,0 +1,39 @@
+PokerStars Hand #8688142778592247:  Hold'em No Limit (€0.05/€0.10 EUR) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #4 is the button
+Seat 1: Ola (€10 in chips)
+Seat 2: Hero (€12.40 in chips)
+Seat 3: Pam (€9.15 in chips)
+Seat 4: Rio (€10 in chips)
+Seat 5: Sky (€4.80 in chips)
+Seat 6: Tor (€10.65 in chips)
+Sky: posts small blind €0.05
+Tor: posts big blind €0.10
+*** HOLE CARDS ***
+Dealt to Hero [Kc Qs]
+Ola: folds
+Hero: raises €0.20 to €0.30
+Pam: folds
+Rio: calls €0.30
+Sky: folds
+Tor: folds
+*** FLOP *** [Qh 8c 4d]
+Hero: bets €0.35
+Rio: calls €0.35
+*** TURN *** [Qh 8c 4d] [6s]
+Hero: checks
+Rio: checks
+*** RIVER *** [Qh 8c 4d 6s] [2h]
+Hero: bets €0.60
+Rio: folds
+Uncalled bet (€0.60) returned to Hero
+Hero collected €1.45 from pot
+Hero: doesn't show hand
+*** SUMMARY ***
+Total pot €1.45 | Rake €0
+Board [Qh 8c 4d 6s 2h]
+Seat 1: Ola folded before Flop (didn't bet)
+Seat 2: Hero collected (€1.45)
+Seat 3: Pam folded before Flop (didn't bet)
+Seat 4: Rio (button) folded on the River
+Seat 5: Sky (small blind) folded before Flop
+Seat 6: Tor (big blind) folded before Flop

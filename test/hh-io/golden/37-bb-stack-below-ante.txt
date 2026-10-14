@@ -1,0 +1,28 @@
+PokerStars Hand #8963114126708994: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (500/1000) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #2 is the button
+Seat 1: Dax (20000 in chips)
+Seat 2: Hero (20000 in chips)
+Seat 3: Sol (15000 in chips)
+Seat 4: Bea (800 in chips)
+Sol: posts small blind 500
+Bea: posts big blind 800 and is all-in
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kh]
+Dax: folds
+Hero: raises 1500 to 2500
+Sol: folds
+Uncalled bet (1700) returned to Hero
+*** FLOP *** [Kc 7c 2d]
+*** TURN *** [Kc 7c 2d] [5s]
+*** RIVER *** [Kc 7c 2d 5s] [Jd]
+*** SHOW DOWN ***
+Hero: shows [Ah Kh] (a pair of Kings)
+Bea: shows [Qs Qd] (a pair of Queens)
+Hero collected 2100 from pot
+*** SUMMARY ***
+Total pot 2100 | Rake 0
+Board [Kc 7c 2d 5s Jd]
+Seat 1: Dax folded before Flop (didn't bet)
+Seat 2: Hero (button) showed [Ah Kh] and won (2100) with a pair of Kings
+Seat 3: Sol (small blind) folded before Flop
+Seat 4: Bea (big blind) showed [Qs Qd] and lost with a pair of Queens

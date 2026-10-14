@@ -1,0 +1,74 @@
+/* ==================================================================
+   Bankroll Backers (BETA, app admins, read-only) — BankrollBackers.jsx,
+   the dashboard's Backers tab. bb- prefixed.
+
+   Built on the Locations tab's card (bankroll-locations.css: bl-item,
+   bl-card, bl-head, bl-name, bl-meta, bl-total, bl-stats, bl-detail,
+   bl-pager, bl-more, bl-count, bl-res-date, bl-res-amt), whose baselines
+   are measured in WebKit, and on analytics.css's type roles (an-cell,
+   an-td, an-note, an-p). Nothing here sets a font size or a baseline
+   offset of its own except where noted; every measurement is g or r.
+
+   Content is 35g:
+     title       an-sec, 3r, 1r below
+     note        an-p, 1r below the title
+     summary     an-p, 1r below the note
+     cards       35g, 1r apart, 2r below the summary. A card is 17r closed:
+                   11r   the Locations card: name (3r) over the stakes line (2r),
+                         the running total at the right, a hairline, then the
+                         stats line "40 sessions • 212.5 h • Opening $500" (4r)
+                    6r   the actions row: a hairline, 1r, 4r of buttons, 1r
+                         Copy link 11g | Open page 11g | delivery text at the
+                         right ("SMS • Email"), 1g apart inside 1g a side
+     shares      an open card's rows, 7r each, under a hairline:
+                   4r    date 7g | game 17g | the backer's cut 9g (bold, green or red);
+                         baselines on line 3 of 4
+                   2r    hours | venue | "20% of -$1,200" (an-note), baselines on line 2 of 2
+                   1r    room for descenders
+                 then, when the history is longer than the ten rows, "Last 10 of 250
+                 sessions" (4r, bl-count) under a hairline
+   The two buttons are controls (box on the grid, label centred both ways); the card
+   button and its rows are list rows whose text is seated (check-control-centring.mjs
+   NOT_CONTROLS lists .bl-card).
+   ================================================================== */
+
+/* The card button sits above the actions row, so its foot is square (Locations' open card has the
+   detail under it; here the actions row is always under it). */
+.bb-item .bl-card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+/* The actions row is Locations' pager, laid inside the card: it sits under the card's hairline and
+   keeps 1r above and below its 4r buttons. */
+.bl-pager.bb-actions {
+  margin-top: 0;
+  padding: var(--subrow) var(--gu);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.bb-actions .bl-more:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+/* Open page is a link drawn as a button: the button rule centres a <button>'s label by default, a
+   link's text starts at the left. */
+.bb-open { text-align: center; text-decoration: none; color: var(--text); }
+.bb-open > span { display: block; }
+
+/* An open card: the rows of its last ten shares. The detail is Locations' (a hairline above, 1r
+   below). */
+.bb-shares { list-style: none; margin: 0; padding: 0; }
+.bb-share {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 7) calc(var(--gu) * 17) calc(var(--gu) * 9);
+  grid-template-rows: calc(var(--subrow) * 4) calc(var(--subrow) * 2) var(--subrow);
+  align-items: start;
+  height: calc(var(--subrow) * 7);
+  box-shadow: inset 0 calc(var(--bw-hair) * -1) 0 var(--border);
+}
+.bb-share:last-child { box-shadow: none; }
+.bb-date  { grid-column: 1; grid-row: 1; }
+.bb-game  { grid-column: 2; grid-row: 1; }
+.bb-cut   { grid-column: 3; grid-row: 1; }
+.bb-hours { grid-column: 1; grid-row: 2; }
+.bb-venue { grid-column: 2; grid-row: 2; }
+.bb-of    { grid-column: 3; grid-row: 2; }
+
+/* "Last 10 of 250 sessions": Locations' count line, here under the rows. */
+.bb-more { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+/* No shares yet: one an-p line, 1r under the detail's hairline. */
+.bb-none { margin-top: var(--subrow); }

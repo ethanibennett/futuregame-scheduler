@@ -1,0 +1,185 @@
+{
+  "hand": {
+    "gameType": "Razz",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 0,
+      "bb": 2,
+      "bigBet": 4,
+      "ante": 0.25,
+      "bringIn": 0.5
+    },
+    "players": [
+      {
+        "name": "Hero",
+        "position": "Seat 1",
+        "startingStack": 100
+      },
+      {
+        "name": "Quil",
+        "position": "Seat 2",
+        "startingStack": 100
+      },
+      {
+        "name": "Ros",
+        "position": "Seat 3",
+        "startingStack": 100
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "3rd Street",
+        "cards": {
+          "hero": "As3d2c",
+          "opponents": [
+            "Kh",
+            "5h8d6s"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 1,
+            "action": "bring-in",
+            "amount": 0.5
+          },
+          {
+            "player": 2,
+            "action": "raise",
+            "amount": 2
+          },
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 4
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "4th Street",
+        "cards": {
+          "hero": "7s",
+          "opponents": [
+            "",
+            "9c"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 2
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "5th Street",
+        "cards": {
+          "hero": "4h",
+          "opponents": [
+            "",
+            "4c"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "6th Street",
+        "cards": {
+          "hero": "Qs",
+          "opponents": [
+            "",
+            "2s"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "7th Street",
+        "cards": {
+          "hero": "8h",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 0,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}
