@@ -9,10 +9,12 @@
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
 // about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
-// Scanner, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
-// sessions, one session) (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
+// Scanner, the venue map opened from a Schedule strip and from an Up Next banner, the backer page
+// (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no sessions, one session) (and, for an
+// admin, each tab of the bankroll dashboard — the Overview with every table
 // section open, then closed — every Reports table and the
-// Reports filter sheet, then Results > Cash: the running session and its panels, the session
+// Reports filter sheet, a Locations card open a page past its first ten and the Locations sorted by
+// name with every card open, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
 // box (a Range over the text, which spans ascent to descent) against every ancestor that clips
@@ -309,6 +311,31 @@ function scan(rootSel) {
     await p.locator('.hm-tolog-list > li:nth-child(3)').waitFor({ timeout: 3000 });
     await run('home to-log, every row', HOME);
   } catch (e) { console.log(`  (home to-log more skipped: ${e.message.split('\n')[0]})`); }
+  // The venue map (VenueMapSheet.jsx): opened from a Schedule card's strip, then from an Up Next
+  // card's banner (the first card that has one), each measured once its map has drawn.
+  const venueMap = async (label) => {
+    await p.locator('.vm-sheet').waitFor({ timeout: 8000 });
+    await p.waitForFunction(() => {
+      const c = document.querySelector('.vm-map-canvas'), n = document.querySelector('.vm-map-note');
+      return (c && c.dataset.provider) || (n && !/Finding|Loading/.test(n.textContent));
+    }, null, { timeout: 20000, polling: 200 }).catch(() => {});
+    await p.waitForTimeout(500);
+    await run(label, '.vm-sheet');
+  };
+  try {
+    await openTab('Schedule');
+    await p.locator('.cal-event-row:not(.past) .cal-venue-strip[aria-haspopup="dialog"]').filter({ visible: true }).first().click({ timeout: 4000 });
+    await venueMap('venue map (schedule strip)');
+  } catch (e) { console.log(`  (venue map from a Schedule strip skipped: ${e.message.split('\n')[0]})`); }
+  try {
+    await openTab('Dashboard');
+    const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
+      .findIndex((sl) => sl.querySelector('.dash-venue-strip.has-map')));
+    if (i < 0) throw new Error('no Up Next card with a venue map');
+    if (i > 0) { await goCard(i); await p.waitForTimeout(700); }
+    await p.locator('.dashboard-view.home .dash-venue-strip.has-map').filter({ visible: true }).first().click({ timeout: 4000 });
+    await venueMap('venue map (up next)');
+  } catch (e) { console.log(`  (venue map from Up Next skipped: ${e.message.split('\n')[0]})`); }
   try {
     await openTab('Hands');
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000 });
@@ -372,8 +399,9 @@ function scan(rootSel) {
     };
     await sections(true);
     // Every tab in the strip, whatever it holds (Overview, Rules, Goals, Import, and any added
-    // later), then the Overview again with its graph switched to Balance and the range to All.
-    const tabs = p.locator('.an-sheet .bd-tabs button');
+    // later; once the tabs outgrow 35g the strip scrolls sideways, and each click scrolls it to its
+    // tab), then the Overview again with its graph switched to Balance and the range to All.
+    const tabs = p.locator('.an-sheet .bd-tabs [role="radio"]');   // the tabs, not the page chevrons
     const n = await tabs.count();
     for (let i = 0; i < n; i++) {
       const tab = (await tabs.nth(i).innerText()).trim();
@@ -416,6 +444,52 @@ function scan(rootSel) {
     await p.waitForTimeout(400);
     await scrollRun('bankroll report filters', '.br-fsheet .an-body', '.br-fsheet');
   } catch (e) { console.log(`  (bankroll dashboard skipped: ${e.message.split('\n')[0]})`); }
+  // Locations (the bankroll dashboard): a card open on its results (the first room with more than
+  // ten, a page shown past them), then the cards sorted by name with every one open — an open card's
+  // name wraps, so a long one is checked whole. Long event names truncate.
+  try {
+    await openResults();
+    await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1500);
+    await p.locator('.an-sheet .bd-tabs [role="radio"]:has-text("Locations")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(1200);
+    const pageThrough = async (label) => {
+      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+      await run(label, '.an-sheet');
+      for (let i = 1; i < 30; i++) {
+        const moved = await p.evaluate((h) => {
+          const s = document.querySelector('.an-sheet .an-body');
+          const before = s.scrollTop; s.scrollTop += Math.round(h * 0.7); return s.scrollTop !== before;
+        }, H);
+        if (!moved) break;
+        await p.waitForTimeout(250);
+        await run(`${label} (scrolled ${i})`, '.an-sheet');
+      }
+    };
+    const cards = p.locator('.bl-card');
+    const n = await cards.count();
+    for (let i = 0; i < n; i++) {
+      await cards.nth(i).click({ timeout: 4000 });
+      await p.waitForTimeout(300);
+      if (await p.locator('.bl-pager').count()) break;
+      await cards.nth(i).click({ timeout: 4000 });
+    }
+    await p.locator('.bl-pager .bl-more').first().click({ timeout: 4000 }).catch(() => {});
+    await p.waitForTimeout(400);
+    await pageThrough('bankroll locations, a card open');
+    // Show fewer: back to ten, and every card closed again for the next pass.
+    await p.locator('.bl-pager .bl-fewer').first().click({ timeout: 4000 }).catch(() => {});
+    await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    await p.locator('.bl-sort button:has-text("Name")').first().click({ timeout: 4000 });
+    await p.waitForTimeout(600);
+    const shut = p.locator('.bl-card[aria-expanded="false"]');
+    for (let k = await shut.count(); k > 0; k--) {
+      await shut.first().click({ timeout: 4000 });
+      await p.waitForTimeout(150);
+    }
+    await p.waitForTimeout(400);
+    await pageThrough('bankroll locations by name, every card open');
+  } catch (e) { console.log(`  (bankroll locations skipped: ${e.message.split('\n')[0]})`); }
   // Results > Cash (cash sessions beta), each screen: the running session (it opens by itself while
   // one runs) and its rebuy and cash-out panels; the list (chip graph, month headers, rows with
   // notes); Stats; a session's page; the add form with More open; and the live-session bar over the
