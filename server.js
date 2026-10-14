@@ -550,6 +550,8 @@ const cashSessions = require('./lib/cash-sessions');
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const { validateHomeLayout, parseStoredHomeLayout } = require('./lib/home-layout');
 const moneyMerge = require('./lib/money-merge');
+// The dashboard import (docs/bankroll-merge.md §8-9, Phase 5): pull, stage, plan, commit, undo, delta.
+const moneyImport = require('./lib/money-import');
 // Series staking settlement (docs/bankroll-merge.md §10): the calculator, settle, paid -> ledger.
 const stakingSettlement = require('./lib/staking/settlement');
 // The rules where a backer type's meaning is a choice (§10, open questions). Defaults are the
@@ -3346,6 +3348,16 @@ async function initDatabase() {
       fn: () => {
         const r = stakingSettlement.migrate(db);
         console.log(`Staking settlement: ${r.legacyRows} settlement row(s) from before (${r.agreementLinked} linked to their agreement, ${r.agreementAmbiguous} left unlinked: a backer with two agreements in one series, or none); makeup agreements moved to opening/closing: ${r.makeupUnsettled} unsettled, ${r.makeupSettled} settled`);
+      }
+    },
+    {
+      // Phase 5 of the bankroll merge (docs/bankroll-merge.md §8.2): the import's staging columns
+      // (source hash, cursor, the write journal an undo replays, the dashboard state a delta
+      // reconciles against) and backer_agreements.notes for slate deals. Additive, one savepoint.
+      name: moneyImport.MIGRATION_NAME,
+      fn: () => {
+        const added = moneyImport.migrate(db);
+        console.log(`Money import: ${added.length} column(s) added`);
       }
     },
   ];
@@ -6181,6 +6193,9 @@ bankrolls.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, r
   bankrollLedger.mountRoutes(app, { ...deps, management: bankrollManagement });
   bankrollManagement.mountRoutes(app, deps);
   bankrollImport.mountRoutes(app, deps);
+  // The dashboard import (Phase 5), owner only: /api/bankrolls/import/dashboard/*. lib/money-import/routes.js.
+  // The base URL is read per request (DASHBOARD_BASE_URL is declared further down this file).
+  require('./lib/money-import/routes').mountRoutes(app, { ...deps, getOwnerId: () => HAM_OWNER_ID, getDashboardBaseUrl: () => DASHBOARD_BASE_URL });
 }
 // ── Cash game sessions (beta, app admins) ── lib/cash-sessions.js. /api/cash-sessions, not /api/cash (the watcher proxy).
 cashSessions.mountRoutes(app, { getDb: () => db, saveDatabase, authenticateToken, requireAppAdmin, currencies: SUPPORTED_CURRENCIES, getRates: fetchExchangeRates });
@@ -13919,6 +13934,19 @@ initDatabase().then(() => {
       if (gate.on) cron.schedule('* * * * *', () => { runBackerSweep(); }, { timezone: CONSOLE_TZ });
     } catch (err) {
       console.error('[backers] delivery setup error:', err.message);
+    }
+    // The dashboard import (Phase 5): is the pull on here (LEDGER_TOKEN), and clear staged payloads
+    // (backer tokens, phones, emails) 7 days after their commit, at boot and nightly.
+    try {
+      console.log(moneyImport.pull.bootLine());
+      const purge = async () => {
+        const n = moneyImport.purgePayloads(db);
+        if (n) { await saveDatabase(); console.log(`[money-import] cleared the payload of ${n} import run(s)`); }
+      };
+      purge().catch((e) => console.error('[money-import] payload purge failed:', e.message));
+      cron.schedule('40 4 * * *', () => { purge().catch((e) => console.error('[money-import] payload purge failed:', e.message)); }, { timezone: CONSOLE_TZ });
+    } catch (err) {
+      console.error('[money-import] setup error:', err.message);
     }
     // Staking settlement rules (lib/staking/settlement.js DEFAULT_RULES, docs/bankroll-merge.md §10).
     console.log(`[staking] settlement rules: ${STAKING_RULES.custom ? 'custom ' + JSON.stringify(STAKING_RULES.rules) : 'the defaults'}` +
