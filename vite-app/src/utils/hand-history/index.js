@@ -5,12 +5,14 @@
 //
 //   writePokerStarsHand(hand, opts) -> { text, handId, warnings, lines }   throws HandExportError
 //   writePokerStarsFile(entries, opts) -> { text, written, skipped, warnings }
-//   checkExportable(hand, opts?)     -> { ok, pt4, gameName, warnings } | { ok:false, code, message, short }
+//   checkExportable(hand, opts?)     -> { ok, pt4, pt4Why, gameName, warnings } | { ok:false, code, message, short }
+//                                       pt4Why (when !pt4): 'stud-draw' | 'big-omaha'
 //   prepareHand(hand, opts)          -> { model, events, meta, settle, warnings }
 //   handHistoryId(hand, opts?)       -> '8' + 15 digits
 //   canonicalHand(hand)              -> comparison form (canonical.js)
 //
-// opts: { site='PokerStars', heroName, playedAt (Date; required for one hand
+// opts: { site='PokerStars', heroName, shared (true: the hand came by someone else's
+//   share link; refused with 'not-yours'), playedAt (Date; required for one hand
 //   unless the hand was imported with one), tableName, maxSeats,
 //   tournament: { id, buyIn, fee, currency, level }, showFoldedCards=false,
 //   eol='\r\n' and bom=true (files) }
@@ -21,7 +23,7 @@ import { prepareHand, normalizeInput, seatPlayers, layOut } from './prepare.js';
 import { renderPokerStars } from './pokerstars-writer.js';
 import { HandExportError } from './errors.js';
 import {
-  CURRENCIES, SITE_RE, sortedJSON, fnv1a64, etDay, toCents, money, GAME_TABLE,
+  CURRENCIES, SITE_RE, sortedJSON, fnv1a64, etDay, toCents, money, GAME_TABLE, canonicalGameName,
 } from './ps-format.js';
 import { gameConfig, gameCategory } from '../quick-add/game.js';
 
@@ -168,7 +170,7 @@ export function checkExportable(hand, opts = {}) {
   try {
     const prep = prepareHand(hand, withDefaults(opts));
     const g = prep.meta.stars;
-    return { ok: true, pt4: prep.meta.pt4, gameName: g.game + ' ' + g.limit, warnings: prep.warnings };
+    return { ok: true, pt4: prep.meta.pt4, pt4Why: prep.meta.pt4 ? null : (g.pt4Why || null), gameName: g.game + ' ' + g.limit, warnings: prep.warnings };
   } catch (err) {
     if (err instanceof HandExportError) return { ok: false, code: err.code, message: err.message, short: err.short };
     return { ok: false, code: 'internal', message: "This hand can't be exported", short: "This hand can't be exported" };
@@ -177,5 +179,6 @@ export function checkExportable(hand, opts = {}) {
 
 /* Is the game one this format has at all (for a quick filter before checking). */
 export function hasPokerStarsGame(gameType) {
-  return !!GAME_TABLE[gameType] && !!gameCategory(gameType);
+  const g = canonicalGameName(gameType);
+  return !!GAME_TABLE[g] && !!gameCategory(g);
 }

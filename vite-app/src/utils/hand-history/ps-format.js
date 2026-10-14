@@ -9,32 +9,71 @@
 // Pure: no DOM, no React, no Date.now(). Loads under plain Node and Vite.
 
 // ── Games ───────────────────────────────────────────────────────────────────
-/* The replayer's game -> the header's game and limit words. `pt4`: PokerTracker
-   4 imports the game (it analyses Hold'em and Omaha only). `unverified`: the
-   header wording was not seen in a genuine PokerStars hand. */
+/* The replayer's game -> the header's game and limit words.
+   `pt4`: PokerTracker 4 imports the game. It analyses Hold'em, Omaha and Omaha
+   Hi/Lo in the three limit structures and nothing else: stud and draw it never
+   read, and five- and six-card Omaha its staff block on import (so they cannot
+   corrupt the four-card data). `pt4Why` says which of those it is, for the copy.
+   `unverified`: the header wording was not seen in a genuine PokerStars hand.
+   Every other wording here was: 5 and 6 Card Omaha and their Hi/Lo forms and
+   Omaha Hi/Lo No Limit are all in fpdb's Stars samples (docs/hand-history-io.md).
+
+   Names are the replayer's. Six-card PLO hi-lo is "PLO6 8/b", never "Big Easy"
+   (owner, 2026-10-14); a hand saved before that still says "Big Easy" and
+   LEGACY_GAME_NAMES reads it as the new name. */
 export const GAME_TABLE = {
   'NLH':        { game: "Hold'em", limit: 'No Limit', pt4: true },
   'PLH':        { game: "Hold'em", limit: 'Pot Limit', pt4: true },
   'LHE':        { game: "Hold'em", limit: 'Limit', pt4: true },
   'PLO':        { game: 'Omaha', limit: 'Pot Limit', pt4: true },
-  'PLO5':       { game: '5 Card Omaha', limit: 'Pot Limit', pt4: true },
-  'PLO6':       { game: '6 Card Omaha', limit: 'Pot Limit', pt4: true },
+  'PLO5':       { game: '5 Card Omaha', limit: 'Pot Limit', pt4: false, pt4Why: 'big-omaha' },
+  'PLO6':       { game: '6 Card Omaha', limit: 'Pot Limit', pt4: false, pt4Why: 'big-omaha' },
   'PLO8':       { game: 'Omaha Hi/Lo', limit: 'Pot Limit', pt4: true },
+  'NLO8':       { game: 'Omaha Hi/Lo', limit: 'No Limit', pt4: true },
   'O8':         { game: 'Omaha Hi/Lo', limit: 'Limit', pt4: true },
-  'Big O':      { game: '5 Card Omaha Hi/Lo', limit: 'Pot Limit', pt4: true },
-  'Big Easy':   { game: '6 Card Omaha Hi/Lo', limit: 'Pot Limit', pt4: true },
+  'Big O':      { game: '5 Card Omaha Hi/Lo', limit: 'Pot Limit', pt4: false, pt4Why: 'big-omaha' },
+  'PLO6 8/b':   { game: '6 Card Omaha Hi/Lo', limit: 'Pot Limit', pt4: false, pt4Why: 'big-omaha' },
   'LO Hi':      { game: 'Omaha', limit: 'Limit', pt4: true },
-  'Stud Hi':    { game: '7 Card Stud', limit: 'Limit', pt4: false },
-  'Stud 8':     { game: '7 Card Stud Hi/Lo', limit: 'Limit', pt4: false },
-  'Stud Hi-Lo': { game: '7 Card Stud Hi/Lo', limit: 'Limit', pt4: false },
-  'Razz':       { game: 'Razz', limit: 'Limit', pt4: false },
-  '2-7 TD':     { game: 'Triple Draw 2-7 Lowball', limit: 'Limit', pt4: false },
-  'L 2-7 TD':   { game: 'Triple Draw 2-7 Lowball', limit: 'Limit', pt4: false },
-  'PL 2-7 TD':  { game: 'Triple Draw 2-7 Lowball', limit: 'Pot Limit', pt4: false, unverified: true },
-  'NL 2-7 SD':  { game: 'Single Draw 2-7 Lowball', limit: 'No Limit', pt4: false },
-  'PL 5CD Hi':  { game: '5 Card Draw', limit: 'Pot Limit', pt4: false },
-  'Badugi':     { game: 'Badugi', limit: 'Limit', pt4: false },
+  'Stud Hi':    { game: '7 Card Stud', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
+  'Stud 8':     { game: '7 Card Stud Hi/Lo', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
+  'Stud Hi-Lo': { game: '7 Card Stud Hi/Lo', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
+  'Razz':       { game: 'Razz', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
+  '2-7 TD':     { game: 'Triple Draw 2-7 Lowball', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
+  'L 2-7 TD':   { game: 'Triple Draw 2-7 Lowball', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
+  'PL 2-7 TD':  { game: 'Triple Draw 2-7 Lowball', limit: 'Pot Limit', pt4: false, pt4Why: 'stud-draw', unverified: true },
+  'NL 2-7 SD':  { game: 'Single Draw 2-7 Lowball', limit: 'No Limit', pt4: false, pt4Why: 'stud-draw' },
+  'PL 5CD Hi':  { game: '5 Card Draw', limit: 'Pot Limit', pt4: false, pt4Why: 'stud-draw' },
+  'Badugi':     { game: 'Badugi', limit: 'Limit', pt4: false, pt4Why: 'stud-draw' },
 };
+
+/* Names a hand may still carry for a game that has been renamed. The owner's
+   name for six-card PLO hi-lo is PLO6 8/b; hands saved as "Big Easy" read as it,
+   before they are hashed, seated or written, so the same hand gets the same
+   hand number under either name. (utils.js LEGACY_GAME_NAMES is the replayer's
+   copy: that module touches localStorage and cannot load in Node.) */
+export const LEGACY_GAME_NAMES = { 'Big Easy': 'PLO6 8/b' };
+export function canonicalGameName(name) {
+  return typeof name === 'string' && Object.prototype.hasOwnProperty.call(LEGACY_GAME_NAMES, name) ? LEGACY_GAME_NAMES[name] : name;
+}
+
+/* Games the app plays that the writer deliberately does not write yet, with
+   why. The hand is refused as 'unsupported-game' with this reason, so a Short
+   Deck hand says so instead of being written as hold'em with the wrong
+   rankings. Short Deck is a PokerStars game ("6+ Hold'em"), but it posts a
+   button blind or an ante from everyone and ranks a flush over a full house,
+   and the scorer here (fast-high.js, settle.js) is the 52-card one. */
+export const NOT_WRITTEN = {
+  'Short Deck': {
+    short: "Short Deck isn't exported yet",
+    why: "Short Deck isn't exported yet: it ranks hands differently and PokerStars posts its blinds another way",
+  },
+};
+
+/* The engine's (poker-engine.js GAME_EVAL) name for the scoring rules of a game
+   it may not list under that name. Until the engine names PLO6 8/b and NLO8
+   itself, they score as the games they are: six-card and four-card Omaha
+   hi-lo with an 8-or-better low. Only consulted when GAME_EVAL has no entry. */
+export const ENGINE_GAME_NAMES = { 'PLO6 8/b': 'Big Easy', 'NLO8': 'PLO8' };
 
 /* Header words -> the replayer's game (the first name in GAME_TABLE wins, so
    '7 Card Stud Hi/Lo Limit' reads as 'Stud 8' and the triple draw as '2-7 TD'). */
@@ -49,23 +88,25 @@ export const HEADER_TO_GAME = (() => {
 
 /* Games whose PokerStars header is a GAME this format knows in another limit,
    or a variant the replayer cannot hold: the parser skips those hands as
-   'unsupported-feature' rather than 'unsupported-game'. */
+   'unsupported-feature' rather than 'unsupported-game'. Omaha Hi/Lo No Limit
+   is not here: it is NLO8, a game of its own since 2026-10-14. */
 export const UNSUPPORTED_FEATURE_GAMES = [
-  /^Omaha No Limit$/, /^Omaha Hi\/Lo No Limit$/, /^(5|6) Card Omaha( Hi\/Lo)? No Limit$/,
+  /^Omaha No Limit$/, /^(5|6) Card Omaha( Hi\/Lo)? No Limit$/,
   /^5 Card Draw (No Limit|Limit)$/, /^Courchevel/, /^6\+ Hold'em/, /^Split /,
 ];
 
 /* The game a hand is written as. A PLO hand dealt five or six hole cards is
-   5 or 6 Card Omaha whatever the hand calls itself. */
+   5 or 6 Card Omaha whatever the hand calls itself (the replayer's game picker
+   stores PLO5 and PLO6 as PLO until it plays them natively). */
 export function starsGameType(gameType, holeCount) {
-  const base = String(gameType || '');
+  const base = canonicalGameName(String(gameType || ''));
   if (base === 'PLO' && holeCount === 5) return 'PLO5';
   if (base === 'PLO' && holeCount === 6) return 'PLO6';
   return base;
 }
 
 export function isPt4Game(gameType) {
-  const g = GAME_TABLE[gameType];
+  const g = GAME_TABLE[canonicalGameName(gameType)];
   return !!(g && g.pt4);
 }
 
@@ -191,14 +232,22 @@ export function parseET(text) {
 
 // ── Names ───────────────────────────────────────────────────────────────────
 /* A name PokerStars text can carry: no control characters, colons, parentheses
-   or brackets (each breaks a line's grammar), whitespace collapsed, 30 chars. */
+   or brackets (each breaks a line's grammar), whitespace collapsed, 30
+   characters. Counted in code points, not UTF-16 units: a name whose 30th
+   character is an emoji must not keep half of its surrogate pair (the file's
+   UTF-8 encoder turns a lone surrogate into U+FFFD). */
 export function sanitizeName(name) {
-  return String(name == null ? '' : name)
+  return truncateChars(String(name == null ? '' : name)
     .replace(/[\x00-\x1f\x7f:()[\]]/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 30)
+    .trim(), 30)
     .trim();
+}
+/* The first n code points of s. */
+export function truncateChars(s, n) {
+  const str = String(s);
+  if (str.length <= n) return str;   // n code points are at most n UTF-16 units
+  return Array.from(str).slice(0, n).join('');
 }
 
 /* Site name for the header: a word PT4 and HM recognise ('PokerStars') or

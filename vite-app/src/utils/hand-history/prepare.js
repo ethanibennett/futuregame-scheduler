@@ -26,7 +26,10 @@ import { cardsOf, oppSlot, isMuck, computeDrawHand } from '../quick-add/cards.js
 import { seatIndexFor } from '../quick-add/seats.js';
 import { remapSeats } from '../quick-add/edit.js';
 import { GAME_EVAL, seatOrderFromButton, parseCardNotation } from '../poker-engine.js';
-import { GAME_TABLE, CURRENCIES, toCents, starsGameType, isPt4Game, sanitizeName, cardText } from './ps-format.js';
+import {
+  GAME_TABLE, CURRENCIES, NOT_WRITTEN, ENGINE_GAME_NAMES, canonicalGameName, toCents, starsGameType, isPt4Game, sanitizeName,
+  truncateChars, cardText,
+} from './ps-format.js';
 import { HandExportError } from './errors.js';
 import { settlePot, evaluate, scoreOf } from './settle.js';
 import { describeEvals } from './describe.js';
@@ -59,6 +62,7 @@ export function normalizeInput(input) {
   const toNum = (v) => (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v.replace(/,/g, ''))) ? Number(v.replace(/,/g, '')) : v);
   h.players.forEach(p => { p.startingStack = toNum(p.startingStack); });
   h.heroIdx = isIdx(h.heroIdx, n) ? h.heroIdx : 0;
+  h.gameType = canonicalGameName(h.gameType);   // "Big Easy" is PLO6 8/b
   h.gameMode = h.gameMode === 'cash' ? 'cash' : 'mtt';
   h.currency = typeof h.currency === 'string' && h.currency.trim() ? h.currency.trim().toUpperCase() : 'USD';
   const pidx = (o) => {
@@ -205,7 +209,7 @@ function textNames(h, seatNumbers, heroName) {
     const base = s;
     for (let k = 2; used.has(s.toLowerCase()); k++) {
       const suffix = ' ' + k;
-      s = base.slice(0, 30 - suffix.length).trim() + suffix;
+      s = truncateChars(base, 30 - suffix.length).trim() + suffix;
     }
     used.add(s.toLowerCase());
     if (!renamed && s !== stored) changed = true;
@@ -220,8 +224,13 @@ function validSeatNumbers(v, n) {
 
 // ── 4. The replay ─────────────────────────────────────────────────────────────
 export function prepareHand(input, opts = {}) {
+  // opts.shared: the hand came by someone else's share link (the UI says so). Refused before anything
+  // is read: the writer renames the hero to opts.heroName, so a shared hand would be filed as the
+  // viewer's own.
+  if (opts.shared) throw new HandExportError('not-yours');
   const warnings = new Set();
   const { hand: raw, legacySplit } = normalizeInput(input);
+  if (NOT_WRITTEN[raw.gameType]) throw new HandExportError('unsupported-game', { game: raw.gameType, ...NOT_WRITTEN[raw.gameType] });
   const cfg0 = gameConfig(raw.gameType);
   if (!cfg0 || !GAME_TABLE[raw.gameType]) throw new HandExportError('unsupported-game', { game: raw.gameType || 'game' });
   const category = gameCategory(raw.gameType);
@@ -242,11 +251,12 @@ export function prepareHand(input, opts = {}) {
   const stars = GAME_TABLE[gameType];
   if (!stars) throw new HandExportError('unsupported-game', { game: raw.gameType });
   if (stars.unverified) warnings.add('description-unverified');
-  const evalCfg = GAME_EVAL[gameType] || GAME_EVAL[raw.gameType] || null;
+  const evalCfg = GAME_EVAL[gameType] || GAME_EVAL[raw.gameType] || GAME_EVAL[ENGINE_GAME_NAMES[gameType]] || null;
   const holeCount = isStud ? 7 : cfg.heroCards;
 
   // ── Seats, names ──
   const imp = h.import && typeof h.import === 'object' ? h.import : {};
+  const anteFirst = !!imp.anteFirst;
   const seatNumbers = validSeatNumbers(imp.seatNumbers, n) || h.players.map((_, i) => i + 1);
   const { names, changed } = textNames(h, seatNumbers, opts.heroName);
   if (changed) warnings.add('names-changed');
@@ -260,7 +270,7 @@ export function prepareHand(input, opts = {}) {
     if (!(s > 0)) throw new HandExportError('stack-missing', { name: names[i] });
   });
   const env = buildEnv(h, cfg, category);
-  if (!(env.bb > 0)) throw new HandExportError('blinds-missing');
+  if (!(env.bb > 0)) throw new HandExportError('blinds-missing', { stud: isStud });
   const scaled = {
     ...h,
     players: h.players.map(p => ({ ...p, startingStack: toCents(p.startingStack) })),
@@ -358,8 +368,16 @@ export function prepareHand(input, opts = {}) {
 
     if (si === 0 && !isStud) {
       // Antes first, as Stars writes them; then the blinds; then straddles,
-      // priced bb*2^k in seat order (betting.js straddles()).
-      if (env.ante > 0 && bbIdx >= 0) post(bbIdx, 'ante', env.ante);
+      // priced bb*2^k in seat order (betting.js straddles()). A big blind who
+      // cannot cover blind and ante posts the blind first and the ante comes
+      // out of what is left: that is the replayer's own order (betting.js,
+      // Table.startStreet; the TDA rule), and it keeps the big blind line
+      // written, so a stack no bigger than the ante never turns into an
+      // ante-only hand the parser refuses. A hand imported from Stars' older
+      // per-player antes (import.anteFirst) keeps Stars' order, the ante out
+      // of the stack first: its short big blinds ("posts big blind 160 and is
+      // all-in" after a 40 ante) replay to the pot Stars states.
+      if (env.ante > 0 && bbIdx >= 0) post(bbIdx, 'ante', anteFirst ? env.ante : Math.min(env.ante, Math.max(0, t.stacks[bbIdx] - env.bb)));
       if (sbIdx >= 0 && env.sb > 0) post(sbIdx, 'sb', env.sb);
       if (bbIdx >= 0) post(bbIdx, 'bb', env.bb);
       t.maxBet = env.bb;
@@ -460,6 +478,13 @@ export function prepareHand(input, opts = {}) {
   // Draws: who drew what, on each draw the hand reached.
   const draw = env.isDraw ? drawsFor(h, n, heroIdx, gameType, streetEvents, foldedOn, lastStreet, oppStr, heroBase, live, showdown) : null;
   if (draw) draw.events.forEach((list, si) => { if (streetEvents[si]) streetEvents[si].draws = list; });
+  // A single draw has no draw header: its first discard line is the only thing
+  // that separates the two betting rounds. A hand that reached the draw with no
+  // draw recorded for anyone would run them together ("calls $2" straight into
+  // "bets $4"), which no reader can take.
+  if (category === 'draw_single' && lastStreet >= 1 && !(draw.events[0] && draw.events[0].length)) {
+    throw new HandExportError('draw-cards-unknown', { nobody: true, short: "The draw isn't recorded" });
+  }
 
   // ── Final hands, as the text shows them ──
   const holeOf = (p) => {
@@ -552,12 +577,15 @@ export function prepareHand(input, opts = {}) {
   return { model, events: { forced, streets: streetEvents }, meta, settle: settled, warnings: [...warnings] };
 }
 
+const MOVES_CHIPS = new Set(['call', 'bet', 'raise', 'all-in', 'bring-in']);
 function isWholeChips(h) {
   const vals = [];
   for (const p of h.players) vals.push(Number(p.startingStack));
   const b = h.blinds || {};
   for (const k of ['sb', 'bb', 'ante', 'bigBet', 'bringIn']) if (b[k] != null) vals.push(Number(b[k]));
-  for (const st of h.streets) for (const a of st.actions || []) vals.push(Number(a.amount) || 0);
+  // Only the actions that move chips: a stray amount on a check or a fold moves
+  // nothing and must not turn a whole-chip tournament into cents.
+  for (const st of h.streets) for (const a of st.actions || []) if (MOVES_CHIPS.has(a.action)) vals.push(Number(a.amount) || 0);
   return vals.every(v => !Number.isFinite(v) || Number.isInteger(v));
 }
 

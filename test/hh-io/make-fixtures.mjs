@@ -345,9 +345,9 @@ add('21-big-o', {
   result: W(0),
 });
 
-// 22. Big Easy (six-card Omaha Hi/Lo).
-add('22-big-easy', {
-  gameType: 'Big Easy', gameMode: 'mtt',
+// 22. PLO6 8/b (six-card Omaha Hi/Lo; the replayer called it "Big Easy" until 2026-10-14).
+add('22-plo6-8b', {
+  gameType: 'PLO6 8/b', gameMode: 'mtt',
   blinds: { sb: 100, bb: 200 },
   players: [P('Hero', 'BTN', 12000), P('Ivo', 'SB', 12000), P('Jem', 'BB', 12000)],
   heroIdx: 0,
@@ -359,6 +359,9 @@ add('22-big-easy', {
   ],
   result: W(0),
 });
+
+// 22b. The same hand saved under the old name: it must write the same bytes, hand number included.
+fixtures['22b-big-easy-legacy'] = { hand: { ...fixtures['22-plo6-8b'].hand, gameType: 'Big Easy' }, opts: { ...fixtures['22-plo6-8b'].opts } };
 
 // 23. Limit Omaha high.
 add('23-lo-hi', {
@@ -581,6 +584,65 @@ add('35-imported-reuse', {
   },
 }, { playedAt: undefined });
 
+// 36. NLO8: no-limit Omaha hi-lo, the high to one player and the low to the other.
+add('36-nlo8', {
+  gameType: 'NLO8', gameMode: 'mtt',
+  blinds: { sb: 100, bb: 200, ante: 0 },
+  players: [P('Hero', 'BTN', 12000), P('Ivo', 'SB', 12000), P('Jem', 'BB', 12000)],
+  heroIdx: 0,
+  streets: [
+    St('Preflop', 'Ah2c6s9s', ['', 'KsKcJd9d'], '', [A(0, 'raise', 600), A(1, 'fold'), A(2, 'call', 400)]),
+    St('Flop', '', ['', ''], '3d4h8c', [A(2, 'check'), A(0, 'bet', 1000), A(2, 'call', 1000)]),
+    St('Turn', '', ['', ''], 'Jc', [A(2, 'check'), A(0, 'check')]),
+    St('River', '', ['', ''], 'Kd', [A(2, 'bet', 2000), A(0, 'call', 2000)]),
+  ],
+  result: { winners: [{ playerIdx: 0, split: true, hi: false, lo: true }, { playerIdx: 2, split: true, hi: true, lo: false }] },
+});
+
+// 37. A big blind whose stack is below the big-blind ante: the blind is posted (all-in) and the
+//     ante gets nothing. The blind takes precedence over the ante (TDA, which Stars follows).
+add('37-bb-stack-below-ante', {
+  gameType: 'NLH', gameMode: 'mtt',
+  blinds: { sb: 500, bb: 1000, ante: 1000 },
+  players: [P('Dax', 'CO', 20000), P('Hero', 'BTN', 20000), P('Sol', 'SB', 15000), P('Bea', 'BB', 800)],
+  heroIdx: 1,
+  streets: [
+    St('Preflop', 'AhKh', ['', '', 'QsQd'], '', [A(0, 'fold'), A(1, 'raise', 2500), A(2, 'fold')]),
+    St('Flop', '', e(3), 'Kc7c2d', []), St('Turn', '', e(3), '5s', []), St('River', '', e(3), 'Jd', []),
+  ],
+  result: W(1),
+});
+
+// 38. A big blind whose stack is between the ante and ante + blind: the blind is whole and live,
+//     the ante is what is left (dead). Bea wins the main pot, Hero the side pot.
+add('38-bb-stack-between', {
+  gameType: 'NLH', gameMode: 'mtt',
+  blinds: { sb: 500, bb: 1000, ante: 1000 },
+  players: [P('Dax', 'CO', 20000), P('Hero', 'BTN', 20000), P('Sol', 'SB', 15000), P('Bea', 'BB', 1500)],
+  heroIdx: 1,
+  streets: [
+    St('Preflop', 'KhKd', ['', 'QcQs', 'AdAc'], '', [A(0, 'fold'), A(1, 'raise', 2500), A(2, 'call', 2000)]),
+    St('Flop', '', e(3), '2c7d9s', [A(2, 'check'), A(1, 'check')]),
+    St('Turn', '', e(3), '4h', [A(2, 'check'), A(1, 'check')]),
+    St('River', '', e(3), 'Jd', [A(2, 'check'), A(1, 'check')]),
+  ],
+  result: { winners: [{ playerIdx: 1, split: true }, { playerIdx: 3, split: true }] },
+});
+
+// 39. Two players whose long name has emoji at the 30-character cut: it is cut on a code point,
+//     never mid-pair, and so is the " 2" the second one gets to tell them apart.
+add('39-name-emoji', {
+  gameType: 'NLH', gameMode: 'cash', currency: 'USD',
+  blinds: { sb: 1, bb: 2 },
+  players: [P('a'.repeat(27) + '\u{1F600}\u{1F600}tail', 'BTN/SB', 100), P('a'.repeat(27) + '\u{1F600}\u{1F600}tail', 'BB', 100)],
+  heroIdx: 1,
+  streets: [
+    St('Preflop', 'Td9d', [''], '', [A(0, 'raise', 5), A(1, 'fold')]),
+    St('Flop', '', [''], '', []), St('Turn', '', [''], '', []), St('River', '', [''], '', []),
+  ],
+  result: W(0),
+});
+
 // ── Errors ──────────────────────────────────────────────────────────────────
 const simple = (gameType, extra = {}) => ({
   gameType, gameMode: 'mtt',
@@ -594,7 +656,7 @@ const simple = (gameType, extra = {}) => ({
   result: W(0),
   ...extra,
 });
-for (const g of ['A-5 TD', 'Badeucy', 'Badacy', '2-7 Razz', 'NL Stud Hi', 'OFC', 'Super Stud Hi', 'Pineapple Custom']) {
+for (const g of ['A-5 TD', 'Badeucy', 'Badacy', '2-7 Razz', 'NL Stud Hi', 'OFC', 'Super Stud Hi', 'Pineapple Custom', 'Short Deck']) {
   addError('game-' + g.toLowerCase().replace(/[^a-z0-9]+/g, '-'), simple(g), 'unsupported-game');
 }
 addError('aud-cash', simple('NLH', { gameMode: 'cash', currency: 'AUD' }), 'unsupported-currency');
@@ -659,6 +721,11 @@ addError('hero-cards', {
   ...simple('NLH'),
   streets: [St('Preflop', 'AhKx', ['', ''], '', [A(0, 'raise', 600), A(1, 'fold'), A(2, 'fold')]), St('Flop', '', ['', ''], '', []), St('Turn', '', ['', ''], '', []), St('River', '', ['', ''], '', [])],
 }, 'hero-cards-unknown');
+// A single draw that reached the draw with no draw recorded for anyone: the headerless rounds would run together.
+addError('single-draw-unrecorded', {
+  ...fixtures['30-nl27sd'].hand,
+  streets: fixtures['30-nl27sd'].hand.streets.map((s, i) => (i === 0 ? { ...s, draws: [] } : s)),
+}, 'draw-cards-unknown');
 addError('draw-cards', {
   ...fixtures['28-27td'].hand,
   streets: fixtures['28-27td'].hand.streets.map((s, i) => (i === 0 ? { ...s, draws: [D(2, 2), D(0, 2, 'KsQs', '')] } : s)),

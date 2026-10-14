@@ -1,0 +1,156 @@
+{
+  "hand": {
+    "gameType": "NLO8",
+    "gameMode": "mtt",
+    "blinds": {
+      "sb": 100,
+      "bb": 200,
+      "ante": 0
+    },
+    "players": [
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 12000
+      },
+      {
+        "name": "Ivo",
+        "position": "SB",
+        "startingStack": 12000
+      },
+      {
+        "name": "Jem",
+        "position": "BB",
+        "startingStack": 12000
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "Ah2c6s9s",
+          "opponents": [
+            "",
+            "KsKcJd9d"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 600
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 400
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": "3d4h8c"
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 1000
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 1000
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": "Jc"
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": "Kd"
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "bet",
+            "amount": 2000
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 2000
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 0,
+          "split": true,
+          "hi": false,
+          "lo": true
+        },
+        {
+          "playerIdx": 2,
+          "split": true,
+          "hi": true,
+          "lo": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

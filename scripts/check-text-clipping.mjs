@@ -25,6 +25,7 @@
 // can gate a deploy. WebKit, because the app ships in WKWebView.
 import { createRequire } from 'node:module';
 import { stageHome } from './home-states.mjs';
+import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -345,12 +346,16 @@ function scan(rootSel) {
   } catch (e) { console.log(`  (hands scanner skipped: ${e.message.split('\n')[0]})`); }
   // Hands: the Export for PokerTracker sheet (its body copy and the not-exported list wrap),
   // and a replay's Share sheet (the hand-history tile's description is a reason when it is off).
+  // (staged: the account's hands plus one of every kind the sheet sorts, scripts/hands-states.mjs)
   try {
-    await openTab('Hands');
-    await p.locator('button:has-text("Export for PokerTracker")').first().click({ timeout: 4000 });
-    await p.locator('.hh-export-sheet').waitFor({ timeout: 3000 });
-    await p.waitForTimeout(500);
-    await run('hands export sheet', '.hh-export-sheet');
+    const undoHands = await stageHands(p);
+    try {
+      await openTab('Hands');
+      await p.locator('button:has-text("Export for PokerTracker")').first().click({ timeout: 4000 });
+      await p.locator('.hh-export-sheet').waitFor({ timeout: 3000 });
+      await p.waitForTimeout(500);
+      await run('hands export sheet', '.hh-export-sheet');
+    } finally { await undoHands(); }
   } catch (e) { console.log(`  (hands export sheet skipped: ${e.message.split('\n')[0]})`); }
   try {
     await openTab('Hands');
@@ -361,6 +366,16 @@ function scan(rootSel) {
     await p.waitForTimeout(500);
     await run('replayer share sheet', '.replayer-share-sheet');
   } catch (e) { console.log(`  (replayer share sheet skipped: ${e.message.split('\n')[0]})`); }
+  // The same sheet on a hand that came by a share link: its hand-history tile is off, with its reason.
+  try {
+    await p.goto(base + '/#h/' + encodeURIComponent(SHARED_HAND_CODE), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(4500);
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    await p.locator('.rab-share').first().click({ timeout: 4000, force: true });
+    await p.locator('.replayer-share-sheet').waitFor({ timeout: 3000 });
+    await p.waitForTimeout(500);
+    await run('replayer share sheet (shared hand)', '.replayer-share-sheet');
+  } catch (e) { console.log(`  (replayer share sheet on a shared hand skipped: ${e.message.split('\n')[0]})`); }
 
   // Results & Tracking, from a fresh load (a sheet left open by the step before can't block it).
   const openResults = async () => {

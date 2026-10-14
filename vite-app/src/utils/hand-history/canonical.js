@@ -22,7 +22,10 @@ export function canonicalHand(hand, opts = {}) {
   const prep = prepareHand(hand, { showFoldedCards: !!opts.showFoldedCards });
   const m = prep.meta, ev = prep.events, s = prep.settle;
   const fl = m.cfg.betting === 'fl' || m.isStud;
-  const stakes = { bb: m.env.bb, ante: m.env.ante };
+  // The ante the text carries, not the one configured: a big blind who could not cover blind and
+  // ante posted less (or none), and a text with no ante line reads back as ante 0.
+  const anteLines = ev.forced.filter(f => f.kind === 'ante').map(f => f.amount);
+  const stakes = { bb: m.env.bb, ante: anteLines.length ? Math.max(...anteLines) : 0 };
   if (!m.isStud) stakes.sb = m.env.sb;
   if (fl) stakes.bigBet = m.env.bigBet;
   const shown = m.names.map((_, p) => {

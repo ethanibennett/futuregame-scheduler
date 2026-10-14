@@ -13,6 +13,9 @@
  *   H registry    detection, wsop-replay needs a sample, unknown text, one bad hand
  *   I genuine     the parser on hand-written snippets of observed PokerStars constructs
  *   J gaps        every parsed hand replays in the app: no blocking quick-add gap
+ *   K games       each game's header, PokerTracker 4's scope, PLO6 8/b (never Big Easy), NLO8, Short Deck
+ *   L two readers lib/quick-add/hh.js (the fast path) and lib/hh-import agree on the same text
+ *   M review      shared hands, short big blinds, emoji names, stray amounts, unrecorded single draws
  *
  * Run: npm run test:hh-io   (node --test test/hh-io.test.mjs)
  */
@@ -32,7 +35,13 @@ import { HAND_CONFIG as QA_HAND_CONFIG } from '../vite-app/src/utils/quick-add/g
 import { ruleFor } from './hh-io/ps-grammar.mjs';
 import { fastBestHigh, fastBestOmahaHigh } from '../vite-app/src/utils/hand-history/fast-high.js';
 import { bestHighHand, bestOmahaHigh } from '../vite-app/src/utils/poker-engine.js';
-import { fnv1a64, fnv1a64Reference } from '../vite-app/src/utils/hand-history/ps-format.js';
+import { fnv1a64, fnv1a64Reference, sanitizeName, truncateChars, GAME_TABLE, LEGACY_GAME_NAMES, HEADER_TO_GAME } from '../vite-app/src/utils/hand-history/ps-format.js';
+import { handsFileName, singleHandFileName, playedAtOf, handOfRow } from '../vite-app/src/utils/hand-history/rows.js';
+import { gameConfig } from '../vite-app/src/utils/quick-add/game.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const quickAddHh = require('../lib/quick-add/hh.js');       // the quick-add fast path (decision H)
+const quickAddGames = require('../lib/quick-add/games.js');
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.join(here, 'hh-io', 'fixtures');
@@ -227,7 +236,7 @@ test('F. a file skips what it cannot write, lists it, and writes the rest', () =
   assert.equal(parseHandHistory(r.text).hands.length, 3);
 });
 test('F. checkExportable says whether PokerTracker 4 takes the game', () => {
-  assert.deepEqual(checkExportable(load('14-plo.json').hand), { ok: true, pt4: true, gameName: 'Omaha Pot Limit', warnings: ['folded-cards-dropped'] });
+  assert.deepEqual(checkExportable(load('14-plo.json').hand), { ok: true, pt4: true, pt4Why: null, gameName: 'Omaha Pot Limit', warnings: ['folded-cards-dropped'] });
   assert.equal(checkExportable(load('24-stud-hi.json').hand).pt4, false);
   assert.equal(checkExportable(load('28-27td.json').hand).pt4, false);
 });
@@ -401,6 +410,53 @@ Seat 4: kilo showed [Ah Qh] and won (1670) with a pair of Queens`;
   assert.match(h.import.notes.join(' '), /big-blind ante of 40/);
   assert.deepEqual(h.result.winners.map(w => w.playerIdx), [0]);
 });
+test("I. per-player antes: a short big blind keeps Stars' order, the ante out of the stack first", () => {
+  const t = `PokerStars Hand #70011122244: Tournament #40012345, $3+$0.30 USD Hold'em No Limit - Level V (100/200) - 2011/12/01 20:10:00 ET
+Table '40012345 2' 9-max Seat #1 is the button
+Seat 1: hotel (2000 in chips)
+Seat 2: india (1500 in chips)
+Seat 3: juliet (200 in chips)
+Seat 4: kilo (800 in chips)
+hotel: posts the ante 40
+india: posts the ante 40
+juliet: posts the ante 40
+kilo: posts the ante 40
+india: posts small blind 100
+juliet: posts big blind 160 and is all-in
+*** HOLE CARDS ***
+Dealt to kilo [Ah Qh]
+kilo: raises 560 to 760 and is all-in
+hotel: folds
+india: folds
+Uncalled bet (600) returned to kilo
+*** FLOP *** [Qc 7d 2s]
+*** TURN *** [Qc 7d 2s] [9h]
+*** RIVER *** [Qc 7d 2s 9h] [4c]
+*** SHOW DOWN ***
+juliet: shows [Js Jc] (a pair of Jacks)
+kilo: shows [Ah Qh] (a pair of Queens)
+kilo collected 580 from pot
+*** SUMMARY ***
+Total pot 580 | Rake 0
+Board [Qc 7d 2s 9h 4c]
+Seat 1: hotel (button) folded before Flop (didn't bet)
+Seat 2: india (small blind) folded before Flop
+Seat 3: juliet (big blind) showed [Js Jc] and lost with a pair of Jacks
+Seat 4: kilo showed [Ah Qh] and won (580) with a pair of Queens`;
+  const r = parseHandHistory(t);
+  assert.deepEqual(r.errors, [], 'replays to the 580 Stars states');
+  const h = r.hands[0];
+  assert.equal(h.import.anteFirst, true, 'marked: its short blind replays with the ante first');
+  assert.equal(h.blinds.ante, 160);
+  const stars = writePokerStarsHand(h, {}).text;
+  assert.ok(stars.includes('juliet: posts the ante 160\n') && stars.includes('juliet: posts big blind 160 and is all-in'), 'ante 160 out of the stack, then the 160 left as the blind');
+  assert.equal(parseHandHistory(stars).hands[0].import.anteFirst, true);
+  // The app's own order for a big-blind ante is the other way round (betting.js), and a hand that did
+  // not come from Stars' per-player antes keeps it: the blind whole, the ante from what is left.
+  const own = JSON.parse(JSON.stringify(h)); delete own.import;
+  const text = writePokerStarsHand(own, { playedAt: new Date('2026-10-13T18:30:05Z') }).text;
+  assert.ok(text.includes('juliet: posts the ante 120\n') && text.includes('juliet: posts big blind 200 and is all-in'), text);
+});
 test('I. a sitting-out player with no summary line is not dealt in', () => {
   const t = SNIP.gameHeader.replace('Seat 3: charlie ($10.20 in chips)', 'Seat 3: charlie ($10.20 in chips)\nSeat 4: lima ($3 in chips) is sitting out').replace('*** HOLE CARDS ***', 'lima: is sitting out\n*** HOLE CARDS ***');
   const h = parseOne(t);
@@ -509,12 +565,249 @@ test('fast-high gives poker-engine\'s exact scores (20,000 random high and Omaha
   assert.equal(bad, 0);
 });
 
-// ── PLO5 / PLO6 config ──────────────────────────────────────────────────────
-test('PLO5 and PLO6 are replayer games (HAND_CONFIG) of five and six cards', () => {
-  assert.equal(QA_HAND_CONFIG.PLO5.heroCards, 5);
-  assert.equal(QA_HAND_CONFIG.PLO6.heroCards, 6);
-  assert.equal(QA_HAND_CONFIG.PLO5.betting, 'pl');
-  assert.equal(writePokerStarsHand(load('15b-plo-five-cards.json').hand, optsOf(load('15b-plo-five-cards.json'))).lines[0].includes('5 Card Omaha Pot Limit'), true);
-  const r = parseHandHistory(write('16-plo6.json').text);
-  assert.equal(r.hands[0].gameType, 'PLO6');
+// ── K. Games: the header each writes, and whether PokerTracker 4 takes it ─────
+/* PT4 imports Hold'em, Omaha and Omaha Hi/Lo (Pot, No and Fixed Limit). Its staff block five- and
+   six-card Omaha on import so they cannot corrupt the four-card data, and it has never read stud
+   or draw. The sheet and the tile say which games it skips; these are the games. */
+const GAMES = [
+  // gameType in the hand, fixture, header words, pt4, why PT4 skips it
+  ['NLH',      '01-nlh-cash-3bet.json',    "Hold'em No Limit",              true,  null],
+  ['PLO',      '14-plo.json',              'Omaha Pot Limit',               true,  null],
+  ['PLO5',     '15a-plo5.json',            '5 Card Omaha Pot Limit',        false, 'big-omaha'],
+  ['PLO',      '15b-plo-five-cards.json',  '5 Card Omaha Pot Limit',        false, 'big-omaha'],   // the picker's PLO5
+  ['PLO6',     '16-plo6.json',             '6 Card Omaha Pot Limit',        false, 'big-omaha'],
+  ['PLO8',     '17-plo8-split.json',       'Omaha Hi/Lo Pot Limit',         true,  null],
+  ['O8',       '20-o8.json',               'Omaha Hi/Lo Limit',             true,  null],
+  ['Big O',    '21-big-o.json',            '5 Card Omaha Hi/Lo Pot Limit',  false, 'big-omaha'],
+  ['PLO6 8/b', '22-plo6-8b.json',          '6 Card Omaha Hi/Lo Pot Limit',  false, 'big-omaha'],
+  ['Big Easy', '22b-big-easy-legacy.json', '6 Card Omaha Hi/Lo Pot Limit',  false, 'big-omaha'],   // saved before the rename
+  ['LO Hi',    '23-lo-hi.json',            'Omaha Limit',                   true,  null],
+  ['NLO8',     '36-nlo8.json',             'Omaha Hi/Lo No Limit',          true,  null],
+  ['Stud Hi',  '24-stud-hi.json',          '7 Card Stud Limit',             false, 'stud-draw'],
+  ['2-7 TD',   '28-27td.json',             'Triple Draw 2-7 Lowball Limit', false, 'stud-draw'],
+];
+test('K. every game writes its header and says whether PokerTracker 4 imports it', () => {
+  for (const [gt, f, words, pt4, why] of GAMES) {
+    assert.equal(load(f).hand.gameType, gt, f + ' is a ' + gt + ' hand');
+    const c = checkExportable(load(f).hand, optsOf(load(f)));
+    assert.equal(c.ok, true, f);
+    assert.equal(c.gameName, words, f + ' header words');
+    assert.equal(c.pt4, pt4, f + ' pt4');
+    assert.equal(c.pt4Why, why, f + ' pt4Why');
+    assert.ok(write(f).lines[0].includes(words), f + ' header: ' + write(f).lines[0]);
+  }
+});
+test('K. PLO6 8/b is never called "Big Easy"; a hand saved under the old name writes the same bytes', () => {
+  assert.ok(!('Big Easy' in GAME_TABLE), "no Big Easy row: the table is keyed by the owner's names");
+  assert.deepEqual(LEGACY_GAME_NAMES, { 'Big Easy': 'PLO6 8/b' });
+  assert.equal(HEADER_TO_GAME['6 Card Omaha Hi/Lo Pot Limit'], 'PLO6 8/b');
+  for (const f of OK) assert.ok(!/Big Easy/.test(write(f).text), f + ' says Big Easy nowhere');
+  const a = write('22-plo6-8b.json'), b = write('22b-big-easy-legacy.json');
+  assert.equal(b.text, a.text, 'the same bytes');
+  assert.equal(b.handId, a.handId, 'and the same hand number, so PT4 sees one hand');
+  assert.equal(handHistoryId(load('22b-big-easy-legacy.json').hand), handHistoryId(load('22-plo6-8b.json').hand));
+  assert.equal(canonicalHand(load('22b-big-easy-legacy.json').hand).gameType, 'PLO6 8/b');
+  const r = parseHandHistory(a.text);
+  assert.equal(r.hands[0].gameType, 'PLO6 8/b', "read back under the owner's name");
+});
+test('K. NLO8 is a game of its own: written as Omaha Hi/Lo No Limit and read back as NLO8', () => {
+  const text = write('36-nlo8.json').text;
+  const r = parseHandHistory(text);
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.hands[0].gameType, 'NLO8');
+  assert.ok(text.includes('Jem collected 3650 from pot') && text.includes('Hero collected 3650 from pot'), 'high and low halves');
+  // PokerStars no-limit Omaha high is not a game the replayer has.
+  const bad = parseHandHistory(text.replace('Omaha Hi/Lo No Limit', 'Omaha No Limit'));
+  assert.equal(bad.hands.length, 0);
+  assert.equal(bad.errors[0].code, 'unsupported-feature');
+});
+test("K. Short Deck is refused by name, not written as hold'em with the wrong rankings", () => {
+  const fx = load('error-game-short-deck.json');
+  assert.equal(fx.hand.gameType, 'Short Deck');
+  const c = checkExportable(fx.hand);
+  assert.equal(c.ok, false);
+  assert.equal(c.code, 'unsupported-game');
+  assert.equal(c.short, "Short Deck isn't exported yet");
+  assert.match(c.message, /^Short Deck isn't exported yet/);
+  // Other unwritable games keep the general wording.
+  const g = checkExportable(load('error-game-a-5-td.json').hand);
+  assert.equal(g.short, 'No PokerStars format for this game');
+  assert.equal(g.message, 'PokerStars format has no A-5 TD');
+  // And a file carries on without it.
+  const r = writePokerStarsFile([{ hand: fx.hand, playedAt: new Date('2026-10-13T10:00:00Z') }, { hand: load('02-walk.json').hand, playedAt: new Date('2026-10-13T11:00:00Z') }]);
+  assert.deepEqual([r.written.length, r.skipped.map(x => x.code)], [1, ['unsupported-game']]);
+});
+test("K. every game the exporter writes is one the replayer or quick add plays under that name", () => {
+  for (const g of Object.keys(GAME_TABLE)) assert.ok(gameConfig(g), g + ' has a game config');
+  assert.ok(quickAddGames.GAME_NAMES.includes('PLO6 8/b') && !quickAddGames.GAME_NAMES.includes('Big Easy'));
+  for (const g of ['NLH', 'PLH', 'LHE', 'PLO', 'PLO5', 'PLO6', 'PLO8', 'NLO8', 'O8', 'Big O', 'PLO6 8/b', 'LO Hi', 'Stud Hi', 'Stud 8', 'Razz']) {
+    assert.ok(quickAddGames.GAME_NAMES.includes(g), g + ' is in lib/quick-add/games.js');
+  }
+});
+
+// ── L. One reader or two: lib/quick-add/hh.js and lib/hh-import/pokerstars.mjs ────────
+/* The quick-add fast path (decision H) reads a pasted PokerStars / GG / Full Tilt hand into a draft
+   for the model's pipeline: tolerant, anonymising (names become seat labels), games it knows by
+   name only. lib/hh-import reads PokerStars-format text into the hand itself, exactly, with the
+   hand's names, ids and time kept (the `import` block), stud and draw included, and refuses what
+   it cannot hold. Different jobs, so two readers; these tests hold them to the same facts about
+   the same text, so neither can drift: a game, a seat, a stack, the blinds, the board and who
+   acted when. docs/hand-history-io.md section 8 says why they are not one parser. */
+const FLOP_GAMES = OK.filter(f => !load(f).hand.import && !/stud|razz|td|badugi|sd|5cd/.test(f));
+test("L. quick add's fast path and the importer agree on the writer's text: game, seats, stacks, blinds, board, actors", () => {
+  let compared = 0;
+  for (const f of FLOP_GAMES) {
+    const text = write(f).text;
+    const qa = quickAddHh.parseHandHistory(text);
+    assert.ok(qa, f + ': the fast path recognises the text');
+    const mine = parseHandHistory(text).hands[0];
+    assert.ok(mine, f);
+    // The game.
+    assert.equal(qa.game, mine.gameType, f + ': the game');
+    // Seats: the fast path numbers players by ascending seat; the importer keeps the real seat numbers.
+    const draft = qa.build().draft;
+    const bySeat = new Map(mine.players.map((p, i) => [mine.import.seatNumbers[i], p]));
+    assert.deepEqual(draft.players.map(p => p.seatNumber), [...bySeat.keys()].sort((a, b) => a - b), f + ': who is dealt in');
+    for (const dp of draft.players) assert.equal(dp.startingStack, bySeat.get(dp.seatNumber).startingStack, f + ': stack of seat ' + dp.seatNumber);
+    // Blinds.
+    const b = mine.blinds;
+    if (draft.blinds.bb != null) assert.equal(draft.blinds.bb, b.bb, f + ': big blind');
+    if (draft.blinds.sb != null && b.sb) assert.equal(draft.blinds.sb, b.sb, f + ': small blind');
+    // The hero's cards and the board.
+    const heroDraft = draft.streets[0].cards && draft.streets[0].cards.find(c => draft.players[c.player].isHero);
+    assert.equal(heroDraft && heroDraft.cards, mine.streets[0].cards.hero, f + ': hero cards');
+    const boardOf = (list) => list.map(s => s || '').join('');
+    assert.equal(boardOf(draft.streets.map(s => s.board)), boardOf(mine.streets.map(s => s.cards.board)), f + ': the board');
+    // Who acted on each street, in order, by seat (the fast path does not carry forced bets).
+    // A fold or a check is itself; anything that puts chips in is "chips" (the fast path calls an all-in
+    // call a call and the importer calls it all-in; both are the same seat putting chips in).
+    const kind = (k) => (k === 'fold' || k === 'check' ? k : 'chips');
+    draft.streets.forEach((s, si) => {
+      const theirs = s.actions.filter(a => a.player != null).map(a => [draft.players[a.player].seatNumber, kind(a.action)]);
+      const ours = mine.streets[si].actions.map(a => [mine.import.seatNumbers[a.player], kind(a.action)]);
+      assert.deepEqual(theirs, ours, f + ': street ' + si + ' actors');
+    });
+    compared++;
+  }
+  assert.ok(compared >= 25, 'compared ' + compared + ' hands');
+});
+test("L. the fast path reads the writer's NLO8, Big O and six-card hi-lo under the owner's names", () => {
+  assert.equal(quickAddHh.parseHandHistory(write('36-nlo8.json').text).game, 'NLO8');
+  assert.equal(quickAddHh.parseHandHistory(write('22-plo6-8b.json').text).game, 'PLO6 8/b');
+  assert.equal(quickAddHh.parseHandHistory(write('21-big-o.json').text).game, 'Big O');
+});
+test('L. what only the importer reads: stud and draw, which the fast path hands to the model', () => {
+  for (const f of ['24-stud-hi.json', '28-27td.json', '30-nl27sd.json']) {
+    const qa = quickAddHh.parseHandHistory(write(f).text);
+    assert.equal(qa && qa.unsupported, true, f + ': the fast path flags it unsupported');
+    assert.equal(parseHandHistory(write(f).text).errors.length, 0, f + ': the importer reads it');
+  }
+});
+test("L. what only the fast path reads: other sites' layouts", () => {
+  const gg = `Poker Hand #HD123456789: Hold'em No Limit ($0.25/$0.50) - 2026/10/12 20:01:02
+Table 'Alpha' 6-max Seat #1 is the button
+Seat 1: Hero ($50 in chips)
+Seat 2: Foe ($50 in chips)
+Foe: posts small blind $0.25
+Hero: posts big blind $0.50
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kd]
+Foe: folds
+*** SUMMARY ***
+Total pot $0.50`;
+  assert.ok(quickAddHh.parseHandHistory(gg), "GGPoker text is the fast path's");
+  assert.equal(detectSite(gg), null, 'the PokerStars reader does not claim it');
+});
+
+// ── M. The review's fixes ─────────────────────────────────────────────────────
+test("M. a hand shared with the viewer is not exported as the viewer's own", () => {
+  const fx = load('01-nlh-cash-3bet.json');
+  const opts = { ...optsOf(fx), heroName: 'casualx' };
+  // Their own hand: the hero is written as them.
+  assert.match(writePokerStarsHand(fx.hand, opts).text, /Dealt to casualx \[/);
+  // A shared one is refused outright, by the writer, the check, and a file.
+  assert.throws(() => writePokerStarsHand(fx.hand, { ...opts, shared: true }), (e) => e instanceof HandExportError && e.code === 'not-yours' && !!e.short && !!e.message);
+  const c = checkExportable(fx.hand, { heroName: 'casualx', shared: true });
+  assert.deepEqual([c.ok, c.code], [false, 'not-yours']);
+  assert.ok(c.short.length <= 40, c.short);
+  const r = writePokerStarsFile([{ hand: fx.hand, playedAt: new Date('2026-10-13T10:00:00Z') }], { heroName: 'casualx', shared: true });
+  assert.deepEqual([r.written.length, r.skipped.map(x => x.code)], [0, ['not-yours']]);
+  assert.ok(!r.text.includes('casualx'), "the viewer's name is nowhere in what comes out");
+  assert.equal(checkExportable(fx.hand, { heroName: 'casualx', shared: false }).ok, true);
+});
+test('M. a big blind who cannot cover blind and ante posts the blind first; the text reads back', () => {
+  const below = write('37-bb-stack-below-ante.json').text, between = write('38-bb-stack-between.json').text;
+  assert.ok(below.includes('Bea: posts big blind 800 and is all-in') && !below.includes('posts the ante'), 'stack below the ante: the blind, no ante');
+  assert.ok(between.includes('Bea: posts the ante 500') && between.includes('Bea: posts big blind 1000 and is all-in'), 'between: a whole blind, the ante from the rest');
+  for (const [name, text] of [['below', below], ['between', between]]) {
+    const r = parseHandHistory(text);
+    assert.deepEqual(r.errors, [], name + ' parses (no "No big blind posted")');
+    assert.equal(writePokerStarsHand(r.hands[0], {}).text, text, name + ' writes back the same');
+    assert.deepEqual(account(text), [], name + ' accounting');
+  }
+  assert.match(between, /Total pot 6500 Main pot 3500\. Side pot 3000\./, 'the 500 ante is dead money in the main pot');
+});
+test('M. names are cut on code points: no lone surrogate reaches the file', () => {
+  assert.equal(sanitizeName('a'.repeat(29) + '😀😀'), 'a'.repeat(29) + '😀');
+  assert.equal(truncateChars('ab😀cd', 3), 'ab😀');
+  assert.equal(truncateChars('abc', 30), 'abc');
+  const t = write('39-name-emoji.json').text;
+  assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(t), 'no lone surrogate');
+  assert.equal(Buffer.from(t, 'utf8').toString('utf8'), t);
+  assert.ok(!t.includes('�'));
+  const names = [...t.matchAll(/^Seat \d: (.+) \(\$100 in chips\)$/gm)].map(m => m[1]);
+  assert.equal(names.length, 2);
+  assert.ok(names.every(n => Array.from(n).length <= 30), names.map(n => Array.from(n).length).join(','));
+  assert.deepEqual(names.slice().sort(), ['a'.repeat(27) + '😀 2', 'a'.repeat(27) + '😀😀t'].sort(), "the duplicate's ' 2' also cuts on a code point");
+  assert.equal(parseHandHistory(t).errors.length, 0);
+});
+test('M. a stray amount on a check does not turn a whole-chip tournament into cents', () => {
+  const fx = load('08-split-odd-chip.json');
+  const h = JSON.parse(JSON.stringify(fx.hand));
+  const chk = h.streets.flatMap(s => s.actions).find(a => a.action === 'check');
+  chk.amount = 0.5;
+  const clean = write('08-split-odd-chip.json').lines.slice(1), dirty = writePokerStarsHand(h, optsOf(fx)).lines.slice(1);
+  assert.deepEqual(dirty, clean, 'the same text, whole chips, 283 and 282');
+  assert.ok(dirty.some(l => /collected 283 /.test(l)) && dirty.some(l => /collected 282 /.test(l)));
+  assert.ok(!dirty.some(l => /\.\d\d\b/.test(l)));
+  // A real fractional chip amount still means cents.
+  const frac = JSON.parse(JSON.stringify(fx.hand));
+  frac.players[0].startingStack = 5000.5;
+  assert.ok(writePokerStarsHand(frac, optsOf(fx)).text.includes('5000.50'));
+});
+test('M. a single draw that reached the draw with none recorded is refused, not run together', () => {
+  const fx = load('error-single-draw-unrecorded.json');
+  const c = checkExportable(fx.hand);
+  assert.deepEqual([c.ok, c.code], [false, 'draw-cards-unknown']);
+  assert.equal(c.short, "The draw isn't recorded");
+  assert.equal(c.message, "Nobody's draw is recorded");
+  // The same hand with its draws is fine, and a discard line sits between the rounds.
+  const ok = write('30-nl27sd.json').lines;
+  const first = ok.findIndex(l => /discards|stands pat/.test(l));
+  assert.ok(first > 0 && / calls /.test(ok[first - 1]), 'a discard line follows the first round');
+  // A hand that ends before the draw needs none.
+  const early = JSON.parse(JSON.stringify(fx.hand));
+  early.streets[0].actions = [{ player: 0, action: 'fold', amount: 0 }, { player: 1, action: 'raise', amount: 1.5 }, { player: 2, action: 'fold', amount: 0 }, { player: 3, action: 'fold', amount: 0 }];
+  early.streets[1].actions = [];
+  early.result = { winners: [{ playerIdx: 1, split: false }] };
+  early.streets[0].draws = [];
+  assert.equal(checkExportable(early).ok, true);
+});
+test('M. a stud hand with no stakes says "stakes", the flop games say "blinds"', () => {
+  const stud = JSON.parse(JSON.stringify(load('24-stud-hi.json').hand));
+  stud.blinds = { bb: 0 };
+  assert.equal(checkExportable(stud).message, "The stakes aren't recorded");
+  const flop = JSON.parse(JSON.stringify(load('01-nlh-cash-3bet.json').hand));
+  flop.blinds = { sb: 0, bb: 0 };
+  assert.equal(checkExportable(flop).message, "The blinds aren't recorded");
+});
+test('M. the every-game file has a name of its own; rows read as they were saved', () => {
+  const day = new Date(2026, 9, 14, 12);
+  assert.equal(handsFileName(day), 'futuregame-hands-2026-10-14.txt');
+  assert.equal(handsFileName(day, 'all'), 'futuregame-hands-2026-10-14-all.txt');
+  assert.notEqual(handsFileName(day), handsFileName(day, 'all'));
+  assert.equal(singleHandFileName('8123'), 'futuregame-hand-8123.txt');
+  assert.equal(playedAtOf({ created_at: '2026-10-13 18:30:05' }).toISOString(), '2026-10-13T18:30:05.000Z', 'SQLite time is UTC');
+  assert.equal(playedAtOf({ created_at: 'nonsense' }), null);
+  assert.equal(handOfRow({ handData: { streets: [] }, id: 1 }).streets.length, 0);
 });

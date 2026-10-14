@@ -149,6 +149,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { stageHome } from './home-states.mjs';
+import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -2117,13 +2118,27 @@ function finalize(c) {
     for (const s of ['button[title*="Share"]', 'button[aria-label*="Share"]', 'button:has-text("Share")']) if (await exists(s)) { await tap(s, 900, true); return; }
     throw new Error('no share button on the replayer');
   }, 1);
-  // Hands: the Saved Hands heading's Export for PokerTracker sheet (HandHistoryExportSheet).
+  // Hands: the Saved Hands heading's Export for PokerTracker sheet (HandHistoryExportSheet), over the
+  // account's own hands plus one of every kind it sorts (scripts/hands-states.mjs: both options and
+  // the Not exported list), staged by answering the list's request; and a replay's Share sheet on a
+  // hand that came by a share link, whose hand-history tile is off with its reason.
   step('hands-export', async () => {
-    await nav('Hands');
-    const sel = 'button:has-text("Export for PokerTracker")';
-    await reveal(sel, 200);
-    await tap(sel, 900);
-    await vis('.hh-export-sheet').first().waitFor({ timeout: 4000 });
+    const undo = await stageHands(p);
+    try {
+      await fresh(); await nav('Hands');
+      const sel = 'button:has-text("Export for PokerTracker")';
+      await reveal(sel, 200);
+      await tap(sel, 900);
+      await vis('.hh-export-sheet').first().waitFor({ timeout: 4000 });
+      await run('hands-export');
+    } finally { await undo(); }
+  }, 0, { selfRun: true });
+  step('replayer-share-shared', async () => {
+    await p.goto(base + '/#h/' + encodeURIComponent(SHARED_HAND_CODE), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(4500);
+    await p.getByRole('button', { name: 'Skip', exact: true }).first().click({ timeout: 1000 }).catch(() => {});
+    await tap('.rab-share', 900, true);
+    await vis('.replayer-share-sheet').first().waitFor({ timeout: 4000 });
   }, 1);
   // Cash: the location picker.
   step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);

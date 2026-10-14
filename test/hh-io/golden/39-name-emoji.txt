@@ -1,0 +1,17 @@
+PokerStars Hand #8148701594096135:  Hold'em No Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 2-max Seat #1 is the button
+Seat 1: aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2 ($100 in chips)
+Seat 2: aaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀t ($100 in chips)
+aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2: posts small blind $1
+aaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀t: posts big blind $2
+*** HOLE CARDS ***
+Dealt to aaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀t [Td 9d]
+aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2: raises $4 to $6
+aaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀t: folds
+Uncalled bet ($4) returned to aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2
+aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2 collected $4 from pot
+aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2: doesn't show hand
+*** SUMMARY ***
+Total pot $4 | Rake $0
+Seat 1: aaaaaaaaaaaaaaaaaaaaaaaaaaa😀 2 (button) (small blind) collected ($4)
+Seat 2: aaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀t (big blind) folded before Flop

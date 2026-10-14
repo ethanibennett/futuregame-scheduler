@@ -15058,6 +15058,7 @@
       line-height: calc(var(--subrow) * 3); padding-top: calc(var(--subrow) * 3 - 1cap);
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
     }
+    .hh-export-sheet:focus { outline: none; }   /* focus is moved to the dialog itself, on open */
     .hh-export-sheet .hh-export-body { margin-bottom: calc(var(--subrow) * 2); font-size: var(--fs-sm); color: var(--text-muted); }
     .hh-export-sheet .hh-export-option { justify-content: flex-start; }
     .hh-export-sheet .hh-export-option:disabled { cursor: default; }

@@ -1,5 +1,5 @@
-PokerStars Hand #8625576327917176: Tournament #7771237548, Freeroll  6 Card Omaha Hi/Lo Pot Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
-Table '7771237548 1' 6-max Seat #1 is the button
+PokerStars Hand #8491289173157348: Tournament #7049938400, Freeroll  6 Card Omaha Hi/Lo Pot Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7049938400 1' 6-max Seat #1 is the button
 Seat 1: Hero (12000 in chips)
 Seat 2: Ivo (12000 in chips)
 Seat 3: Jem (12000 in chips)
