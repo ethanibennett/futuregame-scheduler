@@ -1,0 +1,125 @@
+/* The floating "+" on the bankroll pages (components/BankrollFab.jsx).
+   The box is 5g x 7r: 7r is 4.97g, so it reads as a circle (--radius-pill) while both sides are
+   whole units and its edges sit on grid lines. The plus is an icon, centred by flex in a box with
+   no padding (owner rule, 2026-10-10: a control's icon is centred both ways, the grid ignored). */
+.bk-fab {
+  --icon-size: calc(var(--subrow) * 3.5);
+  position: fixed;
+  z-index: var(--z-fab);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--gu) * 5);
+  height: calc(var(--subrow) * 7);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: var(--elev-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.bk-fab svg { transition: transform var(--dur-snap); }
+/* Open, the plus turns to a cross in place: the box does not move. */
+.bk-fab[aria-expanded="true"] svg { transform: rotate(45deg); }
+.bk-fab:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) {
+  .bk-fab:hover { background: var(--brand-hover); }
+}
+
+/* ── Where it sits ──
+   Phone, Results tab: the foot-right, its right edge on the shell's 1g margin (the window's middle
+   is the canvas's at every phone-layout width, as the Today/Next pill relies on) and 2r above the
+   bottom nav's top, an r line (--nav-snap, styles.css .bottom-nav); 2r above the live cash bar
+   instead while one shows, as that pill does (CashSessions.css). */
+.bk-fab--page {
+  right: calc(50% - var(--gu) * 17.5);
+  bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 2);
+}
+.app-shell:has(.cs-bar) .bk-fab--page {
+  bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 7);
+}
+/* Desktop (>= 1024): the Results tab is a wide pane, which has no nav band and is not a containing
+   block for fixed children (the full-bleed replayer must stay fixed to the window), so the + hangs
+   absolute from the pane itself, as the admin dev keys do (styles.css .dk-pane-wide > .grid-dev-toggle):
+   1g off the pane's content edge (a classic scrollbar's width, or the lane an overlay one floats
+   in, sits outside it) and 2r above the pane's foot, the window's, on the r line counted from the
+   top bar. Above the live cash bar (5r, its own snap) when one shows. */
+.app-shell.is-desktop .dk-pane-wide > .bk-fab--page {
+  position: absolute;
+  right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0))));
+  bottom: calc(var(--subrow) * 2 + mod(100dvh - var(--sa-t), var(--subrow)));
+}
+.app-shell.is-desktop:has(.cs-bar) .dk-pane-wide > .bk-fab--page {
+  bottom: calc(var(--subrow) * 7 + mod(100dvh - var(--sa-t), var(--subrow)));
+}
+/* In the bankroll dashboard sheet (a fixed 37g column over the nav and the cash bar, so neither
+   counts): inside the sheet, 1g off its right edge and 2r above its foot, on the r line the nav
+   would have stood on (--nav-snap with the safe area, so it clears a home indicator). */
+.bk-fab--sheet {
+  position: absolute;
+  right: var(--gu);
+  bottom: calc(var(--sa-b) + var(--nav-snap) + var(--subrow) * 2);
+}
+/* The sheet's last line scrolls clear of the + (its top is 9r plus the snap above the sheet's foot). */
+.an-sheet:has(> .bk-fab) .an-body { padding-bottom: calc(var(--subrow) * 11 + var(--sa-b)); }
+
+/* Results' last line scrolls clear of the + too, by a spacer after the tab's content while the + shows.
+   The + spans 2r to 9r over the nav (or the cash bar), 1r of room more: the phone's scroller already
+   keeps 7r clear at its foot (nav-h + 2r), so 4r more; a desktop pane keeps only 2r, so 8r. */
+.app-shell:has(.bk-fab--page) .tab-panel[data-tab="tracking"]::after { content: ''; display: block; height: calc(var(--subrow) * 4); }
+.app-shell.is-desktop:has(.bk-fab--page) .tab-panel[data-tab="tracking"]::after { height: calc(var(--subrow) * 8); }
+
+/* The admin dev keys (the grid toggles, styles.css .grid-dev-toggle) stand at the same corner: on
+   the Results tab they move up past the +. The phone's stack starts at 7r over the nav's top, the +
+   reaches 9r (14r over the cash bar), so +3 (+8); on desktop the pane has no nav band, the keys
+   already clear the + by 3r, and only the bar's raise reaches them. */
+.app-shell:has(.tab-panel.tab-active[data-tab="tracking"]) { --dev-lift: 3; }
+.app-shell:has(.tab-panel.tab-active[data-tab="tracking"]):has(.cs-bar) { --dev-lift: 8; }
+.app-shell.is-desktop:has(.tab-panel.tab-active[data-tab="tracking"]) { --dev-lift: 0; }
+.app-shell.is-desktop:has(.tab-panel.tab-active[data-tab="tracking"]):has(.cs-bar) { --dev-lift: 3; }
+
+/* ── The menu (portalled to the body) ──
+   Like the user menu: 16g wide, 5r rows, an inset hairline ring (not a border, so the rows start on
+   the box's own lines). Above the dashboard sheet (--z-modal) and its scrim. */
+.bk-fab-scrim { position: fixed; inset: 0; z-index: calc(var(--z-modal) + 3); background: transparent; }
+.bk-fab-menu {
+  z-index: calc(var(--z-modal) + 4);
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--gu) * 16);
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-2);
+  overflow: hidden;
+  font-family: var(--font-condensed);
+}
+.bk-fab-item {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 calc(var(--subrow) * 2);
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+.bk-fab-item + .bk-fab-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.bk-fab-item:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.bk-fab-item-t { white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) {
+  .bk-fab-item:hover { background: var(--hover-overlay); }
+}

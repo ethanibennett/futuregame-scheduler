@@ -23,6 +23,7 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import { ResultsKindTabs } from './CashLive.jsx';
 import { useResultsKind, setResultsKind } from '../hooks/useLiveCashSession.js';
 import { useResultsFocus, clearResultsFocus } from '../hooks/useResultsFocus.js';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 // BETA cash sessions, admins only: lazy like the tax report.
 const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
 // BETA tax report, admins only: lazy so nobody else downloads it (or its jsPDF export).
@@ -291,7 +292,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
 }
 
 // ── Tracking View (main export) ─────────────────────────────
-export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone }) {
+export default function TrackingView({ trackingData: allTrackingData, tournaments, mySchedule, onAdd, onUpdate, onDelete, onResetResults, myActiveUpdates, isAdmin, token, bk, intent = null, onIntentDone, onLog }) {
   const toast = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -493,6 +494,13 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
     return () => { clearTimeout(t0); clearTimeout(t1); };
   }, [focusEntry]);
 
+  // The floating + (BankrollFab, mounted by App) steps aside while a form it would open is open here
+  // (the Log Result form, however it was opened, or a row in edit; not while the Cash half has the
+  // tab, which keeps the form's state but not its screen) and for the tax report, which is the whole
+  // tab. Cash sessions and expenses hold it from their own views.
+  const tournamentsHalf = !(isAdmin && resultsKind === 'cash');
+  useHideBankrollFab((tournamentsHalf && (showAddForm || !!intentForm || !!pendingFormId || !!editingId)) || (showTaxReport && isAdmin));
+
   if (showTaxReport && isAdmin) {
     return (
       <Suspense fallback={null}>
@@ -512,7 +520,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
       )}
       {/* The bankroll dashboard (beta): mounted beside the strip whose button opens it, so it opens
           from either half of the tab (it sat in the Tournaments half, and Dashboard did nothing on Cash). */}
-      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} />}
+      {bk.enabled && showBankrollDashboard && <BankrollDashboardSheet bk={bk} onClose={closeBankrollDashboard} onLog={onLog} />}
       {/* Cash sessions (beta, admins): Tournaments | Cash. Everyone else sees no strip. */}
       {isAdmin && <ResultsKindTabs />}
       {isAdmin && resultsKind === 'cash' ? (

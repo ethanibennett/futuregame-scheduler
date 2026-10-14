@@ -17,6 +17,8 @@ import { registerClock, useClockStore, useSecondTick, liveView, clockRegEnd, fmt
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
+import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
+import { openVenueMap } from '../utils/venue-map/open.js';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
 // splitEventStage is shared with CalendarEventRow and mirrors the server's
@@ -31,6 +33,35 @@ function formatEventName(name) {
       <span className="cal-event-stage">{stage}</span>
     </>
   );
+}
+
+/* The venue strip's behaviour (owner, 2026-10-13). On an event at a real room the strip opens the
+   venue map (utils/venue-map/open.js) — where the room is, for names that do not say — and the bar
+   keeps opening and closing the card. Online events and Personal days have no place: their strip
+   keeps toggling the card, as the bar does.
+   It stays a div with role="button" rather than a <button>: its name is set in vertical-rl, and a
+   <button> honours writing-mode only from Safari 17.4 (vertical form controls), below the app's
+   iOS 15 floor, where the rotated name would lie flat across the strip. The role, tab stop, key
+   handling, focus ring (styles.css .cal-venue-strip:focus-visible) and label make it one. */
+function venueStripProps(t, toggle, extra = {}) {
+  if (!hasVenueMap(t)) {
+    return {
+      ...extra,
+      onClick: toggle,
+      role: 'button',
+      tabIndex: 0,
+      onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); } },
+    };
+  }
+  const show = e => { e.stopPropagation(); openVenueMap(t, e.currentTarget); };
+  return {
+    onClick: show,
+    role: 'button',
+    tabIndex: 0,
+    'aria-haspopup': 'dialog',
+    'aria-label': `Show ${venueRoomName(t)} on a map`,
+    onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(e); } },
+  };
 }
 
 // Build-29 behavior: sum the bounding heights of every sticky element
@@ -662,11 +693,7 @@ function CalendarEventRow_({ tournament, isInSchedule, onToggle, isPast, showMin
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
-        onClick={toggle}
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+        {...venueStripProps(tournament, toggle, { 'aria-expanded': open })}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span>{open && <span className="venue-strip-full">{venue.longName || venue.abbr}</span>}</div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': conditions && conditions.length > 0 ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         {/* Collapsed bar -- always visible */}
@@ -1254,7 +1281,7 @@ function CalendarEventRowLite({ tournament, isInSchedule, isPast, isAnchor, cond
       <div
         className={`cal-venue-strip venue-strip-${venue.abbr.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ background: stripColor, color: stripTextColor, cursor: 'pointer' }}
-        onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}
+        {...venueStripProps(tournament, expand)}
       ><span className="venue-strip-abbr">{getStripAbbr(venue.abbr)}</span></div>
       <div className="cal-event-row-content" style={isInSchedule ? {'--card-outline': hasConditions ? (venue.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : stripColor) : stripColor} : undefined}>
         <div className="cal-event-bar" onClick={expand} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(e); } }}>

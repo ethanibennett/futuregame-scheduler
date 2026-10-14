@@ -3,11 +3,15 @@ import { createPortal } from 'react-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
-import BankrollOverview, { Segmented } from './BankrollOverview.jsx';
+import BankrollFab from './BankrollFab.jsx';
+import BankrollOverview from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollReports from './BankrollReports.jsx';
 import BankrollSessions from './BankrollSessions.jsx';
+import BankrollLocations from './BankrollLocations.jsx';
+import TabStrip from './BankrollTabStrip.jsx';
 import './analytics.css';
 import './bankroll-dashboard.css';
 
@@ -34,12 +38,13 @@ function fmtDate(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
-// The sheet's tabs, in order. The strip is one 35g segmented control whose segments share the
-// width in whole g (bankroll-dashboard.css .bd-seg[data-n]): add a tab here and render it below,
-// and the strip re-divides itself (4 tabs 9+9+9+8g, 5 tabs 5 x 7g, 6 tabs 5 x 6g + 5g).
+// The sheet's tabs, in order. Add a tab here and render it below; the strip (BankrollTabStrip.jsx)
+// handles any count: one 35g segmented control dividing itself in whole g while every label fits
+// (4 tabs 9+9+9+8g, 5 tabs 5 x 7g), else one row of whole-g pills that scrolls sideways.
 const TABS = [
   ['balance', 'Overview'],
   ['sessions', 'Sessions'],
+  ['locations', 'Locations'],
   ['reports', 'Reports'],
   ['rules', 'Rules'],
   ['goals', 'Goals'],
@@ -232,7 +237,9 @@ function Risk({ risk, money }) {
 
 // ── The sheet ────────────────────────────────────────────────────────────────────────────
 // initialTab / initialKey: where it opens (the home's bankroll line opens Rules on All).
-export default function BankrollDashboard({ bk, onClose, initialTab = 'balance', initialKey = null }) {
+// onLog: App's hand-off to Results; the floating + inside the sheet closes the sheet and opens the
+// chosen form there, as the Overview's latest-sessions buttons do (BankrollOverview open()).
+export default function BankrollDashboard({ bk, onClose, initialTab = 'balance', initialKey = null, onLog }) {
   const toast = useToast();
   const closeRef = useRef(null);
   const [key, setKey] = useState(initialKey ?? bk.selected);
@@ -244,11 +251,16 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
   const [importing, setImporting] = useState(false);
   const [version, setVersion] = useState(0);
   const today = getToday();
+  // The sheet covers the Results tab's floating + and has its own; that one steps aside on the CSV
+  // import screen, which is a form of its own.
+  useHideBankrollFab(true, 'page');
+  useHideBankrollFab(importing, 'sheet');
 
   const b = key === BANKROLL_ALL ? null : bk.bankrolls.find((x) => x.id === key);
   const currency = b ? b.currency : 'USD';
+  // Rules, Risk and Goals format in the chip's currency; the Overview formats in the currency of
+  // the ledger in hand, which lags the chip by a round trip (BankrollOverview, ledgerScope).
   const money = useCallback((v) => formatCurrencyAmount(Math.round(v || 0), currency), [currency]);
-  const signed = useCallback((v) => (v > 0 ? '+' : '') + formatCurrencyAmount(Math.round(v || 0), currency), [currency]);
 
   useEffect(() => {
     let live = true;
@@ -296,6 +308,13 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
   };
 
   const chips = [[BANKROLL_ALL, 'All'], ...bk.visible.map((x) => [x.id, x.name])];
+  // The + inside the sheet: Results shows the roll this sheet showed, the sheet closes, and the form
+  // opens there (the same hand-off as the Overview's buttons).
+  const addFromSheet = (intent) => {
+    if (bk.setSelected) bk.setSelected(key);
+    onClose();
+    if (onLog) onLog(intent);
+  };
 
   return createPortal(
     <>
@@ -314,18 +333,19 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
           ) : (
             <>
               <Seg cols="bd-seg4" label="Bankroll" options={chips} value={key} onChange={setKey} />
-              <Segmented className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />
+              <TabStrip className="bd-tabs" label="Show" options={TABS} value={tab} onChange={setTab} btnClass="bk-seg-btn bd-tab" />
               {ledger.status === 'error' && <p className="an-p">The ledger could not load. Close and try again.</p>}
               {d && d.sources.some((s) => !s.ok) && (
                 <p className="an-p">Not included (a ledger source failed): {d.sources.filter((s) => !s.ok).map((s) => s.name).join(', ')}.</p>
               )}
               {tab === 'balance' && d && (
-                <BankrollOverview d={d} risk={risk} bk={bk} bkKey={key} b={b} currency={currency} money={money}
-                  signed={signed} today={today} fmtDate={fmtDate} onClose={onClose} />
+                <BankrollOverview d={d} risk={risk} bk={bk} bkKey={key} currency={currency}
+                  today={today} fmtDate={fmtDate} onClose={onClose} />
               )}
               {/* One line per further tab, keyed as in TABS above. */}
               {tab === 'sessions' && <BankrollSessions bk={bk} bankrollKey={key} currency={currency} onClose={onClose} />}
 
+              {tab === 'locations' && <BankrollLocations bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'reports' && <BankrollReports bk={bk} bankrollKey={key} currency={currency} />}
               {tab === 'rules' && <Rules guide={guide} prefs={prefs} money={money} onSave={savePrefs} saving={saving} />}
               {tab === 'rules' && <Risk risk={risk} money={money} />}
@@ -346,6 +366,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
             </>
           )}
         </div>
+        {onLog && <BankrollFab scope="sheet" isAdmin={bk.enabled} onPick={addFromSheet} />}
       </div>
     </>,
     portalTarget(),

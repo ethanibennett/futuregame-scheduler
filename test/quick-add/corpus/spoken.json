@@ -1,0 +1,6273 @@
+[
+ {
+  "id": "sp-bomb-pot-aa-877-two-spades",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=ixtr804s-ow&t=8s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "we-narrator",
+   "bomb-pot",
+   "fused-ranks",
+   "suit-count",
+   "group-action"
+  ],
+  "text": "half an hour in and we pick up pocket aces in the big blind, and of course it's a seven handed $200 bomb pot. the flop is 877 with two spades and we don't even hold the ace of spades. everybody checks around, the turn is the deuce of clubs, looks like a brick so I stab 300. the hijack calls and the cutoff gets frisky and makes it a thousand",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "players": 7,
+   "heroPosition": "BB",
+   "heroCards": "AxAx",
+   "board": {
+    "flop": "8x7x7x",
+    "turn": "2c"
+   },
+   "unsupported": true,
+   "actions": {
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "HJ",
+      "check"
+     ],
+     [
+      "CO",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      300
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "LJ",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      300
+     ],
+     [
+      "CO",
+      "raise",
+      1000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops after the cutoff's raise"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"877 with two spades\" is an 8-7-7 flop with two spades. A bomb pot has no preflop betting, which the validator reads as folds."
+ },
+ {
+  "id": "sp-77-co-king-75-two-spades-razor",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=ixtr804s-ow&t=239s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "fused-ranks",
+   "asr-words",
+   "multiway",
+   "suit-count"
+  ],
+  "text": "this one we're deal pocket sevens, I'm in the cutoff, and under the gun opens to 150. I flat, the button calls, and the big blind calls too so four of us see it. king 75 with two spades on the flop gives me middle set. big blind checks and the pre flop razor bets a tiny 100, I'm in position holding the second nuts so I only call, then the button calls and the big blind makes it four way again",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "CO",
+   "heroCards": "7x7x",
+   "board": {
+    "flop": "Kx7x5x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      150
+     ],
+     [
+      "CO",
+      "call",
+      150
+     ],
+     [
+      "BTN",
+      "call",
+      150
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      100
+     ],
+     [
+      "CO",
+      "call",
+      100
+     ],
+     [
+      "BTN",
+      "call",
+      100
+     ],
+     [
+      "BB",
+      "call",
+      100
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"king 75\" is K-7-5; \"razor\" is the raiser; \"deal\" is dealt."
+ },
+ {
+  "id": "sp-aqo-sb-3bet-843-two-hearts",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=ixtr804s-ow&t=95s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "fused-ranks",
+   "asr-words",
+   "3bet",
+   "suit-count"
+  ],
+  "text": "a bit later I pick up ace queen offuit in the small blind, the button opens to 125, a late position opener. calling is possible but I three bet to 600 because I want to win it right here. he calls so we are heads up and I'm out of position with four figures in the pot. flop 843 with two hearts, wrong cards wrong suit for me, I check and he bets 675",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "SB",
+   "heroCards": "AxQx",
+   "board": {
+    "flop": "8x4x3x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      125
+     ],
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "BTN",
+      "call",
+      475
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      675
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the bet"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"offuit\" is offsuit. \"843 with two hearts\" is a three-card flop and a suit count."
+ },
+ {
+  "id": "sp-qq-co-hypothetical-3bet-for-bet",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=Y3HLGx53C8A&t=172s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "hypothetical",
+   "asr-words",
+   "squeeze"
+  ],
+  "text": "now we're deal pocket queens, I'm in the cutoff, and under the gun makes it 125. against a later position open I would be three betting, but this is early position so I just flat. the small blind does the squeezing, to 725, probably not light from there. under the gun just calls, with aces or kings she would have for bet, so I call as well and the three of us see a flop",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "CO",
+   "heroCards": "QxQx",
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      125
+     ],
+     [
+      "CO",
+      "call",
+      125
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      600
+     ],
+     [
+      "CO",
+      "call",
+      600
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the excerpt stops before the flop"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "The \"if he opened later I'd three bet\" and \"would have four-bet\" are hypotheticals, not actions. \"for bet\" is four-bet."
+ },
+ {
+  "id": "sp-qq-utg-set-aq7-rainbow-see-bet",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=Y3HLGx53C8A&t=1320s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-words",
+   "texture"
+  ],
+  "text": "pocket queens under the gun, I raise to 150 and the big blind calls, so we are heads up. flop ace queen 7 rainbow and the rung good is back with a middle set. big blind checks, I'm see betting this a lot so I put out 200 for value and he calls. the turn is the six of hearts, more draws, and he checks again",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "UTG",
+   "heroCards": "QxQx",
+   "board": {
+    "flop": "AxQx7x",
+    "turn": "6h"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      150
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      200
+     ],
+     [
+      "BB",
+      "call",
+      200
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act on the turn"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"see betting\" is c-betting; \"rung good\" is run good."
+ },
+ {
+  "id": "sp-109-suited-hijack-king-3-deed",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=ZpoXoZQSglA&t=1059s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "fused-ranks",
+   "asr-words",
+   "multiway",
+   "no-punctuation",
+   "suit-count"
+  ],
+  "text": "I'm dealt 109 suited in the hijack, under the gun plus one makes it 15, a guy in middle position calls, I call, and the button and the big blind call as well so it's five ways. the flop comes king 3 deed, two clubs, so a flesh draw and a backdoor straight draw. big blind checks, on the gone plus one bets 15 again, middle position folds, six to one so I call, and the button is aggressive",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "heroPosition": "HJ",
+   "heroCards": "Tx9x",
+   "board": {
+    "flop": "Kx3x2x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      15
+     ],
+     [
+      "MP",
+      "call",
+      15
+     ],
+     [
+      "HJ",
+      "call",
+      15
+     ],
+     [
+      "BTN",
+      "call",
+      15
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "bet",
+      15
+     ],
+     [
+      "MP",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      15
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the button is still to act"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"109 suited\" is ten-nine suited, not a size; \"deed\" is deuce; \"on the gone plus one\" is UTG+1; \"flesh draw\" is flush draw."
+ },
+ {
+  "id": "sp-player-named-kk-jams-sixes-run-once",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=9eLUh7TrTWQ&t=196s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "name-like-cards",
+   "dialogue",
+   "run-once"
+  ],
+  "text": "Wes starts it with a limp of $200, I pick up sixes and make it 2,000, and KK in the small blind shoves for about 6,500. he jams light there so I snap call, but he has pocket queens. we run it once in a $13,000 pot >> give me the double >> no six on the flop >> one card >> and the river queen ends it",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "6x6x",
+   "showdown": {
+    "SB": "QxQx"
+   },
+   "winners": [
+    "SB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "hero",
+      "raise",
+      2000
+     ],
+     [
+      "SB",
+      "all-in",
+      null
+     ],
+     [
+      "hero",
+      "call",
+      4500
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Wes's seat and the hero's are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "only \"no six\" and a river queen are said of the board"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"KK\" is a player's nickname, not pocket kings. \">>\" marks the table talk."
+ },
+ {
+  "id": "sp-straddle-aj-queen-105-two-clubs",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=9eLUh7TrTWQ&t=689s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "name-like-cards",
+   "fused-ranks",
+   "straddle",
+   "anonymous-callers",
+   "suit-count"
+  ],
+  "text": "I'm the $400 straddle, KK makes it $1,000, a few players call around and it gets to me, so I flat with ace jack, the ace being a club. we're four way to a flop of queen 105 two clubs, which gives me a straight draw plus the nut club. it checks to KK who bets 1,200, Cal calls, I raise to 6,000, KK lets it go, and Cal never folds so he calls",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "UTG",
+   "heroCards": "AcJx",
+   "board": {
+    "flop": "QxTx5x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "KK and Cal are never seated and \"a few people\" call"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.2.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the excerpt ends on the flop"
+   }
+  ],
+  "notes": "\"queen 105 two clubs\" is Q-T-5 with two clubs. \"KK\" is a player."
+ },
+ {
+  "id": "sp-jack-in-the-straddle-squeezes-1087-all-clubs",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=9eLUh7TrTWQ&t=1961s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "name-like-cards",
+   "fused-ranks",
+   "texture",
+   "squeeze"
+  ],
+  "text": "with pocket fives I open to 3,000, Cal calls from the big blind, and then Jack in the straddle squeezes to 14,000. I have position so I call, and Cal calls fast. three ways to a fat flop, 1087 all clubs, not my favourite, and Cal just jams $25,000. Jack fold and so it's an easy fold for me",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroCards": "5x5x",
+   "board": {
+    "flop": "Tc8c7c"
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "hero",
+      "raise",
+      3000
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ],
+     [
+      "UTG",
+      "raise",
+      14000
+     ],
+     [
+      "hero",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "all-in",
+      25000
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "hero",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never named"
+   }
+  ],
+  "notes": "\"Jack\" is the straddler, a player; \"1087 all clubs\" is a T-8-7 monotone flop."
+ },
+ {
+  "id": "sp-a10o-fold-to-3bet-would-have-flopped",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=CAaDk1W9Vo0&t=580s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "hypothetical",
+   "counterfactual"
+  ],
+  "text": "Marc raises to 1,000, I call with ace 10 offsuit, and the doc three bets to 4,000. Marc calls and I take the disciplined route and fold. of course I would have flopped two pair against his bottom set, then turned the nut full house with the ace, he jams the river and I sit there watching a $100,000 pot go to Marc",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "AxTx"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "Everything after the fold is what WOULD have happened: no flop, turn or river action for the hero."
+ },
+ {
+  "id": "sp-q2-clubs-straddle-pink-eight",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=CAaDk1W9Vo0&t=1820s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "straddle",
+   "suit-count",
+   "asr-words"
+  ],
+  "text": "another $800 straddle for me. Marc raises to 3,000 and Bo calls, and I've got queen deuce of clubs, no fold this time. flop comes king 10 three, two clubs, a big flush draw. Marc leads 6,000, Bo folds, I call, and the turn is a pink eight of clubs",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "blinds": {
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "UTG",
+   "heroCards": "Qc2c",
+   "board": {
+    "flop": "KxTx3x",
+    "turn": "8c"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Marc and Bo are never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"king 10 three two clubs\" is K-T-3 with two clubs, not a four-card flop. \"pink\" is bink."
+ },
+ {
+  "id": "sp-aqo-sb-3bet-hijacked-player-ajx-two-spades",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=956g004IWBU&t=33s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "no-punctuation",
+   "shout-out",
+   "suit-count"
+  ],
+  "text": "early in the session I pick up ace queen off suit in the small blind, the hijack opens to 25, I three bet to 100 and the hijacked player calls. she watches the channel so hi Dana, good session. the flop is ace jack five two spades, I bet 70 with top pair and she calls hoping for a brick, and the turn is a king",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "SB",
+   "heroCards": "AxQx",
+   "board": {
+    "flop": "AxJx5x",
+    "turn": "Kx"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "raise",
+      25
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      75
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "bet",
+      70
+     ],
+     [
+      "HJ",
+      "call",
+      70
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the excerpt stops at the turn card"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"hijacked player\" is the hijack; \"ace jack five two spades\" is A-J-5 with two spades."
+ },
+ {
+  "id": "sp-99-utg-plus-two-glued-kk2-boat",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=RgrWkYSa0Lw&t=136s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-punctuation",
+   "spoken-board"
+  ],
+  "text": "pocket nines in early position here, that is a pair, so we raise, $75 to go under the gun plus two player calls and the big blind comes along too. three ways to a flop of king king deuce, one check, a good board for us, I bet $75 and UTG2 calls, the big blind folds. heads up to the turn, another king, we fill up, I bet $175 and he calls again. the river is a nine",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "UTG",
+   "heroCards": "9x9x",
+   "board": {
+    "flop": "KxKx2x",
+    "turn": "Kx",
+    "river": "9x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      75
+     ],
+     [
+      "UTG+2",
+      "call",
+      75
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      75
+     ],
+     [
+      "UTG+2",
+      "call",
+      75
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "bet",
+      175
+     ],
+     [
+      "UTG+2",
+      "call",
+      175
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "street-open:3",
+     "next:3",
+     "group-seats:3",
+     "pot-mismatch"
+    ],
+    "about": "the excerpt stops at the river card"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "The recogniser glued \"under the gun plus two\" onto the hero's raise: the hero is UTG, the caller UTG+2."
+ },
+ {
+  "id": "sp-97o-bb-queen-982-diamonds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=RgrWkYSa0Lw&t=304s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "fused-ranks",
+   "four-card-flop",
+   "dialogue",
+   "ambiguous"
+  ],
+  "text": "I'm in the big blind with 97 off suit, good price, so I call. the flop is queen 982 diamonds, I check and it checks through. the turn is an off suit seven, I'm not even watching >> you check >> oh okay, yeah yeah, I still check >> I finally see the turn and check, the under the gun player fires $200, the middle position player calls and with two pair I call. the river is an off suit nine, full house",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "BB",
+   "heroCards": "9x7x",
+   "board": {
+    "flop": "Qx9x8x",
+    "turn": "7x",
+    "river": "9x"
+   },
+   "actions": {
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      200
+     ],
+     [
+      "MP",
+      "call",
+      200
+     ],
+     [
+      "BB",
+      "call",
+      200
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "\"queen 982 diamonds\": Q-9-8 with two diamonds, or Q-9-8-2? The four-card flop is asked about"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the preflop action before the hero's call is not told"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "A three-card flop and a suit count fused into one number. The \"I check\" said twice is one check."
+ },
+ {
+  "id": "sp-98dd-direct-left-jack-for-deuce",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=cCO478p4vY8&t=486s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "relative-seat",
+   "homophones",
+   "cents-prices"
+  ],
+  "text": "under the gun limps and I pick up nine eight of diamonds, a nice suited connector, so I raise to $25.00. the player on my direct left calls and so does the big blind, three way. the flop is jack for deuce, the jack being the diamond, and the big blind checks. we can barrel a lot of cards so I make a normal see back of $30.00, the player on my left folds, and the big blind calls",
+  "expect": {
+   "gameType": "NLH",
+   "heroCards": "9d8d",
+   "board": {
+    "flop": "Jd4x2x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never named and the caller is only \"on my direct left\""
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"jack for deuce\" is J-4-2; \"see back\" is c-bet; \"$25.00\" is 25."
+ },
+ {
+  "id": "sp-tt-ep-one-collar-position-player",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=cCO478p4vY8&t=1098s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-words",
+   "relative-seat",
+   "texture"
+  ],
+  "text": "tens for me and I raise to $20.00 from early position and there's only one collar so heads up for once the flop is king five four with a flush draw I check the position player bets $25 one bet won't move tens so I call turn an ace and a second flush draw I check he checks back the river is an off suit three and I check again to get to showdown",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "UTG",
+   "heroCards": "TxTx",
+   "board": {
+    "flop": "Kx5x4x",
+    "turn": "Ax",
+    "river": "3x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the caller is only \"the position player\""
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"collar\" is caller; \"with a flush draw\" is two cards of one suit on the flop."
+ },
+ {
+  "id": "sp-75ss-lojack-cutoff-plays-for-more",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=qiu4DN4k6rA&t=703s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "implied-open",
+   "asr-words",
+   "texture"
+  ],
+  "text": "this time it's the seven five of spades in the low jack and the cutoff wants to play for more, so it's 90 to go. it comes back around to me and I'm not folding, so we are heads up to a queen eight six rainbow flop, which gives me an open ender. then I checked my opponent down bets 60 bucks",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "LJ",
+   "heroCards": "7s5s",
+   "board": {
+    "flop": "Qx8x6x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "LJ",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "raise",
+      90
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "LJ",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "LJ",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      60
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hero's open is only implied by \"the cutoff wants to play for more\""
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the bet"
+   }
+  ],
+  "notes": "\"i checked my opponent down bets\" is \"I check, my opponent bets\"."
+ },
+ {
+  "id": "sp-aqo-sb-a42-one-spade-two-clubs",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=6xU2E1SDUh4&t=207s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "suit-count",
+   "hypothetical"
+  ],
+  "text": "the under the gun player makes it $150 and I have ace queen offsuit in the small blind. against a button open I might three bet, but versus under the gun I call. the flop is ace four deuce, one spade, two clubs, I check, he bets $100 and of course we call. the turn is a nine and another club, I check, he fires $225, we are not going anywhere so we call",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "SB",
+   "heroCards": "AxQx",
+   "board": {
+    "flop": "Ax4x2x",
+    "turn": "9c"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      150
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      100
+     ],
+     [
+      "SB",
+      "call",
+      100
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      225
+     ],
+     [
+      "SB",
+      "call",
+      225
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.3.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the excerpt stops before the river"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"one spade, two clubs\" must survive the suit fill; \"another club\" on the turn makes three."
+ },
+ {
+  "id": "sp-ajo-utg-spot-over-the-straddle-brick",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=6xU2E1SDUh4&t=477s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "straddle",
+   "straddle-utg",
+   "relative-seat",
+   "brick"
+  ],
+  "text": "the blinds are ten twenty five with a fifty straddle and we get a good ace, ace jack off suit, and from the under the gun spot we raise to $150, then the player in the straddle calls, and so does the plus one player, three ways. flop queen jack nine with two clubs, straddle checks, I check, the player behind me checks. on the turn, the seven of clubs, the straddler checks, I bet $150, the player behind me folds and the straddler calls. the river is a brick and the straddler checks again",
+  "expect": {
+   "gameType": "NLH",
+   "blinds": {
+    "sb": 10,
+    "bb": 25,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "UTG+1",
+   "heroCards": "AxJx",
+   "board": {
+    "flop": "QxJx9x",
+    "turn": "7c"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      150
+     ],
+     [
+      "UTG+2",
+      "call",
+      150
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      100
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "check"
+     ],
+     [
+      "UTG+2",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "UTG+1",
+      "bet",
+      150
+     ],
+     [
+      "UTG+2",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      150
+     ]
+    ],
+    "river": [
+     [
+      "UTG",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.3.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the river is only \"a brick\": no rank"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "street-open:3",
+     "next:3",
+     "group-seats:3",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "With a straddle on, the hero's \"under the gun spot\" is the seat after the straddler, so UTG+1 here; \"the plus one player\" behind him is UTG+2."
+ },
+ {
+  "id": "sp-kjss-initial-razor-ace8-deuce",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=t3A_TtgchjQ&t=33s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-words",
+   "fused-ranks",
+   "relative-seat",
+   "anonymous-actors"
+  ],
+  "text": "right away I look down at king jack of spades, there's a raise to 20 and a call, and I three bet to $85. it folds back to the initial razor who calls, and the player in between calls too. three way, the flop is ace8 deuce with two diamonds, good for my range so I rep aces. the $260 pot sees a bet of $125 come in, any customers, the first player folds",
+  "expect": {
+   "gameType": "NLH",
+   "heroCards": "KsJs",
+   "board": {
+    "flop": "Ax8x2x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is named: \"the initial razor\", \"the player in between\""
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"initial razor\" is the initial raiser; \"ace8 deuce\" is A-8-2. \"Comes a bet\" never says who bet."
+ },
+ {
+  "id": "sp-kqs-3bet-qq2-donk-no-seats",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=uxzTug-sxw0&t=376s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "rhetorical-questions",
+   "unknown-seat"
+  ],
+  "text": "there's a raise to $20 and a call ahead of me, so I three bet to $80 with king queen suited, the button calls, and the two $20 players call too. the flop is queen queen deuce and I have trips, then there's a donk to 150 in front of me. pocket deuces? ace queen? king queen like me? what is this line",
+  "expect": {
+   "gameType": "NLH",
+   "heroCards": "KxQx",
+   "board": {
+    "flop": "QxQx2x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never stated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "The questions about the villain's hand are not cards."
+ },
+ {
+  "id": "sp-cowboys-forb-bet-texas-button",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=uxzTug-sxw0&t=646s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "slang",
+   "button-blind",
+   "unsupported",
+   "asr-words"
+  ],
+  "text": "the cowboys again, second time this session. I make it $55, Mick's been on the beers, and he three bets to $255 from the big blind, let we got a razor, no flatting here, I put in a forb bet. to my right the button has a $10 out so he acts last with this texas button thing, and he folds",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "KxKx",
+   "unsupported": true
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is not named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "the four-bet has no size"
+   }
+  ],
+  "notes": "\"the cowboys\" are KK; \"forb bet\" is four-bet; a Texas button is a button blind the replayer cannot post."
+ },
+ {
+  "id": "sp-kto-hijack-in-the-button-t92r",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=abNVfvqpMLY&t=604s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-punctuation",
+   "ambiguous",
+   "multiway",
+   "texture"
+  ],
+  "text": "king 10 off dealt to me in the hijack, under the gun makes it 25 so I three bet it from the hijack in the button, then the big blind and under the gun both come along, four way, and the flop is 10 nine deuce rainbow [music] the big blind checks, under the gun checks, I'm out of position to the button so I check as well and he checks behind, then the nine of clubs comes on the turn and pairs the board",
+  "expect": {
+   "gameType": "NLH",
+   "heroCards": "KxTx",
+   "board": {
+    "flop": "Tx9x2x",
+    "turn": "9c"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      25
+     ],
+     [
+      "hero",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "hero",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "the 3-bet has no size"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the excerpt stops at the turn card"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"from the hijack in the button\": hijack, or on the button? Asked"
+   }
+  ],
+  "notes": "\"from the hijack in the button\" is read as the hijack with the button calling, and the hero's seat is asked (owner: ask)."
+ },
+ {
+  "id": "sp-53dd-j75-two-hearts-and-a-club",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=dJ3Z8Z1SGrM&t=729s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "named-players",
+   "suit-count",
+   "unknown-seat"
+  ],
+  "text": "Eli makes it 80 bucks to go and I call holding five three of diamonds, then Moe calls from the cutoff, three ways. the flop is jack seven five, two hearts and a club, I've only got bottom pair. Eli checks, I check, Moe bets 180 bucks",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "5d3d",
+   "board": {
+    "flop": "Jx7x5x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Eli's seat and the hero's are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"two hearts and a club\" is a suit count for the whole flop."
+ },
+ {
+  "id": "sp-bb-option-puck-pull-two-35-check-raise",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=jr6aAfLDJqQ&t=821s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-words",
+   "no-hero-cards",
+   "checkraise",
+   "suit-count"
+  ],
+  "text": "the small blind completes and I check my option, then the puck is jack nine eight with two hearts, I flopped the nuts, so I check. the under they got limper bets 35, the person in late position pull, and the small blind calls 2:35. now I check raise to 150, every draw is going to continue anyway. the original better calls the 150, the small blind calls too. the turn is the ten of hearts, not what I wanted. small blind checks, I'm in the big line and I check",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "BB",
+   "board": {
+    "flop": "Jx9x8x",
+    "turn": "Th"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      null
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "check"
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      35
+     ],
+     [
+      "CO",
+      "call",
+      35
+     ],
+     [
+      "SB",
+      "call",
+      35
+     ],
+     [
+      "BB",
+      "raise",
+      150
+     ],
+     [
+      "UTG",
+      "call",
+      115
+     ],
+     [
+      "SB",
+      "call",
+      115
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"person in late position\" names no seat"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with UTG to act"
+   }
+  ],
+  "notes": "\"puck\" is flop, \"under they got\" is under the gun, \"pull\" is CALL (owner), \"calls 2:35\" is calls too, 35, \"big line\" is big blind. The late-position caller is taken as the cutoff; nothing is said of what he did after the raise. The hero never names the nuts.",
+  "flaws": [
+   "seating"
+  ]
+ },
+ {
+  "id": "sp-qjs-button-three-colors-code-5-ways",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=jr6aAfLDJqQ&t=1225s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-words",
+   "group-action",
+   "count-conflict",
+   "suit-count"
+  ],
+  "text": "early position raises to 30 and picks up three colors on the way to me, I'm on the button holding queen jack suited. I could three bet but I just call, a good multiway hand. the big blind calls too, so we code 5 ways to the flop, queen queen deuce with two spades, trips on the button. it checks around to the middle position player and he jams for a little over $300",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "BTN",
+   "heroCards": "QxJx",
+   "board": {
+    "flop": "QxQx2x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": [
+     "streets.0.actions",
+     "players"
+    ],
+    "id": [
+     "group-seats",
+     "action:0",
+     "table-size",
+     "seat"
+    ],
+    "about": "\"three callers\" are unnamed, and with the hero and the big blind that is six, not \"5 ways\""
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the jam"
+   }
+  ],
+  "notes": "\"colors\" is callers; \"we code\" is we go. The jam is \"a little over $300\", an estimate."
+ },
+ {
+  "id": "sp-jj-sb-bump-10-deuce-five-two-heart",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=EtO5_Fj15t0&t=442s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "asr-punctuation",
+   "suit-count",
+   "3bet"
+  ],
+  "text": "an action player open limps the hijack then the button another fun one raises to $100 and I peel jacks in the small blind and bump to $400 the hijack calls the button calls three way three bet pot with jacks on a 10 deuce five two heart board overpair I should see bet them every time but I caught a tell from the hijack",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "SB",
+   "heroCards": "JxJx",
+   "board": {
+    "flop": "Tx2x5x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "call",
+      null
+     ],
+     [
+      "BTN",
+      "raise",
+      100
+     ],
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act on the flop"
+   }
+  ],
+  "notes": "\"open limps in the hijack the button another action player raises\" is two sentences run together. \"10 deuce five two heart\" is T-2-5 with two hearts, not a four-card flop."
+ },
+ {
+  "id": "sp-commentary-several-hands-not-one",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=-jWYRL1xENs&t=1316s",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "live-commentary",
+   "several-hands",
+   "garbled"
+  ],
+  "text": "the button opens to 150 and a short stack calls with jack ten of diamonds, then a quiet player three bets with pocket tens, queen deuce folds and the tens scoop it. next hand the veteran makes it 300, ace deuce of spades calls, games wild, nineteen two of diamonds calls, somebody lets ace deuce go, and the bald guy ships his pocket eights",
+  "expect": {
+   "gameType": "NLH",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "Stream commentary running several hands together, half garbled: nothing to record as one hand."
+ },
+ {
+  "id": "sp-at-table-3-6-or-6-6-jammed-14-7",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=qQ0cdp1LJS4&t=621s",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "at-table",
+   "hedged-card",
+   "thousands-shorthand",
+   "ambiguous"
+  ],
+  "text": "I look down in the big blind straight away, what do I have, 3-6? okay, 3-6, or six six and six, got it, I'm all in, what does it take? the cut off raised and I called on the button. I bet the flop, bet the turn, and jammed the river for 14-7. you called with the flush you made on the flop, right? 14-7 on the flop, a double up on the first hand of the series, I flopped the flush",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroPosition": "BTN",
+   "winners": [
+    "BTN"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "CO",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      null
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ]
+    ],
+    "turn": [
+     [
+      "CO",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      null
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ]
+    ],
+    "river": [
+     [
+      "CO",
+      "check"
+     ],
+     [
+      "BTN",
+      "all-in",
+      14700
+     ],
+     [
+      "CO",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.hero",
+    "id": [
+     "cards:hero",
+     "choice"
+    ],
+    "about": "\"3-6 ... six and six\": 3-6 or 6-6?"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "only \"flopped the flush\" is said of the board"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"14-7\" is 14,700. He says he sat into the big blind but recaps the hand from the button. Owner: ask whether the hand was 3-6 or 6-6."
+ },
+ {
+  "id": "sp-plo-utg-ace-king-three-later-the-kings",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=cyzccVvYKwA&t=977s",
+  "game": "PLO",
+  "tags": [
+   "mtt",
+   "to-camera",
+   "dropped-card",
+   "implied-thousands",
+   "suit-count",
+   "pot-limit"
+  ],
+  "text": "I'm under the gun holding ace king three and the ace of spades is my only suit, so I pot it, I don't want multiway, just the blinds or heads up. pot to 70,000 at 20k, and under the gun one calls me, he has chips too. the flop is 1063 with two spades and I have the kings and the ace of spades, so I elect to go 75",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 10000,
+    "bb": 20000
+   },
+   "heroPosition": "UTG",
+   "heroCards": "AsKxKx3x",
+   "board": {
+    "flop": "Tx6x3x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      70000
+     ],
+     [
+      "UTG+1",
+      "call",
+      70000
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "UTG",
+      "bet",
+      75000
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with UTG+1 to act"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"ace king three\" drops a card that \"I have the kings\" restores: A-K-K-3. \"at 20k\" is the big blind; \"go 75\" is 75,000."
+ },
+ {
+  "id": "sp-limp-and-hold-him-sixes-table-talk",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=cyzccVvYKwA&t=1571s",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "to-camera",
+   "asr-words",
+   "table-talk",
+   "telegraphic"
+  ],
+  "text": "2500 here, Ray limps, and I'm teaching limp and hold him, so I limp to sixes too. Tim in the big blind can't resist and makes it 18k, Ray folds, I call and the other player calls. I tell him everybody knows you hold a three off suit, ace3 off, that's what they told me. the flop is queen 10 10, check check check, deuce on the turn, check check, you have nothing, eight on the river, he bets 7k small and I call",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroCards": "6x6x",
+   "board": {
+    "flop": "QxTxTx",
+    "turn": "2x",
+    "river": "8x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Ray's, the hero's and \"the other player's\" seats are never said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the showdown is not told"
+   }
+  ],
+  "notes": "\"limp and hold him\" is limp in hold'em; \"limp to sixes\" is limp too, with sixes. \"Ace3 off\" is table talk, never cards."
+ },
+ {
+  "id": "sp-ppc-plo-910-jack-king-padogi-635",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GU4mxKGC8XY&t=956s",
+  "game": "PLO",
+  "tags": [
+   "mtt",
+   "to-camera",
+   "fused-ranks",
+   "rainbow-holding",
+   "implied-thousands",
+   "ambiguous"
+  ],
+  "text": "PLO round, 1500 big blind. I limp 910 jack king with no suit, with a suit I'd raise but padogi means four suits, so a limp. Fox pots it from the small blind to 6K, I call, heads up. the flop is 108 deuce, tens and an open ender, he checks, I go full pot with a bet of 15k and he calls. the turn returns the queen of hearts, no backdoor for me, he checks, I pot 45, he calls. river a five, the nuts, he checks and I'm all in for 635",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "mtt",
+   "blinds": {
+    "bb": 1500
+   },
+   "heroCards": "9xTxJxKx",
+   "board": {
+    "flop": "Tx8x2x",
+    "turn": "Qh",
+    "river": "5x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "hero",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "hero",
+      "call",
+      4500
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      15000
+     ],
+     [
+      "SB",
+      "call",
+      15000
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      45000
+     ],
+     [
+      "SB",
+      "call",
+      45000
+     ]
+    ],
+    "river": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "hero",
+      "all-in",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "size",
+     "choice"
+    ],
+    "about": "\"all in for 635\": 6,350, 63,500 or 635,000?"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.sb",
+    "id": "blinds.sb",
+    "about": "only the big blind is given"
+   }
+  ],
+  "notes": "\"padogi means four suits\" describes the holding (rainbow), not the game Badugi. \"910 jack king\" is 9-T-J-K. Pot sizes count antes the excerpt never gives. Owner: ask the size of the river shove (635 …)."
+ },
+ {
+  "id": "sp-ppc-couple-limbs-twothirds-muttered-range",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GU4mxKGC8XY&t=992s",
+  "game": "PLO",
+  "tags": [
+   "mtt",
+   "to-camera",
+   "asr-words",
+   "range-noise",
+   "implied-thousands"
+  ],
+  "text": "some hands later couple limbs and I'm already in for twothirds in the small blind so one more chip with nine nine queen deuce five way a 94 deuce flop I bet 5k the big blind calls jack turn backdoor hearts I bet 15 into 19 he calls a five river bad one I check he tanks and bets 40k and I fold 356 three uh 36 ace3 we lose to all that so fold",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "mtt",
+   "heroPosition": "SB",
+   "heroCards": "9x9xQx2x",
+   "board": {
+    "flop": "9x4x2x",
+    "turn": "Jx",
+    "river": "5x"
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "flop": [
+     [
+      "SB",
+      "bet",
+      5000
+     ],
+     [
+      "BB",
+      "call",
+      5000
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "bet",
+      15000
+     ],
+     [
+      "BB",
+      "call",
+      15000
+     ]
+    ],
+    "river": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      40000
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the two limpers are never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"limbs\" is limps; \"twothirds\" is two-thirds. \"356 three ... 36 ace3\" is a muttered range, never cards."
+ },
+ {
+  "id": "sp-ppc-plo-ace-ace-710-55-full-pot",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GU4mxKGC8XY&t=1025s",
+  "game": "PLO",
+  "tags": [
+   "mtt",
+   "to-camera",
+   "restated-hand",
+   "implied-hundreds",
+   "suit-count",
+   "checkraise"
+  ],
+  "text": "later the same guy and I'm on the button this all went fast I raise ace ace 710 that's the ace 10 of diamonds 55 full pot he calls in the big blind flop king 54 one diamond he checks I go 5500 again and he check raises to 21,000 two pair or a set or a wrap I call turn eight of diamonds he checks",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "mtt",
+   "heroPosition": "BTN",
+   "heroCards": "AdAxTd7x",
+   "board": {
+    "flop": "Kx5x4x",
+    "turn": "8d"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "BTN",
+      "raise",
+      5500
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      5500
+     ],
+     [
+      "BB",
+      "raise",
+      21000
+     ],
+     [
+      "BTN",
+      "call",
+      15500
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act on the turn"
+   }
+  ],
+  "notes": "\"ace ace 710\" then \"ace 10 of diamonds\" restates the hand to add suits. \"55 full pot\" is 5,500, as the later \"5500 again\" shows."
+ },
+ {
+  "id": "sp-ppc-nlh-aj-queen-deuce-three-two-diamonds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GU4mxKGC8XY&t=838s",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "to-camera",
+   "four-card-flop",
+   "suit-count",
+   "squeeze",
+   "ambiguous"
+  ],
+  "text": "no limit again and I open ace jack, with the jack of spades, to 4k. Pat in the small blind calls and Lou squeezes from the big blind, he's aggressive so it is a wide three bet, I should fold but screw it, I call. the flop is queen deuce three two diamonds and a spade, the squeezer checks and I check behind, then the turn is the four of spades",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroCards": "AxJs",
+   "board": {
+    "flop": "Qx2x3x",
+    "turn": "4s"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "hero",
+      "raise",
+      4000
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "raise",
+      null
+     ],
+     [
+      "hero",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "hero",
+      "check"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "\"queen deuce three two diamonds and a spade\": the \"two\" counts the diamonds"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "the squeeze has no size"
+   }
+  ],
+  "notes": "The flop is Q-2-3 with two diamonds and a spade; read naively it has four cards."
+ },
+ {
+  "id": "sp-stud8-montage-not-one-hand",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=lgmh6Fe6XXg&t=452s",
+  "game": "Stud 8",
+  "tags": [
+   "not-a-hand",
+   "montage",
+   "several-hands",
+   "hedged-card"
+  ],
+  "text": "lost a split with eights, a six draw ran into two pair, and I make nothing a whole bunch of times in a row, I'm down to 50K. long story short I have three sixes going to the river against 678 uh nine or whatever, and I've only got 13K left to bet at 16. I peek at the card, think I missed, and check, he checks back, and it was a full house all along",
+  "expect": {
+   "gameType": "Stud 8",
+   "gameMode": "mtt",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A montage of hands with the key one told only as a summary."
+ },
+ {
+  "id": "sp-lhe-small-queens-nicknames-limits-from-8k",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=p4BWxVzXfl0&t=543s",
+  "game": "LHE",
+  "tags": [
+   "mtt",
+   "limit",
+   "to-camera",
+   "compressed",
+   "nicknames",
+   "limits-from-sizes"
+  ],
+  "text": "limit hold'em, Ray opens and I three bet with the small queens, I just sat down next to Sal and he four bets me, so there is a lot of money in the middle. king queen jack rainbow flop, it goes check check to Ray who bets, I check raise, Sal folds and tells me later he held ace queen. then Tom calls. the turn is a six and I bet 8K, Tom raises me and I'm thinking what does he have, a straight for sure, ace 10 or 9 10 though probably not, maybe king king, maybe jack jack",
+  "expect": {
+   "gameType": "LHE",
+   "gameMode": "mtt",
+   "heroPosition": "SB",
+   "heroCards": "QxQx",
+   "board": {
+    "flop": "KxQxJx",
+    "turn": "6x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Ray (or Tom) is never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the raise"
+   }
+  ],
+  "notes": "\"the small queens\" is the small blind with queens. The 8K turn bet is the big bet, so the limits are 4K/8K. Ray and Tom may be one player."
+ },
+ {
+  "id": "sp-lhe-ajcc-telegraphic-raises-call",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=p4BWxVzXfl0&t=613s",
+  "game": "LHE",
+  "tags": [
+   "mtt",
+   "limit",
+   "to-camera",
+   "telegraphic",
+   "suit-count",
+   "checkraise"
+  ],
+  "text": "he opens, I three bet from the small blind with the ace jack of clubs. flop king 10 8 with two hearts, I bet, he raises, call. turn is the seven, double gutter, check, call. river nine, this time I check the jack, he bets, I check raise and got paid",
+  "expect": {
+   "gameType": "LHE",
+   "gameMode": "mtt",
+   "heroPosition": "SB",
+   "heroCards": "AcJc",
+   "board": {
+    "flop": "KxTx8x",
+    "turn": "7x",
+    "river": "9x"
+   },
+   "winners": [
+    "SB"
+   ]
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the opener is never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"he raises call\" and \"check call\" are two players' actions in turn. Owner reading of the river: the hero checks, the villain bets, the hero check-raises."
+ },
+ {
+  "id": "sp-lhe-four-hands-four-sentences",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=p4BWxVzXfl0&t=1122s",
+  "game": "LHE",
+  "tags": [
+   "not-a-hand",
+   "several-hands",
+   "compressed"
+  ],
+  "text": "first hand I had a king in the big blind and he showed ace king, which flopped a king. then he had pocket sixes against my pocket sevens and I flopped a 76. and just now I open king ten, he's got king five, I call, and it runs out ace king nine queen, guess guess guess [ __ ] he's on a heater against me",
+  "expect": {
+   "gameType": "LHE",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "Four hands, a sentence each: none is told fully."
+ },
+ {
+  "id": "sp-razz-steel-position-dead-cards-nine-on-five",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=r49sdzC2e8Q&t=437s",
+  "game": "Razz",
+  "tags": [
+   "mtt",
+   "stud",
+   "to-camera",
+   "asr-words",
+   "dead-cards",
+   "bleeped"
+  ],
+  "text": "Gus raises the steel position showing a five and I've got five six nine, the nine up. [ __ ] two sixes and two nines are out, but I call, and the other nine calls too. he catches an ace and I get a [ __ ] seven, he bets and I call, and on five I make a [ __ ] nine while he picks up a queen",
+  "expect": {
+   "gameType": "Razz",
+   "gameMode": "mtt",
+   "heroCards": "5x6x9x",
+   "heroStreetCards": {
+    "4th": "7x",
+    "5th": "9x"
+   },
+   "studUp": {
+    "@5x": "5xAxQx"
+   },
+   "actions": {
+    "3rd": [
+     [
+      "@5x",
+      "bet",
+      null
+     ],
+     [
+      "hero",
+      "call",
+      null
+     ],
+     [
+      "@9x",
+      "call",
+      null
+     ]
+    ],
+    "4th": [
+     [
+      "@5x",
+      "bet",
+      null
+     ],
+     [
+      "hero",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": [
+     "blinds.bringIn",
+     "streets.0.actions"
+    ],
+    "id": [
+     "bringin",
+     "action:0",
+     "blinds"
+    ],
+    "about": "the hand starts with a raise; the bring-in is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the excerpt stops on fifth street"
+   }
+  ],
+  "notes": "\"steel\" is steal; \"on five\" is fifth street. The two sixes and two nines out are dead cards, not anyone's hand."
+ },
+ {
+  "id": "sp-stud-aa3-card-repaired-three-times",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=sbahd3vSvts&t=255s",
+  "game": "Stud Hi",
+  "tags": [
+   "mtt",
+   "stud",
+   "to-camera",
+   "self-correction",
+   "upcard-names"
+  ],
+  "text": "third street I raise holding ace ace three, the deuce flat calls and one more player comes in. on fourth street the seven catches a queen, the deuce catches the jack of clubs, and I catch the four of clubs, so that's ace ace three four with three clubs, I bet and they both call. fifth street the seven queen catches the uh ace of diamonds, no the jack of diamonds, jack or ace of diamonds, it's the jack of diamonds. he checks, I bet, the deuce jack six with two clubs calls, and he calls too. on sixth street the jack queen seven catches the ace of diamonds and that is three diamonds out",
+  "expect": {
+   "gameType": "Stud Hi",
+   "gameMode": "mtt",
+   "heroCards": "AxAx3x",
+   "heroStreetCards": {
+    "4th": "4c"
+   },
+   "studUp": {
+    "@2x": "2xJc6x",
+    "@7x": "7xQxJdAd"
+   },
+   "actions": {
+    "3rd": [
+     [
+      "hero",
+      "raise",
+      null
+     ],
+     [
+      "@2x",
+      "call",
+      null
+     ],
+     [
+      "@7x",
+      "call",
+      null
+     ]
+    ],
+    "4th": [
+     [
+      "hero",
+      "bet",
+      null
+     ],
+     [
+      "@2x",
+      "call",
+      null
+     ],
+     [
+      "@7x",
+      "call",
+      null
+     ]
+    ],
+    "5th": [
+     [
+      "@7x",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      null
+     ],
+     [
+      "@2x",
+      "call",
+      null
+     ],
+     [
+      "@7x",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.ante",
+    "id": "blinds.ante",
+    "about": "a tournament hand with no ante said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.3.actions",
+    "id": [
+     "action:3",
+     "street-open:3",
+     "next:3",
+     "group-seats:3",
+     "pot-mismatch"
+    ],
+    "about": "the excerpt stops on sixth street"
+   }
+  ],
+  "notes": "The fifth-street card is repaired three times: the last version, the jack of diamonds, wins. Opponents are named by their up cards (\"the seven queen\", \"the deuce jack six\")."
+ },
+ {
+  "id": "sp-o8-ace-goose-deuce-33-big-black",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=MzP_-6NP8Lo&t=405s",
+  "game": "O8",
+  "tags": [
+   "mtt",
+   "limit",
+   "hi-lo",
+   "to-camera",
+   "asr-words",
+   "ambiguous"
+  ],
+  "text": "under the gun I limp ace goose deuce 3-3 and michael norris outside raises [music] the big black calls and I call then michael leads the flop five five six I call nori folds the turn is a six and michael checks which makes no sense if I had a three I'd raise the flaw the river comes a jack he bets I call with threes",
+  "expect": {
+   "gameType": "O8",
+   "gameMode": "mtt",
+   "heroPosition": "UTG",
+   "board": {
+    "flop": "5x5x6x",
+    "turn": "6x",
+    "river": "Jx"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the raiser is never seated, and \"norris\" and \"nori\" may be one player or two"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.hero",
+    "id": [
+     "cards:hero",
+     "choice",
+     "cards"
+    ],
+    "about": "\"ace goose deuce 3-3\": A-2-3-3 or A-2-2-3? Asked"
+   }
+  ],
+  "notes": "Owner: ask both questions — is the hand A-2-3-3 or A-2-2-3 (\"goose deuce\" a doubled word?), and are \"michael norris\" and \"nori\" one player or two? \"big black\" is the big blind; \"flaw\" is flop."
+ },
+ {
+  "id": "sp-o8-akk2-five-bets-board-restated-zeus",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=MzP_-6NP8Lo&t=664s",
+  "game": "O8",
+  "tags": [
+   "mtt",
+   "limit",
+   "hi-lo",
+   "to-camera",
+   "self-correction",
+   "spaced-thousands",
+   "suit-pattern"
+  ],
+  "text": "I've got ace king king deuce double suited, best hand all day long. five bets go in pre-flop, capped, and then the flop comes jack queen three with two hearts, giving me kings plus the second nut low flush draw with backdoors, and there's 400 000 in the pot from 125. no wait, the flop actually comes queen, I'll say queen jack zeus, two hearts. he bets, I raise, he re-raises and it all goes in on the flock. the turn card is a queen",
+  "expect": {
+   "gameType": "O8",
+   "gameMode": "mtt",
+   "heroCards": "AxKxKx2x",
+   "board": {
+    "flop": "QxJx2x",
+    "turn": "Qx"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the flop is said twice, with a three and then a \"zeus\" (deuce); the last version wins"
+   }
+  ],
+  "notes": "\"five bets in pre-flop\" is capped limit betting: O8, not PLO8. \"400 000\" is 400,000."
+ },
+ {
+  "id": "sp-o8-raise-in-lamps-kk3-lost-rod",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=2lM2rYPTpBY&t=483s",
+  "game": "O8",
+  "tags": [
+   "mtt",
+   "limit",
+   "hi-lo",
+   "to-camera",
+   "asr-words",
+   "asr-order"
+  ],
+  "text": "I've got ace king deuce deuce, I raise in lamps I raise, and the flop come king king three. I bet, he call. the turn car is the five of diamonds, I bet and he raises, and I have the nut low draw lost rod plus three kings, so I call, three threes maybe, who knows. river jack, I check, he bets and I call",
+  "expect": {
+   "gameType": "O8",
+   "gameMode": "mtt",
+   "heroCards": "AxKx2x2x",
+   "board": {
+    "flop": "KxKx3x",
+    "turn": "5d",
+    "river": "Jx"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "neither player is seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "who won is not said"
+   }
+  ],
+  "notes": "\"I raise in lamps I raise\" is \"he limps, I raise\". \"lost rod\" is low draw; \"car\" is card. Owner: ask whether it is \"he limps, I raise\" or \"I raise, he limps\"."
+ },
+ {
+  "id": "sp-plo8-repair-5200-coin-king-ds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=76o4LesIjgc&t=207s",
+  "game": "PLO8",
+  "tags": [
+   "mtt",
+   "pot-limit",
+   "hi-lo",
+   "to-camera",
+   "self-correction",
+   "asr-words",
+   "suit-pattern",
+   "implied-thousands"
+  ],
+  "text": "a raise and a couple callers wait no a bunch of limps then a raise to like 5200 and I call with 10 jack coin king double suited spades and diamonds four see the flop king king 10 I should have led but I check and it checks around queen turn I bet 5,000 one caller blank river I bet 15 should have bet five again he was trappy and had ace king",
+  "expect": {
+   "gameType": "PLO8",
+   "gameMode": "mtt",
+   "heroCards": "TxJxQxKx",
+   "board": {
+    "flop": "KxKxTx",
+    "turn": "Qx"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.3.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the river is only \"a blank\""
+   }
+  ],
+  "notes": "The opening repairs itself (a raise and callers, no, limps and a raise to about 5,200). \"coin\" is queen; \"15\" is 15,000; \"double suited spades and diamonds\" is two of each."
+ },
+ {
+  "id": "sp-plo8-one-two-three-queen-like7500-or7000",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=76o4LesIjgc&t=311s",
+  "game": "PLO8",
+  "tags": [
+   "mtt",
+   "pot-limit",
+   "hi-lo",
+   "one-for-ace",
+   "hedged-size",
+   "glued-numbers",
+   "ambiguous"
+  ],
+  "text": "three four five two spades is the flop and I hold one two three queen so a wheel but no spades I check he bets like7500 or7,000 call ace turn check check deuce river check check and he shows the ace3 910",
+  "expect": {
+   "gameType": "PLO8",
+   "gameMode": "mtt",
+   "heroCards": "Ax2x3xQx",
+   "board": {
+    "flop": "3x4x5x",
+    "turn": "Ax",
+    "river": "2x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "size",
+     "choice"
+    ],
+    "about": "\"like7500 or7,000\": the bet was said two ways"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the villain is never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"one\" is an ace in a low game. \"three four five two spades\" is 3-4-5 with two spades. \"ace3 910\" is the villain's A-3-9-T."
+ },
+ {
+  "id": "sp-razz-eight-seat-completes-up-and-hole",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=z9cZ5QzYWpQ&t=314s",
+  "game": "Razz",
+  "tags": [
+   "mtt",
+   "stud",
+   "voiceover",
+   "seat-number",
+   "up-down-words",
+   "all-in"
+  ],
+  "text": "the player in the eight seat finally decides to complete, and it folds around to me, I'm showing an eight with a deuce six in the hole. the one person between me and the short stack has a king up so he isn't calling, which means I have to do my own dirty work, so I raise and the short stack calls, all in",
+  "expect": {
+   "gameType": "Razz",
+   "gameMode": "mtt",
+   "heroCards": "2x6x8x"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the completer is named only by his seat number, not his door card"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"an eight up with a deuce six in the hole\" is the door 8 and two down cards. \"Eight seat\" is seat 8."
+ },
+ {
+  "id": "sp-27td-1224-three-handed-draw-counts",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=8msvBblPRp0&t=208s",
+  "game": "2-7 TD",
+  "tags": [
+   "cash",
+   "limit",
+   "draw",
+   "at-table",
+   "fused-stakes",
+   "asr-words"
+  ],
+  "text": "1224 triple draw three handed the button takes two I take three yeah he leads out [music] call then he's taking one and we're taking three not a good player there every day raise draw three cars and then a raise check check that's how it goes",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "cash",
+   "blinds": {
+    "bb": 12,
+    "bigBet": 24
+   },
+   "draws": {
+    "predraw": [
+     [
+      "BTN",
+      2
+     ],
+     [
+      "hero",
+      3
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": [
+     "heroIdx",
+     "players.*.position"
+    ],
+    "id": [
+     "hero",
+     "seat",
+     "button"
+    ],
+    "about": "the hero's seat is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.sb",
+    "id": "blinds.sb",
+    "about": "only the big blind is given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"1224\" is 12/24 fused into one number; \"cars\" is cards. The betting is never told, which the validator reads as folds."
+ },
+ {
+  "id": "sp-27td-coach-2359-king-d2-d1-pat",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=V9BL7RGdKgE&t=115s",
+  "game": "2-7 TD",
+  "tags": [
+   "mtt",
+   "observer",
+   "training",
+   "fused-ranks",
+   "draw-shorthand"
+  ],
+  "text": "the coach is on the button with the 2359 king, and he says either a three bet or a call is fine, though I prefer a cold call in late position when the early raiser always has a D2 a D1 or a pat",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "mtt",
+   "observer": true
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "only the button is placed"
+   }
+  ],
+  "notes": "\"the 2359 king\" is 2-3-5-9-K. \"D2, D1, pat\" are draw-two, draw-one and stand pat, describing a range, not this hand."
+ },
+ {
+  "id": "sp-sd27-broadcast-one-draw-pat-jack-ten",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=TDWZxcDJFJ8&t=336s",
+  "game": "NL 2-7 SD",
+  "tags": [
+   "mtt",
+   "observer",
+   "live-commentary",
+   "draw-shorthand",
+   "payout-noise"
+  ],
+  "text": "he shoves, a one draw to 10-6. Kay sits it out with the shorter stack, hoping for a customer, and Sam obliges, he flats pat. Bo folds. Sam pats the jack 10, so Lee needs his 10 with no pair, and there it is, Lee goes out fourth for ninety four thousand three hundred and eight dollars. and then Kay moves all in over the top holding the jack 10853",
+  "expect": {
+   "gameType": "NL 2-7 SD",
+   "gameMode": "mtt",
+   "observer": true
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "players are named, never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"a one draw to 10-6\" is drawing one to a 10-6 low; \"pat the jack 10\" is a pat J-10 low. The payout read out mid-hand is noise."
+ },
+ {
+  "id": "sp-27td-8643-deuce-lead-pat-next-hand",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=n27Vg-3GFoY&t=1720s",
+  "game": "2-7 TD",
+  "tags": [
+   "cash",
+   "limit",
+   "draw",
+   "voiceover",
+   "fused-ranks",
+   "several-hands"
+  ],
+  "text": "on the second draw we bring in a six of clubs, so now I have 8643 deuce, which should win most of the time. I lead out for $40 and stand pat on the third draw, my opponents don't improve and I take another pot. last hand of the session, call it the big blind special, since I have no business playing king queen 9 74 with no deuce",
+  "expect": {
+   "gameType": "2-7 TD",
+   "gameMode": "cash",
+   "blinds": {
+    "bb": 20,
+    "bigBet": 40
+   },
+   "otherHands": 1
+  },
+  "expectGaps": [
+   {
+    "kind": "ambiguous",
+    "field": "quickAdd.otherHands",
+    "id": "hand-choice",
+    "about": "the post tells more than one hand"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.0.cards.hero",
+    "id": [
+     "cards:hero",
+     "draw"
+    ],
+    "about": "only the hand after the second draw is told"
+   }
+  ],
+  "notes": "\"8643 deuce\" is 8-6-4-3-2. \"king queen 9 74\" is the next hand, not this one."
+ },
+ {
+  "id": "sp-lhe-big-line-races-editing-increment",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=2sBvLbupzoU&t=266s",
+  "game": "LHE",
+  "tags": [
+   "cash",
+   "limit",
+   "voiceover",
+   "asr-words",
+   "checkraise",
+   "no-hero-cards"
+  ],
+  "text": "since I'm priced in the big line races and the cut off and I both call five to one and I flop trips and check the big blind bets the cutoff folds I only call because the editing increment goes up to 50 on the turn so a check raise wins an extra 25 queen turn I check he bets 50 like I thought and I check raise he calls the 100 river nine of clubs",
+  "expect": {
+   "gameType": "LHE",
+   "gameMode": "cash",
+   "blinds": {
+    "bb": 25,
+    "bigBet": 50
+   },
+   "heroPosition": "SB",
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "call",
+      25
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "raise",
+      25
+     ],
+     [
+      "CO",
+      "call",
+      25
+     ],
+     [
+      "SB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      25
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "SB",
+      "call",
+      25
+     ]
+    ],
+    "turn": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "bet",
+      50
+     ],
+     [
+      "SB",
+      "raise",
+      100
+     ],
+     [
+      "BB",
+      "call",
+      50
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the flop is only \"trips\", never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.sb",
+    "id": "blinds.sb",
+    "about": "only the big blind is given"
+   }
+  ],
+  "notes": "\"the big line races\" is the big blind raises; \"editing increment\" is the betting increment, so the limits are 25/50. The hero checks before the big blind after the flop: the small blind."
+ },
+ {
+  "id": "sp-lhe-two-nines-block-kkj-boat-on-turn",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=2sBvLbupzoU&t=471s",
+  "game": "LHE",
+  "tags": [
+   "cash",
+   "limit",
+   "voiceover",
+   "cards-by-implication",
+   "asr-words"
+  ],
+  "text": "flop king king jack two over cars to my nine not great but two kings out means she probably missed so I continuation bet and she calls I plan to shut down the turn I only beat draws and I block straights with two nines but the turn is the nine of clubs and I make a full house she checks I bet she calls",
+  "expect": {
+   "gameType": "LHE",
+   "heroCards": "9x9x",
+   "board": {
+    "flop": "KxKxJx",
+    "turn": "9c"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "neither player is seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "The hero's pocket nines are only implied: \"my nine\" and \"I block it with two nines\". \"cars\" is cards."
+ },
+ {
+  "id": "sp-lhe-aa-co-four-pass-bed-on-flop",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=2sBvLbupzoU&t=539s",
+  "game": "LHE",
+  "tags": [
+   "cash",
+   "limit",
+   "voiceover",
+   "asr-words",
+   "future-tense"
+  ],
+  "text": "with pocket aces I'm gonna raise it up from the cut off, the button's gonna just call, then the big blind three bets, which lets me four pass, and they both call, so it's three way to a flop. big blind will check, I'm gonna fire a bed and both of them are gonna call",
+  "expect": {
+   "gameType": "LHE",
+   "heroPosition": "CO",
+   "heroCards": "AxAx",
+   "actions": {
+    "preflop": [
+     [
+      "CO",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "raise",
+      null
+     ],
+     [
+      "CO",
+      "raise",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "CO",
+      "bet",
+      null
+     ],
+     [
+      "BTN",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the flop is never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "Voiceover in the future tense narrates what happened. \"four pass\" is four-bet; \"bed\" is bet."
+ },
+ {
+  "id": "sp-commentary-jack-ton-of-hearts-makes-it-26",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=0I3WPNKbEsQ&t=711s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "observer",
+   "live-commentary",
+   "asr-words",
+   "to-fusion",
+   "suit-count"
+  ],
+  "text": "Ana is in the small blind with jack ton of hearts and raises to 1 000. Ben has ace king in the big blind and puts in a raise 2600, a small three bet there, Ben just makes it 26, and Ana defends, so 5500 in a three bet pot with about 50 000 effective. the flop comes king queen three, a couple clubs",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "observer": true,
+   "showdown": {
+    "SB": "JhTh",
+    "BB": "AxKx"
+   },
+   "board": {
+    "flop": "KxQx3x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "raise",
+      null
+     ],
+     [
+      "SB",
+      "call",
+      1600
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the commentary stops on the flop"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"jack ton\" is jack-ten; \"makes it 26\" is 2,600, as \"raise 2600\" says. \"1 000\" and \"50 000\" are spaced thousands."
+ },
+ {
+  "id": "sp-breakdown-ace-king-72-spades",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=tjHhUnHk65w&t=129s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "observer",
+   "training",
+   "fused-ranks",
+   "four-card-flop",
+   "ambiguous"
+  ],
+  "text": "he calls, and they are both very deep, so let's walk through it. flop ace king 72 spades, you'd think a flop like this needs no breakdown but here we are. it folds to Vic who bets the flop, and that's actually a good play",
+  "expect": {
+   "gameType": "NLH",
+   "observer": true,
+   "board": {
+    "flop": "AxKx7x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "\"ace king 72 spades\": A-K-7 with two spades, or A-K-7-2?"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Vic is never seated"
+   }
+  ],
+  "notes": "A three-card flop with a suit count, fused into \"72 spades\"."
+ },
+ {
+  "id": "sp-podcast-have-pot-tintin-9-jack-72-bb-behind",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=HrTUkizrIAU&t=900s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "podcast",
+   "asr-words",
+   "board-restated",
+   "stack-behind",
+   "decision"
+  ],
+  "text": "so the have pot gets called turn jack of hearts so 10 10 9 jack trips and an open ender for us and he donks the turn for half parts he has 72 big blinds behind board tintin 9 jack no flush draw villain donks half pot so raise it or call",
+  "expect": {
+   "gameType": "NLH",
+   "board": {
+    "flop": "TxTx9x",
+    "turn": "Jh"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "nobody's seat is said"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"have pot\" and \"half parts\" are half pot; \"tintin 9 jack\" restates \"10 10 9 jack\". The 72bb is a stack behind, mid-hand."
+ },
+ {
+  "id": "sp-hu-kq-3bet-98-deuce-bet-call-mystery-draw",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=QeqttOsW2g0&t=4815s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "heads-up",
+   "podcast",
+   "telegraphic",
+   "fused-ranks",
+   "range-noise",
+   "stacks-in-bb"
+  ],
+  "text": "here's one I remember, I three bet king queen at 200 blinds deep and the shark calls. flop 98 deuce, bet call. five on the turn, I barrel and he calls. three on the river, I check, he jams, I know he has nothing so I call, and he has a mystery draw [laughter]. 400 big blind pots, because he raises top pairs too much and sets, he's like ace4 repping nothing",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "players": 2,
+   "heroPosition": "BB",
+   "heroCards": "KxQx",
+   "board": {
+    "flop": "9x8x2x",
+    "turn": "5x",
+    "river": "3x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "BTN/SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "raise",
+      null
+     ],
+     [
+      "BTN/SB",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "bet",
+      null
+     ],
+     [
+      "BTN/SB",
+      "call",
+      null
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "bet",
+      null
+     ],
+     [
+      "BTN/SB",
+      "call",
+      null
+     ]
+    ],
+    "river": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "BTN/SB",
+      "all-in",
+      null
+     ],
+     [
+      "BB",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the result is not clear"
+   }
+  ],
+  "notes": "\"98 deuce\" is the flop 9-8-2; \"bet call\" is two players' actions. \"like ace4\" is a range. Heads-up, the hero 3-betting is the big blind."
+ },
+ {
+  "id": "sp-podcast-qj-small-1k-ante-75k-lets-say",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=QeqttOsW2g0&t=6829s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "podcast",
+   "dialogue",
+   "hedged-size",
+   "big-ante",
+   "asr-words"
+  ],
+  "text": "it's 200 400 with a 1k ante, uh, I hold the queen jack off in the small blind and I decide to isolate with a three bet. he of course just beats me in the pot, he never folds anything. the flop comes 10 98 so I have the queen high straight >> no >> well I'm pretty happy there, and there's a flush draw too. I bet and again he beats me in the pot. the turn is a total brick and I'm still happy, I bet big and he raises, maybe to like 75k let's say",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "heroPosition": "SB",
+   "heroCards": "QxJx",
+   "board": {
+    "flop": "Tx9x8x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the villain is never seated"
+   },
+   {
+    "kind": [
+     "impossible",
+     "ambiguous",
+     "missing"
+    ],
+    "field": "blinds.ante",
+    "id": [
+     "blinds.ante",
+     "ante-type"
+    ],
+    "about": "a 1k ante at 200/400 is bigger than the big blind"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "size",
+     "choice"
+    ],
+    "about": "\"maybe to like 75k, let's say\" is a guess"
+   }
+  ],
+  "notes": "\">> no.\" is the other speaker. \"beats me on the pot\" is not an action word the replayer knows."
+ },
+ {
+  "id": "sp-podcast-j9o-check-back-repair-35-give-or-take",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=L9vp6DKG3EU&t=4040s",
+  "game": "NLH",
+  "tags": [
+   "podcast",
+   "self-correction",
+   "hedged-size"
+  ],
+  "text": "it's a single raised pot, about 100K effective, and I'm holding jack nine offsuit, the jack being a diamond. the flop is the king of diamonds, the jack of spades and the six of diamonds, then a check back, I think, wait, no, I check, yeah, my check. he bets 35, give or take 33, whatever",
+  "expect": {
+   "gameType": "NLH",
+   "heroCards": "Jd9x",
+   "board": {
+    "flop": "KdJs6d"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "neither player is seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "size",
+     "choice"
+    ],
+    "about": "\"35 give or take 33\": the bet was said two ways"
+   }
+  ],
+  "notes": "The narrator corrects \"a check back\" to \"I check\". The bet is hedged between 35k and 33k."
+ },
+ {
+  "id": "sp-host-second-person-24400-to-2400",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=-_dXnF4lxZs&t=6312s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "podcast",
+   "second-person",
+   "to-fusion",
+   "out-of-order"
+  ],
+  "text": "so in 2020 you were up against Al, you with jacks and him with kings preflop. you open, Al three bets 24,400 with the pocket kings, your open was 600, and you come back with a for bet to 9600, looks like you're",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "heroCards": "JxJx"
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "neither player is seated"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "\"three bets 24,400\" after a 600 open and before a 9,600 four-bet is a three-bet to 2,400"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "The host tells the guest his own hand: \"you\" is the hero. The open size comes after the three-bet in the telling."
+ },
+ {
+  "id": "sp-callin-straddle-next-hack-position-on-request",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=roqSOd2UT_o&t=89s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "call-in",
+   "dialogue",
+   "asr-words",
+   "answer-to-host"
+  ],
+  "text": "the under the gun player straddles 10 the next hack raises 20 >> just to 20 >> yeah 20 >> okay >> then call call and I find pocket fives and make it 85 >> what position >> hijack",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "HJ",
+   "heroCards": "5x5x",
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      20
+     ],
+     [
+      "HJ",
+      "raise",
+      85
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "\"call call\": the two callers are never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "The hero's seat is given only in answer to the host's question, which makes it a fact. \"the next hack\" is the next one."
+ },
+ {
+  "id": "sp-callin-first-to-act-56cc-button-said-late",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=rrkgBGbs3SQ&t=139s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "call-in",
+   "dialogue",
+   "answer-to-host",
+   "first-to-act"
+  ],
+  "text": "first to act under the gun or lowjack however you say it opens a $25 raise >> okay >> folds to me I three bet to $100 the villain calls >> where are you and what do you have >> button with five six of clubs",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "BTN",
+   "heroCards": "6c5c",
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      25
+     ],
+     [
+      "BTN",
+      "raise",
+      100
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      75
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the excerpt stops before the flop"
+   }
+  ],
+  "notes": "\"under the gun or lowjack, first to act\" is one seat: UTG."
+ },
+ {
+  "id": "sp-callin-utg-makes-it-200-im-in-the-straddle",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=YsHjVFypxs8&t=139s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "call-in",
+   "dialogue",
+   "straddle",
+   "straddle-utg",
+   "self-correction",
+   "bb-ante"
+  ],
+  "text": "twenty five twenty five blinds, a fifty big blind ante and a fifty straddle. under the gun raises it to 200 >> uh huh >> the other villain just calls >> from MP, correct? >> yes >> and I'm looking at pocket aces, oh, and I'm in the straddle, dream spot >> do you want reads on these two? >> sure >> you are the straddler, so you act last, right? >> right, I am the straddle",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 25,
+    "bb": 25,
+    "ante": 50,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "UTG",
+   "heroCards": "AxAx",
+   "actions": {
+    "preflop": [
+     [
+      "UTG+1",
+      "raise",
+      200
+     ],
+     [
+      "MP",
+      "call",
+      200
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero to act"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "The hero is the straddler (UTG), so the player who \"makes it 200 under the gun\" is the seat after: UTG+1. The caller first says the big blind, then corrects to the straddle."
+ },
+ {
+  "id": "sp-callin-rock-straddle-button-blind-a4ss",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GwkYsKqNsFQ&t=73s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "call-in",
+   "dialogue",
+   "rock-straddle",
+   "button-blind",
+   "host-restates",
+   "unsupported"
+  ],
+  "text": "she's in the small blind it folds to her and she opens 35 folds round to me and I had the straddle under the gun since I won the last pot so I just call with ace of spades four of spades >> so a rock straddle with hero in the under the gun straddle >> yeah >> got it hero straddles for winning the last pot small blind raises to 35 big blind folds hero has 10 in so 45 let's see",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "heroPosition": "UTG",
+   "heroCards": "As4s",
+   "unsupported": true,
+   "actions": {
+    "preflop": [
+     [
+      "SB",
+      "raise",
+      null
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      35
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the excerpt stops before the flop"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "A rock straddle (the last winner straddles) in a 2/3/5 button-blind game. The host's restatement agrees with the caller, so it adds nothing new."
+ },
+ {
+  "id": "sp-callin-lojack-ajd-host-says-hijack-jackie-diamonds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GfgXyJoC88w&t=33s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "call-in",
+   "dialogue",
+   "host-restates",
+   "asr-words",
+   "self-correction"
+  ],
+  "text": "utg limps, middle position folds, I raise to 25 from the low jack holding the ace of clubs and the jack of diamonds >> so one limper, and you are in the hijack with the ace of clubs? >> lojack >> lojack, ace of clubs >> uh huh and jackie diamonds >> jack of diamonds, okay >> the hijack behind me calls, cut off and button fold, both blinds fold, and the limper calls, three ways",
+  "expect": {
+   "gameType": "NLH",
+   "heroPosition": "LJ",
+   "heroCards": "AcJd",
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      null
+     ],
+     [
+      "MP",
+      "fold"
+     ],
+     [
+      "LJ",
+      "raise",
+      25
+     ],
+     [
+      "HJ",
+      "call",
+      25
+     ],
+     [
+      "CO",
+      "fold"
+     ],
+     [
+      "BTN",
+      "fold"
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      null
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "the excerpt stops before the flop"
+   }
+  ],
+  "notes": "The host restates the seat as hijack and the caller corrects it to lojack: the caller's account is the hand. \"jackie diamonds\" is the jack of diamonds."
+ },
+ {
+  "id": "sp-callin-board-read-twice-50-50",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=GfgXyJoC88w&t=82s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "call-in",
+   "dialogue",
+   "board-restated",
+   "restated-amount"
+  ],
+  "text": "the flop comes the jack of hearts, the three of spades and the two of hearts, jack hearts three spades two hearts >> so top pair, a nice spot >> yeah, top top, no heart. under the gun checks and I bet 50. 50 >> okay >> then the hijack calls and under the gun gets out of it",
+  "expect": {
+   "gameType": "NLH",
+   "board": {
+    "flop": "Jh3s2h"
+   },
+   "actions": {
+    "flop": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      50
+     ],
+     [
+      "HJ",
+      "call",
+      50
+     ],
+     [
+      "UTG",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "streets.0.cards.hero",
+    "id": "cards:hero",
+    "about": "the hero's cards are never named"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is not said in this part"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "The flop is read twice in a row and the bet said twice (\"50. 50.\"): one flop, one bet. \"top top\" is top pair top kicker, a strength, not cards."
+ },
+ {
+  "id": "sp-plo-jack-high-suit-isolate-1076-two-diamonds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=kkkYx0cVEVI&t=536s",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "voiceover",
+   "fused-ranks",
+   "suit-pattern",
+   "suit-count"
+  ],
+  "text": "the queen jack 109 with the jack high suit a brand new player limps under the gun our action player limps too and we isolate on the button to 25 both limpers call so $75 in the pot to a flop of 1076 with two diamonds good for us the action player bets 75 into 75 and it's a clear call on the button though we don't love the player behind and we have no nut flush draw",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroPosition": "BTN",
+   "heroCards": "QxJxTx9x",
+   "board": {
+    "flop": "Tx7x6x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "\"our action player\" is never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "\"queen jack 109\" is Q-J-T-9; \"the jack high suit\" means two cards share a suit with the jack on top. \"1076\" is T-7-6."
+ },
+ {
+  "id": "sp-misdeal-four-card-flop-story",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=B4SKiJzXBtE&t=94s",
+  "game": "NLH",
+  "tags": [
+   "not-a-hand",
+   "story",
+   "misdeal"
+  ],
+  "text": "four card flop ace king all in against ace nine and of course the king gets shuffled back in and then the ace king loses to the ace nine devastating",
+  "expect": {
+   "gameType": "NLH",
+   "recordable": false
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.notRecordable",
+    "id": "scope",
+    "about": "not one recordable hand"
+   }
+  ],
+  "notes": "A misdeal story: the flop was dealt with four cards and redealt."
+ },
+ {
+  "id": "sp-plo-bb-ace-king-deuce-nut-suit-later-kings",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=kkkYx0cVEVI&t=717s",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "voiceover",
+   "dropped-card",
+   "suit-count"
+  ],
+  "text": "I'm in the big blind holding ace king deuce, suited to the nuts, and I pop it up to 40. the under the gun limper doesn't like that and makes it 125. it folds back around, we are deep, and with kings plus the ace blocker there's no need to build a bigger pot, so I call the 125. the flop is king queen five two hearts",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroPosition": "BB",
+   "heroCards": "AxKxKx2x",
+   "board": {
+    "flop": "KxQx5x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "call",
+      null
+     ],
+     [
+      "BB",
+      "raise",
+      null
+     ],
+     [
+      "UTG",
+      "raise",
+      125
+     ],
+     [
+      "BB",
+      "call",
+      85
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.1.actions",
+    "id": [
+     "action:1",
+     "street-open:1",
+     "next:1",
+     "group-seats:1",
+     "pot-mismatch"
+    ],
+    "about": "the excerpt stops at the flop"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "\"ace king deuce\" drops a card; \"with kings\" later restores it: A-K-K-2. \"pop it up to 40\" is a raise to 40."
+ },
+ {
+  "id": "sp-plo-aaj4-ds-diamonds-clubs-run-it-once",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=C5P0E4lMRCc&t=14s",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "voiceover",
+   "we-narrator",
+   "suit-pattern",
+   "run-once",
+   "asr-words"
+  ],
+  "text": "aces with jack four double suited in diamonds and clubs we re-raise to 120 and only the original razer calls queen 6-4 rainbow flop middle position checks we bet roughly pot 255 he has 275 left and puts it all in he wants to run it once the turn nine of clubs river king of spades",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroCards": "AxAxJx4x",
+   "board": {
+    "flop": "Qx6x4x",
+    "turn": "9c",
+    "river": "Ks"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "MP",
+      "raise",
+      null
+     ],
+     [
+      "hero",
+      "raise",
+      120
+     ],
+     [
+      "MP",
+      "call",
+      null
+     ]
+    ],
+    "flop": [
+     [
+      "MP",
+      "check"
+     ],
+     [
+      "hero",
+      "bet",
+      255
+     ],
+     [
+      "MP",
+      "all-in",
+      275
+     ],
+     [
+      "hero",
+      "call",
+      20
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "result",
+    "id": [
+     "result",
+     "showdown"
+    ],
+    "about": "the result is not told"
+   }
+  ],
+  "notes": "\"double suited in diamonds and clubs\": two diamonds and two clubs, not which cards. \"razer\" is raiser; \"we\" is the hero."
+ },
+ {
+  "id": "sp-plo-straddle-kjtt-left-full-pot-70-behind",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=PjXjEhLOhmY&t=494s",
+  "game": "PLO",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "voiceover",
+   "non-native",
+   "stack-behind",
+   "suit-pattern",
+   "stated-pot"
+  ],
+  "text": "I'm three hands into the session on the $10 straddle holding king jack 10 10 single suited. two players limp, the button makes it 50, the big blind calls and so do I, and both limper come along, five way with 250 in the pot. the flop is eight queen six rainbow and it checks around to the button, who bets 200, a big wrap draw, so I call and middle position calls too. the turn is the nine of diamonds, beautiful, I check and middle position left full pot for 850 with only about 70 bucks behind, and the button folds",
+  "expect": {
+   "gameType": "PLO",
+   "gameMode": "cash",
+   "heroPosition": "UTG",
+   "heroCards": "KxJxTxTx",
+   "stacks": {
+    "MP": 1170
+   },
+   "board": {
+    "flop": "8xQx6x",
+    "turn": "9d"
+   },
+   "actions": {
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "check"
+     ],
+     [
+      "BTN",
+      "bet",
+      200
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "UTG",
+      "call",
+      200
+     ],
+     [
+      "MP",
+      "call",
+      200
+     ]
+    ],
+    "turn": [
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "MP",
+      "bet",
+      850
+     ],
+     [
+      "BTN",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the second limper is never seated"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.2.actions",
+    "id": [
+     "action:2",
+     "street-open:2",
+     "next:2",
+     "group-seats:2",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero facing the pot bet"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "\"left full pot for 850\" is a pot-sized lead; \"about 70 behind\" makes MP's stack 50 + 200 + 850 + 70. The preflop limps are not seated, so the validator reads them as folds."
+ },
+ {
+  "id": "sp-o8-utg-raised-to-8000-limits-from-size",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=8bQJgpAm5QU&t=287s",
+  "game": "O8",
+  "tags": [
+   "mtt",
+   "limit",
+   "hi-lo",
+   "voiceover",
+   "limits-from-sizes",
+   "suit-count"
+  ],
+  "text": "ace king 5-3 with two diamonds under the gun nice two way hand I raise to 8,000 the button and the big blind call three way jack 7-3 with two spades bottom pair bad flop checks around the turn jack of spades and we may be drawing dead for high big blind bets 8,000 I fold the button folds fast",
+  "expect": {
+   "gameType": "O8",
+   "gameMode": "mtt",
+   "blinds": {
+    "bb": 4000,
+    "bigBet": 8000
+   },
+   "heroPosition": "UTG",
+   "heroCards": "AxKx5x3x",
+   "board": {
+    "flop": "Jx7x3x",
+    "turn": "Js"
+   },
+   "winners": [
+    "BB"
+   ],
+   "actions": {
+    "preflop": [
+     [
+      "UTG",
+      "raise",
+      8000
+     ],
+     [
+      "BTN",
+      "call",
+      8000
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "call",
+      4000
+     ]
+    ],
+    "flop": [
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "check"
+     ],
+     [
+      "BTN",
+      "check"
+     ]
+    ],
+    "turn": [
+     [
+      "BB",
+      "bet",
+      8000
+     ],
+     [
+      "UTG",
+      "fold"
+     ],
+     [
+      "BTN",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "missing",
+    "field": "blinds.sb",
+    "id": "blinds.sb",
+    "about": "only the big blind is given"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   }
+  ],
+  "notes": "No limits are said: a first raise to 8,000 is two small bets, so the limits are 4,000/8,000, which the turn bet confirms."
+ },
+ {
+  "id": "sp-bigo-juicer-raise-230-to-30",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=jg768sO5kk0&t=58s",
+  "game": "Big O",
+  "tags": [
+   "cash",
+   "pot-limit",
+   "voiceover",
+   "to-fusion",
+   "suit-pattern",
+   "straddle",
+   "asr-words"
+  ],
+  "text": "it's five five Big O and a ten straddle. one player calls, then a juicer raise 230, and I'm on the button, double suited in clubs and spades with ace deuce 38 jack, so I call. the blinds fold, the straddler, a button clicking maniac, makes it 110, the 10 caller folds, the original razer calls and so do I, three ways. the flop is 874 rainbow, the maniac rips 300 all in and the other guy raises",
+  "expect": {
+   "gameType": "Big O",
+   "gameMode": "cash",
+   "blinds": {
+    "sb": 5,
+    "bb": 5,
+    "straddle": [
+     "utg"
+    ]
+   },
+   "heroPosition": "BTN",
+   "heroCards": "Ax2x3x8xJx",
+   "board": {
+    "flop": "8x7x4x"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "size",
+     "choice"
+    ],
+    "about": "\"a juicer raise 230\" at 5/5 with a 10 straddle is a raise to 30, not 230"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the limper and the raiser are never seated"
+   }
+  ],
+  "notes": "\"raise 230\" fuses \"raises to 30\". \"ace deuce 38 jack\" is A-2-3-8-J."
+ },
+ {
+  "id": "sp-mtt-200-400-400-bb-akoffit-squeeze",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=FK2tGvtB0BM&t=164s",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "voiceover",
+   "bb-ante",
+   "asr-words",
+   "decision"
+  ],
+  "text": "second hand same level 200 400 400 and in the big blind I've got ace king offsuit the hijack opens to 1K the cut off just calls and the button squeezes it looks like to 3.9k folds to me ace king offit so I'm four betting",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "blinds": {
+    "sb": 200,
+    "bb": 400,
+    "ante": 400
+   },
+   "heroPosition": "BB",
+   "heroCards": "AxKx",
+   "actions": {
+    "preflop": [
+     [
+      "HJ",
+      "raise",
+      1000
+     ],
+     [
+      "CO",
+      "call",
+      1000
+     ],
+     [
+      "BTN",
+      "raise",
+      3900
+     ],
+     [
+      "SB",
+      "fold"
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": "streets.0.actions",
+    "id": [
+     "action:0",
+     "street-open:0",
+     "next:0",
+     "group-seats:0",
+     "pot-mismatch"
+    ],
+    "about": "the hand stops with the hero about to four-bet"
+   },
+   {
+    "kind": [
+     "missing",
+     "ambiguous"
+    ],
+    "field": "tableSize",
+    "id": [
+     "table-size",
+     "players"
+    ],
+    "about": "the table size is never said"
+   },
+   {
+    "kind": "missing",
+    "field": "players.*.startingStack",
+    "id": "stack",
+    "about": "no stacks are given"
+   }
+  ],
+  "notes": "\"200 400 400\" is a big blind ante the size of the big blind. \"offit\" is offsuit."
+ },
+ {
+  "id": "sp-mtt-raise-t-4-600-min-3bet-7-6-deuce-to-diamonds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=CO57kqxhugw&t=776s",
+  "game": "NLH",
+  "tags": [
+   "mtt",
+   "voiceover",
+   "to-fusion",
+   "spaced-thousands",
+   "stack-behind",
+   "four-card-flop"
+  ],
+  "text": "I lost with queens so now it's king six's turn. I open with a raise t 4 600 and it folds to the button player and he then decides to you three bets a small one, to nine thousand, basically a min raise, and he has about thirty thousand behind. back to me, and at that price I'm calling, I can hit a king or clubs. the flop comes 7-6 deuce to diamonds",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "mtt",
+   "heroCards": "Kx6x",
+   "stacks": {
+    "BTN": 39000
+   },
+   "board": {
+    "flop": "7x6x2x"
+   },
+   "actions": {
+    "preflop": [
+     [
+      "hero",
+      "raise",
+      4600
+     ],
+     [
+      "BTN",
+      "raise",
+      9000
+     ],
+     [
+      "SB",
+      "fold"
+     ],
+     [
+      "BB",
+      "fold"
+     ],
+     [
+      "hero",
+      "call",
+      4400
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "the hero's seat is never named"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   },
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "\"7-6 deuce to diamonds\": 7-6-2 with two diamonds"
+   }
+  ],
+  "notes": "\"raise t 4 600\" is raise to 4,600; \"to diamonds\" is two diamonds. \"about thirty thousand behind\" after his 9,000 makes his stack 39,000."
+ },
+ {
+  "id": "sp-number-words-seventy-two-ten-freeway-joke",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=dJ3Z8Z1SGrM&t=549s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "number-words",
+   "relative-seat",
+   "joke",
+   "suit-count"
+  ],
+  "text": "Dan from out of town makes it seventy dollars to go. I'm sitting on his left with ace eight offsuit, welcome to California, so I re-raise to two hundred and ten dollars and give a shout out to the two ten freeway. he calls, the flop is queen eight five with two hearts and Dan checks. I keep going with middle pair for two hundred and twenty, about half pot, he calls holding a gutshot, and the turn is the three of clubs",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "heroCards": "Ax8x",
+   "board": {
+    "flop": "Qx8x5x",
+    "turn": "3c"
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": [
+     "missing",
+     "ambiguous",
+     "impossible"
+    ],
+    "field": [
+     "players",
+     "players.*.position",
+     "tableSize"
+    ],
+    "id": [
+     "seat",
+     "positions",
+     "button",
+     "table-size"
+    ],
+    "about": "Dan is never seated and the hero is only \"on his left\""
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "notes": "Sizes spoken as words (\"seventy\", \"two hundred and ten\", \"two hundred and twenty\"); \"the two ten\" is a freeway joke, not cards."
+ },
+ {
+  "id": "sp-bomb-pot-hijack-jack-five-five-two-diamonds",
+  "source": "speech",
+  "sourceUrl": "https://www.youtube.com/watch?v=956g004IWBU&t=570s",
+  "game": "NLH",
+  "tags": [
+   "cash",
+   "voiceover",
+   "bomb-pot",
+   "four-card-flop",
+   "unsupported",
+   "ambiguous"
+  ],
+  "text": "a friendly $10 bomb pot, I'm in the hijack, and everybody puts ten in the middle so it's eight ways to the flop. I hold ace queen of diamonds and the flop is jack five five two diamonds. early position bets 45 and it folds to me. on a paired board raising is too much with the nut flush draw since we can be behind full houses, so I just call, nut flush draw plus two overs",
+  "expect": {
+   "gameType": "NLH",
+   "gameMode": "cash",
+   "currency": "USD",
+   "players": 8,
+   "heroPosition": "HJ",
+   "heroCards": "AdQd",
+   "board": {
+    "flop": "Jx5x5x"
+   },
+   "unsupported": true,
+   "actions": {
+    "flop": [
+     [
+      "SB",
+      "check"
+     ],
+     [
+      "BB",
+      "check"
+     ],
+     [
+      "UTG",
+      "bet",
+      45
+     ],
+     [
+      "UTG+1",
+      "fold"
+     ],
+     [
+      "LJ",
+      "fold"
+     ],
+     [
+      "HJ",
+      "call",
+      45
+     ]
+    ]
+   }
+  },
+  "expectGaps": [
+   {
+    "kind": "impossible",
+    "field": "quickAdd.unsupported",
+    "id": "unsupported",
+    "about": "a format the replayer cannot store"
+   },
+   {
+    "kind": [
+     "ambiguous",
+     "missing"
+    ],
+    "field": "streets.1.cards.board",
+    "id": [
+     "board",
+     "choice",
+     "board-count"
+    ],
+    "about": "\"jack five five two diamonds\" is J-5-5 with two diamonds; read literally it has four cards"
+   },
+   {
+    "kind": "missing",
+    "field": "blinds.bb",
+    "id": "blinds",
+    "about": "no stakes are given"
+   }
+  ],
+  "flaws": [
+   "seating"
+  ],
+  "notes": "A bomb pot: no preflop betting, which the validator reads as folds. \"early position\" is UTG."
+ }
+]

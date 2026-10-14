@@ -1,84 +1,235 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { niceTicks, drawdownBand } from '../utils/bankroll-ledger.js';
 
 /**
- * The bankroll dashboard's graph (beta, app admins): cumulative profit or the balance, over the
- * overview's range. A tracker's "chip graph", drawn the way this app draws money over time:
+ * The bankroll dashboard's graph (beta, app admins), as a poker tracker's trend chart: in Profit
+ * mode up to three cumulative lines on one date axis (Total, Tournaments, Cash — each from 0 at
+ * the range's start), in Balance mode the one balance line.
  *
- *   - One y scale, from the lowest to the highest value IN THE WINDOW, so the two labels name
- *     exactly the values the line reaches: the top edge is the high, the bottom edge the low.
- *     With `zero` (the profit graph) the scale always takes in 0 and a hairline marks it, so a
- *     losing stretch reads as below the line it started on.
- *   - A STEP line, as ResultsCurve: a total holds until money moves; a diagonal would draw totals
+ *   - The pills under the head are the legend AND the switch: each carries its line's colour and
+ *     its end value; any mix of lines can be on, never none (the last one does not turn off).
+ *     Fill (the fourth pill, On / Off) shades each line down to 0 in a low alpha of its colour
+ *     (one alpha per line, so each fill stands off the sheet as much as the others); the fills
+ *     overlap translucently. Total is drawn first, under the other two and (with them) a hairline
+ *     wider: on a day only one game type moves, Total runs along it and shows as a half-hairline
+ *     edge.
+ *   - One y scale over every line that is ON (hidden ones do not stretch it), rounded out to
+ *     "nice" gridlines (utils/bankroll-ledger niceTicks): 2, 3 or 4 steps of 1/2/2.5/5 × 10^n, so
+ *     with the 24r plot every gridline sits on an r line. Profit always takes in 0, the zero line
+ *     a touch stronger. Labels are HTML, not SVG text (the SVG stretches): each sits level with its
+ *     gridline in a 5g gutter at the left, its baseline on that r line. Nothing is drawn in the
+ *     gutter: the gridlines, the zero line and the data lines all start at x = 5g. Each label is
+ *     its gridline's exact value (compactMoney's precision follows the step), so a balance that
+ *     barely moved can ask for a long one (MX$999,985); a label that would come within 0.5g of the
+ *     lines coarsens the scale a power of ten at a time until every label fits (measured after
+ *     layout, before paint).
+ *   - STEP lines, as ResultsCurve: a total holds until money moves; a diagonal would draw totals
  *     that never existed.
- *   - Drawdown from the peak is shaded: the area between the running peak (dashed) and the line,
- *     on the same scale, so a shaded band's height is the drawdown's size.
- *   - x is calendar time across the window (to today).
+ *   - Drawdown from the peak (the band between the running peak, dashed, and the line) only when
+ *     ONE line is drawn, from that line's own points; with several it is clutter. The band is
+ *     always its full depth, so the red is the drawdown; with Fill on the line's fill gives way
+ *     under it (drawdownBand's edge) rather than the band stopping at the fill: stacked, the two
+ *     translucent layers mix to a neutral grey and both colours are lost.
+ *   - x is calendar time from start to end (utils/bankroll-ledger chartSpan: today, or for All a
+ *     later-dated entry's day).
  *
- * points: [{ date, value }] (utils/bankroll-ledger balanceSeries / profitSeries); dd: drawdowns(points).
- * control: an element for the head row's right end (the overview's Profit | Balance switch).
- * Layout (bankroll-dashboard.css): a 4r head row, the 35g x 24r plot, a 2r foot row.
+ * lines: [{ key, label, on, has, points: [{ date, value }], end }] — every candidate, in legend
+ *        order (Total, Tournaments, Cash; or the one Balance). has = it had entries in the range;
+ *        an ON line without any is drawn flat at 0 and its pill says None.
+ * money: the pills' formatter; tick(v, step): the gridlines' (compact, the currency's own form,
+ *        precise enough for the step that every gridline reads as its own exact value).
+ * zero: the scale takes in 0 (Profit). control: the head row's right end (Profit | Balance).
+ * busy: the figures are the previous bankroll's, kept on screen while the next ledger loads —
+ *       dimmed and aria-busy, as the Overview tables do.
+ * Layout (bankroll-dashboard.css): a 4r head, a 5r row of pills, the plot (2r of label room over
+ * the 35g x 24r grid), a 2r foot with the range's dates.
  */
-const W = 350;
-const H = 240;
+const W = 350;              // viewBox units: 10 per g across the 35g plot ...
+const H = 240;              // ... and 10 per r down its 24r (the SVG is stretched to that box)
+const X0 = 50;              // the lines start 5g in, clear of the gridline labels
+const ROWS = 24;            // the plot's height in r
+const COUNTS = [2, 3, 4];   // gridline steps; each divides 24, so every gridline is on an r line
+const DD_MIN = 0.25;        // the shallowest drawdown band drawn, in r (any shallower is not seen)
 const t = (d) => Date.parse(d + 'T00:00:00Z');
+const NOUN = { total: 'results', tourn: 'tournaments', cash: 'cash sessions', balance: 'movement' };
+const f2 = (n) => n.toFixed(2);
+const path = (pts) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${f2(a)},${f2(b)}`).join(' ');
 
-export default function BankrollChart({ points, dd, start, end, money, fmtDate, zero = false, control = null, what = 'Balance' }) {
-  const head = (text) => (
+export default function BankrollChart({
+  lines, onToggle = null, fill = true, onFill, zero = false, start, end, money, tick, fmtDate, note = '', control = null,
+  what = 'Balance', busy = false,
+}) {
+  const shown = lines.filter((l) => l.on);
+  const live = shown.filter((l) => l.has);
+
+  // One scale over the lines that are on; an on line with no entries is flat at 0.
+  let lo = Infinity, hi = -Infinity;
+  for (const l of live) for (const p of l.points) { if (p.value < lo) lo = p.value; if (p.value > hi) hi = p.value; }
+  if (live.length < shown.length) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  // The label gutter: each label is its gridline's exact value, so a scale finer than the gutter
+  // can write (MX$999,985 … MX$1,000,000) coarsens a power of ten at a time — the minimum step ×10
+  // per level — until every label's ink ends 0.5g short of the lines. Measured after layout and
+  // before paint; a new extent starts again at level 0.
+  const scaleKey = `${lo}|${hi}|${zero}`;
+  const [fit, setFit] = useState({ key: scaleKey, level: 0 });
+  const level = fit.key === scaleKey ? fit.level : 0;
+  const plotRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = plotRef.current;
+    const svg = el && el.querySelector('svg');
+    if (!svg || !(Number(svg.dataset.step) > 0) || level >= 6) return undefined;
+    if (document.fonts && document.fonts.status === 'loading') {
+      // Not the face the labels will wear yet: measure again once it is in.
+      let on = true;
+      document.fonts.ready.then(() => { if (on) setFit((f) => ({ ...f, n: (f.n || 0) + 1 })); });
+      return () => { on = false; };
+    }
+    const over = [...el.querySelectorAll('.bd-tick')].some((tk) => {
+      const r = document.createRange();
+      r.selectNodeContents(tk);
+      return r.getBoundingClientRect().width > tk.getBoundingClientRect().width * 0.9; // 4.5g of 5g
+    });
+    if (over) setFit({ key: scaleKey, level: level + 1 });
+    return undefined;
+  });
+
+  const head = (
     <div className="bd-chart-head">
-      <span className="an-cell an-note bd-note-4 an-clip">{text}</span>
+      <span className="an-cell an-note bd-note-4 an-clip" title={note || undefined}>{note}</span>
       {control}
     </div>
   );
-  if (!points || points.length < 2) {
+  const legend = (
+    <div className="bd-series" role="group" aria-label="Lines on the graph">
+      {lines.map((l) => {
+        const locked = l.on && shown.length === 1;
+        return (
+          <button key={l.key} type="button" className={`bd-sp bd-sp-${l.key}` + (l.on ? ' is-on' : '')}
+            aria-pressed={l.on} aria-disabled={locked || !onToggle ? 'true' : undefined}
+            title={locked && onToggle ? 'One line always stays on' : undefined}
+            onClick={() => { if (!locked && onToggle) onToggle(l.key); }}>
+            <span className="bd-sp-name"><i className="bd-sw" aria-hidden="true" /><span>{l.label}</span></span>
+            <span className="bd-sp-val">{l.has ? money(l.end) : 'None'}</span>
+          </button>
+        );
+      })}
+      <button type="button" className={'bd-fill-btn' + (fill ? ' is-on' : '')} aria-pressed={fill}
+        aria-label="Fill under the lines" onClick={onFill}>
+        <span className="bd-sp-name"><span>Fill</span></span>
+        <span className="bd-sp-val">{fill ? 'On' : 'Off'}</span>
+      </button>
+    </div>
+  );
+  const foot = (mid) => (
+    <div className="bd-axis">
+      <span />
+      <span className="an-cell an-note an-clip">{fmtDate(start)}</span>
+      <span className="an-cell an-note an-clip">{mid}</span>
+      <span className="an-cell an-note an-clip">{fmtDate(end)}</span>
+    </div>
+  );
+
+  if (!live.length) {
+    // Nothing to draw: name what is missing ("No tournaments in this range"). Total and Balance
+    // cover everything, so either alone says it.
+    const all = shown.find((l) => l.key === 'total' || l.key === 'balance');
+    const msg = `No ${(all ? [NOUN[all.key]] : shown.map((l) => NOUN[l.key])).join(' or ')} in this range`;
     return (
-      <div className="bd-chart-block">
-        {head('No movement in this range')}
-        <div className="bd-chart-empty" aria-hidden="true" />
-        <div className="bd-axis"><span className="an-cell an-note" /><span /></div>
+      <div className={'bd-chart-block' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
+        {head}
+        {legend}
+        <div className="bd-chart is-empty"><span className="an-cell an-note bd-chart-msg">{msg}</span></div>
+        {foot('')}
       </div>
     );
   }
-  const values = points.map((p) => p.value);
-  let hi = Math.max(...values), lo = Math.min(...values);
-  if (zero) { hi = Math.max(hi, 0); lo = Math.min(lo, 0); }
-  const span = hi - lo || 1;
-  const t0 = t(start || points[0].date);
-  const t1 = Math.max(t(end || points[points.length - 1].date), t0 + 864e5);
-  const x = (d) => Math.max(0, Math.min(W, ((t(d) - t0) / (t1 - t0)) * W));
-  const y = (v) => (hi === lo ? H / 2 : H - ((v - lo) / span) * H);
 
-  // Step vertices for the line and its running peak, on the same x breakpoints.
-  const line = [], peak = [];
-  points.forEach((p, i) => {
-    const xi = i === 0 ? 0 : x(p.date);
-    if (i > 0) { line.push([xi, y(points[i - 1].value)]); peak.push([xi, y(dd.per[i - 1].peak)]); }
-    line.push([xi, y(p.value)]); peak.push([xi, y(dd.per[i].peak)]);
+  const ax0 = niceTicks(lo, hi, { counts: COUNTS, zero });
+  const ax = level && ax0.step ? niceTicks(lo, hi, { counts: COUNTS, zero, minStep: ax0.step * 10 ** level }) : ax0;
+  const y = (v) => (ax.step === 0 ? H / 2 : ((ax.hi - v) / (ax.hi - ax.lo)) * H);
+  const t0 = t(start);
+  const t1 = Math.max(t(end), t0 + 864e5);
+  const x = (d) => X0 + Math.max(0, Math.min(1, (t(d) - t0) / (t1 - t0))) * (W - X0);
+  // A step line through pts with vals[i] at pts[i], as viewBox vertices, held to the right edge.
+  const steps = (pts, vals) => {
+    const v = [];
+    pts.forEach((p, i) => {
+      const xi = i === 0 ? X0 : x(p.date);
+      if (i > 0) v.push([xi, y(vals[i - 1])]);
+      v.push([xi, y(vals[i])]);
+    });
+    v.push([W, y(vals[vals.length - 1])]);
+    return v;
+  };
+  // Gridlines by index, so each is exactly on its r line: row k of 24 from the plot's top.
+  const n = ax.ticks.length - 1;
+  const grid = ax.ticks.map((v, j) => ({ v, k: n ? (ROWS * (n - j)) / n : ROWS / 2 }));
+  const floor = Math.min(Math.max(0, ax.lo), ax.hi); // fills run to 0 (or the nearer edge)
+  const base = y(floor);
+
+  const geo = shown.map((l) => {
+    const pts = l.has ? l.points : [{ date: start, value: 0 }];
+    const v = steps(pts, pts.map((p) => p.value));
+    return { l, pts, v, f: v };
   });
-  const last = points[points.length - 1];
-  line.push([W, y(last.value)]); peak.push([W, y(dd.per[dd.per.length - 1].peak)]);
-  const path = (pts) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(1)},${b.toFixed(1)}`).join(' ');
-  const area = path(peak) + ' ' + [...line].reverse().map(([a, b]) => `L${a.toFixed(1)},${b.toFixed(1)}`).join(' ') + ' Z';
-  const anyDd = dd.per.some((p) => p.dd > 0);
-  const showZero = zero && lo < 0 && hi > 0;
+
+  // Drawdown below the running peak: one line only, from its own points, always its full depth
+  // (peak to line). With Fill on, the line's fill gives way under the band (drawdownBand's edge),
+  // so the two translucent layers never stack. A band under DD_MIN r deep at its deepest is not
+  // drawn (nor named in the foot): a coarsened scale can leave a real drawdown thinner than a
+  // pixel (a MX$15 expense on a MX$950k–1.05M scale), and the foot would name red nobody can see.
+  // Only lines with entries in the range are drawn: an on line with none says None on its pill, and
+  // a flat line of it would only paint the zero line in its colour. The band follows the one drawn.
+  const drawn = geo.filter((g) => g.l.has);
+  let dd = null;
+  if (drawn.length === 1 && ax.hi > ax.lo) {
+    const g0 = drawn[0];
+    const band = drawdownBand(g0.pts, { floor });
+    const deepest = band.reduce((m, b) => Math.max(m, b.peak - b.bottom), 0);
+    if ((deepest / (ax.hi - ax.lo)) * ROWS >= DD_MIN) {
+      g0.f = steps(g0.pts, band.map((b) => b.edge));
+      const top = steps(g0.pts, band.map((b) => b.peak));
+      const bottom = steps(g0.pts, band.map((b) => b.bottom));
+      dd = { peak: path(top), area: path(top) + ' ' + bottom.reverse().map(([a, b]) => `L${f2(a)},${f2(b)}`).join(' ') + ' Z' };
+    }
+  }
+
+  // Draw order: Total first, under the others and, with others drawn, a hairline wider (.bd-under in
+  // bankroll-dashboard.css), so where it runs along Tournaments or Cash (every day only one of them
+  // moves) a thin edge of it shows. Alone, it is drawn at the others' weight.
+  // The labels' precision comes from the step, so each gridline reads as its own exact value.
+  const label = (v) => tick(v, ax.step);
+  const aria = `${what}, ${fmtDate(start)} to ${fmtDate(end)}: ` + shown.map((l) => `${l.label} ${l.has ? money(l.end) : 'none'}`).join(', ')
+    + (ax.step ? `; gridlines every ${label(ax.step)} from ${label(ax.lo)} to ${label(ax.hi)}` : '');
 
   return (
-    <div className="bd-chart-block">
-      {head(`High ${money(hi)}${anyDd ? ' · shaded: below the peak' : ''}`)}
-      <div className="bd-chart">
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img"
-          aria-label={`${what} from ${money(points[0].value)} to ${money(last.value)}; high ${money(hi)}, low ${money(lo)}`}>
-          <line x1="0" y1="0" x2={W} y2="0" className="bd-edge" vectorEffect="non-scaling-stroke" />
-          <line x1="0" y1={H} x2={W} y2={H} className="bd-edge" vectorEffect="non-scaling-stroke" />
-          {showZero && <line x1="0" y1={y(0)} x2={W} y2={y(0)} className="bd-zero" vectorEffect="non-scaling-stroke" />}
-          {anyDd && <path d={area} className="bd-dd" />}
-          {anyDd && <path d={path(peak)} className="bd-peak" vectorEffect="non-scaling-stroke" />}
-          <path d={path(line)} className={'bd-line' + (zero ? (last.value < 0 ? ' is-neg' : ' is-pos') : '')} vectorEffect="non-scaling-stroke" />
+    <div className={'bd-chart-block' + (busy ? ' is-busy' : '')} aria-busy={busy ? 'true' : undefined}>
+      {head}
+      {legend}
+      <div className="bd-chart" ref={plotRef}>
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={aria}
+          data-lo={ax.lo} data-hi={ax.hi} data-step={ax.step} data-x0={X0} data-start={start}
+          data-t1={new Date(t1).toISOString().slice(0, 10)}>
+          {grid.map((g) => (
+            <line key={'g' + g.v} x1={X0} y1={g.k * (H / ROWS)} x2={W} y2={g.k * (H / ROWS)}
+              className={g.v === 0 ? 'bd-zero' : 'bd-grid'} vectorEffect="non-scaling-stroke" />
+          ))}
+          {fill && drawn.map(({ l, f }) => (
+            <path key={'a' + l.key} d={`${path(f)} L${W},${f2(base)} L${X0},${f2(base)} Z`} className={`bd-area bd-c-${l.key}`} />
+          ))}
+          {dd && <path d={dd.area} className="bd-dd" />}
+          {dd && <path d={dd.peak} className="bd-peak" vectorEffect="non-scaling-stroke" />}
+          {drawn.map(({ l, v }) => (
+            <path key={'l' + l.key} d={path(v)} data-series={l.key} data-end={l.end}
+              className={`bd-line bd-c-${l.key}` + (l.key === 'total' && drawn.length > 1 ? ' bd-under' : '')}
+              vectorEffect="non-scaling-stroke" />
+          ))}
         </svg>
+        {grid.map((g) => (
+          <span key={'t' + g.v} className="an-cell an-note bd-tick" style={{ '--k': g.k }} aria-hidden="true">{label(g.v)}</span>
+        ))}
       </div>
-      <div className="bd-axis">
-        <span className="an-cell an-note an-clip">Low {money(lo)}</span>
-        <span className="an-cell an-note an-clip">{fmtDate(start || points[0].date)} – {fmtDate(end || last.date)}</span>
-      </div>
+      {foot(dd ? 'Red: drawdown' : '')}
     </div>
   );
 }

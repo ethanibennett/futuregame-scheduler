@@ -149,11 +149,34 @@ opens the Analytics sheet). For cash that line reads the whole ledger once (no `
 client to a per-hour spread (`utils/home-noise.js` `cashSpread`: sum of profit over sum of hours, and
 an SD per hour with each session's variance growing with its hours).
 
-A 37g sheet (phone and desktop alike). Under the bankroll chips, one segmented tab strip:
-**Overview / Sessions / Reports / Rules / Goals / Import**. The strip is a single 35g `.bd-seg` whose segments split the
-width in whole g by `data-n` (4 tabs 9+9+9+8g, 5 tabs 5 × 7g, 6 tabs 5 × 6g + 5g), so a new tab is one
-entry in `TABS` plus one render line (`{tab === 'key' && …}`, marked in the JSX); the guards walk
-every tab in the strip on their own.
+A 37g sheet (phone and desktop alike). Under the bankroll chips, one tab strip:
+**Overview / Sessions / Locations / Reports / Rules / Goals / Import** (seven, so the strip scrolls). A new tab is one entry in `TABS` plus one
+render line (`{tab === 'key' && …}`, marked in the JSX); the guards walk every tab in the strip on
+their own. The strip (`BankrollTabStrip.jsx`, arithmetic in `utils/tab-strip.js`) handles any count:
+
+- **Divided** while every label fits: a single 35g `.bd-seg` whose segments split the width in whole g,
+  the first (35 mod N) one g wider (4 tabs 9+9+9+8g, 5 tabs 5 × 7g, 6 tabs 5 × 6g + 5g, 7 tabs 7 × 5g).
+  "Fits" is measured: a hidden copy of the labels in the tabs' type, in g, each label plus 1g of room
+  within its own segment (`fitsDivided`), re-measured on resize and when the webfonts load.
+- **Scrolling** otherwise (seven tabs at 5g: "Locations" is wider): one 35g × 5r row of pills, each
+  content-sized (label + 1g a side) and rounded up to whole g by `snap-g`, 1g apart. The selected pill
+  is scrolled into view when the strip opens, whenever the tab changes and after the viewport's width
+  changes (a rotation, a window resize: g is a new number of px, so the old offset is re-snapped to
+  whole g first, then the pill revealed from there — on the window's resize after the strip
+  re-decides, and from its ResizeObserver when the strip's or its pills' width moves), to a whole-g
+  offset with 3g clear for the fade (`revealScroll`), so the pills come to rest on g lines. WebKit
+  keeps `scrollLeft` in whole CSS px and drops a fraction, so the offset asked for is rounded to the
+  nearest px (≤ 0.5px from its g line; floored it was up to 1px short). Its scroll range is whole px
+  too: at the strip's very end the last pill can sit up to 1px under the edge (0.69px at 430 wide,
+  measured with a simulated seventh tab), whatever the reveal asks. A 3g fade marks an edge
+  with more beyond it; no scrollbar. Over the fade's outer 2g, a chevron is a real button (2g × 5r,
+  "Earlier tabs" / "More tabs", `tabindex -1`, outside the radio group, gone while its edge has
+  nothing beyond) that pages the strip by the view less both fades, to a whole-g offset
+  (`pageScroll`). Touch and trackpads scroll it natively; a plain mouse wheel turned over it scrolls
+  it sideways while it can still move that way, then the sheet scrolls on (`wheelToStrip`); ←/→
+  (and ↑/↓), Home and End move the selection (a radio group with one tab stop). Roving focus always
+  lands on the selected pill, so its focus ring is its own: inside the selection's brand ring, a
+  0.25r gap of ground, then a 0.25r ring (`--n-8` in high contrast).
 
 **Overview** (`BankrollOverview.jsx`), laid out the way a dedicated poker tracker lays out its home
 screen, in this app's own type, tokens and grid:
@@ -161,10 +184,95 @@ screen, in this app's own type, tokens and grid:
 | block | what | the tracker pattern it borrows |
 |---|---|---|
 | Hero (2 × 17g, 9r) | balance now · profit over the range, coloured by sign, with the event / session count | the headline profit over the graph |
-| Graph (4r head, 35g × 24r plot, 2r foot) | **Profit** (cumulative results from 0, a hairline at 0, line green / red by where it ends) or **Balance** (deposits included); drawdown from the peak shaded in both | the cumulative "chip graph" |
-| Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage) | the time filter on the graph |
+| Graph (`BankrollChart.jsx`: 4r head, 5r pills, 2r label room over the 35g × 24r plot, 2r foot) | **Profit**: up to three cumulative lines from 0 at the range start — **Total** (every result, the hero's profit), **Tournaments**, **Cash** — toggled by pills that are also the legend (colour swatch, end value), with a **Fill** pill shading each line down to 0; or **Balance** (one line, deposits included). Nice gridlines labelled at the left; drawdown from the peak shaded when one line is drawn | Poker Bankroll Tracker's Trend chart (Cash / Tourney / Total overlays, area fills) and the cumulative "chip graph" |
+| Range (35g × 4r, 5 × 7g) | 1M · 3M · YTD · 1Y · All, trailing windows ending today (`rangeWindow`); remembered per device (`bankrollRange`, `bankrollChart` in localStorage, with the graph's `bankrollSeries` and `bankrollFill`) | the time filter on the graph |
 | Tables (`BankrollOverviewTables.jsx`, `bankroll-overview-tables.css`) | six collapsible sections, each headed by a 35g × 5r disclosure row: the name, the range and bankroll it covers, a chevron, and while closed its headline figure on the right. **Summary** (Cash \| Tournaments \| Total): buy-ins (cash: buy-in incl. rebuys; tournaments: buy-in × bullets), cash-outs, tips & costs (cash, when any), net profit, expenses & income (Total), **total result** (= the hero's profit), deposits & withdrawals (Total), balance change (Total: result + money moved). **Sessions**: sessions / events, bullets, hours and $/h (cash), ROI (tournaments), won % / ITM (tournaments: cashes per entry, the Analytics rule), average buy-in, profit and rebuys / re-entries, biggest win and loss. **Games** and **Rooms** (from the report facts): one row per game / room, cash and tournaments in separate blocks (count, hours, $/h or ROI, total, best first). **Bankroll**: balance, all-time peak, below it, deepest drawdown in the range, money moved, risk of ruin. **By month** (By year for All): results, moved, net. Summary and Sessions start open; open / closed is per device (`bankrollOverviewOpen` in localStorage). The scope line, the currency and the reports query come from the ledger in hand (`d.bankroll`, `d.currency`), not the bankroll chip, which runs one round trip ahead of it; until the ledger (for Games and Rooms, also the report facts) is the one asked for, a section keeps its figures on screen, dimmed, with `aria-busy` | Poker Bankroll Tracker's Bankroll › Overview: tables with a column per game type and a total, zebra rows, right-aligned tabular figures, compact money ($403.2k from $10k) |
 | Latest sessions (6r rows, 14g \| 21g) | the six newest tournament / cash results in the range, each led by its signed profit in the display face, with date, event or game, and hours / bullets; buttons to Results' Tournaments and Cash halves (they also select the dashboard's bankroll on the Results tab) | the session list led by a big green / red profit |
+
+The graph (`BankrollChart.jsx`, fed by `BankrollOverview.jsx`):
+
+- **Lines.** Profit mode draws any mix of three cumulative series over one date axis, each from 0 on
+  the range's first day: **Total** = every result (tournaments + cash sessions + expenses & income;
+  ends at the hero's profit and the Summary's Total result), **Tournaments** = the `tournaments`
+  source, **Cash** = `cash-sessions`. Expenses & income have no line of their own; while Total is on
+  and they moved it, the head note says so ("Total includes expenses & income −$1,630"). Lines are
+  steps (a total holds until money moves), all at `--bw-2`. Total is drawn first, under the others,
+  and while others are on it runs a hairline wider (`--bw-2` + `--bw-hair`, class `bd-under`): where
+  it coincides with Tournaments or Cash (only one of them moves on a given day) half a hairline of
+  it shows either side, a hint rather than a casing; alone it is drawn at the others' weight. (It
+  was 1.75 × `--bw-2`, which outlined the Tournaments line in white in dark and in black in the
+  light themes for most of a tournament-heavy range.)
+- **Date axis.** x is calendar time from the range's first day to its last (`chartSpan`): today for
+  1M / 3M / YTD / 1Y, whose windows leave later entries out. All has no last day and keeps every
+  entry (as the hero and the tables do), so when the ledger holds one dated after today (a prepaid
+  hotel, a result logged ahead of the event) All runs to that entry's date and its step lands on its
+  own day instead of piling up at today's edge; the end date under the plot says so.
+- **Pills** (5r; Total 8g, Tournaments 10g, Cash 8g, Fill 6g, 1g apart): each is the line's legend
+  (a swatch in its colour, its end value for the range, "None" when the range has no such entries)
+  and its switch (`aria-pressed`). Any mix can be on; the last one on cannot be turned off
+  (`aria-disabled`, "One line always stays on"). Default: all three on. **Fill** (On / Off, default
+  On) shades each drawn line down to the zero line in a low alpha of its colour, one alpha per line
+  (`--series-fill-total` / `--series-fill-tourn` / `--series-fill-cash`) so that each fill stands
+  about 1.2:1 off the sheet; the fills overlap translucently. Both are remembered per device:
+  `bankrollSeries` (`'total,tourn,cash'`, known keys only, never empty: `parseSeriesPref`) and
+  `bankrollFill` (`'1'` / `'0'`), read and written in try/catch like the range and mode.
+- **Balance mode** stays one line (deposits do not split by game type): the series pills give way to
+  a single, fixed Balance pill; Fill still works on it (down to the bottom gridline when the scale
+  does not reach 0).
+- **Drawdown** (the band between the running peak, dashed, and the line, in `--neg-quiet`) only when
+  one line is drawn — one series in Profit, or Balance; with several it is clutter. The band is
+  always its full depth, peak to line, so the red is the drawdown, Fill on or off. With Fill on the
+  line's fill gives way under it instead (`drawdownBand`'s `edge`: the fill runs from the floor up
+  to the line where the line is at or above the floor, else only to the nearer of the peak and the
+  floor), so the two translucent layers never stack: stacked, the aqua or violet fill and the red
+  mixed to a flat neutral grey and both colours were lost. A profit line is in drawdown wherever it
+  is below 0 (its first point, 0, is a peak), so there it is red from the peak down to the line and
+  has no fill; above 0 it keeps its fill under the line and the red above it. (The band once
+  stopped at the fill's edge instead, which cut a losing range's drawdown short — a YTD Cash line
+  down $3,146.83 from its peak showed $2,574 of red — or hid it: a line that never rose above its
+  start showed none.) The foot says "Red: drawdown" when it shows. A band under a quarter r deep
+  at its deepest is not drawn or named, and the line keeps its plain fill: a scale coarsened for its
+  labels (below) can leave a real drawdown thinner than a pixel — MX$15 on a MX$950k–1.05M scale —
+  and the foot would have named red that nobody could see.
+- **Axis.** One y scale over the lines that are on (a hidden line does not stretch it), rounded out
+  by `niceTicks` to 2, 3 or 4 steps of 1 / 2 / 2.5 / 5 × 10ⁿ — 3 to 5 gridlines; Profit always takes
+  in 0 as a gridline, drawn a touch stronger (`--text-muted`, `--bw-1`; the others `--border`,
+  hairline). Each count divides the 24r plot, so every gridline is on an r line. The labels are HTML
+  (the SVG stretches), `compactMoney` in the display currency's own form ($5k, −$2.5k, 5k kr,
+  ¥1.2M), each in a 5g gutter at the left with its baseline level with its gridline. Each label is
+  its gridline's exact value: the step sets the precision (`compactMoney(v, { step })`: the largest
+  unit, k or M, no larger than the value, in which the step needs at most two decimals, written with
+  as many as it needs; else whole units, grouped as the locale groups). So a balance from 9,985 to
+  10,000 in steps of 5 reads $9,985 … $10,000 — a fixed two decimals of k once read $9.98k, $9.99k,
+  $9.99k, $10k (a repeat, and the bottom gridline named after a value 5 away) — and ¥1,234,000 to
+  ¥1,236,000 in steps of 500 reads ¥1,234k, ¥1,234.5k … ¥1,236k. Profit is unchanged by this: 0 is
+  a gridline, so the step is at least a quarter of every label. Nothing is drawn in the gutter: the
+  gridlines, the zero line and the data lines all start at 5g, so a label never meets a line (a
+  gridline from x = 0 once ran under its label and through the $'s descender), and gridlines are
+  at least 6r apart, so labels never meet each other. An exact label can be long (a MX$1,000,000
+  balance down MX$15 would want MX$999,985 … MX$1,000,000, about 5.5g): the chart measures the
+  labels after layout and, while any one's ink comes within 0.5g of the lines, coarsens the scale a
+  power of ten at a time (`niceTicks`' `minStep`), before paint. The widest labels the seeded
+  bankrolls draw measure 4.2g ($1,000,000). Under the plot: the range's start date at 5g (where the
+  lines start) and its end date at the right.
+- **Whose figures.** The bankroll chip, and so its currency, changes a round trip before the ledger
+  does, and the previous ledger stays on screen meanwhile. So the whole Overview (hero, pills,
+  gridline labels, head note, latest sessions) formats its money in the currency of the ledger in
+  hand and names its scope from it (`ledgerScope`, as the tables do), and the hero, the graph's
+  figures and the latest sessions dim with `aria-busy` until it is the ledger asked for; the pills
+  and switches keep full strength. Never the old figures in the new currency.
+- **Colours** (`styles.css`, "Chart series"): `--series-total` (the text colour), `--series-tourn`
+  (the brand aqua), `--series-cash` (a violet), defined for the dark default and overridden for
+  light, cloudy and each high-contrast theme. The same tokens key the tables' column heads, as
+  text, so Cash clears 4.5:1 on the sheet (and so 3:1 non-text on the sheet and on the pills) in
+  every theme; it sits lighter or deeper than the aqua everywhere, so the lines differ in lightness
+  as well as hue (on light, `#4c1d95`, midway between Total and the aqua: OKLab L .38 against .22
+  and .52; `#5b21b6` had sat .09 from the aqua, and under protan and deutan simulation the pair
+  drew closer still). The fill alphas come in two sets, the dark grounds (0.09 / 0.11 / 0.155) and the
+  light ones (0.09 / 0.125 / 0.11): one shared 0.12 left Cash's fill at 1.14:1 on the dark sheet
+  against Total's 1.33, nearly invisible; now every fill is 1.17–1.24:1 and every line clears 3:1
+  over the other two fills (lowest: Cash on cloudy, 3.27). Measured values are in the comment above
+  the tokens. No orange.
 
 Table layout: a 3r head (labels on line 2; Cash, Tournaments and Total carry a key bar in
 `--series-cash` / `--series-tourn` / `--series-total`, the graph's line colours), 4r rows with the
@@ -219,7 +327,17 @@ draws, so −0.38 is a plain "$0", never a red one.
 The arithmetic is pure and tested in `utils/bankroll-ledger.js`: `overviewStats(entries)` (ROI =
 profit / cost with each tournament's cost × `fx_display`, so mixed currencies add up; ITM = rows that
 cashed / rows; hourly = the profit of sessions with both ends / their hours; every ratio null, not 0,
-when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`.
+when it has nothing under it), `profitSeries`, `peakOf`, `rangeWindow`, `recentResults`, and the
+graph's: `gameSeries` (Total / Tournaments / Cash / other on one date axis, summed in integer cents so
+tourn + cash + other == total exactly on every row), `seriesLine`, `parseSeriesPref`, `niceTicks`,
+`compactMoney`, `chartSpan` (the date axis) and `drawdownBand` (the band at full depth, and the
+edge the fill keeps under it) — tested in `utils/__tests__/bankroll-ledger.test.mjs` (the series
+identity, 1M / YTD windows restarting at 0, empty, single-entry and negative-only series, flat and
+junk extents, a 2,000 extent sweep for the tightest nice step, `minStep`, a future-dated entry in
+All and in the trailing ranges, a clock behind the ledger, the band's depth equal to the drawdown
+and never sharing more than one value with the fill over 300 random walks, and a 3,000-scale sweep
+from cents to hundreds of millions in which every gridline label is unique and reads back as its
+gridline's value).
 
 Baselines: hero figures are the display face at `--fs-2xl` (c measured 1.0983r at 402 wide, 1.1238r at
 1440 — the face's ascent rounds to whole px, so `p` splits the difference, ≤ 0.03r off); the latest
@@ -514,7 +632,9 @@ dimensions the ledger does not carry (a tournament's room, game and online flag 
 
 `{ id ('t12' | 'c3' | 'x5'), type ('tournament' | 'cash' | 'expense' | 'income'), bankroll ('main' | id), date,
 label, profit, room, game, online, hour (tournament start, 0-23 or null), started_at + hours (cash),
-stakes (cash), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income) }`
+stakes (cash), buyin + buyin_usd + bullets + cost + cash (tournament), category (expense / income),
+native_currency (what it was played or spent in, before conversion: a tournament's venue currency, a
+session's or a row's own) }`
 
 - Money is the ledger's: tournament net = (cashed ? cash : 0) − buy-in × max(1, entries) in the
   venue's currency (`analytics.normaliseRow`), cash = cash_out − buy_in − tips − expenses, an expense
@@ -560,3 +680,74 @@ rows 5r (a 4r text line, baseline on its line 3, over a 1r bar), total 4r. The f
 the dashboard (z above the modal layer), head as the dashboard's (Clear all 8g on 19g, Done 8g on
 28g), sections 2r apart, chips 4r in 4 × 8g, 3 × 11g or 2 × 17g. Both are walked by
 `check:controls` and `check:clipping`.
+
+## Locations (beta, app admins)
+
+The dashboard's **Locations** tab: one card per room, the way Poker Bankroll Tracker lists its
+locations (its Bankroll › Locations screen), in this app's type, tokens and grid. Code:
+`components/BankrollLocations.jsx`, `components/bankroll-locations.css`, the arithmetic in
+`utils/bankroll-locations.js`. Tests: `src/utils/__tests__/bankroll-locations.test.mjs`, part of
+`npm run test:bankroll-reports`.
+
+- **Data**: `GET /api/bankrolls/reports?bankroll=<the dashboard's>&currency=<its display currency>`
+  — the Reports facts, prepared by `prepareFacts`, so a room is exactly a row of the Room report
+  (`roomKey`: trimmed, case-folded; the label is the first spelling seen). No new route; the facts
+  gained `native_currency` for the card's currency. Tournament results and ENDED cash sessions only:
+  expenses and income are not sessions and have no room. Facts naming no room collect in one
+  "Room not recorded" card, always last and not counted as a room.
+- **A card**: the room's name; "Live • USD" (live, online, or "Live and online", and the room's own
+  currency or currencies, most used first); the total result at the right, signed and green / red,
+  whole below 100,000 ($15,590) and compact from there ($294.5k, $1.2M — the owner's two examples
+  from PBT; "compact ≥ $10k" in the brief contradicts its own $15,590); a hairline; then the stats
+  line, items joined by " • ":
+  - **entries** — cash sessions + tournament bullets (a re-entry is an entry, as PBT counts);
+  - **hours** with a clock — cash hours only; omitted, not "0", for a tournament-only room;
+  - **per hour** — cash profit / cash hours, when there are hours;
+  - **ROI** — tournament profit / buy-ins, when the room has tournaments;
+  - **won % / ITM** — per ENTRY, over the same entries the card counts (owner, 2026-10-13: the app
+    has one ITM, cashes per entry, as `lib/analytics.js`, the Analytics tab and the Overview's
+    Sessions table count it). A cash room: winning sessions / sessions ("60% won"); a tournament
+    room: cashes / bullets ("9% ITM" — a re-entered event that cashed once is one cash in its
+    bullets, so the card and the Sessions table read the same); a mixed room: (winning sessions +
+    cashes) / entries ("38% won/ITM" — the share of its entries that came back with money, a cash
+    session up or a tournament entry paid; each side's own rate weighted by its entries, so it
+    reduces to the won % or the ITM when the room has one kind only. The Overview leaves its Total
+    column blank there instead, since it has both columns beside it; a card has one line). The
+    word carries the tone, the same rule on every card: **won** is green at 50% and over, red
+    under (more winning sessions than losing ones); **ITM** and **won/ITM** have no break-even
+    line at 50% — cashes are in them — and are never coloured.
+  A type mark (dots in `--series-tourn` aqua and `--series-cash` violet) after "Live • USD" says
+  which kinds the room has (after, so that line starts on the name's g line on every card); the
+  footnote is its legend, and says expenses aren't included.
+- **Open a card** (tap; `aria-expanded`): the room's name wraps whole (3r a line — a long name is
+  otherwise only in a `title`, which a touch screen never shows), then its results newest first —
+  date | tournament (× bullets) or game, stakes and length | result — ten, then a page at a time
+  (`rowsPage`): "Show 50 more" while more than fifty are left, "Show all N" for the last page, and
+  "Show fewer" once past ten, which puts the card back in view (`scrollIntoView` nearest, 1r scroll
+  margin) and keeps keyboard focus on a pager button. A room with more than sixty results also says
+  "60 of 1,030" at the pager's right. Closing a card starts it over at ten.
+- **Range** (1M · 3M · YTD · 1Y · All, the Overview's windows, default All) and **sort** (Result,
+  Entries, Hours, Name; the room-less card stays last) are remembered per device (localStorage
+  `bankrollLocations`). Empty state when nothing in the range.
+- **Layout** (35g; the CSS header lists every row): range 35g × 4r; the summary (rooms · entries ·
+  total · range); a 3r "Sort by" label and the 35g × 4r sort; cards 35g × 11r, 1r apart — the name
+  (Univers Condensed md, measured p 1.565) on line 3, "Live • USD" on line 5, the total (display face
+  xl) level with it, a hairline at line 6, the stats on line 9, 1r below: the name's caps start 1.57r
+  down; the stats are Univers Condensed sm, the tables' size (`--fs-sm`, p 0.6978 as `an-td`:
+  measured −0.008r at 402 wide, +0.011r at 1440), and the longest plausible line ("1,234 entries •
+  1,234 h • −$1,234/h • ROI −100% • 100% won/ITM") is 30.6g of its 33g.
+  Columns inside 1g a side: the name takes what the total leaves (`minmax(0, 1fr)`); the total is
+  its own width rounded up to whole g (`snap-g`), so "+$150" leaves the name 26g and "−CHF12,345"
+  takes 12g instead of spilling into the padding. Open rows 4r, 7g | 17g | 9g, baselines on line 3;
+  pager buttons 11g × 4r, 1g apart. Baselines measured in WebKit at 402 and 1440 (2026-10-13, a card
+  open): every line within 0.036r of its r line (the bold result cells take the Overview tables'
+  bold correction, p 0.7586: −0.049r at 1440 before, +0.022r / −0.019r now). The cards are list rows (`.bl-card` in the controls guard's NOT_CONTROLS); the
+  pager buttons are controls, measured in the guard's `bankroll-location-pager` / `-paged` steps
+  with the pager scrolled into view. The dashboard sheet is 37g on a desktop too, so the cards stay
+  one column there.
+- **Known limit — one room, several names.** Rooms group exactly as the Reports "Room" breakdown
+  does (property, else site, else the venue string, trimmed and case-folded). A result with no
+  `property` (manual entries, feed rows from before 2026-08-31) groups by its venue string, which
+  can be an alias or a series title, so one physical room can show as two cards ("Wynn" and "Wynn
+  Las Vegas"). The fix belongs in one canonical room-alias step shared by Reports and Locations
+  (e.g. folding `VENUE_MAP` aliases that share a strip, or the venue directory), not here alone.

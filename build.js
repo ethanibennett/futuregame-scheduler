@@ -30,13 +30,27 @@ const fs = require('fs');
 
 const viteAppDir = path.join(__dirname, 'vite-app');
 
-// 1. Ensure vite-app deps are present (no-op locally, matters on Render).
-if (!fs.existsSync(path.join(viteAppDir, 'node_modules'))) {
-  console.log('[build] Installing vite-app dependencies...');
+// 1. Ensure vite-app deps are present and current (no-op locally, matters on Render).
+// Render keeps vite-app/node_modules in its build cache, so "install only when missing" never
+// installed a NEW dependency: leaflet (the venue map, 2026-10-13) failed the build with "Rollup
+// failed to resolve import". On Render the lockfile's hash is stamped into node_modules after an
+// install, and a different lockfile reinstalls. Locally node_modules is shared with every worktree
+// through junctions, so it is never reinstalled behind anyone's back.
+const nodeModules = path.join(viteAppDir, 'node_modules');
+const lockPath = path.join(viteAppDir, 'package-lock.json');
+const stampPath = path.join(nodeModules, '.install-lock-hash');
+const lockHash = fs.existsSync(lockPath)
+  ? require('crypto').createHash('sha1').update(fs.readFileSync(lockPath)).digest('hex')
+  : null;
+const stampStale = !!process.env.RENDER && !!lockHash
+  && (!fs.existsSync(stampPath) || fs.readFileSync(stampPath, 'utf8').trim() !== lockHash);
+if (!fs.existsSync(nodeModules) || stampStale) {
+  console.log(`[build] Installing vite-app dependencies${stampStale ? ' (the lockfile changed)' : ''}...`);
   // Prefer `npm ci` when a lockfile is present for reproducibility; otherwise fall back to `npm install`.
   const hasLock = fs.existsSync(path.join(viteAppDir, 'package-lock.json'));
   const installCmd = hasLock ? 'ci' : 'install';
   runOrDie([installCmd], viteAppDir, `vite-app npm ${installCmd}`);
+  if (process.env.RENDER && lockHash) fs.writeFileSync(stampPath, lockHash);
 }
 
 // 2. Stamp a version.txt so the legacy auto-reload shim (if any lingers) keeps working.

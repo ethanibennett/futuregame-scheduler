@@ -540,7 +540,7 @@ app.use('/api/cash', authenticateToken, (req, res) => {
 // Access is gated purely by the unguessable token in the URL; each token sees
 // only its own feed. Registered before the console gate + the SPA catch-all so
 // these win.
-const { checkDashboardToken, outboundDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
+const { checkDashboardToken, makePreviousTokenWarner } = require('./lib/dashboard-token');
 const { clockForEvent, probeProviders } = require('./lib/live-clocks');
 const bankrolls = require('./lib/bankrolls');
 const bankrollLedger = require('./lib/bankroll-ledger');
@@ -11163,7 +11163,10 @@ app.get('/api/venue-coords', (req, res) => {
     const out = {};
     for (const [venue, r] of readVenueCoordsRows(null)) {
       if (r.lat == null) continue;
-      out[venue] = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+      const c = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+      // A town-centre placement: the venue map says "Approximate location" for it.
+      if (r.source === 'nominatim-city') c.approx = 1;
+      out[venue] = c;
     }
     res.json(out);
   } catch (err) {
@@ -11171,6 +11174,77 @@ app.get('/api/venue-coords', (req, res) => {
     res.json({});
   }
 });
+
+// Public: the venue map's place line ("Atlantic City, NJ") and the server's own placement, for the
+// popup a venue strip opens (docs/venue-map.md). Called only when the popup opens. The town comes
+// from the source that placed the room (lib/venue-coords.js describePlace); when none named one,
+// the coordinates the popup shows are reverse-geocoded once (Nominatim, the same 1/s queue as
+// resolveVenueCoords) and the answer is kept for the process's life.
+// Keyed by VENUE, and only for a venue the schedule holds: the coordinate comes from the caller,
+// and a key per coordinate would let anyone queue unbounded Nominatim lookups (and hold up the
+// resolver behind them). At most one lookup per venue per 6 h on a miss, and a few in flight.
+const venueTownByVenue = new Map(); // venue → { town, at }
+let venueTownPending = 0;
+async function townAt(venue, lat, lng) {
+  const hit = venueTownByVenue.get(venue);
+  if (hit && (hit.town || Date.now() - hit.at < 6 * 3600e3)) return hit.town;
+  if (venueTownPending >= 4) return null;
+  venueTownPending++;
+  let town;
+  try {
+    town = await Promise.race([
+      venueGeocoder.reverseTown(lat, lng).catch(() => null),
+      new Promise((r) => setTimeout(() => r(undefined), 5000)),
+    ]);
+  } finally { venueTownPending--; }
+  if (town !== undefined) venueTownByVenue.set(venue, { town: town || null, at: Date.now() });
+  return town || null;
+}
+app.get('/api/venue-place', async (req, res) => {
+  const venue = String(req.query.venue || '').trim().slice(0, 300);
+  let property = String(req.query.property || '').trim().slice(0, 300) || null;
+  if (!venue && !property) return res.status(400).json({ error: 'venue or property required' });
+  try {
+    let row = null, known = false;
+    if (venue) {
+      const k = db.prepare('SELECT 1 FROM tournaments WHERE venue = ? LIMIT 1');
+      k.bind([venue]);
+      known = k.step();
+      k.free();
+      const stmt = db.prepare('SELECT * FROM venue_coords WHERE venue = ?');
+      stmt.bind([venue]);
+      if (stmt.step()) row = stmt.getAsObject();
+      stmt.free();
+      if (!property) {
+        const p = db.prepare(`SELECT property FROM tournaments WHERE venue = ? AND property IS NOT NULL AND property != ''
+                               GROUP BY property ORDER BY COUNT(*) DESC LIMIT 1`);
+        p.bind([venue]);
+        if (p.step()) property = p.getAsObject().property || null;
+        p.free();
+      }
+    }
+    const place = venueCoordsLib.describePlace({ venue, property, row, hint: feedVenueHints.get(venue) || null, directory: getVenueDirectory() });
+    if (!place.town && known) {
+      const lat = Number(req.query.lat), lng = Number(req.query.lng);
+      const at = place.lat != null ? [place.lat, place.lng] : (venueCoordsLib.validLatLng(lat, lng) ? [lat, lng] : null);
+      if (at) place.town = await townAt(venue, at[0], at[1]);
+    }
+    res.set('Cache-Control', place.town ? 'public, max-age=3600' : 'no-store');
+    res.json(place);
+  } catch (err) {
+    console.error('[VenueCoords] place lookup failed:', err.message);
+    res.set('Cache-Control', 'no-store');
+    res.json({ town: null, name: null, region: null, lat: null, lng: null, approx: false, source: null });
+  }
+});
+
+// The venue map's providers (lib/map-providers.js): GET /api/mapkit-token (Apple Maps, signed
+// here) and GET /api/google-maps-config (the Android app's Google Maps). Each answers 404
+// { configured: false } until its env is set; the popup then falls back to OpenStreetMap.
+{
+  const maps = require('./lib/map-providers').mountMapRoutes(app, process.env);
+  console.log(`[VenueMap] providers: MapKit JS ${maps.mapkit ? 'configured' : 'not configured'}, Google Maps ${maps.google ? 'configured' : 'not configured'}, OpenStreetMap always`);
+}
 
 async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT feed', 'MTT'); }
 // Online tournaments arrive the same way the live ones do, from a sibling watcher, but under
@@ -11342,10 +11416,23 @@ async function pushMttFeedToProd() {
 // ── Backer-roster seam (dashboard → scheduler) ──
 // The backer roster (names/stakes) is authored in the standalone dashboard now;
 // our console_records 'backers' store froze at the 2026-08-09 cutover. Pull the
-// current roster over HTTP (DASHBOARD_TOKEN-gated, sync-protocol shape) and
-// LWW-merge it, so /b/:token pages + the weekly digest see new/renamed backers.
-// Runs at boot + hourly (:35); self-disables without DASHBOARD_TOKEN.
+// current roster over HTTP (sync-protocol shape) and LWW-merge it, so /b/:token
+// pages + the weekly digest see new/renamed backers.
+//
+// The roster is every backer's /b/ token, phone and email, so it is gated by a
+// SERVER-ONLY ROSTER_TOKEN sent as `Authorization: Bearer <token>` — never in the
+// URL, and never DASHBOARD_TOKEN, which is compiled into the iOS builds. Set on
+// exactly two Render services (this one and the dashboard's) and NOT in the local
+// pm2 ecosystem, so the Windows box does not mirror backer credentials. Runs at
+// boot + hourly (:35); without ROSTER_TOKEN it self-disables and says so once.
 const DASHBOARD_BASE_URL = process.env.DASHBOARD_BASE_URL || 'https://dashboard.futurega.me';
+// A dashboard that accepts the connection and then goes quiet must not leave a
+// pull hanging: the fetch (headers AND body) is abandoned after this long, the
+// failure is logged, and the next :35 tick tries again. Env override is for tests.
+const ROSTER_FETCH_TIMEOUT_MS = Number(process.env.ROSTER_FETCH_TIMEOUT_MS) > 0
+  ? Number(process.env.ROSTER_FETCH_TIMEOUT_MS) : 30000;
+let rosterOffLogged = false; // the "ROSTER_TOKEN not set" line is said once per boot, not hourly
+let rosterPullHealthy = false; // log a good pull on the transition to healthy, not every hour
 /* Move a backer's page from one token to another.
  *
  * A backer's token is a CAPABILITY — it is the whole of the authentication on
@@ -11404,15 +11491,34 @@ function rotateBackerToken(oldToken, newToken) {
 }
 
 async function syncBackerRoster() {
-  // Always the CURRENT value — see lib/dashboard-token.js on why outbound never
-  // falls back to the previous one.
-  const token = outboundDashboardToken();
-  if (!token) return;
+  // Always the CURRENT value: ROSTER_TOKEN_PREVIOUS exists only on the dashboard,
+  // for inbound checks, so a rotation always moves forward (same rule as
+  // lib/dashboard-token.js). Trimmed because a pasted env value often carries a
+  // trailing newline, which fetch would reject as an invalid header.
+  const token = String(process.env.ROSTER_TOKEN || '').trim();
+  if (!token) {
+    /* Absent is "off", but silently off is how this seam has gone dead before
+       (backer pages kept rendering a frozen roster and looked healthy), so say
+       it. Once per boot: this runs hourly. DASHBOARD_TOKEN deliberately does NOT
+       enable it any more. */
+    if (!rosterOffLogged) {
+      rosterOffLogged = true;
+      console.warn('[roster] ROSTER_TOKEN is not set — backer roster sync is OFF (backer pages keep the roster they last synced). Set it on the production Render service; it is deliberately absent from the local pm2 ecosystem.');
+    }
+    return;
+  }
   try {
-    const res = await fetch(`${DASHBOARD_BASE_URL}/api/roster/${token}`);
+    const res = await fetch(`${DASHBOARD_BASE_URL.replace(/\/+$/, '')}/api/roster`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(ROSTER_FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();
     const records = Array.isArray(body && body.records) ? body.records : [];
+    if (!rosterPullHealthy) {
+      rosterPullHealthy = true;
+      console.log(`[roster] pull from the dashboard ok — ${records.length} record(s) offered`);
+    }
     let changed = 0;
     let rotated = 0;
     for (const r of records) {
@@ -11463,7 +11569,9 @@ async function syncBackerRoster() {
       console.log(`[roster] backer roster synced from dashboard: ${changed} row(s) updated`);
     }
   } catch (err) {
-    console.error('[roster] backer roster sync failed:', err.message);
+    rosterPullHealthy = false;
+    const why = err && err.name === 'TimeoutError' ? `timed out after ${ROSTER_FETCH_TIMEOUT_MS} ms` : (err && err.message);
+    console.error('[roster] backer roster sync failed:', why);
   }
 }
 

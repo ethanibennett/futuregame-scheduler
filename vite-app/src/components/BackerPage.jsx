@@ -3,6 +3,7 @@ import Icon from './Icon.jsx';
 import GridOverlay from './GridOverlay.jsx';
 import BackerChart from './BackerChart.jsx';
 import useBackerPush from '../hooks/useBackerPush.js';
+import useInkBalance from '../hooks/useInkBalance.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
 import { VENUE_MAP, getVenueBrandColor } from '../utils/utils.js';
@@ -157,45 +158,15 @@ function SessionCard({ e }) {
   );
 }
 
-/* The month pill's label centred by its INK (owner rule 2026-10-10, labels centred both ways). The
-   Schedule's pill holds "DD Mon", whose ends are figures, and balances their side bearing with one
-   fixed pad (styles.css .date-break-label). A month name starts on a letter whose bearing differs
-   by month (J reaches left of its origin, A sits on it) and ends on the year's figure, and some
-   rise above the cap height the label is trimmed to (the l of Jul, the b of Feb). So the bearings
-   and the rise are read from the face itself (canvas metrics of the rendered fonts) and given back
-   as padding in em: the far side of the smaller bearing is padded by the difference, and the top
-   by the rise, so the box the pill centres is the ink. */
-let inkCanvas = null;
-function balanceInk(label) {
-  if (!label) return;
-  const mon = label.querySelector('.date-break-day');
-  const year = label.querySelector('.date-break-mon');
-  if (!mon || !year) return;
-  const ctx = (inkCanvas = inkCanvas || document.createElement('canvas')).getContext('2d');
-  const font = (el) => { const cs = getComputedStyle(el); return `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; };
-  ctx.font = font(mon);
-  const m = ctx.measureText(mon.textContent);
-  const cap = ctx.measureText('H').actualBoundingBoxAscent;
-  ctx.font = font(year);
-  const y = ctx.measureText(year.textContent);
-  const lsb = -m.actualBoundingBoxLeft;                 // ink start, right of the origin
-  const rsb = y.width - y.actualBoundingBoxRight;       // the year's last figure's right bearing
-  const em = parseFloat(getComputedStyle(label).fontSize) || 1;
-  const r = (v) => `${(Math.max(0, v) / em).toFixed(4)}em`;
-  label.style.padding = `${r(m.actualBoundingBoxAscent - cap)} ${r(lsb - rsb)} 0 ${r(rsb - lsb)}`;
-}
-
 /** A month break: the Schedule's date-break pill and count (styles.css .schedule-date-break),
- *  sticky at the scroller's top, the month's share at its right end. */
+ *  sticky at the scroller's top, the month's share at its right end. Its label, "Oct 2026", is
+ *  centred on its ink like the Schedule's "DD Mon" (utils/ink-balance.js): a month name starts on
+ *  a letter whose bearing differs by month (J reaches left of its origin, A sits on it), ends on
+ *  the year's figure, and some rise above the cap height (the l of Jul, the b of Feb). */
 function MonthBreak({ g }) {
   const { mon, year } = monthLabel(g.key);
   const labelRef = useRef(null);
-  useLayoutEffect(() => {
-    balanceInk(labelRef.current);
-    let live = true;
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (live) balanceInk(labelRef.current); });
-    return () => { live = false; };
-  }, [mon, year]);
+  useInkBalance(labelRef, [mon, year]);
   return (
     <div className="schedule-date-break bp-month-break" style={{ top: 0 }}>
       <span className="date-break-pill bp-month-pill">

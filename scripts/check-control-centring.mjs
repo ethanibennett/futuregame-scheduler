@@ -39,12 +39,17 @@
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
 // foot, closed and open), the
-// bankroll sheet and dashboard (every tab, report filters, CSV import, the Sessions list filtered
-// and a tournament's and a cash session's detail), cash sessions, expenses and
+// floating + on the bankroll pages (the Results tab's and the dashboard sheet's, closed and with its
+// menu open, with and without a running cash session), the
+// bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
+// with its page chevrons — report filters, Locations with a card open, its pager (Show 50 more /
+// Show all, Show fewer) and a sort on, the Sessions list filtered and a tournament's and a cash
+// session's detail, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
 // reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
-// buddy chip's swap sheet, the public shared-schedule page (and a card open on it), the backer
+// buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
+// shared-schedule page (and a card open on it), the backer
 // page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), the first-run
 // wizard step by step, the signed-out login / register / forgot / password-reset screens, and the
 // real-name prompt. A view that does not open is listed as not reached, with why. A dialog's
@@ -112,8 +117,9 @@
 //     digit (×, +, ←, ›) is a symbol: its painted ink on both axes (canvas may draw it in another
 //     fallback font than the page). An emoji is a picture, not a letter: a figure with its whole
 //     glyph. Along the line the ink is the PAINTED ink (canvas side bearings miss tabular figures, a
-//     fallback font's ▾, kerning); where pixels cannot see it, the text start plus canvas
-//     actualBoundingBoxLeft/Right plus letter spacing.
+//     fallback font's ▾, kerning); where pixels cannot see it (an occluded control), the text
+//     start plus the string's side bearings as painted on a canvas (WebKit clamps measureText's
+//     actualBoundingBoxLeft/Right to the advance) plus letter spacing.
 //     WRITING MODE AND TRANSFORMS: the over edge and the line direction are taken through the
 //     element's writing mode (vertical-rl / -lr turn Latin glyphs so their tops face the line's
 //     right) and every ancestor's transform (a strip's rotate(180deg) turns them to face left), so
@@ -194,9 +200,10 @@ const INTERACTIVE = [
   '[role="menuitemradio"]', '[role="menuitemcheckbox"]', '[role="option"]', 'summary',
   '[tabindex="0"]', 'label', 'select', 'input[type="reset"]',
 ];
-// Areas left alone entirely: the grid overlay itself, and the replayer's table (another change
-// owns it — its dealer button, seats, chips).
-const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot'];
+// Areas left alone entirely: the grid overlay itself, the replayer's table (another change
+// owns it — its dealer button, seats, chips), and the venue map's canvas, which a map library
+// draws (tiles, its pin and label, the attribution; its own controls are switched off).
+const EXCLUDE = ['.grid-dev-overlay', '.replayer-table-slot', '.vm-map-canvas'];
 // Not pills or buttons, though a rule above catches them: event cards and list rows, which are
 // clickable but keep their text seated on the baseline grid. Controls INSIDE them are checked.
 const NOT_CONTROLS = [
@@ -216,6 +223,9 @@ const NOT_CONTROLS = [
   // Next's empty-schedule prompt, and the signal-or-noise line (a sentence that opens Analytics,
   // its lines seated on 3r).
   '.hm-receipt', '.hm-bank-bar', '.hm-period-card', '.hm-goals', '.hm-next-empty', '.hm-noise',
+  // The bankroll dashboard's Locations cards: a room's name, meta, total and stats seated on r
+  // lines (bankroll-locations.css); the pager buttons in an open card are controls.
+  '.bl-card',
 ];
 // Tiles: a control whose face is a small layout of its own (a name over an amount, a font
 // specimen over its name), start-aligned by design. Their box is held to the grid; their text is
@@ -356,6 +366,31 @@ function scan(cfg) {
   const BIG = 200;
   const metricCache = new Map();
   const fontFor = (cs, size) => `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
+  // The side bearings come from canvas PIXELS, not measureText's actualBoundingBoxLeft/Right:
+  // WebKit (these guards' engine, and Safari's) clamps both to the advance, so an ink that starts
+  // inside its box reads as starting AT it and only overhangs come through. An occluded control
+  // (no pixel pass) was held to its advance box: "14 Oct" read 1.6px wide on the left, the 1's
+  // bearing, and failed dx -0.8 the moment its label was balanced on its ink (utils/ink-balance.js,
+  // the same reading). The string is drawn once, at up to BIG px, and its painted columns found.
+  const pv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  const paintedSides = (font, size, text, width) => {
+    const pad = Math.ceil(size * 0.5);
+    const w = Math.ceil(width) + 2 * pad, h = Math.ceil(size * 1.6), base = Math.ceil(size * 1.1);
+    if (pv.canvas.width < w) pv.canvas.width = w;
+    if (pv.canvas.height < h) pv.canvas.height = h;
+    pv.clearRect(0, 0, pv.canvas.width, pv.canvas.height);
+    pv.font = font; pv.textAlign = 'left'; pv.textBaseline = 'alphabetic'; pv.fillStyle = '#000';
+    pv.fillText(text, pad, base);
+    const d = pv.getImageData(0, 0, w, h).data;
+    const col = new Uint8Array(w);
+    for (let y = 0; y < h; y++) { const row = y * w * 4; for (let x = 0; x < w; x++) { const a = d[row + x * 4 + 3]; if (a > col[x]) col[x] = a; } }
+    let x0 = 0; while (x0 < w && col[x0] <= 8) x0++;
+    let x1 = w - 1; while (x1 >= 0 && col[x1] <= 8) x1--;
+    if (x0 > x1) return null;
+    // In actualBoundingBox terms: left = how far the ink reaches LEFT of the origin, right = how
+    // far it reaches right of it; each edge placed within its pixel by that column's coverage.
+    return { left: pad - (x0 + 1 - col[x0] / 255), right: x1 + col[x1] / 255 - pad };
+  };
   const metrics = (cs, text) => {
     const size = parseFloat(cs.fontSize);
     const k = fontFor(cs, size) + '|' + text;
@@ -365,8 +400,18 @@ function scan(cfg) {
     cv.font = fontFor(cs, BIG);
     const s = size / BIG;
     const m = cv.measureText(text), cap = cv.measureText('H').actualBoundingBoxAscent * s;
-    const out = { fontAsc, cap, asc: m.actualBoundingBoxAscent * s, desc: m.actualBoundingBoxDescent * s,
-      left: m.actualBoundingBoxLeft * s, right: m.actualBoundingBoxRight * s };
+    let left = m.actualBoundingBoxLeft * s, right = m.actualBoundingBoxRight * s;
+    if (text && text.trim() && m.width > 0) {
+      const sz = Math.max(24, Math.min(BIG, BIG * 1500 / m.width));   // a long label drawn smaller
+      const ps = paintedSides(fontFor(cs, sz), sz, text, m.width * sz / BIG);
+      const wz = m.width * sz / BIG;
+      // A reading no glyph gives (past half an em from either end) is the canvas not reading back
+      // true; the metrics stand.
+      if (ps && Math.abs(ps.left) < sz * 0.5 && Math.abs(ps.right - wz) < sz * 0.5) {
+        left = ps.left * size / sz; right = ps.right * size / sz;
+      }
+    }
+    const out = { fontAsc, cap, asc: m.actualBoundingBoxAscent * s, desc: m.actualBoundingBoxDescent * s, left, right };
     metricCache.set(k, out);
     return out;
   };
@@ -729,6 +774,15 @@ function scan(cfg) {
       const allCaps = !/\p{Ll}/u.test(text) && /\p{Lu}/u.test(text);
       const ls = parseFloat(hs.letterSpacing) || 0;
       const inkAsc = allCaps ? m.cap : m.asc;
+      // Truncated text paints no further than what clips it: the control's own box, and any
+      // element between the text and the control that clips sideways (a name span that ellipsizes
+      // beside a count — its Range still spans the whole string, past the span's edge).
+      let clipL = b.left, clipR = b.right;
+      for (let a = host; a && a !== el; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === 'visible') continue;
+        const q = a.getBoundingClientRect();
+        clipL = Math.max(clipL, q.left); clipR = Math.min(clipR, q.right);
+      }
       for (const q of rects) {
         const lo = { x: q.left, y: q.top }, hi = { x: q.right, y: q.bottom };
         const box = { x: [q.left, q.right], y: [q.top, q.bottom] };
@@ -745,8 +799,8 @@ function scan(cfg) {
             else { const st = hi[L]; box[L] = [st - m.right - extra, st + m.left]; }
           }
         }
-        // Truncated text paints no further than the control's own box.
-        const bx = [Math.max(box.x[0], b.left), Math.min(box.x[1], b.right)];
+        // Truncated text paints no further than what clips it (above).
+        const bx = [Math.max(box.x[0], clipL), Math.min(box.x[1], clipR)];
         const by = [Math.max(box.y[0], b.top), Math.min(box.y[1], b.bottom)];
         textBoxes.push([bx[0], by[0], bx[1], by[1]]);
         textHost.push([[bx[0], by[0], bx[1], by[1]], host, symbol]);
@@ -1192,6 +1246,34 @@ async function inkAscent(p, font, text) {
   }, { font, text });
 }
 
+// At rest in LAYOUT, which no animation reports: a list that mounts its rows in batches, one per
+// frame, and scrolls itself once they are all in. The desktop My Schedule pane does that
+// (ScheduleView: 10 rows a frame, then a jump to today), landing 3-6 s after the Schedule opens
+// under load: after the scan had read its date pills' boxes and while the pixel pass was capturing,
+// so a pill's "ink" was the pane scrolling past it ("10 Oct" dx -1.56, on many runs), and a tap on
+// one of its rows could time out on a row that would not hold still (the myschedule-* views not
+// reached). Waits, at most 8 s, until the element count and every scroll offset hold still over
+// three samples, each at least a frame and 200 ms apart.
+async function settleLayout(p) {
+  await p.evaluate(async () => {
+    const t0 = performance.now();
+    const sig = () => {
+      const all = document.getElementsByTagName('*');
+      let s = String(all.length);
+      for (const el of all) if (el.scrollTop || el.scrollLeft) s += `|${el.scrollTop},${el.scrollLeft}`;
+      return s + '|' + (document.scrollingElement ? document.scrollingElement.scrollTop : 0);
+    };
+    const frame = () => new Promise(r => requestAnimationFrame(r));
+    let last = sig(), still = 0;
+    while (still < 3 && performance.now() - t0 < 8000) {
+      await Promise.all([frame(), new Promise(r => setTimeout(r, 200))]);
+      const now = sig();
+      still = now === last ? still + 1 : 0;
+      last = now;
+    }
+  }).catch(() => {});
+}
+
 // The centring verdict from the label's ink (text union + figure union) against the box.
 const unionOf = (bs) => bs.reduce((u, q) => [Math.min(u[0], q[0]), Math.min(u[1], q[1]), Math.max(u[2], q[2]), Math.max(u[3], q[3])], [Infinity, Infinity, -Infinity, -Infinity]);
 function finalize(c) {
@@ -1278,6 +1360,7 @@ function finalize(c) {
       }
       if (waited) await new Promise(r => requestAnimationFrame(r));
     }).catch(() => {});
+    await settleLayout(p);
     // A scrollIntoView can scroll an overflow:hidden ancestor of the whole app (the .app-shell),
     // lifting the top bar out of the viewport. Put it back, and say so: it is a bug of its own.
     const lifted = await p.evaluate(() => {
@@ -1368,6 +1451,7 @@ function finalize(c) {
     const sel = desktop ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
     await p.locator(sel).first().click({ timeout: 8000, force: overlay });
     await p.waitForTimeout(1800);
+    await settleLayout(p);
   };
   const menu = async (name, railName) => {
     if (desktop) return nav(railName);
@@ -1621,13 +1705,13 @@ function finalize(c) {
     await p.locator('.hands-tool-row button:has-text("Scanner")').first().click({ timeout: 4000, force: overlay });
     await p.waitForTimeout(800);
   }, 0);
-  step('social', () => nav('Social'), 1);
-  step('results', () => menu('Results & Tracking', 'Results'), 1);
+  step('social', () => menu('Social', 'Social'), 1);
+  step('results', () => nav('Bankroll'), 1);
   // Results > Delete results (components/ResetResults.jsx), at the foot of the results list:
   // closed, then open with the phrase typed so its Delete button is enabled. The content area is
   // scrolled, not the window (see toExpenses below).
   const toReset = async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await p.locator('.rr').first().waitFor({ timeout: 4000 });
     await p.evaluate(() => {
       const ca = document.querySelector('.content-area') || document.scrollingElement;
@@ -1660,11 +1744,14 @@ function finalize(c) {
     await click('.filter-chip-square[title="Calendar view"]', 1500);
     await click('.filter-chip-square:not([title]):visible', 800);
   });
-  step('bankrolls', async () => { await menu('Results & Tracking', 'Results'); await click('.bk-head-btn', 800); });
+  step('bankrolls', async () => { await nav('Bankroll'); await click('.bk-head-btn', 800); });
+  // The bankroll dashboard (the bankroll strip's Dashboard button). A tab is found by its label
+  // among the strip's radios (.bd-tabs: the strip's page chevrons are buttons too); when the tabs
+  // outgrow 35g the strip is a row that scrolls sideways, and the click scrolls it there.
   const dash = async (tab) => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await click('.bk-head-btn:has-text("Dashboard")', 1500);
-    if (tab) await click(`.an-sheet .bk-seg-btn:has-text("${tab}")`, 600);
+    if (tab) await click(`.an-sheet .bd-tabs [role="radio"]:has-text("${tab}")`, 600);
   };
   // The Overview: hero, graph, the collapsible table sections (Summary, Sessions, Games, Rooms,
   // Bankroll, By month) and the latest sessions. First with every section opened by its header
@@ -1708,6 +1795,45 @@ function finalize(c) {
   step('bankroll-sessions-cash', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")'), 2);
   step('bankroll-sessions-tournament', () => sessionsTab('.an-sheet .bs-chip:has-text("Tournaments")', '.an-sheet .bs-row'), 3);
   step('bankroll-sessions-cash-detail', () => sessionsTab('.an-sheet .bs-chip:has-text("Cash")', '.an-sheet .bs-row'), 3);
+  // The tab strip with its last tab selected: scrolled to its end when it scrolls, so the start's
+  // page chevron is up (the Overview's step has the end's).
+  step('bankroll-tabs-end', async () => {
+    await dash(null);
+    await click('.an-sheet .bd-tabs button[role="radio"]:last-of-type', 900);
+  }, 0);
+  // Locations: the range and sort strips and the cards; a card open on its results (the first room
+  // with a pager: more than ten results, the biggest first by default sort), its pager scrolled into
+  // view before and after a page (Show 50 more or Show all, then Show fewer beside it), then the
+  // cards sorted by name.
+  step('bankroll-locations', () => dash('Locations'), 3);
+  const openPaged = async () => {
+    await dash('Locations');
+    const cards = p.locator('.an-sheet .bl-card');
+    const n = await cards.count();
+    for (let i = 0; i < n; i++) {
+      await cards.nth(i).click({ timeout: 4000, force: overlay });
+      await p.waitForTimeout(300);
+      if (await p.locator('.bl-pager').count()) return;
+      await cards.nth(i).click({ timeout: 4000, force: overlay });
+    }
+    throw new Error('no room with more than ten results');
+  };
+  const pagerInView = async () => {
+    await p.evaluate(() => document.querySelector('.bl-pager').scrollIntoView({ block: 'center' }));
+    await p.waitForTimeout(400);
+  };
+  step('bankroll-location-open', openPaged, 2);
+  step('bankroll-location-pager', async () => { await openPaged(); await pagerInView(); }, 0);
+  step('bankroll-location-paged', async () => {
+    await openPaged();
+    await pagerInView();
+    await click('.bl-pager .bl-more', 500);
+    await pagerInView();
+  }, 0);
+  step('bankroll-location-sort', async () => {
+    await dash('Locations');
+    await click('.bl-sort [role="radio"]:has-text("Name")', 400);
+  }, 2);
   // Reports: the filter bar, the report picker and a table; then its filter sheet (over the
   // dashboard) with a filter on, so selected and disabled chips are both measured.
   step('bankroll-reports', () => dash('Reports'), 3);
@@ -1725,8 +1851,36 @@ function finalize(c) {
     });
     await p.waitForTimeout(500);
   }, 2);
+  // The floating + on the bankroll pages (components/BankrollFab.jsx): on the Results tab (the page's,
+  // in the main pane on desktop; 2r over the live cash bar while the seed's session runs, 2r over the
+  // nav without one) and inside the dashboard sheet, each closed and with its menu open. The menu is
+  // a portalled panel of 5r rows (a layer), its right edge on the +. Opened by the + itself, so the
+  // click also proves it is a real button that takes a tap.
+  const openFab = async (sel) => {
+    await click(sel, 500);
+    await p.locator('.bk-fab-menu').waitFor({ timeout: 3000 });
+  };
+  step('bankroll-fab', () => nav('Bankroll'), 2);
+  step('bankroll-fab-menu', async () => { await nav('Bankroll'); await openFab('.bk-fab--page'); }, 0);
+  // No session running: the live fetch is answered here and never sent (a guard must not change the
+  // account it signs in as), the + sits 2r over the nav, and the menu has its fourth row, Start live
+  // session. The store keeps the answer once the route is gone.
+  const idleFab = async (open) => {
+    await p.route('**/api/cash-sessions/live', (r) => r.fulfill({ json: { session: null, stacks: [], now: new Date().toISOString() } }));
+    try {
+      await fresh();
+      await nav('Bankroll');
+      await p.locator('.bk-fab--page').waitFor({ timeout: 4000 });
+      if (await p.locator('.cs-bar').count()) throw new Error('the cash bar is still up (the stub did not take)');
+      if (open) await openFab('.bk-fab--page');
+    } finally { await p.unroute('**/api/cash-sessions/live'); }
+  };
+  step('bankroll-fab-idle', () => idleFab(false), 0);
+  step('bankroll-fab-idle-menu', () => idleFab(true), 0);
+  step('bankroll-fab-sheet', () => dash(null), 2);
+  step('bankroll-fab-sheet-menu', async () => { await dash(null); await openFab('.bk-fab--sheet'); }, 0);
   const cashHalf = async (...steps) => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await click('.results-kind-tabs button:has-text("Cash")', 1500);
     for (const sel of steps) await click(sel, 700);
   };
@@ -1740,7 +1894,7 @@ function finalize(c) {
   step('cash-sessions-forms', () => cashHalf(csBack, '.cs-head button:has-text("Add")', '.cs-form-foot button'), 3);
   step('cash-bar', async () => { await cashHalf(); await click('.results-kind-tabs button:has-text("Tournaments")', 600); });
   const toExpenses = async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await p.locator('.tx-sec').first().waitFor({ timeout: 8000 });
     // Scroll the content area only (scrollIntoView would nudge the window off the .top-bar origin).
     await p.evaluate(() => {
@@ -1830,7 +1984,10 @@ function finalize(c) {
   }, 1);
   step('myschedule-conditional-set', async () => {
     const s = await mySched();
-    await tap(s + '.cal-event-row.conditional:not(.open) .cal-event-bar', 900);
+    // Not a past one: once the pane has landed on today (see settleLayout), the first conditional
+    // row in the DOM is days above it, and Playwright's scroll into view leaves it "outside of the
+    // viewport" until the 8 s timeout. Today's and later rows are where the list rests.
+    await tap(s + '.cal-event-row.conditional:not(.open):not(.past) .cal-event-bar', 900);
   }, 1);
   step('myschedule-export', async () => { await mySched(); await tap('button[title="Export schedule"]', 900); }, 1);
   step('myschedule-travel', async () => { await mySched(); await tap('button:has-text("Travel")', 900); });
@@ -1895,20 +2052,45 @@ function finalize(c) {
   step('dashboard-bust-menu', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bust-btn', 700); });
   step('dashboard-update', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-update-btn', 1000); }, 1);
   step('dashboard-bag', async () => { await toPlaying(); await tap('.dash-event-card.playing .dash-bag-btn', 1000); }, 1);
+  // The venue map (VenueMapSheet.jsx, docs/venue-map.md): what a venue strip opens — a Schedule
+  // card's strip, and an Up Next card's banner (the first card that has one, paged to). Measured
+  // once its map has drawn, or the popup has said why not.
+  const venueMapOpen = async () => {
+    await p.locator('.vm-sheet').waitFor({ timeout: 8000 });
+    await p.waitForFunction(() => {
+      const c = document.querySelector('.vm-map-canvas'), n = document.querySelector('.vm-map-note');
+      return (c && c.dataset.provider) || (n && !/Finding|Loading/.test(n.textContent));
+    }, null, { timeout: 20000, polling: 200 }).catch(() => {});
+    await p.waitForTimeout(500);
+  };
+  step('venue-map', async () => {
+    await nav('Schedule');
+    await tap('.cal-event-row:not(.past) .cal-venue-strip[aria-haspopup="dialog"]', 300);
+    await venueMapOpen();
+  });
+  step('venue-map-upnext', async () => {
+    await nav('Dashboard');
+    const i = await p.evaluate(() => [...document.querySelectorAll('.dashboard-view.home .dash-carousel-slide')]
+      .findIndex((sl) => sl.querySelector('.dash-venue-strip.has-map')));
+    if (i < 0) throw new Error('no Up Next card with a venue map');
+    if (i > 0) await pageCarousel(i);
+    await tap('.dashboard-view.home .dash-venue-strip.has-map', 300);
+    await venueMapOpen();
+  });
   // Social: search, a buddy, a group (its chat), creating one.
-  step('social-search', async () => { await nav('Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
-  step('social-buddy', async () => { await nav('Social'); await tap('.social-buddy-card', 1200); }, 1);
-  step('social-group', async () => { await nav('Social'); await tap('.social-group-card', 1500); }, 1);
-  step('social-create-group', async () => { await nav('Social'); await tap('.social-new-btn', 900); });
+  step('social-search', async () => { await menu('Social', 'Social'); await vis('.social-search-input').first().fill('j'); await p.waitForTimeout(1200); }, 1);
+  step('social-buddy', async () => { await menu('Social', 'Social'); await tap('.social-buddy-card', 1200); }, 1);
+  step('social-group', async () => { await menu('Social', 'Social'); await tap('.social-group-card', 1500); }, 1);
+  step('social-create-group', async () => { await menu('Social', 'Social'); await tap('.social-new-btn', 900); });
   // A group's Members tab (invite, remove, the owner's leaderboard switch, delete); a buddy's
   // Add to Group and Remove Connection confirmations; a search that finds someone to connect to.
   step('social-group-members', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-group-card', 1500);
     await tap('.group-segment-btn:has-text("Members")', 1000);
   }, 2);
   step('social-group-tabs', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-group-card', 1500);
     for (const s of ['Schedule', 'Leaderboard']) {
       if (!(await exists(`.group-segment-btn:has-text("${s}")`))) continue;
@@ -1917,16 +2099,16 @@ function finalize(c) {
     }
   }, 1);
   step('social-buddy-add', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-buddy-card', 1200);
     await tap('.social-action-btn:has-text("Add to Group")', 800);
   }, 1);
   step('social-buddy-remove', async () => {
-    await nav('Social');
+    await menu('Social', 'Social');
     await tap('.social-buddy-card', 1200);
     await tap('.social-action-btn:has-text("Remove Connection")', 800);
   }, 1);
-  step('social-search-connect', async () => { await nav('Social'); await vis('.social-search-input').first().fill('fresh'); await p.waitForTimeout(1500); }, 1);
+  step('social-search-connect', async () => { await menu('Social', 'Social'); await vis('.social-search-input').first().fill('fresh'); await p.waitForTimeout(1500); }, 1);
   // Hands: every game family's picker, hand entry step by step, the replayer on a saved hand
   // (transport, settings, share).
   step('hands-games', async () => {
@@ -1986,17 +2168,17 @@ function finalize(c) {
   // Cash: the location picker.
   step('cash-location', async () => { await nav('Cash'); await tap('.filter-chip', 900); }, 1);
   // Results: the log form, a row in edit, the tax report, the share menu, the analytics sheet.
-  step('results-log', async () => { await menu('Results & Tracking', 'Results'); await tap('button:has-text("+ Log Result")', 900); }, 2);
+  step('results-log', async () => { await nav('Bankroll'); await tap('button:has-text("+ Log Result")', 900); }, 2);
   step('results-edit', async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
     await reveal(sel, 200);
     await tap(sel, 900);
   }, 1);
-  step('results-tax', async () => { await menu('Results & Tracking', 'Results'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
-  step('results-share', async () => { await menu('Results & Tracking', 'Results'); await tap('button[title="Share & Social"]', 900); }, 1);
+  step('results-tax', async () => { await nav('Bankroll'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
+  step('results-share', async () => { await nav('Bankroll'); await tap('button[title="Share & Social"]', 900); }, 1);
   step('results-analytics', async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await reveal('.an-launch', 200);
     await tap('.an-launch', 1500);
     await also('open');
@@ -2065,7 +2247,7 @@ function finalize(c) {
     await tap('.cal-event-row.open .buddy-chip', 1200);
   }, 1);
   step('wrap-up', async () => {
-    await menu('Results & Tracking', 'Results');
+    await nav('Bankroll');
     await tap('button[title="Share & Social"]', 900);
     await tap('.share-menu-item:has-text("Series Wrap")', 1500);
   }, 1);

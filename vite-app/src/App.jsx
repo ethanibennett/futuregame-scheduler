@@ -7,7 +7,7 @@ import { resetPath } from './utils/reset-results.js';
 import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
-import { moveDetailBlock, settleDetailBlock, detailBlockMoving } from './utils/detail-motion.js';
+import { moveDetailBlock, settleDetailBlock, detailBlockMoving, resizeDetailBlock } from './utils/detail-motion.js';
 import usePullToRefresh from './hooks/usePullToRefresh.js';
 
 import { useToast } from './contexts/ToastContext.jsx';
@@ -34,6 +34,7 @@ import SettingsView from './components/SettingsView.jsx';
 import SocialView from './components/SocialView.jsx';
 import LiveUpdatePanel from './components/LiveUpdatePanel.jsx';
 import { LiveCashBar } from './components/CashLive.jsx';
+import BankrollFab from './components/BankrollFab.jsx';
 import ScheduleExportModal from './components/ScheduleExportModal.jsx';
 import SharedScheduleView from './components/SharedScheduleView.jsx';
 import BackerPage from './components/BackerPage.jsx';
@@ -353,6 +354,12 @@ function App() {
   // result card): { kind, ... } — TrackingView opens it once and clears it (onIntentDone).
   const [resultsIntent, setResultsIntent] = useState(null);
   const clearResultsIntent = useCallback(() => setResultsIntent(null), []);
+  // Show Results with a form open (the home's Log menu and To log, the bankroll tab's floating +
+  // and the bankroll dashboard sheet's): the intent is set first, TrackingView opens it once.
+  const logIntoResults = useCallback((intent) => {
+    setResultsIntent({ ...intent, at: Date.now() });
+    setCurrentView('tracking');
+  }, [setCurrentView]);
 
   // Live Updates
   const [myActiveUpdates, setMyActiveUpdates] = useState([]);
@@ -1659,9 +1666,20 @@ function App() {
   // height, and its opacity, from wherever it is when the move starts (a close mid-open, a new
   // event mid-close). Run before paint, so the block never shows a frame at its natural height
   // first. Only a change of phase or of event starts one: an event swapped for another while the
-  // block is settled open just reflows, and a block mounted again with the pane (back from another
+  // block is settled open glides between the two heights (resizeDetailBlock), and a block mounted again with the pane (back from another
   // tab, the selection kept) shows as it was left, without growing open again.
   const dkPrevPhase = useRef(null);
+  // The block's height as last laid out, kept current by a ResizeObserver: when another event is
+  // chosen while the block is settled open, the new details are already in the DOM by the time the
+  // effect below runs, so this is the only record of how tall the old ones were.
+  const dkLastH = useRef(0);
+  useEffect(() => {
+    const el = dkDetailRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => { dkLastH.current = el.getBoundingClientRect().height; });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dkPhase != null]);
   useLayoutEffect(() => {
     const was = dkPrevPhase.current;
     dkPrevPhase.current = dkPhase;
@@ -1670,6 +1688,11 @@ function App() {
     if (prefersReducedMotion()) {
       settleDetailBlock(el);
       if (dkPhase === 'closing') setDkClosing(null);
+      return;
+    }
+    // Open to open: another event's details, of another height, glide from the old height to theirs.
+    if (was === 'open' && dkPhase === 'open' && !detailBlockMoving(el) && dkLastH.current > 0) {
+      resizeDetailBlock(el, dkLastH.current, subrowPx());
       return;
     }
     // was == null: the block mounted in this commit, so it opens from nothing.
@@ -1807,7 +1830,7 @@ function App() {
                 isAdmin={isAdmin}
                 token={token}
                 canLog={!isGuest}
-                onLog={(intent) => { setResultsIntent({ ...intent, at: Date.now() }); setCurrentView('tracking'); }}
+                onLog={logIntoResults}
                 bk={bk}
                 onSetPlayed={setNotPlayed}
                 onDeleteTracking={deleteTracking}
@@ -1928,6 +1951,7 @@ function App() {
                 bk={bk}
                 intent={resultsIntent}
                 onIntentDone={clearResultsIntent}
+                onLog={logIntoResults}
               />
             )}
             </div>
@@ -2207,7 +2231,7 @@ function App() {
     <DisplayNameProvider value={displayName}>
     <div
       className={'app-shell' + (isDesktop ? ' is-desktop dk-' + dk.tier : '')}
-      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols, '--dk-sb-g': dk.sbG } : undefined}
+      style={isDesktop ? { '--dk-shell-n': dk.shellG, '--dk-detail-n': dk.detailCols, '--dk-wide-n': dk.wideCols, '--dk-sb-g': dk.sbG, '--dk-ov-g': dk.ovG } : undefined}
     >
       <header className="top-bar">
         <div className="top-bar-title">
@@ -2268,9 +2292,11 @@ function App() {
                   style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
                   My Schedule
                 </button>
-                <button onClick={() => { setShowUserMenu(false); setCurrentView('tracking'); }}
+                {/* Social moved here from the bottom nav (owner, 2026-10-14); its slot there is Bankroll,
+                    which opens Results & Tracking. */}
+                <button onClick={() => { setShowUserMenu(false); setCurrentView('social'); }}
                   style={{display:'flex',alignItems:'center',width:'100%',height:'calc(var(--subrow) * 5)',boxSizing:'border-box',lineHeight:1,textAlign:'left',padding:'0 calc(var(--subrow) * 2)',background:'none',border:'none',color:'var(--text)',cursor:'pointer',fontSize:'calc(var(--gu) * 1.252)'}}>
-                  Results &amp; Tracking
+                  Social
                 </button>
                 {handReplayerAccess && !isAdmin && (
                   <button onClick={() => { setShowUserMenu(false); setCurrentView('hands'); }}
@@ -2361,6 +2387,9 @@ function App() {
           <div className={!isDesktop ? 'layout-contents' : 'dk-pane dk-pane-main ' + (currentView === 'tournaments' ? 'dk-pane-list dk-fab-scope' : currentView === 'dashboard' ? 'dk-pane-home' : 'dk-pane-wide')}>
             {primaryColumn}
             {devToggles}
+            {/* The Results tab's floating +: a direct child of the main pane, so on desktop it sits
+                in that pane (bankroll-fab.css). Guests cannot log results. */}
+            {currentView === 'tracking' && !isGuest && <BankrollFab scope="page" isAdmin={isAdmin} onPick={logIntoResults} />}
           </div>
           {/* The home's second pane (docs/desktop-layout.md "Dashboard"): Up Next and the rest of
               NOW stay in the main pane; the NUMBERS column (the period block, later Trend) is
@@ -2398,7 +2427,7 @@ function App() {
           isAdmin={isAdmin}
           current={(() => {
             if (currentView === 'hands' && isAdmin) return 'hands';
-            if (['tracking', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
+            if (['social', 'calendar', 'settings', 'schedule', 'hands', 'admin', 'batches'].includes(currentView)) return null;
             return currentView;
           })()}
           onChange={onNavChange}
