@@ -5,6 +5,10 @@ import Avatar from './Avatar.jsx';
 import { API_URL } from '../utils/api.js';
 import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
 
+// A whole 3r disc, so an avatar row is a whole number of r (24px was 3.1r on a phone) and every
+// item and its Accept / Decline under it stays on the grid.
+const AVATAR_3R = { width: 'calc(var(--subrow) * 3)', height: 'calc(var(--subrow) * 3)' };
+
 export default function NotificationsPanel({ notifications, token, onClose, fetchNotifications, fetchShareBuddies, fetchMyGroups, onEnablePush }) {
   const displayName = useDisplayName();
   const { groupInvites = [], buddyRequests = [], acceptedBuddies = [], swapSuggestions = [] } = notifications || {};
@@ -87,19 +91,25 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
   return createPortal(
     <>
       <div className="notif-backdrop" onClick={onClose} />
-      <div className="notif-panel">
+      {/* Its right edge on the shell's 1g margin. The shell is centred in the window — 37g, or on
+          desktop the --dk-shell-n App sets on it — so that edge is half the window less half the
+          shell in from the right (the right inset alone put the panel off the g lines there). */}
+      <div className="notif-panel" style={{ right: `calc(50% - var(--gu) * ${Number(document.querySelector('.app-shell')?.style.getPropertyValue('--dk-shell-n')) || 37} / 2 + var(--gu))` }}>
         <div className="notif-panel-header">
           <span className="notif-panel-title">Notifications</span>
+          {/* The close mark is the icon, not a "×" character: that glyph's ink sits on the math
+              axis, below the middle of the box, and an icon's box is its ink. */}
           <button
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-sm notif-close"
             onClick={onClose}
-            style={{ padding: 'var(--space-2xs) var(--space-sm)', fontSize: 'calc(var(--gu) * 1.620)', lineHeight: 1 }}
-          >{'\u00D7'}</button>
+            aria-label="Close"
+          ><Icon.x /></button>
         </div>
         {onEnablePush && (
           // Push permission must be requested from a tap — iOS drops a load-time request — so
           // this button, rendered only while permission is still undecided, IS the request path.
-          <div className="notif-section" style={{ padding: 'var(--space-ml) var(--space-lg)' }}>
+          // 1r above and below, 1g in: the 30g x 4r button on the panel's lines.
+          <div className="notif-section" style={{ padding: 'var(--subrow) var(--gu)' }}>
             <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={onEnablePush}>
               Enable push notifications on this device
             </button>
@@ -142,8 +152,8 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                 {buddyRequests.map(req => (
                   <div key={`br-${req.id}`} className="notif-item">
                     <div className="notif-item-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                        <Avatar src={req.avatar} username={req.username} size={24} />
+                      <div className="notif-item-who" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <Avatar src={req.avatar} username={req.username} size={24} style={AVATAR_3R} />
                         <div className="notif-item-text">
                           <strong>{displayName(req)}</strong>
                           {' wants to connect'}
@@ -166,8 +176,8 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                 {acceptedBuddies.map(ab => (
                   <div key={`ab-${ab.id}`} className="notif-item notif-item-info">
                     <div className="notif-item-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                        <Avatar src={ab.avatar} username={ab.username} size={24} />
+                      <div className="notif-item-who" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <Avatar src={ab.avatar} username={ab.username} size={24} style={AVATAR_3R} />
                         <div className="notif-item-text">
                           <strong>{displayName(ab)}</strong>
                           {' accepted your request'}
@@ -186,12 +196,12 @@ export default function NotificationsPanel({ notifications, token, onClose, fetc
                 {swapSuggestions.map(ss => (
                   <div key={`ss-${ss.id}`} className="notif-item">
                     <div className="notif-item-content">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                        <Avatar src={ss.from_avatar} username={ss.from_username} size={24} />
+                      <div className="notif-item-who" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <Avatar src={ss.from_avatar} username={ss.from_username} size={24} style={AVATAR_3R} />
                         <div className="notif-item-text">
                           <strong>{ss.from_real_name || ss.from_username}</strong>
                           {` wants a ${ss.type} \u2014 ${ss.my_pct}%/${ss.their_pct}%`}
-                          <div style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', marginTop: 'var(--space-2xs)' }}>
+                          <div style={{ fontSize: 'calc(var(--gu) * 1.031)', color: 'var(--text-muted)', marginTop: 0 }}>
                             {ss.event_name} {'\u00B7'} {ss.date}
                           </div>
                         </div>

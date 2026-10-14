@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
+import Icon from './Icon.jsx';
 import { API_URL } from '../utils/api.js';
 import { getVenueInfo, getVenueBrandColor, normaliseDate, getToday, formatBuyin, formatLiveUpdate, parseTournamentTime } from '../utils/utils.js';
 
@@ -294,7 +295,9 @@ function GroupDetailView({
     <div className="group-detail-view">
       {/* Header */}
       <div className="group-detail-header">
-        <button className="group-back-btn" onClick={onBack} aria-label="Back"><span>&larr;</span></button>
+        {/* The arrow is the icon, not "←": that glyph's ink sits on the math axis, below the
+            middle of the box the button centres; an icon's box is its ink. */}
+        <button className="group-back-btn" onClick={onBack} aria-label="Back"><Icon.arrowLeft /></button>
         <div className="group-detail-title">
           <div className="social-buddy-name">{group.name}</div>
           <div className="social-buddy-status">{group.member_count} member{group.member_count !== 1 ? 's' : ''}{group.owner_name ? ` · Owner: ${group.owner_name}` : ''}</div>

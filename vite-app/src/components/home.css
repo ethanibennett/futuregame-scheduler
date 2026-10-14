@@ -1,0 +1,1020 @@
+/* ==================================================================
+   The home (Dashboard tab) — components/DashboardView.jsx. The design is
+   the panel verdict of 2026-10-11 (docs/session-handoff.md); this file
+   holds what the redesign adds, and grows a section per build step.
+
+   Bundle order: main.jsx imports App (and with it this file) BEFORE
+   styles.css, so every rule here that meets a styles.css rule must
+   out-specify it rather than rely on coming later.
+
+   GRID. Every measurement is g or r.
+     columns  NOW (Up Next, To log, the last result) and NUMBERS (the
+              bankroll line, the period block, its noise line and its
+              goals; Trend, section 7, later). One scrolling column on the phone,
+              2r between sections, NOW first. Desktop (>= 1024): NOW is
+              the main pane (37g), NUMBERS a second 37g pane beside it
+              (App.jsx portals it into .dk-home-right); each pane is its
+              own scroller, both starting 1r under the bar.
+     foot     the Cash view's nav-height spacer: 2r (the column gap)
+              + the nav's height, so the last section scrolls clear of
+              the nav and the live-cash bar. App's tab panels are
+              height:100%, so .content-area's own bottom padding lands
+              after the panel, not after the home.
+     Scan     the Playing card's actions become four 7g x 4r cells with
+              1g gutters, 3..10 | 11..18 | 19..26 | 27..34g of the
+              card: Cancel and Finish of the Bust menu (7g, at 3g and
+              27g) sit exactly where Scan and Bust sit.
+   ================================================================== */
+
+/* The home grows with its content now (no height, no scroll of its own: .content-area or the
+   pane's .dk-scroll scrolls it), but it still clips sideways at its 35g column. The Up Next
+   carousel's wrapper reaches 1.5r past the column on each side (room for the card's shadow) and
+   its slides sit edge to edge, so without this clip the neighbouring cards' edges show in that
+   margin (1.5r = 1.07g of the next card's strip, seen at 36..37g on a 402 phone). */
+/* clip, not hidden: a hidden box is still a scroll container, and focusing or scrolling to a control
+   inside it (a keyboard Tab, Playwright's click) scrolled it 1px sideways, since the carousel's
+   wrapper reaches past it, which moved every control in the home 0.09g off its line. (hidden first:
+   iOS 15 has no overflow: clip.) */
+.dashboard-view.home { overflow: hidden; overflow: clip; }
+
+.dashboard-view.home .home-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* The foot. A flex item of .dashboard-view, so the column's 2r gap comes before it. */
+.dashboard-view.home::after {
+  content: '';
+  flex: 0 0 auto;
+  height: var(--nav-h);
+}
+/* No nav on desktop: the 2r gap alone ends the pane. The NUMBERS pane is a .dk-scroll, whose own
+   2r bottom padding already does it. */
+.app-shell.is-desktop .dashboard-view.home::after { height: 0; }
+.dashboard-view.home.home--numbers::after { display: none; }
+
+/* ── Scan table, on the Playing card ── */
+.dash-status-stack .dash-action-row.dash-action-row--4 { gap: var(--gu); }
+.dash-status-stack .dash-action-row.dash-action-row--4 > button {
+  flex: 0 0 calc(var(--gu) * 7);
+  min-width: 0;
+  padding: 0;
+}
+.dash-scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  cursor: pointer;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+/* A tracked label's last letter carries a letter-space too. The icon leads the label, so the
+   space is cancelled at the label's end (an equal negative end margin), not balanced by an indent:
+   an indent sits between the icon and the text, inside the ink, and left the icon + label ink
+   0.8px left of centre (check:controls measures the union). */
+.dash-event-card .dash-scan-btn .dash-t { margin-inline-end: calc(-1 * var(--track-caps)); }
+.dash-scan-btn svg {
+  flex: 0 0 auto;
+  width: calc(var(--subrow) * 2);
+  height: calc(var(--subrow) * 2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dash-scan-btn:hover {
+    background: var(--hover-overlay);
+    box-shadow: inset 0 0 0 var(--bw-hair) var(--text-muted);
+  }
+}
+.dash-scan-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* The CURRENTLY PLAYING badge above that row (31g x 4r): its label (dot + caps) centred in the
+   badge, and its undo key out of the flow, a 2g x 4r box on the badge's own lines (30..32g of the
+   card, where it sat), the ✕ centred in it. The key used to sit in the flow at margin-left:auto,
+   which pulled the label 0.28g left of centre, and was a 3r ring in a 4r badge, so its top fell
+   on half an r. A 3r ring cannot be centred in 4r on the grid, so the key is a bare ✕ here, as a
+   chip's dismiss is; its tap target is still the ::after inset around it. */
+.dash-event-card .dash-status-stack .dash-playing-badge { position: relative; }
+.dash-event-card .dash-status-stack .dash-playing-badge > .dash-t { margin-inline-end: calc(-1 * var(--track-caps)); } /* after the dot: as Scan's */
+.dash-event-card .dash-status-stack .dash-playing-badge > .dash-undo-x {
+  position: absolute;
+  top: 0;
+  right: var(--subcol);
+  width: calc(var(--gu) * 2);
+  min-width: 0;
+  height: calc(var(--subrow) * 4);
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+/* Its twin on the Bagged card: the BAGGED (or RESTART IN 9:40) badge, 31g x 4r. The restart icon and
+   the caps label centred in the badge (the label's trailing letter-space cancelled by an equal
+   negative end margin), and the undo-bag key out of the flow as the Playing badge's is: a bare ✕ in a 2g x 4r box
+   on the badge's own lines, 2g in from its right edge. In the flow at margin-left:auto it pulled the
+   label 3.3px left of centre, and its 3r ring in the 4r badge put its top on half an r. */
+.dash-event-card .dash-restart-badge { position: relative; }
+.dash-event-card .dash-restart-badge > .dash-t { margin-inline-end: calc(-1 * var(--track-caps)); } /* after the icon: as Scan's */
+/* Scoped to the home (0,5,0): styles.css's 2r key for every badge,
+   '.dash-event-card :is(...badge) > :is(.dash-undo-x, .dash-unbag-x)', is 0,3,0 too, and a tie
+   would leave the height to which sheet loads last. */
+.dashboard-view.home .dash-event-card .dash-restart-badge > .dash-unbag-x {
+  position: absolute;
+  top: 0;
+  right: var(--subcol);
+  width: calc(var(--gu) * 2);
+  min-width: 0;
+  height: calc(var(--subrow) * 4);
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+/* ── The Scan table sheet (components/ScanTableSheet.jsx) ──
+   The bankroll sheet's frame (styles.css .bk-scrim / .bk-sheet: 37g, 1g sides, a 5r head with the
+   title on +3r and a 6g x 5r Done). The scanner starts 2r under the head: its idle button is
+   35g x 5r, its progress and results the same blocks the home used to show. */
+.bk-sheet.scan-sheet .table-scanner { margin-top: calc(var(--subrow) * 2); }
+
+/* ==================================================================
+   Step 3: To log (HomeToLog.jsx) and the Last result (HomeLastResult.jsx).
+
+   GRID. 35g wide, like every home section; the section's 3r header
+   (title seated on +2r, as every Dashboard header) then 1r.
+     To log row   35g x 6r card: the venue strip (2r, the venue's name
+                  and the day centred, as the Up Next card's strip) over
+                  a 4r body: the line of text (18g), then the answers as
+                  4r segments of the body split by hairlines (the
+                  Results bar's language) on FIXED columns, so they line
+                  up from row to row: Busted 18..24g | Cashed 24..30g |
+                  Didn't play 30..35g of the card. An answer a row does
+                  not offer leaves its column as a hairline-only gap.
+                  Rows 1r apart. "+N more" is a 6g x 3r pill in the
+                  header. Busted or Didn't play turns the row, where it
+                  stands, into what was done | Undo (5g, the last
+                  column) for a few seconds.
+     Receipt      35g x 10r card: a 6r lead (the net in the display face
+                  seated on +5r in the left 15g; the name on +3r and the
+                  room and day on +5r, right-aligned, in the right 17g;
+                  1g in from each edge, 1g between),
+                  then the 4r fact bar on the Results bar's columns
+                  (11g | 11g | 13g, the last raised), every figure and
+                  label seated on its +3r. The Log pill is 5g x 3r in
+                  the header; a milestone tag left of it is 3r, whole g
+                  (snap-g). The Log menu: 17g, one 4r row per choice,
+                  right edge on the pill's, 1r under it.
+     Empty        35g x 12r: title on +3r, note on +6r, then 1r and the
+                  4r buttons (the home's control face: 2xs bold tracked
+                  caps, centred), 1r foot. The header's Log pill is not
+                  shown beside it: one way to log, not two.
+
+   BASELINES. Text that is not a control is SEATED, never centred: the
+   analytics recipe (analytics.css .an-cell), a whole-r cell of height
+   --h whose one line is pushed down so its baseline lands on line --k:
+       baseline = h/2 + p/2 + c   =>   p = 2(k - h/2 - c)
+   (p cannot be negative: a cell needs k - h/2 >= c, so a face whose c
+   is above 0.5 seats on its cell's last line only in a 2r cell, or on
+   +3r of a 4r one.)
+   with c (baseline less half the line box, in r) MEASURED per face
+   and size in WebKit at 402 and 1440 (a zero-size inline-block on the
+   baseline, the app's fonts loaded; values at the roles below). Controls (the
+   segments, pills, menu rows) centre their label both ways (owner
+   rule), with no seating inside them.
+   Truncating text clips in an inner .hm-clip whose overflow box is
+   padded 0.5r beyond its line on both sides and pulled back by an
+   equal negative margin, so no glyph is cut (check:clipping).
+   ================================================================== */
+
+.hm-cell {
+  display: block;
+  box-sizing: border-box;
+  height: calc(var(--subrow) * var(--h));
+  padding-top: calc(var(--subrow) * 2 * (var(--k) - var(--h) / 2 - var(--c)));
+  line-height: calc(var(--subrow) * (var(--h) - 2 * (var(--k) - var(--h) / 2 - var(--c))));
+  white-space: nowrap;
+  min-width: 0;
+  margin: 0;
+  font-variant-numeric: var(--num-tabular);
+}
+.hm-clip {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-block: calc(var(--subrow) * 0.5);
+  margin-block: calc(var(--subrow) * -0.5);
+}
+/* Type roles: face + size, and that face's c. Measured (2026-10-12, after the font-metrics fix)
+   as 402 / 1440: the face's ascent rounds to whole px at each size, so the two differ a little;
+   c is their midpoint, which puts every baseline within 0.025r (0.2px) of its line at both.
+     sm .6478/.6667  sm bold .6478/.6061  xs .5182/.5455  md bold .7126/.7273
+     2xs bold caps .4534/.4242  display 2xl 1.1012/1.1515 */
+.hm-f-sm   { --c: 0.6573; font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-regular); }
+.hm-f-sm-b { --c: 0.6270; font-family: var(--font-condensed); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.hm-f-xs   { --c: 0.5319; font-family: var(--font-condensed); font-size: var(--fs-xs); font-weight: var(--fw-regular); }
+.hm-f-md-b { --c: 0.7200; font-family: var(--font-condensed); font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.hm-f-2xs  { --c: 0.4388; font-family: var(--font-condensed); font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+             text-transform: uppercase; letter-spacing: var(--track-caps); }
+.hm-f-disp { --c: 1.1264; font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: var(--fw-regular); }
+
+/* Controls' labels: centred by their box (flex), one line box of 1em. */
+.hm-seg-t, .hm-hp-t, .hm-tag-t {
+  display: block;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ── The header's right-hand pills: "+N more", the Log pill, a milestone tag ── */
+.hm-head-right {
+  display: flex;
+  align-self: stretch;
+  align-items: flex-start;
+  gap: var(--gu);
+}
+.hm-head-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: calc(var(--gu) * 4);
+  height: calc(var(--subrow) * 3);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  /* A tracked label's last letter carries a letter-space too: the same indent on the left centres
+     its ink. */
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.hm-head-pill--wide { width: calc(var(--gu) * 6); }
+.hm-head-pill--log {
+  width: calc(var(--gu) * 5);
+  background: var(--brand-quiet);
+  color: var(--brand-ink, var(--brand));
+}
+.hm-head-pill:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-head-pill:hover { background: var(--hover-overlay); }
+  .hm-head-pill--log:hover { background: var(--brand-line); }
+}
+/* A milestone ('Biggest cash', 'Back to break-even'): an accolade, so trophy gold, not the brand. */
+.hm-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--accolade);
+  color: var(--accolade);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+}
+
+/* ── To log ── */
+.hm-tolog-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--subrow);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hm-tolog-row {
+  display: flex;
+  flex-direction: column;
+  height: calc(var(--subrow) * 6);
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+}
+/* The venue strip: 2r, the venue's name centred both ways in white on its colour. Its label
+   truncates in a .hm-clip-like box (padded 0.5r beyond its 1em line, pulled back). */
+.hm-tolog-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 2);
+  box-sizing: border-box;
+  padding: 0 var(--gu);
+  color: #ffffff; /* venue strip text is always white (DashboardView's strip) */
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps-lg);
+  text-transform: uppercase;
+  user-select: none;
+}
+.hm-tolog-strip-t {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-block: calc(var(--subrow) * 0.5);
+  margin-block: calc(var(--subrow) * -0.5);
+  /* The trailing letter-space (of the day, the line's last letter), cancelled by the same indent
+     at its start, so the line's ink is what centres. */
+  text-indent: var(--track-caps-lg);
+}
+/* The day: never truncated (pre keeps its leading space in a flex item). */
+.hm-tolog-strip-d {
+  display: block;
+  flex: 0 0 auto;
+  line-height: 1;
+  white-space: pre;
+}
+.hm-tolog-body {
+  display: flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 4);
+}
+/* The line: seated on +3r of the body, 1g in from the card's edge. */
+.hm-tolog-text {
+  --h: 4; --k: 3;
+  flex: 1 1 0;
+  padding-left: var(--gu);
+  padding-right: var(--gu);
+  color: var(--text);
+}
+.hm-tolog-muted { color: var(--text-muted); }
+/* An answer: a 4r segment of the body, split from the line and from each other by a hairline
+   drawn inside it (no width added), its caps label centred both ways. */
+.hm-tolog-seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 calc(var(--gu) * 6);
+  height: calc(var(--subrow) * 4);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: inset var(--bw-hair) 0 0 var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+/* Didn't play: quiet (muted ink), 5g, its two words stacked on 1.5r lines. Undo sits in the same
+   last column of a held row. */
+.hm-tolog-seg--quiet { flex-basis: calc(var(--gu) * 5); color: var(--text-muted); font-weight: var(--fw-regular); }
+.hm-tolog-seg--undo { flex-basis: calc(var(--gu) * 5); }
+/* An answer the row does not offer (no Busted for a chop, no Didn't play for a bust): its column
+   kept, its hairline only, so the answers stand on the same columns in every row. */
+.hm-tolog-gap {
+  display: block;
+  flex: 0 0 calc(var(--gu) * 6);
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset var(--bw-hair) 0 0 var(--border);
+}
+.hm-tolog-gap--quiet { flex-basis: calc(var(--gu) * 5); }
+.hm-seg-t--2 { line-height: calc(var(--subrow) * 1.5); }
+.hm-tolog-seg:disabled { opacity: var(--state-disabled); cursor: default; }
+.hm-tolog-seg:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-tolog-seg:not(:disabled):hover { background: var(--hover-overlay); }
+}
+
+/* ── The receipt ── */
+.hm-receipt {
+  display: block;
+  width: 100%;
+  height: calc(var(--subrow) * 10);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+@media (hover: hover) and (pointer: fine) {
+  button.hm-receipt:hover { background: var(--hover-overlay); }
+}
+button.hm-receipt:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.hm-receipt-lead {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 17);
+  column-gap: var(--gu);
+  height: calc(var(--subrow) * 6);
+  padding: 0 var(--gu);
+}
+/* The net: display face, seated on +5r. A gain in the win colour, a loss in the loss colour; no
+   arrow, no trend colour (honesty rules). */
+.hm-receipt-net { --h: 6; --k: 5; color: var(--text); }
+.hm-receipt-net.is-pos { color: var(--pos); }
+.hm-receipt-net.is-neg { color: var(--neg); }
+.hm-receipt-what { display: block; min-width: 0; text-align: right; }
+.hm-receipt-name { --h: 3; --k: 3; color: var(--text); }
+.hm-receipt-meta { --h: 2; --k: 2; color: var(--text-muted); }
+/* The fact bar: the Results bar's 11g | 11g | 13g, the last segment raised (as Net is there).
+   Each figure and its label seated on the bar's +3r, the pair centred in its segment. The hairlines
+   (top, and between segments) are drawn inside each segment, so the raised fill does not hide
+   them. */
+.hm-facts {
+  display: grid;
+  grid-template-columns: var(--pl-cols);
+  height: calc(var(--subrow) * 4);
+}
+.hm-fact {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: calc(var(--gu) * 0.5);
+  min-width: 0;
+  height: calc(var(--subrow) * 4);
+  box-sizing: border-box;
+  padding: 0 calc(var(--gu) * 0.5);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.hm-fact + .hm-fact { box-shadow: inset var(--bw-hair) 0 0 var(--border), inset 0 var(--bw-hair) 0 var(--border); }
+.hm-fact:last-child { background: var(--surface-raised); }
+.hm-fact-v { --h: 4; --k: 3; flex: 0 1 auto; color: var(--text); }
+.hm-fact-l { --h: 4; --k: 3; flex: 0 1 auto; color: var(--text-muted); }
+.hm-fact.is-muted .hm-fact-v { color: var(--text-muted); font-weight: var(--fw-regular); }
+
+/* ── No result yet ── */
+.hm-receipt--empty {
+  height: calc(var(--subrow) * 12);
+  padding: 0 var(--gu);
+  cursor: default;
+}
+.hm-empty-title { --h: 4; --k: 3; color: var(--text); }
+.hm-empty-note { --h: 2; --k: 2; color: var(--text-muted); }
+.hm-empty-actions { display: flex; gap: var(--gu); margin-top: var(--subrow); }
+.hm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  /* The home's control face (BUSTED, CASHED, LOG, SCHEDULE): 2xs bold tracked caps, the trailing
+     letter-space cancelled by the same indent so the ink centres. */
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.hm-btn--brand { background: var(--brand); color: var(--on-brand); box-shadow: none; }
+.hm-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.hm-w10 { width: calc(var(--gu) * 10); }
+.hm-w23 { width: calc(var(--gu) * 23); }
+
+/* ── The Log menu (portalled to the body) ── */
+.hm-logmenu {
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--gu) * 17);
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-1) var(--border), var(--elev-2);
+  overflow: hidden;
+}
+.hm-logmenu-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 100%;
+  height: calc(var(--subrow) * 4);
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+.hm-logmenu-item + .hm-logmenu-item { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.hm-logmenu-item:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-logmenu-item:hover { background: var(--hover-overlay); }
+}
+
+/* Results: the entry the home's Last result card opened, ringed for a moment (TrackingView). */
+.tracking-card.is-focus { box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+
+/* ── Hands > Scanner (components/HandsScanner.jsx) ──
+   The home's old Table Scanner section, unchanged: a .dashboard-view, so its 3r header seats the
+   title on +2r as every Dashboard section header does, 1r, then the scanner. */
+.dashboard-view.hands-scan { padding-bottom: calc(var(--subrow) * 2); }
+
+/* ==================================================================
+   Step 4: the bankroll line (HomeBankrollLine.jsx) and the period
+   block with its goals (HomePeriod.jsx), the NUMBERS column's top.
+
+   GRID. 35g wide, like every home section.
+     Bankroll  35g x 5r card, a button (the Bankroll dashboard, Rules).
+               Two stacks 1g in from the card's edges, each a 2xs caps
+               label seated on +2r over its figure (md bold) on +4r
+               (two 2r cells, then 1r):
+               All rolls / Balance on the left, the cap a bullet under
+               its rule on the right. The signal pill (whole g, snap-g,
+               x 3r at +1r..+4r) sits 1g in from the right edge, 1g
+               after the cap; its label centred both ways.
+     Period    the section's 3r header: the window's name seated on +2r
+               like every Dashboard title (it truncates), the scope on
+               the same line at the right. 1r. Then a 35g card (a
+               button):
+                 lead 7r   1g | 17g: the net in the display face on +4r,
+                           its sample (xs) on +6r | 16g: the comparison
+                           (sm on +4r, xs on +6r), right-aligned | 1g;
+                           a 4r cell then a 2r one, each side, then 1r;
+                 rows 4r   under a hairline, 21g | 14g: the label (sm;
+                           its sample after it in muted xs) and the
+                           figure (sm bold, right), both on +3r, 1g in
+                           from the card's edges.
+     Goals     1r under it, a 35g card (a button: Goals), 6r a goal:
+               its line as a row (4r), then a 33g x 1r pace bar (1g in
+               from each edge) with the elapsed tick, then 1r.
+   ================================================================== */
+
+/* Cards that are buttons: the receipt's surface, hairline and lift. Hover lays the overlay over the
+   surface rather than replacing it. */
+.hm-bank-bar, .hm-period-card, .hm-goals {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hm-bank-bar:hover, .hm-period-card:hover, .hm-goals:hover {
+    background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay));
+  }
+}
+.hm-bank-bar:focus-visible, .hm-period-card:focus-visible, .hm-goals:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ── The bankroll line ── */
+.hm-bank-bar {
+  display: flex;
+  align-items: flex-start;
+  height: calc(var(--subrow) * 5);
+  padding: 0 var(--gu);
+}
+.hm-bank-col { display: block; flex: 0 1 auto; min-width: 0; }
+.hm-bank-col--cap { margin-left: auto; text-align: right; }
+.hm-bank-k { --h: 2; --k: 2; color: var(--text-muted); }
+.hm-bank-v { --h: 2; --k: 2; color: var(--text); }
+/* The words around a figure ('Balance', 'a bullet'): the figure's size (one line box, one
+   baseline), regular weight, muted. */
+.hm-bank-w { font-weight: var(--fw-regular); color: var(--text-muted); }
+.hm-bank-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0 var(--gu);
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  /* The trailing letter-space, cancelled, so the label's ink is what centres. */
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+}
+/* Up is room the rule gives (the brand); down is the rule's warning (warn). Neither is profit. */
+.hm-bank-pill.is-up { background: var(--brand-quiet); color: var(--brand-ink, var(--brand)); }
+.hm-bank-pill.is-down { background: var(--warn-bg); color: var(--warn); }
+
+/* ── The period block ── */
+.hm-period-head { gap: var(--gu); }
+/* The window's name: .dashboard-section-title's face, seated on +2r by the cell recipe instead of
+   by text-box-trim, so it can truncate (a series' or trip's name) without cutting a glyph. A 2r cell
+   at the header's top (a 3r one would need a negative padding to reach +2r with this face). */
+.hm-sec-title {
+  --h: 2; --k: 2; --c: 0.6270;
+  align-self: flex-start;
+  flex: 1 1 auto;
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.hm-period-scope { --h: 3; --k: 2; flex: 0 0 auto; color: var(--text-muted); }
+
+.hm-period-lead {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 17) calc(var(--gu) * 16);
+  height: calc(var(--subrow) * 7);
+  padding: 0 var(--gu);
+}
+.hm-period-l, .hm-period-side { display: block; min-width: 0; }
+.hm-period-side { text-align: right; }
+/* The net: sign colour only (a gain in the win colour, a loss in the loss colour) — no arrow, no
+   trend colour against last month. An empty window is a muted dash. */
+.hm-period-net { --h: 4; --k: 4; color: var(--text); }
+.hm-period-net.is-pos { color: var(--pos); }
+.hm-period-net.is-neg { color: var(--neg); }
+.hm-period-net.is-empty { color: var(--text-muted); }
+.hm-period-sample { --h: 2; --k: 2; color: var(--text-muted); }
+/* The comparison is muted: it is context, not a result. */
+.hm-period-s1 { --h: 4; --k: 4; color: var(--text-muted); }
+.hm-period-s2 { --h: 2; --k: 2; color: var(--text-muted); }
+
+.hm-prow {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 21) calc(var(--gu) * 14);
+  height: calc(var(--subrow) * 4);
+  box-shadow: inset 0 var(--bw-hair) 0 var(--border);
+}
+.hm-prow-l { --h: 4; --k: 3; padding-left: var(--gu); color: var(--text); }
+.hm-prow-v { --h: 4; --k: 3; padding-right: var(--gu); text-align: right; color: var(--text); }
+.hm-prow-v.is-muted { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* A rate's sample beside its label, smaller and muted, on the label's baseline. Its line-height is
+   its own 1em, inside the cell's line box, so it cannot move the baseline. */
+.hm-prow-s {
+  margin-left: calc(var(--gu) * 0.5);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: 1;
+}
+
+/* ── Goals ── */
+.hm-goal { display: block; height: calc(var(--subrow) * 6); }
+.hm-goal + .hm-goal { box-shadow: inset 0 var(--bw-hair) 0 var(--border); }
+.hm-goal .hm-goal-line { box-shadow: none; }
+/* A volume goal says where it stands against its pace, in the bar's colour; a profit goal stays
+   muted ("pace is mostly variance"). */
+.hm-goal.is-ahead .hm-goal-note { color: var(--pos); }
+.hm-goal.is-behind .hm-goal-note { color: var(--warn); }
+.hm-goal-bar {
+  display: block;
+  position: relative;
+  height: var(--subrow);
+  margin: 0 var(--gu);
+  border-radius: var(--radius-xs);
+  background: var(--surface2);
+  overflow: hidden;
+}
+.hm-goal-fill { display: block; position: absolute; top: 0; bottom: 0; left: 0; background: var(--text-muted); }
+.hm-goal.is-ahead .hm-goal-fill { background: var(--pos); }
+.hm-goal.is-behind .hm-goal-fill { background: var(--warn); }
+/* The tick: how much of the goal's period has gone. */
+.hm-goal-tick {
+  display: block;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--bw-2);
+  margin-left: calc(var(--bw-2) * -0.5);
+  background: var(--text);
+}
+
+/* ==================================================================
+   Step 5: Up Next resolves its plans (utils/home-upnext.js), the
+   running cash session's card (HomeCashCard.jsx; admins) and the
+   prompt for an empty schedule (HomeNothingNext.jsx).
+
+   GRID.
+     Plan tags  the card's tag row (3r pills, a 2g gap, 1r between
+                wrapped rows): each condition a pill of whole g
+                (snap-g: its label + 1g a side, rounded up), the label
+                centred both ways. Waiting ('If bust #12') is the old
+                Conditional's grey; on ('On: busted #12') the brand's
+                quiet fill; off ('Off: busted #12') a hairline ring.
+                An off card dims all but its tags, which say why (as a
+                completed one keeps its 'Event Completed' line).
+     Cash card  the Up Next card's own anatomy, every box from its
+                rules: the 3r strip (the room), the name on its 3r
+                line and the meta on its 2r one, the three 9g x 6r
+                stat boxes (Session | In play | Stack), then a 4r
+                action row on the status row's 15g | 1g | 15g (Update
+                stack | Cash out). Update stack turns that row into
+                the stack entry: a 15g x 4r field | Save 7g | Cancel
+                7g, 1g between (3..18 | 19..26 | 27..34g of the card).
+     Nothing    35g x 5r card, the bankroll line's anatomy: a 2xs caps
+     next       label seated on +2r over its line (md bold) on +4r,
+                1g in from the left; a Schedule pill (whole g, snap-g,
+                x 3r at +1..+4r) 1g in from the right.
+   ================================================================== */
+
+/* ── Plan tags ── */
+.dashboard-view.home .dash-event-tag.plan {
+  flex: 0 0 auto;
+  padding: 0 var(--gu);
+}
+/* The trailing letter-space of the caps, cancelled by the same indent, so the ink centres. */
+.dashboard-view.home .dash-event-tag.plan .dash-t { text-indent: var(--track-caps); }
+.dashboard-view.home .dash-event-tag.plan.is-pending {
+  background: var(--surface2);
+  color: var(--text-muted);
+}
+.dashboard-view.home .dash-event-tag.plan.is-on {
+  background: var(--brand-quiet);
+  color: var(--brand-ink, var(--brand));
+}
+.dashboard-view.home .dash-event-tag.plan.is-off {
+  background: none;
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text-muted);
+}
+/* An off plan: the card dims part by part, its tags at full strength. */
+.dashboard-view.home .dash-event-card.plan-off > .dash-venue-strip,
+.dashboard-view.home .dash-event-card.plan-off .dash-card-content > :not(.dash-event-tags) {
+  opacity: var(--state-past);
+  filter: grayscale(0.6);
+}
+
+/* ── The cash card ── */
+.dashboard-view.home .hm-cash-card .dash-stat-value.is-empty { color: var(--text-muted); }
+.hm-cash-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--subrow) * 4);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.dash-event-card .hm-cash-btn .dash-t { text-indent: var(--track-caps); }
+.hm-cash-btn--brand { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+.hm-cash-btn:disabled { opacity: var(--state-disabled); cursor: default; }
+.hm-cash-btn:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-cash-btn:not(:disabled):hover { background: var(--hover-overlay); box-shadow: inset 0 0 0 var(--bw-hair) var(--text-muted); }
+  .hm-cash-btn--brand:not(:disabled):hover { background: var(--brand); box-shadow: inset 0 0 0 var(--bw-2) var(--brand-line); }
+}
+.hm-cash-entry {
+  display: grid;
+  grid-template-columns: calc(var(--gu) * 15) calc(var(--gu) * 7) calc(var(--gu) * 7);
+  column-gap: var(--gu);
+  margin: 0;
+}
+.hm-cash-input {
+  display: block;
+  width: 100%;
+  height: calc(var(--subrow) * 4);
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
+  color: var(--text);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  font-variant-numeric: var(--num-tabular);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.hm-cash-input::placeholder { color: var(--text-muted); font-weight: var(--fw-regular); }
+.hm-cash-input:focus-visible { outline: none; box-shadow: inset 0 0 0 var(--bw-2) var(--brand); }
+
+/* ── Nothing scheduled ── */
+.hm-next-empty {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  height: calc(var(--subrow) * 5);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 var(--gu);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border), var(--elev-1);
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hm-next-empty:hover { background-image: linear-gradient(var(--hover-overlay), var(--hover-overlay)); }
+}
+.hm-next-empty:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.hm-next-col { display: block; flex: 1 1 auto; min-width: 0; }
+.hm-next-k { --h: 2; --k: 2; color: var(--text-muted); }
+.hm-next-v { --h: 2; --k: 2; color: var(--text); }
+.hm-next-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: calc(var(--subrow) * 3);
+  box-sizing: border-box;
+  margin: var(--subrow) 0 0 var(--gu);
+  padding: 0 var(--gu);
+  border-radius: var(--radius);
+  background: var(--brand-quiet);
+  color: var(--brand-ink, var(--brand));
+  font-family: var(--font-condensed);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-caps);
+  text-indent: var(--track-caps);
+  text-transform: uppercase;
+}
+/* A number field with no spinner: the stack is typed. */
+.hm-cash-input::-webkit-inner-spin-button,
+.hm-cash-input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+.hm-cash-input { -moz-appearance: textfield; }
+
+/* ── Venue strips: one tracking everywhere on the home (the strip's own --track-caps-lg; the
+   tournament cards used to override it to 0.06em inline), and the trailing letter-space of the
+   caps cancelled by the same indent, so the name's ink centres (it sat 0.7px left of centre). ── */
+.dashboard-view.home .dash-venue-strip .dash-t { text-indent: var(--track-caps-lg); }
+
+/* ── The Up Next carousel: slides stacked, not in a row ──
+   The track is one grid cell; every slide sits in it at its own height (align-self: start), moved
+   sideways by (its index − the shown index) × its own width. The card shown is at 0, exactly where
+   the first one is, at any index: the old flex row of 35g slides, translated by −index × 100%,
+   gathered WebKit's sub-pixel layout rounding a slide at a time (0.057px a card at 402, 0.115px at
+   1440) and put the 24th card 0.11g off its line. A drag moves the track (the slides keep their
+   offsets); the release animates the track back to 0 and the slides to their new offsets on the
+   same curve, so the two add up to one move.
+   HEIGHT. The track is as tall as the card ON SHOW, in whole r (DashboardView sets --track-r from
+   the slide's measured height, every card being whole r), not the tallest of every slide: that left
+   a hole of up to 16r between a short card and the counter. While a drag pulls a taller neighbour
+   in, the track grows to it, so the incoming card never covers the dots; a change of height eases
+   on the page turn's own duration and curve. Until the first measure it is as tall as its content. */
+.dashboard-view.home .dash-carousel-track {
+  display: grid;
+  grid-template-columns: 100%;
+  align-items: start;
+  transition: transform var(--dur-base) var(--ease-standard), height var(--dur-base) var(--ease-standard);
+}
+.dashboard-view.home .dash-carousel-track.is-fitted { height: calc(var(--subrow) * var(--track-r)); }
+/* A mouse over the dots or the counter (DashboardView fit.frozen): the track grows to a taller card
+   but does not shrink to a shorter one, so the control under the pointer stays put between clicks
+   and no card is ever cut; it eases to the card on show when the pointer leaves. */
+/* A drag moves the track with the finger (no transform easing); the height still eases. */
+.dashboard-view.home .dash-carousel-track.swiping { transition: height var(--dur-base) var(--ease-standard); }
+.dashboard-view.home .dash-carousel-slide {
+  grid-area: 1 / 1;
+  align-self: start;
+  transition: transform var(--dur-base) var(--ease-standard), visibility 0s linear 0s;
+}
+/* The slides not on show (inert, aria-hidden) are invisible at rest. A neighbour taller than the
+   track (which fits the card on show) painted a band of itself and its shadow under the track, at
+   the column's edge, down to the wrapper's foot. Visibility goes on the page turn's own clock: a
+   slide leaving keeps it until its slide-out ends (the delay), one arriving gets it at once (no
+   delay on the shown rule above); a drag shows every slide (the neighbour must come in with the
+   finger), and on release they hide again once the slide back or the turn is over. */
+.dashboard-view.home .dash-carousel-slide.is-off {
+  visibility: hidden;
+  transition: transform var(--dur-base) var(--ease-standard), visibility 0s linear var(--dur-base);
+}
+.dashboard-view.home .dash-carousel-track.swiping .dash-carousel-slide { transition: none; }
+.dashboard-view.home .dash-carousel-track.swiping .dash-carousel-slide.is-off { visibility: visible; }
+
+/* ==================================================================
+   Step 6: the signal-or-noise line (HomeNoiseLine.jsx; admins), one
+   plain sentence about the period block's window, under its card.
+
+   GRID. 35g wide (a button: Analytics), its text the column's full
+   35g, as a section title's is (a caption under the card, not a
+   line of it), xs on 3r lines: two, typically (the copy is held to
+   them at the phone's width), three for the longest odds and
+   figures. It starts on the card's foot: its top
+   margin cancels the section's 1r gap, so the first baseline is the
+   card's foot + 3r, as a 4r row's sits on its +3r.
+     first baseline = top pad + 1.5r + c  =>  top pad = 3 - 1.5 - c
+   and the bottom pad is the rest of 1r, so the block is 3n + 1 r
+   and the goals card follows it, 1r on, on a line.
+   The figures (the buy-ins, the bullets, the odds, the interval)
+   are in the full ink colour, the words muted; no sign colour, no
+   arrow (profit gets neither). The › says where a tap goes.
+   ================================================================== */
+.hm-noise {
+  --c: 0.5319; /* the xs face (.hm-f-xs) */
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: calc(var(--subrow) * -1) 0 0;
+  padding: calc(var(--subrow) * (1.5 - var(--c))) 0 calc(var(--subrow) * (var(--c) - 0.5));
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--text-muted);
+  font-family: var(--font-condensed);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+  line-height: calc(var(--subrow) * 3);
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+.hm-noise-t { display: block; }
+.hm-noise-em { color: var(--text); white-space: nowrap; }
+.hm-noise-nw { white-space: nowrap; }
+.hm-noise-go { color: var(--brand-ink, var(--brand)); }
+@media (hover: hover) and (pointer: fine) {
+  .hm-noise:hover .hm-noise-t { text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: calc(var(--subrow) * 0.4); }
+}
+.hm-noise:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }

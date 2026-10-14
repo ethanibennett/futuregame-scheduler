@@ -1,20 +1,30 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
-import Avatar from './Avatar.jsx';
-import TableScanner from './TableScanner.jsx';
-import { FirstRun } from './EmptyState.jsx';
+import ScanTableSheet from './ScanTableSheet.jsx';
 import {
   getVenueInfo, getVenueBrandColor, normaliseDate, getToday, getNow,
-  formatBuyin, currencySymbol, nativeCurrency, haptic, fmtShortDate,
+  formatBuyin, haptic, fmtShortDate,
   parseTournamentTime, parseDateTimeInTz, parseDateTime, parseLateRegEnd,
   getMaxEntries, getVenueTzAbbr, getVenueCoords,
   estimateBlindLevel, formatChips,
-  convertAmount, formatCurrencyAmount, CURRENCY_CONFIG, splitEventStage,
+  CURRENCY_CONFIG, splitEventStage,
 } from '../utils/utils.js';
 import { API_URL } from '../utils/api.js';
+import { homeCurrency, playingEnded } from '../utils/home.js';
+import { gridGeom } from '../utils/grid-panel.js';
+import { resolveConditions, offLast, planKind, openBags } from '../utils/home-upnext.js';
+import useLiveCashSession from '../hooks/useLiveCashSession.js';
+import useDisplayCurrency from '../hooks/useDisplayCurrency.js';
+import HomeCashCard from './HomeCashCard.jsx';
+import HomeNothingNext from './HomeNothingNext.jsx';
+import HomeToLog from './HomeToLog.jsx';
+import HomeLastResult from './HomeLastResult.jsx';
+import HomeNumbers from './HomeNumbers.jsx';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
-import { useDisplayName } from '../contexts/DisplayNameContext.jsx';
+import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
+import { openVenueMap } from '../utils/venue-map/open.js';
+import './home.css';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
 // splitEventStage is shared with CalendarEventRow and mirrors the server's
@@ -32,42 +42,6 @@ function formatEventName(name) {
   );
 }
 
-// ── Grid placement for the portalled dropdowns ──
-// g is read from a 100g probe (what --gu really resolves to), r = 0.71g, and the
-// origin is the top bar — the overlay's origin. A panel's top is snapped to a
-// whole r from the bar (1r below / above its trigger) and emitted as calc() in r,
-// its left edge as calc() in g on a column line; nothing is written in px.
-function gridGeom() {
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:absolute;visibility:hidden;height:0;width:calc(var(--gu) * 100)';
-  document.body.appendChild(probe);
-  const G = probe.getBoundingClientRect().width / 100;
-  probe.remove();
-  const barTop = document.querySelector('.top-bar')?.getBoundingClientRect().top || 0;
-  return { G, R: G * 0.71, barTop };
-}
-function gridPanelStyle(anchorRect, heightR, leftG) {
-  const { R, barTop } = gridGeom();
-  const openAbove = anchorRect.top > window.innerHeight / 2;
-  const topR = openAbove
-    ? Math.round((anchorRect.top - barTop) / R) - 1 - heightR
-    : Math.round((anchorRect.bottom - barTop) / R) + 1;
-  const barR = barTop / R; // 0 when the bar sits at the viewport top
-  return {
-    position: 'fixed',
-    left: `calc(var(--gu) * ${+leftG.toFixed(4)})`,
-    top: `calc(var(--subrow) * ${+(topR + barR).toFixed(4)})`,
-    transform: 'none',
-  };
-}
-// A letter avatar's initial, seated: trimmed to cap..alphabetic with its baseline
-// on +3r of the 5r circle (cap 0.94r -> 2.06r above, 2r below = centred).
-const SEATED_INITIAL = {
-  display: 'block', textAlign: 'center', boxSizing: 'border-box',
-  paddingTop: 'calc(var(--subrow) * 3 - 1cap)',
-  textBoxTrim: 'trim-both', textBoxEdge: 'cap alphabetic',
-};
-const AVATAR_5R = 'calc(var(--subrow) * 5)';
 
 // ── Countdown Clock (collapsed card) ──
 function CountdownClock({ startMs }) {
@@ -235,28 +209,38 @@ function MiniLateRegBar({ lateRegEnd, date, time, venueAbbr, openOnly, venue, st
 }
 
 
+// Friends Playing and Connections left the home (verdict "placement"): they live in Social, one
+// tap from the tab bar. The Table Scanner left it too: it is the Playing card's Scan action now,
+// and a tool in Hands.
 export default function DashboardView({
-  mySchedule, myActiveUpdates, trackingData, shareBuddies,
-  buddyLiveUpdates, buddyEvents, displayName, onPost, onDeleteUpdate,
-  onAddTracking, onResetResults, onNavigate, tournaments, onToggle, onRefresh,
-  onOpenInSchedule, demoStates = false, demoCard = false
+  mySchedule, myActiveUpdates, trackingData, onPost, onDeleteUpdate,
+  onAddTracking, onNavigate, tournaments, onToggle, onRefresh,
+  onOpenInSchedule, demoStates = false, demoCard = false,
+  homeRight = null, // desktop: the second pane's element, which the NUMBERS column portals into
+  // Step 3 (To log, Last result): admin gating for the cash/expense paths, the token for the
+  // admin-only cash-sessions read, whether this account can log at all (guests cannot), the
+  // route into Results' forms (App's resultsIntent) and the "Didn't play" flag.
+  isAdmin = false, token = null, canLog = true, onLog = null, onSetPlayed = null, onDeleteTracking = null,
+  // Step 4: App's useBankrolls (the summary the Results tab shares) for the bankroll line and the
+  // period block. Admins only; for everyone else it is disabled and fetches nothing.
+  bk = null,
 }) {
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [selectedUpNextIdx, setSelectedUpNextIdx] = useState(0);
-  const [connDropdownId, setConnDropdownId] = useState(null);
+  // Scan table: the screenshot picked from a Playing card, while its sheet is open.
+  const [scanFile, setScanFile] = useState(null);
+  const scanInputRef = useRef(null);
   const [now, setNow] = useState(getNow());
-  const [dashCurrency, setDashCurrency] = useState(() => localStorage.getItem('trackingCurrency') || 'USD');
+  // The shared display currency (the Results tab's setting), never Native here: a total of euros
+  // and dollars is in no currency (utils/home.js). The home has no currency menu of its own, and
+  // follows a change made in Results at once (hooks/useDisplayCurrency.js), not on the next reload.
+  const storedCurrency = useDisplayCurrency();
+  const dashCurrency = useMemo(() => homeCurrency(storedCurrency, Object.keys(CURRENCY_CONFIG)), [storedCurrency]);
   const [dashRates, setDashRates] = useState(null);
-  const [dashRatesStale, setDashRatesStale] = useState(false);
   useEffect(() => {
     fetch(API_URL + '/exchange-rates')
       .then(r => r.json())
-      .then(data => { setDashRates(data.rates); setDashRatesStale(data.stale); })
-      .catch(() => { setDashRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); setDashRatesStale(true); });
-  }, []);
-  const onDashCurrencyChange = useCallback((c) => {
-    setDashCurrency(c);
-    localStorage.setItem('trackingCurrency', c);
+      .then(data => { setDashRates(data.rates); })
+      .catch(() => { setDashRates({ EUR:0.91, GBP:0.79, CAD:1.36, AUD:1.53, JPY:149.5, USD:1 }); });
   }, []);
   const rebuyingRef = useRef(false);
   const [bustMenuEventId, setBustMenuEventId] = useState(null);
@@ -266,19 +250,91 @@ export default function DashboardView({
   const swipeStart = useRef(null);
   const swipeDx = useRef(0);
   const trackRef = useRef(null);
+  // The home scrolls now, so a vertical drag that starts on a card is the page's: the first 1r of
+  // movement decides the gesture, and a vertical one leaves the carousel where it is (pan-y).
+  // (1r is read off the grid once, in px, because touch coordinates are px.)
+  const swipeStartY = useRef(0);
+  const swipeAxis = useRef(null);
+  const swipeSlop = useRef(0);
+  // The track's height (home.css): the card on show, in whole r; during a drag, the taller of it and
+  // the neighbour being pulled in. fit.shown / fit.peer are slide indexes; fitTrack() measures them.
+  // fit.frozen: a mouse is over the dots or the counter. The track then grows but never shrinks, so
+  // the ‹ › under the pointer stays put while it clicks through shorter cards, and a taller card is
+  // never cut (it pushes the pager down once); when the pointer leaves, the track eases to the card
+  // on show. (It used to hold the height outright, and a taller card was clipped through its stats
+  // with its Bust and Bag row hidden under the pager until the pointer left.)
+  const fit = useRef({ shown: 0, peer: null, rPx: 0, frozen: false });
+  const fitTrack = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const f = fit.current;
+    if (!f.rPx) {
+      // r as layout resolves --subrow (WebKit snaps it to 1/64 px: 7.71875 at 402 wide, where
+      // 0.71g is 7.7141), read off a 100r probe, so a 23r card reads 23.000, not 23.014.
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:calc(var(--subrow) * 100)';
+      document.body.appendChild(probe);
+      f.rPx = probe.getBoundingClientRect().height / 100;
+      probe.remove();
+    }
+    // Every card is whole r tall; its measured height (px, as layout gives it) back in r, rounded
+    // up past a tenth so a card that is not whole r is never cut short.
+    const rOf = (i) => {
+      const el = i != null ? track.children[i] : null;
+      return el && f.rPx ? Math.ceil(el.getBoundingClientRect().height / f.rPx - 0.1) : 0;
+    };
+    const n = Math.max(rOf(f.shown), rOf(f.peer));
+    if (!(n > 0)) return;
+    // Held (a mouse on the pager): grow to a taller card, keep the height for a shorter one.
+    const held = f.frozen && track.classList.contains('is-fitted') ? Number(track.style.getPropertyValue('--track-r')) || 0 : 0;
+    track.style.setProperty('--track-r', String(Math.max(n, held)));
+    track.classList.add('is-fitted');
+  }, []);
+  // The dots' and the counter's hover: hold the height while a mouse (or pen) is over them.
+  const holdFit = useCallback((e) => {
+    if (e.pointerType === 'touch') return;
+    fit.current.frozen = true;
+    fitTrack();
+  }, [fitTrack]);
+  const releaseFit = useCallback(() => {
+    if (!fit.current.frozen) return;
+    fit.current.frozen = false;
+    fitTrack();
+  }, [fitTrack]);
+  useEffect(() => {
+    const onResize = () => { fit.current.rPx = 0; swipeSlop.current = 0; fitTrack(); };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [fitTrack]);
   const onTouchStart = useCallback((e) => {
     swipeStart.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+    swipeAxis.current = null;
+    if (!swipeSlop.current) swipeSlop.current = gridGeom().R;
     swipeDx.current = 0;
     if (trackRef.current) trackRef.current.classList.add('swiping');
   }, []);
   const onTouchMove = useCallback((e) => {
     if (swipeStart.current === null) return;
     const dx = e.touches[0].clientX - swipeStart.current;
+    if (!swipeAxis.current) {
+      const dy = e.touches[0].clientY - swipeStartY.current;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < swipeSlop.current) return;
+      swipeAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (swipeAxis.current === 'y') {
+        swipeStart.current = null;
+        if (trackRef.current) trackRef.current.classList.remove('swiping');
+        return;
+      }
+    }
     swipeDx.current = dx;
+    // The neighbour coming in: the track grows to it if it is taller, so it never covers the dots.
+    const f = fit.current, len = swipeRef.current || 1;
+    const peer = dx < 0 ? (f.shown + 1 < len ? f.shown + 1 : null) : (f.shown > 0 ? f.shown - 1 : null);
+    if (peer !== f.peer) { f.peer = peer; fitTrack(); }
+    // The drag moves the whole track; each slide keeps its own offset from the one shown.
     if (trackRef.current) {
-      const len = swipeRef.current || 1;
-      const idx = parseInt(trackRef.current.dataset.idx || '0', 10);
-      const pct = -(idx * 100) + (dx / trackRef.current.parentElement.offsetWidth) * 100;
+      const pct = (dx / trackRef.current.parentElement.offsetWidth) * 100;
       trackRef.current.style.transform = `translateX(${pct}%)`;
     }
   }, []);
@@ -286,20 +342,21 @@ export default function DashboardView({
     if (swipeStart.current === null) return;
     const dx = swipeDx.current;
     swipeStart.current = null;
-    if (trackRef.current) trackRef.current.classList.remove('swiping');
-    const threshold = 40;
-    if (Math.abs(dx) < threshold) {
-      if (trackRef.current) {
-        const idx = parseInt(trackRef.current.dataset.idx || '0', 10);
-        trackRef.current.style.transform = `translateX(${-(idx * 100)}%)`;
-      }
-      return;
+    // Back to the card on show (a page turn re-fits to the new one as it renders).
+    if (fit.current.peer != null) { fit.current.peer = null; fitTrack(); }
+    if (trackRef.current) {
+      trackRef.current.classList.remove('swiping');
+      // Back to rest, animated: on a page turn the slides' own offsets animate at the same time with
+      // the same curve, so the two add up to one smooth move to the next card.
+      trackRef.current.style.transform = 'translateX(0%)';
     }
+    const threshold = 40;
+    if (Math.abs(dx) < threshold) return;
     setSelectedUpNextIdx(i => {
       const len = swipeRef.current || 1;
       return dx < 0 ? Math.min(i + 1, len - 1) : Math.max(i - 1, 0);
     });
-  }, []);
+  }, [fitTrack]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(getNow()), 1000);
@@ -307,24 +364,35 @@ export default function DashboardView({
   }, []);
 
   const todayISO = getToday();
+  const nowTen = Math.floor(now / 600000);
 
-  // Build bagged events from previous days
+  // The plans on the schedule, resolved (verdict §1(a); utils/home-upnext.js): "If bust #12" turns
+  // on once #12 is over, a branch whose parent went the other way is off ("Off: busted #12"),
+  // dims and sorts last. Read from what the app already has: the results (a satellite's cash is
+  // its seat), the latest live update per event, and the feed to name a parent off the schedule.
+  // PROFIT_THRESHOLD ("If up $X") keeps its label and is never evaluated (owner, 2026-10-12).
+  const resolvedPlans = useMemo(
+    () => resolveConditions(mySchedule, myActiveUpdates, trackingData, { events: tournaments, startOf: parseTournamentTime }),
+    [mySchedule, myActiveUpdates, trackingData, tournaments]);
+
+  // The running cash session (admins, the cash beta): it takes the first card (§1(b)), and the bar
+  // over the nav (LiveCashBar) stays off the home. The store is shared with that bar and the Cash
+  // view, so a stack update here moves them too.
+  const { session: cashSession, stacks: cashStacks, skew: cashSkew } = useLiveCashSession({ enabled: !!(isAdmin && token), token });
+
+  // Build bagged events from previous days: the bags still open (utils/home-upnext.js openBags). A
+  // result is final, as resolveConditions and To log read it, so a bag whose result is logged is
+  // over. It used to stay a 'Bagged — Day 1' card for good, and while it stayed, today's other
+  // events were marked conditional on it.
   const baggedEvents = useMemo(() => {
-    const bustedMap = {};
-    const baggedMap = {};
-    (myActiveUpdates || []).forEach(u => {
-      if (u.is_busted) bustedMap[u.tournament_id] = true;
-      if (u.is_bagged) baggedMap[u.tournament_id] = u;
-    });
-    return Object.entries(baggedMap)
-      .filter(([tid]) => !bustedMap[tid])
+    return [...openBags(myActiveUpdates, trackingData)]
       .map(([tid, update]) => {
-        const t = (mySchedule || []).find(x => x.id === Number(tid)) || (tournaments || []).find(x => x.id === Number(tid));
+        const t = (mySchedule || []).find(x => x.id === tid) || (tournaments || []).find(x => x.id === tid);
         if (!t) return null;
         return { ...t, _bagUpdate: update, _type: 'bagged' };
       })
       .filter(Boolean);
-  }, [myActiveUpdates, mySchedule, tournaments]);
+  }, [myActiveUpdates, mySchedule, tournaments, trackingData]);
 
   // Today's events from user schedule
   const todayEvents = useMemo(() => {
@@ -333,12 +401,11 @@ export default function DashboardView({
       .map(t => {
         const isBagged = baggedEvents.some(b => b.id === t.id);
         if (isBagged) return null;
-        const isAnchor = !!t.is_anchor;
-        const hasCondition = !!(t.conditions_json);
-        return { ...t, _type: isAnchor ? 'anchor' : (hasCondition ? 'conditional' : 'normal') };
+        // A plan that came on makes the event a plain one; one still waiting, or off, conditional.
+        return { ...t, _type: planKind(t, resolvedPlans) };
       })
       .filter(Boolean);
-  }, [mySchedule, todayISO, baggedEvents]);
+  }, [mySchedule, todayISO, baggedEvents, resolvedPlans]);
 
   // Active previous-day events
   const activePrevDayEvents = useMemo(() => {
@@ -349,10 +416,14 @@ export default function DashboardView({
       .map(u => {
         const t = (mySchedule || []).find(x => x.id === u.tournament_id) || (tournaments || []).find(x => x.id === u.tournament_id);
         if (!t) return null;
+        // A run that cannot still be going (the forgotten bust: utils/home.js playingEnded) is To
+        // log's to ask about, not a Currently Playing card. An update posted in the last 18 h keeps
+        // it here whatever its day (nowTen: the clock, in 10-minute steps).
+        if (playingEnded(t, u, todayISO, nowTen * 600000)) return null;
         return { ...t, _type: 'normal' };
       })
       .filter(Boolean);
-  }, [myActiveUpdates, mySchedule, tournaments, todayISO, baggedEvents]);
+  }, [myActiveUpdates, mySchedule, tournaments, todayISO, baggedEvents, nowTen]);
 
   // Combined "What's Next" list
   const whatsNextEvents = useMemo(() => {
@@ -388,7 +459,9 @@ export default function DashboardView({
     }
     const events = [...baggedEvents, ...activePrevDayEvents];
     if (baggedEvents.length > 0) {
-      events.push(...todayEvents.map(t => ({
+      // With a bag to come back to, today's other events are conditional on it — unless an event
+      // carries its own plan, which says (or will say) for itself whether it is on.
+      events.push(...todayEvents.map(t => (resolvedPlans.has(Number(t.id)) ? t : {
         ...t,
         _type: t._type === 'anchor' ? 'anchor' : 'conditional',
         _conditionalOnBag: true,
@@ -416,7 +489,7 @@ export default function DashboardView({
         && !t.is_restart)
       .map(t => ({
         ...t,
-        _type: t.is_anchor ? 'anchor' : (t.conditions_json ? 'conditional' : 'normal'),
+        _type: planKind(t, resolvedPlans),
         _future: true,
       }))
       .sort((a, b) => {
@@ -425,8 +498,15 @@ export default function DashboardView({
         return ta - tb;
       });
 
-    return [...events, ...later];
-  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard]);
+    // A plan that is off (its parent went the other way) goes to the very end, dimmed.
+    return offLast([...events, ...later], resolvedPlans);
+  }, [baggedEvents, activePrevDayEvents, todayEvents, mySchedule, todayISO, demoStates, demoCard, resolvedPlans]);
+
+  // The carousel's slides: the running cash session's card first (admins), then the events.
+  const showCash = !!cashSession && !demoStates && !demoCard;
+  const slides = useMemo(
+    () => (showCash ? [{ id: `cash-${cashSession.id}`, _cash: true }, ...whatsNextEvents] : whatsNextEvents),
+    [showCash, cashSession, whatsNextEvents]);
 
   // The section title names the next event's day (owner, 2026-10-11): TODAY or TOMORROW while the
   // carousel shows the first card and that event is today or tomorrow; any later card, or a next
@@ -437,8 +517,9 @@ export default function DashboardView({
     return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
   }, [todayISO]);
   const upNextTitle = (() => {
-    if (!whatsNextEvents.length || Math.min(selectedUpNextIdx, whatsNextEvents.length - 1) !== 0) return 'Up Next';
-    const day = normaliseDate(whatsNextEvents[0].date);
+    if (!slides.length || Math.min(selectedUpNextIdx, slides.length - 1) !== 0) return 'Up Next';
+    if (slides[0]._cash) return 'Today'; // the session running now
+    const day = normaliseDate(slides[0].date);
     return day === todayISO ? 'Today' : day === tomorrowISO ? 'Tomorrow' : 'Up Next';
   })();
   const prevUpNextTitle = useRef(upNextTitle);
@@ -496,7 +577,28 @@ export default function DashboardView({
       const lines = Math.max(1, Math.ceil(text.getBoundingClientRect().height / (subrow * 3) - 0.01));
       el.style.minHeight = `calc(var(--subrow) * ${lines * 3})`;
     });
-  }, [whatsNextEvents, selectedUpNextIdx]);
+  }, [slides, selectedUpNextIdx]);
+
+  // The carousel's height follows the card on show (home.css "HEIGHT"): fitted before paint on a
+  // page turn or a new set of slides, and whenever any slide's own height changes (the Bust menu, a
+  // live clock arriving, the cash card's stack entry), via one observer, whose notes land after
+  // layout and before paint too.
+  const shownIdx = slides.length ? Math.min(selectedUpNextIdx, slides.length - 1) : 0;
+  const slideKey = slides.map((x) => x.id).join('|');
+  // A new set of slides can swap the counter for the dots (or the reverse) under the pointer, and a
+  // control that unmounts never gets its pointerleave: start unheld.
+  useLayoutEffect(() => { fit.current.frozen = false; }, [slideKey]);
+  useLayoutEffect(() => {
+    fit.current.shown = shownIdx;
+    fitTrack();
+  }, [shownIdx, slideKey, fitTrack]);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => fitTrack());
+    for (const el of track.children) ro.observe(el);
+    return () => ro.disconnect();
+  }, [slideKey, fitTrack]);
 
   // Next upcoming event (when nothing today)
   function parseLevelDuration(t) {
@@ -559,16 +661,16 @@ export default function DashboardView({
     if (rebuyingRef.current) return;
     const curBusted = new Set(Object.keys(bustedEventMap).map(Number));
     const prev = prevBustedRef.current;
-    if (whatsNextEvents.length > 1) {
-      const safeIdx = Math.min(selectedUpNextIdx, whatsNextEvents.length - 1);
-      const current = whatsNextEvents[safeIdx];
-      if (current && curBusted.has(current.id) && !prev.has(current.id)) {
-        const nextIdx = whatsNextEvents.findIndex((e, i) => i !== safeIdx && !curBusted.has(e.id));
+    if (slides.length > 1) {
+      const safeIdx = Math.min(selectedUpNextIdx, slides.length - 1);
+      const current = slides[safeIdx];
+      if (current && !current._cash && curBusted.has(current.id) && !prev.has(current.id)) {
+        const nextIdx = slides.findIndex((e, i) => i !== safeIdx && !e._cash && !curBusted.has(e.id));
         if (nextIdx >= 0) setSelectedUpNextIdx(nextIdx);
       }
     }
     prevBustedRef.current = curBusted;
-  }, [bustedEventMap, whatsNextEvents, selectedUpNextIdx]);
+  }, [bustedEventMap, slides, selectedUpNextIdx]);
 
   // Render a single event card
   function renderEventCard(event) {
@@ -598,9 +700,14 @@ export default function DashboardView({
     const venueInfo = getVenueInfo(event.venue, event.property);
     const venueColor = getVenueBrandColor(venueInfo.abbr);
     const venueStripText = '#ffffff'; // venue strip text is always white
+    // Its plan, resolved: each condition a tag ('If bust #12', 'On: busted #12', 'Off: bagged #14',
+    // 'If up $5,000'). A plan that is off dims the card, all but those tags, which say why.
+    const plan = resolvedPlans.get(Number(event.id)) || null;
+    const planOff = !!plan && plan.state === 'off';
 
     const cardClass = [
       'dash-event-card',
+      planOff ? 'plan-off' : '',
       isBustedDone ? 'done' : (completed ? 'completed' : ''),
       event._type === 'bagged' ? 'bagged' : '',
       event._type === 'anchor' && !isConditionalOnPlaying ? 'anchor' : '',
@@ -611,13 +718,16 @@ export default function DashboardView({
 
     // Status tags above the name. Built as a list so the row is rendered only when
     // it has something in it: an empty flex row still took the content's 1r gap.
+    // [class, label, title?, key?]. A plan's tags show on a card dimmed behind the event being
+    // played too: which branch is on is exactly what is worth knowing mid-session.
     const tags = [];
     if (!isConditionalOnPlaying) {
       if (event._type === 'bagged') tags.push(['bagged', `Bagged — Day ${event._bagUpdate?.bag_day || '?'}`]);
       if (event._type === 'anchor' && !event._conditionalOnBag) tags.push(['anchor', 'Locked In']);
-      if (event._type === 'conditional') tags.push(event._conditionalOnBag ? ['conditional on-bag', 'Conditional on bag'] : ['conditional', 'Conditional']);
-      if (regClosed && event._type !== 'bagged') tags.push(['reg-closed', 'Reg Closed']);
+      if (event._type === 'conditional' && !plan) tags.push(event._conditionalOnBag ? ['conditional on-bag', 'Conditional on bag'] : ['conditional', 'Conditional']);
     }
+    if (plan) plan.items.forEach((it, i) => tags.push([`plan snap-g is-${it.state}`, it.label, it.title, `plan-${i}`]));
+    if (!isConditionalOnPlaying && regClosed && event._type !== 'bagged') tags.push(['reg-closed', 'Reg Closed']);
 
     const activeUpdate = activeEventMap[event.id];
     const liveStack = activeUpdate?.stack;
@@ -652,13 +762,26 @@ export default function DashboardView({
         } : undefined}
       >
         {/* The Up Next banner shows the FULL venue name, never the strip
-            abbreviation — abbr stays only for the brand colour + WSOP casing. */}
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText, letterSpacing: '0.06em'}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
+            abbreviation — abbr stays only for the brand colour + WSOP casing.
+            At a real room it is a button that opens the venue map (utils/venue-map/open.js); the
+            card's own tap ignores taps on buttons, so it does not also open My Schedule. */}
+        {hasVenueMap(event) ? (
+          <button
+            type="button"
+            className="dash-venue-strip has-map"
+            style={{background: venueColor, color: venueStripText}}
+            aria-haspopup="dialog"
+            aria-label={`Show ${venueRoomName(event)} on a map`}
+            onClick={(e) => { e.stopPropagation(); openVenueMap(event, e.currentTarget); }}
+          ><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></button>
+        ) : (
+          <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
+        )}
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {tags.length > 0 && (
           <div className="dash-event-tags">
-            {tags.map(([cls, label]) => (
-              <span key={cls} className={`dash-event-tag ${cls}`}><span className="dash-t">{label}</span></span>
+            {tags.map(([cls, label, title, key]) => (
+              <span key={key || cls} className={`dash-event-tag ${cls}`} title={title}><span className="dash-t">{label}</span></span>
             ))}
           </div>
         )}
@@ -825,7 +948,13 @@ export default function DashboardView({
                     if (activeUpd?.id && onDeleteUpdate && confirm('Undo playing status for this event?')) onDeleteUpdate(activeUpd.id);
                   }} title="Undo start"><span className="dash-t">&#10005;</span></button>
                 </div>
-                <div className="dash-action-row">
+                <div className="dash-action-row dash-action-row--4">
+                  {/* Scan table (was the home's Table Scanner section): opens the photo picker
+                      at once; the sheet runs the scan on the screenshot chosen. */}
+                  <button type="button" className="dash-scan-btn" aria-label="Scan table" title="Scan the table (WSOP Live / PokerStars Live screenshot)"
+                    onClick={() => { haptic(); scanInputRef.current?.click(); }}>
+                    <Icon.camera /><span className="dash-t">Scan</span>
+                  </button>
                   <button className="dash-update-btn" onClick={() => {
                     window.dispatchEvent(new CustomEvent('openLiveUpdate', {
                       detail: { tab: 'update', tournamentId: event.id }
@@ -907,466 +1036,158 @@ export default function DashboardView({
     );
   }
 
-  // P&L data
-  const plData = useMemo(() => {
-    if (!trackingData || trackingData.length === 0) {
-      return { invested: 0, cashed: 0, net: 0, roi: 0, count: 0, byVenue: {} };
-    }
-    let invested = 0;
-    let cashed = 0;
-    const byVenue = {};
-    trackingData.forEach(entry => {
-      const t = (tournaments || []).find(x => x.id === entry.tournament_id);
-      const buyin = t ? t.buyin : 0;
-      const venueRaw = t ? t.venue : '';
-      const venue = t ? getVenueInfo(t.venue, t.property).abbr : 'Other';
-      const from = nativeCurrency(venueRaw);
-      const to = dashCurrency === 'NATIVE' ? from : dashCurrency;
-      const entryBuyin = convertAmount(buyin * (entry.num_entries || 1), from, to, dashRates);
-      const entryCash = convertAmount(entry.cash_amount || 0, from, to, dashRates);
-      invested += entryBuyin;
-      cashed += entryCash;
-      if (!byVenue[venue]) byVenue[venue] = { invested: 0, cashed: 0 };
-      byVenue[venue].invested += entryBuyin;
-      byVenue[venue].cashed += entryCash;
-    });
-    const net = cashed - invested;
-    const roi = invested > 0 ? ((net / invested) * 100) : 0;
-    return { invested, cashed, net, roi, count: trackingData.length, byVenue };
-  }, [trackingData, tournaments, dashCurrency, dashRates]);
-
-  const [plDropdown, setPlDropdown] = useState(null);
-  // The trigger's rect, captured on click, so the panel can be rendered at
-  // the document root instead of inside .dashboard-view's overflow:hidden.
-  const [plRect, setPlRect] = useState(null);
-  const togglePl = (key) => (e) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    setPlRect({ left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width });
-    setPlDropdown(d => (d === key ? null : key));
-  };
-  // Anchored panel, flipped above the trigger when it would run off the bottom.
-  // Left-aligned to its card (1g or 10g, a column line); 17g wide so it ends on
-  // 18g or 27g. Height = rows x 3r, so the above-case top is exact too.
-  const plPanelStyle = (rows) => {
-    if (!plRect) return { position: 'fixed' };
-    const { G } = gridGeom();
-    return gridPanelStyle(plRect, rows * 3, plRect.left / G);
-  };
-  const plRows = (field) => Object.entries(plData.byVenue)
-    .filter(([, v]) => v[field] > 0)
-    .sort((a, b) => b[1][field] - a[1][field]);
-
-  // Friends currently playing
-  const activeFriends = useMemo(() => {
-    if (demoStates) {
-      return [
-        { id: 'demo-f1', username: 'demo_alice', display_name: 'Alice D.', avatar: null,
-          liveUpdate: { stack: '85000', sb: '500', bb: '1000', bbAnte: '1000', eventName: 'PLO 6-Max Day 1', isBusted: false } },
-        { id: 'demo-f2', username: 'demo_bob', display_name: 'Bob R.', avatar: null,
-          liveUpdate: { stack: '32000', bb: '800', eventName: 'NLH Championship', isBusted: false } },
-      ];
-    }
-    if (!shareBuddies || !buddyLiveUpdates) return [];
-    return shareBuddies
-      .filter(b => {
-        const lu = buddyLiveUpdates[b.id];
-        return lu && !lu.isBusted;
-      })
-      .map(b => ({
-        ...b,
-        liveUpdate: buddyLiveUpdates[b.id],
-      }));
-  }, [shareBuddies, buddyLiveUpdates, demoStates]);
-
-  // Friends with events scheduled today
-  const scheduledFriends = useMemo(() => {
-    if (!shareBuddies || !buddyEvents || !tournaments) return [];
-    const buddyToday = {};
-    Object.entries(buddyEvents).forEach(([tid, buddies]) => {
-      const t = tournaments.find(x => x.id === Number(tid));
-      // Stored dates are "September 30, 2026"; todayISO is ISO — compare normalised.
-      if (!t || normaliseDate(t.date) !== todayISO) return;
-      buddies.forEach(b => {
-        if (!buddyToday[b.id]) buddyToday[b.id] = [];
-        buddyToday[b.id].push(t);
-      });
-    });
-    return shareBuddies
-      .filter(b => buddyToday[b.id] && buddyToday[b.id].length > 0)
-      .map(b => ({
-        ...b,
-        // parseTournamentTime is venue-TZ aware AND memoized — sorts
-        // by absolute start instant instead of string-comparing "10:00 AM"
-        // against "9:00 AM" (which used to put 10 AM before 9 AM).
-        todayEvents: (() => {
-          const decorated = buddyToday[b.id].map(t => ({ t, ts: parseTournamentTime(t) }));
-          decorated.sort((a, c) => a.ts - c.ts);
-          return decorated.map(x => x.t);
-        })(),
-      }));
-  }, [shareBuddies, buddyEvents, tournaments]);
-
-  // Merged connections
-  const allConnections = useMemo(() => {
-    const map = {};
-    activeFriends.forEach(f => {
-      map[f.id] = { ...f, isPlaying: true, liveUpdate: f.liveUpdate, todayEvents: [] };
-    });
-    scheduledFriends.forEach(f => {
-      if (map[f.id]) {
-        map[f.id].todayEvents = f.todayEvents || [];
-      } else {
-        map[f.id] = { ...f, isPlaying: false, liveUpdate: null, todayEvents: f.todayEvents || [] };
-      }
-    });
-    return Object.values(map).sort((a, b) => (b.isPlaying ? 1 : 0) - (a.isPlaying ? 1 : 0));
-  }, [activeFriends, scheduledFriends]);
-
-  const connDropdownRef = useRef(null);
-  // The tapped avatar's rect (and its row's left), captured on click like plRect.
-  const [connRect, setConnRect] = useState(null);
-
-  useEffect(() => {
-    if (!connDropdownId) return;
-    const handler = (e) => {
-      if (connDropdownRef.current && !connDropdownRef.current.contains(e.target)) {
-        setConnDropdownId(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [connDropdownId]);
-
-  return (
-    <div className="dashboard-view">
-
-      {/* Up Next */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-title dash-title-swap" aria-live="polite">
-            <span key={upNextTitle} className={upNextTitleOut ? 'dash-title-in' : undefined}>{upNextTitle}</span>
-            {upNextTitleOut && (
-              <span key={'out' + upNextTitleOut.key} className="dash-title-out" aria-hidden="true"
-                onAnimationEnd={() => setUpNextTitleOut(null)}>{upNextTitleOut.text}</span>
+  // The home's two halves (verdict "placement"): NOW — Up Next, then To log and the last result —
+  // and the NUMBERS — the bankroll line, the period block with its noise line, and (section 7, not yet built)
+  // Trend. On the phone they are one scrolling
+  // column, NOW first. On desktop (>= 1024) NOW is the main pane and the NUMBERS are portalled
+  // into a second 37g pane App renders beside it (homeRight), each pane its own scroller.
+  const nowCol = (
+    <div className="home-col home-col--now">
+        {/* Up Next */}
+        <div className="dashboard-section">
+          <div className="dashboard-section-header">
+            <div className="dashboard-section-title dash-title-swap" aria-live="polite">
+              <span key={upNextTitle} className={upNextTitleOut ? 'dash-title-in' : undefined}>{upNextTitle}</span>
+              {upNextTitleOut && (
+                <span key={'out' + upNextTitleOut.key} className="dash-title-out" aria-hidden="true"
+                  onAnimationEnd={() => setUpNextTitleOut(null)}>{upNextTitleOut.text}</span>
+              )}
+            </div>
+            {whatsNextEvents.length > 0 && (
+              <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-          {whatsNextEvents.length > 0 && (
-            <span className="dashboard-section-badge dashboard-section-badge--wide">{whatsNextEvents.length} event{whatsNextEvents.length !== 1 ? 's' : ''}</span>
-          )}
-        </div>
-        {whatsNextEvents.length > 0 ? (() => {
-          const safeIdx = Math.min(selectedUpNextIdx, whatsNextEvents.length - 1);
-          swipeRef.current = whatsNextEvents.length;
-          return (
-            <div
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--space-lg) var(--space-lg)', margin:'0 calc(var(--subrow) * -1.5) calc(var(--subrow) * -1.5)'}}
-            >
+          {slides.length > 0 ? (() => {
+            const safeIdx = Math.min(selectedUpNextIdx, slides.length - 1);
+            swipeRef.current = slides.length;
+            return (
               <div
-                className="dash-carousel-track"
-                ref={trackRef}
-                data-idx={safeIdx}
-                style={{transform: `translateX(${-(safeIdx * 100)}%)`}}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                // The shadow's room sideways is a whole g (it was 1.5r): the track, and so every card
+                // in it, is then the section's whole-g width exactly. 1.5r a side made it 35.02g.
+                style={{overflow:'hidden', touchAction:'pan-y', padding:'0 var(--gu) var(--space-lg)', margin:'0 calc(var(--gu) * -1) calc(var(--subrow) * -1.5)'}}
               >
-                {whatsNextEvents.map((evt, i) => (
-                  <div className="dash-carousel-slide" key={evt.id}>
-                    {renderEventCard(evt)}
-                  </div>
-                ))}
-              </div>
-              {/* Dots only while they stay countable. The carousel now runs
-                  the whole schedule, so a full season would be forty dots —
-                  past the cap it becomes a position readout instead. */}
-              {whatsNextEvents.length > 1 && whatsNextEvents.length <= 8 && (
-                <div className="dash-upnext-dots" style={{ '--n': whatsNextEvents.length }}>
-                  {whatsNextEvents.map((_, i) => (
-                    <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)} aria-label={`Show event ${i + 1}`} aria-current={i === safeIdx} />
+                {/* Every slide sits in the track's one grid cell, moved by its own whole multiple of
+                    its width from the one shown (home.css), so the card shown is exactly where
+                    the first one is. A flex row of fractional-width slides, translated by -idx
+                    x 100%, drifted 0.005g a slide off the grid (0.11g by the 24th card). */}
+                <div
+                  className="dash-carousel-track"
+                  ref={trackRef}
+                  data-idx={safeIdx}
+                >
+                  {/* The slides not on show are inert and hidden from assistive tech (no Tab into an
+                      unseen Bust), and invisible once a drag or a page turn is over (home.css): the
+                      neighbour, taller than the track that fits the card on show, painted a band of
+                      itself and its shadow below it. */}
+                  {slides.map((evt, i) => (
+                    <div className={'dash-carousel-slide' + (i === safeIdx ? '' : ' is-off')} key={evt.id}
+                      inert={i === safeIdx ? undefined : ''} aria-hidden={i === safeIdx ? undefined : 'true'}
+                      style={{ transform: `translateX(${(i - safeIdx) * 100}%)` }}>
+                      {evt._cash ? (
+                        <HomeCashCard session={cashSession} stacks={cashStacks} skew={cashSkew} token={token}
+                          dragged={() => Math.abs(swipeDx.current || 0) > 10}
+                          onOpen={() => onLog && onLog({ kind: 'cash-live' })}
+                          onCashOut={() => onLog && onLog({ kind: 'cash-end' })} />
+                      ) : renderEventCard(evt)}
+                    </div>
                   ))}
                 </div>
-              )}
-              {whatsNextEvents.length > 8 && (
-                <div className="dash-upnext-counter snap-g-centred">
-                  <button
-                    type="button"
-                    className="dash-upnext-step"
-                    onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
-                    disabled={safeIdx === 0}
-                    aria-label="Previous event"
-                  ><Icon.chevLeft /></button>
-                  <span className="dash-upnext-pos">{safeIdx + 1} / {whatsNextEvents.length}</span>
-                  <button
-                    type="button"
-                    className="dash-upnext-step"
-                    onClick={() => setSelectedUpNextIdx(i => Math.min(whatsNextEvents.length - 1, i + 1))}
-                    disabled={safeIdx === whatsNextEvents.length - 1}
-                    aria-label="Next event"
-                  ><Icon.chevRight /></button>
-                </div>
-              )}
-            </div>
-          );
-        })() : (
-          <FirstRun
-            icon="calendar"
-            title="Add your first event"
-            body="Anything on your schedule shows up here with its start time, so you know what is next without opening the calendar."
-            actionLabel="Browse tournaments"
-            onAction={() => onNavigate('tournaments')}
-            compact
-          />
-        )}
-      </div>
-
-      {/* Friends Playing */}
-      {activeFriends.length > 0 && (
-        <div className="dashboard-section" style={{flexShrink: 0}}>
-          <div className="dashboard-section-header">
-            <div className="dashboard-section-title">Friends Playing</div>
-            <span className="dashboard-section-badge">{activeFriends.length} live</span>
-          </div>
-          <div className="dash-friends-scroll">
-            {activeFriends.map(f => {
-              const lu = f.liveUpdate;
-              const stack = lu?.stack ? Number(lu.stack).toLocaleString() : null;
-              const blinds = lu?.bb ? `${lu.sb ? Number(lu.sb).toLocaleString() : '?'}/${Number(lu.bb).toLocaleString()}${(lu.bbAnte || lu.bb_ante) ? '/' + Number(lu.bbAnte || lu.bb_ante).toLocaleString() : ''}` : null;
-              return (
-                <button type="button" key={f.id} className="dash-friend-chip" onClick={() => onNavigate('social')}>
-                  <Avatar src={f.avatar} username={f.username} size={AVATAR_5R} style={f.avatar ? undefined : SEATED_INITIAL} />
-                  <div className="friend-info">
-                    <div className="friend-name">{displayName(f)}</div>
-                    <div className="friend-event">{lu?.eventName || 'Playing'}</div>
-                    {stack && (
-                      <div className="friend-stack">
-                        {stack}{blinds ? ` @ ${blinds}` : ''}
-                      </div>
-                    )}
+                {/* Dots only while they stay countable. The carousel now runs
+                    the whole schedule, so a full season would be forty dots —
+                    past the cap it becomes a position readout instead. */}
+                {slides.length > 1 && slides.length <= 8 && (
+                  <div className="dash-upnext-dots" style={{ '--n': slides.length }} onPointerEnter={holdFit} onPointerLeave={releaseFit}>
+                    {slides.map((_, i) => (
+                      <button type="button" key={i} className={'dash-upnext-dot' + (i === safeIdx ? ' active' : '')} onClick={() => setSelectedUpNextIdx(i)}
+                        aria-label={showCash ? (i === 0 ? 'Show the cash session' : `Show event ${i}`) : `Show event ${i + 1}`} aria-current={i === safeIdx} />
+                    ))}
                   </div>
-                </button>
-              );
-            })}
-          </div>
+                )}
+                {slides.length > 8 && (
+                  <div className="dash-upnext-counter snap-g-centred" onPointerEnter={holdFit} onPointerLeave={releaseFit}>
+                    <button
+                      type="button"
+                      className="dash-upnext-step"
+                      onClick={() => setSelectedUpNextIdx(i => Math.max(0, i - 1))}
+                      disabled={safeIdx === 0}
+                      aria-label="Previous event"
+                    ><Icon.chevLeft /></button>
+                    {/* Events are numbered, as the header's badge counts them ('26 events'): the
+                        running cash session's card is a slide, not an event, so it reads CASH and
+                        the events run 1 / 26 to 26 / 26 (it used to read 1 / 27 under '26 events'). */}
+                    <span className="dash-upnext-pos">{showCash && safeIdx === 0 ? 'Cash' : `${showCash ? safeIdx : safeIdx + 1} / ${whatsNextEvents.length}`}</span>
+                    <button
+                      type="button"
+                      className="dash-upnext-step"
+                      onClick={() => setSelectedUpNextIdx(i => Math.min(slides.length - 1, i + 1))}
+                      disabled={safeIdx === slides.length - 1}
+                      aria-label="Next event"
+                    ><Icon.chevRight /></button>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
+            // Nothing scheduled (§1(d)): one 5r prompt with the week's events near the user, which
+            // opens the Schedule.
+            <HomeNothingNext tournaments={tournaments} today={todayISO} onOpen={() => onNavigate('tournaments')} />
+          )}
         </div>
+      {/* To log (verdict §2; 0r when nothing waits) and the last result (§3), under Up Next. To log
+          reads the resolved plans: a branch that is off was never played, so it is not asked about. */}
+      {onLog && (
+        <HomeToLog
+          schedule={mySchedule}
+          results={trackingData}
+          updates={myActiveUpdates}
+          plans={resolvedPlans}
+          today={todayISO}
+          canLog={canLog}
+          onAddTracking={onAddTracking}
+          onDeleteTracking={onDeleteTracking}
+          onSetPlayed={onSetPlayed}
+          onLog={onLog}
+        />
       )}
+      {onLog && (
+        <HomeLastResult results={trackingData} rates={dashRates} isAdmin={isAdmin} token={token} canLog={canLog} onLog={onLog} bk={bk} />
+      )}
+    </div>
+  );
+  const numbersCol = (
+    <div className="home-col home-col--numbers">
+      {/* The bankroll line (admins) and the period block with its goals (verdict sections 4 and
+          5; components/HomeNumbers.jsx). The period block replaced the one-line Results bar. */}
+      {/* plans: Up Next's resolved plans, so "Still on your schedule" leaves out a branch that is off,
+          as Up Next and To log do. */}
+      <HomeNumbers isAdmin={isAdmin} token={token} bk={bk} results={trackingData} schedule={mySchedule}
+        updates={myActiveUpdates} plans={resolvedPlans} rates={dashRates} currency={dashCurrency} today={todayISO} onLog={onLog} />
 
-      {/* Table Scanner */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Table Scanner <span style={{fontWeight:400,fontSize:'var(--fs-xs)',color:'var(--text-muted)'}}>(WSOP Live / PokerStars Live)</span></div>
-        </div>
-        <TableScanner />
-      </div>
+      {/* ── SLOT: section 7, Trend (last 3 months) — NOT BUILT YET ────────────────────────
+          TODO(home trend): build here once the BankrollChart.jsx rebuild has merged.
+          Placement: after the period block (section 5) and its noise line; the right pane on
+          desktop, the first thing below the fold on the phone. It reuses BankrollChart.jsx,
+          which another workflow is rebuilding, so it waits for that to land. Verdict "home" §7:
+          a 3r title ("Last 3 months · N entries · H h") over a 35g x 14r cumulative profit
+          chart, a 4r figures row, a 3r downswing line in buy-ins; taps open the Overview at 3M.
+          Admins: ledger + rangeWindow('3m'); non-admins: a compact ResultsCurve. */}
+    </div>
+  );
 
-      <div className="dash-bottom-stack">
-      {/* Results */}
-      <div className="dashboard-section">
-        {/* Header on the P&L columns (8g | 8g | 17g): title in col 1, Reset
-            right-aligned in col 2 (14-18g) — or Confirm 12-18g + Cancel
-            19-25g — and the currency flush right with the Net card (30-36g).
-            Every control is a 3r block with its label seated on +2r. */}
-        <div className="dashboard-section-header dash-results-header">
-          <div className="dashboard-section-title">Results</div>
-          {plData.count > 0 && onResetResults && (
-            resetConfirmOpen ? (
-              <>
-                <button
-                  type="button"
-                  className="dash-results-btn dash-results-reset dash-results-confirm"
-                  onClick={() => { onResetResults(); setResetConfirmOpen(false); }}
-                ><span>Confirm</span></button>
-                <button
-                  type="button"
-                  className="dash-results-btn dash-results-cancel"
-                  onClick={() => setResetConfirmOpen(false)}
-                ><span>Cancel</span></button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="dash-results-btn dash-results-reset"
-                onClick={() => setResetConfirmOpen(true)}
-                title="Clear all logged results"
-              ><span>Reset</span></button>
-            )
-          )}
-          {plData.count > 0 && dashRates && (
-            <label className="dash-results-right dash-results-currency">
-              <span aria-hidden="true">
-                {dashCurrency === 'NATIVE' ? 'Native' : `${(CURRENCY_CONFIG[dashCurrency] || {}).symbol || ''} ${dashCurrency}`} &#9662;
-              </span>
-              <select value={dashCurrency} onChange={e => onDashCurrencyChange(e.target.value)} aria-label="Results currency">
-                <option value="NATIVE">Native</option>
-                {Object.keys(CURRENCY_CONFIG).map(c => (
-                  <option key={c} value={c}>{(CURRENCY_CONFIG[c]||{}).symbol} {c}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          {plData.count > 0 && !dashRates && (
-            <span className="dash-results-right dashboard-section-badge dashboard-section-badge--wide">{plData.count} result{plData.count !== 1 ? 's' : ''}</span>
-          )}
-        </div>
-        {plData.count > 0 ? (
-          <>
-          <div className="dash-pl-grid">
-            {(() => { const fmtPl = (v) => formatCurrencyAmount(v, dashCurrency === 'NATIVE' ? 'USD' : dashCurrency); return (<>
-            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('buyins')} aria-expanded={plDropdown === 'buyins'}>
-              {/* One line per card (owner, 2026-10-11): figure then label on a shared baseline. */}
-              <span className="dash-pl-line">
-                <span className="dash-pl-value">{fmtPl(plData.invested)}</span>
-                <span className="dash-pl-label">Buy-ins &#9662;</span>
-              </span>
-              {plDropdown === 'buyins' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('invested').length)} onClick={e => e.stopPropagation()}>
-                  {plRows('invested')
-                    .map(([venue, v]) => (
-                      <div key={venue} className="dash-pl-dropdown-row">
-                        <span className="dash-pl-dropdown-venue">{venue}</span>
-                        <span className="dash-pl-dropdown-amount">{fmtPl(v.invested)}</span>
-                      </div>
-                    ))
-                  }
-                </div>,
-                document.body
-              )}
-            </button>
-            <button type="button" className="dash-pl-card dash-pl-btn" onClick={togglePl('cashes')} aria-expanded={plDropdown === 'cashes'}>
-              <span className="dash-pl-line">
-                <span className="dash-pl-value">{fmtPl(plData.cashed)}</span>
-                <span className="dash-pl-label">Cashes &#9662;</span>
-              </span>
-              {plDropdown === 'cashes' && createPortal(
-                <div className="dash-pl-dropdown portalled" style={plPanelStyle(plRows('cashed').length)} onClick={e => e.stopPropagation()}>
-                  {plRows('cashed')
-                    .map(([venue, v]) => (
-                      <div key={venue} className="dash-pl-dropdown-row">
-                        <span className="dash-pl-dropdown-venue">{venue}</span>
-                        <span className="dash-pl-dropdown-amount">{fmtPl(v.cashed)}</span>
-                      </div>
-                    ))
-                  }
-                </div>,
-                document.body
-              )}
-            </button>
-            <div className="dash-pl-card dash-pl-card--net">
-              <span className="dash-pl-line">
-                <span className={`dash-pl-value ${plData.net >= 0 ? 'positive' : 'negative'}`}>
-                  {plData.net >= 0 ? '+' : ''}{fmtPl(plData.net)}
-                </span>
-                <span className="dash-pl-label">Net</span>
-                <span className={`dash-pl-roi ${plData.roi >= 0 ? 'pos' : 'neg'}`}>
-                  {plData.roi >= 0 ? '+' : ''}{plData.roi.toFixed(1)}% ROI
-                </span>
-              </span>
-            </div>
-            </>); })()}
-          </div>
-          </>
-        ) : (
-          <FirstRun
-            icon="tracking"
-            title="Log your first result"
-            body="Cashes and bust-outs both count — your ROI needs a few before it tells you anything."
-            actionLabel="Log a result"
-            onAction={() => onNavigate('tracking')}
-            compact
-          />
-        )}
-      </div>
-
-      {/* Connections */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div className="dashboard-section-title">Connections</div>
-          {allConnections.length > 0 && (
-            <span className="dashboard-section-badge">
-              {activeFriends.length > 0 ? `${activeFriends.length} live` : `${allConnections.length}`}
-            </span>
-          )}
-        </div>
-        {allConnections.length > 0 ? (
-          <div className="dash-connections-row">
-            {/* Eight 4g cells fit 1-36g; past eight, seven avatars and "+N". */}
-            {allConnections.slice(0, allConnections.length > 8 ? 7 : 8).map(f => (
-              <button
-                key={f.id}
-                className="dash-conn-avatar"
-                onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  const row = e.currentTarget.parentElement.getBoundingClientRect();
-                  setConnRect({ left: r.left, top: r.top, bottom: r.bottom, rowLeft: row.left });
-                  setConnDropdownId(connDropdownId === f.id ? null : f.id);
-                }}
-                ref={connDropdownId === f.id ? connDropdownRef : undefined}
-              >
-                <Avatar src={f.avatar} username={f.username} size={AVATAR_5R} style={f.avatar ? undefined : SEATED_INITIAL} />
-                {f.isPlaying && <span className="playing-dot" />}
-                <span className="conn-name">{displayName(f)}</span>
-                {connDropdownId === f.id && connRect && (() => {
-                  // Rendered at the document root, so no ancestor's overflow can
-                  // clip it. 26g wide, left on the start line of the avatar's own
-                  // column (1g or 10g from the row; a col-3/4 avatar uses 10g so
-                  // the panel ends on 36g). Height in r is counted from its rows.
-                  const { G } = gridGeom();
-                  const col = Math.floor(((connRect.left - connRect.rowLeft) / G + 0.5) / 9);
-                  const leftG = connRect.rowLeft / G + Math.min(col, 1) * 9;
-                  const nToday = (f.todayEvents || []).length;
-                  const heightR = 2
-                    + (f.isPlaying && f.liveUpdate ? 3 + 2 : 0)
-                    + (nToday > 0 ? 3 + 2 * nToday : 0)
-                    + (!f.isPlaying && nToday === 0 ? 2 : 0)
-                    + 1;
-                  const pos = gridPanelStyle(connRect, heightR, leftG);
-                  return createPortal(
-                    <div className="dash-conn-dropdown portalled" style={pos} onClick={e => e.stopPropagation()}>
-                      <div className="dash-conn-dropdown-name">{displayName(f)}</div>
-                      {f.isPlaying && f.liveUpdate && (
-                        <>
-                          <div className="dash-conn-dropdown-label">Now Playing</div>
-                          <div className="dash-conn-dropdown-event">
-                            {f.liveUpdate.eventName}
-                            {f.liveUpdate.stack && <span className="muted"> — {Number(f.liveUpdate.stack).toLocaleString()}</span>}
-                          </div>
-                        </>
-                      )}
-                      {f.todayEvents && f.todayEvents.length > 0 && (
-                        <>
-                          <div className="dash-conn-dropdown-label">{f.isPlaying ? 'Also Scheduled' : 'Scheduled Today'}</div>
-                          {f.todayEvents.map((t, i) => {
-                            const v = getVenueInfo(t.venue, t.property);
-                            return <div key={i} className="dash-conn-dropdown-event">{v.abbr} | {currencySymbol(t.venue)}{Number(t.buyin).toLocaleString()} {t.event_name}</div>;
-                          })}
-                        </>
-                      )}
-                      {!f.isPlaying && (!f.todayEvents || f.todayEvents.length === 0) && (
-                        <div className="dash-conn-dropdown-event" style={{color:'var(--text-muted)'}}>No events today</div>
-                      )}
-                    </div>,
-                    document.body
-                  );
-                })()}
-              </button>
-            ))}
-            {allConnections.length > 8 && (
-              <button className="dash-conn-overflow" onClick={() => onNavigate('social')} aria-label={`${allConnections.length - 7} more connections`}>
-                <span>+{allConnections.length - 7}</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <FirstRun
-            icon="people"
-            title="Connect with other players"
-            body="Follow people you play with to see where they are seated and how they are running."
-            actionLabel="Find players"
-            onAction={() => onNavigate('social')}
-            compact
-          />
-        )}
-      </div>
-      </div>
+  return (
+    <div className="dashboard-view home">
+      {nowCol}
+      {homeRight
+        ? createPortal(<div className="dashboard-view home home--numbers">{numbersCol}</div>, homeRight)
+        : numbersCol}
+      {/* The Playing card's Scan table action: one hidden picker for every card, and the sheet
+          that runs the scan once a screenshot is chosen (the Table Scanner, moved off the home). */}
+      <input ref={scanInputRef} className="dash-scan-input" type="file" accept="image/*" hidden
+        onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) setScanFile(f); }} />
+      {scanFile && <ScanTableSheet file={scanFile} onClose={() => setScanFile(null)} />}
     </div>
   );
 }

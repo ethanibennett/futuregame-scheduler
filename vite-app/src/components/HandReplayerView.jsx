@@ -1966,7 +1966,7 @@ function FeltSwatchRow({ value, onChange, disabled }) {
       {FELT_SWATCHES.map(fc => (
         <span key={fc.color} className="rs-swatch-cell">
           <button className={'felt-color-swatch' + (value === fc.color ? ' active' : '')}
-            style={{ background: fc.color }} title={fc.name} aria-label={fc.name}
+            style={{ '--swatch': fc.color }} title={fc.name} aria-label={fc.name}
             aria-pressed={value === fc.color} disabled={disabled}
             onClick={() => onChange(fc.color)} />
         </span>
@@ -2041,7 +2041,12 @@ function TableQuickSettings({ anchorRef, onClose, settings, onUpdate }) {
       const g = Math.min(window.innerWidth, 430) / 37, r = g * 0.71;
       const rc = a.getBoundingClientRect();
       // Right edge on the button's right edge; top one r under its bottom.
-      setPos({ right: Math.round(rc.right / g), top: Math.round(rc.bottom / r) + 1 });
+      // The dropdown is a layer, so its left edge goes on a g line of the SHELL (a desktop
+      // window centres the shell, so those lines are not the window's): the nearest one to 17g
+      // left of the button's right edge. 0 offset on a phone.
+      const shell = document.querySelector('.app-shell');
+      const ox = shell ? shell.getBoundingClientRect().left : 0;
+      setPos({ right: Math.round((rc.right - ox) / g), top: Math.round(rc.bottom / r) + 1, ox });
     };
     place();
     window.addEventListener('resize', place);
@@ -2063,7 +2068,7 @@ function TableQuickSettings({ anchorRef, onClose, settings, onUpdate }) {
     <div ref={panelRef} className="replayer-quick-settings" role="dialog" aria-label="Table settings"
       /* Keys inside the panel (arrows on the slider) must not step the replay. */
       onKeyDown={e => e.stopPropagation()}
-      style={pos ? { top: 'calc(var(--subrow) * ' + pos.top + ')', left: 'calc(var(--gu) * ' + (pos.right - 17) + ')' } : { visibility: 'hidden' }}>
+      style={pos ? { top: 'calc(var(--subrow) * ' + pos.top + ')', left: 'calc(' + (pos.ox || 0) + 'px + var(--gu) * ' + (pos.right - 17) + ')' } : { visibility: 'hidden' }}>
       <div className="replayer-settings-label rs-cell rs-head"><span className="rs-t">Felt colour</span></div>
       <FeltSwatchRow value={settings.feltColor} disabled={feltLocked} onChange={v => onUpdate('feltColor', v)} />
       {feltLocked && <div className="replayer-settings-sublabel rs-cell rs-note"><span className="rs-t">Felt colour applies to the Default theme</span></div>}
@@ -2092,13 +2097,41 @@ function ReplayerSettingsPanel({ onClose, settings, onUpdate }) {
       on={settings[opt.key]} onToggle={v => onUpdate(opt.key, v)} />
   ));
   const groupTitle = (text) => <div className="replayer-settings-group-title rs-cell"><span className="rs-t">{text}</span></div>;
+  /* The sheet is a whole number of g (53 at most) centred on the window, but
+     the window's centre is on one of the shell's g lines only when the shell
+     and the sheet are both an odd or both an even number of g — a desktop
+     shell can be either, and a classic scrollbar adds a fraction. So measure,
+     and shift the sheet by the remainder: its left edge on the nearest shell
+     line, its controls on that line's grid. 0 on a phone. */
+  const panelRef = useRef(null);
+  const [shiftG, setShiftG] = useState(0);
+  useLayoutEffect(() => {
+    const place = () => {
+      const el = panelRef.current, shell = document.querySelector('.app-shell');
+      if (!el || !shell) return;
+      const g = Math.min(window.innerWidth, 430) / 37;
+      const centred = (document.documentElement.clientWidth - el.offsetWidth) / 2;
+      const shellLeft = shell.getBoundingClientRect().left;
+      const k = Math.round((centred - shellLeft) / g);
+      const s = (shellLeft + k * g - centred) / g;
+      setShiftG(Math.abs(s) < 0.005 ? 0 : Math.round(s * 1e4) / 1e4);
+    };
+    place();
+    window.addEventListener('resize', place);
+    // The desktop shell re-sizes itself a render after the window does.
+    const shell = document.querySelector('.app-shell');
+    const ro = shell && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    if (ro) ro.observe(shell);
+    return () => { window.removeEventListener('resize', place); if (ro) ro.disconnect(); };
+  }, []);
   return createPortal(
     <>
       <div className="replayer-settings-backdrop" onClick={onClose} />
-      <div className="replayer-settings-panel">
+      <div ref={panelRef} className="replayer-settings-panel"
+        style={shiftG ? { marginLeft: 'calc(var(--gu) * ' + shiftG + ')' } : undefined}>
         <div className="replayer-settings-header">
           <span className="rs-cell"><span className="rs-t">Replayer Settings</span></span>
-          <button className="replayer-settings-close" onClick={onClose} aria-label="Close settings">&times;</button>
+          <button className="replayer-settings-close" onClick={onClose} aria-label="Close settings"><Icon.x /></button>
         </div>
         <div className="replayer-settings-group">
           {groupTitle('Table')}
@@ -4374,7 +4407,10 @@ function GTOEntryView({ hand, setHand, onDone, onCancel, heroName }) {
             </div>
           </div>
         </div>,
-        document.body
+        // Desktop: into the shell (still position:fixed — the shell has no transform), so the
+        // footer reads the shell's --dk-* counts and spans the main pane on its g lines
+        // (styles.css, .app-shell.is-desktop .gto-sticky-footer). Phone: <body>, as before.
+        document.querySelector('.app-shell.is-desktop') || document.body
       )}
     </div>
   );
@@ -8958,7 +8994,10 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
         const slot = typeof document !== 'undefined' && document.getElementById('above-nav-slot');
         const controls = (
       <div className="replayer-bottom-fixed" ref={barRef}>
-        <div className="replayer-controls">
+        {/* snap-place: centred, the capsule lands wherever the window's width puts it; this sets
+            it on the g and r lines so its whole-g, whole-r buttons are on them (a no-op on a phone,
+            where the 27g capsule is already 5g in). */}
+        <div className="replayer-controls snap-place">
           <button onClick={goToStart} disabled={!canGoBack} title="Start">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="19 20 9 12 19 4"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
           </button>
@@ -9011,7 +9050,7 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
             eight were exports, which is a task, not a navigation control. The
             row is navigation now; the exports live behind one Share button in
             the sheet the app already ships for exactly this. */}
-        <div className={'replayer-actions-bar' + (onSolveSpot ? ' has-solve' : '') + (linkedReplay ? ' is-linked' : '')}>
+        <div className={'replayer-actions-bar snap-place' + (onSolveSpot ? ' has-solve' : '') + (linkedReplay ? ' is-linked' : '')}>
           {/* A shared link is a clean view of one hand — no navigating back to a
               list that is not there, no editing someone else's hand, no
               re-sharing chrome. Ethan: drop Back/Edit/Share on a linked replay. */}

@@ -613,9 +613,15 @@ app.get('/api/backer/:token/feed', (req, res) => {
       grossCents += e.sessionResultCents || 0;
       netSessionCents += e.shareCents || 0;
     }
+    // Totals over EVERY recorded session (the list stops at 200), for the page's headline.
+    let sessions = 0, hours = 0;
+    const tstmt = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(hours), 0) AS h FROM backer_events WHERE token = ?');
+    tstmt.bind([token]); if (tstmt.step()) { const t = tstmt.getAsObject(); sessions = t.n || 0; hours = t.h || 0; } tstmt.free();
+    res.set('Cache-Control', 'no-store');
     res.json({
       name, stakes, openingCents, grossCents, netSessionCents,
       cumulativeCents: backerCumulativeCents(token) + openingCents,
+      sessions, hours,
       events,
     });
   } catch (err) {
@@ -663,14 +669,36 @@ app.post('/api/backer/:token/unsubscribe', async (req, res) => {
   }
 });
 
-// The backer's private page (same shell for every token; JS reads the token
-// from the URL and fetches its own feed).
+// The backer's private page: the app shell (public-vite/index.html), whose client renders
+// components/BackerPage.jsx for a /b/<token> path with no login (App.jsx Root). The token in the
+// URL is the backer's whole authentication, so the page is never cached or indexed, and the
+// browser is told to send no Referer anywhere (no-referrer: a link out of the page cannot carry
+// the token to another site). The manifest link is dropped: its start_url is the app's "/", and a
+// backer who adds the page to their Home Screen (which iOS requires for web push) must come back
+// to this page, not to the app's login.
+function backerShell(html) {
+  return html
+    .replace(/\s*<link rel="manifest"[^>]*>/, '')
+    .replace(/<title>[^<]*<\/title>/, '<title>Your action · futurega.me</title>')
+    .replace('</head>',
+      '<meta name="robots" content="noindex,nofollow">\n'
+      + '<meta name="referrer" content="no-referrer">\n'
+      + `<meta name="build-version" content="${BUILD_VERSION}">\n</head>`);
+}
 app.get('/b/:token', (req, res) => {
   const token = String(req.params.token || '');
   if (!BACKER_TOKEN_RE.test(token)) return res.status(404).send('Not found');
+  let html;
+  try {
+    html = require('fs').readFileSync(path.join(__dirname, 'public-vite', 'index.html'), 'utf8');
+  } catch (err) {
+    console.error('Backer page: no app shell to serve (public-vite/index.html):', err.message);
+    return res.status(503).send('Unavailable');
+  }
   res.set('Cache-Control', 'no-store');
-  res.set('Content-Type', 'text/html; charset=utf-8');
-  res.send(BACKER_PAGE_HTML);
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.type('html').send(backerShell(html));
 });
 
 // ── Dashboard seam #2 (the ONLY dashboard surface left on the scheduler) ──
@@ -1290,6 +1318,15 @@ async function initDatabase() {
   // Migrate: add planned_entries column for max entries per event
   try {
     db.run('ALTER TABLE user_schedules ADD COLUMN planned_entries INTEGER DEFAULT 1');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+
+  // Migrate: not_played — the home's To log "Didn't play" (components/HomeToLog.jsx). The event
+  // stays on the schedule; the app just stops asking for its result. Synced here, not kept in the
+  // browser, so a row cleared on the phone is cleared on the iPad too.
+  try {
+    db.run('ALTER TABLE user_schedules ADD COLUMN not_played INTEGER DEFAULT 0');
   } catch (e) {
     // Column already exists — ignore
   }
@@ -4529,6 +4566,24 @@ app.put('/api/schedule/:tournamentId/entries', authenticateToken, async (req, re
   }
 });
 
+// The home's To log "Didn't play", and its Undo: { notPlayed: true | false }. The event stays on
+// the schedule (user_schedules.not_played); the home and Results stop asking for its result.
+// 404 when the event is not on the caller's schedule.
+app.put('/api/schedule/:tournamentId/played', authenticateToken, requireRegistered, async (req, res) => {
+  try {
+    const tid = Number(req.params.tournamentId);
+    if (!Number.isInteger(tid) || tid <= 0) return res.status(400).json({ error: 'Unknown event' });
+    const flag = req.body && req.body.notPlayed ? 1 : 0;
+    db.run('UPDATE user_schedules SET not_played = ? WHERE user_id = ? AND tournament_id = ?', [flag, req.user.id, tid]);
+    if (!db.getRowsModified()) return res.status(404).json({ error: 'Event not on your schedule' });
+    await saveDatabase();
+    res.json({ tournamentId: tid, notPlayed: !!flag });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // Remove condition from a scheduled event (make it firm)
 app.delete('/api/schedule/:tournamentId/condition', authenticateToken, async (req, res) => {
   try {
@@ -4661,7 +4716,7 @@ app.delete('/api/personal-event/:id', authenticateToken, requireRegistered, asyn
 app.get('/api/my-schedule', authenticateToken, (req, res) => {
   try {
     const query = `
-      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries,
+      SELECT t.*, us.added_at, us.is_anchor, us.planned_entries, us.not_played,
              sc.conditions AS conditions_json,
              sc.is_public AS condition_is_public
       FROM tournaments t
@@ -5984,10 +6039,14 @@ app.get('/api/tracking', authenticateToken, (req, res) => {
   try {
     const bk = bankrolls.filterFromQuery(db, req.user.id, req.query.bankroll, 'te.bankroll_id');
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
+    // property: the room, for a venue strip on a series VENUE_MAP does not curate (getVenueInfo).
+    // imported: the row came from a CSV import (lib/bankroll-import.js), so Results' reset can say
+    // how much imported history it would delete.
     const stmt = db.prepare(`
       SELECT te.*,
              t.event_number, t.event_name, t.date, t.time, t.buyin,
-             t.game_variant, t.venue, t.is_satellite, t.total_entries
+             t.game_variant, t.venue, t.property, t.is_satellite, t.total_entries,
+             CASE WHEN t.source_pdf = 'bankroll-import' THEN 1 ELSE 0 END AS imported
       FROM tracking_entries te
       JOIN tournaments t ON te.tournament_id = t.id
       WHERE te.user_id = ?${bk.sql}
@@ -6018,6 +6077,12 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
     existStmt.bind([req.user.id, tournamentId]);
     const existing = existStmt.step() ? existStmt.getAsObject() : null;
     existStmt.free();
+    // ifAbsent: the home's To log (one-tap Busted, and the Cashed form it opens) LOGS a result, it
+    // never edits one. A result already there (logged on another device, or by the live-update
+    // Finish) is a 409 that changes nothing, not an overwrite with a stale guess.
+    if (existing && req.body.ifAbsent) {
+      return res.status(409).json({ error: 'A result is already logged for this event', entryId: existing.id });
+    }
     const bk = bankrolls.resolveEntryBankroll(db, req, req.body.bankrollId, existing ? existing.bankroll_id : undefined, isAppAdminReq);
     if (bk.error) return res.status(bk.status).json({ error: bk.error });
 
@@ -6035,10 +6100,11 @@ app.post('/api/tracking', authenticateToken, requireRegistered, async (req, res)
         'INSERT INTO tracking_entries (user_id, tournament_id, num_entries, cashed, finish_place, cash_amount, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [req.user.id, tournamentId, numEntries || 1, cashed ? 1 : 0, finishPlace || null, cashAmount || 0, notes || null]
       );
+      const newId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
       if (bk.set) db.run('UPDATE tracking_entries SET bankroll_id = ? WHERE user_id = ? AND tournament_id = ?', [bk.value, req.user.id, tournamentId]);
       await saveDatabase();
       broadcastToBuddies(req.user.id, 'buddy-tracking', { buddyId: req.user.id, username: req.user.username, tournamentId });
-      res.status(201).json({ message: 'Entry tracked' });
+      res.status(201).json({ message: 'Entry tracked', id: newId });
     }
   } catch (error) {
     console.error(error);
@@ -6083,25 +6149,59 @@ app.delete('/api/tracking/:entryId', authenticateToken, requireRegistered, async
   }
 });
 
-// Bulk-clear every tracking entry for the caller — the Dashboard "Reset"
-// button. The client has called this since a929d70 but the route was never
-// added, so it 404'd and surfaced as "Failed to reset results".
-// Returns { count } because the client reports how many were cleared.
+// Bulk-delete the caller's results — Results' "Delete results" (components/ResetResults.jsx),
+// behind a typed confirmation. It used to sit on the home and wipe every result in every
+// bankroll, imported history included, after one inline confirm; now it is always SCOPED:
+//   ?bankroll=main|<id>   that bankroll's results (the shared filter, lib/bankrolls.js: 404 for a
+//                         bankroll that is not the caller's)
+//   ?all=true             every bankroll's — only when asked for in so many words
+// Neither (or ?bankroll=all without all=true) is a 400 and deletes nothing.
+//   ?expect=<n>           the count the confirmation showed ("type DELETE 214 RESULTS"). When the
+//                         scope now holds a different number (a result logged on another device
+//                         meanwhile) it is a 409 with the current count, and nothing is deleted.
+// Cash sessions, expenses, deposits and transfers are other tables and are never touched.
+// Returns { count, scope } because the client reports how many were deleted.
 app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, res) => {
   try {
-    const countStmt = db.prepare('SELECT COUNT(*) AS n FROM tracking_entries WHERE user_id = ?');
-    countStmt.bind([req.user.id]);
+    const q = req.query || {};
+    const all = q.all === 'true' || q.all === '1';
+    const raw = q.bankroll;
+    const scoped = raw !== undefined && raw !== '' && raw !== bankrolls.ALL;
+    if (all && scoped) return res.status(400).json({ error: 'Pass a bankroll or all=true, not both' });
+    if (!all && !scoped) {
+      return res.status(400).json({ error: 'Say which results to delete: ?bankroll=main or a bankroll id, or ?all=true for every bankroll' });
+    }
+    const bk = all ? { sql: '', params: [] } : bankrolls.filterFromQuery(db, req.user.id, raw, 'te.bankroll_id');
+    if (bk.error) return res.status(bk.status).json({ error: bk.error });
+    const scope = all ? 'all' : (bk.ref.kind === bankrolls.MAIN ? bankrolls.MAIN : String(bk.ref.id));
+
+    // The results the confirmation counted are the ones GET /api/tracking lists: joined to their
+    // event, so a result whose event row is gone (old migrations deleted tournaments without their
+    // results) is neither counted nor deleted here. Counting it made ?expect= disagree with the
+    // phrase the user typed, and every reset was then a 409 for good.
+    const visibleRows = `SELECT te.id FROM tracking_entries te JOIN tournaments t ON te.tournament_id = t.id
+      WHERE te.user_id = ?${bk.sql}`;
+    const countStmt = db.prepare(`SELECT COUNT(*) AS n FROM (${visibleRows})`);
+    countStmt.bind([req.user.id, ...bk.params]);
     countStmt.step();
     const count = countStmt.getAsObject().n || 0;
     countStmt.free();
 
+    if (q.expect !== undefined) {
+      const want = Number(q.expect);
+      if (!/^\d{1,9}$/.test(String(q.expect)) || !Number.isInteger(want)) return res.status(400).json({ error: 'expect must be a whole number' });
+      if (want !== count) {
+        return res.status(409).json({ error: `There are now ${count} result${count === 1 ? '' : 's'} to delete, not ${want}. Nothing was deleted.`, count, scope });
+      }
+    }
+
     // Only touch the DB when there is something to remove, so a no-op reset
     // does not rewrite the database file.
     if (count > 0) {
-      db.run('DELETE FROM tracking_entries WHERE user_id = ?', [req.user.id]);
+      db.run(`DELETE FROM tracking_entries WHERE user_id = ? AND id IN (${visibleRows})`, [req.user.id, req.user.id, ...bk.params]);
       await saveDatabase();
     }
-    res.json({ message: 'Results cleared', count });
+    res.json({ message: 'Results deleted', count, scope });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -6113,8 +6213,25 @@ app.delete('/api/tracking', authenticateToken, requireRegistered, async (req, re
 //   ?currency=EUR  display currency (default USD; anything unsupported → USD)
 //   ?bankroll=<id> reserved for multiple bankrolls: a no-op until tracking_entries
 //                  carries bankroll_id (te.* below picks it up when it does).
+//   ?from=&to=     YYYY-MM-DD, both or neither: adds `window`, the events dated in that
+//                  span (inclusive) set against the whole history — the home's
+//                  signal-or-noise line (lib/analytics.js windowStats). &venue= narrows
+//                  the window (not the history) to one series title.
 app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) => {
   try {
+    const DAY = /^\d{4}-\d{2}-\d{2}$/;
+    const from = req.query.from, to = req.query.to;
+    let win = null;
+    if (from !== undefined || to !== undefined) {
+      if (typeof from !== 'string' || typeof to !== 'string' || !DAY.test(from) || !DAY.test(to)) {
+        return res.status(400).json({ error: 'from and to must both be YYYY-MM-DD' });
+      }
+      if (from > to) return res.status(400).json({ error: 'from is after to' });
+      const venue = typeof req.query.venue === 'string' ? req.query.venue.trim().slice(0, 200) : '';
+      win = { from, to, venue: venue || null };
+    } else if (req.query.venue !== undefined) {
+      return res.status(400).json({ error: 'venue needs from and to' });
+    }
     const stmt = db.prepare(`
       SELECT te.*, t.event_name, t.date, t.time, t.buyin, t.game_variant, t.venue,
              t.property, t.total_entries, t.is_online, t.site
@@ -6129,7 +6246,7 @@ app.get('/api/analytics', authenticateToken, requireAppAdmin, async (req, res) =
     const cur = String(req.query.currency || 'USD').toUpperCase();
     const currency = SUPPORTED_CURRENCIES.includes(cur) ? cur : 'USD';
     const { rates } = await fetchExchangeRates(); // cached 6 h; falls back to fixed rates offline
-    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll }));
+    res.json(require('./lib/analytics').computeAnalytics(rows, { currency, rates, bankroll: req.query.bankroll, window: win }));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -6313,7 +6430,10 @@ app.get('/api/live-updates/active', authenticateToken, (req, res) => {
              lu.is_deal, lu.deal_place, lu.deal_payout, lu.is_busted,
              lu.total_entries, lu.is_bagged, lu.bag_day, lu.play_started_at,
              lu.created_at, t.event_name, t.venue, t.date,
-             (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_busted = 1) AS bust_count
+             (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_busted = 1) AS bust_count,
+             -- The event's bag history: the latest update alone forgets a Day 1 bag once Day 2
+             -- brings a bust, and the home's plans ("If bust #12" vs "If bag #12") turn on it.
+             (SELECT COUNT(*) FROM live_updates b WHERE b.user_id = lu.user_id AND b.tournament_id = lu.tournament_id AND b.is_bagged = 1) AS bag_count
       FROM live_updates lu
       JOIN tournaments t ON lu.tournament_id = t.id
       WHERE lu.user_id = ?
@@ -11043,7 +11163,10 @@ app.get('/api/venue-coords', (req, res) => {
     const out = {};
     for (const [venue, r] of readVenueCoordsRows(null)) {
       if (r.lat == null) continue;
-      out[venue] = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+      const c = r.region ? { lat: r.lat, lng: r.lng, region: r.region } : { lat: r.lat, lng: r.lng };
+      // A town-centre placement: the venue map says "Approximate location" for it.
+      if (r.source === 'nominatim-city') c.approx = 1;
+      out[venue] = c;
     }
     res.json(out);
   } catch (err) {
@@ -11051,6 +11174,77 @@ app.get('/api/venue-coords', (req, res) => {
     res.json({});
   }
 });
+
+// Public: the venue map's place line ("Atlantic City, NJ") and the server's own placement, for the
+// popup a venue strip opens (docs/venue-map.md). Called only when the popup opens. The town comes
+// from the source that placed the room (lib/venue-coords.js describePlace); when none named one,
+// the coordinates the popup shows are reverse-geocoded once (Nominatim, the same 1/s queue as
+// resolveVenueCoords) and the answer is kept for the process's life.
+// Keyed by VENUE, and only for a venue the schedule holds: the coordinate comes from the caller,
+// and a key per coordinate would let anyone queue unbounded Nominatim lookups (and hold up the
+// resolver behind them). At most one lookup per venue per 6 h on a miss, and a few in flight.
+const venueTownByVenue = new Map(); // venue → { town, at }
+let venueTownPending = 0;
+async function townAt(venue, lat, lng) {
+  const hit = venueTownByVenue.get(venue);
+  if (hit && (hit.town || Date.now() - hit.at < 6 * 3600e3)) return hit.town;
+  if (venueTownPending >= 4) return null;
+  venueTownPending++;
+  let town;
+  try {
+    town = await Promise.race([
+      venueGeocoder.reverseTown(lat, lng).catch(() => null),
+      new Promise((r) => setTimeout(() => r(undefined), 5000)),
+    ]);
+  } finally { venueTownPending--; }
+  if (town !== undefined) venueTownByVenue.set(venue, { town: town || null, at: Date.now() });
+  return town || null;
+}
+app.get('/api/venue-place', async (req, res) => {
+  const venue = String(req.query.venue || '').trim().slice(0, 300);
+  let property = String(req.query.property || '').trim().slice(0, 300) || null;
+  if (!venue && !property) return res.status(400).json({ error: 'venue or property required' });
+  try {
+    let row = null, known = false;
+    if (venue) {
+      const k = db.prepare('SELECT 1 FROM tournaments WHERE venue = ? LIMIT 1');
+      k.bind([venue]);
+      known = k.step();
+      k.free();
+      const stmt = db.prepare('SELECT * FROM venue_coords WHERE venue = ?');
+      stmt.bind([venue]);
+      if (stmt.step()) row = stmt.getAsObject();
+      stmt.free();
+      if (!property) {
+        const p = db.prepare(`SELECT property FROM tournaments WHERE venue = ? AND property IS NOT NULL AND property != ''
+                               GROUP BY property ORDER BY COUNT(*) DESC LIMIT 1`);
+        p.bind([venue]);
+        if (p.step()) property = p.getAsObject().property || null;
+        p.free();
+      }
+    }
+    const place = venueCoordsLib.describePlace({ venue, property, row, hint: feedVenueHints.get(venue) || null, directory: getVenueDirectory() });
+    if (!place.town && known) {
+      const lat = Number(req.query.lat), lng = Number(req.query.lng);
+      const at = place.lat != null ? [place.lat, place.lng] : (venueCoordsLib.validLatLng(lat, lng) ? [lat, lng] : null);
+      if (at) place.town = await townAt(venue, at[0], at[1]);
+    }
+    res.set('Cache-Control', place.town ? 'public, max-age=3600' : 'no-store');
+    res.json(place);
+  } catch (err) {
+    console.error('[VenueCoords] place lookup failed:', err.message);
+    res.set('Cache-Control', 'no-store');
+    res.json({ town: null, name: null, region: null, lat: null, lng: null, approx: false, source: null });
+  }
+});
+
+// The venue map's providers (lib/map-providers.js): GET /api/mapkit-token (Apple Maps, signed
+// here) and GET /api/google-maps-config (the Android app's Google Maps). Each answers 404
+// { configured: false } until its env is set; the popup then falls back to OpenStreetMap.
+{
+  const maps = require('./lib/map-providers').mountMapRoutes(app, process.env);
+  console.log(`[VenueMap] providers: MapKit JS ${maps.mapkit ? 'configured' : 'not configured'}, Google Maps ${maps.google ? 'configured' : 'not configured'}, OpenStreetMap always`);
+}
 
 async function ingestMttFeed() { return ingestFeed('mtt-feed', 'mtt-feed', 'MTT feed', 'MTT'); }
 // Online tournaments arrive the same way the live ones do, from a sibling watcher, but under
@@ -11586,141 +11780,6 @@ async function sendBackerWeeklyDigests() {
     console.error('Backer weekly digest error:', err);
   }
 }
-
-// The backer page — one self-contained shell for every token. Client JS reads
-// the token from the URL, fetches its own feed, and (opt-in) enables web push.
-const BACKER_PAGE_HTML = `<!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#111111">
-<title>Your action</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet">
-<style>
-@font-face{font-family:'Univers Condensed';src:url('/bfonts/univers-condensed.woff2') format('woff2');font-weight:400;font-display:swap}
-@font-face{font-family:'Univers Condensed';src:url('/bfonts/univers-bold-condensed.woff2') format('woff2');font-weight:700;font-display:swap}
-@font-face{font-family:'Univers';src:url('/bfonts/univers-regular.woff2') format('woff2');font-weight:400;font-display:swap}
-@font-face{font-family:'Univers';src:url('/bfonts/univers-bold.woff2') format('woff2');font-weight:700;font-display:swap}
-:root{--ink:#111111;--surface:#1a1a1a;--surface-2:#242424;--line:#333333;--bone:#e8e8e8;--muted:#808080;--good:#5a9e7a;--bad:#c96b6b}
-*{box-sizing:border-box}
-body{margin:0;background:var(--ink);color:var(--bone);font-family:'Univers Condensed','Univers',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
-.wrap{max-width:520px;margin:0 auto;padding:26px 18px 64px}
-.title{font-family:'Libre Baskerville',Georgia,serif;font-weight:700;font-size:26px;letter-spacing:-.03em;margin:0}
-.sub{font-family:'Univers Condensed','Univers',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px}
-.stakes{color:var(--muted);font-size:13px;margin-top:10px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0 14px}
-.card-label{font-family:'Univers Condensed','Univers',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-.big{font-family:'Univers Condensed','Univers',monospace;font-weight:700;font-size:40px;letter-spacing:-.01em;line-height:1;font-variant-numeric:tabular-nums}
-.small{color:var(--muted);font-size:12px;margin-top:8px}
-.pos{color:var(--good)}.neg{color:var(--bad)}
-.muted{color:var(--muted)}
-.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
-.row:first-of-type{border-top:0;padding-top:0}
-.row-label{font-weight:700;font-size:15px}
-.row-meta{color:var(--muted);font-size:12.5px;margin-top:4px;line-height:1.4}
-.row-result{font-family:'Univers Condensed','Univers',monospace;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.btn{display:block;width:100%;margin:2px 0 8px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--bone);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
-.btn:active{opacity:.8}
-.pushnote{color:var(--muted);font-size:12px;text-align:center;margin:6px 0 10px}
-.pushrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:2px 0 8px}
-.pushon{font-size:14px;font-weight:700}
-.btn-off{flex:0 0 auto;width:auto;margin:0;padding:8px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);font-family:inherit;cursor:pointer}
-.btn-off:active{opacity:.8}
-.foot{color:#5f5f5f;font-size:10.5px;text-align:center;margin-top:30px;font-family:'Univers Condensed','Univers',monospace;letter-spacing:.06em;text-transform:uppercase}
-</style></head><body>
-<div id="app"><div class="wrap"><p class="muted">Loading…</p></div></div>
-<script>
-(function(){
-  var token=location.pathname.split('/').filter(Boolean).pop();
-  var app=document.getElementById('app');
-  var feed=null;
-  function money(c){var v=(c||0)/100;var neg=v<0;var n=Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0});return (neg?'−':'+')+'$'+n;}
-  function fmtH(h){return (Math.round((h||0)*10)/10)+'h';}
-  function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
-  function urlB64(s){var pad='='.repeat((4-s.length%4)%4);var b=(s+pad).replace(/-/g,'+').replace(/_/g,'/');var raw=atob(b);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;}
-  function render(){
-    var evs=(feed&&feed.events)||[];
-    var cum=(feed&&feed.cumulativeCents)||0;
-    var name=(feed&&feed.name)||'Your action';
-    var stakes=(feed&&feed.stakes)||'';
-    var openingCents=(feed&&feed.openingCents)||0;
-    var grossCents=(feed&&feed.grossCents)||0;
-    var rows=evs.map(function(e){
-      var cls=e.shareCents>=0?'pos':'neg';
-      return '<div class="row"><div><div class="row-label">'+esc(e.game)+'</div>'
-        +'<div class="row-meta">'+esc(e.venue)+' · '+fmtH(e.hours)+' · '+esc(e.date)+' · gross '+money(e.sessionResultCents)+' · your '+esc(e.pct)+'%</div></div>'
-        +'<div class="row-result '+cls+'">'+money(e.shareCents)+'</div></div>';
-    }).join('');
-    var openingRow=openingCents?('<div class="row"><div><div class="row-label">Opening balance</div>'
-      +'<div class="row-meta">carried in</div></div>'
-      +'<div class="row-result '+(openingCents>=0?'pos':'neg')+'">'+money(openingCents)+'</div></div>'):'';
-    var sessionsInner=(rows+openingRow)||'<div class="muted" style="font-size:13px">No sessions yet — they\\'ll show up here as Ethan logs them.</div>';
-    app.innerHTML='<div class="wrap">'
-      +'<h1 class="title">'+esc(name)+'</h1>'
-      +'<div class="sub">your action with Ethan</div>'
-      +(stakes?'<div class="stakes">Staked: '+esc(stakes)+'</div>':'')
-      +'<div class="card"><div class="card-label">Net · your share</div>'
-        +'<div class="big '+(cum>=0?'pos':'neg')+'">'+money(cum)+'</div>'
-        +'<div class="small">running position — what settles up with Ethan</div>'
-        +(grossCents?'<div class="small">Gross across your games: <span class="'+(grossCents>=0?'pos':'neg')+'">'+money(grossCents)+'</span></div>':'')
-        +'</div>'
-      +'<div id="pushbox"></div>'
-      +'<div class="card"><div class="card-label">Sessions</div>'
-        +sessionsInner
-        +'</div>'
-      +'<div class="foot">Private link · only you can see this</div></div>';
-    renderPush();
-  }
-  function renderPush(){
-    var box=document.getElementById('pushbox'); if(!box)return;
-    if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){box.innerHTML='';return;}
-    if(Notification.permission==='denied'){box.innerHTML='<div class="pushnote">Notifications are blocked in your browser settings.</div>';return;}
-    box.innerHTML='<div class="pushnote">…</div>';
-    navigator.serviceWorker.getRegistration('/b/').then(function(reg){
-      return reg?reg.pushManager.getSubscription():null;
-    }).then(function(sub){
-      if(sub){
-        box.innerHTML='<div class="pushrow"><span class="pushon">🔔 Notifications on</span><button class="btn-off" id="pushoff">Turn off</button></div>';
-        document.getElementById('pushoff').onclick=disablePush;
-      }else{
-        box.innerHTML='<button class="btn" id="enable">🔔 Notify me after each session</button>';
-        document.getElementById('enable').onclick=enablePush;
-      }
-    }).catch(function(){
-      box.innerHTML='<button class="btn" id="enable">🔔 Notify me after each session</button>';
-      var e=document.getElementById('enable'); if(e)e.onclick=enablePush;
-    });
-  }
-  function enablePush(){
-    var b=document.getElementById('enable'); if(b){b.textContent='Enabling…';b.disabled=true;}
-    navigator.serviceWorker.register('/b/sw.js',{scope:'/b/'}).then(function(reg){
-      return Notification.requestPermission().then(function(p){
-        if(p!=='granted')throw new Error('permission denied');
-        return fetch('/api/backer/vapid').then(function(r){return r.json();}).then(function(v){
-          if(!v.key)throw new Error('unavailable');
-          return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(v.key)});
-        });
-      });
-    }).then(function(sub){
-      return fetch('/api/backer/'+token+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub})});
-    }).then(function(){renderPush();}).catch(function(err){
-      var box=document.getElementById('pushbox'); if(box)box.innerHTML='<div class="pushnote">Notifications unavailable here ('+esc(err&&err.message||'error')+'). You can still open this link anytime.</div>';
-    });
-  }
-  function disablePush(){
-    var b=document.getElementById('pushoff'); if(b){b.textContent='…';b.disabled=true;}
-    navigator.serviceWorker.getRegistration('/b/').then(function(reg){
-      return reg?reg.pushManager.getSubscription():null;
-    }).then(function(sub){
-      if(!sub)return null;
-      var endpoint=sub.endpoint;
-      return sub.unsubscribe().then(function(){
-        return fetch('/api/backer/'+token+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:endpoint})});
-      });
-    }).then(function(){renderPush();}).catch(function(){renderPush();});
-  }
-  fetch('/api/backer/'+token+'/feed').then(function(r){return r.json();}).then(function(d){feed=d;render();}).catch(function(){render();});
-})();
-</script></body></html>`;
 
 // ── Schedule Parser: extract tournament data from PDF/image via Claude Vision ──
 const scheduleUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -14022,6 +14081,17 @@ initDatabase().then(() => {
           runWatchdog().catch((err) => console.error('[testflight] watchdog error:', err.message));
         }, { timezone: CONSOLE_TZ });
         console.log('[testflight] sleep-kill watchdog armed (:05, :25, :45)');
+        // Nightly build (owner, 2026-10-13): commits carry [skip ci], so master ships once a night,
+        // from 04:00 Eastern on the first half-hour tick where nothing is in the way (a live run,
+        // a session's .testflight-hold, a deploy not yet serving HEAD). Ticks to 09:30; the 05:00
+        // tick can fall in the nightly pm2 restart, which 05:30 covers. TESTFLIGHT_NIGHTLY=0 turns it off.
+        if (process.env.TESTFLIGHT_NIGHTLY !== '0') {
+          const { runNightly } = require('./scripts/testflight-nightly');
+          cron.schedule('0,30 4-9 * * *', () => {
+            runNightly().catch((err) => console.error('[testflight-nightly] error:', err.message));
+          }, { timezone: CONSOLE_TZ });
+          console.log('[testflight-nightly] nightly build armed (04:00–09:30 Eastern)');
+        }
       }
     } catch (err) {
       console.error('[testflight] watchdog setup error:', err.message);

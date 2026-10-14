@@ -451,7 +451,7 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
         document.body
       )}
       {open && !cameraOpen && !registrationOpen && createPortal(
-        <div ref={panelRef} className="live-update-panel" style={(() => {
+        <div ref={panelRef} className="live-update-panel snap-place" style={(() => {
           const r = toggleRef.current?.getBoundingClientRect();
           if (!r) return { top: 68, left: '50%', transform: 'translateX(-50%)' };
           const vw = window.innerWidth || document.documentElement.clientWidth || 375;
@@ -764,14 +764,14 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                 </>
               )}
 
-              {/* ── Bottom row: camera + share + post ── */}
-              <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',marginTop:'calc(var(--subrow) * 0.5)',gap:'calc(var(--subrow) * 0.75)'}}>
+              {/* ── Bottom row: camera + share + post ── whole-g buttons 1g apart, set at the end (owner rule 2026-10-10) */}
+              <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:'var(--gu)'}}>
                 {updateType === 'hand' && parseCardNotation(heroHand).length > 0 && (
                   <button
                     className="btn btn-ghost btn-sm"
                     onClick={shareHandImage}
                     title="Share hand image"
-                    style={{padding:'calc(var(--subrow) * 0.75)'}}
+                    style={{width:'calc(var(--gu) * 3)',padding:0,flexShrink:0}}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" style={{width:'calc(var(--subrow) * 2)',height:'calc(var(--subrow) * 2)'}}>
                       <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -784,18 +784,19 @@ export default function LiveUpdatePanel({ mySchedule, myActiveUpdates, onPost, o
                   onClick={openCamera}
                   disabled={!selectedTournamentId}
                   title="Camera overlay"
-                  style={{padding:'calc(var(--subrow) * 0.75)'}}
+                  style={{width:'calc(var(--gu) * 3)',padding:0,flexShrink:0}}
                 >
                   <Icon.camera />
                 </button>
                 <button
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm snap-g"
+                  style={{flexShrink:0}}
                   onClick={handleSubmit}
                   disabled={!selectedTournamentId || (updateType === 'update' && !isBusted && !stack) || (updateType === 'hand' && !parseCardNotation(heroHand).length)}
                 >
                   {updateType === 'finish' ? 'Finish Event' : updateType === 'hand' ? 'Post Hand' : 'Post Update'}
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>Cancel</button>
+                <button className="btn btn-ghost btn-sm snap-g" style={{flexShrink:0}} onClick={() => setOpen(false)}>Cancel</button>
               </div>
             </>
           )}

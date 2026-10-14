@@ -11,7 +11,7 @@ sessions opened here own scheduler work.
   branch `wip/windows-mtt-feed`.
 - **Desktop layout**: any window >= 1024px wide (browser, iPad app, Mac app) gets a side rail +
   2 panes (Schedule = list | right pane, the selected event on top and My Schedule under it;
-  the third column was dropped 2026-10-10) on the SAME g as the phone (g stays 430px/37; panes
+  the third column was dropped 2026-10-10; the two panes sit 2g apart on the background, 2026-10-13) on the SAME g as the phone (g stays 430px/37; panes
   are 9N+1 g, widened by a classic scrollbar's width where one shows). Everything narrower, and
   every phone, is the phone layout, pixel-identical. Design and per-tab plan: `docs/desktop-layout.md`.
 - **Backend**: `server.js` — Express 5 + sql.js (SQLite loaded to memory, saved on write).
@@ -83,6 +83,10 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   Never a bare room name or a series title. Non-US regions whose ISO code is also a US state
   code use the country name (`PANAMA`, `MALTA`), or they land in "Northeast US". The watcher
   side (per-row coordinates) is `docs/venue-coords-watcher.diff`; see `docs/venue-coords.md`.
+- **Venue map**: an event card's venue strip (not online or Personal) opens `VenueMapSheet.jsx`, a
+  map of the room. The provider is chosen per platform in `utils/venue-map/providers.js`: Google on
+  Android, else MapKit JS, else OpenStreetMap. Each key's env is unset until the owner sets it up;
+  see `docs/venue-map.md`.
 - **Dashboard seams (3)** — the life-dashboard is a separate app at dashboard.futurega.me:
   - #1 notify: dashboard POSTs `/console/api/backers/notify` (ham-gated) here.
   - #2 departures: dashboard GETs `/api/schedule/:token/upcoming` (DASHBOARD_TOKEN-gated).
@@ -106,6 +110,16 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   newest build), capped at 3 attempts per SHA, then opens a handoff issue for the Mac.
   Opt-in via `TESTFLIGHT_WATCHDOG=1` so only this box runs it; Render has no `gh` and no
   business dispatching builds. Mitigation only — the cure for the dark wake is on the Mac.
+- **Nightly TestFlight build (out)** (owner, 2026-10-13): commits to master carry `[skip ci]`, so
+  `scripts/testflight-nightly.js` ships master HEAD once a night instead — armed with the
+  watchdog, ticking at :00/:30 from 04:00 to 09:30 Eastern, dispatching on the first tick where it
+  makes sense: HEAD not already built or building, no other run live, no `.testflight-hold` at
+  the repo root (fresh within 6 h), and futurega.me already serving HEAD when `RENDER_API_KEY` is
+  set. Nothing new = no build; still blocked at 09:30 = the night is skipped, logged. One per
+  night (`.testflight-nightly.json`). **A session merging several branches should `echo "why" >
+  .testflight-hold` first and delete it when master is whole.** `TESTFLIGHT_NIGHTLY=0` turns it
+  off; `node scripts/testflight-nightly.js --dry-run` says what it would do now;
+  `npm run test:testflight-nightly`.
 - **Online feed (in)**: `online-poker-watcher` runs its own pm2 app (a persistent
   loop, emitting at :10 past the hour and at boot) into `./online-feed/` — sources
   ACR, GGPoker, WSOP.com (bracelets + monthly Circuit rings), Phenom, and ClubWPT
@@ -131,6 +145,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   mtt-series-watcher `docs/pokeratlas-clock.md` and `docs/bravo-tournaments-blocker.md`.
 - **Backer surface stays here**: `/b/:token` public pages, Sunday weekly digest, backer
   web-push (`backer_push_subs`), `console_records` store='backers' (fed by seam #3).
+  The page is the vite app since 2026-10-13 (`components/BackerPage.jsx`, rendered by App.jsx's
+  `Root` before any login; arithmetic in `utils/backer-page.js`): the server serves the app shell
+  to valid tokens only, `no-store` + `noindex` + `Referrer-Policy: no-referrer`, with the manifest
+  link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
+  `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
+  into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
 
 ## Hazards
 - ⚠️ **Junction hazard**: checking out any pre-carve branch (e.g. `wip/windows-mtt-feed`)

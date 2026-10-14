@@ -433,8 +433,10 @@
 .cs-confirm { display: flex; flex-direction: column; }
 .cs-confirm .cs-actions { margin-top: var(--subrow); }
 
-/* ── The live bar over the nav ── (the Hands tool row's geometry; on desktop, where no nav sits
-   under it, it also takes the fraction of an r the window height leaves over) */
+/* ── The live bar over the nav ── (the Hands tool row's geometry; in a desktop wide pane, where
+   no nav sits under it, it also takes the fraction of an r the window height leaves over. The
+   desktop Schedule list pane keeps the phone's nav band under the bar (.dk-pane-list::after,
+   styles.css), so there the bar is the phone's 5r and the band takes the fraction.) */
 .cs-bar {
   display: flex;
   align-items: flex-start;
@@ -446,9 +448,11 @@
   background: var(--bg);
   box-shadow: inset 0 var(--bw-hair) 0 var(--border);
 }
-.app-shell.is-desktop .cs-bar { height: calc(var(--subrow) * 5 + mod(100dvh - var(--sa-t), var(--subrow))); }
+.app-shell.is-desktop .dk-pane-wide .cs-bar { height: calc(var(--subrow) * 5 + mod(100dvh - var(--sa-t), var(--subrow))); }
 .cs-bar-text { --h: 3; --b: 2; flex: 1 1 auto; font-size: var(--fs-sm); color: var(--text); }
 .cs-bar-clock { font-weight: var(--fw-bold); font-variant-numeric: var(--num-tabular); }
 
-/* Schedule's "back to today" pill floats 2r above the nav; with the bar there, 2r above the bar. */
+/* Schedule's "back to today" pill floats 2r above the nav; with the bar there, 2r above the bar.
+   The desktop list pane runs this same rule: it keeps the nav band under the bar and is the
+   button's containing block, its foot the window's (styles.css, .dk-pane-list::after). */
 .app-shell:has(.cs-bar) .back-to-today-fab { bottom: calc(var(--tab-h) + var(--sa-b) + var(--nav-snap) + var(--subrow) * 7); }
