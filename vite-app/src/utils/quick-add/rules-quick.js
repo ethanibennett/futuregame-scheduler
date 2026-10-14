@@ -8,7 +8,7 @@
 //   otherHands     ["summary", …]    — hands the post also told, not recorded
 //   otherHandIndexes [2, 3, …]       — the number of each other hand, in the order told
 //   otherHandsBlocking true          — the player must say which (decision F, lib/quick-add/decisions.js)
-//   unsupported    ["what", …]       — bomb pot, double board, PLO5 …
+//   unsupported    ["what", …]       — bomb pot, double board, run it twice …
 //   questions      [gap-like, …]     — ready-made questions: a card or size said
 //                                      two ways, a four-card flop in a transcript,
 //                                      a stated pot the actions miss, a suit
