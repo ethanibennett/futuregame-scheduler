@@ -527,7 +527,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
         <Suspense fallback={null}><CashSessionsView token={token} bk={bk} intent={cashIntent} onIntentDone={onIntentDone} /></Suspense>
       ) : (<>
       <div className="section-header">
-        <h2>Tracking</h2>
+        <h2>Bankroll</h2>
         <div style={{display:'flex',gap:'var(--gu)',alignItems:'center'}}>
           {isAdmin && (
             <button className="btn btn-ghost btn-sm" style={{width:'var(--col)',padding:0}} onClick={() => setShowTaxReport(true)} title="Tax report (beta)">

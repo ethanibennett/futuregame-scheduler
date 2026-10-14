@@ -2313,6 +2313,7 @@ function App() {
           {currentView === 'cash' ? <small>{cashMode === 'heatmap' ? 'cash game history' : 'live cash games'}</small>
             : currentView === 'hands' ? <small>hands archive</small>
             : currentView === 'dashboard' ? <small>dashboard</small>
+            : currentView === 'tracking' ? <small>bankroll</small>
             : (seasonLabel ? <AlternatingSubtitle labels={[seasonLabel, 'scheduler']} /> : null)}
         </div>
         <div className="top-bar-actions">
