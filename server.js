@@ -549,6 +549,12 @@ const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const bankrollTransactions = require('./lib/bankroll-transactions');
 const moneyMerge = require('./lib/money-merge');
+// Series staking settlement (docs/bankroll-merge.md §10): the calculator, settle, paid -> ledger.
+const stakingSettlement = require('./lib/staking/settlement');
+// The rules where a backer type's meaning is a choice (§10, open questions). Defaults are the
+// standard staking-market meanings; STAKING_SETTLEMENT_RULES (JSON) overrides any of them. Read
+// once at boot; the boot log says which are live.
+const STAKING_RULES = stakingSettlement.resolveRules(process.env.STAKING_SETTLEMENT_RULES || null);
 // The backer surface (feed, digest, delivery gate and sweep, link rotation): lib/backer-surface.js.
 const backerSurface = require('./lib/backer-surface');
 const { fmtSignedCents, fmtHours, escapeHtml } = backerSurface;
@@ -3316,6 +3322,18 @@ async function initDatabase() {
         const q = db.exec('SELECT COUNT(*) FROM backer_tokens');
         const n = q.length ? q[0].values[0][0] : 0;
         console.log(`Legacy backer_tokens: ${n} row(s)${n ? ' - the owner decides what happens to these links (docs/bankroll-merge.md Q14)' : ' - none, as expected'}`);
+      }
+    },
+    {
+      // Phase 3 of the bankroll merge (docs/bankroll-merge.md §10): settlements become one row per
+      // agreement with a snapshot of the sheet as settled; rows the old code wrote are linked to
+      // their agreement where that is unambiguous; makeup moves from makeup_balance to an opening
+      // and a closing figure; one ledger row per paid settlement. Additive, one savepoint, and it
+      // logs counts only. See lib/staking/settlement.js migrate().
+      name: stakingSettlement.MIGRATION_NAME,
+      fn: () => {
+        const r = stakingSettlement.migrate(db);
+        console.log(`Staking settlement: ${r.legacyRows} settlement row(s) from before (${r.agreementLinked} linked to their agreement, ${r.agreementAmbiguous} left unlinked: a backer with two agreements in one series, or none); makeup agreements moved to opening/closing: ${r.makeupUnsettled} unsettled, ${r.makeupSettled} settled`);
       }
     },
   ];
@@ -6757,10 +6775,27 @@ app.get('/api/staking/series', authenticateToken, (req, res) => {
   }
 });
 
+// staking_series.bankroll_id (docs/bankroll-merge.md §4.2, §10 item 7): the bankroll a paid
+// settlement posts to. undefined = leave it alone; null, '' or 'main' = Main (NULL); otherwise one of
+// the caller's own bankrolls. -> { set, value } | { status, error }
+function stakingSeriesBankroll(raw, userId) {
+  if (raw === undefined) return { set: false };
+  if (raw === null || raw === '' || raw === 'main') return { set: true, value: null };
+  const id = Number(raw);
+  if (!Number.isInteger(id) || id <= 0) return { status: 400, error: 'bankrollId must be "main" or a bankroll id' };
+  const s = db.prepare('SELECT id FROM bankrolls WHERE id = ? AND user_id = ?');
+  let found = false;
+  try { s.bind([id, userId]); found = s.step(); } finally { s.free(); }
+  if (!found) return { status: 404, error: 'Bankroll not found' };
+  return { set: true, value: id };
+}
+
 // Create staking series
 app.post('/api/staking/series', authenticateToken, requireRegistered, stakingLimiter, async (req, res) => {
   try {
     const { name, venue, startDate, endDate, currency, currencyConversionMethod } = req.body;
+    const bankrollRef = stakingSeriesBankroll(req.body.bankrollId, req.user.id);
+    if (bankrollRef.error) return res.status(bankrollRef.status).json({ error: bankrollRef.error });
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Series name is required' });
     }
@@ -6778,9 +6813,9 @@ app.post('/api/staking/series', authenticateToken, requireRegistered, stakingLim
     }
 
     db.run(
-      `INSERT INTO staking_series (user_id, name, venue, start_date, end_date, currency, currency_conversion_method)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [req.user.id, name.trim(), venue || null, startDate || null, endDate || null, cur, method]
+      `INSERT INTO staking_series (user_id, name, venue, start_date, end_date, currency, currency_conversion_method, bankroll_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, name.trim(), venue || null, startDate || null, endDate || null, cur, method, bankrollRef.set ? bankrollRef.value : null]
     );
 
     const idStmt = db.prepare('SELECT last_insert_rowid() as id');
@@ -6803,16 +6838,32 @@ app.put('/api/staking/series/:id', authenticateToken, requireRegistered, async (
     const { name, venue, startDate, endDate, currency, currencyConversionMethod, status } = req.body;
 
     // Verify ownership
-    const chk = db.prepare('SELECT id FROM staking_series WHERE id = ? AND user_id = ?');
+    const chk = db.prepare('SELECT id, status, currency FROM staking_series WHERE id = ? AND user_id = ?');
     chk.bind([id, req.user.id]);
-    const owns = chk.step();
+    const current = chk.step() ? chk.getAsObject() : null;
     chk.free();
-    if (!owns) return res.status(404).json({ error: 'Series not found' });
+    if (!current) return res.status(404).json({ error: 'Series not found' });
 
     const validStatuses = ['pre', 'active', 'settled'];
     if (status && !validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
+    // Settling is POST /settle, which computes and stores the sheet (docs/bankroll-merge.md §10);
+    // a bare status flip would leave a settled series with no rows. Reopening a settled series is
+    // refused while a payment is marked, and otherwise drops its stored rows.
+    if (status === 'settled' && current.status !== 'settled') {
+      return res.status(400).json({ error: 'Finalize the settlement to settle a series' });
+    }
+    if (current.status === 'settled' && currency && currency !== current.currency) {
+      return res.status(409).json({ error: 'A settled series keeps its currency: its settlement is in it' });
+    }
+    const bankrollRef = stakingSeriesBankroll(req.body.bankrollId, req.user.id);
+    if (bankrollRef.error) return res.status(bankrollRef.status).json({ error: bankrollRef.error });
+    if (current.status === 'settled' && status && status !== 'settled') {
+      const r = stakingSettlement.reopenSeries(db, current.id);
+      if (r.error) return res.status(r.status).json({ error: r.error });
+    }
+    if (bankrollRef.set) db.run('UPDATE staking_series SET bankroll_id = ? WHERE id = ? AND user_id = ?', [bankrollRef.value, id, req.user.id]);
 
     db.run(
       `UPDATE staking_series SET name = COALESCE(?, name), venue = COALESCE(?, venue),
@@ -7051,7 +7102,7 @@ app.post('/api/staking/series/:seriesId/agreements', authenticateToken, requireR
       backerId, backerType, percentage, markup,
       swapUsername, swapMyPct, swapTheirPct,
       crossbookUsername, crossbookMyPct, crossbookTheirPct,
-      budgetCap, makeupBalance, tieredRules,
+      budgetCap, makeupBalance, makeupOpening, tieredRules,
       buyinRangeMin, buyinRangeMax,
       scope, startDate, endDate, variantFilter, buyinMin, buyinMax
     } = req.body;
@@ -7143,15 +7194,31 @@ app.post('/api/staking/series/:seriesId/agreements', authenticateToken, requireR
       return res.status(400).json({ error: 'Budget-capped type requires a positive budget_cap amount' });
     }
 
+    // Makeup (docs/bankroll-merge.md §10 item 6): the balance this agreement opens with. Given
+    // (makeupOpening, or the older makeupBalance), it is that; otherwise the backer's makeup carries
+    // over from their last settled makeup series (its closing figure; 0 if none). Negative = the
+    // backer's loss being carried. makeup_balance is still written for older readers, never read.
+    let makeupOpeningValue = null;
+    if (backerType === 'makeup') {
+      const given = makeupOpening !== undefined && makeupOpening !== null && makeupOpening !== '' ? makeupOpening : makeupBalance;
+      if (given !== undefined && given !== null && given !== '') {
+        const n = Number(given);
+        if (!Number.isFinite(n)) return res.status(400).json({ error: 'Makeup opening must be a number' });
+        makeupOpeningValue = n;
+      } else {
+        makeupOpeningValue = stakingSettlement.lastMakeupClosing(db, req.user.id, Number(backerId));
+      }
+    }
+
     db.run(
       `INSERT INTO backer_agreements (
         series_id, backer_id, backer_type, percentage, markup,
         swap_user_id, swap_my_pct, swap_their_pct,
         crossbook_user_id, crossbook_my_pct, crossbook_their_pct,
-        budget_cap, makeup_balance, tiered_rules,
+        budget_cap, makeup_balance, makeup_opening, tiered_rules,
         buyin_range_min, buyin_range_max,
         scope, start_date, end_date, variant_filter, buyin_min, buyin_max
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         seriesId, backerId, backerType, pct, mkp,
         swapUserId, backerType === 'swap' ? (parseFloat(swapMyPct) || 0) : null,
@@ -7159,7 +7226,8 @@ app.post('/api/staking/series/:seriesId/agreements', authenticateToken, requireR
         crossbookUserId, backerType === 'crossbook' ? (parseFloat(crossbookMyPct) || 50) : null,
         backerType === 'crossbook' ? (parseFloat(crossbookTheirPct) || 50) : null,
         backerType === 'budget_capped' ? budgetCap : null,
-        backerType === 'makeup' ? (parseFloat(makeupBalance) || 0) : 0,
+        backerType === 'makeup' ? makeupOpeningValue : 0,
+        makeupOpeningValue,
         tieredRulesJson,
         buyinRangeMin || null, buyinRangeMax || null,
         scope || 'series', startDate || null, endDate || null,
@@ -7174,7 +7242,7 @@ app.post('/api/staking/series/:seriesId/agreements', authenticateToken, requireR
     idStmt.free();
 
     await saveDatabase();
-    res.status(201).json({ message: 'Agreement created', id });
+    res.status(201).json({ message: 'Agreement created', id, ...(backerType === 'makeup' ? { makeupOpening: makeupOpeningValue } : {}) });
   } catch (error) {
     console.error('Create agreement error:', error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -7188,7 +7256,7 @@ app.put('/api/staking/agreements/:id', authenticateToken, requireRegistered, asy
     const {
       percentage, markup, backerType,
       swapMyPct, swapTheirPct, crossbookMyPct, crossbookTheirPct,
-      budgetCap, makeupBalance, tieredRules,
+      budgetCap, makeupBalance, makeupOpening, tieredRules,
       buyinRangeMin, buyinRangeMax, isActive,
       scope, startDate, endDate, variantFilter, buyinMin, buyinMax
     } = req.body;
@@ -7221,7 +7289,16 @@ app.put('/api/staking/agreements/:id', authenticateToken, requireRegistered, asy
     if (crossbookMyPct !== undefined) { fields.push('crossbook_my_pct = ?'); params.push(parseFloat(crossbookMyPct)); }
     if (crossbookTheirPct !== undefined) { fields.push('crossbook_their_pct = ?'); params.push(parseFloat(crossbookTheirPct)); }
     if (budgetCap !== undefined) { fields.push('budget_cap = ?'); params.push(budgetCap); }
-    if (makeupBalance !== undefined) { fields.push('makeup_balance = ?'); params.push(parseFloat(makeupBalance)); }
+    // makeupOpening is the figure the settlement reads (§10 item 6); the older makeupBalance sets both.
+    if (makeupOpening !== undefined) {
+      const n = makeupOpening === null || makeupOpening === '' ? null : Number(makeupOpening);
+      if (n !== null && !Number.isFinite(n)) return res.status(400).json({ error: 'Makeup opening must be a number' });
+      fields.push('makeup_opening = ?'); params.push(n);
+    }
+    if (makeupBalance !== undefined) {
+      fields.push('makeup_balance = ?'); params.push(parseFloat(makeupBalance));
+      if (makeupOpening === undefined) { fields.push('makeup_opening = ?'); params.push(Number.isFinite(parseFloat(makeupBalance)) ? parseFloat(makeupBalance) : null); }
+    }
     if (tieredRules !== undefined) { fields.push('tiered_rules = ?'); params.push(JSON.stringify(tieredRules)); }
     if (buyinRangeMin !== undefined) { fields.push('buyin_range_min = ?'); params.push(buyinRangeMin); }
     if (buyinRangeMax !== undefined) { fields.push('buyin_range_max = ?'); params.push(buyinRangeMax); }
@@ -7489,316 +7566,12 @@ app.post('/api/staking/events/:agreementId/:tournamentId/proof', authenticateTok
 });
 
 // ── Settlement ───────────────────────────────────────────────
-
-// Auto-generate settlement sheet for a series
-app.get('/api/staking/series/:seriesId/settlement', authenticateToken, (req, res) => {
-  try {
-    const { seriesId } = req.params;
-
-    const sChk = db.prepare('SELECT * FROM staking_series WHERE id = ? AND user_id = ?');
-    sChk.bind([seriesId, req.user.id]);
-    let series = null;
-    if (sChk.step()) series = sChk.getAsObject();
-    sChk.free();
-    if (!series) return res.status(404).json({ error: 'Series not found' });
-
-    // Get all agreements for this series
-    const agStmt = db.prepare(
-      `SELECT ba.*, b.name AS backer_name, b.email AS backer_email
-       FROM backer_agreements ba
-       JOIN backers b ON ba.backer_id = b.id
-       WHERE ba.series_id = ?`
-    );
-    agStmt.bind([seriesId]);
-    const agreements = [];
-    while (agStmt.step()) agreements.push(agStmt.getAsObject());
-    agStmt.free();
-
-    // Get all event statuses for this series
-    const esStmt = db.prepare(
-      `SELECT bes.*, t.buyin, t.event_name, t.date
-       FROM backer_event_status bes
-       JOIN backer_agreements ba ON bes.agreement_id = ba.id
-       JOIN tournaments t ON bes.tournament_id = t.id
-       WHERE ba.series_id = ?`
-    );
-    esStmt.bind([seriesId]);
-    const allEventStatuses = [];
-    while (esStmt.step()) allEventStatuses.push(esStmt.getAsObject());
-    esStmt.free();
-
-    // Get event overrides
-    const ovStmt = db.prepare(
-      `SELECT beo.* FROM backer_event_overrides beo
-       JOIN backer_agreements ba ON beo.agreement_id = ba.id
-       WHERE ba.series_id = ?`
-    );
-    ovStmt.bind([seriesId]);
-    const overrides = [];
-    while (ovStmt.step()) overrides.push(ovStmt.getAsObject());
-    ovStmt.free();
-
-    // Build override lookup: agreementId:tournamentId -> override
-    const overrideMap = {};
-    for (const ov of overrides) {
-      overrideMap[`${ov.agreement_id}:${ov.tournament_id}`] = ov;
-    }
-
-    // Calculate settlement for each backer
-    const settlements = [];
-
-    for (const ag of agreements) {
-      // Get event statuses for this agreement
-      const agEvents = allEventStatuses.filter(es => es.agreement_id === ag.id);
-
-      let grossInvestment = 0;  // Total buy-in money the backer is responsible for
-      let grossReturn = 0;      // Total cash-out the backer gets back
-      let markupAmount = 0;     // Total markup charged
-      const eventDetails = [];
-
-      for (const ev of agEvents) {
-        if (ev.status === 'cancelled') continue; // Cancelled = refunded, no backer impact
-
-        // Get effective percentage and markup for this event
-        const ovKey = `${ag.id}:${ev.tournament_id}`;
-        const override = overrideMap[ovKey];
-
-        if (override && override.opt_out) continue; // Opted out
-
-        let effectivePct, effectiveMarkup;
-
-        if (ag.backer_type === 'swap') {
-          // Swap: backer's "investment" is their results on the swap partner's events
-          // Settlement handled differently — tracked as swap_my_pct of player's results
-          effectivePct = ag.swap_my_pct || 0;
-          effectiveMarkup = 1.0; // No markup on swaps
-        } else if (ag.backer_type === 'crossbook') {
-          effectivePct = ag.crossbook_my_pct || 50;
-          effectiveMarkup = 1.0;
-        } else if (ag.backer_type === 'tiered_markup' && ag.tiered_rules) {
-          effectivePct = override && override.override_percentage != null ? override.override_percentage : ag.percentage;
-          // Find matching tier for this buyin
-          const tiers = JSON.parse(ag.tiered_rules);
-          const buyinForEvent = ev.buyin_amount || ev.buyin || 0;
-          const matchedTier = tiers.find(t => buyinForEvent >= t.minBuyin && buyinForEvent <= t.maxBuyin);
-          effectiveMarkup = matchedTier ? matchedTier.markup : ag.markup;
-        } else if (ag.backer_type === 'profit_share_only') {
-          // No investment — only share of net profits
-          effectivePct = override && override.override_percentage != null ? override.override_percentage : ag.percentage;
-          effectiveMarkup = 1.0;
-        } else {
-          effectivePct = override && override.override_percentage != null ? override.override_percentage : ag.percentage;
-          effectiveMarkup = override && override.override_markup != null ? override.override_markup : ag.markup;
-        }
-
-        const pctFraction = effectivePct / 100;
-        const buyinCost = (ev.buyin_amount || ev.buyin || 0) * ev.bullets_used;
-        const cashResult = ev.cash_amount || 0;
-        const tipCost = ev.tip_amount || 0;
-        const rate = ev.currency_rate || 1.0;
-
-        // Convert to series currency if needed
-        const buyinConverted = buyinCost * rate;
-        const cashConverted = cashResult * rate;
-        const tipConverted = tipCost * rate;
-
-        if (ag.backer_type === 'profit_share_only') {
-          // No buy-in share — only get cut of net profits
-          const netResult = cashConverted - buyinConverted - tipConverted;
-          if (netResult > 0) {
-            grossReturn += netResult * pctFraction;
-          }
-          // GUESS: Profit share backers don't owe anything on losses
-        } else {
-          // Standard: backer's share of buy-in (with markup) and their share of return
-          const backerBuyinShare = buyinConverted * pctFraction * effectiveMarkup;
-          const backerReturnShare = (cashConverted - tipConverted) * pctFraction;
-          const backerMarkupPortion = buyinConverted * pctFraction * (effectiveMarkup - 1.0);
-
-          grossInvestment += backerBuyinShare;
-          grossReturn += backerReturnShare;
-          markupAmount += backerMarkupPortion;
-        }
-
-        eventDetails.push({
-          tournamentId: ev.tournament_id,
-          eventName: ev.event_name,
-          date: ev.date,
-          bullets: ev.bullets_used,
-          buyin: buyinConverted,
-          cash: cashConverted,
-          tip: tipConverted,
-          pct: effectivePct,
-          markup: effectiveMarkup,
-          status: ev.status
-        });
-      }
-
-      // Net P&L from backer's perspective: what they got back minus what they put in
-      let netPnl = grossReturn - grossInvestment;
-
-      // For makeup/running account: apply existing makeup balance
-      if (ag.backer_type === 'makeup') {
-        // If prior makeup balance was negative (backer was owed), add it to net
-        netPnl += (ag.makeup_balance || 0);
-      }
-
-      // Amount owed: positive = player owes backer, negative = backer owes player
-      // GUESS: From player's perspective, if netPnl > 0 the backer profited so player owes them the return minus investment already provided
-      const amountOwed = grossReturn - grossInvestment + markupAmount;
-      // Simplified: amountOwed positive means player needs to send money to backer (backer had net gains after markup)
-      // amountOwed negative means backer lost money (player keeps the difference — backer's risk)
-
-      // GUESS: For budget-capped, cap the total investment at the budget cap
-      let cappedInvestment = grossInvestment;
-      if (ag.backer_type === 'budget_capped' && ag.budget_cap) {
-        cappedInvestment = Math.min(grossInvestment, ag.budget_cap);
-      }
-
-      settlements.push({
-        agreementId: ag.id,
-        backerId: ag.backer_id,
-        backerName: ag.backer_name,
-        backerEmail: ag.backer_email,
-        backerType: ag.backer_type,
-        percentage: ag.percentage,
-        markup: ag.markup,
-        grossInvestment: ag.backer_type === 'budget_capped' ? cappedInvestment : grossInvestment,
-        grossReturn,
-        markupAmount,
-        netPnl,
-        amountOwed: ag.backer_type === 'budget_capped'
-          ? grossReturn - cappedInvestment + (cappedInvestment - (grossInvestment - markupAmount)) // GUESS: Refund unused budget
-          : amountOwed,
-        newMakeupBalance: ag.backer_type === 'makeup' ? netPnl : null,
-        events: eventDetails
-      });
-    }
-
-    res.json({
-      series,
-      settlements,
-      currency: series.currency,
-      status: series.status
-    });
-  } catch (error) {
-    console.error('Generate settlement error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// Finalize settlement — create settlement records and update makeup balances
-app.post('/api/staking/series/:seriesId/settle', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { seriesId } = req.params;
-    const { settlements } = req.body; // Array of { backerId, amountOwed, notes }
-
-    const sChk = db.prepare('SELECT id, status FROM staking_series WHERE id = ? AND user_id = ?');
-    sChk.bind([seriesId, req.user.id]);
-    let series = null;
-    if (sChk.step()) series = sChk.getAsObject();
-    sChk.free();
-    if (!series) return res.status(404).json({ error: 'Series not found' });
-
-    if (!settlements || !Array.isArray(settlements)) {
-      return res.status(400).json({ error: 'Settlements array is required' });
-    }
-
-    // GUESS: Auto-generate settlement data by running the same calculation as GET, then persist
-    // The client can pass overrides (e.g. adjusted amounts after negotiation)
-    // But the base data comes from the server-side calculation
-
-    // First, generate the settlement sheet
-    const calcRes = { json: null };
-    // Re-use the settlement calculation inline
-    const agStmt = db.prepare(
-      `SELECT ba.*, b.name AS backer_name FROM backer_agreements ba
-       JOIN backers b ON ba.backer_id = b.id
-       WHERE ba.series_id = ?`
-    );
-    agStmt.bind([seriesId]);
-    const agreements = [];
-    while (agStmt.step()) agreements.push(agStmt.getAsObject());
-    agStmt.free();
-
-    for (const settlementInput of settlements) {
-      const { backerId, grossInvestment, grossReturn, markupAmount, netPnl, amountOwed, notes } = settlementInput;
-
-      // Upsert settlement record
-      const existChk = db.prepare(
-        'SELECT id FROM backer_settlements WHERE series_id = ? AND backer_id = ?'
-      );
-      existChk.bind([seriesId, backerId]);
-      const hasExisting = existChk.step();
-      let existingId = null;
-      if (hasExisting) existingId = existChk.getAsObject().id;
-      existChk.free();
-
-      if (existingId) {
-        db.run(
-          `UPDATE backer_settlements SET gross_investment = ?, gross_return = ?,
-           markup_amount = ?, net_pnl = ?, amount_owed = ?, notes = ? WHERE id = ?`,
-          [grossInvestment || 0, grossReturn || 0, markupAmount || 0,
-           netPnl || 0, amountOwed || 0, notes || null, existingId]
-        );
-      } else {
-        db.run(
-          `INSERT INTO backer_settlements (series_id, backer_id, gross_investment, gross_return, markup_amount, net_pnl, amount_owed, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [seriesId, backerId, grossInvestment || 0, grossReturn || 0,
-           markupAmount || 0, netPnl || 0, amountOwed || 0, notes || null]
-        );
-      }
-
-      // Update makeup balance for makeup-type agreements
-      const makeupAg = agreements.find(a => a.backer_id === backerId && a.backer_type === 'makeup');
-      if (makeupAg) {
-        db.run(
-          'UPDATE backer_agreements SET makeup_balance = ? WHERE id = ?',
-          [netPnl || 0, makeupAg.id]
-        );
-      }
-    }
-
-    // Mark series as settled
-    db.run("UPDATE staking_series SET status = 'settled' WHERE id = ?", [seriesId]);
-
-    await saveDatabase();
-    res.json({ message: 'Settlement finalized', settledCount: settlements.length });
-  } catch (error) {
-    console.error('Finalize settlement error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// Mark settlement as paid
-app.put('/api/staking/settlements/:id/paid', authenticateToken, requireRegistered, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { isPaid } = req.body;
-
-    // Verify ownership through series
-    const chk = db.prepare(
-      `SELECT bs.id FROM backer_settlements bs
-       JOIN staking_series ss ON bs.series_id = ss.id
-       WHERE bs.id = ? AND ss.user_id = ?`
-    );
-    chk.bind([id, req.user.id]);
-    const owns = chk.step();
-    chk.free();
-    if (!owns) return res.status(404).json({ error: 'Settlement not found' });
-
-    db.run(
-      `UPDATE backer_settlements SET is_paid = ?, paid_at = ${isPaid !== false ? 'CURRENT_TIMESTAMP' : 'NULL'} WHERE id = ?`,
-      [isPaid !== false ? 1 : 0, id]
-    );
-
-    await saveDatabase();
-    res.json({ message: isPaid !== false ? 'Marked as paid' : 'Marked as unpaid' });
-  } catch (error) {
-    console.error('Mark paid error:', error);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
+// The sheet, preview, settle and paid -> ledger (docs/bankroll-merge.md §10): routes in
+// lib/staking/settlement-routes.js, the arithmetic and the writes in lib/staking/settlement.js.
+// One calculator for all three; settle recomputes on the server and stores one row per agreement;
+// a settled series is read back from its stored rows, never recomputed.
+require('./lib/staking/settlement-routes').mountRoutes(app, {
+  getDb: () => db, saveDatabase, authenticateToken, requireRegistered, getRules: () => STAKING_RULES.rules,
 });
 
 // ── Backer Tokens (private shareable links) ──────────────────
@@ -7917,11 +7690,13 @@ app.get('/api/backer/:token', (req, res) => {
     while (ovStmt.step()) overridesArr.push(ovStmt.getAsObject());
     ovStmt.free();
 
-    // Get settlement if exists
+    // Get settlement if exists: this agreement's row (one per agreement since the bankroll merge's
+    // Phase 3), else a row the old code wrote per backer before agreements were told apart.
     const settStmt = db.prepare(
-      'SELECT * FROM backer_settlements WHERE series_id = ? AND backer_id = ?'
+      `SELECT * FROM backer_settlements WHERE series_id = ? AND (agreement_id = ? OR (agreement_id IS NULL AND backer_id = ?))
+       ORDER BY (agreement_id IS NULL), id LIMIT 1`
     );
-    settStmt.bind([info.series_id, info.backer_id]);
+    settStmt.bind([info.series_id, info.agreement_id, info.backer_id]);
     let settlement = null;
     if (settStmt.step()) settlement = settStmt.getAsObject();
     settStmt.free();
@@ -14099,6 +13874,9 @@ initDatabase().then(() => {
     } catch (err) {
       console.error('[backers] delivery setup error:', err.message);
     }
+    // Staking settlement rules (lib/staking/settlement.js DEFAULT_RULES, docs/bankroll-merge.md §10).
+    console.log(`[staking] settlement rules: ${STAKING_RULES.custom ? 'custom ' + JSON.stringify(STAKING_RULES.rules) : 'the defaults'}` +
+      (STAKING_RULES.errors.length ? ` (STAKING_SETTLEMENT_RULES ignored in part: ${STAKING_RULES.errors.join('; ')})` : ''));
     // Backer-roster seam: pull the current roster from the dashboard at boot +
     // hourly (:35, offset from the mtt-emit :15), self-disables w/o token.
     try {
