@@ -4658,8 +4658,8 @@ export default function HandReplayerView({ token, heroName, cardSplay, initialHa
   useEffect(() => {
     if (initialHand) {
       setCurrentHand(initialHand);
-      setHandIsShared(true);
       setMode('replay');
+      setHandIsShared(true);
       setTitle('');
       setNotes('');
       if (onClearInitialHand) onClearInitialHand();
