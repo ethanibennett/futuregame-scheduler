@@ -49,7 +49,8 @@
 // session's detail, CSV import), cash sessions, expenses and
 // trips, Settings (without and with a share link, and its delete confirmation), the user menu,
 // notifications, the live-update panel's tabs, Admin, New Events, Staking (no route in the UI:
-// reached through a component's onNavigate prop) and its Summary / Backers / Series / settings, a
+// reached through a component's onNavigate prop) and its Summary / Backers / Series / settings and a
+// series' Settlement, open and settled (series named "Guard Open" / "Guard Settled"), a
 // buddy chip's swap sheet, the venue map a Schedule strip and an Up Next banner open, the public
 // shared-schedule page (and a card open on it), the backer
 // page (a full history, no sessions, one session; CHECK_BACKER_TOKENS), first-run setup
@@ -2323,6 +2324,17 @@ function finalize(c) {
   step('staking', () => goView('staking'), 1);
   for (const [name, sel] of [['summary', 'button:has-text("Summary")'], ['backers', 'button:has-text("Backers")'], ['series', 'button:has-text("+ Series")'], ['settings', 'button:has-text("⚙")']]) {
     step('staking-' + name, async () => { await goView('staking'); await tap('.tab-panel[data-tab="staking"] ' + sel, 1200); }, 1);
+  }
+  // A series' Settlement (docs/bankroll-merge.md §10): an open sheet with its inputs (prepaid,
+  // adjustment, the other player's result) and Finalize, and a settled one with its Paid toggles.
+  // Found by name, so the server needs series called "Guard Open" and "Guard Settled" (a scratch
+  // seed); without them each is reported as not reached.
+  for (const [name, title] of [['settlement-open', 'Guard Open'], ['settlement-settled', 'Guard Settled']]) {
+    step('staking-' + name, async () => {
+      await goView('staking');
+      await tap(`.tab-panel[data-tab="staking"] .staking-series-card:has-text("${title}")`, 1200);
+      await tap('.tab-panel[data-tab="staking"] .group-segment-btn:has-text("Settlement")', 1800);
+    }, 3);
   }
   // First-run setup, stage by stage (re-opened the way the location menu's "Run setup again"
   // does; docs/onboarding.md): step 1 as it opens, with "Use my location" refused (no permission:
