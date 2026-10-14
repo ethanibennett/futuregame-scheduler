@@ -24,8 +24,7 @@ then here.
 
 ### BEFORE
 
-**Register:** Full Name · Username · Email · Password ("Min. 6 characters"). Then "Account
-created! Please sign in." and a second sign-in.
+**Register:** Full Name · Username · Email · Password ("Min. 6 characters"). Then "Account created! Please sign in." and a second sign-in.
 
 **Legacy accounts with no name, at password login:**
 - "What's your name?" / "Your connections and group members will see this."
@@ -59,8 +58,8 @@ Last button: "Show my schedule" (it stays on Home).
 **Register:** the same four fields.
 - Password placeholder: "At least 8 characters"; `minLength` 8. (Sign in keeps its 6, so it never
   refuses a password the server accepts.)
-- Create Account signs you straight in (D1). An older server that returns no session: "Account
-  created. Sign in to continue."
+- Create Account signs you straight in (D1). An older server that returns no session:
+  "Account created. Sign in to continue."
 
 **Legacy name prompt:**
 - "What's your name?" / "Buddies and groups see this instead of your username."
@@ -73,8 +72,7 @@ Last button: "Show my schedule" (it stays on Home).
 - Above the footer on every step: a live count line.
 
 **Step 1 — "Where do you play live?"**
-- Lead: "We'll show the events near you. Change it anytime from the location button on the
-  Schedule."
+- Lead: "We'll show the events near you. Change it anytime from the location button on the Schedule."
 - **Use my location tile** (pin icon):
   - "Use my location" / "Events within 100 miles of you" (the distance chosen below, 100 by default)
   - while locating: "Finding you…"
@@ -106,14 +104,14 @@ Last button: "Show my schedule" (it stays on Home).
     than picked
   - select: "Not set" + the US states
   - help: "Online sites are licensed state by state."
-- With Yes and a state set: checkbox "Only sites open in Pennsylvania", caption "Sites that
-  publish no state list always show."
+- With Yes and a state set: checkbox "Only sites open in Pennsylvania", caption
+  "Sites that publish no state list always show."
 - With Yes and a non-US location: caption "Site availability is checked for US states only."
 
 **Step 3 — "What do you play?"**
 - Lead: "Pick any that apply. Leave a row empty to see everything."
-- Games: caption "GAMES"; chips NLH · PLO · Mixed; caption "Mixed is every other game: Omaha
-  Hi-Lo, Stud, Draw, HORSE and more." When the filter sheet holds other variants (Razz, O8, …)
+- Games: caption "GAMES"; chips NLH · PLO · Mixed; caption
+  "Mixed is every other game: Omaha Hi-Lo, Stud, Draw, HORSE and more." When the filter sheet holds other variants (Razz, O8, …)
   and the row is untouched: "+2 more set in Filters".
 - Buy-ins: caption "BUY-INS"; chips Under $500 · $500–1.5K · $1.5K–5K · $5K+
 
