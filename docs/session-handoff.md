@@ -269,7 +269,7 @@ range); the in-view "Live Cash Games" h2 was removed.
 
 ## Artifacts
 
-Four published pages carry work that does not live in the repo. All are private
+Published pages carry work that does not live in the repo. All are private
 to the account and readable with WebFetch.
 
 | Page | What it is | URL |
@@ -279,6 +279,8 @@ to the account and readable with WebFetch.
 | Element catalog | Every element type (2,034) with its crop, px and g/r sizes, paint and type, plus the 94 captured screens; built from `D:\projects\element-catalog-2026-10-08.zip` | https://claude.ai/artifact/74MoH91LgUPSokba1A5Lfg |
 | Master to-do | Cross-repo state for all five suite projects, assembled from PRs, commits and checklists | https://claude.ai/code/artifact/5d07cb8c-73fc-4c56-a06f-61473455be46 |
 | Graphics backlog | 100 measured graphic upgrades across the whole app, each naming the file and quoting the current value | https://claude.ai/code/artifact/f5f543f9-33b7-44e3-94d6-c9e7779eefcd |
+| Launch plan | Launch on 5 Jan 2027 at the BWPO, free until a 1 Mar paywall, $10,000 in three gates; channels, the twelve ads, policy wording, ASO, tracking, next 10 actions and 7 open questions (2026-10-13) | https://claude.ai/artifact/5k5qVK6Y8cPmzdMXjJEDgW |
+| Variant picker | Ten redesigns of the replayer entry's variant picker (recommended 8+10, fallback 1) (2026-10-13) | https://claude.ai/artifact/Jk96jEaP58rBAsf4eak9ka |
 
 To revise one, publish the **same file path** again, or pass its URL as `url`.
 Publishing without the URL creates a second artifact instead of updating.
