@@ -246,10 +246,20 @@ app's type and grid. No route of its own; three existing reads, joined on the cl
 | part | what |
 |---|---|
 | Bar (4r) | All · Tournaments · Cash, one-select chips (6g, 9g, 6g), remembered per device (`bankrollSessionsType` in localStorage), and the count (11g, seated). A one-line note under it: expenses, income and deposits are not sessions. |
-| Year pill | 7g × 3r on 14g, label centred; a new pill wherever the year changes. |
+| Year pill | 7g × 3r on 14g, label centred, `--surface2` with the rows' hairline edge (the fill alone is 1.03:1 on the sheet in cloudy); a new pill wherever the year changes. |
 | Row (7r card, 1r apart) | a type icon (3r: a $ coin in `--series-cash`, a stopwatch in `--series-tourn`), the title (cash: stakes + game, "$2/5 NLH"; tournament: compact buy-in + event name, "$1.5k Limit Badugi", a buy-in the name already leads with not repeated) over the room (a cashed tournament's finish first, "12th / 845 ·"), and the result (display face, green / red, `+` before a win, compact from 10k: "$2,410", "+$12.3k") over the date ("Sat, May 30, 2026", from the date's own parts, no time zone). Title, room and date truncate with their descenders' room. |
 | Show more | past 150 rows (`CHUNK`), 150 at a time; rows are memoised. |
 | Detail (tap a row, in the sheet, read-only) | ‹ Sessions and Edit in Results; the title (wrapping, 4r lines), what and where; the dashboard's hero (result / net in the dashboard's currency, and ROI or per hour); then every field held. Tournament: date, start, series (when the venue is not the room), event #, game, buy-in, bullets, cost, cashed, finish / field, profit, ROI, the figure in the dashboard's currency when the event was in another, bankroll, notes. Cash: date, played (start – end), length, game, stakes, buy-in (with rebuys), cash-out, tips, expenses, net, per hour, high / low and the stack graph when it has stack updates (the Cash view's swing graph from `utils/cash-sessions.js`), tags, bankroll, notes. ROI is not coloured (a percentage, not money). |
+
+**Focus and Escape.** A row opened from the keyboard (Enter / Space) puts the focus on ‹ Sessions,
+so the next Tab reaches Edit in Results; a tapped row puts it on the detail itself (tabindex -1, no
+ring), so it never falls to the body and out of the dialog. Escape in the detail goes back to the
+list and stops there (the dashboard's window listener would otherwise close the whole sheet); Back
+or Escape from the keyboard returns the focus to the row that was opened, after the list's scroll
+is restored, a tapped Back to the list itself. A keyboard Show more that adds the last rows moves
+the focus to the first of them. A bankroll switch clears the list to Loading… until the new
+bankroll's rows arrive: the rows are kept with the bankroll and currency they were built for and
+never shown under another (they were, for the length of the read, in the new currency's symbol).
 
 Ordering: date, then start time (a tournament's scheduled start, a cash session's local start),
 then id, newest first. A cash session's day is its `session_date`, the player's local day it

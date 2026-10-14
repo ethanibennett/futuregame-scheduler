@@ -44,7 +44,10 @@
   width: calc(var(--gu) * 7); height: calc(var(--subrow) * 3);
   margin-left: calc(var(--gu) * 14);
   border-radius: var(--radius);
+  /* surface2 alone all but vanishes on the sheet in cloudy (1.03:1) and light (1.09:1): the chips'
+     and rows' hairline edge makes it read as the pill it is in every theme. */
   background: var(--surface2);
+  box-shadow: inset 0 0 0 var(--bw-hair) var(--border);
   font-family: var(--font-condensed); font-weight: var(--fw-bold); font-size: var(--fs-xs);
   line-height: 1;
   color: var(--text);
@@ -94,6 +97,9 @@
 .bs-more.bk-btn { width: calc(var(--gu) * 35); margin-top: calc(var(--subrow) * 2); }
 
 /* ── Detail ── */
+/* The detail and the list are focusable (tabindex -1) only to hold the focus after a tap (the
+   detail so Escape is heard there); neither is a control, so neither draws a ring. */
+.bs-detail:focus, .bs-detail:focus-visible, .bs-listview:focus, .bs-listview:focus-visible { outline: none; }
 .bs-dhead {
   display: flex; justify-content: space-between; align-items: flex-start;
   height: calc(var(--subrow) * 5);

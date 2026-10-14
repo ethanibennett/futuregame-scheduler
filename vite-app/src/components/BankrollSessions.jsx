@@ -71,11 +71,10 @@ const WatchIcon = () => (
 const Row = memo(function Row({ row, currency, onOpen }) {
   const result = compactMoney(row.result, cfgOf(currency), { signed: true });
   const room = row.room || (row.type === 'cash' ? 'Room not recorded' : '');
-  const open = () => onOpen(row.key);
   return (
     <li className="bs-li">
-      <div className={'bs-row is-' + row.type} role="button" tabIndex={0} onClick={open}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}
+      <div className={'bs-row is-' + row.type} data-key={row.key} role="button" tabIndex={0} onClick={() => onOpen(row.key, false)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(row.key, true); } }}
         aria-label={`${row.title}${row.room ? ', ' + row.room : ''}${row.finish ? ', ' + row.finish : ''}, ${row.dateLabel}, ${result.replace(MINUS, '-')}`}>
         <span className="bs-icocell">{row.type === 'cash' ? <CoinIcon /> : <WatchIcon />}</span>
         <span className="bs-main">
@@ -129,7 +128,7 @@ function SwingChart({ session, stacks }) {
   );
 }
 
-function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
+function Detail({ row, currency, bankrollName, stacks, onBack, onEdit, rootRef, backRef }) {
   const isCash = row.type === 'cash';
   const t = isCash ? null : tournamentFigures(row);
   const c = isCash ? cashFigures(row) : null;
@@ -143,9 +142,14 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
     : { label: 'ROI', value: pct(t.roi), n: 0, note: t.place ? finishLabel(t.place, t.field) : t.cashed ? 'Cashed' : 'No cash' };
   const sw = isCash && stacks.length ? swingSummary(stacks) : null;
   return (
-    <div className="bs-detail" aria-label={row.title}>
+    // Focusable (-1) so the focus stays in it (a click anywhere in it lands here), where Escape is
+    // heard: Escape goes back to the list and stops there, before the dashboard's window listener
+    // would close the whole sheet.
+    <div ref={rootRef} className="bs-detail" role="group" aria-label={row.title} tabIndex={-1}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onBack(true); } }}>
       <div className="bs-dhead">
-        <button type="button" className="bk-btn bs-w9" onClick={onBack}><span>‹ Sessions</span></button>
+        {/* A click from Enter / Space carries no click count (detail 0). */}
+        <button ref={backRef} type="button" className="bk-btn bs-w9" onClick={(e) => onBack(e.detail === 0)} aria-label="Back to Sessions"><span>‹ Sessions</span></button>
         {onEdit && <button type="button" className="bk-btn bk-btn--brand bs-w12" onClick={onEdit}><span>Edit in Results</span></button>}
       </div>
 
@@ -231,8 +235,12 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit }) {
   );
 }
 
+const NONE = [];
+
 export default function BankrollSessions({ bk, bankrollKey, currency, onClose }) {
-  const [state, setState] = useState({ status: 'loading', rows: [] });
+  // The rows with the bankroll and currency they were built for: on a switch the old rows are not
+  // shown (not even for the frame before the new read starts), so none is labelled in the new currency.
+  const [state, setState] = useState({ status: 'loading', rows: NONE, key: null, currency: null });
   const [type, setTypeState] = useState(loadType);
   const [limit, setLimit] = useState(CHUNK);
   const [openKey, setOpenKey] = useState(null);
@@ -241,7 +249,12 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
   // home (HomeNumbers opens this sheet too) closing it would leave the player on the home.
   const [onResults] = useState(resultsOnScreen);
   const sectionRef = useRef(null);
+  const detailRef = useRef(null);        // the detail, and its Back button: one of them takes the focus when it opens
+  const backRef = useRef(null);
+  const listRef = useRef(null);          // the list, which takes the focus back from a tapped Back
   const listScroll = useRef(null);       // the sheet's scroll position when a row was opened
+  const lastOpen = useRef(null);         // the row opened (and whether from the keyboard), focused again on Back
+  const moreFrom = useRef(null);         // a keyboard "Show more": the index of the first row it adds
   const setType = (v) => { setTypeState(v); saveType(v); setLimit(CHUNK); };
 
   const get = useCallback(async (path) => {
@@ -252,8 +265,11 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
 
   useEffect(() => {
     let live = true;
-    setState((s) => ({ status: 'loading', rows: s.rows }));
+    const built = { key: bankrollKey, currency };
+    setState({ status: 'loading', rows: NONE, ...built });
     setOpenKey(null);
+    listScroll.current = null;
+    lastOpen.current = null;
     setLimit(CHUNK);
     const q = bankrollQuery(bankrollKey);
     const sep = q ? '&' : '?';
@@ -263,19 +279,22 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
       bk.token ? get(`/cash-sessions${q}`) : Promise.reject(new Error('no token')),
     ]).then(([facts, tracking, cash]) => {
       if (!live) return;
-      if (facts.status !== 'fulfilled') { setState({ status: 'error', rows: [] }); return; }
+      if (facts.status !== 'fulfilled') { setState({ status: 'error', rows: NONE, ...built }); return; }
       const rows = buildSessions(facts.value.facts || [],
         tracking.status === 'fulfilled' && Array.isArray(tracking.value) ? tracking.value : [],
         cash.status === 'fulfilled' ? cash.value.sessions || [] : [],
         { currency, config: CURRENCY_CONFIG, nativeOf: nativeCurrency });
-      setState({ status: 'ready', rows, partial: tracking.status !== 'fulfilled' || cash.status !== 'fulfilled' });
+      setState({ status: 'ready', rows, partial: tracking.status !== 'fulfilled' || cash.status !== 'fulfilled', ...built });
     });
     return () => { live = false; };
   }, [bankrollKey, currency, get]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const shown = useMemo(() => filterSessions(state.rows, type), [state.rows, type]);
+  const fresh = state.key === bankrollKey && state.currency === currency;
+  const status = fresh ? state.status : 'loading';
+  const allRows = fresh ? state.rows : NONE;
+  const shown = useMemo(() => filterSessions(allRows, type), [allRows, type]);
   const years = useMemo(() => groupByYear(shown.slice(0, limit)), [shown, limit]);
-  const row = openKey ? state.rows.find((r) => r.key === openKey) : null;
+  const row = openKey ? allRows.find((r) => r.key === openKey) : null;
 
   // A cash session's stack updates, read when its detail opens.
   useEffect(() => {
@@ -287,24 +306,60 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
 
   // The sheet's scroller: the detail opens at the top of this tab, and Back returns the list to where it was.
   const scroller = () => (sectionRef.current ? sectionRef.current.closest('.an-body') : null);
-  const onOpen = useCallback((key) => {
+  // Focus follows the detail, after the scroll is set and without scrolling (the hidden list drops
+  // the focus to the body, out of the dialog). Opened from the keyboard, the focus goes to Back (a
+  // visible ring, the next Tab reaching Edit in Results); from a tap, to the detail itself, which
+  // draws no ring but hears Escape. Back or Escape from the keyboard returns it to the row that was
+  // opened; a tap on Back to the list itself (no ring on a row the player did not reach by key, and
+  // the focus still inside the dialog). Never taken from elsewhere: a bankroll chip keeps it when a
+  // switch closes the detail.
+  const rowEl = (key) => (sectionRef.current ? [...sectionRef.current.querySelectorAll('.bs-row')].find((el) => el.dataset.key === key) : null);
+  const focusLost = () => {
+    const a = document.activeElement;
+    return !a || a === document.body || !!(sectionRef.current && sectionRef.current.contains(a));
+  };
+  const onOpen = useCallback((key, byKey) => {
     const s = scroller();
     listScroll.current = s ? s.scrollTop : null;
+    lastOpen.current = { key, byKey, backByKey: false };
     setOpenKey(key);
   }, []);
+  const onBack = (byKey) => {
+    if (lastOpen.current) lastOpen.current.backByKey = byKey;
+    setOpenKey(null);
+  };
   useLayoutEffect(() => {
     const s = scroller();
     if (!s || !sectionRef.current) return;
+    const last = lastOpen.current;
     if (openKey) {
       // The section's own top (its heading), less the body's top padding: the same place the tab opens at.
       const pad = parseFloat(getComputedStyle(s).paddingTop) || 0;
       const top = sectionRef.current.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop - pad;
       if (s.scrollTop > top) s.scrollTop = top;
-    } else if (listScroll.current != null) {
-      s.scrollTop = listScroll.current;
-      listScroll.current = null;
+      const to = last && last.byKey ? backRef.current : detailRef.current;
+      if (to) to.focus({ preventScroll: true });
+    } else {
+      if (listScroll.current != null) { s.scrollTop = listScroll.current; listScroll.current = null; }
+      lastOpen.current = null;
+      const el = !last || !focusLost() ? null : last.backByKey ? rowEl(last.key) : listRef.current;
+      if (el) el.focus({ preventScroll: true });
     }
-  }, [openKey]);
+  }, [openKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Show more" from the keyboard: when the button goes (nothing left), the focus goes on to the
+  // first row it added; while rows remain the button stays, and keeps it.
+  const showMore = (e) => {
+    if (e.detail === 0 || document.activeElement === e.currentTarget) moreFrom.current = limit;
+    setLimit((n) => n + CHUNK);
+  };
+  useLayoutEffect(() => {
+    const i = moreFrom.current;
+    moreFrom.current = null;
+    if (i == null || !sectionRef.current || sectionRef.current.querySelector('.bs-more')) return;
+    const el = sectionRef.current.querySelectorAll('.bs-row')[i];
+    if (el) el.focus({ preventScroll: true });
+  }, [limit]);
 
   const names = useMemo(() => new Map((bk.bankrolls || []).map((b) => [String(b.id), b.name])), [bk.bankrolls]);
   const bankrollName = row ? names.get(String(row.fact.bankroll)) || (String(row.fact.bankroll) === 'main' ? 'Main' : '—') : '';
@@ -321,9 +376,10 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
       <h3 className="an-cell an-sec" id="bs-title">Sessions</h3>
       {row && (
         <Detail row={row} currency={currency} bankrollName={bankrollName}
-          stacks={stacks.key === row.key ? stacks.list : []} onBack={() => setOpenKey(null)} onEdit={onResults ? edit : null} />
+          stacks={stacks.key === row.key ? stacks.list : []} onBack={onBack} onEdit={onResults ? edit : null}
+          rootRef={detailRef} backRef={backRef} />
       )}
-      <div className="bs-listview" hidden={!!row}>
+      <div ref={listRef} className="bs-listview" hidden={!!row} tabIndex={-1}>
         <div className="bs-bar">
           <div className="bs-chips" role="radiogroup" aria-label="Show">
             {SESSION_TYPES.map(([k, label]) => (
@@ -333,19 +389,19 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
               </button>
             ))}
           </div>
-          <span className="an-cell an-note bd-note-4 an-num an-clip bs-count">{countLabel(shown.length, type)}</span>
+          <span className="an-cell an-note bd-note-4 an-num an-clip bs-count">{status === 'ready' ? countLabel(shown.length, type) : ''}</span>
         </div>
         <p className="an-p bs-note">Not listed: expenses, income and deposits (they are not sessions).</p>
 
-        {state.status === 'loading' && !state.rows.length && <p className="an-p">Loading…</p>}
-        {state.status === 'error' && <p className="an-p">The sessions could not load. Close the dashboard and try again.</p>}
-        {state.status === 'ready' && shown.length === 0 && (
+        {status === 'loading' && <p className="an-p">Loading…</p>}
+        {status === 'error' && <p className="an-p">The sessions could not load. Close the dashboard and try again.</p>}
+        {status === 'ready' && shown.length === 0 && (
           <p className="an-p">
             {type === 'cash' ? 'No finished cash sessions' : type === 'tournament' ? 'No tournament results' : 'No tournament results or cash sessions'} in
             {String(bankrollKey) === 'all' ? ' any bankroll' : ' this bankroll'} yet.
           </p>
         )}
-        {state.partial && state.rows.length > 0 && (
+        {fresh && state.partial && allRows.length > 0 && (
           <p className="an-p">Some details (finishes, notes, rebuys) could not load; the results are complete.</p>
         )}
 
@@ -358,7 +414,7 @@ export default function BankrollSessions({ bk, bankrollKey, currency, onClose })
           </section>
         ))}
         {rest > 0 && (
-          <button type="button" className="bk-btn bs-more" onClick={() => setLimit((n) => n + CHUNK)}>
+          <button type="button" className="bk-btn bs-more" onClick={showMore}>
             <span>Show {Math.min(CHUNK, rest).toLocaleString('en-US')} more · {rest.toLocaleString('en-US')} left</span>
           </button>
         )}
