@@ -442,6 +442,27 @@ add('27-stud-unknown-hole', {
   result: W(1),
 });
 
+// 27b. Stud as the replayer's own entry form saves it (observed 2026-10-14 on a
+//      scratch server, docs/hand-history-io.md section 7): heads-up labels
+//      BTN/SB and BB rather than Seat k; the opponent's showdown picks 8s then 7d
+//      PREPENDED to 3rd street newest first ("7d8sQs", the door last); his 7th
+//      down card stored on 7th street, which the form's deal step requires.
+//      Written as shows [8s 7d Qs Js Ts 9s 2s].
+add('27b-stud-entry-form', {
+  gameType: 'Stud Hi', gameMode: 'mtt',
+  blinds: { sb: 100, bb: 200, ante: 25, bigBet: 400, bringIn: 50, betCap: 5, uncapHeadsUp: true },
+  players: [P('ham5', 'BTN/SB', 12000), P('Jason Blodgett', 'BB', 12000)],
+  heroIdx: 0,
+  streets: [
+    St('3rd Street', '2c3dKh', ['7d8sQs'], '', [A(1, 'bring-in', 50), A(0, 'call', 50)]),
+    St('4th Street', '4h', ['Js'], '', [A(0, 'check'), A(1, 'check')]),
+    St('5th Street', '5h', ['Ts'], '', [A(0, 'check'), A(1, 'check')]),
+    St('6th Street', '6h', ['9s'], '', [A(0, 'check'), A(1, 'check')]),
+    St('7th Street', 'Ah', ['2s'], '', [A(0, 'check'), A(1, 'check')]),
+  ],
+  result: { winners: [{ playerIdx: 1, split: false }] },
+});
+
 // 28. 2-7 Triple Draw: the hero's discards and draws known, the opponent's
 //     counts only; the opponent's final hand shown.
 add('28-27td', {
