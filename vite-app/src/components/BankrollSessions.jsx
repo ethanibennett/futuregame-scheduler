@@ -70,7 +70,9 @@ const WatchIcon = () => (
 
 const Row = memo(function Row({ row, currency, onOpen }) {
   const result = compactMoney(row.result, cfgOf(currency), { signed: true });
-  const room = row.room || (row.type === 'cash' ? 'Room not recorded' : '');
+  // No room recorded (a cash session left blank, a private or imported result): said so, unless a
+  // tournament's finish fills the line.
+  const room = row.room || (row.finish ? '' : 'Room not recorded');
   return (
     <li className="bs-li">
       <div className={'bs-row is-' + row.type} data-key={row.key} role="button" tabIndex={0} onClick={() => onOpen(row.key, false)}
@@ -79,7 +81,7 @@ const Row = memo(function Row({ row, currency, onOpen }) {
         <span className="bs-icocell">{row.type === 'cash' ? <CoinIcon /> : <WatchIcon />}</span>
         <span className="bs-main">
           <span className="an-cell bs-title an-clip">{row.title}</span>
-          <span className={'an-cell an-note an-clip' + (row.room ? '' : ' is-none')}>
+          <span className={'an-cell an-note an-clip' + (row.room || row.finish ? '' : ' is-none')}>
             {row.finish && <span className="bs-finish">{row.finish}</span>}{row.finish && room ? ' · ' : ''}{room}
           </span>
         </span>
@@ -155,7 +157,7 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit, rootRef, 
 
       <h4 className="bs-dtitle">{row.title}</h4>
       <p className="an-p bs-dsub">
-        {[isCash ? 'Cash game' : 'Tournament', row.room || (isCash ? 'Room not recorded' : '')].filter(Boolean).join(' · ')}
+        {[isCash ? 'Cash game' : 'Tournament', row.room || 'Room not recorded'].join(' · ')}
       </p>
 
       <div className="bd-hero bs-hero">
@@ -198,7 +200,7 @@ function Detail({ row, currency, bankrollName, stacks, onBack, onEdit, rootRef, 
           ) : (
             <>
               {t.time && <KV label="Start" value={t.time} />}
-              {row.entry && row.entry.venue && row.entry.venue !== row.room && <KV label="Series" value={row.entry.venue} />}
+              {row.series && <KV label="Series" value={row.series} />}
               {t.eventNumber && <KV label="Event" value={`#${t.eventNumber}`} />}
               <KV label="Game" value={t.game || '—'} />
               <KV label="Buy-in" value={money(t.buyin, cur)} />

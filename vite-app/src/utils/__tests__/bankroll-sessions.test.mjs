@@ -85,6 +85,25 @@ test('titles: compact buy-in + event name; stakes + game; fallbacks', () => {
   assert.equal(tournamentTitle('Limit Badugi', 1500, CONFIG.USD), '$1.5k Limit Badugi');
   assert.equal(tournamentTitle('NLH Satellite - $10k O8', 1100, CONFIG.USD), '$1.1k NLH Satellite - $10k O8');
   assert.equal(tournamentTitle('$1,500 NLH Monster Stack', 1500, CONFIG.USD), '$1.5k NLH Monster Stack');
+  // A leading buy-in goes, but a name that starts with K / k / M / m after it keeps its letter.
+  assert.equal(tournamentTitle('$1,500 Mystery Bounty', 1500, CONFIG.USD), '$1.5k Mystery Bounty');
+  assert.equal(tournamentTitle('$10,000 Main Event', 10000, CONFIG.USD), '$10k Main Event');
+  assert.equal(tournamentTitle('$400 Knockout Turbo', 400, CONFIG.USD), '$400 Knockout Turbo');
+  assert.equal(tournamentTitle('€1,100 Monster Stack', 1100, CONFIG.EUR), '€1.1k Monster Stack');
+  assert.equal(tournamentTitle('$1,100 - Monster Stack', 1100, CONFIG.USD), '$1.1k Monster Stack');
+  assert.equal(tournamentTitle('$250 mini Main', 250, CONFIG.USD), '$250 mini Main');
+  assert.equal(tournamentTitle('$1.5k Mixed Games', 1500, CONFIG.USD), '$1.5k Mixed Games');
+  assert.equal(tournamentTitle('$10K-Main Event', 10000, CONFIG.USD), '$10k Main Event');
+  assert.equal(tournamentTitle('€1.100 Monster Stack', 1100, CONFIG.EUR), '€1.1k Monster Stack');
+  // ...only when it IS the buy-in (to the title's rounding) and not a guarantee.
+  assert.equal(tournamentTitle('$1,525 Bounty', 1500, CONFIG.USD), '$1.5k Bounty');
+  assert.equal(tournamentTitle('$20,000 GTD', 215, CONFIG.USD), '$215 $20,000 GTD');
+  assert.equal(tournamentTitle('$10,000 GTD', 215, CONFIG.USD), '$215 $10,000 GTD');
+  assert.equal(tournamentTitle('$10k Guaranteed', 10000, CONFIG.USD), '$10k $10k Guaranteed');
+  assert.equal(tournamentTitle('$215 $20,000 GTD', 215, CONFIG.USD), '$215 $20,000 GTD');
+  assert.equal(tournamentTitle('$1,000 NLH Bounty', 1100, CONFIG.USD), '$1.1k $1,000 NLH Bounty');
+  assert.equal(tournamentTitle('$5,000 Freeroll', 0, CONFIG.USD), '$5,000 Freeroll');
+  assert.equal(tournamentTitle('$1,500', 1500, CONFIG.USD), '$1.5k Tournament');
   assert.equal(tournamentTitle('NLH Freeroll', 0, CONFIG.USD), 'NLH Freeroll');
   assert.equal(tournamentTitle('', 300, CONFIG.USD), '$300 Tournament');
   assert.equal(cashTitle('2/5', 'NLH', CONFIG.USD), '$2/5 NLH');
@@ -185,6 +204,41 @@ test('buildSessions: titles, rooms, results and finishes', () => {
   assert.equal(r('c22').title, '$5/5 PL 5 Card Omaha/Big O');
   assert.equal(r('c23').title, 'Cash game');
   assert.equal(r('c23').room, '');
+});
+
+test('buildSessions: a Personal venue (imported, private events) is no room and no series', () => {
+  // As POST /api/bankrolls/import writes them: venue 'Personal', the name as typed, no property, so
+  // the reports fact's room falls back to 'Personal'.
+  const facts = [
+    T(155, '2026-03-02', { label: '$1,500 Mystery Bounty', room: 'Personal', game: 'NLH', buyin: 1500, cost: 1500, cash: 6100, profit: 4600 }),
+    T(156, '2026-03-01', { label: '$20,000 GTD', room: 'Personal', game: 'NLH', buyin: 215, cost: 215, profit: -215 }),
+    T(157, '2026-02-28', { label: '$400 Knockout Turbo', room: 'Personal', game: 'Personal', buyin: 400, cost: 400, profit: -400 }),
+    T(141, '2026-05-30', { label: 'Limit Badugi', room: 'Horseshoe Las Vegas', buyin: 1500, cost: 1500, cash: 9400, profit: 7900 }),
+  ];
+  const tracking = [
+    E(155, { event_name: '$1,500 Mystery Bounty', buyin: 1500, cashed: 1, cash_amount: 6100, finish_place: 4, total_entries: 210, venue: 'Personal' }),
+    E(156, { event_name: '$20,000 GTD', buyin: 215, venue: 'Personal' }),
+    E(157, { event_name: '$400 Knockout Turbo', buyin: 400, venue: 'Personal', game_variant: 'Personal' }),
+    E(141, { event_name: 'Limit Badugi', buyin: 1500, cashed: 1, cash_amount: 9400, venue: 'WSOP' }),
+  ];
+  const got = new Map(buildSessions(facts, tracking, [], OPTS).map((r) => [r.key, r]));
+  assert.deepEqual(['t155', 't156', 't157'].map((k) => [got.get(k).title, got.get(k).room, got.get(k).series]), [
+    ['$1.5k Mystery Bounty', '', ''],
+    ['$215 $20,000 GTD', '', ''],
+    ['$400 Knockout Turbo', '', ''],
+  ]);
+  assert.equal(got.get('t155').finish, '4th / 210');
+  assert.equal(tournamentFigures(got.get('t157')).game, '');          // 'Personal' is not a game either
+  assert.equal(tournamentFigures(got.get('t155')).game, 'NLH');
+  // A real venue that differs from the room is the series; one that is the room is not repeated.
+  assert.equal(got.get('t141').series, 'WSOP');
+  assert.equal(byKey.get('t146').series, '');                           // venue 'Seed Casino' = room
+  // Without the tracking join the fact alone says Personal: still no room.
+  const bare = buildSessions(facts, [], [], OPTS);
+  assert.deepEqual(bare.filter((r) => r.key !== 't141').map((r) => r.room), ['', '', '']);
+  assert.equal(bare.find((r) => r.key === 't141').room, 'Horseshoe Las Vegas');
+  // A cash session's room is free text: one typed "Personal" is the player's own word, kept.
+  assert.equal(buildSessions([C(30, '2026-03-03', { room: 'Personal' })], [], [], OPTS)[0].room, 'Personal');
 });
 
 test('filterSessions, groupByYear, countLabel', () => {

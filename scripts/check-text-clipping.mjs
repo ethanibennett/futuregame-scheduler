@@ -11,8 +11,8 @@
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
 // Scanner, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
 // sessions, one session) (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
-// section open, then closed; Sessions filtered to Cash, a cash session's and a tournament's detail;
-// every Reports table and the
+// section open, then closed; Sessions paged to the list's end, filtered to Cash, a cash session's and
+// a tournament's detail, and the rows Show more adds; every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
 // list, Stats, a session, the add form, the live bar), and for every text node inside those
 // views measures its glyph
@@ -338,11 +338,13 @@ function scan(rootSel) {
     await p.locator('.bk-head-btn:has-text("Dashboard")').first().click({ timeout: 4000 });
     await p.waitForTimeout(1800);
     // The sheet scrolls, and only text on screen is measured: run at the top, then page down
-    // through the sheet's body to its end.
-    const runSheet = async (label) => {
-      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
+    // through the sheet's body, 11 pages at most. { toEnd } pages on until the body stops moving
+    // (the Sessions list: 150 rows, ~10,000 px, then Show more); { from: 'here' } starts where the
+    // body already is (the rows Show more just added) instead of at the top.
+    const runSheet = async (label, { toEnd = false, from = 0 } = {}) => {
+      if (from !== 'here') await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = 0; });
       await run(label, '.an-sheet');
-      for (let i = 1; i < 12; i++) {
+      for (let i = 1; i < (toEnd ? 80 : 12); i++) {
         const moved = await p.evaluate((h) => {
           const s = document.querySelector('.an-sheet .an-body');
           if (!s) return false;
@@ -380,11 +382,13 @@ function scan(rootSel) {
       const tab = (await tabs.nth(i).innerText()).trim();
       await tabs.nth(i).click({ timeout: 4000 });
       await p.waitForTimeout(800);
-      await runSheet(`bankroll dashboard ${tab}`);
+      // Sessions to the list's end: its last rows and the Show more button.
+      await runSheet(`bankroll dashboard ${tab}`, { toEnd: tab === 'Sessions' });
     }
     // Sessions (the loop above ran its list on the remembered filter): the Cash filter, then a cash
     // session's detail and a tournament's (the longest title on show, which wraps), scrolled
-    // through, and the filter back on All.
+    // through, and the filter back on All, where Show more adds the rows past the first 150 (when
+    // the account has that many), measured from the button to the list's new end.
     await p.locator('.an-sheet .bd-tabs button:has-text("Sessions")').click({ timeout: 4000 });
     await p.locator('.an-sheet .bs-row').first().waitFor({ timeout: 8000 });
     await p.locator('.an-sheet .bs-chip:has-text("Cash")').click({ timeout: 4000 });
@@ -408,6 +412,14 @@ function scan(rootSel) {
     await runSheet('bankroll sessions (a tournament)');
     await p.locator('.an-sheet .bs-dhead button').first().click({ timeout: 4000 });
     await p.locator('.an-sheet .bs-chip:has-text("All")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    if (await p.locator('.an-sheet .bs-more').count()) {
+      await p.evaluate(() => { const s = document.querySelector('.an-sheet .an-body'); if (s) s.scrollTop = s.scrollHeight; });
+      await p.waitForTimeout(300);
+      await p.locator('.an-sheet .bs-more').click({ timeout: 4000 });
+      await p.waitForTimeout(500);
+      await runSheet('bankroll sessions (shown more)', { toEnd: true, from: 'here' });
+    }
     await tabs.first().click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-mode button:has-text("Balance")').click({ timeout: 4000 });
     await p.locator('.an-sheet .bd-range button:has-text("All")').click({ timeout: 4000 });

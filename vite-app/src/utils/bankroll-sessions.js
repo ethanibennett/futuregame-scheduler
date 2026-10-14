@@ -103,9 +103,38 @@ export function shortBuyin(v, cfg) {
   return withSymbol((k >= 100 ? String(Math.round(k)) : String(k)) + 'k', cfg);
 }
 
-// "$1,500 NLH ..." / "€1,100 - Monster Stack": a buy-in the event name already leads with, so the
-// title does not say it twice.
-const LEADING_BUYIN = /^\s*(?:[$€£¥]|[A-Z]{1,3}\$)\s?\d[\d,.]*\s*[kKmM]?\s*(?:[-–:]\s*)?/;
+// "$1,500 NLH ..." / "€1,100 - Monster Stack" / "$1.5k Mystery Bounty": an amount the event name
+// leads with. A k / M suffix only straight after the digits and not running on into a word, so
+// "$1,500 Mystery Bounty" keeps its M and "$400 Knockout Turbo" its K.
+const LEADING_AMOUNT = /^\s*(?:[$€£¥]|[A-Z]{1,3}\$)\s?(\d[\d,.]*)([kKmM](?![A-Za-z]))?\s*(?:[-–:]\s*)?/;
+// What follows an amount that is a guarantee, not a buy-in ("$20,000 GTD").
+const GUARANTEE = /^(?:gtd|gtee|g'tee|guarantee[ds]?)\b/i;
+
+/** The money a leading amount spells: "1,500" 1500, "1.5" + k 1500, "1.500" (thousands dots) 1500. */
+function amountOf(digits, suffix) {
+  const d = digits.replace(/[.,]+$/, '');
+  const n = !suffix && /^\d{1,3}(?:\.\d{3})+$/.test(d) ? Number(d.replace(/\./g, '')) : Number(d.replace(/,/g, ''));
+  if (!Number.isFinite(n)) return null;
+  return suffix ? n * (/m/i.test(suffix) ? 1e6 : 1e3) : n;
+}
+
+/**
+ * The event name without the buy-in it leads with, so the title does not say it twice. Only an
+ * amount that IS the entry's buy-in (the same once rounded as the title rounds it: "$1,500" for
+ * 1500, "$1.5k" for 1520) and is not a guarantee; any other amount is part of the name ("$20,000
+ * GTD" on a $215 event stays whole).
+ */
+export function eventName(name, buyin) {
+  const ev = String(name || '').trim();
+  const m = LEADING_AMOUNT.exec(ev);
+  if (!m) return ev;
+  const rest = ev.slice(m[0].length);
+  const a = amountOf(m[1], m[2]);
+  const b = Math.round(Number(buyin) || 0);
+  if (a == null || b <= 0 || GUARANTEE.test(rest)) return ev;
+  const same = Math.abs(a - b) < 1 || shortBuyin(a) === shortBuyin(b);
+  return same ? rest.trim() : ev;
+}
 
 /** A cash session's title: "$2/5 NLH", "€1/2 PLO", "PL 5 Card Omaha/Big O"; 'Cash game' when bare. */
 export function cashTitle(stakes, game, cfg) {
@@ -117,7 +146,7 @@ export function cashTitle(stakes, game, cfg) {
 
 /** A tournament's title: compact buy-in + event name ("$1.5k Limit Badugi"). */
 export function tournamentTitle(name, buyin, cfg) {
-  const ev = String(name || '').replace(LEADING_BUYIN, '').trim() || 'Tournament';
+  const ev = eventName(name, buyin) || 'Tournament';
   const b = shortBuyin(buyin, cfg);
   return b ? `${b} ${ev}` : ev;
 }
@@ -128,6 +157,21 @@ export function finishLabel(place, field) {
   if (!(p > 0)) return '';
   const f = Number(field);
   return f > 0 ? `${ordinal(p)} / ${group3(f)}` : ordinal(p);
+}
+
+// A private event's venue (the app's "Personal" events, and every result a bankroll import writes):
+// a label, not a room, so such a row has no room (or series), and no game of that name.
+export const PERSONAL = 'Personal';
+
+/** A tournament's room ('' when none was recorded) and series (its venue, when not the room). */
+export function tournamentPlace(fact, entry) {
+  const venue = entry ? String(entry.venue || '').trim() : '';
+  const factRoom = String((fact && fact.room) || '').trim();
+  const personal = venue === PERSONAL || (!entry && factRoom === PERSONAL);
+  let room = factRoom || venue;
+  if (personal && room === PERSONAL) room = '';
+  const series = venue && !personal && venue !== room ? venue : '';
+  return { room, series, personal };
 }
 
 const localMinutesOf = (iso) => {
@@ -142,7 +186,8 @@ const localMinutesOf = (iso) => {
  *   sessions  GET /api/cash-sessions .sessions (joined by id; a live one is ignored), or []
  *   opts      { currency: the facts' display currency, config: code -> { symbol, pos },
  *               nativeOf: venue -> currency code, localMinutes: ISO -> minutes (tests fix the zone) }
- * Each row: { key, id, type, date, year, dateLabel, minutes, title, room, result, finish, fact,
+ * Each row: { key, id, type, date, year, dateLabel, minutes, title, room ('' when none), series
+ *             (a tournament's venue when it is not the room, else ''), result, finish, fact,
  *             entry (tracking row | null), session (cash session | null), currency (native) }.
  * Order: date desc, then start time desc (a tournament's scheduled start, a session's local start;
  * none last), then id desc.
@@ -166,11 +211,12 @@ export function buildSessions(facts, tracking = [], sessions = [], opts = {}) {
       const native = e ? nativeOf(e.venue) : display;
       const cashed = e ? !!Number(e.cashed) : Number(f.cash) > 0;
       const t = e ? clockMinutes(e.time) : null;
+      const place = tournamentPlace(f, e);
       rows.push({
         key: f.id, id, type: 'tournament', date, year: date.slice(0, 4), dateLabel: dayLabel(date),
         minutes: t != null ? t : (f.hour != null ? f.hour * 60 : null),
         title: tournamentTitle(e ? e.event_name : f.label, e ? e.buyin : f.buyin, cfgOf(e ? native : display)),
-        room: String(f.room || (e && e.venue) || '').trim(),
+        room: place.room, series: place.series,
         result: Number(f.profit) || 0,
         finish: e && cashed ? finishLabel(e.finish_place, e.total_entries) : '',
         fact: f, entry: e, session: null, currency: native,
@@ -182,7 +228,7 @@ export function buildSessions(facts, tracking = [], sessions = [], opts = {}) {
         key: f.id, id, type: 'cash', date, year: date.slice(0, 4), dateLabel: dayLabel(date),
         minutes: f.started_at ? localMinutes(f.started_at) : null,
         title: cashTitle(f.stakes, f.game, cfgOf(native)),
-        room: String(f.room || (s && s.room) || '').trim(),
+        room: String(f.room || (s && s.room) || '').trim(), series: '',
         result: Number(f.profit) || 0,
         finish: '',
         fact: f, entry: null, session: s, currency: native,
@@ -239,7 +285,7 @@ export function tournamentFigures(row) {
     notes: (e && e.notes) || '',
     eventNumber: (e && String(e.event_number || '').trim()) || '',
     time: (e && e.time) || '',
-    game: String(f.game || (e && e.game_variant) || '').trim(),
+    game: [f.game, e && e.game_variant].map((g) => String(g || '').trim()).find((g) => g && g !== PERSONAL) || '',
     display: Number(f.profit) || 0,
   };
 }
