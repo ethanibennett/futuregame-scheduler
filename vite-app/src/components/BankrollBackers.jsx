@@ -25,8 +25,8 @@ import './bankroll-backers.css';
  * page shows; nothing is added up or rounded here (utils/bankroll-backers.js only words it). The
  * server never sends a phone number or an address, only whether each is on file.
  *
- * No edits and no Notify: adding, editing and notifying backers stays on the dashboard app until
- * the merge moves it here.
+ * No edits and no Notify here: a result's shares are sent from that result (components/BackerNotify.jsx,
+ * the Notify tap); adding and editing backers stays on the dashboard app until the merge moves it here.
  *
  * Layout (35g content; bankroll-backers.css lists every row): the card as Locations' (11r), an
  * actions row of 6r (a 1r gap, 4r buttons, a 1r gap), and an open card's share rows of 7r.
@@ -151,8 +151,8 @@ export default function BankrollBackers({ bk }) {
     <section className="bd-section bl-locations bb-backers" aria-labelledby="bb-title">
       <h3 className="an-cell an-sec" id="bb-title">Backers</h3>
       <p className="an-p bb-note">
-        Read-only. Add, edit and notify backers on the dashboard app until the bankroll merge moves that here.
-        Each card shows what that backer's page shows.
+        Read-only. Notify a result's backers from its edit form; add and edit backers on the dashboard app
+        until the bankroll merge moves that here. Each card shows what that backer's page shows.
       </p>
 
       {state.status === 'error' && (
