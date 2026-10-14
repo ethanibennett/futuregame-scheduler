@@ -155,6 +155,9 @@ function toReplayable(hand) {
   h.blinds = h.blinds || {};
   if (h.heroIdx == null) h.heroIdx = 0;
   delete h.quickAddDismissed; // the gaps engine's "don't ask again" list
+  // What the parse left pending or asked (docs/quick-add-contract.md, hand.quickAdd) is the
+  // quick-add flow's, not the replayer's: its questions and their options must not be saved.
+  delete h.quickAdd;
   return h;
 }
 

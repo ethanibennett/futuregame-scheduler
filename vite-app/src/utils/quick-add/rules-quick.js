@@ -6,6 +6,7 @@
 // hand.quickAdd (2026-10-14):
 //   notRecordable  true | "why"      — not one recordable hand
 //   otherHands     ["summary", …]    — hands the post also told, not recorded
+//   otherHandsBlocking true          — the player must say which (decision F, lib/quick-add/decisions.js)
 //   unsupported    ["what", …]       — bomb pot, double board, PLO5 …
 //   questions      [gap-like, …]     — ready-made questions: a card or size said
 //                                      two ways, a four-card flop in a transcript,
@@ -49,7 +50,7 @@ export function quickRules(hand, out, dismissed) {
       id: 'hand-choice', kind: 'ambiguous', field: 'quickAdd.otherHands',
       question: 'This tells ' + n + ' hands; the one in most detail is recorded. The others: ' + qa.otherHands.join('; ') + '.',
       options: [{ label: 'Record this one', value: { op: 'dismiss' } }],
-      allowFree: true, blocking: false,
+      allowFree: true, blocking: !!qa.otherHandsBlocking,
     }, [STAGE.structure, 5]));
   }
   if (Array.isArray(qa.unsupported) && qa.unsupported.length && !dismissed.has('unsupported')) {

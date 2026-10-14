@@ -654,3 +654,76 @@ test('two cards of unknown suit that look the same are not one board read twice'
   });
   assert.equal(normalizeDraft(t).hand.streets[1].cards.board.length, 4);   // two kings, kept
 });
+
+/* ── the owner's decisions (lib/quick-add/decisions.js) ───────────────────── */
+
+test("the owner's decisions: each default, and each switch that exists", () => {
+  const DEC = require('../../lib/quick-add/decisions');
+  const was = JSON.parse(JSON.stringify(DEC));
+  assert.deepEqual(was, {
+    UTG_WITH_STRADDLE: 'both-act', HEDGED_VALUES: 'note', OBSERVER_HANDS: 'follow-seat', UNSUPPORTED_FORMATS: 'approximate',
+    VARIANT_GAMES: { PLO5: 'PLO', PLO6: 'PLO', 'short deck': 'NLH', NLO8: 'PLO8' },
+    SEVERAL_HANDS: 'most-detailed', PER_POT_WINNERS: false, HAND_HISTORY_FAST_PATH: false, NUMBER_WORDS: 'aid',
+  });
+  const draft = (extra = {}) => D({
+    gameMode: 'cash', tableSize: 2, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', actions: [{ player: 0, action: 'raise', toAmount: 6, approx: true }, { player: 1, action: 'call' }] }],
+    ...extra,
+  });
+  const run = (extra) => normalizeDraft(draft(extra));
+  try {
+    // E: a variant with no game named is recorded as the nearest game.
+    assert.equal(run({ variant: 'PLO5' }).hand.gameType, 'PLO');
+    assert.equal(run({ variant: 'short deck' }).hand.gameType, 'NLH');
+    DEC.VARIANT_GAMES = {};
+    assert.equal(run({ variant: 'PLO5' }).hand.gameType, null);
+    DEC.VARIANT_GAMES = was.VARIANT_GAMES;
+    // B: an estimate is a note; with 'ask' it is also a question.
+    assert.ok(!run({ gameType: 'NLH' }).hand.quickAdd, 'note only');
+    DEC.HEDGED_VALUES = 'ask';
+    assert.ok(run({ gameType: 'NLH' }).hand.quickAdd.questions.some((q) => /^approx:/.test(q.id)));
+    DEC.HEDGED_VALUES = was.HEDGED_VALUES;
+    // C: an observer hand follows a seat; 'refuse' makes it not recordable.
+    const obs = { gameType: 'NLH', observer: true, players: [{ position: 'BTN', startingStack: 200 }, { position: 'BB', startingStack: 200 }] };
+    assert.equal(run(obs).hand.quickAdd.observer, true);
+    DEC.OBSERVER_HANDS = 'refuse';
+    assert.ok(run(obs).hand.quickAdd.notRecordable);
+    DEC.OBSERVER_HANDS = was.OBSERVER_HANDS;
+    // D: a bomb pot is approximated with a note; 'refuse' makes it not recordable.
+    const bomb = { gameType: 'NLH', format: { bombPot: true } };
+    assert.ok(run(bomb).hand.quickAdd.unsupported);
+    DEC.UNSUPPORTED_FORMATS = 'refuse';
+    assert.ok(run(bomb).hand.quickAdd.notRecordable && !run(bomb).hand.quickAdd.unsupported);
+    DEC.UNSUPPORTED_FORMATS = was.UNSUPPORTED_FORMATS;
+    // F: other hands are a non-blocking gap; 'ask' makes the server flag it blocking.
+    const many = { gameType: 'NLH', otherHands: [{ summary: 'a second hand' }] };
+    assert.ok(run(many).hand.quickAdd.otherHands && !run(many).hand.quickAdd.otherHandsBlocking);
+    DEC.SEVERAL_HANDS = 'ask';
+    assert.equal(run(many).hand.quickAdd.otherHandsBlocking, true);
+    DEC.SEVERAL_HANDS = was.SEVERAL_HANDS;
+  } finally {
+    Object.assign(DEC, was);
+  }
+  // A, E, F (prompt text) and I (request) are read when prompt.js loads: load it fresh.
+  const loadPrompt = () => { delete require.cache[require.resolve('../../lib/quick-add/prompt')]; return require('../../lib/quick-add/prompt'); };
+  try {
+    assert.match(loadPrompt().PARSE_SYSTEM, /the straddler is UTG and that opener UTG\+1/);
+    assert.match(loadPrompt().PARSE_SYSTEM, /the one told in most detail/);
+    DEC.UTG_WITH_STRADDLE = 'ask';
+    DEC.SEVERAL_HANDS = 'last-asked';
+    DEC.NUMBER_WORDS = 'rewrite';
+    DEC.VARIANT_GAMES = { PLO5: 'PLO8' };
+    const p = loadPrompt();
+    assert.match(p.PARSE_SYSTEM, /never UTG\+1 on your own/);
+    assert.doesNotMatch(p.PARSE_SYSTEM, /the straddler is UTG and that opener UTG\+1/);
+    assert.match(p.PARSE_SYSTEM, /Record ONE hand: the last one the player asks about/);
+    assert.match(JSON.stringify(p.HAND_TOOL), /nearest game \(PLO5 → PLO8\)/);
+    const r = p.buildParseRequest({ text: 'he bets twelve hundred i call', source: 'speech', hints: {}, model: 'm' });
+    assert.match(r.messages[0].content, /he bets 1200 i call/);
+    assert.doesNotMatch(r.messages[0].content, /worked out by code/);
+  } finally {
+    Object.assign(DEC, was);
+    loadPrompt();
+  }
+});

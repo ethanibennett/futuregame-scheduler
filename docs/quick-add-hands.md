@@ -57,8 +57,9 @@ voice, and let the app ask for whatever the description left out.
 236 real descriptions were collected (100 forum posts, 136 video transcripts) and read against the
 parser. The collections stay outside the repo; `test/quick-add/corpus/forum-text.json` (100) and
 `spoken.json` (78) are paraphrases with a `sourceUrl` each (see `test/quick-add/README.md`). The
-hand format (`docs/quick-add-contract.md`) is unchanged; everything new is either in the parse
-tool's input, in `hand.quickAdd`, or a new gap.
+hand format (`docs/quick-add-contract.md`) is unchanged except for the optional `hand.quickAdd`
+key (documented there, and stripped before a hand is opened or saved); everything new is either in
+the parse tool's input, in `hand.quickAdd`, or a new gap.
 
 **Deterministic fixes** (`lib/quick-add/cards.js`, `games.js`, `normalize.js`; client
 `betting.js`, `rules-setup.js`), each covered by `test/quick-add/normalisers.test.js` or
@@ -124,12 +125,17 @@ every size is in big blinds, `ante-type`, the hero question's "I wasn't in this 
 the server's own questions from `hand.quickAdd.questions` (`rules-quick.js`; option op
 `answerQuestion`).
 
-**Still the owner's to decide** (the code takes the cautious side meanwhile): A) "UTG" with a UTG
-straddle on — the prompt only separates them when both act; B) estimates are recorded with a
-note, not asked; C) observer hands follow a chosen seat as the hero; D) bomb pots, double boards,
-run-it-twice and button blinds are approximated with a note; E) PLO5/PLO6 are recorded as PLO
-(extra hole cards not kept), short deck as NLH; F) posts with several hands record the most
-detailed one and list the rest; G) per-pot winners are not stored; H) no deterministic
-hand-history fast path yet (seat arithmetic only); I) number words are a reading aid, not a
-rewrite. The collector's item-level questions (OTTNH, "A10h", "1/2/4/800", ".8bb deep", "we 3x",
+**Still the owner's to decide** (the code takes the analysis' proposed default meanwhile;
+every default is a value in `lib/quick-add/decisions.js`, so an answer is a one-line change there):
+A) "UTG" with a UTG straddle on — the prompt only separates them when both act (`UTG_WITH_STRADDLE`,
+`'ask'` to never decide); B) estimates are recorded with a note, not asked (`HEDGED_VALUES`,
+`'ask'` also raises a question; a value given two ways is always a question); C) observer hands
+follow a chosen seat as the hero (`OBSERVER_HANDS`, `'refuse'`); D) bomb pots, double boards,
+run-it-twice and button blinds are approximated with a note (`UNSUPPORTED_FORMATS`, `'refuse'`);
+E) PLO5/PLO6 are recorded as PLO (extra hole cards not kept), short deck as NLH, NLO8 as PLO8
+(`VARIANT_GAMES`); F) posts with several hands record the most detailed one and list the rest
+(`SEVERAL_HANDS`: `'last-asked'`, or `'ask'` to make the choice blocking); G) per-pot winners are
+not stored (`PER_POT_WINNERS`, no switch yet); H) no deterministic hand-history fast path yet, seat
+arithmetic only (`HAND_HISTORY_FAST_PATH`, no switch yet); I) number words are a reading aid, not a
+rewrite (`NUMBER_WORDS`, `'rewrite'`). The collector's item-level questions (OTTNH, "A10h", "1/2/4/800", ".8bb deep", "we 3x",
 "635", and others) are in the corpus notes of the cases they come from.
