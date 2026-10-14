@@ -54,6 +54,10 @@ const EXPECT_TABLES = {
   money_settings: ['user_id', 'data', 'updated_at'],
   money_import_runs: ['id', 'user_id', 'source', 'fetched_at', 'payload', 'plan', 'decisions', 'status', 'committed_at', 'summary'],
 };
+// Phase 5's own migration ('money-import-2026-10', lib/money-import/index.js) adds these after the
+// spec's columns: the staging run's source hash, cursor and delta, the plan hash, the undo journal,
+// the dashboard state a delta reconciles against. (It also adds backer_agreements.notes.)
+const PHASE5_COLUMNS = { money_import_runs: ['source_hash', 'cursor', 'mode', 'since', 'plan_hash', 'journal', 'state', 'undone_at'] };
 // table -> [column, declared type, notnull, default]
 const EXPECT_COLUMNS = {
   backers: [['public_token', 'TEXT', 0, null], ['notify_sms', 'INTEGER', 1, '0'], ['notify_email', 'INTEGER', 1, '0']],
@@ -91,7 +95,7 @@ let PORT = 0;
 const env = { ...process.env };
 for (const k of ['SYNC_TOKEN', 'DASHBOARD_TOKEN', 'TESTFLIGHT_WATCHDOG', 'RENDER_DEPLOY_WATCHDOG', 'RENDER', 'TRUST_PROXY', 'ANTHROPIC_API_KEY',
   'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY']) delete env[k];
-for (const k of Object.keys(env)) if (/^(DASHBOARD_|TWILIO_|APNS_|CONSOLE_OWNER_USER_ID|IS_PRODUCTION|SOLVER_URL|CASHWATCHER_URL)/.test(k)) delete env[k];
+for (const k of Object.keys(env)) if (/^(DASHBOARD_|TWILIO_|APNS_|CONSOLE_OWNER_USER_ID|IS_PRODUCTION|SOLVER_URL|CASHWATCHER_URL|LEDGER_TOKEN|ROSTER_TOKEN|MONEY_IMPORT_)/.test(k)) delete env[k];
 
 function boot() {
   return new Promise((resolve, reject) => {
@@ -154,6 +158,10 @@ function snapshot(db, tables, colsOf) {
 // 'staking-settlement-2026-10' runs after it and indexes two of its columns, so that goes first (the
 // day before Phase 1 had neither; at the next boot both run, in order).
 function unmigrate(db) {
+  // Phase 5's 'money-import-2026-10' runs after both; it goes first.
+  db.run('DROP INDEX IF EXISTS idx_money_import_runs_user');
+  if (colInfo(db, 'backer_agreements').some((c) => c.name === 'notes')) db.run('ALTER TABLE backer_agreements DROP COLUMN notes');
+  db.run("DELETE FROM _applied_migrations WHERE name = 'money-import-2026-10'");
   db.run('DROP INDEX IF EXISTS idx_backer_settlements_agreement');
   db.run('DROP INDEX IF EXISTS idx_bankroll_adj_settlement_ref');
   if (colInfo(db, 'backer_settlements').some((c) => c.name === 'snapshot')) db.run('ALTER TABLE backer_settlements DROP COLUMN snapshot');
@@ -189,7 +197,7 @@ function unmigrate(db) {
   await test('P0 §4.1: every new table exists with exactly the spec\'s columns', async () => {
     const db = await openDb();
     for (const [t, cols] of Object.entries(EXPECT_TABLES)) {
-      assert.deepStrictEqual(colInfo(db, t).map((c) => c.name), cols, t);
+      assert.deepStrictEqual(colInfo(db, t).map((c) => c.name), [...cols, ...(PHASE5_COLUMNS[t] || [])], t);
     }
     assert.deepStrictEqual(moneyMerge.NEW_TABLES.slice().sort(), Object.keys(EXPECT_TABLES).sort(), 'the module creates the same set');
     db.close();

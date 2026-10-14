@@ -8,7 +8,8 @@
  * every production secret scrubbed from the environment, and ./solver stubbed
  * (test/stub-solver-preload.js).
  *
- * Scrubbed on purpose: SYNC_TOKEN, DASHBOARD_TOKEN, ROSTER_TOKEN(_PREVIOUS), TESTFLIGHT_WATCHDOG,
+ * Scrubbed on purpose: SYNC_TOKEN, DASHBOARD_TOKEN, ROSTER_TOKEN(_PREVIOUS), LEDGER_TOKEN(_PREVIOUS) and
+ * MONEY_IMPORT_FETCH_TIMEOUT_MS (test/money-import.test.js sets its own), TESTFLIGHT_WATCHDOG,
  * RENDER, TRUST_PROXY, ANTHROPIC_API_KEY, the mail, push and Twilio settings, and the two backer
  * switches (BACKER_DELIVERY, BACKER_PAGE_SOURCE) unless a test passes them in `extra`.
  */
@@ -39,7 +40,7 @@ function scrubbedEnv(extra = {}) {
   for (const k of ['SYNC_TOKEN', 'DASHBOARD_TOKEN', 'DASHBOARD_TOKEN_PREVIOUS', 'ROSTER_TOKEN', 'ROSTER_TOKEN_PREVIOUS', 'TESTFLIGHT_WATCHDOG',
     'TESTFLIGHT_NIGHTLY', 'RENDER_DEPLOY_WATCHDOG', 'RENDER', 'TRUST_PROXY', 'ANTHROPIC_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS',
     'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'BACKER_DELIVERY', 'BACKER_PAGE_SOURCE', 'DASHBOARD_BASE_URL', 'CONSOLE_OWNER_USER_ID',
-    'IS_PRODUCTION', 'SOLVER_URL', 'CASHWATCHER_URL']) delete env[k];
+    'IS_PRODUCTION', 'SOLVER_URL', 'CASHWATCHER_URL', 'LEDGER_TOKEN', 'LEDGER_TOKEN_PREVIOUS', 'MONEY_IMPORT_FETCH_TIMEOUT_MS']) delete env[k];
   for (const k of Object.keys(env)) if (/^(TWILIO_|APNS_)/.test(k)) delete env[k];
   return { ...env, JWT_SECRET: 'backer-surface-test-secret-not-for-prod', DISABLE_FEED_INGEST: '1', ...extra };
 }
