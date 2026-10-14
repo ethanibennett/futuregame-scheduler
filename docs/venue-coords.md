@@ -58,6 +58,16 @@ reverse-geocoded once and the answer is cached.
   `getVenueCoords()` falls back to it last. `CalendarView` now uses `matchesLocation()` instead
   of its own copy.
 
+## The venue map
+
+Tapping an event card's venue strip opens a map of the room (docs/venue-map.md). It uses these
+same coordinates: curated first, then the server's. Two additions serve it:
+- City-level entries carry `approx: true`, and `/api/venue-coords` sends `approx: 1` for a
+  `nominatim-city` placement. The popup then says "Approximate location — town centre", or pins
+  the server's exact placement of the room when it has one.
+- `GET /api/venue-place` names the town. It uses the PokerAtlas entry's city_state, else the
+  town the source named, else the reverse-geocoded coordinate.
+
 ## Refreshing the snapshot
 
 Run on the Windows box. The script opens the watcher DB read-only:

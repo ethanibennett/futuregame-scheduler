@@ -12463,6 +12463,21 @@
        box; the trailing letter-space is balanced by an equal indent (home.css: one tracking,
        --track-caps-lg, and the same text-indent on .dash-t). */
     .dash-event-card .dash-venue-strip > .dash-t { text-box-trim: none; }
+    /* At a real room the band is a <button> that opens the venue map (DashboardView.jsx,
+       docs/venue-map.md): the button's own chrome off, so it is the same band. Its width is set,
+       because an absolutely placed <button> does not stretch between left and right as a div
+       does; the card clips it, so its focus ring is drawn inside. */
+    button.dash-venue-strip {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .dash-event-card.collapsed button.dash-venue-strip { width: calc(100% + var(--subrow) * 0.25); }
+    button.dash-venue-strip:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
 
     .dash-event-card.playing,
     .dash-event-card.next-up,
@@ -16543,29 +16558,38 @@
     }
     /* The divider is drawn OVER the pane's left edge, not added to its width, so
        every pane stays a whole number of g. */
+    /* Every pane is edged left and right with the header's own bottom line (var(--bw-hair) var(--border);
+       owner, 2026-10-13): drawn OVER the pane's edges, not added to its width, so every pane stays a
+       whole number of g, and above the sticky rows so a sticky header cannot hide it. The header's line
+       is the panes' top edge. */
     .dk-pane::before {
-      content: ''; position: absolute; top: 0; bottom: 0; left: 0;
-      width: var(--bw-hair); background: var(--border);
+      content: ''; position: absolute; inset: 0;
+      border-left: var(--bw-hair) solid var(--border);
+      border-right: var(--bw-hair) solid var(--border);
       z-index: calc(var(--z-sticky) + 1); pointer-events: none;
     }
-    /* Two panes side by side sit 2g apart on the page background (owner, 2026-10-13), and the
-       space is the divider: no hairline between them. The rail keeps its line against the first
-       pane. useDesktopLayout counts the 2g (PANE_GAP_G) into the shell, so every pane stays whole g.
+    /* Two panes side by side sit 2g apart on the page background (owner, 2026-10-13), with the
+       header-coloured gap between their hairline edges. useDesktopLayout counts the 2g (PANE_GAP_G) into the shell, so every pane stays whole g.
        A hidden pane between them (My Schedule's NUMBERS slot off the Dashboard) still counts as
        the previous sibling, so the gap holds on every tab with two panes. */
     /* The gap is painted in the header's colour (owner, 2026-10-13): --surface, where the header's
        gradient ends against the panes. A shadow cast 2g to the left with no blur fills exactly the
        margin, outside the pane's own box, so nothing in the layout moves. */
     .dk-pane + .dk-pane { margin-left: calc(var(--gu) * 2); box-shadow: calc(var(--gu) * -2) 0 0 0 var(--surface); }
-    .dk-pane + .dk-pane::before { display: none; }
     /* + --dk-sb-g: a classic scrollbar's width in g (0 where scrollbars overlay), so the content
        beside the scrollbar keeps the whole 9N+1 g (useDesktopLayout.js measureScrollbarG). */
     /* .dk-pane-home: the Dashboard's NOW pane, the list's 37g without the list's nav band
        (.dk-pane-list::after below is the Schedule list's phone parity; the home has no nav on
        desktop, and its own spacer is 0 there, home.css). */
-    .dk-pane-list, .dk-pane-mine, .dk-pane-home { width: calc(var(--gu) * (37 + var(--dk-sb-g, 0))); }
-    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + var(--dk-sb-g, 0))); }
-    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + var(--dk-sb-g, 0))); }
+    .dk-pane-list, .dk-pane-mine, .dk-pane-home { width: calc(var(--gu) * (37 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-pane-detail { width: calc(var(--gu) * (9 * var(--dk-detail-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    .dk-pane-wide { width: calc(var(--gu) * (9 * var(--dk-wide-n) + 1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
+    /* --dk-ov-g (useDesktopLayout OVERLAY_LANE_G): where scrollbars overlay the content, each scroller
+       keeps that many g on its right for the bar to float in, so it never sits on a card's edge or the
+       selection ring (owner, 2026-10-13). The pane is widened by the same, so the content keeps its 37g
+       / 9N+1 g exactly. 0 where a classic scrollbar takes its own width (--dk-sb-g). */
+    .app-shell.is-desktop .content-area,
+    .app-shell.is-desktop .dk-scroll { padding-right: calc(var(--gu) * (1 + var(--dk-ov-g, 0))); }
     /* A pane is the containing block for the views' fixed-position children (the
        Today/Next button, the admin dev keys), so each one centres in ITS pane instead of the window.
        Only on panes whose views have nothing else fixed and unportalled. Desktop-only because the
@@ -16582,7 +16606,7 @@
        does not scroll; its foot is the window's): the same corner, on the grid, still above the
        grid overlay as on the phone. */
     .dk-fab-scope .grid-dev-toggle,
-    .dk-pane-wide > .grid-dev-toggle { right: calc(var(--gu) * (1 + var(--dk-sb-g, 0))); }
+    .dk-pane-wide > .grid-dev-toggle { right: calc(var(--gu) * (1 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)))); }
     .dk-pane-wide > .grid-dev-toggle { position: absolute; }
     /* Centred in its pane, on a g line. Desktop-only, for two things a phone never has: a classic
        scrollbar (--dk-sb-g) widens the pane but not the content beside it, so the middle is taken
@@ -16590,7 +16614,7 @@
        centre); and the right pane can be an even number of g (46g, 64g), whose exact middle would
        leave the 9g button a half-g off the grid, so it rounds to a g line counted from the pane's
        own edge. On the 37g list pane both come to the phone's 14g. */
-    .dk-fab-scope .back-to-today-fab { left: round(nearest, 50% - var(--gu) * (4.5 + var(--dk-sb-g, 0) / 2), var(--gu)); }
+    .dk-fab-scope .back-to-today-fab { left: round(nearest, 50% - var(--gu) * (4.5 + (var(--dk-sb-g, 0) + var(--dk-ov-g, 0)) / 2), var(--gu)); }
 
     /* The Schedule list pane is the phone's column below the header, nav band included. The rail
        does the nav's job, so the band stays empty, but it is kept at the pane's foot: the list's

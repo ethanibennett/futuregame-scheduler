@@ -22,6 +22,8 @@ import HomeToLog from './HomeToLog.jsx';
 import HomeLastResult from './HomeLastResult.jsx';
 import HomeNumbers from './HomeNumbers.jsx';
 import { useLiveClocks, liveView, clockStartMs as clockStartFrom, clockRegEnd, isCompleted } from '../utils/live-clocks.js';
+import { hasVenueMap, venueRoomName } from '../utils/venue-place.js';
+import { openVenueMap } from '../utils/venue-map/open.js';
 import './home.css';
 
 // ── Format event name: the stage of a multi-flight event goes underneath ──
@@ -760,8 +762,21 @@ export default function DashboardView({
         } : undefined}
       >
         {/* The Up Next banner shows the FULL venue name, never the strip
-            abbreviation — abbr stays only for the brand colour + WSOP casing. */}
-        <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
+            abbreviation — abbr stays only for the brand colour + WSOP casing.
+            At a real room it is a button that opens the venue map (utils/venue-map/open.js); the
+            card's own tap ignores taps on buttons, so it does not also open My Schedule. */}
+        {hasVenueMap(event) ? (
+          <button
+            type="button"
+            className="dash-venue-strip has-map"
+            style={{background: venueColor, color: venueStripText}}
+            aria-haspopup="dialog"
+            aria-label={`Show ${venueRoomName(event)} on a map`}
+            onClick={(e) => { e.stopPropagation(); openVenueMap(event, e.currentTarget); }}
+          ><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></button>
+        ) : (
+          <div className="dash-venue-strip" style={{background: venueColor, color: venueStripText}}><span className="dash-t">{venueInfo.longName || venueInfo.abbr}</span></div>
+        )}
         <div className="dash-card-content" style={isConditionalOnPlaying ? {borderColor: venueInfo.abbr === 'WSOP' ? 'var(--venue-wsop-cond)' : venueColor} : undefined}>
         {tags.length > 0 && (
           <div className="dash-event-tags">

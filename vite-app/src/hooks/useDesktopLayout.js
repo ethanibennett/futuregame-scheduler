@@ -30,6 +30,10 @@ export const DESKTOP_QUERY = '(min-width: 1024px)';
 export const RAIL_G = 10;
 export const PHONE_PANE_G = 37;
 export const PANE_GAP_G = 2;
+// Where scrollbars OVERLAY the content (macOS default, iPadOS), the bar still needs somewhere to
+// float: without a lane it sat on the cards' right edge and the selection ring (owner, 2026-10-13).
+// Each scrolling pane then gets this many g on its right, outside the 37g / 9N+1 content.
+export const OVERLAY_LANE_G = 1;
 const MIN_COLS = 4;
 const MAX_COLS = 7;
 export const paneG = (n) => 9 * n + 1;
@@ -76,12 +80,14 @@ export function computeDesktopLayout() {
   const tier = 'two';
   const panes = 2;
   const fixed = RAIL_G + PHONE_PANE_G + PANE_GAP_G;
-  const detailCols = colsFor(W - fixed - panes * sbG);
-  const shellG = fixed + paneG(detailCols) + panes * sbG;
+  const ovG = sbG > 0 ? 0 : OVERLAY_LANE_G;
+  const laneG = sbG + ovG;
+  const detailCols = colsFor(W - fixed - panes * laneG);
+  const shellG = fixed + paneG(detailCols) + panes * laneG;
   // A single-pane tab (Dashboard, Social, …) uses the same shell; its one pane
   // is as many whole columns as fit after the rail, capped at the same 7.
-  const wideCols = colsFor(shellG - RAIL_G - sbG);
-  return { desktop: true, g, W, tier, detailCols, shellG, wideCols, sbG };
+  const wideCols = colsFor(shellG - RAIL_G - laneG);
+  return { desktop: true, g, W, tier, detailCols, shellG, wideCols, sbG, ovG };
 }
 
 export default function useDesktopLayout() {
