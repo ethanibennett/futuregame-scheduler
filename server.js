@@ -548,6 +548,7 @@ const bankrollManagement = require('./lib/bankroll-management');
 const bankrollImport = require('./lib/bankroll-import');
 const cashSessions = require('./lib/cash-sessions');
 const bankrollTransactions = require('./lib/bankroll-transactions');
+const moneyMerge = require('./lib/money-merge');
 const warnPreviousDashboardToken = makePreviousTokenWarner();
 
 const BACKER_TOKEN_RE = /^[A-Za-z0-9]{6,64}$/; // short base62 codes + legacy 32-hex
@@ -3310,6 +3311,16 @@ async function initDatabase() {
         console.log('Created bankroll_transactions + bankroll_trips tables');
       }
     },
+    {
+      // The bankroll merge (docs/bankroll-merge.md §4): standing agreements, session extras, the
+      // import's staging tables, and the additive columns the merge reads. Additive and idempotent,
+      // all-or-nothing (one savepoint). See lib/money-merge.js.
+      name: moneyMerge.MIGRATION_NAME,
+      fn: () => {
+        const r = moneyMerge.migrate(db);
+        console.log(`Money merge schema: ${r.tables.length} tables, ${r.columns.length} columns added, ${r.backfilled} backer events marked delivered`);
+      }
+    },
   ];
 
   for (const mig of dataMigrations) {
@@ -3969,7 +3980,9 @@ app.put('/api/profile', authenticateToken, requireRegistered, async (req, res) =
 //   - OTHER users' rows that merely point at this user are kept and unlinked:
 //     backer_agreements.swap_user_id / crossbook_user_id, backers.app_user_id
 //     and tournaments.uploaded_by (shared events stay; only the pointer goes).
-// Not touched: backer_public / backer_events / backer_push_subs and
+//   - money merge: their standing_agreements (with the stakes and exclusions under them, leaves
+//     first), session_extras, money_locations, money_settings and money_import_runs.
+// Not touched: backer_public / backer_events / backer_event_revisions / backer_push_subs and
 // console_records are keyed by dashboard backer tokens, not app users;
 // admin_overrides.updated_by is an admin audit field on shared events.
 function tableExists(name) {
@@ -4006,6 +4019,8 @@ function deleteUserAccount(userId) {
   const backerIds = need('backers') ? columnIds('SELECT id FROM backers WHERE user_id = ?', [uid]) : [];
   const agreements = need('backer_agreements') ? columnIds(
     `SELECT id FROM backer_agreements WHERE series_id IN (${inList(series)}) OR backer_id IN (${inList(backerIds)})`, []) : [];
+  const standing = need('standing_agreements') ? columnIds(
+    `SELECT id FROM standing_agreements WHERE user_id = ? OR backer_id IN (${inList(backerIds)})`, [uid]) : [];
   const personal = columnIds(
     `SELECT id FROM tournaments WHERE venue = 'Personal' AND (uploaded_by = ? OR stable_id LIKE ?)`,
     [uid, `PERSONAL-${uid}-%`]);
@@ -4021,6 +4036,11 @@ function deleteUserAccount(userId) {
     run('backer_agreements', `DELETE FROM backer_agreements WHERE id IN (${ag})`, []);
     run('backer_agreements', 'UPDATE backer_agreements SET swap_user_id = NULL WHERE swap_user_id = ?', [uid]);
     run('backer_agreements', 'UPDATE backer_agreements SET crossbook_user_id = NULL WHERE crossbook_user_id = ?', [uid]);
+    // Standing agreements reference backers (FK): exclusions and stakes, then the agreements.
+    const sa = inList(standing);
+    run('standing_exclusions', `DELETE FROM standing_exclusions WHERE agreement_id IN (${sa})`, []);
+    run('standing_stakes', `DELETE FROM standing_stakes WHERE agreement_id IN (${sa})`, []);
+    run('standing_agreements', `DELETE FROM standing_agreements WHERE id IN (${sa})`, []);
     run('backers', 'UPDATE backers SET app_user_id = NULL WHERE app_user_id = ?', [uid]);
     run('backers', 'DELETE FROM backers WHERE user_id = ?', [uid]);
     run('staking_series', 'DELETE FROM staking_series WHERE user_id = ?', [uid]);
@@ -4055,7 +4075,8 @@ function deleteUserAccount(userId) {
                      'saved_hands', 'replayer_games', 'trainer_hands', 'password_resets',
                      'push_subscriptions', 'apns_tokens', 'subscriptions',
                      'cash_session_stacks', 'cash_sessions', 'bankroll_transactions', 'bankroll_trips', 'bankroll_adjustments', 'bankrolls',
-                     'bankroll_prefs', 'bankroll_import_keys']) {
+                     'bankroll_prefs', 'bankroll_import_keys',
+                     'session_extras', 'money_locations', 'money_settings', 'money_import_runs']) {
       run(t, `DELETE FROM ${t} WHERE user_id = ?`, [uid]);
     }
     run('shared_hands', 'DELETE FROM shared_hands WHERE uploaded_by = ?', [uid]);

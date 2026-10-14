@@ -44,6 +44,8 @@
     "test:home-log": "node test/home-log.test.js",
     "test:tracking-reset": "node test/tracking-reset.test.js",
     "test:backer-page": "node test/backer-page.test.js && cd vite-app && node --test src/utils/__tests__/backer-page.test.mjs",
+    "test:standing": "node --test test/standing.test.js test/classify.test.js",
+    "test:money-merge": "node test/money-merge.test.js && node --test test/standing.test.js test/classify.test.js",
     "check:clipping": "node scripts/check-text-clipping.mjs && node scripts/check-text-clipping.mjs --width 1440 --height 900",
     "check:controls": "node scripts/check-control-centring.mjs && node scripts/check-control-centring.mjs --width 1440 --height 900",
     "graphics:weekly": "node scripts/weekly-graphics.mjs",

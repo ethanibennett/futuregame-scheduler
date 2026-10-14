@@ -199,6 +199,24 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
   run('INSERT INTO backer_event_status (agreement_id, tournament_id) VALUES (?, ?)', [AGB, t1]);
   run('INSERT INTO backer_tokens (agreement_id, token) VALUES (?, ?)', [AGB, 'btok-bob']);
   run('INSERT INTO backer_settlements (series_id, backer_id) VALUES (?, ?)', [SB, BB]);
+
+  // money merge ('money-merge-2026-10'): standing agreements (alice's backer Dan, bob's backer
+  // "Alice as backer") with stakes and exclusions, plus the per-user tables. backer_events and their
+  // revisions are keyed by a backer's token, not an app user, and are left alone on purpose.
+  const STANDING = {};
+  for (const [u, backer, tok] of [[A, BA, 'btok-alice'], [B, BB, 'btok-bob']]) {
+    run("INSERT INTO standing_agreements (user_id, backer_id, effective_from, status, opening_cents, created_at) VALUES (?, ?, '2026-01-01', 'active', -2500, 'x')", [u, backer]);
+    const ag = lastId(); STANDING[u] = ag;
+    run("INSERT INTO standing_stakes (agreement_id, format, channel, pct, valid_from, created_at) VALUES (?, 'PLO', 'any', 20, '2026-01-01', 'x'), (?, 'all', 'online', 5, '2026-01-01', 'x')", [ag, ag]);
+    run("INSERT INTO standing_exclusions (agreement_id, ref_table, ref_id, created_at) VALUES (?, 'tracking_entries', 1, 'x')", [ag]);
+    run("INSERT INTO session_extras (user_id, ref_table, ref_id, format, channel, updated_at) VALUES (?, 'tracking_entries', ?, 'PLO', 'live', 'x')", [u, u]);
+    run("INSERT INTO session_extras (user_id, ref_table, ref_id, origin, origin_id, updated_at) VALUES (?, 'cash_sessions', ?, 'dashboard', 'chat-0123456789ab', 'x')", [u, u]);
+    run("INSERT INTO money_locations (user_id, name, amount, updated_at) VALUES (?, 'Wallet', 120.5, 'x')", [u]);
+    run("INSERT INTO money_settings (user_id, data, updated_at) VALUES (?, '{\"cutover\":\"none\"}', 'x')", [u]);
+    run("INSERT INTO money_import_runs (user_id, source, fetched_at, payload, status) VALUES (?, 'dashboard', 'x', '{}', 'staged')", [u]);
+    run("INSERT INTO backer_events (id, token, session_id, ts, share_cents, source, notified_share_cents) VALUES (?, ?, 's1', 1760000000000, 24800, 'dashboard', 24800)", [`${tok}:s1`, tok]);
+    run("INSERT INTO backer_event_revisions (event_id, token, at, action, share_before, share_after) VALUES (?, ?, 1760000001000, 'revise', 24800, 25000)", [`${tok}:s1`, tok]);
+  }
   saveDb(db);
   db.close();
 
@@ -250,6 +268,8 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     bankrolls: ['user_id'], bankroll_adjustments: ['user_id'], cash_sessions: ['user_id'], cash_session_stacks: ['user_id'],
     bankroll_prefs: ['user_id'], bankroll_import_keys: ['user_id'],
     bankroll_transactions: ['user_id'], bankroll_trips: ['user_id'],
+    standing_agreements: ['user_id'], session_extras: ['user_id'], money_locations: ['user_id'],
+    money_settings: ['user_id'], money_import_runs: ['user_id'],
   };
   check('no row anywhere still points at the deleted user', () => {
     const left = [];
@@ -282,6 +302,26 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM backer_event_status WHERE agreement_id = ?', [AGB]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM backer_tokens WHERE agreement_id = ?', [AGB]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM backer_settlements WHERE series_id = ?', [SB]), 1);
+  });
+  check('alice\'s standing agreement goes with its stakes and exclusions; session extras and money settings go too', () => {
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM standing_agreements WHERE id = ?', [STANDING[A]]), 0);
+    for (const t of ['standing_stakes', 'standing_exclusions']) {
+      assert.strictEqual(one(db, `SELECT COUNT(*) FROM ${t} WHERE agreement_id = ?`, [STANDING[A]]), 0, t);
+    }
+    for (const t of ['session_extras', 'money_locations', 'money_settings', 'money_import_runs']) {
+      assert.strictEqual(one(db, `SELECT COUNT(*) FROM ${t} WHERE user_id = ?`, [A]), 0, t);
+    }
+  });
+  check('bob\'s standing agreement survives whole, stakes and exclusions included', () => {
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM standing_agreements WHERE id = ?', [STANDING[B]]), 1);
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM standing_stakes WHERE agreement_id = ?', [STANDING[B]]), 2);
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM standing_exclusions WHERE agreement_id = ?', [STANDING[B]]), 1);
+  });
+  check('backer_events and their revisions are left alone on purpose (keyed by token, not by app user)', () => {
+    for (const tok of ['btok-alice', 'btok-bob']) {
+      assert.strictEqual(one(db, 'SELECT COUNT(*) FROM backer_events WHERE token = ?', [tok]), 1, tok);
+      assert.strictEqual(one(db, 'SELECT COUNT(*) FROM backer_event_revisions WHERE token = ?', [tok]), 1, tok);
+    }
   });
   check('the group alice owned is deleted with everything in it', () => {
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM groups WHERE id = ?', [G1]), 0);
@@ -316,6 +356,10 @@ const check = (label, fn) => { fn(); pass++; console.log('  ok   ' + label); };
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM cash_session_stacks WHERE user_id = ?', [B]), 2);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_transactions WHERE user_id = ?', [B]), 2);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM bankroll_trips WHERE user_id = ?', [B]), 1);
+    for (const t of ['standing_agreements', 'money_locations', 'money_settings', 'money_import_runs']) {
+      assert.strictEqual(one(db, `SELECT COUNT(*) FROM ${t} WHERE user_id = ?`, [B]), 1, t);
+    }
+    assert.strictEqual(one(db, 'SELECT COUNT(*) FROM session_extras WHERE user_id = ?', [B]), 2);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM share_requests WHERE from_user_id = ? AND to_user_id = ?', [B, C]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM swap_suggestions WHERE from_user_id = ? AND to_user_id = ?', [B, C]), 1);
     assert.strictEqual(one(db, 'SELECT COUNT(*) FROM users WHERE id IN (?, ?)', [B, C]), 2);
