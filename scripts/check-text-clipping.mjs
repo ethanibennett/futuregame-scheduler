@@ -9,7 +9,7 @@
 // mode and the edge state, the empty-schedule prompt, and the signal-or-noise line as progress and
 // about cash), its Scan sheet, every Up Next card (and a page turn to a taller one with the mouse
 // left on the pager), the cash card's stack entry, its Log menu and a To log row's Undo state, and Hands'
-// Scanner, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
+// Scanner, first-run setup's three steps, the backer page (/b/<token>, with CHECK_BACKER_TOKENS: full history paged through, no
 // sessions, one session) (and, for an admin, each tab of the bankroll dashboard — the Overview with every table
 // section open, then closed — every Reports table and the
 // Reports filter sheet, then Results > Cash: the running session and its panels, the session
@@ -497,6 +497,32 @@ function scan(rootSel) {
     await p.waitForTimeout(300);
     await run('results reset (open)', '.rr');
   } catch (e) { console.log(`  (results reset skipped: ${e.message.split('\n')[0]})`); }
+
+  // First-run setup (components/OnboardingWizard.jsx), re-opened as the location menu's "Run setup
+  // again" does: step 1 (and with city results, where the scratch server reaches Nominatim), step
+  // 2 with Yes, step 3. Its tiles truncate their two lines with an ellipsis. Nothing is finished.
+  try {
+    await p.goto(base + '/', { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(3500);
+    await p.evaluate(() => window.dispatchEvent(new Event('reopen-onboarding')));
+    await p.locator('.modal-content.ob').waitFor({ timeout: 4000 });
+    await p.waitForTimeout(600);
+    const SETUP = '.modal-content.ob';
+    await run('first-run setup step 1', SETUP);
+    await p.locator('.ob-search').fill('Austin');
+    await p.waitForTimeout(1500);
+    for (let i = 0; i < 10 && !(await p.locator('.ob-results .ob-row').count()); i++) await p.waitForTimeout(300);
+    if (await p.locator('.ob-results .ob-row').count()) await run('first-run setup step 1 (search)', SETUP);
+    else console.log('  (first-run setup search results skipped: no results from the geocoder)');
+    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 4000 });
+    await p.waitForTimeout(600);
+    await p.locator('.ob-tile:has-text("Yes")').click({ timeout: 4000 });
+    await p.waitForTimeout(400);
+    await run('first-run setup step 2', SETUP);
+    await p.locator('.ob-foot button:has-text("Next")').click({ timeout: 4000 });
+    await p.waitForTimeout(600);
+    await run('first-run setup step 3', SETUP);
+  } catch (e) { console.log(`  (first-run setup skipped: ${e.message.split('\n')[0]})`); }
 
   // The backer page (/b/<token>, no login: components/BackerPage.jsx), paged through: a full
   // history (then its graph on 1M), a backer with no sessions yet, one session. CHECK_BACKER_TOKENS
