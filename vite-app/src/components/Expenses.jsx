@@ -13,6 +13,7 @@
 // (avatars, staking proofs), which is not acceptable for receipts, so photos are left out.
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
 import { CURRENCY_CONFIG, convertAmount, nativeCurrency, getToday, normaliseDate, MINUS } from '../utils/utils.js';
@@ -448,6 +449,9 @@ export default function ExpensesSection({ token, bankroll = BANKROLL_ALL, bankro
   // One sheet at a time: { type: 'add', tx?, preset?, back? } | { type: 'all' } | { type: 'trips', tripId? }
   const [sheet, setSheet] = useState(null);
   const [version, setVersion] = useState(0);
+  // The floating + (BankrollFab) steps aside while one of this section's sheets (the add form, the
+  // list, trips) is open.
+  useHideBankrollFab(!!sheet);
   useEffect(() => {
     if (!intent) return;
     if (intent.kind === 'expense') setSheet({ type: 'add', preset: { kind: 'expense', bankroll: bankroll === BANKROLL_ALL ? BANKROLL_MAIN : bankroll } });

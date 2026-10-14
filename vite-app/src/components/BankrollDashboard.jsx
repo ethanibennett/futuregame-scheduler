@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { formatCurrencyAmount, MINUS, getToday } from '../utils/utils.js';
 import { BANKROLL_ALL } from '../utils/bankrolls.js';
+import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
 import { goalProgress, ledgerToCsv, fmtRule } from '../utils/bankroll-ledger.js';
+import BankrollFab from './BankrollFab.jsx';
 import BankrollOverview from './BankrollOverview.jsx';
 import BankrollImport from './BankrollImport.jsx';
 import BankrollReports from './BankrollReports.jsx';
@@ -233,7 +235,9 @@ function Risk({ risk, money }) {
 
 // ── The sheet ────────────────────────────────────────────────────────────────────────────
 // initialTab / initialKey: where it opens (the home's bankroll line opens Rules on All).
-export default function BankrollDashboard({ bk, onClose, initialTab = 'balance', initialKey = null }) {
+// onLog: App's hand-off to Results; the floating + inside the sheet closes the sheet and opens the
+// chosen form there, as the Overview's latest-sessions buttons do (BankrollOverview open()).
+export default function BankrollDashboard({ bk, onClose, initialTab = 'balance', initialKey = null, onLog }) {
   const toast = useToast();
   const closeRef = useRef(null);
   const [key, setKey] = useState(initialKey ?? bk.selected);
@@ -245,6 +249,10 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
   const [importing, setImporting] = useState(false);
   const [version, setVersion] = useState(0);
   const today = getToday();
+  // The sheet covers the Results tab's floating + and has its own; that one steps aside on the CSV
+  // import screen, which is a form of its own.
+  useHideBankrollFab(true, 'page');
+  useHideBankrollFab(importing, 'sheet');
 
   const b = key === BANKROLL_ALL ? null : bk.bankrolls.find((x) => x.id === key);
   const currency = b ? b.currency : 'USD';
@@ -298,6 +306,13 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
   };
 
   const chips = [[BANKROLL_ALL, 'All'], ...bk.visible.map((x) => [x.id, x.name])];
+  // The + inside the sheet: Results shows the roll this sheet showed, the sheet closes, and the form
+  // opens there (the same hand-off as the Overview's buttons).
+  const addFromSheet = (intent) => {
+    if (bk.setSelected) bk.setSelected(key);
+    onClose();
+    if (onLog) onLog(intent);
+  };
 
   return createPortal(
     <>
@@ -348,6 +363,7 @@ export default function BankrollDashboard({ bk, onClose, initialTab = 'balance',
             </>
           )}
         </div>
+        {onLog && <BankrollFab scope="sheet" isAdmin={bk.enabled} onPick={addFromSheet} />}
       </div>
     </>,
     portalTarget(),

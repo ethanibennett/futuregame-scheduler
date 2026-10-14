@@ -59,7 +59,7 @@ export function useHomeNumbers({ isAdmin, token, bk, onLog }) {
   const sheets = (
     <>
       {admin && sheet && (
-        <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={closeSheet} />
+        <BankrollDashboardSheet bk={bk} initialTab={sheet} initialKey="all" onClose={closeSheet} onLog={onLog} />
       )}
       {admin && analytics && (
         <Suspense fallback={null}>
