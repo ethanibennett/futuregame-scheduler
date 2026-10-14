@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 
 import { API_URL } from './utils/api.js';
 import { resetPath } from './utils/reset-results.js';
-import { haptic, THEME_ORDER, THEME_LABEL, THEME_ICON, THEME_META, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
+import { haptic, SERIF_FONTS, SERIF_ORDER, VENUE_BRAND_VAR, getVenueBrandColor, formatSeasonLabel, registerRowTimezones, registerVenueCoords, getDebugNow, setDebugNow } from './utils/utils.js';
 import { decodeHand } from './utils/hand-shorthand.js';
 import { detectMilestones } from './utils/milestones.js';
 import { moveDetailBlock, settleDetailBlock, detailBlockMoving, resizeDetailBlock } from './utils/detail-motion.js';
@@ -14,6 +14,7 @@ import { useToast } from './contexts/ToastContext.jsx';
 import { useDisplayName, DisplayNameProvider } from './contexts/DisplayNameContext.jsx';
 
 import Icon from './components/Icon.jsx';
+import ThemeButton from './components/ThemeButton.jsx';
 import Avatar from './components/Avatar.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
 import ForgotPasswordForm from './components/ForgotPasswordForm.jsx';
@@ -25,6 +26,7 @@ import DesktopEventDetail from './components/DesktopEventDetail.jsx';
 import useDesktopLayout from './hooks/useDesktopLayout.js';
 import useBankrolls from './hooks/useBankrolls.js';
 import useHomeLayout from './hooks/useHomeLayout.js';
+import useThemeChoice from './hooks/useThemeChoice.js';
 import DashboardView from './components/DashboardView.jsx';
 import HandsScanner from './components/HandsScanner.jsx';
 import TournamentsView from './components/TournamentsView.jsx';
@@ -412,7 +414,7 @@ function App() {
   const [activeMilestone, setActiveMilestone] = useState(null);
 
   // Theme
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const { theme, toggleTheme, nextThemeLabel } = useThemeChoice();
   const [contrast, setContrast] = useState(localStorage.getItem('contrast') || 'normal');
   const [cardSplay, setCardSplay] = useState(localStorage.getItem('cardSplay') !== 'off');
   // Admin-only layout-grid overlay for checking alignment (GridOverlay.jsx).
@@ -442,26 +444,8 @@ function App() {
     return SERIF_FONTS.includes(stored) ? stored : 'baskerville';
   });
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem('theme', theme);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', THEME_META[theme] || '#111111');
-
-    // The <meta> above does nothing inside a Capacitor WKWebView, and
-    // capacitor.config.json pins the bar to a static dark style — so switching
-    // to light or cloudy left light glyphs on a near-white app. The plugin was
-    // in package.json and never imported. Driven off the same THEME_META map
-    // that feeds the meta tag, so the two cannot drift.
-    if (window.Capacitor?.isNativePlatform?.()) {
-      import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-        const light = theme === 'light' || theme === 'cloudy';
-        StatusBar.setStyle({ style: light ? Style.Light : Style.Dark }).catch(() => {});
-        StatusBar.setBackgroundColor({ color: THEME_META[theme] || '#111111' }).catch(() => {});
-      }).catch(() => {});
-    }
-  }, [theme]);
-
+  // The theme (and the data-theme, theme-color and status bar it drives) is hooks/useThemeChoice.js,
+  // shared with the backer page's top bar.
 
   useEffect(() => {
     document.documentElement.dataset.contrast = contrast;
@@ -577,11 +561,6 @@ function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [setCurrentView]);
 
-  const toggleTheme = () => setTheme(t => {
-    const i = THEME_ORDER.indexOf(t);
-    return THEME_ORDER[(i + 1) % THEME_ORDER.length];
-  });
-  const nextThemeLabel = THEME_LABEL[THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length]];
   const toggleContrast = () => setContrast(c => c === 'normal' ? 'high' : 'normal');
 
   // ── Auto-logout on 401/403 ──
@@ -2336,9 +2315,7 @@ function App() {
             onPost={postLiveUpdate}
             onAddTracking={addTracking}
           />
-          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={`Switch to ${nextThemeLabel} mode`}>
-            {React.createElement(Icon[THEME_ICON[theme]] || Icon.moon)}
-          </button>
+          <ThemeButton theme={theme} nextThemeLabel={nextThemeLabel} onToggle={toggleTheme} />
         </div>
         <div className="top-bar-user">
           <button className="username-chip snap-g" onClick={() => setShowUserMenu(m => !m)} style={{display:'flex',alignItems:'center',gap:'calc(var(--subrow) * 0.75)',background:'none',border:'none',padding:0,cursor:'pointer',overflow:'hidden'}}>

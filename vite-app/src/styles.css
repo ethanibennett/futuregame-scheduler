@@ -1041,12 +1041,13 @@
 
     .dash-undo-x::after,
     .dash-unbag-x::after,
-    .top-bar-actions .btn-icon::after {
+    .top-bar-actions .btn-icon::after,
+    .bp-top .btn-icon::after {
       content: '';
       position: absolute;
       inset: calc(var(--subrow) * -1);
     }
-    .dash-undo-x, .dash-unbag-x, .top-bar-actions .btn-icon { position: relative; }
+    .dash-undo-x, .dash-unbag-x, .top-bar-actions .btn-icon, .bp-top .btn-icon { position: relative; }
 
 
     /* Skeleton geometry that predicts the real card, so hand-off does not
@@ -2366,12 +2367,16 @@
          centre at 3.93r, half a pixel above the grid line. */
       position: absolute; left: 50%; top: calc(var(--subrow) * 4); transform: translate(-50%, -50%); margin-left: 0;
     }
-    .top-bar-actions .btn-icon {
+    /* The backer page's top bar (BackerPage.jsx) carries the same theme button, so it shares this
+       rule: one definition of the icon button, 3g x 4r, the icon centred in it. */
+    .top-bar-actions .btn-icon,
+    .bp-top .btn-icon {
       width: calc(var(--gu) * 3); height: calc(var(--subrow) * 4); min-width: calc(var(--gu) * 3);
       padding: 0; display: flex; align-items: center; justify-content: center;
       border-radius: var(--radius-circle);
     }
-    .top-bar-actions .btn-icon svg { width: calc(var(--subrow) * 2.125); height: calc(var(--subrow) * 2.125); }
+    .top-bar-actions .btn-icon svg,
+    .bp-top .btn-icon svg { width: calc(var(--subrow) * 2.125); height: calc(var(--subrow) * 2.125); }
     /* Avatar + display-name chip — always pinned to the far right of the bar.
        On iOS this stays in normal flex flow even after the action icons get
        lifted out to the Dynamic Island. */

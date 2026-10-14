@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import GridOverlay from './GridOverlay.jsx';
+import ThemeButton from './ThemeButton.jsx';
 import BackerChart from './BackerChart.jsx';
 import useBackerPush from '../hooks/useBackerPush.js';
 import useInkBalance from '../hooks/useInkBalance.js';
+import useThemeChoice from '../hooks/useThemeChoice.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { API_URL } from '../utils/api.js';
 import { VENUE_MAP, getVenueBrandColor } from '../utils/utils.js';
@@ -23,37 +25,30 @@ import './backer-page.css';
  * Phone first; on a desktop window the same 37g column, centred (.app-shell without is-desktop):
  * this is a page to read, one column wide.
  *
- *   top bar     the wordmark, "your action with Ethan Bennett", the notifications pill (8r)
+ *   top bar     the wordmark, "your action with Ethan Bennett", the notifications pill and the theme
+ *               button (8r)
  *   hero        the name (display face) and the stakes summary
  *   total       running total, signed and toned, over sessions · hours · opening (a 12r card)
  *   graph       the share over time (BackerChart), with 1M / 3M / YTD / All when history allows
  *   sessions    month breaks in the Schedule's date-break language, sticky, each session an event
  *               card: the room's strip, the game, the date and hours, the result and the share
  *
- * Themes: there are no settings here, so the page follows the device (prefers-color-scheme,
- * prefers-contrast), set before first paint by index.html's head script and kept in step below.
+ * Themes: the top bar carries the app's own theme button (ThemeButton, hooks/useThemeChoice.js: dark,
+ * dusk, light, cloudy, stored as localStorage['theme'] like the app's, so one device has one
+ * preference). With nothing stored the page follows the device (prefers-color-scheme); contrast
+ * always follows the device (prefers-contrast). Both are set before first paint by index.html's head
+ * script and kept in step by the hook and by useDeviceContrast below.
  * Arithmetic and formatting: utils/backer-page.js (tested). Layout: backer-page.css.
  */
 
-const THEME_META = { dark: '#111111', light: '#f5f5f5' };
-
-function useDeviceTheme() {
+function useDeviceContrast() {
   useLayoutEffect(() => {
     const root = document.documentElement;
-    const mq = (q) => (window.matchMedia ? window.matchMedia(q) : { matches: false, addEventListener() {}, removeEventListener() {} });
-    const light = mq('(prefers-color-scheme: light)');
-    const more = mq('(prefers-contrast: more)');
-    const apply = () => {
-      const theme = light.matches ? 'light' : 'dark';
-      root.setAttribute('data-theme', theme);
-      root.setAttribute('data-contrast', more.matches ? 'high' : 'normal');
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', THEME_META[theme]);
-    };
+    const more = window.matchMedia ? window.matchMedia('(prefers-contrast: more)') : { matches: false, addEventListener() {}, removeEventListener() {} };
+    const apply = () => root.setAttribute('data-contrast', more.matches ? 'high' : 'normal');
     apply();
-    light.addEventListener('change', apply);
     more.addEventListener('change', apply);
-    return () => { light.removeEventListener('change', apply); more.removeEventListener('change', apply); };
+    return () => more.removeEventListener('change', apply);
   }, []);
 }
 
@@ -118,7 +113,7 @@ function PushPill({ push }) {
   );
 }
 
-function TopBar({ push }) {
+function TopBar({ push, theme }) {
   return (
     <header className="top-bar bp-top">
       <div className="top-bar-title">
@@ -127,7 +122,12 @@ function TopBar({ push }) {
             players after the bankroll merge, this comes from the feed. */}
         <small>your action with Ethan Bennett</small>
       </div>
-      {push && <PushPill push={push} />}
+      {/* The pill and the theme button, right-aligned on the 1g margin and centred on the bar's 4r
+          line; the button is last, so it holds still when the pill comes and goes. */}
+      <div className="bp-top-actions">
+        {push && <PushPill push={push} />}
+        <ThemeButton theme={theme.theme} nextThemeLabel={theme.nextThemeLabel} onToggle={theme.toggleTheme} />
+      </div>
     </header>
   );
 }
@@ -210,7 +210,8 @@ function Skeleton() {
 }
 
 export default function BackerPage({ token }) {
-  useDeviceTheme();
+  useDeviceContrast();
+  const theme = useThemeChoice({ followDevice: true });
   const shellRef = useRef(null);
   useScrollbarAllowance(shellRef);
   const toast = useToast();
@@ -319,7 +320,7 @@ export default function BackerPage({ token }) {
 
   return (
     <div className="app-shell bp-shell" ref={shellRef}>
-      <TopBar push={failed ? null : push} />
+      <TopBar push={failed ? null : push} theme={theme} />
       <main className="content-area bp-content">
         {body}
         <footer className="bp-foot">

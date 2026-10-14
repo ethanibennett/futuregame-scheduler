@@ -187,7 +187,12 @@ port with a `DB_PATH` copy. Env lives in the gitignored `ecosystem.config.cjs`
   `Root` before any login; arithmetic in `utils/backer-page.js`): the server serves the app shell
   to valid tokens only, `no-store` + `noindex` + `Referrer-Policy: no-referrer`, with the manifest
   link dropped (a Home Screen launch must return to the page). `/b/sw.js` and the
-  `/api/backer/*` push routes are unchanged. `scripts/seed-backer-demo.js` seeds made-up backers
+  `/api/backer/*` push routes are unchanged. **Theme** (owner, 2026-10-14): the top bar carries the
+  app's own theme button (`ThemeButton`; dark, dusk, light, cloudy; `hooks/useThemeChoice.js`, shared with
+  `App.jsx`, so one device has one preference, `localStorage['theme']`). With nothing stored the page
+  follows the device's scheme and writes nothing; the first press is a choice. Contrast always follows the
+  device. Cloudy darkens the page's green and red (`backer-page.css`). `index.html`'s head script applies a
+  stored theme before first paint. `scripts/seed-backer-demo.js` seeds made-up backers
   into a SCRATCH DB and prints the `CHECK_BACKER_TOKENS` the guards use to visit the page.
   **Bankroll merge, Phase 2** (`docs/bankroll-merge.md`; code in `lib/backer-surface.js`):
   - **Delivery is gated.** Push, SMS and the Sunday email go out only where `BACKER_DELIVERY` is on
