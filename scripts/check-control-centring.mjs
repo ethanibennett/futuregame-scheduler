@@ -115,8 +115,9 @@
 //     digit (×, +, ←, ›) is a symbol: its painted ink on both axes (canvas may draw it in another
 //     fallback font than the page). An emoji is a picture, not a letter: a figure with its whole
 //     glyph. Along the line the ink is the PAINTED ink (canvas side bearings miss tabular figures, a
-//     fallback font's ▾, kerning); where pixels cannot see it, the text start plus canvas
-//     actualBoundingBoxLeft/Right plus letter spacing.
+//     fallback font's ▾, kerning); where pixels cannot see it (an occluded control), the text
+//     start plus the string's side bearings as painted on a canvas (WebKit clamps measureText's
+//     actualBoundingBoxLeft/Right to the advance) plus letter spacing.
 //     WRITING MODE AND TRANSFORMS: the over edge and the line direction are taken through the
 //     element's writing mode (vertical-rl / -lr turn Latin glyphs so their tops face the line's
 //     right) and every ancestor's transform (a strip's rotate(180deg) turns them to face left), so
@@ -363,6 +364,31 @@ function scan(cfg) {
   const BIG = 200;
   const metricCache = new Map();
   const fontFor = (cs, size) => `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
+  // The side bearings come from canvas PIXELS, not measureText's actualBoundingBoxLeft/Right:
+  // WebKit (these guards' engine, and Safari's) clamps both to the advance, so an ink that starts
+  // inside its box reads as starting AT it and only overhangs come through. An occluded control
+  // (no pixel pass) was held to its advance box: "14 Oct" read 1.6px wide on the left, the 1's
+  // bearing, and failed dx -0.8 the moment its label was balanced on its ink (utils/ink-balance.js,
+  // the same reading). The string is drawn once, at up to BIG px, and its painted columns found.
+  const pv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  const paintedSides = (font, size, text, width) => {
+    const pad = Math.ceil(size * 0.5);
+    const w = Math.ceil(width) + 2 * pad, h = Math.ceil(size * 1.6), base = Math.ceil(size * 1.1);
+    if (pv.canvas.width < w) pv.canvas.width = w;
+    if (pv.canvas.height < h) pv.canvas.height = h;
+    pv.clearRect(0, 0, pv.canvas.width, pv.canvas.height);
+    pv.font = font; pv.textAlign = 'left'; pv.textBaseline = 'alphabetic'; pv.fillStyle = '#000';
+    pv.fillText(text, pad, base);
+    const d = pv.getImageData(0, 0, w, h).data;
+    const col = new Uint8Array(w);
+    for (let y = 0; y < h; y++) { const row = y * w * 4; for (let x = 0; x < w; x++) { const a = d[row + x * 4 + 3]; if (a > col[x]) col[x] = a; } }
+    let x0 = 0; while (x0 < w && col[x0] <= 8) x0++;
+    let x1 = w - 1; while (x1 >= 0 && col[x1] <= 8) x1--;
+    if (x0 > x1) return null;
+    // In actualBoundingBox terms: left = how far the ink reaches LEFT of the origin, right = how
+    // far it reaches right of it; each edge placed within its pixel by that column's coverage.
+    return { left: pad - (x0 + 1 - col[x0] / 255), right: x1 + col[x1] / 255 - pad };
+  };
   const metrics = (cs, text) => {
     const size = parseFloat(cs.fontSize);
     const k = fontFor(cs, size) + '|' + text;
@@ -372,8 +398,18 @@ function scan(cfg) {
     cv.font = fontFor(cs, BIG);
     const s = size / BIG;
     const m = cv.measureText(text), cap = cv.measureText('H').actualBoundingBoxAscent * s;
-    const out = { fontAsc, cap, asc: m.actualBoundingBoxAscent * s, desc: m.actualBoundingBoxDescent * s,
-      left: m.actualBoundingBoxLeft * s, right: m.actualBoundingBoxRight * s };
+    let left = m.actualBoundingBoxLeft * s, right = m.actualBoundingBoxRight * s;
+    if (text && text.trim() && m.width > 0) {
+      const sz = Math.max(24, Math.min(BIG, BIG * 1500 / m.width));   // a long label drawn smaller
+      const ps = paintedSides(fontFor(cs, sz), sz, text, m.width * sz / BIG);
+      const wz = m.width * sz / BIG;
+      // A reading no glyph gives (past half an em from either end) is the canvas not reading back
+      // true; the metrics stand.
+      if (ps && Math.abs(ps.left) < sz * 0.5 && Math.abs(ps.right - wz) < sz * 0.5) {
+        left = ps.left * size / sz; right = ps.right * size / sz;
+      }
+    }
+    const out = { fontAsc, cap, asc: m.actualBoundingBoxAscent * s, desc: m.actualBoundingBoxDescent * s, left, right };
     metricCache.set(k, out);
     return out;
   };
@@ -1208,6 +1244,34 @@ async function inkAscent(p, font, text) {
   }, { font, text });
 }
 
+// At rest in LAYOUT, which no animation reports: a list that mounts its rows in batches, one per
+// frame, and scrolls itself once they are all in. The desktop My Schedule pane does that
+// (ScheduleView: 10 rows a frame, then a jump to today), landing 3-6 s after the Schedule opens
+// under load: after the scan had read its date pills' boxes and while the pixel pass was capturing,
+// so a pill's "ink" was the pane scrolling past it ("10 Oct" dx -1.56, on many runs), and a tap on
+// one of its rows could time out on a row that would not hold still (the myschedule-* views not
+// reached). Waits, at most 8 s, until the element count and every scroll offset hold still over
+// three samples, each at least a frame and 200 ms apart.
+async function settleLayout(p) {
+  await p.evaluate(async () => {
+    const t0 = performance.now();
+    const sig = () => {
+      const all = document.getElementsByTagName('*');
+      let s = String(all.length);
+      for (const el of all) if (el.scrollTop || el.scrollLeft) s += `|${el.scrollTop},${el.scrollLeft}`;
+      return s + '|' + (document.scrollingElement ? document.scrollingElement.scrollTop : 0);
+    };
+    const frame = () => new Promise(r => requestAnimationFrame(r));
+    let last = sig(), still = 0;
+    while (still < 3 && performance.now() - t0 < 8000) {
+      await Promise.all([frame(), new Promise(r => setTimeout(r, 200))]);
+      const now = sig();
+      still = now === last ? still + 1 : 0;
+      last = now;
+    }
+  }).catch(() => {});
+}
+
 // The centring verdict from the label's ink (text union + figure union) against the box.
 const unionOf = (bs) => bs.reduce((u, q) => [Math.min(u[0], q[0]), Math.min(u[1], q[1]), Math.max(u[2], q[2]), Math.max(u[3], q[3])], [Infinity, Infinity, -Infinity, -Infinity]);
 function finalize(c) {
@@ -1294,6 +1358,7 @@ function finalize(c) {
       }
       if (waited) await new Promise(r => requestAnimationFrame(r));
     }).catch(() => {});
+    await settleLayout(p);
     // A scrollIntoView can scroll an overflow:hidden ancestor of the whole app (the .app-shell),
     // lifting the top bar out of the viewport. Put it back, and say so: it is a bug of its own.
     const lifted = await p.evaluate(() => {
@@ -1384,6 +1449,7 @@ function finalize(c) {
     const sel = desktop ? `.dk-rail-item:has-text("${name}")` : `.bottom-nav .nav-tab:has-text("${name}")`;
     await p.locator(sel).first().click({ timeout: 8000, force: overlay });
     await p.waitForTimeout(1800);
+    await settleLayout(p);
   };
   const menu = async (name, railName) => {
     if (desktop) return nav(railName);
@@ -1870,7 +1936,10 @@ function finalize(c) {
   }, 1);
   step('myschedule-conditional-set', async () => {
     const s = await mySched();
-    await tap(s + '.cal-event-row.conditional:not(.open) .cal-event-bar', 900);
+    // Not a past one: once the pane has landed on today (see settleLayout), the first conditional
+    // row in the DOM is days above it, and Playwright's scroll into view leaves it "outside of the
+    // viewport" until the 8 s timeout. Today's and later rows are where the list rests.
+    await tap(s + '.cal-event-row.conditional:not(.open):not(.past) .cal-event-bar', 900);
   }, 1);
   step('myschedule-export', async () => { await mySched(); await tap('button[title="Export schedule"]', 900); }, 1);
   step('myschedule-travel', async () => { await mySched(); await tap('button:has-text("Travel")', 900); });

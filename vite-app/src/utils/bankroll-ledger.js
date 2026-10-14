@@ -176,6 +176,174 @@ export function profitSeries(entries, { from = null } = {}) {
   return pts;
 }
 
+// ── The trend graph's lines (Overview, Profit mode) ───────────────────────────────────────
+// Three lines over one date axis, as a poker tracker's trend chart draws them: Total (every
+// result: the hero's profit), Tournaments and Cash. Whatever is neither (expenses & income, any
+// future source) is `other`: inside Total, without a line of its own.
+export const SERIES = [['total', 'Total'], ['tourn', 'Tournaments'], ['cash', 'Cash']];
+export const SERIES_KEYS = SERIES.map((s) => s[0]);
+const seriesOf = (e) => (e.source === 'tournaments' ? 'tourn' : e.source === 'cash-sessions' ? 'cash' : 'other');
+
+/**
+ * Cumulative results per game type, on one date axis. The first row is the window's start, every
+ * series at 0; then one row per day that had a result, each series at its running sum at that
+ * day's close. Total is every non-move entry (the rule overviewStats.results uses), tourn the
+ * 'tournaments' source, cash 'cash-sessions', other the rest, so tourn + cash + other === total on
+ * every row. Sums run in integer cents (amount_display is to the cent), so that identity is exact.
+ * Returns [{ date, total, tourn, cash, other }] (the first row also has start: true).
+ */
+export function gameSeries(entries, { from = null } = {}) {
+  const res = entries.filter((e) => !isMove(e));
+  const rows = [{ date: from || (res[0] ? res[0].date : null), total: 0, tourn: 0, cash: 0, other: 0, start: true }];
+  const c = { total: 0, tourn: 0, cash: 0, other: 0 };
+  for (const e of res) {
+    const a = Math.round((Number(e.amount_display) || 0) * 100);
+    c.total += a;
+    c[seriesOf(e)] += a;
+    let row = rows[rows.length - 1];
+    if (row.start || row.date !== e.date) { row = { date: e.date }; rows.push(row); }
+    for (const k of ['total', 'tourn', 'cash', 'other']) row[k] = c[k] / 100;
+  }
+  return rows;
+}
+
+/** One series of gameSeries rows as chart points: the start, then every row where it moved. */
+export function seriesLine(rows, key) {
+  const pts = [];
+  rows.forEach((r, i) => {
+    if (i === 0) pts.push({ date: r.date, value: r[key], start: true });
+    else if (r[key] !== rows[i - 1][key]) pts.push({ date: r.date, value: r[key] });
+  });
+  return pts;
+}
+
+/**
+ * The graph's date axis for a range: { start, end }. `w` is rangeWindow's window and `win` the
+ * entries inside it, sorted. start = the window's first day (All: the first entry's date; today
+ * when there is none). end = the window's last day, today, except for All, which has no last day
+ * and keeps every entry (as the hero and the tables do), so when the ledger holds one dated after
+ * today (a prepaid hotel, a result logged ahead of the event) All runs to that entry's date and its
+ * step lands on its own day, not piled up at today. The other ranges end today and `within`
+ * leaves later entries out, so no point ever falls past the end.
+ */
+export function chartSpan(w, win, today) {
+  const first = win.length ? win[0].date : null;
+  const last = win.length ? win[win.length - 1].date : null;
+  const start = w.from || first || today;
+  const end = w.to || (last && last > today ? last : today);
+  return { start, end: end < start ? start : end };
+}
+
+/**
+ * The drawdown band under the running peak, point by point: [{ date, peak, bottom, edge }]. The band
+ * always runs its full depth, from the running peak (drawdowns) down to the line (bottom = the
+ * line's value), so peak − bottom is the drawdown there, whether or not the line is filled.
+ * `floor` is the value the line's fill runs to (0, or the scale's nearer edge), and `edge` the far
+ * edge that fill keeps so it gives way under the band: the line where the line stands at or above
+ * the floor (the band is above it), else the nearer of the peak and the floor. Fill [floor, edge]
+ * and band [bottom, peak] then share at most one value: stacked, the fill's colour and the band's
+ * red mix to a neutral grey and both are lost. So a profit line below 0 (always in drawdown there,
+ * since its first point, 0, is a peak) is red from the peak to the line and has no fill under 0.
+ * Without a floor, edge is the line.
+ */
+export function drawdownBand(points, { floor = null } = {}) {
+  const { per } = drawdowns(points);
+  return points.map((p, i) => {
+    const peak = per[i].peak;
+    const edge = floor == null || p.value >= floor ? p.value : Math.min(peak, floor);
+    return { date: p.date, peak, bottom: p.value, edge };
+  });
+}
+
+/** The stored choice of lines ('total,tourn,cash'): known keys only, in order; never empty. */
+export function parseSeriesPref(v) {
+  const got = new Set(String(v == null ? '' : v).split(',').map((s) => s.trim()));
+  const keys = SERIES_KEYS.filter((k) => got.has(k));
+  return keys.length ? keys : [...SERIES_KEYS];
+}
+
+/**
+ * The graph's gridlines: a "nice" step (1, 2, 2.5 or 5 × 10^n) and the extent rounded OUT to it,
+ * in exactly n steps where n is one of `counts`. The chart's plot is 24r tall and each count
+ * divides 24, so every gridline lands on an r line. With `zero` (the profit graph) the extent
+ * takes in 0, and 0 is a tick. The smallest step that fits wins (the tightest scale).
+ * A flat extent (span 0) has one tick and step 0 — the chart draws it across the middle.
+ * `minStep` skips any step finer than it (the chart coarsens a scale whose labels would not fit
+ * their gutter: a balance of MX$1,000,000 moving by MX$15 would want MX$999,985 … MX$1,000,000).
+ * Returns { lo, hi, step, ticks } with ticks from lo to hi.
+ */
+export function niceTicks(lo, hi, { counts = [2, 3, 4], zero = true, minStep = 0 } = {}) {
+  lo = Number(lo); hi = Number(hi);
+  if (!Number.isFinite(lo) && !Number.isFinite(hi)) { lo = 0; hi = 0; }
+  else if (!Number.isFinite(lo)) lo = hi;
+  else if (!Number.isFinite(hi)) hi = lo;
+  if (lo > hi) [lo, hi] = [hi, lo];
+  if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  if (!(hi > lo)) return { lo, hi, step: 0, ticks: [lo] };
+  const ns = [...counts].sort((a, b) => a - b);
+  const maxN = ns[ns.length - 1];
+  const tidy = (v) => Number(v.toPrecision(12)) || 0; // and -0 to 0
+  const floorStep = Number(minStep) > 0 ? Number(minStep) : 0;
+  const p0 = Math.max(Math.floor(Math.log10((hi - lo) / maxN)), floorStep ? Math.floor(Math.log10(floorStep)) : -Infinity) - 1;
+  for (let p = p0; p < p0 + 40; p++) {
+    for (const m of [1, 2, 2.5, 5]) {
+      const step = m * 10 ** p;
+      if (step < floorStep * (1 - 1e-9)) continue;
+      let a = Math.floor(lo / step + 1e-9), b = Math.ceil(hi / step - 1e-9);
+      const n = ns.find((c) => c >= Math.max(1, b - a));
+      if (n == null) continue;
+      // Any spare steps go on the side the data lean to (above for a rise, below for a fall).
+      const spare = n - (b - a);
+      if (Math.abs(hi) >= Math.abs(lo)) b += spare; else a -= spare;
+      const ticks = [];
+      for (let i = a; i <= b; i++) ticks.push(tidy(i * step));
+      return { lo: ticks[0], hi: ticks[ticks.length - 1], step: tidy(step), ticks };
+    }
+  }
+  return { lo, hi, step: 0, ticks: [lo] };
+}
+
+const MINUS = '−'; // as utils.js MINUS: plus-width, so signed labels align
+/** The fewest decimals that write x exactly (x a multiple of 1/2/2.5/5 × 10^n), at most 8. */
+function decimalsOf(x) {
+  x = Math.abs(x);
+  if (!x) return 0;
+  for (let d = 0; d < 8; d++) {
+    const s = x * 10 ** d, r = Math.round(s);
+    if (r && Math.abs(s - r) <= 1e-9 * s) return d; // r && : 0.000001 is not 0 to the unit
+  }
+  return 8;
+}
+const UNITS = [[1e6, 'M'], [1e3, 'k'], [1, '']];
+/**
+ * An axis label: compact money in a currency's own form — { symbol, pos } as utils.js
+ * CURRENCY_CONFIG — "$5k", "−$2.5k", "¥1.2M", "5k kr", "−C$750". Thousands as k, millions as M, no
+ * trailing zeros, grouped as the locale groups (formatCurrencyAmount's toLocaleString); the minus
+ * sign is U+2212.
+ *
+ * `step` (the gridlines' spacing) sets the precision, so that every gridline reads as its own exact
+ * value: the label takes the largest unit, no larger than itself, in which the step needs at most
+ * two decimals ($1.25k from a step of 250), and writes it with as many as that needs. A finer step
+ * steps down a unit: a balance from 9,985 to 10,000 in steps of 5 reads $9,985 … $10,000, not
+ * $9.98k, $9.99k, $9.99k, $10k (a fixed two decimals of k repeated labels, and named a gridline
+ * after a value 5 away). Below the dollar the step's own decimals are kept ($0.025). With no step
+ * (one gridline, or a lone value) the value itself sets the precision.
+ */
+export function compactMoney(v, { symbol = '$', pos = 'pre', step = null, locale } = {}) {
+  const n = Number(v) || 0, a = Math.abs(n);
+  const q = Number(step) > 0 ? Number(step) : a; // what the label has to tell apart
+  let unit = 1, suffix = '', dec = decimalsOf(q);
+  for (const [u, s] of UNITS) {
+    if (u > 1 && a < u) continue;
+    const d = decimalsOf(q / u);
+    if (d <= 2 || u === 1) { unit = u; suffix = s; dec = d; break; }
+  }
+  const x = Number((a / unit).toFixed(dec));
+  const num = x.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: dec }) + suffix;
+  const sign = n < 0 && x !== 0 ? MINUS : '';
+  return pos === 'suf' ? `${sign}${num} ${symbol}` : `${sign}${symbol}${num}`;
+}
+
 /** The highest point of a series, and the first day it was reached. */
 export function peakOf(points) {
   let best = null;

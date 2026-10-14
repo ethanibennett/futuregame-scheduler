@@ -1,0 +1,236 @@
+// Quick-add part A: the gaps added from the collected corpora (2026-10-14).
+// Run: node --test test/quick-add/gaps-round2.test.mjs
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { findGaps, applyAnswer } from '../../vite-app/src/utils/quick-add/gaps.js';
+import { smallBlindOptions } from '../../vite-app/src/utils/quick-add/rules-setup.js';
+import { guessGameType, replayerGame } from '../../vite-app/src/utils/quick-add/game.js';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { normalizeDraft } = require('../../lib/quick-add/normalize.js');
+
+const P = (name, position, startingStack) => ({ name, position, startingStack });
+const A = (player, action, amount = 0) => ({ player, action, amount });
+const St = (name, hero, opponents, board, actions) => ({ name, cards: { hero: hero || '', opponents, board: board || '' }, actions: actions || [], draws: [] });
+const e5 = () => ['', '', '', '', ''];
+const gap = (h, id) => findGaps(h).find((g) => g.id === id);
+const ids = (h) => findGaps(h).map((g) => g.id);
+
+function cash6(bb = 2, sb = 1) {
+  return {
+    gameType: 'NLH', gameMode: 'cash', currency: 'USD',
+    blinds: { sb, bb, ante: 0 },
+    players: [P('Lou', 'LJ', 200 * bb), P('Hal', 'HJ', 200 * bb), P('Cid', 'CO', 200 * bb), P('Hero', 'BTN', 200 * bb), P('Sam', 'SB', 200 * bb), P('Bea', 'BB', 200 * bb)],
+    heroIdx: 3,
+    streets: [
+      St('Preflop', 'AsKs', e5(), '', [A(0, 'fold'), A(1, 'fold'), A(2, 'fold'), A(3, 'raise', 3 * bb), A(4, 'fold'), A(5, 'call', 2 * bb)]),
+      St('Flop', '', e5(), 'Qh7d2c', [A(5, 'check'), A(3, 'check')]),
+      St('Turn', '', e5(), '9s', [A(5, 'check'), A(3, 'check')]),
+      St('River', '', e5(), '4h', [A(5, 'check'), A(3, 'check')]),
+    ],
+    result: { winners: [{ playerIdx: 3, split: false }] },
+  };
+}
+
+test('small blind options are real stakes, never 0, and include sb = bb', () => {
+  assert.deepEqual(smallBlindOptions(0.05), [0.02, 0.05]);
+  assert.deepEqual(smallBlindOptions(0.25), [0.1, 0.25]);
+  assert.deepEqual(smallBlindOptions(0.5), [0.25, 0.5]);
+  assert.deepEqual(smallBlindOptions(1), [0.5, 1]);
+  assert.deepEqual(smallBlindOptions(25), [10, 25]);
+  assert.deepEqual(smallBlindOptions(5), [2, 3, 5]);
+  assert.deepEqual(smallBlindOptions(3000), [1500, 3000]);
+  const h = cash6(0.25, 0.1); delete h.blinds.sb;
+  assert.deepEqual(gap(h, 'blinds.sb').options.map((o) => o.label), ['0.1/0.25', '0.25/0.25']);
+});
+
+test('"6/12k" read as 6 and 12,000 is impossible, with both readings', () => {
+  const h = cash6(12000, 6); h.gameMode = 'mtt';
+  const g = gap(h, 'blinds.scale');
+  assert.ok(g && g.blocking && g.kind === 'impossible');
+  assert.deepEqual(g.options.map((o) => o.label), ['6,000/12,000', '6/12']);
+  const fixed = applyAnswer(h, g, g.options[0].value);
+  assert.deepEqual([fixed.blinds.sb, fixed.blinds.bb], [6000, 12000]);
+  assert.ok(!ids(cash6(2, 1)).includes('blinds.scale'));
+  assert.ok(!ids(cash6(0.02, 0.01)).includes('blinds.scale'));
+});
+
+test('a hand told only in big blinds can be recorded in big blinds', () => {
+  const h = cash6(); h.blinds = { ante: 0 };
+  h.players.forEach((p) => { p.startingStack = null; p.startingStackBB = 100; });
+  h.streets.forEach((st) => st.actions.forEach((a) => { if (a.amount) { a.toAmountBB = a.amount / 2; a.amount = null; } }));
+  const g = gap(h, 'blinds.bb');
+  assert.equal(g.options[0].label, 'Record it in big blinds (0.5/1)');
+  const fixed = applyAnswer(h, g, g.options[0].value);
+  assert.deepEqual([fixed.blinds.sb, fixed.blinds.bb], [0.5, 1]);
+  assert.equal(fixed.players[0].startingStack, 100);
+});
+
+test('an ante of unstated type: per player first when small, and answered both ways', () => {
+  const h = cash6(40000, 20000); h.gameMode = 'mtt'; h.blinds.ante = 5000;
+  h.quickAdd = { anteUnclear: 5000 };
+  const g = gap(h, 'ante-type');
+  assert.ok(g && !g.blocking);
+  assert.match(g.options[0].label, /^Every player posted 5,000 \(30,000 in all\)/);
+  const per = applyAnswer(h, g, g.options[0].value);
+  assert.equal(per.blinds.ante, 30000);
+  assert.ok(!ids(per).includes('ante-type'));
+  const one = applyAnswer(h, g, g.options[1].value);
+  assert.equal(one.blinds.ante, 5000);
+  assert.ok(!ids(one).includes('ante-type'));
+  // Close to the big blind: one big blind ante first.
+  h.blinds.ante = 30000; h.quickAdd = { anteUnclear: 30000 };
+  assert.match(gap(h, 'ante-type').options[0].label, /^One big blind ante/);
+});
+
+test('the hero question has an "I wasn\'t in this hand" answer, which stores the hand hero-less and asks nothing more', () => {
+  const h = cash6(); delete h.heroIdx;
+  h.streets.forEach((s) => { s.cards.hero = ''; });
+  const g = gap(h, 'hero');
+  const out = g.options[g.options.length - 1];
+  assert.equal(out.label, 'I wasn’t in this hand');
+  const obs = applyAnswer(h, g, out.value);
+  assert.equal(obs.heroless, true);
+  assert.ok(obs.heroIdx == null, 'no hero');
+  assert.ok(!ids(obs).includes('hero'), 'no hero question');
+  assert.ok(!ids(obs).some((id) => /^cards:hero/.test(id)), 'no question about "your" cards');
+});
+
+test('a hero-less hand from the parse (hand.heroless) asks nothing about a hero or its cards', () => {
+  const { hand } = normalizeDraft({
+    notes: [], gameType: 'NLH', gameMode: 'cash', tableSize: 2, observer: true, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 0, cards: 'JhTh' }, { player: 1, cards: 'AsKd' }], actions: [{ player: 0, action: 'raise', toAmount: 6 }, { player: 1, action: 'call' }] }],
+  });
+  assert.equal(hand.heroless, true);
+  assert.ok(hand.heroIdx == null);
+  // Seat 0 is the card slot's "hero" as the server lays it out; every shown card is kept.
+  assert.equal(hand.streets[0].cards.hero, 'JhTh');
+  assert.deepEqual(hand.streets[0].cards.opponents, ['AsKd']);
+  const g = ids(hand);
+  assert.ok(!g.includes('hero') && !g.some((id) => /^cards:hero/.test(id)), g.join(','));
+});
+
+test('PLO5, PLO6, PLO6 8/b, NLO8 and Short Deck are games of their own, and "Big Easy" is only an alias', () => {
+  const base = cash6();
+  for (const [game, cards] of [['PLO5', 'AhKd2c3s9h'], ['PLO6', 'AhKd2c3s9hTd'], ['PLO6 8/b', 'AhKd2c3s9hTd'], ['NLO8', 'AhKd2c3s'], ['Short Deck', 'AhKd']]) {
+    const h = { ...base, gameType: game, streets: base.streets.map((s, i) => (i === 0 ? { ...s, cards: { ...s.cards, hero: cards } } : s)) };
+    const g = findGaps(h);
+    assert.ok(!g.some((x) => x.id === 'game'), game + ' is a known game: ' + g.map((x) => x.id).join(','));
+    assert.ok(!g.some((x) => x.id === 'cards:hero'), game + ' takes ' + cards.length / 2 + ' hole cards');
+  }
+  assert.equal(guessGameType('Big Easy'), 'PLO6 8/b');
+  assert.equal(guessGameType('big easy'), 'PLO6 8/b');
+  assert.equal(guessGameType('plo6'), 'PLO6');
+  assert.equal(replayerGame('PLO6 8/b'), 'Big Easy');
+  assert.equal(replayerGame('PLO5'), 'PLO');
+  assert.equal(replayerGame('NLH'), 'NLH');
+  // Six hole cards in a hand with no game named are PLO6, never "Big Easy".
+  const six = { ...base, gameType: null, streets: base.streets.map((s, i) => (i === 0 ? { ...s, cards: { ...s.cards, hero: 'AhKd2c3s9hTd' } } : s)) };
+  assert.ok(!JSON.stringify(findGaps(six)).includes('Big Easy'), 'the guess never says Big Easy');
+});
+
+test('not a hand: one blocking question, and "record it anyway" clears it', () => {
+  const h = cash6(); h.quickAdd = { notRecordable: 'a rules question' };
+  const g = findGaps(h)[0];
+  assert.equal(g.id, 'scope');
+  assert.ok(g.blocking && /a rules question/.test(g.question));
+  assert.ok(!ids(applyAnswer(h, g, g.options[0].value)).includes('scope'));
+});
+
+test('other hands and unsupported formats are said once, and can be dismissed', () => {
+  const h = cash6(); h.quickAdd = { otherHands: ['KK vs AA all in'], unsupported: ['a bomb pot'] };
+  const g = gap(h, 'hand-choice');
+  assert.ok(g && !g.blocking && /2 hands/.test(g.question));
+  assert.ok(gap(h, 'unsupported'));
+  const d = applyAnswer(h, g, g.options[0].value);
+  assert.ok(!ids(d).includes('hand-choice'));
+});
+
+test('server questions: shown until answered or their field is filled', () => {
+  const draft = {
+    notes: [], gameType: 'NLH', gameMode: 'cash', tableSize: 6, othersFolded: true, blinds: { sb: 1, bb: 2, ante: 0 },
+    players: [{ position: 'BTN', isHero: true, startingStack: 200 }, { position: 'BB', startingStack: 200 }],
+    streets: [
+      { name: 'Preflop', cards: [{ player: 0, cards: 'AhQs' }], actions: [{ player: 0, action: 'raise', toAmount: 5 }, { player: 1, action: 'call' }] },
+      { name: 'Flop', board: 'Kd8c3h', actions: [{ player: 1, action: 'check' }, { player: 0, action: 'check' }] },
+      { name: 'Turn', boardChoices: ['6', '7'], actions: [{ player: 1, action: 'check' }, { player: 0, action: 'check' }] },
+    ],
+  };
+  const { hand } = normalizeDraft(draft);
+  const g = gap(hand, 'choice:streets.2.cards.board');
+  assert.ok(g && g.blocking);
+  const answered = applyAnswer(hand, g, g.options[1].value);
+  assert.equal(answered.streets[2].cards.board[0], '7');
+  assert.ok(!ids(answered).some((id) => id.startsWith('choice:')));
+  assert.ok(!(answered.quickAdd && answered.quickAdd.questions));
+  // Filled another way: the question goes too.
+  const other = JSON.parse(JSON.stringify(hand)); other.streets[2].cards.board = '6c';
+  assert.ok(!ids(other).some((id) => id.startsWith('choice:')));
+});
+
+test('postflop checks that went unsaid are filled in without asking', () => {
+  const h = cash6();
+  h.streets[0].actions = [A(0, 'fold'), A(1, 'fold'), A(2, 'raise', 6), A(3, 'call', 6), A(4, 'fold'), A(5, 'call', 4)];
+  h.streets[1].actions = [A(2, 'bet', 10), A(3, 'call', 10), A(5, 'fold')];
+  h.streets[2].actions = []; h.streets[2].cards.board = '';
+  h.streets[3].actions = []; h.streets[3].cards.board = '';
+  const g = gap(h, 'action:1:0');
+  assert.ok(g && g.auto && !g.blocking, JSON.stringify(g));
+  assert.deepEqual(g.options[0].value.actions, [A(5, 'check')]);
+});
+
+test('a group action waiting for the table size is expanded when it is answered', () => {
+  const draft = {
+    notes: [], gameType: 'NLH', gameMode: 'cash', blinds: { sb: 1, bb: 3, ante: 0 },
+    players: [{ position: 'UTG', startingStack: 300 }, { position: 'BB', isHero: true, startingStack: 300 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 1, cards: '6h6d' }], actions: [{ player: 0, action: 'raise', toAmount: 15 }, { player: null, action: 'call', group: 'rest' }, { player: 1, action: 'call' }] }],
+  };
+  const { hand } = normalizeDraft(draft);
+  const g = gap(hand, 'table-size');
+  const six = g.options.find((o) => o.value.n === 6);
+  const seated = applyAnswer(hand, g, six.value);
+  assert.deepEqual(seated.streets[0].actions.map((a) => a.action), ['raise', 'call', 'call', 'call', 'call', 'call']);
+  assert.deepEqual(seated.streets[0].actions.map((a) => a.amount), [15, 15, 15, 15, 14, 12]);
+  assert.ok(!(seated.quickAdd && seated.quickAdd.groups));
+});
+
+test('cent stakes add up exactly: no "called 0.3, but the price was 0.3"', () => {
+  const h = cash6(0.05, 0.02);
+  h.players.forEach((p) => { p.startingStack = 6.36; });
+  h.streets[0].actions = [A(0, 'fold'), A(1, 'raise', 0.15), A(2, 'raise', 0.45), A(3, 'fold'), A(4, 'fold'), A(5, 'fold'), A(1, 'call', 0.3)];
+  h.streets[1].actions = [A(1, 'bet', 0.6), A(2, 'call', 0.6)];
+  h.streets[2].actions = [A(1, 'check'), A(2, 'bet', 1.04), A(1, 'call', 1.04)];
+  h.streets[3].actions = [A(1, 'check'), A(2, 'check')];
+  h.heroIdx = 1; h.streets.forEach((st) => { st.cards.hero = ''; }); h.streets[0].cards.hero = 'JcJs';
+  h.result = { winners: [{ playerIdx: 1, split: false }] };
+  const g = findGaps(h).filter((x) => /^action:/.test(x.id));
+  assert.deepEqual(g.map((x) => x.question), []);
+});
+
+test('a typed value never overwrites a structure (a street\'s actions, the blinds)', () => {
+  const h = cash6();
+  h.quickAdd = { questions: [{ id: 'pot-mismatch:1', kind: 'impossible', field: 'streets.0.actions', question: 'Pot?', options: [{ label: 'The actions are right', value: { op: 'dismiss' } }], allowFree: true, blocking: false }] };
+  const g = gap(h, 'pot-mismatch:1');
+  const after = applyAnswer(h, g, 'someone called');
+  assert.ok(Array.isArray(after.streets[0].actions) && after.streets[0].actions.length === 6);
+});
+
+test('a counted group that leaves a choice of seats is asked about, not guessed (client seating)', () => {
+  const draft = {
+    notes: [], gameType: 'NLH', gameMode: 'cash', blinds: { sb: 1, bb: 3, ante: 0 },
+    players: [{ position: 'UTG', startingStack: 300 }, { position: 'BB', isHero: true, startingStack: 300 }],
+    streets: [{ name: 'Preflop', cards: [{ player: 1, cards: '6h6d' }], actions: [{ player: 0, action: 'raise', toAmount: 15 }, { player: null, action: 'call', group: 'rest', count: 2 }, { player: 1, action: 'call' }] }],
+  };
+  const { hand } = normalizeDraft(draft);
+  const g = gap(hand, 'table-size');
+  const seated = applyAnswer(hand, g, g.options.find((o) => o.value.n === 6).value);
+  const q = (seated.quickAdd && seated.quickAdd.questions || []).find((x) => /^group-seats:0:/.test(x.id));
+  assert.ok(q, JSON.stringify(seated.quickAdd));
+  assert.match(q.question, /2 players called on the preflop without being named; recorded as/);
+  assert.equal(q.blocking, false);
+  // The same question the server raises when the table size was known up front.
+  const known = normalizeDraft({ ...draft, tableSize: 6 }).hand;
+  assert.ok((known.quickAdd.questions || []).some((x) => /^group-seats:0:/.test(x.id)));
+});

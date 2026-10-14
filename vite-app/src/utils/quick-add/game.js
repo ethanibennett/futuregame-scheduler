@@ -50,6 +50,29 @@ export const HAND_CONFIG = {
   'PL Razz':     { heroCards: 7, hasBoard: false, boardMax: 0, betting: 'pl', isStud: true, heroPlaceholder: 'A23x4567xhdscx' },
 };
 
+/* Games quick add knows by their own name although the replayer has no HAND_CONFIG entry for
+   them yet (owner decision E, 2026-10-14: PLO5, PLO6, PLO6 8/b, Short Deck and NLO8 are each
+   their own game, never collapsed into PLO or NLH). HAND_CONFIG above stays an exact copy of
+   utils.js (gaps.test.mjs holds it to that); these sit beside it and gameConfig reads both.
+   "PLO6 8/b" is the replayer's "Big Easy" (decision E2); the replayer keeps its name until its
+   follow-up renames it, and "Big Easy" is accepted here only as an input alias.
+   lib/quick-add/games.js has the server's copy. */
+export const QUICK_ADD_GAMES = {
+  'PLO5':       { heroCards: 5, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q9hdcsd', boardPlaceholder: 'J72hds' },
+  'PLO6':       { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q98hdcsdd', boardPlaceholder: 'J72hds' },
+  'PLO6 8/b':   { heroCards: 6, hasBoard: true, boardMax: 5, betting: 'pl', heroPlaceholder: 'AK2Q98hdcsdd', boardPlaceholder: 'J72hds' },
+  'NLO8':       { heroCards: 4, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'A2KQhdcs', boardPlaceholder: 'J72hds' },
+  'Short Deck': { heroCards: 2, hasBoard: true, boardMax: 5, betting: 'nl', heroPlaceholder: 'AKhd', boardPlaceholder: 'QJ6hch' },
+};
+
+/* TODO(replayer follow-up, owner 2026-10-14): give these games HAND_CONFIG entries of their own.
+   Until then QuickAddView opens a hand in the replayer as the nearest game it has, the way the
+   replayer's own game picker stores them (structureGameMap). */
+export const REPLAYER_FALLBACK = { PLO5: 'PLO', PLO6: 'PLO', 'PLO6 8/b': 'Big Easy', 'Short Deck': 'NLH', NLO8: 'PLO8' };
+export function replayerGame(gameType) {
+  return REPLAYER_FALLBACK[gameType] || gameType;
+}
+
 // Mirrors STREET_DEFS in HandReplayerView.jsx.
 export const STREET_DEFS = {
   community: { streets: ['Preflop', 'Flop', 'Turn', 'River'], boardCards: [0, 3, 1, 1] },
@@ -63,7 +86,7 @@ export const STREET_DEFS = {
    unknown name is NOT quietly treated as hold'em: an unknown game is a gap. */
 export function gameConfig(gameType) {
   if (typeof gameType !== 'string' || !gameType) return null;
-  return HAND_CONFIG[gameType] || HAND_CONFIG[gameType.replace(/^Super /, '')] || null;
+  return HAND_CONFIG[gameType] || QUICK_ADD_GAMES[gameType] || HAND_CONFIG[gameType.replace(/^Super /, '')] || null;
 }
 
 // Mirrors getGameCategory in HandReplayerView.jsx (null for an unknown game).
@@ -123,7 +146,13 @@ const GAME_ALIASES = {
   o8: 'O8', omaha8: 'O8', omahahilo: 'O8', limitomahahilo: 'O8', omaha8orbetter: 'O8', lo8: 'O8',
   lhe: 'LHE', lh: 'LHE', limitholdem: 'LHE', fixedlimitholdem: 'LHE', flhe: 'LHE', limit: 'LHE',
   plh: 'PLH', potlimitholdem: 'PLH',
-  bigo: 'Big O', bigeasy: 'Big Easy',
+  bigo: 'Big O',
+  // Owner decisions E and E2: each is its own game; "Big Easy" is an input alias for PLO6 8/b.
+  plo5: 'PLO5', '5cardplo': 'PLO5', fivecardplo: 'PLO5', plo5card: 'PLO5',
+  plo6: 'PLO6', '6cardplo': 'PLO6', sixcardplo: 'PLO6', plo6card: 'PLO6',
+  plo68b: 'PLO6 8/b', plo68: 'PLO6 8/b', plo6hilo: 'PLO6 8/b', bigeasy: 'PLO6 8/b', '6cardplohilo': 'PLO6 8/b',
+  nlo8: 'NLO8', nolimitomaha8: 'NLO8', nolimitomahahilo: 'NLO8', nlomahahilo: 'NLO8',
+  shortdeck: 'Short Deck', '6holdem': 'Short Deck', '6plus': 'Short Deck', '6plusholdem': 'Short Deck',
   stud: 'Stud Hi', studhi: 'Stud Hi', sevencardstud: 'Stud Hi', '7cardstud': 'Stud Hi', '7stud': 'Stud Hi', studhigh: 'Stud Hi',
   stud8: 'Stud 8', studhilo: 'Stud 8', stud8orbetter: 'Stud 8', sevencardstudhilo: 'Stud 8', '7cardstudhilo': 'Stud 8', studeight: 'Stud 8',
   razz: 'Razz', '27razz': '2-7 Razz', deucetosevenrazz: '2-7 Razz',
@@ -144,8 +173,8 @@ function foldGameName(s) {
    exact replayer name (any case) wins; then the alias table. */
 export function guessGameType(text) {
   if (typeof text !== 'string' || !text.trim()) return null;
-  const exact = Object.keys(HAND_CONFIG).find(k => k.toLowerCase() === text.trim().toLowerCase());
-  if (exact) return exact;
+  const exact = Object.keys(HAND_CONFIG).concat(Object.keys(QUICK_ADD_GAMES)).find(k => k.toLowerCase() === text.trim().toLowerCase());
+  if (exact) return exact === 'Big Easy' ? 'PLO6 8/b' : exact;   // E2: never "Big Easy"
   const folded = foldGameName(text);
   if (GAME_ALIASES[folded]) return GAME_ALIASES[folded];
   const keyFolded = Object.keys(HAND_CONFIG).find(k => foldGameName(k) === folded);

@@ -1404,6 +1404,58 @@
       --neg-quiet: rgba(178,69,60,0.12);
     }
 
+    /* Chart series: the bankroll dashboard's trend graph (BankrollChart.jsx) draws Total,
+       Tournaments and Cash as three lines, each with a translucent fill under it, and the
+       Overview tables (bankroll-overview-tables.css) key their Cash | Tournaments | Total
+       columns with the same three colours, as TEXT. Total is the text colour, Tournaments the
+       brand aqua, Cash a violet: away from the win green and the loss red, and lighter or deeper
+       than the aqua in every theme, so the lines differ in lightness as well as hue (OKLab L,
+       measured). Because the table heads are text, Cash clears WCAG AA text (4.5:1) on the
+       sheet's --bg, and so 3:1 non-text on --bg and --surface (the pills), in every theme:
+                    ground    total L  tourn L  cash               on --bg  on --surface
+         dark       #111111   .93      .77      #966cf7  L .64     5.20     4.79
+         dusk       #0d1525   .89      .77      #966cf7  L .64     5.03     4.58
+         light      #f5f5f5   .22      .52      #4c1d95  L .38     10.05    10.95
+         cloudy     #cbcbcb   .22      .40      #6419e6  L .48     4.58     5.12
+         HC dark    #000000   1.0      .87      #a78bfa  L .71     7.72     7.27
+         HC dusk    #060c18   .96      .87      #a78bfa  L .71     7.19     6.69
+         HC light   #ffffff   0        .38      #6d28d9  L .49     7.10     7.10
+         HC cloudy  #d8d8d8   0        .38      #5b16d6  L .46     5.82     5.38
+       (A lighter violet than the aqua is out of reach at 4.5:1 on the light grounds, so there
+       it goes deeper; on light, deep enough to sit midway between Total and the aqua, .16 and
+       .14 apart, where #5b21b6 had sat .09 from the aqua and the pair leant on hue alone.)
+       --series-fill-* are the fills' alphas, one per line: one shared alpha left the fills
+       unequal (at 0.12 Cash stood 1.14:1 off the dark sheet, Total 1.33), so each is set for
+       about 1.2:1 against --bg, and three stacked stay see-through, every line clearing 3:1
+       over the other two fills. Two sets, the dark grounds and the light ones (WCAG contrast,
+       sRGB compositing, measured):
+                    fill on --bg (total / tourn / cash)   line over the other two fills (min)
+         dark       1.22 / 1.20 / 1.20                    cash 3.44
+         dusk       1.22 / 1.22 / 1.21                    cash 3.32
+         light      1.20 / 1.18 / 1.22                    tourn 3.40
+         cloudy     1.18 / 1.20 / 1.18                    cash 3.27
+         HC dark    1.17 / 1.18 / 1.18                    cash 5.16
+         HC dusk    1.21 / 1.23 / 1.23                    cash 4.55
+         HC light   1.23 / 1.24 / 1.20                    cash 4.74
+         HC cloudy  1.22 / 1.21 / 1.20                    cash 3.99 */
+    :root {
+      --series-total: var(--text);
+      --series-tourn: var(--brand);
+      --series-cash:  #966cf7;
+      --series-fill-total: 0.09;
+      --series-fill-tourn: 0.11;
+      --series-fill-cash:  0.155;
+    }
+    :is([data-theme="light"], [data-theme="cloudy"]) {
+      --series-fill-tourn: 0.125;
+      --series-fill-cash:  0.11;
+    }
+    [data-theme="light"]  { --series-cash: #4c1d95; }
+    [data-theme="cloudy"] { --series-cash: #6419e6; }
+    [data-contrast="high"] { --series-cash: #a78bfa; }
+    [data-theme="light"][data-contrast="high"]  { --series-cash: #6d28d9; }
+    [data-theme="cloudy"][data-contrast="high"] { --series-cash: #5b16d6; }
+
 
     /* ==================================================================
        Results curve. No chart existed anywhere in the app; the tracking
@@ -1761,7 +1813,7 @@
          column line at every width — and "DD Mon" is centred in it on both axes (owner rule,
          2026-10-10: a pill's label is centred, not seated). Day and month stay on one shared
          baseline: they are inline runs of one line (.date-break-label), and it is that line's
-         capitals the pill centres (see .date-break-label). */
+         ink the pill centres (see .date-break-label). */
       display: inline-flex;
       height: calc(var(--subrow) * 4);
       box-sizing: border-box;
@@ -1791,16 +1843,14 @@
       font-size: calc(var(--gu) * 2.3);
       line-height: 1;
       text-box-trim: trim-both; text-box-edge: cap alphabetic;
-      /* Across, the box is the INK too: Libre Baskerville's figures stand ~0.055em in from their
-         left edge (0 1 2 3: 61 69 50 51 units), where the month's last letter ends at its edge, so
-         the advance the pill centred put the ink ~0.8px right of centre. The far end is padded by
-         that bearing — the same balance as a tracked label's text-indent for its trailing
-         letter-space — so the ink, not the advance, is centred. */
+      /* Across, and above the cap height, the box is made the INK as well: the side bearings at its
+         two ends (the day's first figure, the month's last letter) and the figures' rise above the
+         cap are read from the face and set as this label's padding, inline, in em
+         (utils/ink-balance.js, from DateBreak / BackerPage's MonthBreak). They vary by glyph — one
+         fixed pad left "28 Sep" 0.58px off centre — so nothing here is per date. This pad is only
+         the typical figure's left bearing, for the frame before the measurement lands. */
       padding-right: 0.055em;
     }
-    /* A day with a 7: that figure's flag rises 0.06em above the cap height the trim stops at, so
-       the ink ran above the box by that much and sat ~0.8px high. Its box takes the 7's top. */
-    .date-break-label.has-tall-figure { padding-top: 0.06em; }
     .date-break-label > .date-break-mon { margin-left: calc(var(--gu) * 0.3442); } /* 4px @ 430pt, in g */
     /* The one mark the whole list is scrolled to on mount. --brand exists so
        exactly one thing per screen can claim priority; this is the candidate. */
@@ -1821,6 +1871,8 @@
       font-size: calc(var(--gu) * 2.3);
       font-weight: var(--fw-regular);
       line-height: calc(var(--subrow) * 3);
+      /* Inert in Libre Baskerville (it has neither tnum nor lnum: its figures are proportional
+         and lining as drawn), kept for the fallbacks (Georgia's default figures are old-style). */
       font-variant-numeric: var(--num-tabular);
     }
     .date-break-mon {
@@ -4939,10 +4991,13 @@
       --z-strip: 3;
       --z-seat: 4;
       --z-board: 5;
-      --z-pot: 6;
-      --z-bet: 7;
-      --z-dealer: 8;    /* 57: nothing covers the button */
-      --z-flight: 9;
+      /* A swept wager's chips on their way into the pot (the spring path): over the board, under
+         the pot, so they never cover its figure and they settle into the pile, not on top of it. */
+      --z-sweep: 6;
+      --z-pot: 7;
+      --z-bet: 8;
+      --z-dealer: 9;    /* 57: nothing covers the button */
+      --z-flight: 10;
 
       /* 50: four objects within 40px of each other cast four different
          shadows — the plaques a shared --plaque-bevel at 0 3px 8px / 55%, the
@@ -7483,12 +7538,11 @@
     }
 
     /* ── Board Card Animations ── */
-    @keyframes flopCardSlide {
-      0% { opacity:0; transform:translateX(calc(var(--subrow) * -7.5)) scale(0.7) rotate(-8deg); }
-      50% { opacity:0.8; transform:translateX(calc(var(--subrow) * 0.75)) scale(1.03) rotate(1deg); }
-      70% { transform:translateX(calc(var(--subrow) * -0.25)) scale(0.99) rotate(0deg); }
-      100% { opacity:1; transform:translateX(0) scale(1) rotate(0deg); }
-    }
+    /* The spring path (localStorage.replayerSprings '1'/'2', the default on this branch) lands
+       every board card from a layout effect as a Web Animation — the flop, the turn and the river
+       alike — and never emits the animate-board-* classes. turnRiverSlide below is flag '0' only:
+       today's behaviour, kept exactly so a before/after comes from one build. (flopCardSlide and
+       .animate-board, the legacy fallback, were never emitted by anything and are gone.) */
     @keyframes turnRiverSlide {
       0% { opacity:0; transform:translateX(calc(var(--subrow) * -5)) scale(0.6); filter:blur(calc(var(--subrow) * 0.25)); }
       60% { opacity:0.9; transform:translateX(calc(var(--subrow) * 0.5)) scale(1.02); filter:blur(0); }
@@ -7502,9 +7556,6 @@
        HandReplayerView (flopAnimKey), measured against the board's real slots. */
     .replayer-board-area.animate-board-turn .card-row > [data-slot="3"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
     .replayer-board-area.animate-board-river .card-row > [data-slot="4"] { animation:turnRiverSlide var(--dur-base) var(--ease-object) both; }
-    /* Legacy fallback */
-    .replayer-board-area.animate-board .card-img,
-    .replayer-board-area.animate-board .card-classic { animation:flopCardSlide var(--dur-base) var(--ease-object) both; }
 
     /* ── Fold Animation (cards slide to muck) ── */
     @keyframes foldToMuck {
@@ -7685,6 +7736,109 @@
       0%   { opacity:1; transform:translate(0,0) scale(1); }
       55%  { transform:translate(calc(var(--fly-dx) * 0.55), calc(var(--fly-dy) * 0.55 - calc(var(--subrow) * 2))) scale(0.8); }
       100% { opacity:0; transform:translate(var(--fly-dx), var(--fly-dy)) scale(0.4); }
+    }
+
+    /* ── Spring flights (localStorage.replayerSprings, utils/replayer-motion.js) ──
+       The layer the swept wagers' ghosts and the shipped chips fly in. It spans the table's
+       padding box, so a ghost keeps its wager's own left/top percentages, and it sits at
+       --z-flight: the chips pass OVER the board, never through it. Its children move by Web
+       Animations on transform and opacity only, so the [data-capturing] freeze (which pauses CSS
+       animations) does not touch them — the exporters seek them instead. */
+    .replayer-motion-layer {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-flight);
+      pointer-events: none;
+    }
+    /* The sweep's own layer, the same box one step lower: the ghosts fly over the board and under
+       the pot (--z-sweep), so the pot's figure is never covered as they land on the pile. The pot
+       shipped to a winner flies here too, under the pot's figure, the wagers and the button, so it
+       never covers a figure on its way; it comes out from under the pile as the pile empties. */
+    .replayer-motion-layer.replayer-sweep-layer { z-index: var(--z-sweep); }
+    /* The pile once the pot has gone to the winner: its stacks are not drawn (each goes as its chip
+       leaves; utils/replayer-motion.js emptyPile), so the money is never on the felt twice. */
+    .replayer-pot-chips.is-shipped > .replayer-pot-chip-stack { opacity: 0; }
+    /* A stack new to the pile holds its place in the row, unseen, until a swept wager lands on it
+       (then it fades in under the ghost: settlePile). */
+    .replayer-pot-chip-stack.is-pending { opacity: 0; }
+    /* A stack leaving the pile as its colours change: a copy where it was, fading out over the
+       sweep's first landing (fadePileOut), in the sweep's layer under the pot's figure. */
+    .replayer-pile-leaving {
+      position: absolute; pointer-events: none;
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    }
+    /* A swept wager's ghost: a wrapper at the wager's own left/top that flies, sized by a copy of
+       the wager inside it (its face: pill, chips and amount, every theme's rules and all), which
+       fades out as the chips leave, and over it a copy of the chips alone, which goes on to land on
+       the pile. Nothing is copied out of computed styles, so making a ghost reads nothing back. */
+    .replayer-chip-ghost { position: absolute; pointer-events: none; }
+    .replayer-chip-ghost > .replayer-chip-ghost-face {
+      position: relative; left: auto; top: auto; transform: none;
+      animation: none; transition: none; z-index: 0;
+    }
+    .replayer-chip-ghost > .replayer-chip-ghost-chips { position: absolute; margin: 0; z-index: 1; }
+    /* The face's own stack is a spacer (its chips fly in the copy over it): one unseen disc for the
+       width, a margin for the height of the discs it no longer has. */
+    .replayer-chip-ghost-face .chip-stack-visual.is-spacer > .chip-disc {
+      visibility: hidden;
+      margin-bottom: calc(var(--chip-h) * var(--rest, 0));
+    }
+    /* The shipped chip IS the pot; the spring moves it. */
+    .replayer-flying-chip.to-winner.is-spring { animation: none; }
+    /* It is one chip of the pile (shipPot copies each): the pile's own disc in a bare wrapper, the
+       same element, colour and edge pattern its stack draws, not the gold coin the CSS flight is.
+       The pot used to change identity on its departure frame, a 5-chip teal stack replaced by five
+       flat gold coins. The probe the ship sizes its chips by is one too. */
+    .replayer-flying-chip.is-disc {
+      width: auto; height: auto;
+      border: 0; border-radius: 0;
+      background: none; box-shadow: none;
+    }
+    .replayer-flying-chip.is-disc > .replayer-pot-chip-disc { display: block; }
+    /* The ship flies inside these: the flights' bounding box (left/top/width/height set by shipPot;
+       a nested level fills its parent) with a set of holes cut out (the winners' plaques and their
+       hands' names, their hole cards, the dealer button), so a chip that reaches a winner's seat
+       tucks under the plaque's edge rather than crossing the name or the digits. Only the flights'
+       box: a clip over moving children is a mask the size of its box. */
+    .replayer-ship-clip { position: absolute; inset: 0; pointer-events: none; }
+    /* An unseen flying chip, laid out with the table, that the ship sizes its chips by without
+       creating one first and reading it back. */
+    .replayer-chip-probe { visibility: hidden; animation: none; left: 0; top: 0; }
+    /* The winner's plaque takes its gold as the first shipped chip lands rather than at the press:
+       the "0.30s, the winner's plaque takes it" beat above, on the spring's first arrival (progress
+       0.98), which the winning seat carries as --spring-ship-arrive for the current autoplay rate
+       (on the seat, not the table: a custom property changed on the table root recomputes the
+       style of every element on it, an 80ms frame mid-sweep at a 4x CPU throttle). Only
+       into the state; stepping back clears it at once. */
+    /* At the hit: the plaque's own gold (border and rings) starts a frame before the first chip
+       lands and is most of the way there within two frames (--spring-gold-at, the arrival less a
+       frame; the emphatic curve is 90% done at 40% of its time); it was a 200/320ms ease from the
+       landing, a third of the way 100ms after it and still ramping once the chips were gone. Over it
+       a gold glow, a ::after that animates its opacity only (the compositor's), at full by two
+       frames after the landing and fading as the stack settles. */
+    .replayer-table[data-springs] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info {
+      transition-delay: var(--spring-gold-at, var(--spring-ship-arrive, 245ms));
+      transition-duration: var(--dur-fast);
+      transition-timing-function: var(--ease-emphatic);
+    }
+    .replayer-table[data-springs] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info::after {
+      content: '';
+      position: absolute;
+      inset: calc(var(--bw-hair) * -1);
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: var(--ring-1) rgba(255,215,0,0.55), var(--ring-2) rgba(255,215,0,0.45);
+      opacity: 0;
+      animation: plaqueGoldHit var(--dur-slow) var(--ease-linear) var(--spring-ship-arrive, 245ms) both;
+    }
+    @keyframes plaqueGoldHit {
+      0%   { opacity: 0; }
+      7%   { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .replayer-table[data-anim-winner="0"] .replayer-seat.ship-hit:is(.winner, .split) .replayer-seat-info::after { animation: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .replayer-replay .replayer-motion-layer { display: none !important; }
     }
 
     /* ── Draw discard card animation ── */
@@ -8377,6 +8531,10 @@
       pointer-events: none;
     }
     .replayer-table[data-capturing="1"] .replayer-bookend.is-live { display: flex; }
+    /* While an export seeks a spring moment frame by frame (replay-capture.js), the table is the
+       picture: the closing bookend waits for the settled still after the pot has been shipped,
+       instead of covering the table from the result's first frame with the chips flying over it. */
+    .replayer-table[data-capturing="1"][data-capture-motion] .replayer-bookend.is-live { display: none; }
     .replayer-bookend-eyebrow {
       font-family: var(--font-condensed);
       font-size: var(--fs-2xs); font-weight: var(--fw-bold);
@@ -8846,10 +9004,13 @@
     }
 
     /* ── Alerts ── */
-    /* Whole r: 2r lines inside 1.5r of padding a side, the hairline border taken out of the
-       padding, so a one-line alert is a 5r block and whatever follows it stays on the grid. */
+    /* Whole r: 2r lines inside 1.5r of padding a side, so a one-line alert is a 5r block and
+       whatever follows it stays on the grid. The hairline is an inset ring, not a border: a
+       border's width is snapped to whole device pixels (0.13r = 1.07px at r = 8.25px is drawn
+       1px), so the old border taken out of the padding left the alert 0.16px short of 5r, and
+       every date break under My Schedule's "events have a time conflict" sat at y 65.98r. */
     .alert {
-      padding: calc(var(--subrow) * 1.5 - var(--bw-hair)) var(--gu);
+      padding: calc(var(--subrow) * 1.5) var(--gu);
       border-radius: var(--radius-sm);
       font-size: var(--fs-md);
       line-height: calc(var(--subrow) * 2);
@@ -8863,8 +9024,8 @@
        so on the one screen where feedback decides whether the user gets in,
        failure and success were indistinguishable. The app already owned
        semantic colours: the toasts sixty lines below were using them. */
-    .alert-error   { background: var(--danger-bg); border: var(--bw-hair) solid var(--danger); color: var(--danger); }
-    .alert-success { background: var(--ok-bg);     border: var(--bw-hair) solid var(--ok);     color: var(--ok); }
+    .alert-error   { background: var(--danger-bg); box-shadow: inset 0 0 0 var(--bw-hair) var(--danger); color: var(--danger); }
+    .alert-success { background: var(--ok-bg);     box-shadow: inset 0 0 0 var(--bw-hair) var(--ok);     color: var(--ok); }
 
     /* ── Toasts ── */
     .toast-container {
@@ -10825,7 +10986,9 @@
     .cp-btn.active { box-shadow: inset 0 0 0 var(--bw-1) var(--accent); color: var(--accent); background: rgba(160,160,160,0.1); }
     .cp-btn:disabled { opacity: 0.4; cursor: default; }
     /* Two choices across the 28g sub-column: 13g + 2g + 13g. */
-    .cp-btn-pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--subcol); }
+    /* Two whole-g buttons: an even-g pair (the desktop pane) would split into half g each, so the
+       first rounds down to whole g and the second takes the rest (as .font-pick does). */
+    .cp-btn-pair { display: grid; grid-template-columns: round(down, (100% - var(--subcol)) / 2, var(--gu)) minmax(0, 1fr); column-gap: var(--subcol); }
     /* Commit + cancel across the 31g column: 23g + 1g + 7g. */
     .cp-actions { display: grid; grid-template-columns: calc(var(--gu) * 23) 1fr; column-gap: var(--gu); }
     /* A button, so its label is centred in it (owner rule, 2026-10-10), not seated on the cell's
@@ -15559,7 +15722,7 @@
          the felt collapsed to 0×0 and every seat card fell back to its SVG's
          natural 19r height. Define the same set here, against this box. */
       container-type: size;
-      --z-felt: 1; --z-mark: 2; --z-strip: 3; --z-seat: 4; --z-board: 5; --z-pot: 6; --z-bet: 7; --z-dealer: 8; --z-flight: 9;
+      --z-felt: 1; --z-mark: 2; --z-strip: 3; --z-seat: 4; --z-board: 5; --z-sweep: 6; --z-pot: 7; --z-bet: 8; --z-dealer: 9; --z-flight: 10;
       --cast-x: 0; --cast-y: calc(var(--subrow) * 0.25); --cast-blur: calc(var(--subrow) * 0.5);
       --plate-bevel:
         0 calc(var(--subrow) * 0.125) calc(var(--subrow) * 0.25) rgba(0,0,0,0.55),
