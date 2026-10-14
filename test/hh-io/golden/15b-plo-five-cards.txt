@@ -1,0 +1,32 @@
+PokerStars Hand #8395819350070437:  5 Card Omaha Pot Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #1 is the button
+Seat 1: Hero ($300 in chips)
+Seat 2: Sia ($300 in chips)
+Seat 3: Tam ($300 in chips)
+Sia: posts small blind $1
+Tam: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Hero [Ac 2c 5d 6h 9s]
+Hero: raises $4 to $6
+Sia: folds
+Tam: calls $4
+*** FLOP *** [3c 4d Th]
+Tam: checks
+Hero: bets $9
+Tam: calls $9
+*** TURN *** [3c 4d Th] [Kd]
+Tam: checks
+Hero: checks
+*** RIVER *** [3c 4d Th Kd] [7c]
+Tam: bets $20
+Hero: calls $20
+*** SHOW DOWN ***
+Tam: shows [Kh Qh Js 8d 4c] (two pair, Kings and Fours)
+Hero: shows [Ac 2c 5d 6h 9s] (a straight, Three to Seven)
+Hero collected $71 from pot
+*** SUMMARY ***
+Total pot $71 | Rake $0
+Board [3c 4d Th Kd 7c]
+Seat 1: Hero (button) showed [Ac 2c 5d 6h 9s] and won ($71) with a straight, Three to Seven
+Seat 2: Sia (small blind) folded before Flop
+Seat 3: Tam (big blind) showed [Kh Qh Js 8d 4c] and lost with two pair, Kings and Fours

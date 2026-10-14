@@ -1,0 +1,37 @@
+PokerStars Hand #8056472639883877:  Omaha Hi/Lo Limit ($4/$8 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #2 is the button
+Seat 1: Dot ($300 in chips)
+Seat 2: Hero ($300 in chips)
+Seat 3: Emu ($300 in chips)
+Seat 4: Fox ($300 in chips)
+Emu: posts small blind $2
+Fox: posts big blind $4
+*** HOLE CARDS ***
+Dealt to Hero [Ac 3d Kd Qc]
+Dot: folds
+Hero: raises $4 to $8
+Emu: folds
+Fox: calls $4
+*** FLOP *** [6d 7s Kh]
+Fox: checks
+Hero: bets $4
+Fox: calls $4
+*** TURN *** [6d 7s Kh] [8c]
+Fox: bets $8
+Hero: calls $8
+*** RIVER *** [6d 7s Kh 8c] [Ks]
+Fox: checks
+Hero: bets $8
+Fox: calls $8
+*** SHOW DOWN ***
+Hero: shows [Ac 3d Kd Qc] (HI: three of a kind, Kings; LO: 8,7,6,3,A)
+Fox: shows [2s 4h 5c 9h] (HI: a straight, Five to Nine; LO: 8,7,6,4,2)
+Fox collected $29 from pot
+Hero collected $29 from pot
+*** SUMMARY ***
+Total pot $58 | Rake $0
+Board [6d 7s Kh 8c Ks]
+Seat 1: Dot folded before Flop (didn't bet)
+Seat 2: Hero (button) showed [Ac 3d Kd Qc] and won ($29) with HI: three of a kind, Kings; LO: 8,7,6,3,A
+Seat 3: Emu (small blind) folded before Flop
+Seat 4: Fox (big blind) showed [2s 4h 5c 9h] and won ($29) with HI: a straight, Five to Nine; LO: 8,7,6,4,2

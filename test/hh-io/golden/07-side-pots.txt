@@ -1,0 +1,32 @@
+PokerStars Hand #8052395460592794: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (50/100) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #2 is the button
+Seat 1: Ari (1000 in chips)
+Seat 2: Hero (3000 in chips)
+Seat 3: Cal (6000 in chips)
+Seat 4: Dov (8000 in chips)
+Cal: posts small blind 50
+Dov: posts big blind 100
+*** HOLE CARDS ***
+Dealt to Hero [Ks Kh]
+Ari: raises 900 to 1000 and is all-in
+Hero: raises 2000 to 3000 and is all-in
+Cal: raises 3000 to 6000 and is all-in
+Dov: calls 5900
+*** FLOP *** [8c 7d 2s]
+*** TURN *** [8c 7d 2s] [4h]
+*** RIVER *** [8c 7d 2s 4h] [3c]
+*** SHOW DOWN ***
+Cal: shows [Js Jh] (a pair of Jacks)
+Dov: shows [Qd Qc] (a pair of Queens)
+Dov collected 6000 from side pot-2
+Hero: shows [Ks Kh] (a pair of Kings)
+Hero collected 6000 from side pot-1
+Ari: shows [As Ah] (a pair of Aces)
+Ari collected 4000 from main pot
+*** SUMMARY ***
+Total pot 16000 Main pot 4000. Side pot-1 6000. Side pot-2 6000. | Rake 0
+Board [8c 7d 2s 4h 3c]
+Seat 1: Ari showed [As Ah] and won (4000) with a pair of Aces
+Seat 2: Hero (button) showed [Ks Kh] and won (6000) with a pair of Kings
+Seat 3: Cal (small blind) showed [Js Jh] and lost with a pair of Jacks
+Seat 4: Dov (big blind) showed [Qd Qc] and won (6000) with a pair of Queens

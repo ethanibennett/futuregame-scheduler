@@ -1,0 +1,37 @@
+PokerStars Hand #8032355050497847:  Hold'em Pot Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #2 is the button
+Seat 1: Ezra ($400 in chips)
+Seat 2: Hero ($400 in chips)
+Seat 3: Gus ($400 in chips)
+Seat 4: Hob ($400 in chips)
+Gus: posts small blind $1
+Hob: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Hero [Jh Jd]
+Ezra: folds
+Hero: raises $5 to $7
+Gus: folds
+Hob: calls $5
+*** FLOP *** [Jc 8s 4h]
+Hob: checks
+Hero: bets $10
+Hob: calls $10
+*** TURN *** [Jc 8s 4h] [Ad]
+Hob: bets $35
+Hero: raises $105 to $140
+Hob: calls $105
+*** RIVER *** [Jc 8s 4h Ad] [6c]
+Hob: checks
+Hero: bets $243 and is all-in
+Hob: calls $243 and is all-in
+*** SHOW DOWN ***
+Hero: shows [Jh Jd] (three of a kind, Jacks)
+Hob: shows [Ac Ks] (a pair of Aces)
+Hero collected $801 from pot
+*** SUMMARY ***
+Total pot $801 | Rake $0
+Board [Jc 8s 4h Ad 6c]
+Seat 1: Ezra folded before Flop (didn't bet)
+Seat 2: Hero (button) showed [Jh Jd] and won ($801) with three of a kind, Jacks
+Seat 3: Gus (small blind) folded before Flop
+Seat 4: Hob (big blind) showed [Ac Ks] and lost with a pair of Aces

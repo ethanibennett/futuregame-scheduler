@@ -1,0 +1,42 @@
+PokerStars Hand #8462868417923043: Tournament #7641050166, Freeroll  Badugi Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7641050166 1' 6-max Seat #2 is the button
+Seat 1: Vic (6000 in chips)
+Seat 2: Hero (6000 in chips)
+Seat 3: Wyn (6000 in chips)
+Seat 4: Xer (6000 in chips)
+Wyn: posts small blind 50
+Xer: posts big blind 100
+*** DEALING HANDS ***
+Dealt to Hero [Ac 4d 7h Kh]
+Vic: folds
+Hero: raises 100 to 200
+Wyn: folds
+Xer: calls 100
+*** FIRST DRAW ***
+Xer: discards 1 card
+Hero: discards 1 card [Kh]
+Dealt to Hero [Ac 4d 7h] [9s]
+Xer: checks
+Hero: bets 100
+Xer: calls 100
+*** SECOND DRAW ***
+Xer: discards 1 card
+Hero: stands pat on [Ac 4d 7h 9s]
+Xer: bets 200
+Hero: calls 200
+*** THIRD DRAW ***
+Xer: stands pat
+Hero: stands pat on [Ac 4d 7h 9s]
+Xer: checks
+Hero: bets 200
+Xer: calls 200
+*** SHOW DOWN ***
+Hero: shows [Ac 4d 7h 9s] (Badugi: 9,7,4,A)
+Xer: shows [2s 3h Qc 5d] (Badugi: Q,5,3,2)
+Hero collected 1450 from pot
+*** SUMMARY ***
+Total pot 1450 | Rake 0
+Seat 1: Vic folded before the Draw (didn't bet)
+Seat 2: Hero (button) showed [Ac 4d 7h 9s] and won (1450) with a Badugi: 9,7,4,A
+Seat 3: Wyn (small blind) folded before the Draw
+Seat 4: Xer (big blind) showed [2s 3h Qc 5d] and lost with a Badugi: Q,5,3,2

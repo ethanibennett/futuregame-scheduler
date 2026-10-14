@@ -1,0 +1,200 @@
+{
+  "hand": {
+    "gameType": "NLH",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 0.25,
+      "bb": 0.5
+    },
+    "players": [
+      {
+        "name": "vanessa_k",
+        "position": "HJ",
+        "startingStack": 48.1
+      },
+      {
+        "name": "Hero",
+        "position": "CO",
+        "startingStack": 50
+      },
+      {
+        "name": "mtnman",
+        "position": "BTN",
+        "startingStack": 61.75
+      },
+      {
+        "name": "Quokka99",
+        "position": "SB",
+        "startingStack": 22.4
+      },
+      {
+        "name": "Bertrand",
+        "position": "BB",
+        "startingStack": 50
+      }
+    ],
+    "heroIdx": 1,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "Ah5h",
+          "opponents": [
+            "",
+            "",
+            "",
+            "QcJc"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "raise",
+            "amount": 1.25
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 4,
+            "action": "call",
+            "amount": 0.75
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "Jh9h3s"
+        },
+        "actions": [
+          {
+            "player": 4,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 1.6
+          },
+          {
+            "player": 4,
+            "action": "call",
+            "amount": 1.6
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "2d"
+        },
+        "actions": [
+          {
+            "player": 4,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 3.9
+          },
+          {
+            "player": 4,
+            "action": "call",
+            "amount": 3.9
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "4c"
+        },
+        "actions": [
+          {
+            "player": 4,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 8.5
+          },
+          {
+            "player": 4,
+            "action": "call",
+            "amount": 8.5
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 1,
+          "split": false
+        }
+      ]
+    },
+    "import": {
+      "site": "pokerstars",
+      "siteName": "PokerStars",
+      "handId": "245893457123",
+      "tableName": "Aludra II",
+      "maxSeats": 6,
+      "seatNumbers": [
+        2,
+        3,
+        5,
+        6,
+        1
+      ],
+      "playedAt": "2025-03-01T02:14:09.000Z",
+      "notes": []
+    }
+  },
+  "opts": {}
+}

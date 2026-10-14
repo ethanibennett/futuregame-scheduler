@@ -1,0 +1,249 @@
+{
+  "hand": {
+    "gameType": "NLH",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 1,
+      "bb": 2,
+      "straddle": true,
+      "straddle_utg": true,
+      "straddle_mississippi": true,
+      "straddle_button": true,
+      "straddleSeats": {
+        "mississippi": 3
+      }
+    },
+    "players": [
+      {
+        "name": "Uma",
+        "position": "UTG+1",
+        "startingStack": 300
+      },
+      {
+        "name": "Ike",
+        "position": "MP1",
+        "startingStack": 300
+      },
+      {
+        "name": "Mo",
+        "position": "MP2",
+        "startingStack": 300
+      },
+      {
+        "name": "Hero",
+        "position": "LJ",
+        "startingStack": 300
+      },
+      {
+        "name": "Hal",
+        "position": "HJ",
+        "startingStack": 300
+      },
+      {
+        "name": "Cy",
+        "position": "CO",
+        "startingStack": 300
+      },
+      {
+        "name": "Bea",
+        "position": "BTN",
+        "startingStack": 300
+      },
+      {
+        "name": "Sid",
+        "position": "SB",
+        "startingStack": 300
+      },
+      {
+        "name": "Bix",
+        "position": "BB",
+        "startingStack": 300
+      }
+    ],
+    "heroIdx": 3,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "Ad5d",
+          "opponents": [
+            "8c8h",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 7,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 8,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 12
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 8
+          },
+          {
+            "player": 4,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 5,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 6,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "Kd8d3s"
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "bet",
+            "amount": 30
+          },
+          {
+            "player": 6,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 30
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "2c"
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "Qd"
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 50
+          },
+          {
+            "player": 3,
+            "action": "raise",
+            "amount": 200
+          },
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 3,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

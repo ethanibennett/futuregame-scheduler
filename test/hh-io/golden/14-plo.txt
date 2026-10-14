@@ -1,0 +1,40 @@
+PokerStars Hand #8677982228601804:  Omaha Pot Limit ($0.50/$1 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #4 is the button
+Seat 1: Mia ($100 in chips)
+Seat 2: Hero ($100 in chips)
+Seat 3: Nox ($100 in chips)
+Seat 4: Ori ($100 in chips)
+Seat 5: Pax ($100 in chips)
+Seat 6: Rue ($100 in chips)
+Pax: posts small blind $0.50
+Rue: posts big blind $1
+*** HOLE CARDS ***
+Dealt to Hero [As Ks Qh Jh]
+Mia: folds
+Hero: raises $2.50 to $3.50
+Nox: folds
+Ori: calls $3.50
+Pax: folds
+Rue: folds
+*** FLOP *** [Th 9h 2s]
+Hero: bets $5
+Ori: raises $15 to $20
+Hero: calls $15
+*** TURN *** [Th 9h 2s] [6h]
+Hero: bets $40
+Ori: calls $40
+*** RIVER *** [Th 9h 2s 6h] [3c]
+Hero: bets $36.50 and is all-in
+Ori: folds
+Uncalled bet ($36.50) returned to Hero
+Hero collected $128.50 from pot
+Hero: doesn't show hand
+*** SUMMARY ***
+Total pot $128.50 | Rake $0
+Board [Th 9h 2s 6h 3c]
+Seat 1: Mia folded before Flop (didn't bet)
+Seat 2: Hero collected ($128.50)
+Seat 3: Nox folded before Flop (didn't bet)
+Seat 4: Ori (button) folded on the River
+Seat 5: Pax (small blind) folded before Flop
+Seat 6: Rue (big blind) folded before Flop

@@ -1,0 +1,34 @@
+PokerStars Hand #8459084325688716: Tournament #3456789012, $10+$1 USD Hold'em No Limit - Level VII (300/600) - 2026/10/13 14:30:05 ET
+Table '3456789012 1' 6-max Seat #3 is the button
+Seat 1: Dio (41000 in chips)
+Seat 2: Hero (38250 in chips)
+Seat 3: Eko (52000 in chips)
+Seat 4: Fay (18000 in chips)
+Seat 5: Gem (27500 in chips)
+Gem: posts the ante 600
+Fay: posts small blind 300
+Gem: posts big blind 600
+*** HOLE CARDS ***
+Dealt to Hero [Ts Td]
+Dio: folds
+Hero: raises 750 to 1350
+Eko: folds
+Fay: folds
+Gem: calls 750
+*** FLOP *** [Ah 9c 4s]
+Gem: checks
+Hero: checks
+*** TURN *** [Ah 9c 4s] [4d]
+Gem: bets 1800
+Hero: folds
+Uncalled bet (1800) returned to Gem
+Gem collected 3600 from pot
+Gem: doesn't show hand
+*** SUMMARY ***
+Total pot 3600 | Rake 0
+Board [Ah 9c 4s 4d]
+Seat 1: Dio folded before Flop (didn't bet)
+Seat 2: Hero folded on the Turn
+Seat 3: Eko (button) folded before Flop (didn't bet)
+Seat 4: Fay (small blind) folded before Flop
+Seat 5: Gem (big blind) collected (3600)

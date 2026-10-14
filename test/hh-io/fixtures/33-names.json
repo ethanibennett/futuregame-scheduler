@@ -1,0 +1,146 @@
+{
+  "hand": {
+    "gameType": "NLH",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 1,
+      "bb": 2
+    },
+    "players": [
+      {
+        "name": "Bob: The (Great)",
+        "position": "CO",
+        "startingStack": 200
+      },
+      {
+        "name": "bob the great",
+        "position": "BTN",
+        "startingStack": 200
+      },
+      {
+        "name": "",
+        "position": "SB",
+        "startingStack": 200
+      },
+      {
+        "name": "[me]",
+        "position": "BB",
+        "startingStack": 200
+      }
+    ],
+    "heroIdx": 3,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "8s8d",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 5
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 3
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "Kh8h2c"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 6
+          },
+          {
+            "player": 3,
+            "action": "raise",
+            "amount": 20
+          },
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 3,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z",
+    "heroName": "Ethan B."
+  }
+}

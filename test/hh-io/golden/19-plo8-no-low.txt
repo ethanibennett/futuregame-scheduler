@@ -1,0 +1,33 @@
+PokerStars Hand #8499860876463930:  Omaha Hi/Lo Pot Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #1 is the button
+Seat 1: Hero ($200 in chips)
+Seat 2: Bly ($200 in chips)
+Seat 3: Cho ($200 in chips)
+Bly: posts small blind $1
+Cho: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kh Qs 2c]
+Hero: raises $4 to $6
+Bly: folds
+Cho: calls $4
+*** FLOP *** [9h Th 6s]
+Cho: checks
+Hero: bets $13
+Cho: calls $13
+*** TURN *** [9h Th 6s] [Kc]
+Cho: checks
+Hero: checks
+*** RIVER *** [9h Th 6s Kc] [2h]
+Cho: checks
+Hero: bets $30
+Cho: calls $30
+*** SHOW DOWN ***
+Hero: shows [Ah Kh Qs 2c] (HI: a flush, Ace high)
+Cho: shows [Jd Jc 3s 4d] (HI: a pair of Jacks)
+Hero collected $99 from pot
+*** SUMMARY ***
+Total pot $99 | Rake $0
+Board [9h Th 6s Kc 2h]
+Seat 1: Hero (button) showed [Ah Kh Qs 2c] and won ($99) with HI: a flush, Ace high
+Seat 2: Bly (small blind) folded before Flop
+Seat 3: Cho (big blind) showed [Jd Jc 3s 4d] and lost with HI: a pair of Jacks

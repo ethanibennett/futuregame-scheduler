@@ -1,0 +1,147 @@
+{
+  "hand": {
+    "gameType": "NLH",
+    "gameMode": "mtt",
+    "blinds": {
+      "sb": 100,
+      "bb": 200,
+      "ante": 0
+    },
+    "players": [
+      {
+        "name": "Ava",
+        "position": "LJ",
+        "startingStack": 10000
+      },
+      {
+        "name": "Bo",
+        "position": "HJ",
+        "startingStack": 10000
+      },
+      {
+        "name": "Hero",
+        "position": "CO",
+        "startingStack": 10000
+      },
+      {
+        "name": "Dax",
+        "position": "BTN",
+        "startingStack": 10000
+      },
+      {
+        "name": "Eli",
+        "position": "SB",
+        "startingStack": 10000
+      },
+      {
+        "name": "Fin",
+        "position": "BB",
+        "startingStack": 10000
+      }
+    ],
+    "heroIdx": 2,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "AhJs",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 4,
+            "action": "fold",
+            "amount": 0
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 5,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

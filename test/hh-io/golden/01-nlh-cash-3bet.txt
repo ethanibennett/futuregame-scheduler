@@ -1,0 +1,43 @@
+PokerStars Hand #8603620531583077:  Hold'em No Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #4 is the button
+Seat 1: Lena ($200 in chips)
+Seat 2: Marco ($200 in chips)
+Seat 3: Dee ($200 in chips)
+Seat 4: Ethan ($250 in chips)
+Seat 5: Sol ($200 in chips)
+Seat 6: Rafe ($200 in chips)
+Sol: posts small blind $1
+Rafe: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Ethan [As Kd]
+Lena: folds
+Marco: raises $4 to $6
+Dee: folds
+Ethan: raises $14 to $20
+Sol: folds
+Rafe: folds
+Marco: calls $14
+*** FLOP *** [Ks 7d 2c]
+Marco: checks
+Ethan: bets $22
+Marco: calls $22
+*** TURN *** [Ks 7d 2c] [9h]
+Marco: checks
+Ethan: bets $55
+Marco: calls $55
+*** RIVER *** [Ks 7d 2c 9h] [3s]
+Marco: checks
+Ethan: checks
+*** SHOW DOWN ***
+Marco: shows [Qh Qc] (a pair of Queens)
+Ethan: shows [As Kd] (a pair of Kings)
+Ethan collected $197 from pot
+*** SUMMARY ***
+Total pot $197 | Rake $0
+Board [Ks 7d 2c 9h 3s]
+Seat 1: Lena folded before Flop (didn't bet)
+Seat 2: Marco showed [Qh Qc] and lost with a pair of Queens
+Seat 3: Dee folded before Flop (didn't bet)
+Seat 4: Ethan (button) showed [As Kd] and won ($197) with a pair of Kings
+Seat 5: Sol (small blind) folded before Flop
+Seat 6: Rafe (big blind) folded before Flop

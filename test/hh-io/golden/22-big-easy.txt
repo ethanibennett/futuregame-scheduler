@@ -1,0 +1,32 @@
+PokerStars Hand #8625576327917176: Tournament #7771237548, Freeroll  6 Card Omaha Hi/Lo Pot Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7771237548 1' 6-max Seat #1 is the button
+Seat 1: Hero (12000 in chips)
+Seat 2: Ivo (12000 in chips)
+Seat 3: Jem (12000 in chips)
+Ivo: posts small blind 100
+Jem: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Ac 2d 4h 7s 8s Kd]
+Hero: raises 400 to 600
+Ivo: folds
+Jem: calls 400
+*** FLOP *** [5d 6c Qs]
+Jem: bets 1300
+Hero: calls 1300
+*** TURN *** [5d 6c Qs] [9h]
+Jem: checks
+Hero: checks
+*** RIVER *** [5d 6c Qs 9h] [2s]
+Jem: checks
+Hero: checks
+*** SHOW DOWN ***
+Jem: shows [Qc Qd Jh Ts 9c 3c] (HI: three of a kind, Queens)
+Hero: shows [Ac 2d 4h 7s 8s Kd] (HI: a straight, Five to Nine; LO: 6,5,4,2,A)
+Hero collected 1950 from pot
+Hero collected 1950 from pot
+*** SUMMARY ***
+Total pot 3900 | Rake 0
+Board [5d 6c Qs 9h 2s]
+Seat 1: Hero (button) showed [Ac 2d 4h 7s 8s Kd] and won (3900) with HI: a straight, Five to Nine; LO: 6,5,4,2,A
+Seat 2: Ivo (small blind) folded before Flop
+Seat 3: Jem (big blind) showed [Qc Qd Jh Ts 9c 3c] and lost with HI: three of a kind, Queens

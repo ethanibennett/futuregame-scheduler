@@ -1,0 +1,40 @@
+PokerStars Hand #245893457123:  Hold'em No Limit ($0.25/$0.50 USD) - 2025/02/28 21:14:09 ET
+Table 'Aludra II' 6-max Seat #5 is the button
+Seat 1: Bertrand ($50 in chips)
+Seat 2: vanessa_k ($48.10 in chips)
+Seat 3: Hero ($50 in chips)
+Seat 5: mtnman ($61.75 in chips)
+Seat 6: Quokka99 ($22.40 in chips)
+Quokka99: posts small blind $0.25
+Bertrand: posts big blind $0.50
+*** HOLE CARDS ***
+Dealt to Hero [Ah 5h]
+vanessa_k: folds
+Hero: raises $0.75 to $1.25
+mtnman: folds
+Quokka99: folds
+Bertrand: calls $0.75
+*** FLOP *** [Jh 9h 3s]
+Bertrand: checks
+Hero: bets $1.60
+Bertrand: calls $1.60
+*** TURN *** [Jh 9h 3s] [2d]
+Bertrand: checks
+Hero: bets $3.90
+Bertrand: calls $3.90
+*** RIVER *** [Jh 9h 3s 2d] [4c]
+Bertrand: checks
+Hero: bets $8.50
+Bertrand: calls $8.50
+*** SHOW DOWN ***
+Hero: shows [Ah 5h] (a straight, Ace to Five)
+Bertrand: shows [Qc Jc] (a pair of Jacks)
+Hero collected $30.75 from pot
+*** SUMMARY ***
+Total pot $30.75 | Rake $0
+Board [Jh 9h 3s 2d 4c]
+Seat 1: Bertrand (big blind) showed [Qc Jc] and lost with a pair of Jacks
+Seat 2: vanessa_k folded before Flop (didn't bet)
+Seat 3: Hero showed [Ah 5h] and won ($30.75) with a straight, Ace to Five
+Seat 5: mtnman (button) folded before Flop (didn't bet)
+Seat 6: Quokka99 (small blind) folded before Flop

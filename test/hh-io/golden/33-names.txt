@@ -1,0 +1,29 @@
+PokerStars Hand #8349001614170140:  Hold'em No Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #2 is the button
+Seat 1: Bob The Great ($200 in chips)
+Seat 2: bob the great 2 ($200 in chips)
+Seat 3: Player3 ($200 in chips)
+Seat 4: Ethan B. ($200 in chips)
+Player3: posts small blind $1
+Ethan B.: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Ethan B. [8s 8d]
+Bob The Great: raises $3 to $5
+bob the great 2: folds
+Player3: folds
+Ethan B.: calls $3
+*** FLOP *** [Kh 8h 2c]
+Ethan B.: checks
+Bob The Great: bets $6
+Ethan B.: raises $14 to $20
+Bob The Great: folds
+Uncalled bet ($14) returned to Ethan B.
+Ethan B. collected $23 from pot
+Ethan B.: doesn't show hand
+*** SUMMARY ***
+Total pot $23 | Rake $0
+Board [Kh 8h 2c]
+Seat 1: Bob The Great folded on the Flop
+Seat 2: bob the great 2 (button) folded before Flop (didn't bet)
+Seat 3: Player3 (small blind) folded before Flop
+Seat 4: Ethan B. (big blind) collected ($23)

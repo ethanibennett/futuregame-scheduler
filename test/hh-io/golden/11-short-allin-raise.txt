@@ -1,0 +1,31 @@
+PokerStars Hand #8954703700356410: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #1 is the button
+Seat 1: Hero (20000 in chips)
+Seat 2: Bram (1500 in chips)
+Seat 3: Coy (20000 in chips)
+Bram: posts small blind 100
+Coy: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [7h 7d]
+Hero: raises 800 to 1000
+Bram: raises 500 to 1500 and is all-in
+Coy: calls 1300
+Hero: calls 500
+*** FLOP *** [Ts 6h 2c]
+Coy: checks
+Hero: checks
+*** TURN *** [Ts 6h 2c] [Qs]
+Coy: bets 2000
+Hero: folds
+Uncalled bet (2000) returned to Coy
+*** RIVER *** [Ts 6h 2c Qs] [3h]
+*** SHOW DOWN ***
+Coy: shows [Kc Jc] (high card King)
+Bram: shows [Ad Td] (a pair of Tens)
+Bram collected 4500 from pot
+*** SUMMARY ***
+Total pot 4500 | Rake 0
+Board [Ts 6h 2c Qs 3h]
+Seat 1: Hero (button) folded on the Turn
+Seat 2: Bram (small blind) showed [Ad Td] and won (4500) with a pair of Tens
+Seat 3: Coy (big blind) showed [Kc Jc] and lost with high card King

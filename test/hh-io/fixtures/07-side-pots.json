@@ -1,0 +1,131 @@
+{
+  "hand": {
+    "gameType": "NLH",
+    "gameMode": "mtt",
+    "blinds": {
+      "sb": 50,
+      "bb": 100
+    },
+    "players": [
+      {
+        "name": "Ari",
+        "position": "CO",
+        "startingStack": 1000
+      },
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 3000
+      },
+      {
+        "name": "Cal",
+        "position": "SB",
+        "startingStack": 6000
+      },
+      {
+        "name": "Dov",
+        "position": "BB",
+        "startingStack": 8000
+      }
+    ],
+    "heroIdx": 1,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "KsKh",
+          "opponents": [
+            "AsAh",
+            "JsJh",
+            "QdQc"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "all-in",
+            "amount": 1000
+          },
+          {
+            "player": 1,
+            "action": "all-in",
+            "amount": 3000
+          },
+          {
+            "player": 2,
+            "action": "all-in",
+            "amount": 5950
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 5900
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "8c7d2s"
+        },
+        "actions": [],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "4h"
+        },
+        "actions": [],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "3c"
+        },
+        "actions": [],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 0,
+          "split": true
+        },
+        {
+          "playerIdx": 1,
+          "split": true
+        },
+        {
+          "playerIdx": 3,
+          "split": true
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

@@ -1,0 +1,41 @@
+PokerStars Hand #8612714134331390:  Triple Draw 2-7 Lowball Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #1 is the button
+Seat 1: Hero ($80 in chips)
+Seat 2: Tex ($80 in chips)
+Seat 3: Ula ($80 in chips)
+Tex: posts small blind $0.50
+Ula: posts big blind $1
+*** DEALING HANDS ***
+Dealt to Hero [2h 4c 7d Ks Qs]
+Hero: raises $1 to $2
+Tex: folds
+Ula: calls $1
+*** FIRST DRAW ***
+Ula: discards 2 cards
+Hero: discards 2 cards [Ks Qs]
+Dealt to Hero [2h 4c 7d] [8d 3c]
+Ula: checks
+Hero: bets $1
+Ula: calls $1
+*** SECOND DRAW ***
+Ula: discards 1 card
+Hero: discards 1 card [8d]
+Dealt to Hero [2h 4c 7d 3c] [5s]
+Ula: bets $2
+Hero: raises $2 to $4
+Ula: calls $2
+*** THIRD DRAW ***
+Ula: stands pat
+Hero: stands pat on [2h 4c 7d 3c 5s]
+Ula: checks
+Hero: bets $2
+Ula: calls $2
+*** SHOW DOWN ***
+Hero: shows [2h 4c 7d 3c 5s] (Lo: 7,5,4,3,2)
+Ula: shows [3s 5d 6h 8c Th] (Lo: T,8,6,5,3)
+Hero collected $18.50 from pot
+*** SUMMARY ***
+Total pot $18.50 | Rake $0
+Seat 1: Hero (button) showed [2h 4c 7d 3c 5s] and won ($18.50) with Lo: 7,5,4,3,2
+Seat 2: Tex (small blind) folded before the Draw
+Seat 3: Ula (big blind) showed [3s 5d 6h 8c Th] and lost with Lo: T,8,6,5,3

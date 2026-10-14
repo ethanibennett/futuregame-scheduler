@@ -1,0 +1,27 @@
+PokerStars Hand #8253455532052325:  5 Card Draw Pot Limit ($0.50/$1 CAD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #1 is the button
+Seat 1: Hero ($100 in chips)
+Seat 2: Bao ($100 in chips)
+Seat 3: Cai ($100 in chips)
+Bao: posts small blind $0.50
+Cai: posts big blind $1
+*** DEALING HANDS ***
+Dealt to Hero [Qh Qd 7s 4c 2h]
+Hero: raises $2 to $3
+Bao: folds
+Cai: calls $2
+Cai: discards 1 card
+Hero: discards 3 cards [7s 4c 2h]
+Dealt to Hero [Qh Qd] [Qs Kd 5h]
+Cai: bets $4
+Hero: raises $12 to $16
+Cai: calls $12
+*** SHOW DOWN ***
+Hero: shows [Qh Qd Qs Kd 5h] (three of a kind, Queens)
+Cai: shows [9c 9d 8h 8s As] (two pair, Nines and Eights)
+Hero collected $38.50 from pot
+*** SUMMARY ***
+Total pot $38.50 | Rake $0
+Seat 1: Hero (button) showed [Qh Qd Qs Kd 5h] and won ($38.50) with three of a kind, Queens
+Seat 2: Bao (small blind) folded before the Draw
+Seat 3: Cai (big blind) showed [9c 9d 8h 8s As] and lost with two pair, Nines and Eights

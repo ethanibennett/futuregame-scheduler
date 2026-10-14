@@ -1,0 +1,54 @@
+PokerStars Hand #8188472962854714:  Hold'em No Limit ($1/$2 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 9-max Seat #7 is the button
+Seat 1: Uma ($300 in chips)
+Seat 2: Ike ($300 in chips)
+Seat 3: Mo ($300 in chips)
+Seat 4: Hero ($300 in chips)
+Seat 5: Hal ($300 in chips)
+Seat 6: Cy ($300 in chips)
+Seat 7: Bea ($300 in chips)
+Seat 8: Sid ($300 in chips)
+Seat 9: Bix ($300 in chips)
+Sid: posts small blind $1
+Bix: posts big blind $2
+Uma: posts straddle $4
+Hero: posts straddle $8
+Bea: posts straddle $16
+*** HOLE CARDS ***
+Dealt to Hero [Ad 5d]
+Sid: folds
+Bix: folds
+Uma: calls $12
+Ike: folds
+Mo: folds
+Hero: calls $8
+Hal: folds
+Cy: folds
+Bea: checks
+*** FLOP *** [Kd 8d 3s]
+Uma: checks
+Hero: bets $30
+Bea: folds
+Uma: calls $30
+*** TURN *** [Kd 8d 3s] [2c]
+Uma: checks
+Hero: checks
+*** RIVER *** [Kd 8d 3s 2c] [Qd]
+Uma: bets $50
+Hero: raises $150 to $200
+Uma: folds
+Uncalled bet ($150) returned to Hero
+Hero collected $211 from pot
+Hero: doesn't show hand
+*** SUMMARY ***
+Total pot $211 | Rake $0
+Board [Kd 8d 3s 2c Qd]
+Seat 1: Uma folded on the River
+Seat 2: Ike folded before Flop (didn't bet)
+Seat 3: Mo folded before Flop (didn't bet)
+Seat 4: Hero collected ($211)
+Seat 5: Hal folded before Flop (didn't bet)
+Seat 6: Cy folded before Flop (didn't bet)
+Seat 7: Bea (button) folded on the Flop
+Seat 8: Sid (small blind) folded before Flop
+Seat 9: Bix (big blind) folded before Flop

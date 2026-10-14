@@ -1,0 +1,192 @@
+{
+  "hand": {
+    "title": "NLH: Hero rivers nut flush",
+    "gameType": "NLH",
+    "players": [
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 50000
+      },
+      {
+        "name": "Jason Blodgett",
+        "position": "SB",
+        "startingStack": 48000
+      },
+      {
+        "name": "Keith McCormack",
+        "position": "BB",
+        "startingStack": 52000
+      },
+      {
+        "name": "Alex Charron",
+        "position": "UTG",
+        "startingStack": 45000
+      },
+      {
+        "name": "Kevin DiPasquale",
+        "position": "HJ",
+        "startingStack": 55000
+      },
+      {
+        "name": "Cristian Gutierrez",
+        "position": "CO",
+        "startingStack": 47000
+      }
+    ],
+    "blinds": {
+      "sb": 100,
+      "bb": 200,
+      "ante": 25
+    },
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "AhKh",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "playerIdx": 3,
+            "action": "fold"
+          },
+          {
+            "playerIdx": 4,
+            "action": "raise",
+            "amount": 500
+          },
+          {
+            "playerIdx": 5,
+            "action": "fold"
+          },
+          {
+            "playerIdx": 0,
+            "action": "call",
+            "amount": 500
+          },
+          {
+            "playerIdx": 1,
+            "action": "fold"
+          },
+          {
+            "playerIdx": 2,
+            "action": "call",
+            "amount": 300
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "Qh7h2d"
+        },
+        "actions": [
+          {
+            "playerIdx": 2,
+            "action": "check"
+          },
+          {
+            "playerIdx": 4,
+            "action": "bet",
+            "amount": 900
+          },
+          {
+            "playerIdx": 0,
+            "action": "call",
+            "amount": 900
+          },
+          {
+            "playerIdx": 2,
+            "action": "fold"
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "5c"
+        },
+        "actions": [
+          {
+            "playerIdx": 4,
+            "action": "bet",
+            "amount": 2200
+          },
+          {
+            "playerIdx": 0,
+            "action": "call",
+            "amount": 2200
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "3h"
+        },
+        "actions": [
+          {
+            "playerIdx": 4,
+            "action": "bet",
+            "amount": 5000
+          },
+          {
+            "playerIdx": 0,
+            "action": "raise",
+            "amount": 15000
+          },
+          {
+            "playerIdx": 4,
+            "action": "call",
+            "amount": 10000
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "heroIdx": 0,
+    "result": {
+      "winner": 0,
+      "amount": 37650,
+      "handName": "Flush, Ace-high"
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

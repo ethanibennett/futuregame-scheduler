@@ -24,6 +24,7 @@
     "solve:range": "cd solver/neural && .venv/bin/python solve_range.py",
     "query": "node solver/query.js",
     "test:hilo": "node test/hilo-split-awards.mjs",
+    "test:hh-io": "node --test test/hh-io.test.mjs",
     "test:watchdog": "node test/testflight-watchdog-predicate.js && node test/testflight-watchdog-decisions.js",
     "test:testflight-nightly": "node test/testflight-nightly.js",
     "test:clocks": "node test/live-clocks.test.js",

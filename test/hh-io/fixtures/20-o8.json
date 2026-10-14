@@ -1,0 +1,172 @@
+{
+  "hand": {
+    "gameType": "O8",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 2,
+      "bb": 4,
+      "bigBet": 8
+    },
+    "players": [
+      {
+        "name": "Dot",
+        "position": "CO",
+        "startingStack": 300
+      },
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 300
+      },
+      {
+        "name": "Emu",
+        "position": "SB",
+        "startingStack": 300
+      },
+      {
+        "name": "Fox",
+        "position": "BB",
+        "startingStack": 300
+      }
+    ],
+    "heroIdx": 1,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "Ac3dKdQc",
+          "opponents": [
+            "",
+            "",
+            "2s4h5c9h"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "raise",
+            "amount": 8
+          },
+          {
+            "player": 2,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "6d7sKh"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "8c"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "bet",
+            "amount": 8
+          },
+          {
+            "player": 1,
+            "action": "call",
+            "amount": 8
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            ""
+          ],
+          "board": "Ks"
+        },
+        "actions": [
+          {
+            "player": 3,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 1,
+            "action": "bet",
+            "amount": 8
+          },
+          {
+            "player": 3,
+            "action": "call",
+            "amount": 8
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 1,
+          "split": true
+        },
+        {
+          "playerIdx": 3,
+          "split": true
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

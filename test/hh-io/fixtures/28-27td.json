@@ -1,0 +1,198 @@
+{
+  "hand": {
+    "gameType": "2-7 TD",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 0.5,
+      "bb": 1,
+      "bigBet": 2
+    },
+    "players": [
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 80
+      },
+      {
+        "name": "Tex",
+        "position": "SB",
+        "startingStack": 80
+      },
+      {
+        "name": "Ula",
+        "position": "BB",
+        "startingStack": 80
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "Pre-Draw",
+        "cards": {
+          "hero": "2h4c7dKsQs",
+          "opponents": [
+            "",
+            "3s5d6h8cTh"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 2
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 1
+          }
+        ],
+        "draws": [
+          {
+            "player": 2,
+            "discarded": 2,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 0,
+            "discarded": 2,
+            "discardedCards": "KsQs",
+            "newCards": "8d3c"
+          }
+        ]
+      },
+      {
+        "name": "First Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 1
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 1
+          }
+        ],
+        "draws": [
+          {
+            "player": 2,
+            "discarded": 1,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 0,
+            "discarded": 1,
+            "discardedCards": "8d",
+            "newCards": "5s"
+          }
+        ]
+      },
+      {
+        "name": "Second Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "bet",
+            "amount": 2
+          },
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": [
+          {
+            "player": 2,
+            "discarded": 0,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 0,
+            "discarded": 0,
+            "discardedCards": "",
+            "newCards": ""
+          }
+        ]
+      },
+      {
+        "name": "Third Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 0,
+            "action": "bet",
+            "amount": 2
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 0,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

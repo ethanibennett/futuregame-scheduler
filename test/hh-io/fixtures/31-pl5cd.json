@@ -1,0 +1,113 @@
+{
+  "hand": {
+    "gameType": "PL 5CD Hi",
+    "gameMode": "cash",
+    "currency": "CAD",
+    "blinds": {
+      "sb": 0.5,
+      "bb": 1
+    },
+    "players": [
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 100
+      },
+      {
+        "name": "Bao",
+        "position": "SB",
+        "startingStack": 100
+      },
+      {
+        "name": "Cai",
+        "position": "BB",
+        "startingStack": 100
+      }
+    ],
+    "heroIdx": 0,
+    "streets": [
+      {
+        "name": "Pre-Draw",
+        "cards": {
+          "hero": "QhQd7s4c2h",
+          "opponents": [
+            "",
+            "9c9d8h8sAs"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 3
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": [
+          {
+            "player": 2,
+            "discarded": 1,
+            "discardedCards": "",
+            "newCards": ""
+          },
+          {
+            "player": 0,
+            "discarded": 3,
+            "discardedCards": "7s4c2h",
+            "newCards": "QsKd5h"
+          }
+        ]
+      },
+      {
+        "name": "Draw",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            ""
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 2,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 16
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 12
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 0,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

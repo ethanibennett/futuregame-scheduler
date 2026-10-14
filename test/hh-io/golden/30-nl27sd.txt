@@ -1,0 +1,30 @@
+PokerStars Hand #8370254352479191:  Single Draw 2-7 Lowball No Limit ($0.25/$0.50 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #2 is the button
+Seat 1: Yan ($50 in chips)
+Seat 2: Hero ($50 in chips)
+Seat 3: Zia ($50 in chips)
+Seat 4: Ada ($50 in chips)
+Zia: posts small blind $0.25
+Ada: posts big blind $0.50
+*** DEALING HANDS ***
+Dealt to Hero [2s 4d 6h 7c Kd]
+Yan: folds
+Hero: raises $1 to $1.50
+Zia: folds
+Ada: calls $1
+Ada: discards 1 card
+Hero: discards 1 card [Kd]
+Dealt to Hero [2s 4d 6h 7c] [3d]
+Ada: checks
+Hero: bets $2.50
+Ada: calls $2.50
+*** SHOW DOWN ***
+Hero: shows [2s 4d 6h 7c 3d] (Lo: 7,6,4,3,2)
+Ada: shows [3h 5c 8d 9s Tc] (Lo: T,9,8,5,3)
+Hero collected $8.25 from pot
+*** SUMMARY ***
+Total pot $8.25 | Rake $0
+Seat 1: Yan folded before Flop (didn't bet)
+Seat 2: Hero (button) showed [2s 4d 6h 7c 3d] and won ($8.25) with Lo: 7,6,4,3,2
+Seat 3: Zia (small blind) folded before Flop
+Seat 4: Ada (big blind) showed [3h 5c 8d 9s Tc] and lost with Lo: T,9,8,5,3

@@ -1,0 +1,33 @@
+PokerStars Hand #8170626511479892: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (50/100) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #1 is the button
+Seat 1: Hero (5000 in chips)
+Seat 2: Kai (5000 in chips)
+Seat 3: Lux (5000 in chips)
+Lux: posts the ante 15
+Kai: posts small blind 50
+Lux: posts big blind 100
+*** HOLE CARDS ***
+Dealt to Hero [2c 3d]
+Hero: raises 150 to 250
+Kai: folds
+Lux: calls 150
+*** FLOP *** [9c Th Jd]
+Lux: checks
+Hero: checks
+*** TURN *** [9c Th Jd] [Qs]
+Lux: checks
+Hero: checks
+*** RIVER *** [9c Th Jd Qs] [Ks]
+Lux: checks
+Hero: checks
+*** SHOW DOWN ***
+Lux: shows [4h 5s] (a straight, Nine to King)
+Hero: shows [2c 3d] (a straight, Nine to King)
+Lux collected 283 from pot
+Hero collected 282 from pot
+*** SUMMARY ***
+Total pot 565 | Rake 0
+Board [9c Th Jd Qs Ks]
+Seat 1: Hero (button) showed [2c 3d] and won (282) with a straight, Nine to King
+Seat 2: Kai (small blind) folded before Flop
+Seat 3: Lux (big blind) showed [4h 5s] and won (283) with a straight, Nine to King

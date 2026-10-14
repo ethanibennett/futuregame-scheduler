@@ -1,0 +1,28 @@
+PokerStars Hand #8648621949194937: Tournament #7704469172, Freeroll  Hold'em No Limit - Level I (100/200) - 2026/10/13 14:30:05 ET
+Table '7704469172 1' 6-max Seat #4 is the button
+Seat 1: Ava (10000 in chips)
+Seat 2: Bo (10000 in chips)
+Seat 3: Hero (10000 in chips)
+Seat 4: Dax (10000 in chips)
+Seat 5: Eli (10000 in chips)
+Seat 6: Fin (10000 in chips)
+Eli: posts small blind 100
+Fin: posts big blind 200
+*** HOLE CARDS ***
+Dealt to Hero [Ah Js]
+Ava: folds
+Bo: folds
+Hero: folds
+Dax: folds
+Eli: folds
+Uncalled bet (100) returned to Fin
+Fin collected 200 from pot
+Fin: doesn't show hand
+*** SUMMARY ***
+Total pot 200 | Rake 0
+Seat 1: Ava folded before Flop (didn't bet)
+Seat 2: Bo folded before Flop (didn't bet)
+Seat 3: Hero folded before Flop (didn't bet)
+Seat 4: Dax (button) folded before Flop (didn't bet)
+Seat 5: Eli (small blind) folded before Flop
+Seat 6: Fin (big blind) collected (200)

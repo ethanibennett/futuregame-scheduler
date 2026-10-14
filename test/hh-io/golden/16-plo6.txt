@@ -1,0 +1,36 @@
+PokerStars Hand #8030448439685685:  6 Card Omaha Pot Limit ($0.25/$0.50 USD) - 2026/10/13 14:30:05 ET
+Table 'futuregame' 6-max Seat #2 is the button
+Seat 1: Hero ($60 in chips)
+Seat 2: Uli ($60 in chips)
+Seat 3: Vee ($60 in chips)
+Seat 4: Wim ($60 in chips)
+Vee: posts small blind $0.25
+Wim: posts big blind $0.50
+*** HOLE CARDS ***
+Dealt to Hero [Ah Ad Kc Qs 3h 2h]
+Hero: raises $1.25 to $1.75
+Uli: folds
+Vee: folds
+Wim: calls $1.25
+*** FLOP *** [Ac 7c 6s]
+Wim: checks
+Hero: bets $2.75
+Wim: raises $8.25 to $11
+Hero: calls $8.25
+*** TURN *** [Ac 7c 6s] [5d]
+Wim: bets $20
+Hero: calls $20
+*** RIVER *** [Ac 7c 6s 5d] [Kd]
+Wim: bets $25.25
+Hero: calls $25.25
+*** SHOW DOWN ***
+Wim: shows [Jc Tc 9c 8s 7d 2d] (a straight, Five to Nine)
+Hero: shows [Ah Ad Kc Qs 3h 2h] (three of a kind, Aces)
+Wim collected $116.25 from pot
+*** SUMMARY ***
+Total pot $116.25 | Rake $0
+Board [Ac 7c 6s 5d Kd]
+Seat 1: Hero showed [Ah Ad Kc Qs 3h 2h] and lost with three of a kind, Aces
+Seat 2: Uli (button) folded before Flop (didn't bet)
+Seat 3: Vee (small blind) folded before Flop
+Seat 4: Wim (big blind) showed [Jc Tc 9c 8s 7d 2d] and won ($116.25) with a straight, Five to Nine

@@ -1,0 +1,198 @@
+{
+  "hand": {
+    "gameType": "LHE",
+    "gameMode": "cash",
+    "currency": "USD",
+    "blinds": {
+      "sb": 1,
+      "bb": 2,
+      "bigBet": 4,
+      "betCap": 4
+    },
+    "players": [
+      {
+        "name": "Ida",
+        "position": "HJ",
+        "startingStack": 120
+      },
+      {
+        "name": "Jude",
+        "position": "CO",
+        "startingStack": 120
+      },
+      {
+        "name": "Hero",
+        "position": "BTN",
+        "startingStack": 150
+      },
+      {
+        "name": "Kip",
+        "position": "SB",
+        "startingStack": 120
+      },
+      {
+        "name": "Lars",
+        "position": "BB",
+        "startingStack": 120
+      }
+    ],
+    "heroIdx": 2,
+    "streets": [
+      {
+        "name": "Preflop",
+        "cards": {
+          "hero": "AdQd",
+          "opponents": [
+            "",
+            "",
+            "",
+            "KsKd"
+          ],
+          "board": ""
+        },
+        "actions": [
+          {
+            "player": 0,
+            "action": "raise",
+            "amount": 4
+          },
+          {
+            "player": 1,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "raise",
+            "amount": 6
+          },
+          {
+            "player": 3,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 4,
+            "action": "raise",
+            "amount": 6
+          },
+          {
+            "player": 0,
+            "action": "call",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Flop",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "Qs9d4c"
+        },
+        "actions": [
+          {
+            "player": 4,
+            "action": "bet",
+            "amount": 2
+          },
+          {
+            "player": 0,
+            "action": "fold",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "call",
+            "amount": 2
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "Turn",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "2d"
+        },
+        "actions": [
+          {
+            "player": 4,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 2,
+            "action": "raise",
+            "amount": 8
+          },
+          {
+            "player": 4,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      },
+      {
+        "name": "River",
+        "cards": {
+          "hero": "",
+          "opponents": [
+            "",
+            "",
+            "",
+            ""
+          ],
+          "board": "Td"
+        },
+        "actions": [
+          {
+            "player": 4,
+            "action": "check",
+            "amount": 0
+          },
+          {
+            "player": 2,
+            "action": "bet",
+            "amount": 4
+          },
+          {
+            "player": 4,
+            "action": "call",
+            "amount": 4
+          }
+        ],
+        "draws": []
+      }
+    ],
+    "result": {
+      "winners": [
+        {
+          "playerIdx": 2,
+          "split": false
+        }
+      ]
+    }
+  },
+  "opts": {
+    "playedAt": "2026-10-13T18:30:05Z"
+  }
+}

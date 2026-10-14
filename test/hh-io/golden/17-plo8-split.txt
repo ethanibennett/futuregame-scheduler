@@ -1,0 +1,33 @@
+PokerStars Hand #8353485402322371: Tournament #7324715431, Freeroll  Omaha Hi/Lo Pot Limit - Level I (200/400) - 2026/10/13 14:30:05 ET
+Table '7324715431 1' 6-max Seat #1 is the button
+Seat 1: Hero (30000 in chips)
+Seat 2: Xia (28000 in chips)
+Seat 3: Yoz (32000 in chips)
+Xia: posts small blind 200
+Yoz: posts big blind 400
+*** HOLE CARDS ***
+Dealt to Hero [Ah 2d Kh Qh]
+Hero: raises 800 to 1200
+Xia: calls 1000
+Yoz: folds
+*** FLOP *** [3h 5d 8d]
+Xia: checks
+Hero: bets 1500
+Xia: calls 1500
+*** TURN *** [3h 5d 8d] [Ts]
+Xia: bets 3000
+Hero: calls 3000
+*** RIVER *** [3h 5d 8d Ts] [4c]
+Xia: bets 6000
+Hero: calls 6000
+*** SHOW DOWN ***
+Xia: shows [9s 8s 7c 6c] (HI: a straight, Four to Eight; LO: 7,6,5,4,3)
+Hero: shows [Ah 2d Kh Qh] (HI: a straight, Ace to Five; LO: 5,4,3,2,A)
+Xia collected 11900 from pot
+Hero collected 11900 from pot
+*** SUMMARY ***
+Total pot 23800 | Rake 0
+Board [3h 5d 8d Ts 4c]
+Seat 1: Hero (button) showed [Ah 2d Kh Qh] and won (11900) with HI: a straight, Ace to Five; LO: 5,4,3,2,A
+Seat 2: Xia (small blind) showed [9s 8s 7c 6c] and won (11900) with HI: a straight, Four to Eight; LO: 7,6,5,4,3
+Seat 3: Yoz (big blind) folded before Flop
