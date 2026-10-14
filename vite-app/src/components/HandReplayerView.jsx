@@ -5748,7 +5748,9 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      only one player is eligible for. At the showdown, cap every seat at the
      SECOND-highest commitment: the single top over-shove's excess never enters
      the pot, it goes back. Settled only at the result — mid-hand the bet is
-     still live and stands in the pot. */
+     still live and stands in the pot.
+     Mirrored, with allPotLayers and potAwards below, by the hand-history
+     export's utils/hand-history/settle.js: change one, change the other. */
   const settled = useMemo(() => {
     const raw = hand.players.map((_, pi) => {
       let total = 0;
@@ -6009,7 +6011,8 @@ function HandReplayerReplayView({ hand, token, onEdit, onBack, cardSplay, onSolv
      Each pot layer is settled on its own, because a side pot's high can belong
      to a player the main pot's winner is not even up against. The cards decide
      it where they are known and agree with the stored result; a hand-marked
-     winner, or a mucked one, falls back to the stored entries' Hi/Lo flags. */
+     winner, or a mucked one, falls back to the stored entries' Hi/Lo flags.
+     utils/hand-history/settle.js mirrors this for the hand-history export. */
   const potAwards = useMemo(() => {
     if (!showResult) return null;
     const winners = flaggedWinners;
