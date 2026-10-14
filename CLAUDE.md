@@ -269,6 +269,8 @@ JWT_SECRET="dev-secret" PORT=3199 DB_PATH=./dev.db node server.js
 ## Conventions
 - Event naming: WSOP style — NLH/PLO/HORSE abbreviations, no acronym periods, title case,
   "- Day 1"/"- Flight A" suffixes; include format only when distinctive ("7-Max", "Freezeout").
+  Six-card PLO hi-lo is **"PLO6 8/b"**, never "Big Easy" (owner, 2026-10-14); keep "Big Easy" only as an
+  input alias for old saved hands. "Big Easy Casino" is a venue and keeps its name.
 - "Opponent" not "villain". Card notation `AhKs`, suits h/d/c/s, x = face-down.
 - Dropdowns/panels use portals to document.body to escape stacking contexts.
 - **Pills and buttons** (owner rule, 2026-10-10): the CONTAINER sits on the grid (whole g × whole
