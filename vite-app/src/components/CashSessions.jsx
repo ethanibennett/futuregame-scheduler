@@ -34,6 +34,8 @@ import useLiveCashSession, { setLiveSession } from '../hooks/useLiveCashSession.
 import { useResultsFocus, clearResultsFocus, revealInScroller } from '../hooks/useResultsFocus.js';
 import { useTick } from './CashLive.jsx';
 import { useHideBankrollFab } from '../hooks/useBankrollFab.js';
+// The Backers block (the Notify tap), the owner's only: on a session's page and its edit screen.
+import BackerNotify from './BackerNotify.jsx';
 
 const money = (v, cur) => formatCurrencyAmount(Math.round(v || 0), cur || 'USD');
 const signed = (v, cur) => (v > 0 ? '+' : '') + money(v, cur);
@@ -116,7 +118,7 @@ function Chart({ points, x = 't', className = '', label, empty }) {
 }
 
 // ── Add / edit a finished session ───────────────────────────────────────────
-function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy }) {
+function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy, token }) {
   const s = session || null;
   const d = useMemo(() => sessionDefaults(sessions), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [day, setDay] = useState(s ? s.session_date : localDay());
@@ -187,6 +189,8 @@ function SessionForm({ bk, rooms, sessions, session, onSave, onCancel, busy }) {
         <Btn kind="brand" w={11} disabled={!ok || busy} onClick={submit}>{s ? 'Save' : 'Add session'}</Btn>
         <Btn w={8} onClick={onCancel}>Cancel</Btn>
       </div>
+      {/* Editing a finished session: its saved shares and the Notify tap (nothing posts on save). */}
+      {s && !s.live && token && <BackerNotify token={token} refTable="cash_sessions" refId={s.id} />}
     </section>
   );
 }
@@ -431,7 +435,7 @@ function SessionList({ sessions, stats, onOpen }) {
 }
 
 // ── One session ─────────────────────────────────────────────────────────────
-function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete }) {
+function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete, token }) {
   const cur = s.currency;
   const hourly = sessionHourly(s);
   const bankroll = (bk.bankrolls.find((b) => b.id === s.bankroll_id) || { name: s.bankroll_id === BANKROLL_MAIN ? 'Main' : '—' }).name;
@@ -472,6 +476,7 @@ function SessionDetail({ s, stacks, bk, busy, confirm, onConfirm, onDelete }) {
       </div>
       <h3 className="cs-t cs-sec-title">Notes</h3>
       <p className={'cs-notes' + (s.notes ? '' : ' is-empty')}>{s.notes || 'No notes. Edit to add some.'}</p>
+      {token && <BackerNotify token={token} refTable="cash_sessions" refId={s.id} />}
       {confirm && (
         <div className="cs-confirm">
           <p className="cs-t cs-note">Delete this session? This cannot be undone.</p>
@@ -648,7 +653,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
     body = shown === 'start'
       ? <StartForm bk={bk} rooms={rooms} sessions={ended} busy={busy} onStart={start} onCancel={() => go('list')} />
       : editId && !current ? null
-        : <SessionForm key={editId || 'add'} bk={bk} rooms={rooms} sessions={ended} session={current} busy={busy}
+        : <SessionForm key={editId || 'add'} bk={bk} rooms={rooms} sessions={ended} session={current} busy={busy} token={token}
           onSave={(b) => save(b, editId)} onCancel={() => go(editId ? { detail: editId } : 'list')} />;
   } else if (detailId && current) {
     fabAway = false;
@@ -660,7 +665,7 @@ export default function CashSessionsView({ token, bk, intent = null, onIntentDon
         <Btn kind="danger" w={7} h={4} onClick={() => setConfirmDelete(true)}>Delete</Btn>
       </>
     );
-    body = <SessionDetail s={current} stacks={stacksOf(current.id)} bk={bk} busy={busy} confirm={confirmDelete}
+    body = <SessionDetail s={current} stacks={stacksOf(current.id)} bk={bk} busy={busy} confirm={confirmDelete} token={token}
       onConfirm={setConfirmDelete} onDelete={() => remove(current.id)} />;
   } else {
     focus = false;

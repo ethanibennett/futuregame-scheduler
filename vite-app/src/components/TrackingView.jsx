@@ -30,13 +30,17 @@ const CashSessionsView = lazy(() => import('./CashSessions.jsx'));
 const TaxReportView = lazy(() => import('./TaxReportView.jsx'));
 // BETA expenses, income and trips, admins only, lazy for the same reason.
 const ExpensesSection = lazy(() => import('./Expenses.jsx'));
+// The Backers block on a result's edit form (the Notify tap), the owner's only: lazy likewise.
+const BackerNotify = lazy(() => import('./BackerNotify.jsx'));
 
 // ── Tracking Entry Form ─────────────────────────────────────
 // isNew with isEdit: a NEW result for one known event (the home's To log), so no event picker,
 // but it reads as logging, not editing. conflict: the sentence saying a result is already logged
 // for the event (the server refused to log over it); the form keeps what was typed, and its
 // submit becomes Replace it (onSubmit's second argument, { replace: true }).
-function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null }) {
+// notify: { token, refId } on an admin's edit of a saved result, for the Backers block under the
+// form (components/BackerNotify.jsx: the saved result's backer shares and the Notify tap).
+function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialValues, tournamentLabel, entryForPOY, onSubmit, onCancel, isEdit, isNew = false, bankrolls, conflict = null, notify = null }) {
   const [tournamentId, setTournamentId] = useState(initialValues?.tournamentId || '');
   const [numEntries, setNumEntries] = useState(initialValues?.numEntries || 1);
   const [cashed, setCashed] = useState(initialValues?.cashed || false);
@@ -174,12 +178,20 @@ function TrackingEntryForm({ tournaments, mySchedule, existingEntryIds, initialV
         </button>
         <button type="button" className="btn btn-ghost btn-sm" style={{width:'calc(var(--gu) * 6)',padding:0}} onClick={onCancel}>Cancel</button>
       </div>
+
+      {/* Backers (the owner's): the SAVED result's shares and the Notify tap. Nothing posts on
+          save; the block draws nothing for any other account. */}
+      {notify && (
+        <Suspense fallback={null}>
+          <BackerNotify token={notify.token} refTable="tracking_entries" refId={notify.refId} />
+        </Suspense>
+      )}
     </form>
   );
 }
 
 // ── Tracking Entry Row ──────────────────────────────────────
-function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls }) {
+function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCancelEdit, displayCurrency, exchangeRates, bankrolls, notifyToken = null }) {
   const from = nativeCurrency(entry.venue);
   const to = displayCurrency === 'NATIVE' ? from : displayCurrency;
   const cv = (val) => convertAmount(val, from, to, exchangeRates);
@@ -212,6 +224,7 @@ function TrackingEntryRow({ entry, onEdit, onDelete, isEditing, onUpdate, onCanc
         onSubmit={onUpdate}
         onCancel={onCancelEdit}
         isEdit
+        notify={notifyToken ? { token: notifyToken, refId: entry.id } : null}
       />
     );
   }
@@ -713,6 +726,7 @@ export default function TrackingView({ trackingData: allTrackingData, tournament
             displayCurrency={displayCurrency}
             exchangeRates={exchangeRates}
             bankrolls={formBankrolls}
+            notifyToken={isAdmin ? token : null}
           />
           </div>
         ))

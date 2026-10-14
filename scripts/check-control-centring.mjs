@@ -39,7 +39,9 @@
 // admin's Solver / Solver Trainer / Watch Solver / Trainer / 3-Way / Scanner tools), Cash (Live,
 // Heatmaps, the location picker), Results (the log form, a row in edit, the tax report, the share
 // menu and the series wrap-up, the analytics sheet and its tabs, the Delete results block at the
-// foot, closed and open), the
+// foot, closed and open), the Backers block of the Notify tap under a result's edit form and on a
+// cash session's page and edit screen (previewed, sent, the warning's confirm, none staked;
+// notify-states.mjs stages all but the first and never lets a tap through), the
 // floating + on the bankroll pages (the Results tab's and the dashboard sheet's, closed and with its
 // menu open, with and without a running cash session), the
 // bankroll sheet and dashboard (every tab — the strip scrolls sideways once the tabs outgrow it,
@@ -158,6 +160,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { stageHome } from './home-states.mjs';
+import { stageNotify } from './notify-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -2239,6 +2242,39 @@ function finalize(c) {
     await reveal(sel, 200);
     await tap(sel, 900);
   }, 1);
+  // The Backers block (components/BackerNotify.jsx, the Notify tap; the owner's, so CHECK_TOKEN must
+  // be the owner's: CONSOLE_OWNER_USER_ID on a scratch server) under a tournament result's edit
+  // form, on a cash session's page and on its edit screen: previewed (the server's own answer for
+  // the seed's backers), sent, and with the warning's confirm open (Notify tapped). Sent and warning
+  // are staged by notify-states.mjs, which answers the block's request in the page and never lets a
+  // commit through, so no guard notifies anyone. The block is scrolled to the top of its scroller.
+  const notifyOpen = async (where, kind) => {
+    const unstage = kind ? await stageNotify(p, kind) : null;
+    try {
+      if (where === 'results') {
+        await nav('Bankroll');
+        if (await exists('.results-kind-tabs button:has-text("Tournaments"):not(.active)')) await tap('.results-kind-tabs button:has-text("Tournaments")', 900);
+        const sel = '.tab-panel[data-tab="tracking"] .tracking-actions button:has-text("Edit"), .tracking-actions button:has-text("Edit")';
+        await reveal(sel, 200);
+        await tap(sel, 900);
+      } else if (where === 'cash') {
+        await cashHalf(csBack, '.cs-row');
+      } else {
+        await cashHalf(csBack, '.cs-row', '.cs-head button:has-text("Edit")');
+      }
+      await vis('.bn').first().waitFor({ timeout: 8000 });
+      if (kind === 'warning') { await tap('.bn-btn--brand', 500); await vis('.bn-confirm').first().waitFor({ timeout: 3000 }); }
+    } finally { if (unstage) await unstage(); }
+    await reveal('.bn', 40);
+  };
+  step('results-notify', () => notifyOpen('results', null), 1);
+  step('results-notify-sent', () => notifyOpen('results', 'sent'), 0);
+  step('results-notify-warning', () => notifyOpen('results', 'warning'), 0);
+  step('results-notify-none', () => notifyOpen('results', 'none'), 0);
+  step('cash-notify', () => notifyOpen('cash', null), 1);
+  step('cash-notify-sent', () => notifyOpen('cash', 'sent'), 0);
+  step('cash-notify-warning', () => notifyOpen('cash', 'warning'), 0);
+  step('cash-notify-edit', () => notifyOpen('cash-edit', null), 1);
   step('results-tax', async () => { await nav('Bankroll'); await tap('button[title="Tax report (beta)"]', 2000); }, 3);
   step('results-share', async () => { await nav('Bankroll'); await tap('button[title="Share & Social"]', 900); }, 1);
   step('results-analytics', async () => {

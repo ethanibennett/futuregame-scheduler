@@ -4,7 +4,7 @@
 //   node scripts/check-text-clipping.mjs [baseUrl] [--width 402] [--height 874] [--only "bankroll,home"]
 //   (--only runs the passes whose name starts with one of those words: schedule, home, venue-map,
 //   hands, bankroll-dashboard, bankroll-locations, bankroll-backers, cash, bankroll-fab, expenses,
-//   results-reset, staking-settlement, backer-page; --verbose names the views a run scanned. A pass that skips itself
+//   results-notify, cash-notify, results-reset, staking-settlement, backer-page; --verbose names the views a run scanned. A pass that skips itself
 //   says so, and the "scanned N views" line before the verdict counts the ones that ran.)
 //   (CHECK_BASE_URL / CHECK_TOKEN / CHECK_TOKEN_FILE / CHECK_USERNAME as check-control-centring.mjs)
 //
@@ -35,6 +35,7 @@
 import { stageHands, SHARED_HAND_CODE } from './hands-states.mjs';
 import { createRequire } from 'node:module';
 import { stageHome } from './home-states.mjs';
+import { stageNotify } from './notify-states.mjs';
 const require = createRequire(import.meta.url);
 const { webkit } = require('../vite-app/node_modules/playwright');
 // Resolved up the tree, not by a fixed path: a git worktree inside the checkout has no
@@ -713,6 +714,45 @@ function scan(rootSel) {
       await p.locator('.tx-trip-row').first().click({ timeout: 4000 });
     });
   } catch (e) { console.log(`  (expenses views skipped: ${e.message.split('\n')[0]})`); }
+
+  // The Backers block of the Notify tap (components/BackerNotify.jsx; the owner's, so the token must be
+  // the owner's) under a tournament result's edit form and on a cash session's page: previewed (the
+  // server's answer), sent, the warning's confirm open, none staked, and long names, figures and
+  // series titles so every truncating line truncates. All but the first are staged by
+  // notify-states.mjs, which answers the block's request in the page and never lets a tap through.
+  for (const [where, prefix] of [['results', 'results-notify'], ['cash', 'cash-notify']]) {
+    if (!on(prefix)) continue;
+    for (const kind of [null, 'sent', 'warning', 'none', 'long']) {
+      const label = `${prefix}${kind ? ', ' + kind : ''}`;
+      try {
+        const unstage = kind ? await stageNotify(p, kind) : null;
+        try {
+          await openResults();
+          if (where === 'results') {
+            const tour = p.locator('.results-kind-tabs button:has-text("Tournaments"):not(.active)');
+            if (await tour.count()) { await tour.first().click({ timeout: 4000 }); await p.waitForTimeout(900); }
+            const edit = p.locator('.tracking-actions button:has-text("Edit")').filter({ visible: true }).first();
+            await edit.scrollIntoViewIfNeeded({ timeout: 4000 });
+            await edit.click({ timeout: 4000 });
+          } else {
+            await p.locator('.results-kind-tabs button:has-text("Cash")').first().click({ timeout: 4000 });
+            await p.waitForTimeout(1500);
+            await p.locator('.cs-head button:has-text("Sessions")').first().click({ timeout: 4000 });
+            await p.waitForTimeout(700);
+            await p.locator('.cs-row').first().click({ timeout: 4000 });
+          }
+          await p.locator('.bn').filter({ visible: true }).first().waitFor({ timeout: 8000 });
+          if (kind === 'warning' || kind === 'long') {
+            await p.locator('.bn-btn--brand').filter({ visible: true }).first().click({ timeout: 4000 });
+            await p.locator('.bn-confirm').first().waitFor({ timeout: 3000 });
+          }
+        } finally { if (unstage) await unstage(); }
+        await p.locator('.bn').filter({ visible: true }).first().scrollIntoViewIfNeeded({ timeout: 4000 });
+        await p.waitForTimeout(400);
+        await run(label, '.bn');
+      } catch (e) { console.log(`  (${label} skipped: ${e.message.split('\n')[0]})`); }
+    }
+  }
 
   // Results > Delete results (components/ResetResults.jsx) at the foot of the list: its sentence
   // wraps over 2r lines; closed, then open with the phrase typed.
